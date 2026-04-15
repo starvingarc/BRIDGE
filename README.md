@@ -2,200 +2,164 @@
 
 **Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation**
 
-BRIDGE is a brain-referenced developmental guidance and evaluation framework for mapping, screening, and scoring in vitro cell products against in vivo developmental programs.
+BRIDGE is a three-step brain-referenced framework for guiding and evaluating in vitro cell products against in vivo developmental programs.
 
-BRIDGE 是一个以真实脑发育参照为基础的 in vivo-to-in vitro 发育引导与评价框架，用于对体外细胞产物进行映射、筛选与多维评分。
+## Project Summary
 
-Conceptually, BRIDGE is organized as a **three-step workflow**:
-- **Step 1**: build the in vivo developmental reference and whole-brain pre-screening space
+BRIDGE is organized around a thesis-derived three-step workflow:
+- **Step 1**: construct the in vivo developmental reference and the whole-brain pre-screening space
 - **Step 2**: perform target-specific identity assessment and candidate selection
-- **Step 3**: quantify developmental concordance with CLS and downstream reporting
+- **Step 3**: quantify developmental concordance with CLS and generate downstream reports
 
-从概念上讲，BRIDGE 是一个**三步式流程**：
-- **Step 1**：构建体内发育参考系与 whole-brain pre-screening 空间
-- **Step 2**：进行目标细胞身份评估与候选细胞筛选
-- **Step 3**：利用 CLS 完成发育一致性量化与下游报告输出
+The public repository currently formalizes **Step 2** and **Step 3** as package code. **Step 1** is part of the intended architecture and is documented as roadmap material, but it is not yet released here as a finalized production workflow.
 
-## Status / 当前状态
+## What BRIDGE Is Trying to Do
 
-**BRIDGE v1** currently formalizes the main workflows for **Step 2** and **Step 3**, while keeping **Step 1** as an explicitly planned but not yet finalized module:
-- Identity Assessment
-- CLS A-F
-- Report / visualization
-- Query model loading
-- Configuration and output conventions
+The framework is designed for settings where an in vitro sample, such as an organoid-derived or stem-cell-derived product, needs to be evaluated relative to an in vivo developmental reference rather than by a small set of marker genes alone.
 
-**BRIDGE v1** 当前正式收录 **Step 2** 和 **Step 3** 的主流程，并把 **Step 1** 明确标记为“已规划但尚未正式化”的模块：
-- Identity Assessment
-- CLS A-F
-- report / visualization
-- query model loading
-- 配置与输出规范
+The overall logic is:
+1. Build a biologically grounded in vivo reference space.
+2. Map a query sample into that reference and identify high-confidence target candidates.
+3. Score how well those candidates reconstruct the relevant developmental program across multiple complementary dimensions.
 
-**Step 1 is not yet complete.** In the thesis logic, Step 1 covers reference atlas construction and whole-brain pre-screening. In BRIDGE v1, those pieces are acknowledged as part of the full pipeline but are not yet released here as finalized production workflows.
+## Pipeline Overview
 
-**Step 1 尚未完成。** 按论文逻辑，Step 1 对应参考图谱构建与全脑 pre-screening。BRIDGE v1 已明确承认这是完整流程的一部分，但目前还没有把它作为正式生产流程发布，只保留路线图和占位说明。
+### Step 1: Reference Construction and Whole-Brain Pre-screening
 
-## Pipeline Overview / 三步流程总览
-
-### Step 1: Reference Construction and Pre-screening / 参考构建与预筛选
-
-Step 1 defines the **in vivo reference coordinate system** that anchors the whole framework. It is intended to include:
+Step 1 defines the reference coordinate system that anchors the rest of the framework. In the thesis logic, this step is intended to include:
 - integration of human embryonic brain single-cell data into a reference atlas
 - construction of region-aware and stage-aware reference spaces
-- whole-brain pre-screening to identify broad lineage composition and exclude obvious off-target populations
+- whole-brain pre-screening to estimate broad lineage composition and identify obvious off-target populations before more specific evaluation
 
-Step 1 为整个框架提供**体内参考坐标系**。它计划包含：
-- 整合人胚脑单细胞数据，构建参考图谱
-- 构建具有区域与发育阶段信息的参考空间
-- 在 whole-brain 层面进行预筛选，识别样本总体谱系构成并排除明显 off-target 细胞
+In this public repository, Step 1 is acknowledged as part of the full BRIDGE pipeline, but it is not yet formalized as released code.
 
-Current repository status:
-- conceptually part of BRIDGE
-- not yet formalized in public v1
-- represented through roadmap and scope documents only
+### Step 2: Identity Assessment
 
-当前仓库状态：
-- 在概念上属于 BRIDGE 正式流程的一部分
-- 但尚未在公开 v1 中正式化
-- 当前仅通过 roadmap 和边界文档体现
-
-### Step 2: Identity Assessment / 身份评估
-
-Step 2 refines candidate target cells under a more specific reference. In the current codebase, this step covers:
+Step 2 refines target candidates under a more specific reference. In the current codebase, this step includes:
 - query model loading
-- soft prediction and probability calibration
+- soft prediction
+- probability calibration
 - ensemble-based uncertainty estimation
 - normalized entropy calculation
 - candidate selection through thresholded identity-stability rules
 
-Step 2 在更具体的参考框架下筛选目标候选细胞。当前代码中，这一步包含：
-- query model 加载
-- soft prediction 与概率校准
-- 基于 ensemble 的不确定性估计
-- 归一化熵计算
-- 基于身份稳定性的阈值规则筛选候选细胞
+The formal Step 2 code lives under `src/bridge/identity`.
 
-This is the formalized **Identity Assessment** module under BRIDGE v1.
+### Step 3: CLS and Reporting
 
-这部分就是 BRIDGE v1 中已经正式化的 **Identity Assessment** 模块。
-
-### Step 3: CLS and Reporting / CLS 评分与结果输出
-
-Step 3 evaluates how well in vitro products reconstruct the in vivo developmental program after candidate selection. In the current repository, this includes:
+Step 3 evaluates how well the selected in vitro candidates reconstruct the in vivo developmental program. In the current codebase, this step includes:
 - CLS component A-F
-- shared output packaging and result serialization
-- report / visualization scaffolding
-- configuration and output conventions for downstream comparison
+- shared result packaging and serialization
+- report and visualization scaffolding
+- output conventions for cross-sample comparison
 
-Step 3 在候选细胞确定之后，评价体外产物在多大程度上重建了体内发育程序。当前仓库中，这一步包含：
-- CLS A-F 六个组件
-- 统一输出包装与结果序列化
-- report / visualization 脚手架
-- 用于下游比较的配置与输出规范
+The formal Step 3 code lives primarily under `src/bridge/cls`, with supporting pieces under `src/bridge/io` and `src/bridge/workflows`.
 
-This is the formalized **concordance scoring and reporting** layer under BRIDGE v1.
+## Key Concepts
 
-这部分构成了 BRIDGE v1 中已经正式化的**一致性评分与结果输出层**。
+### Reference
 
-## What Is In Scope / 正式范围
+In BRIDGE, the **reference** is the in vivo developmental coordinate system used to interpret a query sample. It is not just a label table. It is intended to encode developmental context, regional identity, and the embedding space used for mapping and comparison.
 
-The following are part of the formal BRIDGE v1 workflow:
+### Query
+
+The **query** is the in vitro sample being evaluated, such as a differentiation product, organoid dataset, or related cell product that is projected into the reference framework.
+
+### Identity Assessment
+
+**Identity Assessment** is the Step 2 module that decides which query cells should be treated as high-confidence candidates for downstream evaluation. In the current implementation, this relies on calibrated probabilities, uncertainty estimates, and entropy-based filtering rather than on a top-label assignment alone.
+
+### CLS
+
+**CLS** stands for **Composite Likeness Score**. It is the Step 3 concordance layer that summarizes how well an in vitro sample reconstructs the in vivo developmental program after candidate selection.
+
+In the current codebase, CLS is decomposed into six components:
+- **A**: identity consistency
+- **B**: pseudo-bulk expression similarity
+- **C**: classifier transferability
+- **D**: embedding neighborhood consistency
+- **E**: pseudotime concordance
+- **F**: regulatory network similarity
+
+CLS should be read as a structured multi-component evaluation framework, not as a claim that one scalar alone fully captures developmental quality.
+
+## Thesis-to-Code Mapping
+
+The repository is intentionally aligned to the thesis logic:
+- **Step 1** thesis logic: documented in `docs/`, not yet formalized as released package code
+- **Step 2** thesis logic: implemented in `src/bridge/identity`
+- **Step 3** thesis logic: implemented in `src/bridge/cls`, with shared I/O and workflow scaffolding
+
+Supporting documentation:
+- `docs/formal_workflows.md`
+- `docs/thesis_to_code.md`
+- `docs/roadmap_step1.md`
+- `docs/experimental_scope.md`
+
+## What Is In Scope for BRIDGE v1
+
+The following are part of the formal BRIDGE v1 repository:
 - `src/bridge/identity`: Step 2 identity assessment logic
-- `src/bridge/cls`: Step 3 CLS A-F component logic
+- `src/bridge/cls`: Step 3 CLS A-F logic
 - `src/bridge/io` and `src/bridge/workflows`: output handling and workflow scaffolding
-- `tests/`: formal tests for v1 modules
+- `tests/`: formal tests for the released package modules
 - `configs/`: configuration placeholders and output conventions
-- `docs/`: formal workflow notes, roadmap, and scope boundaries
+- `docs/`: workflow, roadmap, and scope documentation
 
-以下内容属于 BRIDGE v1 的正式主流程：
-- `src/bridge/identity`：Step 2 身份评估逻辑
-- `src/bridge/cls`：Step 3 CLS A-F 组件逻辑
-- `src/bridge/io` 与 `src/bridge/workflows`：输出层与流程脚手架
-- `tests/`：v1 正式测试
-- `configs/`：配置占位与输出规范
-- `docs/`：正式流程说明、路线图与边界文档
+## What Is Not In Scope for the Initial Public Repository
 
-## What Is Not In Scope / 非正式扩展内容
+The following are intentionally kept out of the first public version:
+- exploratory notebooks from the earlier `drafts/` workspace
+- thesis-generation materials and manuscript assets
+- one-off plotting scripts
+- unpublished ad hoc analyses
+- large model binaries and unpublished intermediate datasets
 
-The following are intentionally **not** part of the initial public repository content:
-- exploratory research notebooks from the current `drafts/`
-- thesis writing artifacts and manuscript-generation materials
-- provisional plotting scripts and one-off analyses
-- large model weights and unpublished intermediate datasets
+These materials may be migrated later, but only after standardization, documentation, and testability are established.
 
-以下内容在首版公开仓库中**不会**整体纳入：
-- 当前 `drafts/` 中的 exploratory notebook
-- 论文写作材料与成稿生成过程文件
-- 临时绘图脚本和一次性分析代码
-- 大型模型权重与未整理的中间数据
-
-These materials may be migrated later only after they are standardized, documented, and made testable.
-
-这些内容后续只有在完成标准化、文档化和可测试化之后，才会逐步迁入。
-
-## Repository Layout / 目录结构
+## Repository Layout
 
 ```text
 BRIDGE/
-├─ README.md
-├─ CLAUDE.md
-├─ pyproject.toml
-├─ src/bridge/
-├─ tests/
-├─ configs/
-├─ models/
-├─ notebooks/
-├─ docs/
-└─ .claude/
-   └─ skills/
+|- README.md
+|- CLAUDE.md
+|- pyproject.toml
+|- src/bridge/
+|- tests/
+|- configs/
+|- models/
+|- notebooks/
+|- docs/
+`- .claude/
+   `- skills/
 ```
 
-Key directory meanings:
+Directory meanings:
 - `src/bridge/`: formal Python package
 - `tests/`: formal test suite
-- `configs/`: config templates and output naming conventions
+- `configs/`: configuration templates and output naming conventions
 - `models/`: model metadata and loading notes, not large weights
 - `notebooks/`: formal notebook entrypoints and placeholders only
-- `docs/`: workflow and roadmap documents
+- `docs/`: workflow notes, concept definitions, roadmap, and scope boundaries
 - `.claude/skills/`: repository-local AI collaboration guidance
 
-关键目录含义：
-- `src/bridge/`：正式 Python 包
-- `tests/`：正式测试集
-- `configs/`：配置模板与输出命名规范
-- `models/`：模型元信息与加载约定，不存放大权重
-- `notebooks/`：正式 notebook 入口与占位，不迁入 `drafts`
-- `docs/`：流程与路线图说明
-- `.claude/skills/`：仓库内 AI 协作说明
-
-## Quick Start / 快速开始
+## Quick Start
 
 ```bash
 pip install -e .[test]
 pytest -q
 ```
 
-At this stage, BRIDGE v1 should be treated as a structured public skeleton for Step 2 and Step 3 rather than a fully packaged end-user release.
+At the current stage, BRIDGE v1 should be treated as a structured public skeleton for Step 2 and Step 3 rather than as a fully packaged end-user release of the entire three-step pipeline.
 
-目前 BRIDGE v1 更适合作为 Step 2 和 Step 3 的正式公开骨架，而不是已经完成全部功能包装的最终用户发行版。
+## Roadmap
 
-## Roadmap / 路线图
+- **v1**: formalize Step 2 and Step 3 under a stable public package structure
+- **future**: formalize Step 1, complete the end-to-end three-step pipeline, and migrate selected standardized extensions
 
-- `v1`: formalize Step 2 and Step 3 under a stable public package structure
-- `future`: formalize Step 1, complete the end-to-end three-step pipeline, and migrate selected standardized extensions
+## Current Limitations
 
-- `v1`：在稳定的公开包结构下正式化 Step 2 与 Step 3
-- `future`：正式化 Step 1、补全三步式端到端流程、迁移经过标准化的扩展内容
-
-## Current Limitations / 当前限制
-
-- Step 1 reference construction is still under planning.
-- Notebooks in this repository are placeholders and entrypoint notes, not full exploratory records.
-- Models are documented as interfaces and metadata, not distributed as large binary assets.
-- Some current package code is still transitioning from research-grade structure to public-repo structure.
-
-- Step 1 参考构建仍处于规划阶段。
-- 本仓库中的 notebook 当前以占位和入口说明为主，不是完整研究记录。
-- models 当前只记录接口和元信息，不分发大型二进制权重。
-- 部分代码虽然已经进入正式包结构，但仍在从 research-grade 组织方式过渡到公开仓库组织方式。
+- Step 1 reference construction is still documented as planned work rather than released code.
+- The public repository currently emphasizes formal package structure over exploratory notebook history.
+- Models are documented through interfaces and metadata, not distributed as large binary assets.
+- Some package code is still transitioning from a research-code structure to a long-lived public-repository structure.
