@@ -14,6 +14,16 @@ Current scope for **v1**:
 - Step 2：Identity Assessment
 - Step 3：CLS A-F、report / visualization、query model loading、输出规范
 
+Full conceptual pipeline:
+- Step 1: reference construction and whole-brain pre-screening
+- Step 2: identity assessment and candidate selection
+- Step 3: CLS-based concordance scoring and reporting
+
+完整概念流程：
+- Step 1：参考构建与 whole-brain pre-screening
+- Step 2：身份评估与候选细胞筛选
+- Step 3：基于 CLS 的一致性评分与结果输出
+
 Step 1 is intentionally not treated as complete production logic in this repository yet.
 
 Step 1 在当前仓库中有意不按“已完成正式流程”处理。
@@ -31,6 +41,14 @@ Step 1 在当前仓库中有意不按“已完成正式流程”处理。
 - `src/bridge/io` 与 `src/bridge/workflows` 承担输出与编排层。
 - `tests` 只覆盖正式模块，不承载 exploratory 分析验证。
 - notebook 不允许承载核心业务逻辑。
+
+Repository interpretation rule:
+- Step 1 may be documented in `docs/`, but not advertised as implemented production code unless formalized.
+- Step 2 and Step 3 are allowed to evolve as public package modules because they already have stable code structure.
+
+仓库解释规则：
+- Step 1 可以在 `docs/` 中说明，但在正式化前不得被表述为“已实现的生产级代码”。
+- Step 2 与 Step 3 因为已经有较稳定的代码结构，可以作为公开包模块继续演进。
 
 ## What May Enter the Formal Codebase / 哪些内容允许进入正式主线
 

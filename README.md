@@ -6,25 +6,97 @@ BRIDGE is a brain-referenced developmental guidance and evaluation framework for
 
 BRIDGE 是一个以真实脑发育参照为基础的 in vivo-to-in vitro 发育引导与评价框架，用于对体外细胞产物进行映射、筛选与多维评分。
 
+Conceptually, BRIDGE is organized as a **three-step workflow**:
+- **Step 1**: build the in vivo developmental reference and whole-brain pre-screening space
+- **Step 2**: perform target-specific identity assessment and candidate selection
+- **Step 3**: quantify developmental concordance with CLS and downstream reporting
+
+从概念上讲，BRIDGE 是一个**三步式流程**：
+- **Step 1**：构建体内发育参考系与 whole-brain pre-screening 空间
+- **Step 2**：进行目标细胞身份评估与候选细胞筛选
+- **Step 3**：利用 CLS 完成发育一致性量化与下游报告输出
+
 ## Status / 当前状态
 
-**BRIDGE v1** currently formalizes only the main workflows for **Step 2** and **Step 3**:
+**BRIDGE v1** currently formalizes the main workflows for **Step 2** and **Step 3**, while keeping **Step 1** as an explicitly planned but not yet finalized module:
 - Identity Assessment
 - CLS A-F
 - Report / visualization
 - Query model loading
 - Configuration and output conventions
 
-**BRIDGE v1** 当前只正式收录 **Step 2** 和 **Step 3** 的主流程：
+**BRIDGE v1** 当前正式收录 **Step 2** 和 **Step 3** 的主流程，并把 **Step 1** 明确标记为“已规划但尚未正式化”的模块：
 - Identity Assessment
 - CLS A-F
 - report / visualization
 - query model loading
 - 配置与输出规范
 
-**Step 1 is not yet complete.** Reference construction and whole-brain pre-screening are not presented here as finalized production workflows. They are tracked as roadmap items and placeholders.
+**Step 1 is not yet complete.** In the thesis logic, Step 1 covers reference atlas construction and whole-brain pre-screening. In BRIDGE v1, those pieces are acknowledged as part of the full pipeline but are not yet released here as finalized production workflows.
 
-**Step 1 尚未完成。** 参考图谱构建与全脑 pre-screening 目前还没有进入正式发布流程，只保留路线图和占位说明。
+**Step 1 尚未完成。** 按论文逻辑，Step 1 对应参考图谱构建与全脑 pre-screening。BRIDGE v1 已明确承认这是完整流程的一部分，但目前还没有把它作为正式生产流程发布，只保留路线图和占位说明。
+
+## Pipeline Overview / 三步流程总览
+
+### Step 1: Reference Construction and Pre-screening / 参考构建与预筛选
+
+Step 1 defines the **in vivo reference coordinate system** that anchors the whole framework. It is intended to include:
+- integration of human embryonic brain single-cell data into a reference atlas
+- construction of region-aware and stage-aware reference spaces
+- whole-brain pre-screening to identify broad lineage composition and exclude obvious off-target populations
+
+Step 1 为整个框架提供**体内参考坐标系**。它计划包含：
+- 整合人胚脑单细胞数据，构建参考图谱
+- 构建具有区域与发育阶段信息的参考空间
+- 在 whole-brain 层面进行预筛选，识别样本总体谱系构成并排除明显 off-target 细胞
+
+Current repository status:
+- conceptually part of BRIDGE
+- not yet formalized in public v1
+- represented through roadmap and scope documents only
+
+当前仓库状态：
+- 在概念上属于 BRIDGE 正式流程的一部分
+- 但尚未在公开 v1 中正式化
+- 当前仅通过 roadmap 和边界文档体现
+
+### Step 2: Identity Assessment / 身份评估
+
+Step 2 refines candidate target cells under a more specific reference. In the current codebase, this step covers:
+- query model loading
+- soft prediction and probability calibration
+- ensemble-based uncertainty estimation
+- normalized entropy calculation
+- candidate selection through thresholded identity-stability rules
+
+Step 2 在更具体的参考框架下筛选目标候选细胞。当前代码中，这一步包含：
+- query model 加载
+- soft prediction 与概率校准
+- 基于 ensemble 的不确定性估计
+- 归一化熵计算
+- 基于身份稳定性的阈值规则筛选候选细胞
+
+This is the formalized **Identity Assessment** module under BRIDGE v1.
+
+这部分就是 BRIDGE v1 中已经正式化的 **Identity Assessment** 模块。
+
+### Step 3: CLS and Reporting / CLS 评分与结果输出
+
+Step 3 evaluates how well in vitro products reconstruct the in vivo developmental program after candidate selection. In the current repository, this includes:
+- CLS component A-F
+- shared output packaging and result serialization
+- report / visualization scaffolding
+- configuration and output conventions for downstream comparison
+
+Step 3 在候选细胞确定之后，评价体外产物在多大程度上重建了体内发育程序。当前仓库中，这一步包含：
+- CLS A-F 六个组件
+- 统一输出包装与结果序列化
+- report / visualization 脚手架
+- 用于下游比较的配置与输出规范
+
+This is the formalized **concordance scoring and reporting** layer under BRIDGE v1.
+
+这部分构成了 BRIDGE v1 中已经正式化的**一致性评分与结果输出层**。
 
 ## What Is In Scope / 正式范围
 
@@ -110,11 +182,11 @@ At this stage, BRIDGE v1 should be treated as a structured public skeleton for S
 
 ## Roadmap / 路线图
 
-- `v1`: Step 2 + Step 3 formalization
-- `future`: Step 1 formalization, broader configuration stabilization, and migration of selected extensions
+- `v1`: formalize Step 2 and Step 3 under a stable public package structure
+- `future`: formalize Step 1, complete the end-to-end three-step pipeline, and migrate selected standardized extensions
 
-- `v1`：正式化 Step 2 + Step 3
-- `future`：正式化 Step 1、补全配置稳定性、迁移部分扩展内容
+- `v1`：在稳定的公开包结构下正式化 Step 2 与 Step 3
+- `future`：正式化 Step 1、补全三步式端到端流程、迁移经过标准化的扩展内容
 
 ## Current Limitations / 当前限制
 
