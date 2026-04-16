@@ -20,6 +20,37 @@ More concretely:
 - `src/bridge/cls` provides the Step 3 scoring layer
 - `src/bridge/io` and `src/bridge/workflows` support packaging and workflow organization
 
+## Executable Entrypoints
+
+BRIDGE v1 exposes workflow-level commands rather than component-level CLI commands:
+- `bridge identity run --config <yaml>`
+- `bridge cls run --config <yaml>`
+- `bridge report summarize --config <yaml>`
+
+The current execution model is intentionally conservative:
+- Step 1 is documented but not executable
+- Step 2 is executable as a formal workflow
+- Step 3 is executable as a formal workflow and reporting layer
+
+## Configuration Contract
+
+BRIDGE v1 uses a single YAML file per run. The top-level sections are:
+- `version`
+- `dataset`
+- `paths`
+- `runtime`
+- `identity`
+- `cls`
+- `report`
+
+Important semantics:
+- `dataset.id` is the canonical run-level identifier for Step 3 outputs
+- `dataset.prefix` is the canonical naming prefix for Step 2 artifacts
+- `paths` are resolved relative to the YAML file location
+- `identity` defines the Step 2 candidate-selection logic
+- `cls` defines enabled Step 3 components and component-specific settings
+- `report` defines summary output filenames and optional CLS weights
+
 ## Step 1 Status
 
 Step 1 is part of the intended BRIDGE architecture, but it is **not yet formalized in this repository as released workflow code**.

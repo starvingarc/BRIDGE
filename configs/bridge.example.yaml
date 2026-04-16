@@ -1,0 +1,85 @@
+version: "1"
+
+dataset:
+  id: "example_dataset"
+  prefix: "example_prefix"
+
+paths:
+  reference_h5ad: "./path/to/reference.h5ad"
+  query_h5ad: "./path/to/query.h5ad"
+  ref_model_dir: "./path/to/ref_model"
+  identity_output_dir: "./artifacts/identity"
+  cls_output_dir: "./artifacts/cls"
+  report_output_dir: "./artifacts/report"
+  ref_sceniclike_h5ad: "./path/to/ref_sceniclike.h5ad"
+  regulons_json: "./path/to/regulons.json"
+
+runtime:
+  seed: 0
+  n_jobs: 4
+
+identity:
+  target_class: "RG_Mesencephalon_FP"
+  counts_layer: "counts"
+  ref_label_key: "cell_subtype"
+  max_epochs: 100
+  plan_kwargs:
+    weight_decay: 0.0
+  early_stopping: false
+  early_stopping_patience: 10
+  ensemble_size: 5
+  target_precision: 0.8
+  std_quantile: 75.0
+  u_min: 0.005
+  entropy_threshold: 0.8
+  inplace_subset_query_vars: true
+  set_X_to_counts: true
+
+cls:
+  enabled_components: ["A", "B", "C", "D", "E", "F"]
+  batch_key: "Sample"
+  candidate_flag_prefix: "is_candidate_"
+  ref_label_key: "cell_subtype"
+  a:
+    org_mode: "candidate"
+    alphaA1: 0.5
+    alphaA2: 0.5
+    min_cells_per_batch: 20
+  b:
+    layer: "logcounts"
+    min_cells_per_batch: 20
+  c:
+    score_prefix: "p_mean_"
+    auc_ref_method: "logistic_cv"
+    embedding_key: "X_scVI"
+    min_cells_per_batch: 20
+  d:
+    emb_key: "X_scanvi"
+    k_query: 30
+    k_ref: 50
+    k_ref_for_dist: 20
+    min_cells_per_batch: 10
+  e:
+    rep_key_ref: "X_scVI"
+    rep_key_org: "X_scanvi"
+    counts_layer: "counts"
+    layer: "log1p_norm"
+    pt_key: "pt"
+  f:
+    expr_layer: "logcounts"
+    det_rate_threshold: 0.05
+    min_targets: 10
+    aucell_n_up: 2000
+    eta1: 0.4
+    eta2: 0.6
+
+report:
+  summary_filename: "summary.csv"
+  manifest_filename: "manifest.json"
+  cls_weights:
+    A: 1.0
+    B: 1.0
+    C: 1.0
+    D: 1.0
+    E: 1.0
+    F: 1.0

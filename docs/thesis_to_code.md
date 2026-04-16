@@ -16,6 +16,15 @@ This repository is intentionally structured so that a reader can map the thesis 
   - repository status: formalized in BRIDGE v1
   - repository location: `src/bridge/cls`, `src/bridge/io`, and `src/bridge/workflows`
 
+## CLI and Workflow Mapping
+
+The released execution layer mirrors the thesis structure:
+- `bridge identity run` -> thesis Step 2
+- `bridge cls run` -> thesis Step 3 scoring
+- `bridge report summarize` -> thesis Step 3 reporting/output packaging
+
+There is intentionally no `bridge step1 ...` command yet, because Step 1 has not been formalized as released package code.
+
 ## Why CLS Appears in Step 3
 
 CLS, or **Composite Likeness Score**, is the mechanism BRIDGE uses to summarize developmental concordance after candidate selection has already happened.

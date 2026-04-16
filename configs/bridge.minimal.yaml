@@ -1,0 +1,53 @@
+version: "1"
+
+dataset:
+  id: "demo_dataset"
+  prefix: "demo_prefix"
+
+paths:
+  reference_h5ad: "../tests/data/minimal_inputs/reference.h5ad"
+  query_h5ad: "../tests/data/minimal_inputs/query.h5ad"
+  ref_model_dir: "../tests/data/minimal_inputs/ref_model"
+  identity_output_dir: "../tests/data/minimal_inputs/identity_outputs"
+  cls_output_dir: "../tests/data/minimal_inputs/cls_outputs"
+  report_output_dir: "../tests/data/minimal_inputs/report_outputs"
+  ref_sceniclike_h5ad: "../tests/data/minimal_inputs/ref_sceniclike.h5ad"
+  regulons_json: "../tests/data/minimal_inputs/regulons.json"
+
+runtime:
+  seed: 0
+  n_jobs: 1
+
+identity:
+  target_class: "RG"
+  counts_layer: "counts"
+  ref_label_key: "cell_subtype"
+  max_epochs: 5
+  plan_kwargs:
+    weight_decay: 0.0
+  early_stopping: false
+  early_stopping_patience: 5
+  ensemble_size: 2
+  target_precision: 0.8
+  std_quantile: 75.0
+  u_min: 0.005
+  entropy_threshold: 0.8
+  inplace_subset_query_vars: true
+  set_X_to_counts: true
+
+cls:
+  enabled_components: ["A"]
+  batch_key: "Sample"
+  candidate_flag_prefix: "is_candidate_"
+  ref_label_key: "cell_subtype"
+  a:
+    min_cells_per_batch: 2
+  b: {}
+  c: {}
+  d: {}
+  e: {}
+  f: {}
+
+report:
+  summary_filename: "summary.csv"
+  manifest_filename: "manifest.json"

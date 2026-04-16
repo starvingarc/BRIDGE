@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
   "numpy",
   "pandas",
+  "PyYAML",
   "scikit-learn",
   "scipy",
 ]
@@ -18,6 +19,9 @@ dependencies = [
 test = [
   "pytest",
 ]
+
+[project.scripts]
+bridge = "bridge.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

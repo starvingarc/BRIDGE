@@ -19,3 +19,4 @@ models/**/*.bin
 
 artifacts/
 tmp/
+tests/data/report_fixture/generated/

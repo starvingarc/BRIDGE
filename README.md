@@ -152,6 +152,23 @@ pytest -q
 
 At the current stage, BRIDGE v1 should be treated as a structured public skeleton for Step 2 and Step 3 rather than as a fully packaged end-user release of the entire three-step pipeline.
 
+## Executable Workflows
+
+BRIDGE v1 currently exposes workflow-level execution commands for the released parts of the pipeline:
+
+```bash
+bridge identity run --config configs/bridge.minimal.yaml --dry-run
+bridge cls run --config configs/bridge.minimal.yaml --dry-run
+bridge report summarize --config tests/data/report_fixture.yaml
+```
+
+Command mapping:
+- `bridge identity run`: Step 2 workflow
+- `bridge cls run`: Step 3 scoring workflow
+- `bridge report summarize`: Step 3 summary/report packaging
+
+Configuration is provided through a single YAML file per run. The formal configuration contract is documented in `docs/formal_workflows.md`, and example templates are provided under `configs/`.
+
 ## Roadmap
 
 - **v1**: formalize Step 2 and Step 3 under a stable public package structure
