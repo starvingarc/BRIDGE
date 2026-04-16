@@ -77,9 +77,9 @@ report:
   summary_filename: "summary.csv"
   manifest_filename: "manifest.json"
   cls_weights:
-    A: 1.0
-    B: 1.0
-    C: 1.0
-    D: 1.0
-    E: 1.0
-    F: 1.0
+    A: 0.2222
+    B: 0.1667
+    C: 0.1667
+    D: 0.1111
+    E: 0.1667
+    F: 0.1667
