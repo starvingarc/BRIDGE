@@ -10,3 +10,8 @@ Planned v1 content:
 Current templates:
 - `bridge.minimal.yaml`: smallest valid config for dry-run and smoke testing
 - `bridge.example.yaml`: fuller schema example for formal Step 2 and Step 3 runs
+
+Environment export:
+- `environments/pytorch-linux.yml`: sanitized export of the Linux `pytorch` conda environment used for BRIDGE server-side execution
+
+The exported environment file keeps the package set but omits the machine-local `prefix` field and excludes local editable BRIDGE package entries.
