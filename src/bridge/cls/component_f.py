@@ -107,10 +107,12 @@ def compute_component_F(
         raise ValueError("[F] No common regulons between ref_auc and qry_auc (column mismatch).")
     ref_auc = ref_auc[common_regs]
     qry_auc = qry_auc[common_regs]
+    qry_genes = set(map(str, qry.var_names))
+    regulon_targets = {tf: [g for g in regulons.get(tf, []) if g in qry_genes] for tf in common_regs}
     dr_ref = pd.Series(_det_rate(_get_X(ref, expr_layer)), index=ref.var_names)
     ref_active: dict[str, set[str]] = {}
     for tf in common_regs:
-        tgts = [g for g in regulons.get(tf, []) if g in dr_ref.index]
+        tgts = [g for g in regulon_targets[tf] if g in dr_ref.index]
         act = {g for g in tgts if float(dr_ref[g]) >= float(det_rate_threshold)}
         if len(act) >= int(min_targets):
             ref_active[str(tf)] = act
@@ -132,7 +134,7 @@ def compute_component_F(
         dr_b = pd.Series(_det_rate(Xb), index=qry.var_names)
         j_list = []
         for tf, ref_set in ref_active.items():
-            tgts = [g for g in regulons.get(tf, []) if g in dr_b.index]
+            tgts = [g for g in regulon_targets[tf] if g in dr_b.index]
             b_set = {g for g in tgts if float(dr_b[g]) >= float(det_rate_threshold)}
             if len(b_set) < int(min_targets):
                 continue

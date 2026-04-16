@@ -22,6 +22,7 @@ The released execution layer mirrors the thesis structure:
 - `bridge identity run` -> thesis Step 2
 - `bridge cls run` -> thesis Step 3 scoring
 - `bridge report summarize` -> thesis Step 3 reporting/output packaging
+- `bridge report summarize-batch` -> multi-dataset Step 2 + Step 3 reporting wrapper
 
 There is intentionally no `bridge step1 ...` command yet, because Step 1 has not been formalized as released package code.
 
@@ -51,3 +52,6 @@ If you are reading BRIDGE from the perspective of the thesis:
 If you are reading BRIDGE from the perspective of the code:
 - treat Step 1 as architectural context and roadmap
 - treat Step 2 and Step 3 as the actual released v1 package surface
+
+Reporting note:
+- the current report layer intentionally reaches back into Step 2 artifacts so that candidate-selection context is not lost when Step 3 results are summarized

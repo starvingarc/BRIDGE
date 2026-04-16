@@ -91,6 +91,12 @@ class BridgeRunConfig:
     report: ReportWorkflowConfig
 
 
+@dataclass(frozen=True)
+class BridgeConfigBatch:
+    config_list_path: Path
+    config_paths: list[Path]
+
+
 REQUIRED_TOP_LEVEL = {"version", "dataset", "paths", "runtime", "identity", "cls", "report"}
 ALLOWED_COMPONENTS = {"A", "B", "C", "D", "E", "F"}
 
@@ -229,3 +235,23 @@ def load_config(path: str | Path) -> BridgeRunConfig:
         cls=cls_cfg,
         report=report_cfg,
     )
+
+
+def load_config_list(path: str | Path) -> BridgeConfigBatch:
+    config_list_path = Path(path).resolve()
+    if not config_list_path.exists():
+        raise ConfigValidationError(f"Config-list file not found: {config_list_path}")
+    data = _load_yaml(config_list_path)
+    if "configs" not in data:
+        raise ConfigValidationError("Config-list YAML must contain top-level key 'configs'.")
+    configs = data["configs"]
+    if not isinstance(configs, list) or not configs:
+        raise ConfigValidationError("Config-list 'configs' must be a non-empty list.")
+    base_dir = config_list_path.parent
+    config_paths: list[Path] = []
+    for idx, raw_path in enumerate(configs, start=1):
+        resolved = _resolve_path(base_dir, raw_path, f"configs[{idx}]")
+        if resolved is None or not resolved.exists():
+            raise ConfigValidationError(f"Config-list entry does not exist: {raw_path}")
+        config_paths.append(resolved)
+    return BridgeConfigBatch(config_list_path=config_list_path, config_paths=config_paths)

@@ -12,11 +12,8 @@ dist/
 build/
 *.egg-info/
 
-models/**/*.pt
-models/**/*.pth
-models/**/*.ckpt
-models/**/*.bin
-
 artifacts/
 tmp/
 tests/data/report_fixture/generated/
+configs/real/
+artifacts/real_reports/

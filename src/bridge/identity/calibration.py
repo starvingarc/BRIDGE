@@ -9,10 +9,10 @@ from bridge.identity.results import IdentityProbabilities
 
 def fit_isotonic_per_class(probs_ref_df, y_ref_series, class_names):
     calibrators = {}
-    y_bin = pd.get_dummies(y_ref_series).reindex(index=probs_ref_df.index, columns=class_names).fillna(0)
+    labels = y_ref_series.reindex(probs_ref_df.index).astype(str).to_numpy()
     for cls in class_names:
         x = probs_ref_df[cls].values
-        y = y_bin[cls].values
+        y = (labels == str(cls)).astype(int)
         if len(np.unique(x)) < 5 or y.sum() < 10:
             calibrators[cls] = None
             continue
@@ -23,15 +23,18 @@ def fit_isotonic_per_class(probs_ref_df, y_ref_series, class_names):
 
 
 def apply_calibrators(probs_df, calibrators):
-    cal = probs_df.copy()
-    for cls, ir in calibrators.items():
-        if ir is None:
-            cal[cls] = probs_df[cls].values
-        else:
-            cal[cls] = ir.predict(probs_df[cls].values)
-    cal = cal.clip(0, 1)
-    cal = cal.div(cal.sum(axis=1).replace(0, 1.0), axis=0)
-    return cal
+    class_names = list(calibrators.keys())
+    source = probs_df.reindex(columns=class_names).fillna(0)
+    arr = source.to_numpy(copy=True, dtype=float)
+    for idx, cls in enumerate(class_names):
+        ir = calibrators[cls]
+        if ir is not None:
+            arr[:, idx] = ir.predict(arr[:, idx])
+    np.clip(arr, 0.0, 1.0, out=arr)
+    row_sums = arr.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0.0] = 1.0
+    arr /= row_sums
+    return pd.DataFrame(arr, index=source.index, columns=class_names)
 
 
 def calibrate_probs(probs_ref: pd.DataFrame, y_ref_series: pd.Series, probs_query: pd.DataFrame):

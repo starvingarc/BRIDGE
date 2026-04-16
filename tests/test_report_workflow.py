@@ -24,7 +24,10 @@ def test_report_workflow_writes_summary_and_manifest(tmp_path):
     assert manifest_json.exists()
 
     df = pd.read_csv(summary_csv)
-    assert set(df["component"]) == {"A", "B", "TOTAL_WEIGHTED"}
+    assert "dataset_id" in df.columns
+    assert "cls_A" in df.columns
+    assert "cls_B" in df.columns
+    assert "weighted_total_cls" in df.columns
 
     manifest = json.loads(manifest_json.read_text(encoding="utf-8"))
     assert manifest["dataset_id"] == "demo_report"

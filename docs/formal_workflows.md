@@ -26,6 +26,7 @@ BRIDGE v1 exposes workflow-level commands rather than component-level CLI comman
 - `bridge identity run --config <yaml>`
 - `bridge cls run --config <yaml>`
 - `bridge report summarize --config <yaml>`
+- `bridge report summarize-batch --config-list <yaml>`
 
 The current execution model is intentionally conservative:
 - Step 1 is documented but not executable
@@ -50,6 +51,8 @@ Important semantics:
 - `identity` defines the Step 2 candidate-selection logic
 - `cls` defines enabled Step 3 components and component-specific settings
 - `report` defines summary output filenames and optional CLS weights
+
+For real server-backed runs, BRIDGE also supports config-list driven multi-dataset report generation through `bridge report summarize-batch`.
 
 ## Step 1 Status
 
@@ -82,6 +85,12 @@ The current formal Step 3 package includes:
 - shared result packaging
 - serialization scaffolding
 - reporting and visualization scaffolding
+
+In the current phase, the report layer consumes both:
+- Step 2 artifacts such as thresholds JSON and candidate-bearing Step 2 h5ad outputs
+- Step 3 component JSON outputs
+
+This means reporting now spans thesis Step 2 outputs plus Step 3 outputs rather than only listing CLS component scores.
 
 ## Why the Distinction Matters
 

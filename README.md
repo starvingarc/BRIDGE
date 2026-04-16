@@ -160,14 +160,21 @@ BRIDGE v1 currently exposes workflow-level execution commands for the released p
 bridge identity run --config configs/bridge.minimal.yaml --dry-run
 bridge cls run --config configs/bridge.minimal.yaml --dry-run
 bridge report summarize --config tests/data/report_fixture.yaml
+bridge report summarize-batch --config-list <config-list.yaml>
 ```
 
 Command mapping:
 - `bridge identity run`: Step 2 workflow
 - `bridge cls run`: Step 3 scoring workflow
-- `bridge report summarize`: Step 3 summary/report packaging
+- `bridge report summarize`: Step 2 + Step 3 per-dataset summary/report packaging
+- `bridge report summarize-batch`: Step 2 + Step 3 multi-dataset summary packaging
 
 Configuration is provided through a single YAML file per run. The formal configuration contract is documented in `docs/formal_workflows.md`, and example templates are provided under `configs/`.
+
+In the current phase, the report layer is not just a CLS-only summary. It targets:
+- Step 2 identity-assessment outputs
+- Step 3 CLS outputs
+- per-dataset and cross-dataset structured report summaries
 
 ## Roadmap
 
