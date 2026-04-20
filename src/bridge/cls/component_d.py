@@ -19,6 +19,31 @@ except Exception:
     SCANVI = None
 
 
+def _prepare_query_neighbors(neigh_q: np.ndarray, cand_local_idx: np.ndarray, k_query: int) -> np.ndarray:
+    """Remove self-neighbors while keeping a fixed-width neighbor array.
+
+    Fast path assumes exactly one self-neighbor per row. If that invariant is
+    violated, fall back to a small Python loop to preserve behavior.
+    """
+    self_mask = neigh_q != cand_local_idx[:, None]
+    keep = min(int(k_query), max(0, neigh_q.shape[1] - 1))
+    if keep <= 0:
+        return np.empty((neigh_q.shape[0], 0), dtype=int)
+
+    counts = self_mask.sum(axis=1)
+    if np.all(counts == neigh_q.shape[1] - 1):
+        compressed = neigh_q[self_mask].reshape(neigh_q.shape[0], -1)
+        return compressed[:, :keep]
+
+    filtered = np.empty((neigh_q.shape[0], keep), dtype=int)
+    for i_row, nbrs in enumerate(neigh_q):
+        row = [int(x) for x in nbrs if int(x) != int(cand_local_idx[i_row])][:keep]
+        if len(row) != keep:
+            raise ValueError("[D] Unable to build a fixed-width self-excluded query neighborhood.")
+        filtered[i_row] = row
+    return filtered
+
+
 def ensure_scanvi_embedding(
     adata_ref,
     bdata,
@@ -107,6 +132,7 @@ def compute_component_D(
     kq_use = min(int(k_query) + 1, emb_q.shape[0])
     nn_q = NearestNeighbors(n_neighbors=kq_use, n_jobs=n_jobs).fit(emb_q)
     neigh_q = nn_q.kneighbors(emb_q[cand_local_idx], return_distance=False)
+    neigh_q_filtered = _prepare_query_neighbors(neigh_q=neigh_q, cand_local_idx=cand_local_idx, k_query=int(k_query))
     per_cand_frac = np.zeros(n_cand, dtype=float)
     per_label_agree = np.full(n_cand, np.nan, dtype=float)
 
@@ -114,16 +140,11 @@ def compute_component_D(
     if have_pred:
         pred_arr = bdata.obs[pred_label_col].astype(str).values
 
-    for i_row, nbrs in enumerate(neigh_q):
-        self_idx = int(cand_local_idx[i_row])
-        nbrs_filtered = [int(x) for x in nbrs if int(x) != self_idx][: int(k_query)]
-        denom = len(nbrs_filtered) if len(nbrs_filtered) > 0 else 1
-        n_cand_neighbors = sum(1 for x in nbrs_filtered if cand_mask[int(x)])
-        per_cand_frac[i_row] = n_cand_neighbors / denom
+    if neigh_q_filtered.shape[1] > 0:
+        per_cand_frac = cand_mask[neigh_q_filtered].mean(axis=1)
         if have_pred:
-            my_label = pred_arr[self_idx]
-            agree = sum(1 for x in nbrs_filtered if pred_arr[int(x)] == my_label)
-            per_label_agree[i_row] = agree / denom
+            my_labels = pred_arr[cand_local_idx]
+            per_label_agree = (pred_arr[neigh_q_filtered] == my_labels[:, None]).mean(axis=1)
 
     perD_query = np.array(per_cand_frac, dtype=float)
     if have_pred:

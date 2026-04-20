@@ -108,26 +108,39 @@ def bin_smooth_trends_weighted(adata, genes, pt_key: str = "pt", layer: str = "l
     sumw = np.bincount(bidx, weights=w, minlength=n_bins)
     sumw2 = np.bincount(bidx, weights=w * w, minlength=n_bins)
     eff_n = (sumw**2) / (sumw2 + 1e-12)
+    valid_pairs = [(gene, adata.var_names.get_loc(gene)) for gene in genes if gene in adata.var_names]
     trends = {}
-    for gene in genes:
-        if gene not in adata.var_names:
-            continue
-        j = adata.var_names.get_loc(gene)
-        col = X[:, j]
-        col = np.asarray(col.toarray()).ravel() if sp.issparse(col) else np.asarray(col).ravel()
-        y = np.full(n_bins, np.nan, float)
-        for bi in range(n_bins):
-            if eff_n[bi] >= min_eff_bin and sumw[bi] > 0:
-                mask = bidx == bi
-                y[bi] = float(np.sum(col[mask] * w[mask]) / sumw[bi])
-        ok = ~np.isnan(y)
-        if ok.sum() < max(8, n_bins // 5):
-            continue
-        y = np.interp(np.arange(n_bins), np.where(ok)[0], y[ok])
-        if smooth_k and smooth_k > 1:
-            kernel = np.ones(int(smooth_k), dtype=float) / float(smooth_k)
-            y = np.convolve(y, kernel, mode="same")
-        trends[gene] = (centers, y)
+    if not valid_pairs:
+        return trends
+
+    valid_bins = (eff_n >= min_eff_bin) & (sumw > 0)
+    n_cells = X.shape[0]
+    bin_op = sp.csr_matrix((w, (bidx, np.arange(n_cells))), shape=(n_bins, n_cells))
+    norm = np.where(valid_bins, sumw, 1.0).astype(float)
+
+    block = 128
+    for start in range(0, len(valid_pairs), block):
+        block_pairs = valid_pairs[start:start + block]
+        block_genes = [gene for gene, _ in block_pairs]
+        block_idx = [idx for _, idx in block_pairs]
+        Xb = X[:, block_idx]
+        weighted_sums = bin_op @ Xb
+        if sp.issparse(weighted_sums):
+            weighted_sums = weighted_sums.toarray()
+        else:
+            weighted_sums = np.asarray(weighted_sums)
+        y_block = weighted_sums / norm[:, None]
+        y_block[~valid_bins, :] = np.nan
+
+        for gene, y in zip(block_genes, y_block.T):
+            ok = ~np.isnan(y)
+            if ok.sum() < max(8, n_bins // 5):
+                continue
+            y_interp = np.interp(np.arange(n_bins), np.where(ok)[0], y[ok])
+            if smooth_k and smooth_k > 1:
+                kernel = np.ones(int(smooth_k), dtype=float) / float(smooth_k)
+                y_interp = np.convolve(y_interp, kernel, mode="same")
+            trends[gene] = (centers, y_interp)
     return trends
 
 
