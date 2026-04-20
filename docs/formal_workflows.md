@@ -20,6 +20,12 @@ More concretely:
 - `src/bridge/cls` provides the Step 3 scoring layer
 - `src/bridge/io` and `src/bridge/workflows` support packaging and workflow organization
 
+The public repository is intended to present BRIDGE as software:
+- installable from GitHub
+- usable through a CLI
+- configured through public templates
+- documented as a workflow package rather than an internal lab harness
+
 ## Executable Entrypoints
 
 BRIDGE v1 exposes workflow-level commands rather than component-level CLI commands:

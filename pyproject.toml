@@ -5,8 +5,20 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bridge"
 version = "0.1.0"
-description = "Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation"
+description = "Workflow-oriented software for brain-referenced in vivo-to-in vitro developmental evaluation"
+readme = "README.md"
 requires-python = ">=3.10"
+keywords = ["single-cell", "development", "organoid", "reference-mapping", "evaluation", "cli"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 dependencies = [
   "numpy",
   "pandas",
@@ -15,19 +27,15 @@ dependencies = [
   "scipy",
 ]
 
-[project.optional-dependencies]
-test = [
-  "pytest",
-]
-
 [project.scripts]
 bridge = "bridge.cli:main"
+
+[project.urls]
+Repository = "https://github.com/starvingarc/BRIDGE"
+Documentation = "https://github.com/starvingarc/BRIDGE/tree/main/docs"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]

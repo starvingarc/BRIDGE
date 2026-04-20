@@ -8,7 +8,7 @@ Planned v1 content:
 - model-loading references
 
 Current templates:
-- `bridge.minimal.yaml`: smallest valid config for dry-run and smoke testing
+- `bridge.minimal.yaml`: smallest editable run template for a BRIDGE workflow
 - `bridge.example.yaml`: fuller schema example for formal Step 2 and Step 3 runs
 
 Environment export:

@@ -5,14 +5,14 @@ dataset:
   prefix: "demo_prefix"
 
 paths:
-  reference_h5ad: "../tests/data/minimal_inputs/reference.h5ad"
-  query_h5ad: "../tests/data/minimal_inputs/query.h5ad"
-  ref_model_dir: "../tests/data/minimal_inputs/ref_model"
-  identity_output_dir: "../tests/data/minimal_inputs/identity_outputs"
-  cls_output_dir: "../tests/data/minimal_inputs/cls_outputs"
-  report_output_dir: "../tests/data/minimal_inputs/report_outputs"
-  ref_sceniclike_h5ad: "../tests/data/minimal_inputs/ref_sceniclike.h5ad"
-  regulons_json: "../tests/data/minimal_inputs/regulons.json"
+  reference_h5ad: "./path/to/reference.h5ad"
+  query_h5ad: "./path/to/query.h5ad"
+  ref_model_dir: "./path/to/ref_model"
+  identity_output_dir: "./artifacts/identity"
+  cls_output_dir: "./artifacts/cls"
+  report_output_dir: "./artifacts/report"
+  ref_sceniclike_h5ad: "./path/to/ref_sceniclike.h5ad"
+  regulons_json: "./path/to/regulons.json"
 
 runtime:
   seed: 0
@@ -41,7 +41,7 @@ cls:
   candidate_flag_prefix: "is_candidate_"
   ref_label_key: "cell_subtype"
   a:
-    min_cells_per_batch: 2
+    min_cells_per_batch: 20
   b: {}
   c: {}
   d: {}

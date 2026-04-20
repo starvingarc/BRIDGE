@@ -2,4 +2,4 @@
 
 This directory is reserved for model metadata, loading notes, and references to downloadable artifacts.
 
-Large model weights are intentionally not committed in BRIDGE v1.
+Model files may be committed when they are intentionally part of the public BRIDGE software distribution or required reproducible artifacts.

@@ -55,3 +55,7 @@ If you are reading BRIDGE from the perspective of the code:
 
 Reporting note:
 - the current report layer intentionally reaches back into Step 2 artifacts so that candidate-selection context is not lost when Step 3 results are summarized
+
+Repository note:
+- the public repository is meant to expose the stable software surface
+- environment-specific validation practices can exist outside the public package tree

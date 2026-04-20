@@ -11,9 +11,9 @@ venv/
 dist/
 build/
 *.egg-info/
+tests/
 
 artifacts/
 tmp/
-tests/data/report_fixture/generated/
 configs/real/
 artifacts/real_reports/

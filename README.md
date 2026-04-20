@@ -2,120 +2,137 @@
 
 **Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation**
 
-BRIDGE is a three-step brain-referenced framework for guiding and evaluating in vitro cell products against in vivo developmental programs.
+BRIDGE is a workflow-oriented software package for evaluating in vitro cell products against in vivo developmental references.
 
-## Project Summary
+## What BRIDGE Does
 
-BRIDGE is organized around a thesis-derived three-step workflow:
-- **Step 1**: construct the in vivo developmental reference and the whole-brain pre-screening space
-- **Step 2**: perform target-specific identity assessment and candidate selection
-- **Step 3**: quantify developmental concordance with CLS and generate downstream reports
+BRIDGE currently formalizes the released parts of a three-step workflow:
+- **Step 1**: reference construction and whole-brain pre-screening
+- **Step 2**: target-specific identity assessment and candidate selection
+- **Step 3**: CLS-based concordance scoring and report generation
 
-The public repository currently formalizes **Step 2** and **Step 3** as package code. **Step 1** is part of the intended architecture and is documented as roadmap material, but it is not yet released here as a finalized production workflow.
+In the current public package:
+- Step 2 is implemented as formal package code
+- Step 3 is implemented as formal package code
+- Step 1 remains part of the documented architecture, but is not yet released as executable package logic
 
-## What BRIDGE Is Trying to Do
+## Installation
 
-The framework is designed for settings where an in vitro sample, such as an organoid-derived or stem-cell-derived product, needs to be evaluated relative to an in vivo developmental reference rather than by a small set of marker genes alone.
+### Install with a coding agent
 
-The overall logic is:
-1. Build a biologically grounded in vivo reference space.
-2. Map a query sample into that reference and identify high-confidence target candidates.
-3. Score how well those candidates reconstruct the relevant developmental program across multiple complementary dimensions.
+Send your coding agent (Claude Code, Codex, or a similar tool) this repository and ask it to install BRIDGE.
 
-## Pipeline Overview
+### Manual installation
 
-### Step 1: Reference Construction and Whole-Brain Pre-screening
+Install directly from GitHub:
 
-Step 1 defines the reference coordinate system that anchors the rest of the framework. In the thesis logic, this step is intended to include:
-- integration of human embryonic brain single-cell data into a reference atlas
-- construction of region-aware and stage-aware reference spaces
-- whole-brain pre-screening to estimate broad lineage composition and identify obvious off-target populations before more specific evaluation
+```bash
+pip install git+https://github.com/starvingarc/BRIDGE.git
+```
 
-In this public repository, Step 1 is acknowledged as part of the full BRIDGE pipeline, but it is not yet formalized as released code.
+Or install from a local source checkout:
 
-### Step 2: Identity Assessment
+```bash
+git clone https://github.com/starvingarc/BRIDGE.git
+cd BRIDGE
+pip install -e .
+```
 
-Step 2 refines target candidates under a more specific reference. In the current codebase, this step includes:
+## Quick Start
+
+Start by copying the minimal editable workflow template:
+
+```bash
+cp configs/bridge.minimal.yaml my-run.yaml
+```
+
+Edit `my-run.yaml` for your own paths and workflow parameters, then inspect the CLI:
+
+```bash
+bridge --help
+```
+
+Validate a Step 2 workflow config without running the full workflow:
+
+```bash
+bridge identity run --config my-run.yaml --dry-run
+```
+
+Validate a Step 3 workflow config without running the full workflow:
+
+```bash
+bridge cls run --config my-run.yaml --dry-run
+```
+
+Run report generation from existing BRIDGE artifacts:
+
+```bash
+bridge report summarize --config my-run.yaml
+bridge report summarize-batch --config-list <config-list.yaml>
+```
+
+## CLI Overview
+
+Current workflow-level commands:
+- `bridge identity run`
+- `bridge cls run`
+- `bridge report summarize`
+- `bridge report summarize-batch`
+
+These commands expose the released Step 2 and Step 3 package surface without introducing a Step 1 execution command before that part of the workflow is formalized.
+
+## Workflow Model
+
+### Step 1
+
+Reference construction and whole-brain pre-screening define the in vivo coordinate system that anchors BRIDGE. This is part of the conceptual architecture and is documented in the repository, but it is not yet released as executable package code.
+
+### Step 2
+
+Identity Assessment refines target candidates under a more specific reference. The current package includes:
 - query model loading
-- soft prediction
-- probability calibration
-- ensemble-based uncertainty estimation
-- normalized entropy calculation
-- candidate selection through thresholded identity-stability rules
+- probability handling and calibration
+- uncertainty estimation
+- entropy-based and threshold-based candidate selection
 
-The formal Step 2 code lives under `src/bridge/identity`.
+### Step 3
 
-### Step 3: CLS and Reporting
-
-Step 3 evaluates how well the selected in vitro candidates reconstruct the in vivo developmental program. In the current codebase, this step includes:
+Step 3 evaluates developmental concordance after candidate selection. The current package includes:
 - CLS component A-F
-- shared result packaging and serialization
-- report and visualization scaffolding
-- output conventions for cross-sample comparison
+- structured report generation
+- per-dataset and batch-level summary packaging
 
-The formal Step 3 code lives primarily under `src/bridge/cls`, with supporting pieces under `src/bridge/io` and `src/bridge/workflows`.
+## Skill Interface
 
-## Key Concepts
+BRIDGE includes a repository-local skill interface for coding agents and workflow-aware assistants.
 
-### Reference
+See:
+- [docs/skills.md](docs/skills.md)
+- [.claude/skills](.claude/skills)
 
-In BRIDGE, the **reference** is the in vivo developmental coordinate system used to interpret a query sample. It is not just a label table. It is intended to encode developmental context, regional identity, and the embedding space used for mapping and comparison.
+Current public skills:
+- `identity-run`
+- `cls-run`
+- `report-review`
 
-### Query
+## Scope and Roadmap
 
-The **query** is the in vitro sample being evaluated, such as a differentiation product, organoid dataset, or related cell product that is projected into the reference framework.
+Current public scope:
+- formal Step 2 package code
+- formal Step 3 package code
+- config templates
+- workflow and concept documentation
+- skill-interface documentation
 
-### Identity Assessment
+Not currently part of the released package surface:
+- exploratory notebooks from earlier research drafts
+- unpublished analysis fragments
+- Step 1 executable implementation
 
-**Identity Assessment** is the Step 2 module that decides which query cells should be treated as high-confidence candidates for downstream evaluation. In the current implementation, this relies on calibrated probabilities, uncertainty estimates, and entropy-based filtering rather than on a top-label assignment alone.
-
-### CLS
-
-**CLS** stands for **Composite Likeness Score**. It is the Step 3 concordance layer that summarizes how well an in vitro sample reconstructs the in vivo developmental program after candidate selection.
-
-In the current codebase, CLS is decomposed into six components:
-- **A**: identity consistency
-- **B**: pseudo-bulk expression similarity
-- **C**: classifier transferability
-- **D**: embedding neighborhood consistency
-- **E**: pseudotime concordance
-- **F**: regulatory network similarity
-
-CLS should be read as a structured multi-component evaluation framework, not as a claim that one scalar alone fully captures developmental quality.
-
-## Thesis-to-Code Mapping
-
-The repository is intentionally aligned to the thesis logic:
-- **Step 1** thesis logic: documented in `docs/`, not yet formalized as released package code
-- **Step 2** thesis logic: implemented in `src/bridge/identity`
-- **Step 3** thesis logic: implemented in `src/bridge/cls`, with shared I/O and workflow scaffolding
-
-Supporting documentation:
-- `docs/formal_workflows.md`
-- `docs/thesis_to_code.md`
-- `docs/roadmap_step1.md`
-- `docs/experimental_scope.md`
-
-## What Is In Scope for BRIDGE v1
-
-The following are part of the formal BRIDGE v1 repository:
-- `src/bridge/identity`: Step 2 identity assessment logic
-- `src/bridge/cls`: Step 3 CLS A-F logic
-- `src/bridge/io` and `src/bridge/workflows`: output handling and workflow scaffolding
-- `tests/`: formal tests for the released package modules
-- `configs/`: configuration placeholders and output conventions
-- `docs/`: workflow, roadmap, and scope documentation
-
-## What Is Not In Scope for the Initial Public Repository
-
-The following are intentionally kept out of the first public version:
-- exploratory notebooks from the earlier `drafts/` workspace
-- thesis-generation materials and manuscript assets
-- one-off plotting scripts
-- unpublished ad hoc analyses
-- large model binaries and unpublished intermediate datasets
-
-These materials may be migrated later, but only after standardization, documentation, and testability are established.
+Roadmap:
+- continue formalizing BRIDGE as a workflow-oriented software package
+- bring Step 1 into the same execution model once its interfaces stabilize
+- keep tightening performance, output contracts, and software presentation
 
 ## Repository Layout
 
@@ -125,7 +142,6 @@ BRIDGE/
 |- CLAUDE.md
 |- pyproject.toml
 |- src/bridge/
-|- tests/
 |- configs/
 |- models/
 |- notebooks/
@@ -136,54 +152,8 @@ BRIDGE/
 
 Directory meanings:
 - `src/bridge/`: formal Python package
-- `tests/`: formal test suite
-- `configs/`: configuration templates and output naming conventions
-- `models/`: model metadata and loading notes, not large weights
-- `notebooks/`: formal notebook entrypoints and placeholders only
-- `docs/`: workflow notes, concept definitions, roadmap, and scope boundaries
-- `.claude/skills/`: repository-local AI collaboration guidance
-
-## Quick Start
-
-```bash
-pip install -e .[test]
-pytest -q
-```
-
-At the current stage, BRIDGE v1 should be treated as a structured public skeleton for Step 2 and Step 3 rather than as a fully packaged end-user release of the entire three-step pipeline.
-
-## Executable Workflows
-
-BRIDGE v1 currently exposes workflow-level execution commands for the released parts of the pipeline:
-
-```bash
-bridge identity run --config configs/bridge.minimal.yaml --dry-run
-bridge cls run --config configs/bridge.minimal.yaml --dry-run
-bridge report summarize --config tests/data/report_fixture.yaml
-bridge report summarize-batch --config-list <config-list.yaml>
-```
-
-Command mapping:
-- `bridge identity run`: Step 2 workflow
-- `bridge cls run`: Step 3 scoring workflow
-- `bridge report summarize`: Step 2 + Step 3 per-dataset summary/report packaging
-- `bridge report summarize-batch`: Step 2 + Step 3 multi-dataset summary packaging
-
-Configuration is provided through a single YAML file per run. The formal configuration contract is documented in `docs/formal_workflows.md`, and example templates are provided under `configs/`.
-
-In the current phase, the report layer is not just a CLS-only summary. It targets:
-- Step 2 identity-assessment outputs
-- Step 3 CLS outputs
-- per-dataset and cross-dataset structured report summaries
-
-## Roadmap
-
-- **v1**: formalize Step 2 and Step 3 under a stable public package structure
-- **future**: formalize Step 1, complete the end-to-end three-step pipeline, and migrate selected standardized extensions
-
-## Current Limitations
-
-- Step 1 reference construction is still documented as planned work rather than released code.
-- The public repository currently emphasizes formal package structure over exploratory notebook history.
-- Models are documented through interfaces and metadata, not distributed as large binary assets.
-- Some package code is still transitioning from a research-code structure to a long-lived public-repository structure.
+- `configs/`: public config templates and environment files
+- `models/`: model metadata and model-related notes
+- `notebooks/`: placeholder area for formal notebooks and examples
+- `docs/`: workflow, concept, and roadmap documentation
+- `.claude/skills/`: repository-local skill interface

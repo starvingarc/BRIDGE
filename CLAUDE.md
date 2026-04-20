@@ -19,7 +19,6 @@ Current repository scope for **v1**:
 - `src/bridge/identity` maps to formal Step 2 logic.
 - `src/bridge/cls` maps to formal Step 3 logic.
 - `src/bridge/io` and `src/bridge/workflows` host output handling and orchestration.
-- `tests` must cover formal modules rather than exploratory one-off analyses.
 - notebooks must not carry core business logic.
 
 Interpretation rule:
@@ -47,9 +46,9 @@ Do not place the following directly into the formal package until standardized:
 
 When adding new work:
 1. First classify it as either formal workflow code or exploratory extension.
-2. If it belongs to the formal workflow, place it in `src/bridge` and add tests.
+2. If it belongs to the formal workflow, place it in `src/bridge`.
 3. If it is exploratory, document it outside the formal package first.
-4. Do not move notebook logic into core modules without defining interfaces and tests.
+4. Do not move notebook logic into core modules without defining stable interfaces.
 
 ## Output and Naming Rules
 
