@@ -6,6 +6,13 @@ from typing import Any
 
 import pandas as pd
 
+from bridge.common.results import (
+    BatchReportManifest,
+    DatasetReportManifest,
+    DatasetReportRecord,
+    Step2Summary,
+    Step3ComponentDetail,
+)
 from bridge.common.stats import normalize_weights
 from bridge.workflows.config import BridgeConfigBatch, BridgeRunConfig, WorkflowValidationError, load_config
 
@@ -151,28 +158,28 @@ def _extract_step2_summary(config: BridgeRunConfig) -> dict:
             elif summary.get(key) is None:
                 summary[key] = value
 
-    return summary
+    return Step2Summary(**summary)
 
 
-def _extract_step3_summary(config: BridgeRunConfig) -> tuple[pd.DataFrame, float | None]:
-    rows = []
+def _extract_step3_summary(config: BridgeRunConfig) -> tuple[list[Step3ComponentDetail], float | None]:
+    details: list[Step3ComponentDetail] = []
     for component in config.cls.enabled_components:
         path = _component_json_path(config, component)
         payload = json.loads(path.read_text(encoding="utf-8"))
         component_dir = path.parent
-        rows.append(
-            {
-                "component": component,
-                "global_score": float(payload["global_score"]),
-                "result_json": str(path),
-                "has_batch_csv": (component_dir / f"component_{component}_batch.csv").exists(),
-                "has_branch_csv": (component_dir / f"component_{component}_branch.csv").exists(),
-                "has_genes_csv": (component_dir / f"component_{component}_genes.csv").exists(),
-                "has_query_aucell_csv": (component_dir / "query_aucell.csv").exists(),
-            }
+        details.append(
+            Step3ComponentDetail(
+                component=component,
+                global_score=float(payload["global_score"]),
+                result_json=str(path),
+                has_batch_csv=(component_dir / f"component_{component}_batch.csv").exists(),
+                has_branch_csv=(component_dir / f"component_{component}_branch.csv").exists(),
+                has_genes_csv=(component_dir / f"component_{component}_genes.csv").exists(),
+                has_query_aucell_csv=(component_dir / "query_aucell.csv").exists(),
+            )
         )
 
-    summary_df = pd.DataFrame(rows).sort_values("component").reset_index(drop=True)
+    summary_df = pd.DataFrame([detail.to_payload() for detail in details]).sort_values("component").reset_index(drop=True)
     weighted_total = None
     if config.report.cls_weights is not None:
         missing_weights = [comp for comp in config.cls.enabled_components if comp not in config.report.cls_weights]
@@ -182,21 +189,18 @@ def _extract_step3_summary(config: BridgeRunConfig) -> tuple[pd.DataFrame, float
             )
         weights = normalize_weights([config.report.cls_weights[comp] for comp in summary_df["component"]])
         weighted_total = float((summary_df["global_score"].to_numpy(dtype=float) * weights).sum())
-    return summary_df, weighted_total
+    return details, weighted_total
 
 
-def _build_report_summary_row(config: BridgeRunConfig) -> tuple[pd.DataFrame, pd.DataFrame, float | None]:
+def _build_report_record(config: BridgeRunConfig) -> tuple[DatasetReportRecord, list[Step3ComponentDetail], float | None]:
     step2_summary = _extract_step2_summary(config)
-    step3_summary_df, weighted_total = _extract_step3_summary(config)
-    summary_row = dict(step2_summary)
-    for _, row in step3_summary_df.iterrows():
-        component = row["component"]
-        summary_row[f"cls_{component}"] = float(row["global_score"])
-        summary_row[f"has_{component}_detail_table"] = bool(
-            row["has_batch_csv"] or row["has_branch_csv"] or row["has_genes_csv"] or row["has_query_aucell_csv"]
-        )
-    summary_row["weighted_total_cls"] = weighted_total
-    return pd.DataFrame([summary_row]), step3_summary_df, weighted_total
+    step3_details, weighted_total = _extract_step3_summary(config)
+    record = DatasetReportRecord(
+        step2=step2_summary,
+        step3_components=step3_details,
+        weighted_total_cls=weighted_total,
+    )
+    return record, step3_details, weighted_total
 
 
 def build_report_run_plan(config: BridgeRunConfig) -> dict:
@@ -233,22 +237,23 @@ def run_report_summary(config: BridgeRunConfig, dry_run: bool = False) -> dict:
     if dry_run:
         return plan
 
-    summary_df, step3_summary_df, weighted_total = _build_report_summary_row(config)
+    record, step3_details, weighted_total = _build_report_record(config)
+    summary_df = pd.DataFrame([record.to_row()])
 
     outputs = _report_output_paths(config)
     outputs["base_dir"].mkdir(parents=True, exist_ok=True)
     summary_df.to_csv(outputs["summary_csv"], index=False)
-    manifest = {
-        "dataset_id": config.dataset.id,
-        "target_class": config.identity.target_class,
-        "enabled_components": config.cls.enabled_components,
-        "summary_csv": str(outputs["summary_csv"]),
-        "weighted_total_cls": weighted_total,
-        "step2_artifacts": {name: str(path) for name, path in _identity_paths(config).items()},
-        "component_payloads": {comp: str(_component_json_path(config, comp)) for comp in config.cls.enabled_components},
-        "component_details": step3_summary_df.to_dict(orient="records"),
-    }
-    outputs["manifest_json"].write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    manifest = DatasetReportManifest(
+        dataset_id=config.dataset.id,
+        target_class=config.identity.target_class,
+        enabled_components=config.cls.enabled_components,
+        summary_csv=str(outputs["summary_csv"]),
+        weighted_total_cls=weighted_total,
+        step2_artifacts={name: str(path) for name, path in _identity_paths(config).items()},
+        component_payloads={comp: str(_component_json_path(config, comp)) for comp in config.cls.enabled_components},
+        component_details=step3_details,
+    )
+    outputs["manifest_json"].write_text(json.dumps(manifest.to_payload(), indent=2), encoding="utf-8")
     return {
         "workflow": "report",
         "status": "completed",
@@ -296,21 +301,22 @@ def run_report_summary_batch(config_batch: BridgeConfigBatch, dry_run: bool = Fa
     combined_rows = []
     for config_path in config_batch.config_paths:
         config = load_config(config_path)
-        summary_df, step3_summary_df, weighted_total = _build_report_summary_row(config)
+        record, step3_details, weighted_total = _build_report_record(config)
+        summary_df = pd.DataFrame([record.to_row()])
         outputs = _report_output_paths(config)
         outputs["base_dir"].mkdir(parents=True, exist_ok=True)
         summary_df.to_csv(outputs["summary_csv"], index=False)
-        manifest = {
-            "dataset_id": config.dataset.id,
-            "target_class": config.identity.target_class,
-            "enabled_components": config.cls.enabled_components,
-            "summary_csv": str(outputs["summary_csv"]),
-            "weighted_total_cls": weighted_total,
-            "step2_artifacts": {name: str(path) for name, path in _identity_paths(config).items()},
-            "component_payloads": {comp: str(_component_json_path(config, comp)) for comp in config.cls.enabled_components},
-            "component_details": step3_summary_df.to_dict(orient="records"),
-        }
-        outputs["manifest_json"].write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        manifest = DatasetReportManifest(
+            dataset_id=config.dataset.id,
+            target_class=config.identity.target_class,
+            enabled_components=config.cls.enabled_components,
+            summary_csv=str(outputs["summary_csv"]),
+            weighted_total_cls=weighted_total,
+            step2_artifacts={name: str(path) for name, path in _identity_paths(config).items()},
+            component_payloads={comp: str(_component_json_path(config, comp)) for comp in config.cls.enabled_components},
+            component_details=step3_details,
+        )
+        outputs["manifest_json"].write_text(json.dumps(manifest.to_payload(), indent=2), encoding="utf-8")
         result = {
             "workflow": "report",
             "status": "completed",
@@ -326,13 +332,13 @@ def run_report_summary_batch(config_batch: BridgeConfigBatch, dry_run: bool = Fa
     outputs = _batch_output_paths(config_batch)
     outputs["base_dir"].mkdir(parents=True, exist_ok=True)
     combined_df.to_csv(outputs["combined_summary_csv"], index=False)
-    manifest = {
-        "config_list": str(config_batch.config_list_path),
-        "datasets": [result["dataset_id"] for result in per_dataset_results],
-        "per_dataset_results": per_dataset_results,
-        "combined_summary_csv": str(outputs["combined_summary_csv"]),
-    }
-    outputs["combined_manifest_json"].write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    manifest = BatchReportManifest(
+        config_list=str(config_batch.config_list_path),
+        datasets=[result["dataset_id"] for result in per_dataset_results],
+        per_dataset_results=per_dataset_results,
+        combined_summary_csv=str(outputs["combined_summary_csv"]),
+    )
+    outputs["combined_manifest_json"].write_text(json.dumps(manifest.to_payload(), indent=2), encoding="utf-8")
     return {
         "workflow": "report-batch",
         "datasets": [result["dataset_id"] for result in per_dataset_results],
