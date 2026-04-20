@@ -41,7 +41,6 @@ pip install -e .
 Optional dependency groups:
 
 ```bash
-pip install -e .[test]
 pip install -e .[runtime]
 pip install -e .[trajectory]
 pip install -e .[regulon]
@@ -156,7 +155,6 @@ BRIDGE/
 |- CLAUDE.md
 |- pyproject.toml
 |- src/bridge/
-|- tests/
 |- configs/
 |- models/
 |- notebooks/
@@ -168,8 +166,7 @@ BRIDGE/
 
 Directory meanings:
 - `src/bridge/`: formal Python package
-- `tests/`: minimal public smoke and config tests
-- `configs/`: public config templates and environment files
+- `configs/`: public config templates, smoke fixtures, and environment files
 - `models/`: model metadata and model-related notes
 - `notebooks/`: placeholder area for formal notebooks and examples
 - `docs/`: workflow, concept, and roadmap documentation

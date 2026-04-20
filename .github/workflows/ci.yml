@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  smoke:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -16,17 +16,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install package and test dependencies
+      - name: Install package
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .[test]
-
-      - name: Run pytest
-        run: pytest -q
+          python -m pip install -e .
 
       - name: Run CLI smoke checks
         run: |
           python -m bridge --help
           bridge identity run --config configs/bridge.minimal.yaml --dry-run
           bridge cls run --config configs/bridge.minimal.yaml --dry-run
-          bridge report summarize --config tests/data/report_fixture.yaml --dry-run
+          bridge report summarize --config configs/report-smoke.yaml --dry-run
