@@ -260,7 +260,8 @@ def run_report_summary(config: BridgeRunConfig, dry_run: bool = False) -> dict:
 
 
 def _batch_output_paths(config_batch: BridgeConfigBatch) -> dict[str, Path]:
-    base = config_batch.config_list_path.parent / "generated"
+    first_config = load_config(config_batch.config_paths[0])
+    base = first_config.paths.report_output_dir / "combined"
     return {
         "base_dir": base,
         "combined_summary_csv": base / "combined_summary.csv",
