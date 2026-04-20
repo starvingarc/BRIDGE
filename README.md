@@ -2,7 +2,7 @@
 
 **Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation**
 
-BRIDGE is a workflow-oriented software package for evaluating in vitro cell products against in vivo developmental references.
+BRIDGE is an open-source research software package for evaluating in vitro cell products against in vivo developmental references.
 
 ## What BRIDGE Does
 
@@ -11,10 +11,10 @@ BRIDGE currently formalizes the released parts of a three-step workflow:
 - **Step 2**: target-specific identity assessment and candidate selection
 - **Step 3**: CLS-based concordance scoring and report generation
 
-In the current public package:
-- Step 2 is implemented as formal package code
-- Step 3 is implemented as formal package code
-- Step 1 remains part of the documented architecture, but is not yet released as executable package logic
+Current public package scope:
+- Step 2 is released as formal package code
+- Step 3 is released as formal package code
+- Step 1 remains documented architecture and is not yet released as executable package code
 
 ## Installation
 
@@ -38,9 +38,19 @@ cd BRIDGE
 pip install -e .
 ```
 
+Optional dependency groups:
+
+```bash
+pip install -e .[test]
+pip install -e .[runtime]
+pip install -e .[trajectory]
+pip install -e .[regulon]
+pip install -e .[notebook]
+```
+
 ## Quick Start
 
-Start by copying the minimal editable workflow template:
+Start from the minimal editable workflow template:
 
 ```bash
 cp configs/bridge.minimal.yaml my-run.yaml
@@ -111,9 +121,9 @@ See:
 - [.claude/skills](.claude/skills)
 
 Current public skills:
-- `identity-run`
-- `cls-run`
-- `report-review`
+- `bridge`
+- `bridge-identity`
+- `bridge-cls`
 
 ## Scope and Roadmap
 
@@ -130,7 +140,7 @@ Not currently part of the released package surface:
 - Step 1 executable implementation
 
 Roadmap:
-- continue formalizing BRIDGE as a workflow-oriented software package
+- continue formalizing BRIDGE as workflow-oriented open-source software
 - bring Step 1 into the same execution model once its interfaces stabilize
 - keep tightening performance, output contracts, and software presentation
 
@@ -139,21 +149,29 @@ Roadmap:
 ```text
 BRIDGE/
 |- README.md
+|- LICENSE
+|- CONTRIBUTING.md
+|- CODE_OF_CONDUCT.md
+|- SECURITY.md
 |- CLAUDE.md
 |- pyproject.toml
 |- src/bridge/
+|- tests/
 |- configs/
 |- models/
 |- notebooks/
 |- docs/
+|- .github/
 `- .claude/
    `- skills/
 ```
 
 Directory meanings:
 - `src/bridge/`: formal Python package
+- `tests/`: minimal public smoke and config tests
 - `configs/`: public config templates and environment files
 - `models/`: model metadata and model-related notes
 - `notebooks/`: placeholder area for formal notebooks and examples
 - `docs/`: workflow, concept, and roadmap documentation
+- `.github/`: community files and CI
 - `.claude/skills/`: repository-local skill interface

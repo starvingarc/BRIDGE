@@ -20,6 +20,7 @@ Current repository scope for **v1**:
 - `src/bridge/cls` maps to formal Step 3 logic.
 - `src/bridge/io` and `src/bridge/workflows` host output handling and orchestration.
 - notebooks must not carry core business logic.
+- `.claude/skills` provides repository-local coding-agent guidance.
 
 Interpretation rule:
 - Step 1 may be documented in `docs/`, but it must not be advertised as implemented production code unless formalized.

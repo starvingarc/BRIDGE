@@ -98,6 +98,8 @@ In the current phase, the report layer consumes both:
 
 This means reporting now spans thesis Step 2 outputs plus Step 3 outputs rather than only listing CLS component scores.
 
+The public test surface should remain minimal and package-oriented. Full internal validation may exist outside the public package tree.
+
 ## Why the Distinction Matters
 
 The repository intentionally distinguishes:

@@ -14,12 +14,12 @@ Skills live under:
 
 ## Current Skills
 
-- `identity-run`
+- `bridge`
+  - top-level coordination across the released BRIDGE workflow surface
+- `bridge-identity`
   - guidance for Step 2 execution and validation
-- `cls-run`
-  - guidance for Step 3 execution and component prerequisites
-- `report-review`
-  - guidance for interpreting and comparing Step 2 + Step 3 report outputs
+- `bridge-cls`
+  - guidance for Step 3 execution, prerequisites, and reporting
 
 ## What Skills Are For
 

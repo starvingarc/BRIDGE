@@ -1,18 +1,18 @@
 version: "1"
 
 dataset:
-  id: "demo_dataset"
+  id: "demo_report"
   prefix: "demo_prefix"
 
 paths:
-  reference_h5ad: "./fixtures/minimal/reference.h5ad"
-  query_h5ad: "./fixtures/minimal/query.h5ad"
-  ref_model_dir: "./fixtures/minimal/ref_model"
-  identity_output_dir: "./fixtures/minimal/identity_outputs"
-  cls_output_dir: "./fixtures/minimal/cls_outputs"
-  report_output_dir: "./fixtures/minimal/report_outputs"
-  ref_sceniclike_h5ad: "./fixtures/minimal/ref_sceniclike.h5ad"
-  regulons_json: "./fixtures/minimal/regulons.json"
+  reference_h5ad: "./report_fixture/placeholder/reference.h5ad"
+  query_h5ad: "./report_fixture/placeholder/query.h5ad"
+  ref_model_dir: "./report_fixture/placeholder/ref_model"
+  identity_output_dir: "./report_fixture/placeholder/identity_outputs"
+  cls_output_dir: "./report_fixture/cls_output"
+  report_output_dir: "./report_fixture/generated"
+  ref_sceniclike_h5ad: "./report_fixture/placeholder/ref_sceniclike.h5ad"
+  regulons_json: "./report_fixture/placeholder/regulons.json"
 
 runtime:
   seed: 0
@@ -36,12 +36,11 @@ identity:
   set_X_to_counts: true
 
 cls:
-  enabled_components: ["A"]
+  enabled_components: ["A", "B"]
   batch_key: "Sample"
   candidate_flag_prefix: "is_candidate_"
   ref_label_key: "cell_subtype"
-  a:
-    min_cells_per_batch: 20
+  a: {}
   b: {}
   c: {}
   d: {}
@@ -52,9 +51,5 @@ report:
   summary_filename: "summary.csv"
   manifest_filename: "manifest.json"
   cls_weights:
-    A: 0.2222
-    B: 0.1667
-    C: 0.1667
-    D: 0.1111
-    E: 0.1667
-    F: 0.1667
+    A: 1.0
+    B: 1.0

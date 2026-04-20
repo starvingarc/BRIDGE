@@ -11,7 +11,6 @@ venv/
 dist/
 build/
 *.egg-info/
-tests/
 
 artifacts/
 tmp/

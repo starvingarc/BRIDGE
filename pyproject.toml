@@ -7,6 +7,7 @@ name = "bridge"
 version = "0.1.0"
 description = "Workflow-oriented software for brain-referenced in vivo-to-in vitro developmental evaluation"
 readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.10"
 keywords = ["single-cell", "development", "organoid", "reference-mapping", "evaluation", "cli"]
 classifiers = [
@@ -27,6 +28,26 @@ dependencies = [
   "scipy",
 ]
 
+[project.optional-dependencies]
+test = [
+  "pytest",
+]
+runtime = [
+  "anndata",
+  "scanpy",
+  "scvi-tools",
+]
+trajectory = [
+  "cellrank",
+]
+regulon = [
+  "decoupler",
+]
+notebook = [
+  "ipykernel",
+  "jupyterlab",
+]
+
 [project.scripts]
 bridge = "bridge.cli:main"
 
@@ -39,3 +60,6 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -2,14 +2,12 @@
 
 This directory stores configuration templates and output naming conventions for formal BRIDGE workflows.
 
-Planned v1 content:
-- workflow config templates for Step 2 and Step 3
-- output directory conventions
-- model-loading references
-
 Current templates:
 - `bridge.minimal.yaml`: smallest editable run template for a BRIDGE workflow
 - `bridge.example.yaml`: fuller schema example for formal Step 2 and Step 3 runs
+
+Fixture assets:
+- `fixtures/minimal/`: tiny placeholder artifact set used for public dry-run validation and CI smoke checks
 
 Environment export:
 - `environments/pytorch-linux.yml`: sanitized export of the Linux `pytorch` conda environment used for BRIDGE server-side execution
