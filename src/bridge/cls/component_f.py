@@ -66,6 +66,30 @@ def _get_X(adata, layer: str | None):
     return adata.X
 
 
+def _compile_regulon_indices(regulons: dict[str, list[str]], var_names) -> dict[str, np.ndarray]:
+    gene_to_idx = {str(gene): idx for idx, gene in enumerate(map(str, var_names))}
+    compiled: dict[str, np.ndarray] = {}
+    for tf, genes in regulons.items():
+        idx = [gene_to_idx[g] for g in genes if g in gene_to_idx]
+        if idx:
+            compiled[str(tf)] = np.asarray(idx, dtype=np.int64)
+    return compiled
+
+
+def _active_regulon_mask(det_rate: np.ndarray, regulon_idx: np.ndarray, threshold: float) -> np.ndarray:
+    return det_rate[regulon_idx] >= float(threshold)
+
+
+def _mean_auc_vector(auc_df: pd.DataFrame, cells) -> np.ndarray:
+    return auc_df.loc[cells].mean(axis=0).to_numpy(dtype=float)
+
+
+def _safe_corrcoef(x: np.ndarray, y: np.ndarray) -> float:
+    if np.std(x) <= 0 or np.std(y) <= 0:
+        return float("nan")
+    return float(np.corrcoef(x, y)[0, 1])
+
+
 def compute_component_F(
     adata_ref_sceniclike,
     regulons_json_path: str,
@@ -78,6 +102,7 @@ def compute_component_F(
     eta1: float = 0.4,
     eta2: float = 0.6,
     verbose_aucell: bool = True,
+    precomputed_query_auc: pd.DataFrame | None = None,
     return_qry_auc: bool = False,
 ):
     if not os.path.exists(regulons_json_path):
@@ -88,7 +113,6 @@ def compute_component_F(
         regulons = json.load(fh)
     if not isinstance(regulons, dict) or len(regulons) == 0:
         raise ValueError("[F] regulons.json is empty or invalid dict.")
-    net = _build_net_from_regulons(regulons)
     common_genes = adata_ref_sceniclike.var_names.intersection(adata_query.var_names)
     if len(common_genes) == 0:
         raise ValueError("[F] No common genes between ref_sceniclike and query.")
@@ -101,22 +125,35 @@ def compute_component_F(
     ref_reg_names = list(ref.uns["regulon_names"])
     ref_auc = pd.DataFrame(ref.obsm["X_regulon_auc"], index=ref.obs_names, columns=ref_reg_names)
     layer_for_aucell = expr_layer if (expr_layer in qry.layers) else None
-    qry_auc = run_aucell_decoupler2(qry, net=net, layer=layer_for_aucell, raw=False, tmin=min_targets, n_up=aucell_n_up, verbose=verbose_aucell)
+    if precomputed_query_auc is not None:
+        qry_auc = precomputed_query_auc.copy()
+    else:
+        net = _build_net_from_regulons(regulons)
+        qry_auc = run_aucell_decoupler2(
+            qry,
+            net=net,
+            layer=layer_for_aucell,
+            raw=False,
+            tmin=min_targets,
+            n_up=aucell_n_up,
+            verbose=verbose_aucell,
+        )
     common_regs = ref_auc.columns.intersection(qry_auc.columns)
     if len(common_regs) == 0:
         raise ValueError("[F] No common regulons between ref_auc and qry_auc (column mismatch).")
     ref_auc = ref_auc[common_regs]
     qry_auc = qry_auc[common_regs]
-    qry_genes = set(map(str, qry.var_names))
-    regulon_targets = {tf: [g for g in regulons.get(tf, []) if g in qry_genes] for tf in common_regs}
-    dr_ref = pd.Series(_det_rate(_get_X(ref, expr_layer)), index=ref.var_names)
-    ref_active: dict[str, set[str]] = {}
+    regulon_idx_map = _compile_regulon_indices(regulons, qry.var_names)
+    regulon_idx_map = {tf: regulon_idx_map[tf] for tf in common_regs if tf in regulon_idx_map}
+    dr_ref = _det_rate(_get_X(ref, expr_layer))
+    ref_active_masks: dict[str, np.ndarray] = {}
     for tf in common_regs:
-        tgts = [g for g in regulon_targets[tf] if g in dr_ref.index]
-        act = {g for g in tgts if float(dr_ref[g]) >= float(det_rate_threshold)}
-        if len(act) >= int(min_targets):
-            ref_active[str(tf)] = act
-    if len(ref_active) == 0:
+        if tf not in regulon_idx_map:
+            continue
+        active_mask = _active_regulon_mask(dr_ref, regulon_idx_map[tf], det_rate_threshold)
+        if int(active_mask.sum()) >= int(min_targets):
+            ref_active_masks[str(tf)] = active_mask
+    if len(ref_active_masks) == 0:
         raise ValueError("[F] No regulons passed ref_active filter.")
     v_r = ref_auc.mean(axis=0).to_numpy(dtype=float)
     rows = []
@@ -126,21 +163,19 @@ def compute_component_F(
         if n_cells == 0:
             continue
         cells = qry.obs_names[idx]
-        v_q = qry_auc.loc[cells, common_regs].mean(axis=0).to_numpy(dtype=float)
-        ra = np.nan
-        if np.std(v_q) > 0 and np.std(v_r) > 0:
-            ra = float(np.corrcoef(v_q, v_r)[0, 1])
+        v_q = _mean_auc_vector(qry_auc[common_regs], cells)
+        ra = _safe_corrcoef(v_q, v_r)
         Xb = _get_X(qry, expr_layer)[idx, :]
-        dr_b = pd.Series(_det_rate(Xb), index=qry.var_names)
+        dr_b = _det_rate(Xb)
         j_list = []
-        for tf, ref_set in ref_active.items():
-            tgts = [g for g in regulon_targets[tf] if g in dr_b.index]
-            b_set = {g for g in tgts if float(dr_b[g]) >= float(det_rate_threshold)}
-            if len(b_set) < int(min_targets):
+        for tf, ref_mask in ref_active_masks.items():
+            idx_tf = regulon_idx_map[tf]
+            batch_mask = _active_regulon_mask(dr_b, idx_tf, det_rate_threshold)
+            if int(batch_mask.sum()) < int(min_targets):
                 continue
-            inter = len(ref_set & b_set)
-            union = len(ref_set | b_set)
-            if union > 0:
+            inter = int(np.count_nonzero(ref_mask & batch_mask))
+            union = int(np.count_nonzero(ref_mask | batch_mask))
+            if union:
                 j_list.append(inter / union)
         J = float(np.mean(j_list)) if len(j_list) > 0 else np.nan
         sF = np.nan
@@ -163,8 +198,9 @@ def compute_component_F(
         "eta2": float(eta2),
         "n_common_genes": int(len(common_genes)),
         "n_common_regulons": int(len(common_regs)),
-        "n_ref_active_regulons": int(len(ref_active)),
+        "n_ref_active_regulons": int(len(ref_active_masks)),
         "regulons_json_path": regulons_json_path,
+        "used_precomputed_query_auc": bool(precomputed_query_auc is not None),
     }
     if return_qry_auc:
         return score_df, global_score, meta, qry_auc
@@ -185,9 +221,15 @@ def compute_F_and_save(
     eta1: float = 0.4,
     eta2: float = 0.6,
     verbose_aucell: bool = True,
+    query_aucell_path: str | None = None,
     save_qry_auc: bool = False,
     write_back_uns: bool = True,
 ):
+    precomputed_query_auc = None
+    if query_aucell_path is not None:
+        if not os.path.exists(query_aucell_path):
+            raise FileNotFoundError(f"[F] query_aucell_path not found: {query_aucell_path}")
+        precomputed_query_auc = pd.read_csv(query_aucell_path, index_col=0)
     if save_qry_auc:
         score_df, global_score, meta, qry_auc = compute_component_F(
             adata_ref_sceniclike=adata_ref_sceniclike,
@@ -201,6 +243,7 @@ def compute_F_and_save(
             eta1=eta1,
             eta2=eta2,
             verbose_aucell=verbose_aucell,
+            precomputed_query_auc=precomputed_query_auc,
             return_qry_auc=True,
         )
         save_dir = os.path.join(outdir, dataset_id, "F")
@@ -221,6 +264,7 @@ def compute_F_and_save(
             eta1=eta1,
             eta2=eta2,
             verbose_aucell=verbose_aucell,
+            precomputed_query_auc=precomputed_query_auc,
             return_qry_auc=False,
         )
     result = build_component_result("F", score_df, global_score, meta)
