@@ -3,10 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from bridge.workflows.cls import run_cls_workflow
 from bridge.workflows.config import load_config, load_config_list
-from bridge.workflows.identity import run_identity_workflow
-from bridge.workflows.report import run_report_summary, run_report_summary_batch
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -45,15 +42,23 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "identity" and args.subcommand == "run":
+        from bridge.workflows.identity import run_identity_workflow
+
         config = load_config(args.config)
         result = run_identity_workflow(config, dry_run=args.dry_run)
     elif args.command == "cls" and args.subcommand == "run":
+        from bridge.workflows.cls import run_cls_workflow
+
         config = load_config(args.config)
         result = run_cls_workflow(config, dry_run=args.dry_run)
     elif args.command == "report" and args.subcommand == "summarize":
+        from bridge.workflows.report import run_report_summary
+
         config = load_config(args.config)
         result = run_report_summary(config, dry_run=args.dry_run)
     elif args.command == "report" and args.subcommand == "summarize-batch":
+        from bridge.workflows.report import run_report_summary_batch
+
         config_batch = load_config_list(args.config_list)
         result = run_report_summary_batch(config_batch, dry_run=args.dry_run)
     else:
