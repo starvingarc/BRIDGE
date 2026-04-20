@@ -7,7 +7,7 @@ name = "bridge"
 version = "0.1.0"
 description = "Workflow-oriented software for brain-referenced in vivo-to-in vitro developmental evaluation"
 readme = "README.md"
-license = "Apache-2.0"
+license = "MIT"
 requires-python = ">=3.10"
 keywords = ["single-cell", "development", "organoid", "reference-mapping", "evaluation", "cli"]
 classifiers = [
