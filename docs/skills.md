@@ -2,7 +2,7 @@
 
 BRIDGE exposes a repository-local skill interface through `.claude/skills`.
 
-The skill interface is not part of the runtime package API. It is a structured guidance layer for coding agents and workflow-aware assistants that need to operate inside this repository.
+The skill interface is a structured guidance layer for coding agents and workflow-aware assistants that operate inside this repository. Runtime execution still flows through the Python package and CLI.
 
 ## Location
 
@@ -29,11 +29,9 @@ Skills help an agent or advanced collaborator understand:
 - what inputs, outputs, and prerequisites matter
 - how to reason about execution and reporting behavior
 
-## What Skills Are Not
+## How Skills Fit With the Package
 
-Skills are not:
-- executable package code
-- replacements for the CLI
-- substitutes for workflow configs
-
-They are repository-local operational guidance that complements the package and docs.
+Skills complement the package and docs:
+- use the CLI for execution
+- use YAML configs for reproducible workflow parameters
+- use skills for repository-local guidance, review checklists, and workflow interpretation

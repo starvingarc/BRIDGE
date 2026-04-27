@@ -24,7 +24,7 @@ The released execution layer mirrors the thesis structure:
 - `bridge report summarize` -> thesis Step 3 reporting/output packaging
 - `bridge report summarize-batch` -> multi-dataset Step 2 + Step 3 reporting wrapper
 
-There is intentionally no `bridge step1 ...` command yet, because Step 1 has not been formalized as released package code.
+Step 1 is documented as the upstream reference-building stage. The current CLI focuses on the released Step 2 and Step 3 execution surface.
 
 ## Why CLS Appears in Step 3
 
@@ -34,12 +34,12 @@ That is why CLS belongs to Step 3 rather than Step 2:
 - Step 2 decides which cells are credible target candidates
 - Step 3 scores how well those candidates reconstruct the reference developmental program
 
-## Why Step 1 Is Documented But Not Yet Released
+## How Step 1 Is Represented
 
-The thesis describes Step 1 as part of the full workflow, but the public repository currently treats it as planned rather than fully released because:
-- the code and interfaces are not yet stabilized as a public package module
-- reference construction and upstream pre-screening still need clearer production-facing contracts
-- public documentation should not overstate implementation maturity
+The thesis describes Step 1 as part of the full workflow. The public repository represents it through architecture and roadmap documents while the package interface is being defined:
+- stable input and output contracts
+- reference-construction configuration
+- downstream handoff into Step 2 and Step 3
 
 ## Reading the Repository Correctly
 
@@ -50,7 +50,7 @@ If you are reading BRIDGE from the perspective of the thesis:
 - use `src/bridge/cls` for the released Step 3 implementation
 
 If you are reading BRIDGE from the perspective of the code:
-- treat Step 1 as architectural context and roadmap
+- treat Step 1 as architectural context and interface roadmap
 - treat Step 2 and Step 3 as the actual released v1 package surface
 
 Reporting note:
@@ -58,4 +58,4 @@ Reporting note:
 
 Repository note:
 - the public repository is meant to expose the stable software surface
-- environment-specific validation practices can exist outside the public package tree
+- environment-specific validation practices can live in development or deployment workspaces

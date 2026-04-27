@@ -1,13 +1,13 @@
 # Step 1 Roadmap
 
-Step 1 will eventually cover reference construction and upstream whole-brain pre-screening as a formal BRIDGE workflow.
+Step 1 covers reference construction and upstream whole-brain pre-screening in the full BRIDGE architecture.
 
 Current status:
-- planned
-- not yet standardized
-- not yet documented as a released public production workflow
+- interface design
+- output contract design
+- package integration planning
 
-The goal for future formalization is to define:
+The goal for formalization is to define:
 - stable inputs
 - stable outputs
 - explicit configuration contracts

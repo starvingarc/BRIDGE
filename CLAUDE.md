@@ -12,7 +12,7 @@ The intended end-to-end BRIDGE pipeline has three steps:
 Current repository scope for **v1**:
 - formal package code for Step 2
 - formal package code for Step 3
-- documentation that explains how Step 1 fits into the full architecture without presenting it as already released production logic
+- documentation that explains how Step 1 fits into the full architecture
 
 ## Code Organization Principles
 
@@ -23,8 +23,8 @@ Current repository scope for **v1**:
 - `.claude/skills` provides repository-local coding-agent guidance.
 
 Interpretation rule:
-- Step 1 may be documented in `docs/`, but it must not be advertised as implemented production code unless formalized.
-- Step 2 and Step 3 may continue to evolve as public package modules because they already have stable code structure.
+- Step 1 lives in `docs/` as upstream architecture and interface roadmap.
+- Step 2 and Step 3 evolve as public package modules because they already have stable code structure.
 
 ## What May Enter the Formal Codebase
 
@@ -35,13 +35,13 @@ Allowed content includes:
 - testable modules
 - stable wrappers around query loading, scoring, serialization, and reporting
 
-## What Must Stay Out for Now
+## Companion Materials
 
-Do not place the following directly into the formal package until standardized:
+Keep the following outside the formal package until they have stable contracts:
 - `drafts`-style exploratory notebooks
 - thesis-only plotting scripts
-- provisional analysis fragments without stable I/O contracts
-- unpublished ad hoc code that has not been documented or tested
+- provisional analysis fragments
+- unpublished ad hoc code awaiting documentation and verification
 
 ## Contribution Rules
 
@@ -49,23 +49,23 @@ When adding new work:
 1. First classify it as either formal workflow code or exploratory extension.
 2. If it belongs to the formal workflow, place it in `src/bridge`.
 3. If it is exploratory, document it outside the formal package first.
-4. Do not move notebook logic into core modules without defining stable interfaces.
+4. Move notebook logic into core modules after defining stable interfaces.
 
 ## Output and Naming Rules
 
 - Keep output contracts explicit and documented.
 - Prefer stable directory and file naming over notebook-local conventions.
-- Model binaries should not be committed unless they are intentionally part of a release-artifact strategy.
+- Commit model binaries when they are intentionally part of a release-artifact strategy.
 - Public repository terminology should remain consistent with the three-step BRIDGE workflow.
 
 ## Thesis-to-Code Alignment
 
 The repository should remain legible to a reader who comes from the thesis:
-- Step 1 in the thesis corresponds to reference construction and whole-brain pre-screening and is currently documented as future formalization work.
+- Step 1 in the thesis corresponds to reference construction and whole-brain pre-screening and is documented as interface roadmap work.
 - Step 2 in the thesis corresponds to the `identity` package.
 - Step 3 in the thesis corresponds to the `cls` package plus shared output and workflow layers.
 
-If a new implementation choice makes the thesis-to-code mapping less clear, document the mapping explicitly instead of relying on internal context.
+If a new implementation choice changes the thesis-to-code mapping, document the mapping explicitly.
 
 ## Migration Rules
 

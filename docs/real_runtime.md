@@ -1,6 +1,6 @@
 # Runtime Notes
 
-This document describes the intended runtime model for BRIDGE without embedding deployment-specific infrastructure details.
+This document describes the intended runtime model for BRIDGE in infrastructure-neutral terms.
 
 ## Runtime Model
 
@@ -21,5 +21,5 @@ Typical artifact groups include:
 ## Reproducibility Notes
 
 - Runtime configuration should be explicit and file-based.
-- Reporting should be able to consume precomputed artifacts without forcing recomputation.
+- Reporting can consume precomputed artifacts and reuse existing workflow outputs.
 - Environment-specific paths and operational deployment details should be maintained outside the public repository.

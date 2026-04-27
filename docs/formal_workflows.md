@@ -7,7 +7,7 @@ BRIDGE follows a three-step conceptual pipeline:
 - **Step 2**: identity assessment and candidate selection
 - **Step 3**: CLS-based concordance scoring, reporting, and visualization
 
-This file explains which parts are already formalized in the public repository and which parts remain planned.
+This file explains the current public package surface and how it maps onto the full BRIDGE architecture.
 
 ## What Is Formalized in BRIDGE v1
 
@@ -24,7 +24,7 @@ The public repository is intended to present BRIDGE as software:
 - installable from GitHub
 - usable through a CLI
 - configured through public templates
-- documented as a workflow package rather than an internal lab harness
+- documented as a workflow package for external readers and coding agents
 
 ## Executable Entrypoints
 
@@ -34,10 +34,10 @@ BRIDGE v1 exposes workflow-level commands rather than component-level CLI comman
 - `bridge report summarize --config <yaml>`
 - `bridge report summarize-batch --config-list <yaml>`
 
-The current execution model is intentionally conservative:
-- Step 1 is documented but not executable
-- Step 2 is executable as a formal workflow
-- Step 3 is executable as a formal workflow and reporting layer
+The current execution model centers on:
+- Step 1 as documented upstream architecture
+- Step 2 as a formal workflow
+- Step 3 as a formal workflow and reporting layer
 
 ## Configuration Contract
 
@@ -58,18 +58,18 @@ Important semantics:
 - `cls` defines enabled Step 3 components and component-specific settings
 - `report` defines summary output filenames and optional CLS weights
 
-For real server-backed runs, BRIDGE also supports config-list driven multi-dataset report generation through `bridge report summarize-batch`.
+For multi-run analyses, BRIDGE also supports config-list driven report generation through `bridge report summarize-batch`.
 
 ## Step 1 Status
 
-Step 1 is part of the intended BRIDGE architecture, but it is **not yet formalized in this repository as released workflow code**.
+Step 1 is the upstream reference-building layer in the BRIDGE architecture.
 
 In thesis terms, Step 1 corresponds to:
 - reference atlas construction
 - integration of embryonic brain data into a biologically grounded reference space
 - whole-brain pre-screening before target-specific evaluation
 
-In repository terms, Step 1 is currently represented by roadmap and scope documentation rather than by a released package module.
+In repository terms, Step 1 is represented by roadmap and scope documentation while its stable package interface is being defined.
 
 ## Step 2 Status
 
@@ -98,7 +98,7 @@ In the current phase, the report layer consumes both:
 
 This means reporting now spans thesis Step 2 outputs plus Step 3 outputs rather than only listing CLS component scores.
 
-The public validation surface should remain smoke-oriented and package-oriented. Full internal validation may exist outside the public package tree.
+The public validation surface is smoke-oriented and package-oriented. Full scientific validation can be maintained in deployment or development environments.
 
 ## Why the Distinction Matters
 
@@ -106,4 +106,4 @@ The repository intentionally distinguishes:
 - the **full conceptual BRIDGE pipeline**
 - the **subset of that pipeline already formalized in public package code**
 
-This avoids implying that Step 1 is already productionized while still keeping the repository aligned with the thesis logic that motivated the codebase.
+This keeps the repository aligned with the thesis logic while making the released software surface easy to identify.

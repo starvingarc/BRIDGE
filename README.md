@@ -6,15 +6,15 @@ BRIDGE is an open-source research software package for evaluating in vitro cell 
 
 ## What BRIDGE Does
 
-BRIDGE currently formalizes the released parts of a three-step workflow:
+BRIDGE organizes a three-step workflow:
 - **Step 1**: reference construction and whole-brain pre-screening
 - **Step 2**: target-specific identity assessment and candidate selection
 - **Step 3**: CLS-based concordance scoring and report generation
 
-Current public package scope:
-- Step 2 is released as formal package code
-- Step 3 is released as formal package code
-- Step 1 remains documented architecture and is not yet released as executable package code
+Current package surface:
+- Step 2 is available as formal package code
+- Step 3 is available as formal package code
+- Step 1 is documented as the upstream reference-building architecture
 
 ## Installation
 
@@ -61,13 +61,13 @@ Edit `my-run.yaml` for your own paths and workflow parameters, then inspect the 
 bridge --help
 ```
 
-Validate a Step 2 workflow config without running the full workflow:
+Inspect a Step 2 workflow plan:
 
 ```bash
 bridge identity run --config my-run.yaml --dry-run
 ```
 
-Validate a Step 3 workflow config without running the full workflow:
+Inspect a Step 3 workflow plan:
 
 ```bash
 bridge cls run --config my-run.yaml --dry-run
@@ -88,13 +88,13 @@ Current workflow-level commands:
 - `bridge report summarize`
 - `bridge report summarize-batch`
 
-These commands expose the released Step 2 and Step 3 package surface without introducing a Step 1 execution command before that part of the workflow is formalized.
+These commands expose the Step 2 and Step 3 package surface. Step 1 is represented in the documentation as the upstream reference-building stage.
 
 ## Workflow Model
 
 ### Step 1
 
-Reference construction and whole-brain pre-screening define the in vivo coordinate system that anchors BRIDGE. This is part of the conceptual architecture and is documented in the repository, but it is not yet released as executable package code.
+Reference construction and whole-brain pre-screening define the in vivo coordinate system that anchors BRIDGE. The repository documents this upstream architecture and its interface with downstream evaluation.
 
 ### Step 2
 
@@ -133,10 +133,10 @@ Current public scope:
 - workflow and concept documentation
 - skill-interface documentation
 
-Not currently part of the released package surface:
-- exploratory notebooks from earlier research drafts
-- unpublished analysis fragments
-- Step 1 executable implementation
+Companion materials:
+- exploratory notebooks from earlier research drafts live outside the public package surface
+- provisional analysis fragments should mature through documented interfaces before entering `src/bridge`
+- Step 1 will be promoted when its inputs, outputs, and configuration contract are stable
 
 Roadmap:
 - continue formalizing BRIDGE as workflow-oriented open-source software
@@ -166,7 +166,7 @@ BRIDGE/
 
 Directory meanings:
 - `src/bridge/`: formal Python package
-- `configs/`: public config templates, smoke fixtures, and environment files
+- `configs/`: public config templates and environment files
 - `models/`: model metadata and model-related notes
 - `notebooks/`: placeholder area for formal notebooks and examples
 - `docs/`: workflow, concept, and roadmap documentation
