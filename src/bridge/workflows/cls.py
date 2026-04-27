@@ -150,6 +150,8 @@ def run_cls_workflow(config: BridgeRunConfig, dry_run: bool = False) -> dict:
         if config.paths.ref_sceniclike_h5ad is None or config.paths.regulons_json is None:
             raise WorkflowValidationError("Component F requires 'paths.ref_sceniclike_h5ad' and 'paths.regulons_json'.")
         ref_sceniclike = sc.read_h5ad(config.paths.ref_sceniclike_h5ad)
+        f_kwargs = dict(config.cls.f)
+        f_kwargs.setdefault("save_qry_auc", True)
         _, _, payload = compute_F_and_save(
             adata_ref_sceniclike=ref_sceniclike,
             regulons_json_path=str(config.paths.regulons_json),
@@ -157,7 +159,7 @@ def run_cls_workflow(config: BridgeRunConfig, dry_run: bool = False) -> dict:
             outdir=str(config.paths.cls_output_dir),
             dataset_id=config.dataset.id,
             batch_key=config.cls.batch_key,
-            **config.cls.f,
+            **f_kwargs,
         )
         results["F"] = payload
 

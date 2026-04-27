@@ -45,6 +45,17 @@ def _report_output_paths(config: BridgeRunConfig) -> dict[str, Path]:
     }
 
 
+def _batch_base_dir(config_batch: BridgeConfigBatch) -> Path:
+    configs = [load_config(path) for path in config_batch.config_paths]
+    report_dirs = {cfg.paths.report_output_dir.resolve() for cfg in configs}
+    if len(report_dirs) != 1:
+        raise WorkflowValidationError(
+            "Batch reporting expects all configs to share the same report_output_dir. "
+            f"Observed: {', '.join(sorted(str(path) for path in report_dirs))}"
+        )
+    return next(iter(report_dirs))
+
+
 def _read_h5ad_obs_summary(bdata_path: Path, candidate_col: str, p_mean_col: str, p_std_col: str, p_cal_col: str) -> dict[str, Any]:
     try:
         from anndata import read_h5ad
@@ -245,10 +256,12 @@ def run_report_summary(config: BridgeRunConfig, dry_run: bool = False) -> dict:
     summary_df.to_csv(outputs["summary_csv"], index=False)
     manifest = DatasetReportManifest(
         dataset_id=config.dataset.id,
+        dataset_prefix=config.dataset.prefix,
         target_class=config.identity.target_class,
         enabled_components=config.cls.enabled_components,
         summary_csv=str(outputs["summary_csv"]),
         weighted_total_cls=weighted_total,
+        step2=record.step2,
         step2_artifacts={name: str(path) for name, path in _identity_paths(config).items()},
         component_payloads={comp: str(_component_json_path(config, comp)) for comp in config.cls.enabled_components},
         component_details=step3_details,
@@ -265,8 +278,7 @@ def run_report_summary(config: BridgeRunConfig, dry_run: bool = False) -> dict:
 
 
 def _batch_output_paths(config_batch: BridgeConfigBatch) -> dict[str, Path]:
-    first_config = load_config(config_batch.config_paths[0])
-    base = first_config.paths.report_output_dir / "combined"
+    base = _batch_base_dir(config_batch) / "combined"
     return {
         "base_dir": base,
         "combined_summary_csv": base / "combined_summary.csv",
@@ -308,10 +320,12 @@ def run_report_summary_batch(config_batch: BridgeConfigBatch, dry_run: bool = Fa
         summary_df.to_csv(outputs["summary_csv"], index=False)
         manifest = DatasetReportManifest(
             dataset_id=config.dataset.id,
+            dataset_prefix=config.dataset.prefix,
             target_class=config.identity.target_class,
             enabled_components=config.cls.enabled_components,
             summary_csv=str(outputs["summary_csv"]),
             weighted_total_cls=weighted_total,
+            step2=record.step2,
             step2_artifacts={name: str(path) for name, path in _identity_paths(config).items()},
             component_payloads={comp: str(_component_json_path(config, comp)) for comp in config.cls.enabled_components},
             component_details=step3_details,

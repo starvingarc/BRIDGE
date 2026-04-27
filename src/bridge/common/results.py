@@ -45,7 +45,7 @@ class Step2Summary:
     hnorm_mean: float | None = None
     hnorm_median: float | None = None
 
-    def to_row(self) -> dict[str, Any]:
+    def to_payload(self) -> dict[str, Any]:
         return {
             "dataset_id": self.dataset_id,
             "target_class": self.target_class,
@@ -68,6 +68,9 @@ class Step2Summary:
             "hnorm_mean": self.hnorm_mean,
             "hnorm_median": self.hnorm_median,
         }
+
+    def to_row(self) -> dict[str, Any]:
+        return self.to_payload()
 
 
 @dataclass(frozen=True)
@@ -114,10 +117,12 @@ class DatasetReportRecord:
 @dataclass(frozen=True)
 class DatasetReportManifest:
     dataset_id: str
+    dataset_prefix: str
     target_class: str
     enabled_components: list[str]
     summary_csv: str
     weighted_total_cls: float | None
+    step2: Step2Summary
     step2_artifacts: dict[str, str]
     component_payloads: dict[str, str]
     component_details: list[Step3ComponentDetail]
@@ -125,10 +130,12 @@ class DatasetReportManifest:
     def to_payload(self) -> dict[str, Any]:
         return {
             "dataset_id": self.dataset_id,
+            "dataset_prefix": self.dataset_prefix,
             "target_class": self.target_class,
             "enabled_components": self.enabled_components,
             "summary_csv": self.summary_csv,
             "weighted_total_cls": self.weighted_total_cls,
+            "step2": self.step2.to_payload(),
             "step2_artifacts": self.step2_artifacts,
             "component_payloads": self.component_payloads,
             "component_details": [component.to_payload() for component in self.component_details],

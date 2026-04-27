@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -308,4 +310,18 @@ def compute_E_and_save(
     meta["gene_sets"] = {"G_dev": extra["G_dev"], "G_cycle": extra["G_cycle"]}
     result = build_component_result("E", score_df, E_weighted, meta)
     owner = adata_org if write_back_uns else None
-    return save_component_result(result, outdir=outdir, dataset_id=dataset_id, owner_adata=owner, table_key="branch_table")
+    saved = save_component_result(result, outdir=outdir, dataset_id=dataset_id, owner_adata=owner, table_key="branch_table")
+
+    save_dir = os.path.join(outdir, dataset_id, "E")
+    os.makedirs(save_dir, exist_ok=True)
+    score_df.to_csv(os.path.join(save_dir, "component_E_branch.csv"), index=False)
+
+    gene_df = pd.DataFrame(
+        {
+            "gene": diag["rho_genes"],
+            "rho": diag["rho_values"],
+            "branch": diag["rho_branch"],
+        }
+    )
+    gene_df.to_csv(os.path.join(save_dir, "component_E_genes.csv"), index=False)
+    return saved
