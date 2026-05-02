@@ -82,18 +82,18 @@ Required input:
 - a writable Step1 output directory
 
 Agent responsibility:
+- generate or update a Step1 notebook that imports `from bridge.prescreen import prescreen`
 - read and validate the `.h5ad` input
-- align query variables to the whole-brain reference model
-- run whole-brain prescreening
+- call `prescreen(adata, ref_model_dir=..., output_dir=..., prefix=...)`
 - annotate cells as `RG_candidate` or `non_RG`
-- save the full prescreened object and the RG candidate subset
+- save the full prescreened object, RG candidate subset, probability table, and summary JSON through the API
 - produce a simple executed notebook or run log when notebook scaffolding is available
 
 Expected current artifacts:
-- `step1_prescreened.h5ad`
-- `step1_rg_candidates.h5ad`
-- probability or prediction table
-- simple artifact summary
+- `<prefix>.step1_prescreened.h5ad`
+- `<prefix>.step1_rg_candidates.h5ad`
+- `<prefix>.step1_scanvi_probs.csv`
+- `<prefix>.step1_summary.json`
 
 Important interpretation rule:
 - Step1 is in vitro prescreening, not a held-out labeled test set. Do not report accuracy, recall, confusion matrices, or other supervised test-set metrics for this step.

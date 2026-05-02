@@ -3,7 +3,7 @@
 ## Conceptual BRIDGE Pipeline
 
 BRIDGE follows a three-step conceptual pipeline:
-- **Step 1**: reference construction and whole-brain pre-screening
+- **Step 1**: whole-brain pre-screening, with upstream reference construction as model-building context
 - **Step 2**: identity assessment and candidate selection
 - **Step 3**: CLS-based concordance scoring, reporting, and visualization
 
@@ -12,10 +12,12 @@ This file explains the current public package surface and how it maps onto the f
 ## What Is Formalized in BRIDGE v1
 
 The current public repository formalizes:
+- **Step 1**: notebook-callable whole-brain prescreening
 - **Step 2**: Identity Assessment
 - **Step 3**: CLS A-F, result packaging, and reporting scaffolding
 
 More concretely:
+- `src/bridge/prescreen` provides the Step 1 notebook-callable prescreening layer
 - `src/bridge/identity` provides the Step 2 package layer
 - `src/bridge/cls` provides the Step 3 scoring layer
 - `src/bridge/io` and `src/bridge/workflows` support packaging and workflow organization
@@ -35,7 +37,7 @@ BRIDGE v1 exposes workflow-level commands rather than component-level CLI comman
 - `bridge report summarize-batch --config-list <yaml>`
 
 The current execution model centers on:
-- Step 1 as documented upstream architecture
+- Step 1 as notebook-callable whole-brain prescreening API
 - Step 2 as a formal workflow
 - Step 3 as a formal workflow and reporting layer
 
@@ -69,7 +71,7 @@ In thesis terms, Step 1 corresponds to:
 - integration of embryonic brain data into a biologically grounded reference space
 - whole-brain pre-screening before target-specific evaluation
 
-In repository terms, Step 1 is represented by roadmap and scope documentation while its stable package interface is being defined.
+In repository terms, Step 1 prescreening is represented by `src/bridge/prescreen`; upstream reference construction remains model-building context.
 
 ## Step 2 Status
 

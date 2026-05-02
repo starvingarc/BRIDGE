@@ -1,6 +1,6 @@
 # BRIDGE Roadmap
 
-This roadmap tracks the public agent-first BRIDGE demo path. It complements the formal package roadmap: Step2 and Step3 already have package code, while Step0 and Step1 are being formalized through documentation, skills, models, and notebook/report scaffolding.
+This roadmap tracks the public agent-first BRIDGE demo path. It complements the formal package roadmap: Step1 prescreening now has a notebook-callable package API, Step2 and Step3 have package/CLI workflows, and Step0 remains agent-guided setup.
 
 ## Phase 1: Agent-First Documentation and Step Skills
 
@@ -12,7 +12,7 @@ Planned deliverables:
 - repository-local skills for `bridge-step0`, `bridge-step1`, `bridge-step2`, and `bridge-step3`
 - supporting docs for models, notebooks, and skill behavior
 
-Status: in progress.
+Status: agent docs and skills are present; Step1 is being connected as notebook-callable package code.
 
 ## Phase 2: Model Assets and Step0 Validation
 

@@ -3,9 +3,9 @@
 Step 1 covers reference construction and upstream whole-brain pre-screening in the full BRIDGE architecture.
 
 Current status:
-- interface design
-- output contract design
-- package integration planning
+- notebook-callable prescreening API in `src/bridge/prescreen`
+- output contract design for prescreened h5ad, RG candidate h5ad, probability CSV, and summary JSON
+- plotting and interpretation templates remain future work
 
 The goal for formalization is to define:
 - stable inputs

@@ -28,20 +28,39 @@ Codex:
 
 ## Agent Responsibilities
 
-1. Validate that the input `.h5ad` exists and can be read in the active environment.
-2. Validate the model path from the config.
-3. Align query variables to the reference model as required by the model loader.
-4. Run whole-brain prescreening.
-5. Annotate cells with Step1 prediction columns and `RG_candidate` or `non_RG` status.
-6. Save the full prescreened object and the RG candidate subset.
+1. Prefer notebook-callable package code over a CLI for Step1.
+2. Generate or update a Step1 notebook that imports `from bridge.prescreen import prescreen`.
+3. Validate that the input `.h5ad` exists and can be read in the active environment.
+4. Validate the whole-brain reference model path.
+5. Call `prescreen(adata, ref_model_dir=..., output_dir=..., prefix=...)` with explicit parameters.
+6. Save the full prescreened object, RG candidate subset, probability table, and summary JSON through the API.
 7. Create a simple run summary or notebook skeleton when notebook scaffolding is available.
+
+## Notebook API
+
+```python
+from bridge.prescreen import prescreen
+
+result = prescreen(
+    adata,
+    ref_model_dir="./models/whole_brain_ref_model",
+    rg_label="Radial Glia",
+    counts_layer="counts",
+    train_query=False,
+    output_dir="./outputs/prescreen",
+    prefix="demo_prefix",
+)
+
+bdata = result.adata
+summary = result.summary
+```
 
 ## Expected Outputs
 
-- `step1_prescreened.h5ad`
-- `step1_rg_candidates.h5ad`
-- prediction or probability table
-- simple artifact summary
+- `<prefix>.step1_prescreened.h5ad`
+- `<prefix>.step1_rg_candidates.h5ad`
+- `<prefix>.step1_scanvi_probs.csv`
+- `<prefix>.step1_summary.json`
 
 ## Interpretation Rule
 

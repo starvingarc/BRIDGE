@@ -5,8 +5,8 @@ This repository is intentionally structured so that a reader can map the thesis 
 ## High-Level Mapping
 
 - **Thesis Step 1**: reference construction and whole-brain pre-screening
-  - repository status: documented as planned work
-  - repository location: roadmap and scope documents in `docs/`
+  - repository status: whole-brain prescreening is available as notebook-callable package code; upstream reference construction remains model-building context
+  - repository location: `src/bridge/prescreen` plus roadmap and scope documents in `docs/`
 
 - **Thesis Step 2**: identity assessment and candidate selection
   - repository status: formalized in BRIDGE v1
@@ -24,7 +24,7 @@ The released execution layer mirrors the thesis structure:
 - `bridge report summarize` -> thesis Step 3 reporting/output packaging
 - `bridge report summarize-batch` -> multi-dataset Step 2 + Step 3 reporting wrapper
 
-Step 1 is documented as the upstream reference-building stage. The current CLI focuses on the released Step 2 and Step 3 execution surface.
+Step 1 prescreening is exposed as a notebook-callable Python API. The CLI focuses on the released Step 2 and Step 3 execution surface.
 
 ## Why CLS Appears in Step 3
 
@@ -36,10 +36,10 @@ That is why CLS belongs to Step 3 rather than Step 2:
 
 ## How Step 1 Is Represented
 
-The thesis describes Step 1 as part of the full workflow. The public repository represents it through architecture and roadmap documents while the package interface is being defined:
-- stable input and output contracts
-- reference-construction configuration
-- downstream handoff into Step 2 and Step 3
+The thesis describes Step 1 as part of the full workflow. The public repository separates executable prescreening from upstream model construction:
+- `from bridge.prescreen import prescreen` for notebook execution
+- stable Step1 artifact outputs for downstream Step2
+- reference construction and model preparation as setup/model-building context
 
 ## Reading the Repository Correctly
 
@@ -50,7 +50,7 @@ If you are reading BRIDGE from the perspective of the thesis:
 - use `src/bridge/cls` for the released Step 3 implementation
 
 If you are reading BRIDGE from the perspective of the code:
-- treat Step 1 as architectural context and interface roadmap
+- treat Step 1 prescreening as notebook-callable package code, with reference construction as setup/model-building context
 - treat Step 2 and Step 3 as the actual released v1 package surface
 
 Reporting note:

@@ -5,7 +5,7 @@
 BRIDGE is an open-source research software package and agent-guided workflow for evaluating in vitro cell products against in vivo developmental references.
 
 BRIDGE is designed to be usable in two ways:
-- as a Python package and CLI for formal Step 2 and Step 3 workflows
+- as a Python package for notebook-callable Step1 prescreening plus CLI workflows for formal Step 2 and Step 3
 - as an agent-first demo workflow where a first-time user asks Claude Code or Codex to run each step from repository-local guidance
 
 ## Agent-First Quick Start
@@ -52,7 +52,7 @@ Codex:
 @bridge-step1 prescreen the h5ad file ./my-data/organoid.h5ad using ./bridge-demo/bridge.run.yaml and write outputs to ./bridge-demo/runs/demo_dataset/step1
 ```
 
-Step1 screens an in vitro `.h5ad` dataset against the whole-brain reference model and marks cells as `RG_candidate` or `non_RG`. Because this is an in vitro prescreening step rather than a labeled test set, documentation and reports should not present accuracy, recall, or confusion-matrix metrics here.
+Step1 screens an in vitro `.h5ad` dataset against the whole-brain reference model and marks cells as `RG_candidate` or `non_RG`. In notebooks, agents should call `from bridge.prescreen import prescreen` and then `prescreen(adata, ref_model_dir=...)`. Because this is an in vitro prescreening step rather than a labeled test set, documentation and reports should not present accuracy, recall, or confusion-matrix metrics here.
 
 ### 4. Step2: mDA progenitor identity assessment
 
@@ -99,10 +99,11 @@ BRIDGE organizes a three-step biological workflow plus a setup step:
 - **Step3**: CLS-based concordance scoring and report generation
 
 Current package surface:
-- Step2 is available as formal package code
-- Step3 is available as formal package code
-- Step1 is documented as the upstream reference-building and prescreening architecture
-- Step0 and Step1 agent guidance are being formalized through repository-local skills and roadmap docs
+- Step1 whole-brain prescreening is available as a notebook-callable Python API
+- Step2 is available as formal package code and CLI workflow
+- Step3 is available as formal package code and CLI workflow
+- Step0 remains agent-guided setup and model/config initialization
+- upstream reference construction remains roadmap/model-building context
 
 Polished per-step plotting functions, rich biological interpretation text, and publication-ready executed notebooks are roadmap items. The current documentation describes the intended artifact flow without claiming those visual/report layers are complete.
 
@@ -139,7 +140,7 @@ Current workflow-level commands:
 - `bridge report summarize`
 - `bridge report summarize-batch`
 
-These commands expose the Step2 and Step3 package surface. Step1 is represented in documentation and agent guidance as the upstream prescreening stage.
+These commands expose the Step2 and Step3 package surface. Step1 is exposed as a notebook-callable API rather than a CLI command.
 
 Start from the minimal editable workflow template:
 
