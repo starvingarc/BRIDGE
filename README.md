@@ -2,27 +2,111 @@
 
 **Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation**
 
-BRIDGE is an open-source research software package for evaluating in vitro cell products against in vivo developmental references.
+BRIDGE is an open-source research software package and agent-guided workflow for evaluating in vitro cell products against in vivo developmental references.
+
+BRIDGE is designed to be usable in two ways:
+- as a Python package and CLI for formal Step 2 and Step 3 workflows
+- as an agent-first demo workflow where a first-time user asks Claude Code or Codex to run each step from repository-local guidance
+
+## Agent-First Quick Start
+
+The recommended public demo path is to let an agent install and operate BRIDGE from this repository. In a demo video, the user can copy the prompts below directly from GitHub.
+
+### 1. Install BRIDGE
+
+Send this to Claude Code, Codex, or a similar coding agent:
+
+```text
+Help me install https://github.com/starvingarc/BRIDGE
+```
+
+The agent should clone or install BRIDGE, inspect the repository guidance, and prepare to run the step skills below.
+
+### 2. Step0: initialize environment, models, and config
+
+Claude Code:
+
+```text
+/bridge-step0 initialize BRIDGE in ./bridge-demo using env bridge
+```
+
+Codex:
+
+```text
+@bridge-step0 initialize BRIDGE in ./bridge-demo using env bridge
+```
+
+Step0 should create or validate the `bridge` conda environment, install BRIDGE, verify model assets under `models/`, and create an initial run config and output directory.
+
+### 3. Step1: whole-brain prescreening
+
+Claude Code:
+
+```text
+/bridge-step1 prescreen the h5ad file ./my-data/organoid.h5ad using ./bridge-demo/bridge.run.yaml and write outputs to ./bridge-demo/runs/demo_dataset/step1
+```
+
+Codex:
+
+```text
+@bridge-step1 prescreen the h5ad file ./my-data/organoid.h5ad using ./bridge-demo/bridge.run.yaml and write outputs to ./bridge-demo/runs/demo_dataset/step1
+```
+
+Step1 screens an in vitro `.h5ad` dataset against the whole-brain reference model and marks cells as `RG_candidate` or `non_RG`. Because this is an in vitro prescreening step rather than a labeled test set, documentation and reports should not present accuracy, recall, or confusion-matrix metrics here.
+
+### 4. Step2: mDA progenitor identity assessment
+
+Claude Code:
+
+```text
+/bridge-step2 identify mDA progenitor candidates from ./bridge-demo/runs/demo_dataset/step1 using ./bridge-demo/bridge.run.yaml
+```
+
+Codex:
+
+```text
+@bridge-step2 identify mDA progenitor candidates from ./bridge-demo/runs/demo_dataset/step1 using ./bridge-demo/bridge.run.yaml
+```
+
+Step2 consumes the Step1 RG candidate subset and runs target-specific identity assessment for mDA progenitor candidates.
+
+### 5. Step3: CLS scoring and report generation
+
+Claude Code:
+
+```text
+/bridge-step3 score CLS for ./bridge-demo/runs/demo_dataset/step2 using ./bridge-demo/bridge.run.yaml
+```
+
+Codex:
+
+```text
+@bridge-step3 score CLS for ./bridge-demo/runs/demo_dataset/step2 using ./bridge-demo/bridge.run.yaml
+```
+
+Step3 consumes Step2 artifacts, runs CLS components, and summarizes the final BRIDGE scoring outputs.
+
+Command names are lowercase for agent compatibility. The project brand remains **BRIDGE**.
+
+See [docs/agent_demo.md](docs/agent_demo.md) for the full demo script and [docs/roadmap.md](docs/roadmap.md) for the staged roadmap.
 
 ## What BRIDGE Does
 
-BRIDGE organizes a three-step workflow:
-- **Step 1**: reference construction and whole-brain pre-screening
-- **Step 2**: target-specific identity assessment and candidate selection
-- **Step 3**: CLS-based concordance scoring and report generation
+BRIDGE organizes a three-step biological workflow plus a setup step:
+- **Step0**: environment, model, and configuration initialization
+- **Step1**: whole-brain reference prescreening for RG-like candidates
+- **Step2**: target-specific identity assessment and mDA progenitor candidate selection
+- **Step3**: CLS-based concordance scoring and report generation
 
 Current package surface:
-- Step 2 is available as formal package code
-- Step 3 is available as formal package code
-- Step 1 is documented as the upstream reference-building architecture
+- Step2 is available as formal package code
+- Step3 is available as formal package code
+- Step1 is documented as the upstream reference-building and prescreening architecture
+- Step0 and Step1 agent guidance are being formalized through repository-local skills and roadmap docs
 
-## Installation
+Polished per-step plotting functions, rich biological interpretation text, and publication-ready executed notebooks are roadmap items. The current documentation describes the intended artifact flow without claiming those visual/report layers are complete.
 
-### Install with a coding agent
-
-Send your coding agent (Claude Code, Codex, or a similar tool) this repository and ask it to install BRIDGE.
-
-### Manual installation
+## Manual Installation
 
 Install directly from GitHub:
 
@@ -47,39 +131,6 @@ pip install -e .[regulon]
 pip install -e .[notebook]
 ```
 
-## Quick Start
-
-Start from the minimal editable workflow template:
-
-```bash
-cp configs/bridge.minimal.yaml my-run.yaml
-```
-
-Edit `my-run.yaml` for your own paths and workflow parameters, then inspect the CLI:
-
-```bash
-bridge --help
-```
-
-Inspect a Step 2 workflow plan:
-
-```bash
-bridge identity run --config my-run.yaml --dry-run
-```
-
-Inspect a Step 3 workflow plan:
-
-```bash
-bridge cls run --config my-run.yaml --dry-run
-```
-
-Run report generation from existing BRIDGE artifacts:
-
-```bash
-bridge report summarize --config my-run.yaml
-bridge report summarize-batch --config-list <config-list.yaml>
-```
-
 ## CLI Overview
 
 Current workflow-level commands:
@@ -88,28 +139,16 @@ Current workflow-level commands:
 - `bridge report summarize`
 - `bridge report summarize-batch`
 
-These commands expose the Step 2 and Step 3 package surface. Step 1 is represented in the documentation as the upstream reference-building stage.
+These commands expose the Step2 and Step3 package surface. Step1 is represented in documentation and agent guidance as the upstream prescreening stage.
 
-## Workflow Model
+Start from the minimal editable workflow template:
 
-### Step 1
-
-Reference construction and whole-brain pre-screening define the in vivo coordinate system that anchors BRIDGE. The repository documents this upstream architecture and its interface with downstream evaluation.
-
-### Step 2
-
-Identity Assessment refines target candidates under a more specific reference. The current package includes:
-- query model loading
-- probability handling and calibration
-- uncertainty estimation
-- entropy-based and threshold-based candidate selection
-
-### Step 3
-
-Step 3 evaluates developmental concordance after candidate selection. The current package includes:
-- CLS component A-F
-- structured report generation
-- per-dataset and batch-level summary packaging
+```bash
+cp configs/bridge.minimal.yaml my-run.yaml
+bridge --help
+bridge identity run --config my-run.yaml --dry-run
+bridge cls run --config my-run.yaml --dry-run
+```
 
 ## Skill Interface
 
@@ -121,27 +160,12 @@ See:
 
 Current public skills:
 - `bridge`
+- `bridge-step0`
+- `bridge-step1`
+- `bridge-step2`
+- `bridge-step3`
 - `bridge-identity`
 - `bridge-cls`
-
-## Scope and Roadmap
-
-Current public scope:
-- formal Step 2 package code
-- formal Step 3 package code
-- config templates
-- workflow and concept documentation
-- skill-interface documentation
-
-Companion materials:
-- exploratory notebooks from earlier research drafts live outside the public package surface
-- provisional analysis fragments should mature through documented interfaces before entering `src/bridge`
-- Step 1 will be promoted when its inputs, outputs, and configuration contract are stable
-
-Roadmap:
-- continue formalizing BRIDGE as workflow-oriented open-source software
-- bring Step 1 into the same execution model once its interfaces stabilize
-- keep tightening performance, output contracts, and software presentation
 
 ## Repository Layout
 
@@ -167,8 +191,8 @@ BRIDGE/
 Directory meanings:
 - `src/bridge/`: formal Python package
 - `configs/`: public config templates and environment files
-- `models/`: model metadata and model-related notes
-- `notebooks/`: placeholder area for formal notebooks and examples
-- `docs/`: workflow, concept, and roadmap documentation
+- `models/`: public model metadata and model-asset entry point
+- `notebooks/`: placeholder area for formal notebook entrypoints and examples
+- `docs/`: workflow, demo, concept, and roadmap documentation
 - `.github/`: community files and CI
-- `.claude/skills/`: repository-local skill interface
+- `.claude/skills/`: repository-local agent skill interface
