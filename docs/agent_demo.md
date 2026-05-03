@@ -125,8 +125,8 @@ Required input:
 
 Agent responsibility:
 - consume the Step1 RG candidate subset
-- run `from bridge.identity import identity_assessment` in the Step2 notebook
-- call `identity_assessment(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)` and preserve the current Step2 artifact contract
+- run `from bridge.identity import identify` in the Step2 notebook
+- call `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)` and preserve the current Step2 artifact contract
 - summarize candidate count and threshold metadata without overclaiming biological interpretation
 
 Expected current artifacts:
@@ -165,8 +165,8 @@ Required input:
 - component-specific assets required by selected components, such as embeddings or regulon assets
 
 Agent responsibility:
-- build `Step3Context` in the Step3 notebook
-- run selected `component_A(ctx)` through `component_F(ctx)`, or call `step3(ctx)` for the default full pass
+- build `CLSContext` in the Step3 notebook
+- run selected `component_A(ctx)` through `component_F(ctx)`, or call `score(ctx)` for the default full pass
 - preserve machine-readable output contracts
 - produce a simple final summary while plotting/report polish is still pending
 

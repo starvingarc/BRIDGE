@@ -39,4 +39,4 @@ def save_identity_results(
 
     bdata.write_h5ad(os.path.join(outdir, f"{prefix}.bdata_step2.h5ad"))
     adata_ref.write_h5ad(os.path.join(outdir, f"{prefix}.adata_ref_step2.h5ad"))
-    print(f"[identity_assessment] Saved outputs to: {outdir}")
+    print(f"[identify] Saved outputs to: {outdir}")

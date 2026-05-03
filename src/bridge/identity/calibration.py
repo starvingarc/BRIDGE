@@ -42,7 +42,7 @@ def calibrate_probs(probs_ref: pd.DataFrame, y_ref_series: pd.Series, probs_quer
     calibrators = fit_isotonic_per_class(probs_ref, y_ref_series.astype(str), class_names)
     probs_ref_cal = apply_calibrators(probs_ref.reindex(columns=class_names).fillna(0), calibrators)
     probs_query_cal = apply_calibrators(probs_query.reindex(columns=class_names).fillna(0), calibrators)
-    print("[identity_assessment] Calibration done.")
+    print("[identify] Calibration done.")
     return probs_ref_cal, probs_query_cal, calibrators
 
 

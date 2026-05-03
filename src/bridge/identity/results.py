@@ -41,8 +41,9 @@ class IdentitySelectionResult:
     thresholds: IdentityThresholds
     target_class: str
 
+
 @dataclass(frozen=True)
-class IdentityAssessmentResult:
+class IdentityResult:
     bdata: Any
     adata_ref: Any
     probabilities: IdentityProbabilities

@@ -9,22 +9,16 @@ def prescreen(*args, **kwargs):
     return _prescreen(*args, **kwargs)
 
 
-def identity_assessment(*args, **kwargs):
-    from bridge.identity.api import identity_assessment as _identity_assessment
+def identify(*args, **kwargs):
+    from bridge.identity.api import identify as _identify
 
-    return _identity_assessment(*args, **kwargs)
-
-
-def run_identity_assessment(*args, **kwargs):
-    from bridge.identity.api import run_identity_assessment as _run_identity_assessment
-
-    return _run_identity_assessment(*args, **kwargs)
+    return _identify(*args, **kwargs)
 
 
-def step3(*args, **kwargs):
-    from bridge.cls.api import step3 as _step3
+def score(*args, **kwargs):
+    from bridge.cls.api import score as _score
 
-    return _step3(*args, **kwargs)
+    return _score(*args, **kwargs)
 
 
-__all__ = ["identity_assessment", "load_config", "prescreen", "run_identity_assessment", "step3"]
+__all__ = ["identify", "load_config", "prescreen", "score"]

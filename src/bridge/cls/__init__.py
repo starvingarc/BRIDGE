@@ -1,15 +1,15 @@
 """CLS component package."""
 
 from bridge.cls.api import (
-    Step3Context,
-    Step3Result,
+    CLSContext,
+    CLSResult,
     component_A,
     component_B,
     component_C,
     component_D,
     component_E,
     component_F,
-    step3,
+    score,
 )
 
 _LAZY_EXPORTS = {
@@ -41,14 +41,14 @@ def __getattr__(name):
 
 
 __all__ = [
-    "Step3Context",
-    "Step3Result",
+    "CLSContext",
+    "CLSResult",
     "component_A",
     "component_B",
     "component_C",
     "component_D",
     "component_E",
     "component_F",
-    "step3",
+    "score",
     *_LAZY_EXPORTS.keys(),
 ]

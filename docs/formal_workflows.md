@@ -32,8 +32,8 @@ The public repository is intended to present BRIDGE as software:
 
 BRIDGE v1 exposes Step1-Step3 as notebook-callable APIs:
 - `from bridge.prescreen import prescreen`
-- `from bridge.identity import identity_assessment`
-- `from bridge.cls import Step3Context, component_A, component_B, component_C, component_D, component_E, component_F, step3`
+- `from bridge.identity import identify`
+- `from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score`
 
 The current execution model centers on:
 - Step 1 as notebook-callable whole-brain prescreening API

@@ -5,7 +5,7 @@ from typing import Any
 
 from bridge.identity.adapters import write_identity_outputs_to_obs
 from bridge.identity.calibration import build_identity_probabilities
-from bridge.identity.results import IdentityAssessmentResult, IdentityThresholds, IdentityUncertainty
+from bridge.identity.results import IdentityResult, IdentityThresholds, IdentityUncertainty
 from bridge.identity.runtime import (
     load_scanvi_ref_model,
     predict_soft,
@@ -18,7 +18,7 @@ from bridge.identity.serialization import save_identity_results
 from bridge.identity.uncertainty import ensemble_mean_std, predictive_entropy_norm, run_query_ensemble
 
 
-def run_identity_assessment(
+def assess_identity_probabilities(
     probs_ref_cal,
     probs_query_cal,
     probs_query_ensemble,
@@ -116,7 +116,7 @@ def build_identity_summary(
     }
 
 
-def identity_assessment(
+def identify(
     bdata,
     adata_ref,
     *,
@@ -138,8 +138,8 @@ def identity_assessment(
     seed: int = 0,
     output_dir: str | Path | None = None,
     prefix: str = "bridge",
-) -> IdentityAssessmentResult:
-    """Run Step2 target identity assessment on AnnData objects.
+) -> IdentityResult:
+    """Run target identity assessment on AnnData objects.
 
     This notebook-first entrypoint preserves the Step2 artifact contract while avoiding
     YAML/workflow orchestration. It expects a Step1 RG candidate query object and a
@@ -197,9 +197,9 @@ def identity_assessment(
         seed_base=seed,
     )
     if not ensemble_prob_list:
-        raise RuntimeError("Step2 identity assessment failed because the query ensemble produced no successful runs.")
+        raise RuntimeError("identity assessment failed because the query ensemble produced no successful runs.")
 
-    uncertainty, selection = run_identity_assessment(
+    uncertainty, selection = assess_identity_probabilities(
         probs_ref_cal=probabilities.probs_ref_cal,
         probs_query_cal=probabilities.probs_query_cal,
         probs_query_ensemble=ensemble_prob_list,
@@ -252,7 +252,7 @@ def identity_assessment(
         output_paths=output_paths,
     )
 
-    return IdentityAssessmentResult(
+    return IdentityResult(
         bdata=bdata_q,
         adata_ref=adata_ref,
         probabilities=probabilities,

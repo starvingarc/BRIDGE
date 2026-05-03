@@ -29,8 +29,8 @@ Codex:
 ## Agent Responsibilities
 
 1. Validate that required Step2 artifacts exist.
-2. Build `Step3Context` in the Step3 notebook.
-3. Run selected `component_A(ctx)` through `component_F(ctx)`, or call `step3(ctx)` for the default full pass.
+2. Build `CLSContext` in the Step3 notebook.
+3. Run selected `component_A(ctx)` through `component_F(ctx)`, or call `score(ctx)` for the default full pass.
 4. Save component-level JSON/detail tables plus `summary.csv` and `manifest.json`.
 5. Produce a simple final summary while polished plots and interpretation templates remain pending.
 

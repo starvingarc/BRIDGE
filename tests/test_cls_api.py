@@ -18,19 +18,22 @@ def test_cls_public_imports_do_not_force_runtime_dependencies():
 
     cls_pkg = importlib.import_module("bridge.cls")
 
-    assert callable(cls_pkg.step3)
-    assert cls_pkg.Step3Result.__name__ == "Step3Result"
+    assert callable(cls_pkg.score)
+    assert cls_pkg.CLSResult.__name__ == "CLSResult"
+    assert not hasattr(cls_pkg, "Step3Context")
+    assert not hasattr(cls_pkg, "Step3Result")
+    assert not hasattr(cls_pkg, "step3")
     assert "scvi" not in sys.modules
     assert "decoupler" not in sys.modules
 
 
-def test_step3_context_normalizes_output_dir_and_defaults(tmp_path):
-    from bridge.cls import Step3Context
+def test_cls_context_normalizes_output_dir_and_defaults(tmp_path):
+    from bridge.cls import CLSContext
 
     bdata = DummyAnnData(pd.DataFrame(index=["q1", "q2"]))
     adata_ref = DummyAnnData(pd.DataFrame(index=["r1", "r2"]))
 
-    ctx = Step3Context(
+    ctx = CLSContext(
         bdata=bdata,
         adata_ref=adata_ref,
         target_class="mDA",
@@ -45,9 +48,9 @@ def test_step3_context_normalizes_output_dir_and_defaults(tmp_path):
 
 
 def test_component_dependency_validation_messages(tmp_path):
-    from bridge.cls import Step3Context, component_A, component_C, component_F
+    from bridge.cls import CLSContext, component_A, component_C, component_F
 
-    ctx = Step3Context(
+    ctx = CLSContext(
         bdata=DummyAnnData(pd.DataFrame(index=["q1"])),
         adata_ref=DummyAnnData(pd.DataFrame(index=["r1"])),
         target_class="mDA",
@@ -63,10 +66,10 @@ def test_component_dependency_validation_messages(tmp_path):
         component_F(ctx)
 
 
-def test_step3_rejects_unknown_component(tmp_path):
-    from bridge.cls import Step3Context, step3
+def test_score_rejects_unknown_component(tmp_path):
+    from bridge.cls import CLSContext, score
 
-    ctx = Step3Context(
+    ctx = CLSContext(
         bdata=DummyAnnData(pd.DataFrame(index=["q1"])),
         adata_ref=DummyAnnData(pd.DataFrame(index=["r1"])),
         target_class="mDA",
@@ -74,12 +77,12 @@ def test_step3_rejects_unknown_component(tmp_path):
         dataset_id="demo",
     )
 
-    with pytest.raises(ValueError, match="Unknown Step3 components: Z"):
-        step3(ctx, enabled_components=("A", "Z"))
+    with pytest.raises(ValueError, match="Unknown CLS components: Z"):
+        score(ctx, enabled_components=("A", "Z"))
 
 
-def test_step3_with_fake_components_writes_summary_manifest_and_weighted_cls(tmp_path, monkeypatch):
-    from bridge.cls import Step3Context, Step3Result, step3
+def test_score_with_fake_components_writes_summary_manifest_and_weighted_cls(tmp_path, monkeypatch):
+    from bridge.cls import CLSContext, CLSResult, score
     import bridge.cls.api as api
 
     calls = []
@@ -95,7 +98,7 @@ def test_step3_with_fake_components_writes_summary_manifest_and_weighted_cls(tmp
     monkeypatch.setattr(api, "component_A", fake_component("A", 0.2))
     monkeypatch.setattr(api, "component_B", fake_component("B", 0.8))
 
-    ctx = Step3Context(
+    ctx = CLSContext(
         bdata=DummyAnnData(pd.DataFrame(index=["q1"])),
         adata_ref=DummyAnnData(pd.DataFrame(index=["r1"])),
         target_class="mDA",
@@ -103,14 +106,14 @@ def test_step3_with_fake_components_writes_summary_manifest_and_weighted_cls(tmp
         dataset_id="demo",
     )
 
-    result = step3(
+    result = score(
         ctx,
         enabled_components=("A", "B"),
         component_params={"A": {"min_cells_per_batch": 5}},
         cls_weights={"A": 0.25, "B": 0.75},
     )
 
-    assert isinstance(result, Step3Result)
+    assert isinstance(result, CLSResult)
     assert calls == [("A", {"min_cells_per_batch": 5}), ("B", {})]
     assert math.isclose(result.weighted_total_cls, 0.65)
     assert result.summary.loc[0, "cls_A"] == 0.2

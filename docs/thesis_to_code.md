@@ -20,8 +20,8 @@ This repository is intentionally structured so that a reader can map the thesis 
 
 The released execution layer mirrors the thesis structure:
 - `from bridge.prescreen import prescreen` -> thesis Step 1 prescreening
-- `from bridge.identity import identity_assessment` -> thesis Step 2
-- `from bridge.cls import Step3Context, component_A, ..., step3` -> thesis Step 3 scoring and reporting
+- `from bridge.identity import identify` -> thesis Step 2
+- `from bridge.cls import CLSContext, component_A, ..., score` -> thesis Step 3 scoring and reporting
 
 Step 1, Step 2, and Step 3 are exposed as notebook-callable Python APIs.
 
@@ -53,7 +53,7 @@ If you are reading BRIDGE from the perspective of the code:
 - treat Step 2 and Step 3 as the actual released v1 package surface
 
 Reporting note:
-- `step3(ctx)` writes summary CSV and manifest JSON so candidate-selection context and CLS component outputs remain machine-readable
+- `score(ctx)` writes summary CSV and manifest JSON so candidate-selection context and CLS component outputs remain machine-readable
 
 Repository note:
 - the public repository is meant to expose the stable software surface

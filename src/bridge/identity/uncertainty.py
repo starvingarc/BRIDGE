@@ -40,7 +40,7 @@ def run_query_ensemble(
         plan_kwargs = {"weight_decay": 0.0}
     ensemble_prob_list = []
     for i in range(M):
-        print(f"[identity_assessment] Ensemble model {i + 1}/{M}...")
+        print(f"[identify] Ensemble model {i + 1}/{M}...")
         scvi.settings.seed = seed_base + i * 42
         try:
             scanvi_temp = scvi.model.SCANVI.load_query_data(
@@ -64,9 +64,9 @@ def run_query_ensemble(
                 calibrators,
             )
             ensemble_prob_list.append(probs_temp_cal)
-            print(f"[identity_assessment] Ensemble model {i + 1} done.")
+            print(f"[identify] Ensemble model {i + 1} done.")
         except Exception as exc:
-            print(f"[identity_assessment] Ensemble model {i + 1} failed: {exc}")
+            print(f"[identify] Ensemble model {i + 1} failed: {exc}")
             continue
     return ensemble_prob_list
 

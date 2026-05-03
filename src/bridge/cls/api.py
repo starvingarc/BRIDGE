@@ -22,7 +22,7 @@ DEFAULT_CLS_WEIGHTS = {
 
 
 @dataclass(frozen=True)
-class Step3Context:
+class CLSContext:
     bdata: Any
     adata_ref: Any
     target_class: str
@@ -49,7 +49,7 @@ class Step3Context:
 
 
 @dataclass(frozen=True)
-class Step3Result:
+class CLSResult:
     component_results: dict[str, CLSComponentResult]
     component_payloads: dict[str, dict[str, Any]]
     summary: pd.DataFrame
@@ -58,15 +58,15 @@ class Step3Result:
     output_paths: dict[str, str]
 
 
-def _component_json_path(ctx: Step3Context, component: str) -> Path:
+def _component_json_path(ctx: CLSContext, component: str) -> Path:
     return ctx.output_dir / ctx.dataset_id / component / f"component_{component}_global.json"
 
 
-def _component_dir(ctx: Step3Context, component: str) -> Path:
+def _component_dir(ctx: CLSContext, component: str) -> Path:
     return ctx.output_dir / ctx.dataset_id / component
 
 
-def _report_paths(ctx: Step3Context) -> dict[str, Path]:
+def _report_paths(ctx: CLSContext) -> dict[str, Path]:
     base = ctx.output_dir / ctx.dataset_id
     return {
         "base_dir": base,
@@ -81,13 +81,13 @@ def _saved_tuple_to_result(component: str, saved) -> CLSComponentResult:
     return CLSComponentResult(component=component, score_df=score_df, global_score=float(global_score), meta=meta)
 
 
-def _require_probs_ref_cal(ctx: Step3Context, component: str) -> pd.DataFrame:
+def _require_probs_ref_cal(ctx: CLSContext, component: str) -> pd.DataFrame:
     if ctx.probs_ref_cal is None:
-        raise ValueError(f"component_{component} requires Step3Context.probs_ref_cal.")
+        raise ValueError(f"component_{component} requires CLSContext.probs_ref_cal.")
     return ctx.probs_ref_cal
 
 
-def _common_kwargs(ctx: Step3Context) -> dict[str, Any]:
+def _common_kwargs(ctx: CLSContext) -> dict[str, Any]:
     return {
         "target_class": ctx.target_class,
         "outdir": str(ctx.output_dir),
@@ -98,7 +98,7 @@ def _common_kwargs(ctx: Step3Context) -> dict[str, Any]:
     }
 
 
-def component_A(ctx: Step3Context, **params) -> CLSComponentResult:
+def component_A(ctx: CLSContext, **params) -> CLSComponentResult:
     from bridge.cls.component_a import compute_A_and_save
 
     kwargs = {**_common_kwargs(ctx), **params}
@@ -111,7 +111,7 @@ def component_A(ctx: Step3Context, **params) -> CLSComponentResult:
     return _saved_tuple_to_result("A", saved)
 
 
-def component_B(ctx: Step3Context, **params) -> CLSComponentResult:
+def component_B(ctx: CLSContext, **params) -> CLSComponentResult:
     from bridge.cls.component_b import compute_B_and_save
 
     kwargs = {**_common_kwargs(ctx), **params}
@@ -123,7 +123,7 @@ def component_B(ctx: Step3Context, **params) -> CLSComponentResult:
     return _saved_tuple_to_result("B", saved)
 
 
-def component_C(ctx: Step3Context, **params) -> CLSComponentResult:
+def component_C(ctx: CLSContext, **params) -> CLSComponentResult:
     from bridge.cls.component_c import compute_C_and_save
 
     kwargs = {**_common_kwargs(ctx), **params}
@@ -136,7 +136,7 @@ def component_C(ctx: Step3Context, **params) -> CLSComponentResult:
     return _saved_tuple_to_result("C", saved)
 
 
-def component_D(ctx: Step3Context, **params) -> CLSComponentResult:
+def component_D(ctx: CLSContext, **params) -> CLSComponentResult:
     from bridge.cls.component_d import compute_D_and_save
 
     kwargs = {**_common_kwargs(ctx), **params}
@@ -149,7 +149,7 @@ def component_D(ctx: Step3Context, **params) -> CLSComponentResult:
     return _saved_tuple_to_result("D", saved)
 
 
-def component_E(ctx: Step3Context, **params) -> CLSComponentResult:
+def component_E(ctx: CLSContext, **params) -> CLSComponentResult:
     from bridge.cls.component_e import compute_E_and_save
 
     flag_col = f"{ctx.candidate_flag_prefix}{ctx.target_class}"
@@ -170,13 +170,13 @@ def component_E(ctx: Step3Context, **params) -> CLSComponentResult:
     return _saved_tuple_to_result("E", saved)
 
 
-def component_F(ctx: Step3Context, **params) -> CLSComponentResult:
+def component_F(ctx: CLSContext, **params) -> CLSComponentResult:
     from bridge.cls.component_f import compute_F_and_save
 
     if ctx.ref_sceniclike is None:
-        raise ValueError("component_F requires Step3Context.ref_sceniclike.")
+        raise ValueError("component_F requires CLSContext.ref_sceniclike.")
     if ctx.regulons_json_path is None:
-        raise ValueError("component_F requires Step3Context.regulons_json_path.")
+        raise ValueError("component_F requires CLSContext.regulons_json_path.")
 
     kwargs = dict(params)
     kwargs.setdefault("save_qry_auc", True)
@@ -196,9 +196,9 @@ def _normalize_components(enabled_components) -> list[str]:
     components = [str(component).upper() for component in enabled_components]
     unknown = sorted(set(components).difference(DEFAULT_ENABLED_COMPONENTS))
     if unknown:
-        raise ValueError(f"Unknown Step3 components: {', '.join(unknown)}")
+        raise ValueError(f"Unknown CLS components: {', '.join(unknown)}")
     if not components:
-        raise ValueError("enabled_components must include at least one Step3 component.")
+        raise ValueError("enabled_components must include at least one CLS component.")
     return components
 
 
@@ -236,7 +236,7 @@ def _weighted_total(component_results: dict[str, CLSComponentResult], cls_weight
     return float(round(total, 12))
 
 
-def _component_detail(ctx: Step3Context, result: CLSComponentResult) -> dict[str, Any]:
+def _component_detail(ctx: CLSContext, result: CLSComponentResult) -> dict[str, Any]:
     component = result.component
     component_dir = _component_dir(ctx, component)
     return {
@@ -250,7 +250,7 @@ def _component_detail(ctx: Step3Context, result: CLSComponentResult) -> dict[str
     }
 
 
-def _candidate_summary(ctx: Step3Context) -> dict[str, Any]:
+def _candidate_summary(ctx: CLSContext) -> dict[str, Any]:
     query_count = int(getattr(ctx.bdata, "n_obs", len(ctx.bdata.obs)))
     flag_col = f"{ctx.candidate_flag_prefix}{ctx.target_class}"
     summary: dict[str, Any] = {"n_query": query_count, "candidate_count": None, "candidate_fraction": None}
@@ -261,8 +261,8 @@ def _candidate_summary(ctx: Step3Context) -> dict[str, Any]:
     return summary
 
 
-def _write_step3_report(
-    ctx: Step3Context,
+def _write_cls_report(
+    ctx: CLSContext,
     component_results: dict[str, CLSComponentResult],
     component_payloads: dict[str, dict[str, Any]],
     weighted_total_cls: float | None,
@@ -307,13 +307,13 @@ def _write_step3_report(
     return summary_df, manifest, output_paths
 
 
-def step3(
-    ctx: Step3Context,
+def score(
+    ctx: CLSContext,
     *,
     enabled_components=DEFAULT_ENABLED_COMPONENTS,
     component_params: dict[str, dict[str, Any]] | None = None,
     cls_weights: dict[str, float] | None = None,
-) -> Step3Result:
+) -> CLSResult:
     components = _normalize_components(enabled_components)
     params_by_component = _normalize_component_params(component_params)
     functions = _component_functions()
@@ -326,8 +326,8 @@ def step3(
         component_payloads[component] = result.to_payload(dataset_id=ctx.dataset_id)
 
     weighted_total_cls = _weighted_total(component_results, cls_weights)
-    summary, manifest, output_paths = _write_step3_report(ctx, component_results, component_payloads, weighted_total_cls)
-    return Step3Result(
+    summary, manifest, output_paths = _write_cls_report(ctx, component_results, component_payloads, weighted_total_cls)
+    return CLSResult(
         component_results=component_results,
         component_payloads=component_payloads,
         summary=summary,

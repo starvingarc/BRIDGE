@@ -1,19 +1,36 @@
 from __future__ import annotations
 
+import importlib
 import sys
 
 import pandas as pd
 
-from bridge.identity import IdentityAssessmentResult, identity_assessment
+from bridge.identity import IdentityResult, assess_identity_probabilities, identify
 from bridge.identity.api import build_identity_summary
 from bridge.identity.results import IdentityThresholds
 from tests.helpers import DummyAnnData
 
 
-def test_identity_assessment_public_imports_do_not_require_scvi_at_import_time():
+def test_identity_public_imports_do_not_require_scvi_at_import_time():
+    identity_pkg = importlib.import_module("bridge.identity")
+
     assert "scvi" not in sys.modules
-    assert callable(identity_assessment)
-    assert IdentityAssessmentResult.__name__ == "IdentityAssessmentResult"
+    assert callable(identify)
+    assert callable(assess_identity_probabilities)
+    assert IdentityResult.__name__ == "IdentityResult"
+    assert not hasattr(identity_pkg, "identity_assessment")
+    assert not hasattr(identity_pkg, "IdentityAssessmentResult")
+    assert not hasattr(identity_pkg, "run_identity_assessment")
+
+
+def test_top_level_public_surface_uses_notebook_api_names():
+    bridge_pkg = importlib.import_module("bridge")
+
+    assert callable(bridge_pkg.identify)
+    assert callable(bridge_pkg.score)
+    assert not hasattr(bridge_pkg, "identity_assessment")
+    assert not hasattr(bridge_pkg, "run_identity_assessment")
+    assert not hasattr(bridge_pkg, "step3")
 
 
 def test_build_identity_summary_counts_candidates_and_thresholds():

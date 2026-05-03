@@ -68,7 +68,7 @@ Codex:
 @bridge-step2 identify mDA progenitor candidates from ./bridge-demo/runs/demo_dataset/step1 using ./bridge-demo/bridge.run.yaml
 ```
 
-Step2 consumes the Step1 RG candidate subset and runs target-specific identity assessment for mDA progenitor candidates. In notebooks, agents should call `from bridge.identity import identity_assessment` and then `identity_assessment(bdata_rg, adata_ref, ref_model_dir=..., target_class=...)`.
+Step2 consumes the Step1 RG candidate subset and runs target-specific identity assessment for mDA progenitor candidates. In notebooks, agents should call `from bridge.identity import identify` and then `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=...)`.
 
 ### 5. Step3: CLS scoring and report generation
 
@@ -84,7 +84,7 @@ Codex:
 @bridge-step3 score CLS for ./bridge-demo/runs/demo_dataset/step2 using ./bridge-demo/bridge.run.yaml
 ```
 
-Step3 consumes Step2 objects/artifacts, runs CLS components A-F, and summarizes the final BRIDGE scoring outputs. In notebooks, agents should create `Step3Context`, run selected `component_A(ctx)` through `component_F(ctx)`, or call `step3(ctx)` for the default full scoring pass.
+Step3 consumes Step2 objects/artifacts, runs CLS components A-F, and summarizes the final BRIDGE scoring outputs. In notebooks, agents should create `CLSContext`, run selected `component_A(ctx)` through `component_F(ctx)`, or call `score(ctx)` for the default full scoring pass.
 
 Command names are lowercase for agent compatibility. The project brand remains **BRIDGE**.
 
@@ -136,15 +136,15 @@ pip install -e .[notebook]
 
 Notebook-callable APIs:
 - `from bridge.prescreen import prescreen`
-- `from bridge.identity import identity_assessment`
-- `from bridge.cls import Step3Context, component_A, component_B, component_C, component_D, component_E, component_F, step3`
+- `from bridge.identity import identify`
+- `from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score`
 
 Step3 can be run component-by-component or with the default full scoring helper:
 
 ```python
-from bridge.cls import Step3Context, component_A, component_B, step3
+from bridge.cls import CLSContext, component_A, component_B, score
 
-ctx = Step3Context(
+ctx = CLSContext(
     bdata=bdata_step2,
     adata_ref=adata_ref_step2,
     target_class="RG_Mesencephalon_FP",
@@ -155,7 +155,7 @@ ctx = Step3Context(
 
 component_A(ctx)
 component_B(ctx)
-result = step3(ctx)
+result = score(ctx)
 ```
 
 ## Skill Interface
