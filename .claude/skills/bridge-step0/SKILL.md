@@ -6,7 +6,7 @@ Use this skill to initialize BRIDGE before a public demo run.
 
 Step0 prepares the runtime context for BRIDGE:
 - create or validate the `bridge` conda environment
-- install BRIDGE with demo runtime dependencies
+- install BRIDGE with workflow runtime dependencies
 - validate or download model assets declared by `models/assets.json`
 - create an initial run config and run directory
 
@@ -28,7 +28,7 @@ Codex:
 
 1. Inspect the repository root, `configs/`, `models/`, `docs/`, and `.claude/skills/`.
 2. Create or validate the requested conda environment, defaulting to `bridge`.
-3. Install BRIDGE with demo extras when operating from a source checkout: `python -m pip install -e ".[demo]"`. If the environment already has a CUDA-enabled PyTorch stack, keep it and still verify `torch`, `anndata`, `scanpy`, and `scvi` imports.
+3. Install BRIDGE with workflow extras when operating from a source checkout: `python -m pip install -e ".[workflow]"`. If the environment already has a CUDA-enabled PyTorch stack, keep it and still verify `torch`, `anndata`, `scanpy`, and `scvi` imports.
 4. Inspect `models/assets.json` and validate the expected model asset destinations.
 5. If assets are missing, run `python scripts/download_model_assets.py --dry-run`, then ask before running the full download unless the user already requested automatic setup.
 6. Validate that required model files exist under `models/` after download or manual placement.

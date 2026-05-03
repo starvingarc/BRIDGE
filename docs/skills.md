@@ -41,4 +41,4 @@ The report APIs are available package code. They produce standard figure files, 
 
 ## Environment Expectations
 
-Step0 should install demo extras from a source checkout with `python -m pip install -e ".[demo]"` and verify imports for `torch`, `anndata`, `scanpy`, and `scvi` before downstream notebook steps.
+Step0 should install workflow extras from a source checkout with `python -m pip install -e ".[workflow]"` and verify imports for `torch`, `anndata`, `scanpy`, and `scvi` before downstream notebook steps.

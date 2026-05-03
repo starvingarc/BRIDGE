@@ -51,7 +51,7 @@ notebook = [
   "ipykernel",
   "jupyterlab",
 ]
-demo = [
+workflow = [
   "anndata",
   "scanpy",
   "scvi-tools",

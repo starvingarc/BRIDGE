@@ -47,7 +47,7 @@ Required input:
 
 Agent responsibility:
 - create or validate the `bridge` conda environment
-- install BRIDGE with demo runtime dependencies, for example `python -m pip install -e ".[demo]"` from a source checkout
+- install BRIDGE with workflow runtime dependencies, for example `python -m pip install -e ".[workflow]"` from a source checkout
 - validate `models/assets.json` and download or verify required model assets under `models/`
 - create a run directory such as `./bridge-demo/runs/demo_dataset/`
 - create an initial run config such as `./bridge-demo/bridge.run.yaml`

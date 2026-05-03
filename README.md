@@ -30,7 +30,7 @@ Install from GitHub or from a local checkout:
 ```bash
 pip install git+https://github.com/starvingarc/BRIDGE.git
 # or, from a cloned source tree:
-pip install -e ".[demo]"
+pip install -e ".[workflow]"
 ```
 
 Notebook-callable entry points:
