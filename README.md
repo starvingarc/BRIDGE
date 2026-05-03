@@ -56,7 +56,8 @@ write_prescreen_report(result=step1, output_dir="./runs/demo_dataset/step1/repor
 adata_ref = sc.read_h5ad("./models/target_reference.h5ad")
 step2 = identify(
     bdata_rg, adata_ref, ref_model_dir="./models/target_ref_model",
-    target_class="RG_Mesencephalon_FP", output_dir="./runs/demo_dataset/step2", prefix="demo_dataset"
+    target_class="RG_Mesencephalon_FP", output_dir="./runs/demo_dataset/step2", prefix="demo_dataset",
+    reference_h5ad_path="./models/target_reference.h5ad",
 )
 write_identity_report(result=step2, output_dir="./runs/demo_dataset/step2/report", prefix="demo_dataset", target_class="RG_Mesencephalon_FP")
 

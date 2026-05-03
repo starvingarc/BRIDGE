@@ -34,7 +34,7 @@ Codex:
 1. Locate the Step1 RG candidate h5ad.
 2. Validate `paths.reference_h5ad`, `paths.ref_model_dir`, `identity.target_class`, and the Step2 output directory.
 3. In the Step2 notebook, call `from bridge.identity import identify`.
-4. Run `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)`.
+4. Run `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=..., reference_h5ad_path=...)` so the Step2 reference artifact can be a symlink instead of a full copy.
 5. Preserve the current Step2 artifact contract.
 6. Call `from bridge.identity.report import write_report as write_identity_report`.
 7. Run `write_identity_report(result=result, output_dir=..., prefix=..., target_class=...)` at the notebook tail.
@@ -56,6 +56,7 @@ result = identify(
     target_class="RG_Mesencephalon_FP",
     output_dir="./outputs/identity",
     prefix="demo_prefix",
+    reference_h5ad_path=config.paths.reference_h5ad,
 )
 
 report = write_identity_report(
@@ -70,7 +71,7 @@ report = write_identity_report(
 
 - `<prefix>.thresholds.json`
 - `<prefix>.bdata_step2.h5ad`
-- `<prefix>.adata_ref_step2.h5ad`
+- `<prefix>.adata_ref_step2.h5ad` (preferably a symlink to the configured target reference to avoid duplicating large files)
 - `<prefix>.probs_ref_cal.csv`
 - `<prefix>.probs_query_cal.csv`
 - `<prefix>.mean_org.csv`

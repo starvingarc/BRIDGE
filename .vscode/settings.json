@@ -1,0 +1,49 @@
+{
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/.pytest_cache/**": true,
+    "**/__pycache__/**": true,
+    "**/runs/**": true,
+    "**/outputs/**": true,
+    "**/artifacts/**": true,
+    "**/bridge-demo/runs/**": true,
+    "**/*.h5ad": true,
+    "**/*.h5mu": true,
+    "**/*.loom": true,
+    "**/*.zarr/**": true,
+    "**/*.pt": true,
+    "**/*.probs_ref_cal.csv": true,
+    "**/*.probs_query_cal.csv": true,
+    "**/*.mean_org.csv": true,
+    "**/*.std_org.csv": true,
+    "**/*.Hnorm.csv": true
+  },
+  "search.exclude": {
+    "**/runs/**": true,
+    "**/outputs/**": true,
+    "**/artifacts/**": true,
+    "**/bridge-demo/runs/**": true,
+    "**/*.h5ad": true,
+    "**/*.h5mu": true,
+    "**/*.loom": true,
+    "**/*.zarr/**": true,
+    "**/*.pt": true,
+    "**/*.probs_ref_cal.csv": true,
+    "**/*.probs_query_cal.csv": true,
+    "**/*.mean_org.csv": true,
+    "**/*.std_org.csv": true,
+    "**/*.Hnorm.csv": true
+  },
+  "python.analysis.exclude": [
+    "**/runs/**",
+    "**/outputs/**",
+    "**/artifacts/**",
+    "**/bridge-demo/runs/**",
+    "**/*.h5ad",
+    "**/*.h5mu",
+    "**/*.loom",
+    "**/*.zarr/**",
+    "**/*.pt"
+  ]
+}

@@ -130,7 +130,7 @@ Required input:
 Agent responsibility:
 - consume the Step1 RG candidate subset
 - run `from bridge.identity import identify` in the Step2 notebook
-- load only the configured target reference AnnData, never `paths.ref_sceniclike_h5ad`, then call `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)` and preserve the current Step2 artifact contract
+- load only the configured target reference AnnData, never `paths.ref_sceniclike_h5ad`, then call `identify(..., reference_h5ad_path=...)` and preserve the Step2 artifact contract without duplicating the full reference file
 - call `from bridge.identity.report import write_report as write_identity_report`
 - build and display Step2 report tables, figures, and interpretation in notebook cells, then run `write_identity_report(result=step2, output_dir=..., prefix=..., target_class=...)`
 - summarize candidate count and threshold metadata without overclaiming biological interpretation
@@ -138,7 +138,7 @@ Agent responsibility:
 Expected current artifacts:
 - `<prefix>.thresholds.json`
 - `<prefix>.bdata_step2.h5ad`
-- `<prefix>.adata_ref_step2.h5ad`
+- `<prefix>.adata_ref_step2.h5ad` (preferably a symlink to the configured target reference)
 - `<prefix>.probs_ref_cal.csv`
 - `<prefix>.probs_query_cal.csv`
 - `<prefix>.mean_org.csv`

@@ -138,12 +138,15 @@ def identify(
     seed: int = 0,
     output_dir: str | Path | None = None,
     prefix: str = "bridge",
+    reference_h5ad_path: str | Path | None = None,
 ) -> IdentityResult:
     """Run target identity assessment on AnnData objects.
 
     This notebook-first entrypoint preserves the Step2 artifact contract while avoiding
     YAML/workflow orchestration. It expects a Step1 RG candidate query object and a
     target-specific reference object that match the provided scANVI reference model.
+    When reference_h5ad_path is provided, the Step2 reference artifact is written
+    as a symlink to avoid duplicating large reference AnnData files.
     """
     if not str(target_class).strip():
         raise ValueError("target_class must be a non-empty string.")
@@ -238,6 +241,7 @@ def identify(
             u=selection.thresholds.threshold_u,
             u_raw=selection.thresholds.u_raw,
             v=selection.thresholds.threshold_v,
+            adata_ref_source_path=reference_h5ad_path,
         )
         output_paths = {name: str(path) for name, path in _identity_output_paths(output_dir, prefix).items()}
 

@@ -2,6 +2,28 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
+
+
+def _write_reference_artifact(adata_ref, destination, source_path=None):
+    destination = Path(destination)
+    if source_path is None:
+        adata_ref.write_h5ad(destination)
+        return "copy"
+
+    source = Path(source_path).expanduser().resolve()
+    if not source.exists():
+        raise FileNotFoundError(f"reference_h5ad_path does not exist: {source}")
+
+    if destination.exists() or destination.is_symlink():
+        destination.unlink()
+    relative_source = os.path.relpath(source, start=destination.parent)
+    try:
+        os.symlink(relative_source, destination)
+        return "symlink"
+    except (OSError, NotImplementedError):
+        adata_ref.write_h5ad(destination)
+        return "copy"
 
 
 def save_identity_results(
@@ -18,8 +40,16 @@ def save_identity_results(
     u,
     u_raw,
     v,
+    adata_ref_source_path=None,
 ):
     os.makedirs(outdir, exist_ok=True)
+    adata_ref_artifact = os.path.join(outdir, f"{prefix}.adata_ref_step2.h5ad")
+    reference_artifact_mode = _write_reference_artifact(
+        adata_ref,
+        adata_ref_artifact,
+        source_path=adata_ref_source_path,
+    )
+
     meta = {
         "t": float(t),
         "u": float(u),
@@ -27,6 +57,7 @@ def save_identity_results(
         "v": float(v),
         "n_query": int(bdata.n_obs),
         "n_ref": int(adata_ref.n_obs),
+        "adata_ref_step2_mode": reference_artifact_mode,
     }
     with open(os.path.join(outdir, f"{prefix}.thresholds.json"), "w", encoding="utf-8") as fh:
         json.dump(meta, fh, indent=2)
@@ -38,5 +69,4 @@ def save_identity_results(
     Hnorm.to_frame().to_csv(os.path.join(outdir, f"{prefix}.Hnorm.csv"))
 
     bdata.write_h5ad(os.path.join(outdir, f"{prefix}.bdata_step2.h5ad"))
-    adata_ref.write_h5ad(os.path.join(outdir, f"{prefix}.adata_ref_step2.h5ad"))
     print(f"[identify] Saved outputs to: {outdir}")
