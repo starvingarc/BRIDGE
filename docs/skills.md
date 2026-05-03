@@ -38,3 +38,7 @@ from bridge.cls.report import write_report as write_cls_report, compare_reports
 ```
 
 The report APIs are available package code. They produce standard figure files, tables, Markdown reports, JSON manifests, and concise interpretation text. Formal public example notebooks remain a roadmap item.
+
+## Environment Expectations
+
+Step0 should install demo extras from a source checkout with `python -m pip install -e ".[demo]"` and verify imports for `torch`, `anndata`, `scanpy`, and `scvi` before downstream notebook steps.

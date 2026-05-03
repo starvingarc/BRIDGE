@@ -20,7 +20,7 @@ Agent responsibility:
 
 Expected current outcome:
 - BRIDGE source or package is available
-- the agent can run a package import smoke check once the environment is active
+- the agent can run package and runtime import smoke checks once the environment is active
 - the user is ready to run Step0
 
 Future demo polish:
@@ -47,7 +47,7 @@ Required input:
 
 Agent responsibility:
 - create or validate the `bridge` conda environment
-- install BRIDGE in editable or package mode
+- install BRIDGE with demo runtime dependencies, for example `python -m pip install -e ".[demo]"` from a source checkout
 - validate `models/assets.json` and download or verify required model assets under `models/`
 - create a run directory such as `./bridge-demo/runs/demo_dataset/`
 - create an initial run config such as `./bridge-demo/bridge.run.yaml`

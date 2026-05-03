@@ -35,6 +35,11 @@ runtime = [
   "anndata",
   "scanpy",
   "scvi-tools",
+  "torch",
+]
+report = [
+  "matplotlib",
+  "seaborn",
 ]
 trajectory = [
   "cellrank",
@@ -43,6 +48,17 @@ regulon = [
   "decoupler",
 ]
 notebook = [
+  "ipykernel",
+  "jupyterlab",
+]
+demo = [
+  "anndata",
+  "scanpy",
+  "scvi-tools",
+  "torch",
+  "matplotlib",
+  "seaborn",
+  "decoupler",
   "ipykernel",
   "jupyterlab",
 ]
