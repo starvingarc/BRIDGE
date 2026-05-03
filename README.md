@@ -4,7 +4,7 @@
 
 BRIDGE is a research software package and agent-guided notebook workflow for evaluating in vitro cell products against in vivo developmental references. The public workflow is intentionally notebook-first: Step1 prescreens candidate RG-like cells, Step2 identifies target mDA progenitor candidates, and Step3 scores developmental concordance with CLS components.
 
-## Agent Quick Start
+## Quick Start
 
 For a first-time install, send this to Claude Code, Codex, or a similar coding agent:
 
