@@ -11,3 +11,11 @@ def test_step_skills_require_notebook_visible_report_sections():
         assert "display each table" in text
         assert "display each figure" in text
         assert "interpretation" in text
+
+
+
+def test_step1_skill_requires_direct_input_when_readable():
+    root = Path(__file__).resolve().parents[1]
+    text = (root / ".claude" / "skills" / "bridge-step1" / "SKILL.md").read_text(encoding="utf-8")
+    assert "use the user-provided path directly" in text
+    assert "do not create or reuse a compatibility copy" in text
