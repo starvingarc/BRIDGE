@@ -160,20 +160,20 @@ result = score(ctx)
 
 ## Skill Interface
 
-BRIDGE includes a repository-local skill interface for coding agents and workflow-aware assistants.
+BRIDGE includes repository-local skills for the public Step0-Step3 workflow.
+
+| Skill | Demo command | Purpose |
+| --- | --- | --- |
+| `bridge-step0` | `/bridge-step0` or `@bridge-step0` | Initialize the environment, model assets, config, and run directory. |
+| `bridge-step1` | `/bridge-step1` or `@bridge-step1` | Prescreen one in vitro `.h5ad` dataset and produce RG candidate artifacts. |
+| `bridge-step2` | `/bridge-step2` or `@bridge-step2` | Run mDA progenitor identity assessment from Step1 RG candidates. |
+| `bridge-step3` | `/bridge-step3` or `@bridge-step3` | Run CLS components and generate summary/manifest artifacts from Step2 outputs. |
+
+Command names are lowercase for compatibility. The project brand remains **BRIDGE**.
 
 See:
 - [docs/skills.md](docs/skills.md)
 - [.claude/skills](.claude/skills)
-
-Current public skills:
-- `bridge`
-- `bridge-step0`
-- `bridge-step1`
-- `bridge-step2`
-- `bridge-step3`
-- `bridge-identity`
-- `bridge-cls`
 
 ## Repository Layout
 
