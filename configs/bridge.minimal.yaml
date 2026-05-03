@@ -48,6 +48,10 @@ cls:
   e: {}
   f: {}
 
+comparison:
+  enabled: false
+  paper_cls_root: "./paper_cls_results"
+
 report:
   summary_filename: "summary.csv"
   manifest_filename: "manifest.json"

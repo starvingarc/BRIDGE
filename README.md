@@ -19,7 +19,7 @@ Then run the workflow through the repository-local skills:
 | `bridge-step0` | `/bridge-step0` or `@bridge-step0` | Initialize environment, model assets, config, and run directory. |
 | `bridge-step1` | `/bridge-step1` or `@bridge-step1` | Prescreen one in vitro `.h5ad` dataset and produce RG candidate artifacts plus a Step1 report. |
 | `bridge-step2` | `/bridge-step2` or `@bridge-step2` | Run mDA progenitor identity assessment and write a Step2 report. |
-| `bridge-step3` | `/bridge-step3` or `@bridge-step3` | Run CLS components, single-dataset reports, and optional multi-protocol comparison. |
+| `bridge-step3` | `/bridge-step3` or `@bridge-step3` | Run CLS components, single-dataset reports, and optional four-protocol comparison against the thesis baselines. |
 
 Command names are lowercase for compatibility. The project brand remains **BRIDGE**. Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are fetched separately from public object-storage URLs declared in [models/assets.json](models/assets.json).
 
@@ -78,8 +78,10 @@ ctx = CLSContext(
 # e = component_E(ctx)
 # f = component_F(ctx)
 
-# For the default reportable A-F run, call score(ctx).
-cls_result = score(ctx)
+# For the default reportable A-F run, call score(ctx). Pass component_params
+# when a dataset needs explicit layer, embedding, or short demo-training choices.
+component_params = {}
+cls_result = score(ctx, component_params=component_params)
 write_cls_report(result=cls_result, ctx=ctx, output_dir="./runs/demo_dataset/step3/report", prefix="demo_dataset")
 ```
 

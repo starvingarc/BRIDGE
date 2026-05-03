@@ -7,17 +7,31 @@ from sklearn.metrics import precision_recall_curve
 from bridge.identity.results import IdentitySelectionResult, IdentityThresholds
 
 
-def calibrate_threshold_from_ref(p_ref_cal_series, y_ref_series, target_class, target_precision=0.8):
-    y_true = (y_ref_series == target_class).astype(int)
-    precision, _, thresholds = precision_recall_curve(y_true, p_ref_cal_series)
-    valid = precision >= target_precision
+def calibrate_threshold_from_ref(p_ref_cal_series, y_ref_series, target_class, target_precision=0.8, threshold_beta=0.5):
+    scores = pd.Series(p_ref_cal_series).astype(float)
+    labels = pd.Series(y_ref_series).reindex(scores.index).astype(str)
+    y_true = (labels == str(target_class)).astype(int)
+    if int(y_true.sum()) == 0:
+        return float(np.percentile(scores, 90))
+
+    precision, recall, thresholds = precision_recall_curve(y_true, scores)
+    if len(thresholds) == 0:
+        return 0.9
+
+    # precision_recall_curve adds a final artificial point with no threshold that
+    # corresponds to selecting no cells. Use real thresholds only, then choose the
+    # best F-beta point among thresholds that meet the requested precision. beta<1
+    # favors precision, but still avoids collapsing recall to zero.
+    precision_t = precision[:-1]
+    recall_t = recall[:-1]
+    valid = precision_t >= float(target_precision)
     if valid.any():
-        idxs = np.where(valid)[0]
-        idx = idxs[-1]
-        if idx == 0:
-            return float(thresholds.min()) if len(thresholds) > 0 else 0.9
-        return float(thresholds[max(0, idx - 1)])
-    return float(np.percentile(p_ref_cal_series, 90))
+        beta2 = float(threshold_beta) ** 2
+        f_beta = (1.0 + beta2) * precision_t * recall_t / (beta2 * precision_t + recall_t + 1e-12)
+        valid_idxs = np.where(valid)[0]
+        best_idx = valid_idxs[int(np.nanargmax(f_beta[valid_idxs]))]
+        return float(thresholds[best_idx])
+    return float(np.percentile(scores, 90))
 
 
 def estimate_u_from_std(std_df_or_series, q=75, u_min=0.005):

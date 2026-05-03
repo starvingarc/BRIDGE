@@ -34,7 +34,7 @@ Codex:
 4. Save component-level JSON/detail tables plus `summary.csv` and `manifest.json`.
 5. Call `from bridge.cls.report import write_report as write_cls_report, compare_reports`.
 6. Run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)` at the notebook tail.
-7. Use `compare_reports(...)` when comparing multiple protocols or datasets.
+7. For the demo comparison, use `compare_reports(...)` to place the current dataset beside the three thesis protocols: SphereDiff (CSC 2025), MacroDiff (unpublished), and MSK-DA01 (CSC 2021). Do not hard-code private server paths in committed notebooks or docs; read the paper baseline CLS root from the user prompt or local config.
 8. Interpret CLS as multidimensional concordance; use component decomposition to explain structural differences rather than simple ranking.
 
 ## Notebook API
@@ -60,8 +60,11 @@ ctx = CLSContext(
 # e = component_E(ctx)
 # f = component_F(ctx)
 
-# Default full A-F run for report generation.
-result = score(ctx)
+# Default full A-F run for report generation. Component params can be supplied
+# from config when a dataset needs explicit layers, embeddings, or short demo
+# adapter training for component D.
+component_params = {}
+result = score(ctx, component_params=component_params)
 
 report = write_cls_report(
     result=result,
@@ -71,16 +74,18 @@ report = write_cls_report(
 )
 ```
 
-Multi-protocol comparison:
+Thesis-style four-protocol comparison:
 
 ```python
 comparison = compare_reports(
     protocols=[
-        {"name": "SphereDiff", "dataset_id": "sphere", "step3_dir": "./runs/sphere/step3"},
-        {"name": "MacroDiff", "dataset_id": "macro", "step3_dir": "./runs/macro/step3"},
+        {"name": "SphereDiff (CSC 2025)", "dataset_id": "zxy_XPBD28B", "step3_dir": "./paper_cls_results"},
+        {"name": "MacroDiff (unpublished)", "dataset_id": "oyqk_organoid_OYQK_OMYD28", "step3_dir": "./paper_cls_results"},
+        {"name": "MSK-DA01 (CSC 2021)", "dataset_id": "StuderD16", "step3_dir": "./paper_cls_results"},
+        {"name": "Current dataset", "dataset_id": ctx.dataset_id, "step3_dir": ctx.output_dir},
     ],
     output_dir="./runs/comparison/cls_report",
-    prefix="cls_comparison",
+    prefix="four_protocol_cls_comparison",
 )
 ```
 
@@ -94,6 +99,7 @@ comparison = compare_reports(
 - Step3 report manifest JSON
 - report tables and available figures
 - optional multi-protocol comparison report
+- optional four-protocol thesis-style comparison report for SphereDiff, MacroDiff, MSK-DA01, and the current dataset
 
 ## Report Coverage
 
@@ -120,4 +126,4 @@ Generated notebooks must be notebook-native analysis records, not a report dump 
 
 Do not use a final cell that loops through report tables/figures and displays them all together. Do not rely on a bare `fig` expression, because some notebook renderers show only `<Figure size ...>` instead of the image.
 
-Step3 biological interpretation should explain component-level concordance and divergence across identity, expression, transferability, neighborhood, pseudotime, and regulon axes rather than presenting a simple ranking.
+Step3 biological interpretation should explain component-level concordance and divergence across identity, expression, transferability, neighborhood, pseudotime, and regulon axes rather than presenting a simple ranking. For the four-protocol comparison, display the comparison score table, radar plot, weighted CLS bar plot, and component heatmap as separate notebook sections, each with context before the code and biological interpretation after the output.

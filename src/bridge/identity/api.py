@@ -26,6 +26,7 @@ def assess_identity_probabilities(
     target_class: str,
     entropy_source=None,
     target_precision: float = 0.8,
+    threshold_beta: float = 0.5,
     std_quantile: float = 75.0,
     u_min: float = 0.005,
     entropy_threshold: float = 0.8,
@@ -39,6 +40,7 @@ def assess_identity_probabilities(
         y_ref_series,
         target_class=target_class,
         target_precision=target_precision,
+        threshold_beta=threshold_beta,
     )
     threshold_u, u_raw = estimate_u_from_std(std_org[target_class], q=std_quantile, u_min=u_min)
     thresholds = IdentityThresholds(
@@ -127,6 +129,7 @@ def identify(
     max_epochs: int = 100,
     ensemble_size: int = 5,
     target_precision: float = 0.8,
+    threshold_beta: float = 0.5,
     std_quantile: float = 75.0,
     u_min: float = 0.005,
     entropy_threshold: float = 0.8,
@@ -209,6 +212,7 @@ def identify(
         y_ref_series=y_ref_series,
         target_class=target_class,
         target_precision=target_precision,
+        threshold_beta=threshold_beta,
         std_quantile=std_quantile,
         u_min=u_min,
         entropy_threshold=entropy_threshold,

@@ -141,6 +141,13 @@ def component_D(ctx: CLSContext, **params) -> CLSComponentResult:
 
     kwargs = {**_common_kwargs(ctx), **params}
     kwargs.setdefault("ref_model_dir", str(ctx.ref_model_dir) if ctx.ref_model_dir is not None else None)
+    emb_key = str(kwargs.get("emb_key", "X_scanvi"))
+    b_obsm = getattr(ctx.bdata, "obsm", {})
+    r_obsm = getattr(ctx.adata_ref, "obsm", {})
+    needs_embedding = emb_key not in b_obsm or emb_key not in r_obsm
+    if needs_embedding and kwargs.get("ref_model_dir") is not None and "train_query" not in kwargs:
+        kwargs["train_query"] = True
+
     saved = compute_D_and_save(
         bdata=ctx.bdata,
         adata_ref=ctx.adata_ref,
@@ -151,6 +158,14 @@ def component_D(ctx: CLSContext, **params) -> CLSComponentResult:
 
 def component_E(ctx: CLSContext, **params) -> CLSComponentResult:
     from bridge.cls.component_e import compute_E_and_save
+
+    params = dict(params)
+    ref_obsm = getattr(ctx.adata_ref, "obsm", {})
+    org_obsm = getattr(ctx.bdata, "obsm", {})
+    if "rep_key_ref" not in params and "X_scanvi" not in ref_obsm and "X_scVI" in ref_obsm:
+        params["rep_key_ref"] = "X_scVI"
+    if "rep_key_org" not in params and "X_scanvi" not in org_obsm and "X_pca" in org_obsm:
+        params["rep_key_org"] = "X_pca"
 
     flag_col = f"{ctx.candidate_flag_prefix}{ctx.target_class}"
     if ctx.ref_label_key not in ctx.adata_ref.obs:

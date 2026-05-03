@@ -46,7 +46,7 @@ cls:
     alphaA2: 0.5
     min_cells_per_batch: 20
   b:
-    layer: "logcounts"
+    layer: null
     min_cells_per_batch: 20
   c:
     score_prefix: "p_mean_"
@@ -55,13 +55,19 @@ cls:
     min_cells_per_batch: 20
   d:
     emb_key: "X_scanvi"
+    train_query: true
+    query_train_kwargs:
+      max_epochs: 5
+      plan_kwargs:
+        weight_decay: 0.0
+      early_stopping: false
     k_query: 30
     k_ref: 50
     k_ref_for_dist: 20
     min_cells_per_batch: 10
   e:
     rep_key_ref: "X_scVI"
-    rep_key_org: "X_scanvi"
+    rep_key_org: "X_pca"
     counts_layer: "counts"
     layer: "log1p_norm"
     pt_key: "pt"
@@ -72,6 +78,23 @@ cls:
     aucell_n_up: 2000
     eta1: 0.4
     eta2: 0.6
+
+comparison:
+  enabled: false
+  paper_cls_root: "./paper_cls_results"
+  protocols:
+    - name: "SphereDiff (CSC 2025)"
+      dataset_id: "zxy_XPBD28B"
+      step3_dir: "./paper_cls_results"
+    - name: "MacroDiff (unpublished)"
+      dataset_id: "oyqk_organoid_OYQK_OMYD28"
+      step3_dir: "./paper_cls_results"
+    - name: "MSK-DA01 (CSC 2021)"
+      dataset_id: "StuderD16"
+      step3_dir: "./paper_cls_results"
+    - name: "Current dataset"
+      dataset_id: "example_dataset"
+      step3_dir: "./artifacts/cls"
 
 report:
   summary_filename: "summary.csv"

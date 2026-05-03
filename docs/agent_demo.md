@@ -178,7 +178,7 @@ Agent responsibility:
 - preserve machine-readable output contracts
 - call `from bridge.cls.report import write_report as write_cls_report, compare_reports`
 - build and display Step3 report tables, figures, and interpretation in notebook cells, then run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)`
-- use `compare_reports(...)` when comparing multiple protocols or datasets
+- for the demo, use `compare_reports(...)` to show a four-protocol comparison: SphereDiff (CSC 2025), MacroDiff (unpublished), MSK-DA01 (CSC 2021), and the current BRIDGE demo dataset. The root directory for the three paper baseline CLS artifacts should come from local config or the user prompt, not from a committed private path.
 
 Expected current artifacts:
 - component global JSON files
@@ -187,6 +187,7 @@ Expected current artifacts:
 - `manifest.json`
 - report directory with Markdown report, manifest JSON, tables, and available single-dataset figures
 - optional multi-protocol comparison report with radar, weighted CLS bar, and component heatmap
+- four-protocol comparison report with radar, weighted CLS bar, component heatmap, and a component score table when paper baseline artifacts are available
 
 Report API coverage:
 - component score bar and heatmap

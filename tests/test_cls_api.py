@@ -12,6 +12,21 @@ from bridge.common.results import CLSComponentResult
 from tests.helpers import DummyAnnData
 
 
+class MiniAnnData(DummyAnnData):
+    def __init__(self, obs: pd.DataFrame, obsm: dict | None = None):
+        super().__init__(obs)
+        self.obsm = dict(obsm or {})
+
+    def __getitem__(self, index):
+        if isinstance(index, tuple):
+            index = index[0]
+        obs = self.obs.loc[index].copy() if not isinstance(index, slice) else self.obs.iloc[index].copy()
+        return MiniAnnData(obs, self.obsm)
+
+    def copy(self):
+        return MiniAnnData(self.obs.copy(), self.obsm)
+
+
 def test_cls_public_imports_do_not_force_runtime_dependencies():
     sys.modules.pop("scvi", None)
     sys.modules.pop("decoupler", None)
@@ -64,6 +79,66 @@ def test_component_dependency_validation_messages(tmp_path):
         component_C(ctx)
     with pytest.raises(ValueError, match="ref_sceniclike"):
         component_F(ctx)
+
+
+def test_component_d_auto_trains_query_when_embedding_must_be_generated(tmp_path, monkeypatch):
+    from bridge.cls import CLSContext, component_D
+    import bridge.cls.component_d as component_d
+
+    captured = {}
+
+    def fake_compute_D_and_save(**kwargs):
+        captured.update(kwargs)
+        score_df = pd.DataFrame({"batch": ["b1"], "n_candidate": [3], "sD": [0.8]})
+        return score_df, 0.8, {"meta": {}}
+
+    monkeypatch.setattr(component_d, "compute_D_and_save", fake_compute_D_and_save)
+    ctx = CLSContext(
+        bdata=MiniAnnData(pd.DataFrame({"Sample": ["b1"]}, index=["q1"]), obsm={}),
+        adata_ref=MiniAnnData(pd.DataFrame(index=["r1"]), obsm={"X_scVI": [[0.0, 1.0]]}),
+        target_class="mDA",
+        output_dir=tmp_path,
+        dataset_id="demo",
+        ref_model_dir=tmp_path / "target_ref_model",
+    )
+
+    result = component_D(ctx)
+
+    assert result.global_score == 0.8
+    assert captured["train_query"] is True
+
+
+def test_component_e_falls_back_to_available_reference_and_query_representations(tmp_path, monkeypatch):
+    from bridge.cls import CLSContext, component_E
+    import bridge.cls.component_e as component_e
+
+    captured = {}
+
+    def fake_compute_E_and_save(**kwargs):
+        captured.update(kwargs)
+        score_df = pd.DataFrame({"branch": ["main"], "branch_weight": [1.0], "E_dev": [0.6]})
+        return score_df, 0.6, {"meta": {}}
+
+    monkeypatch.setattr(component_e, "compute_E_and_save", fake_compute_E_and_save)
+    ctx = CLSContext(
+        bdata=MiniAnnData(
+            pd.DataFrame({"is_candidate_mDA": [True], "Sample": ["b1"]}, index=["q1"]),
+            obsm={"X_pca": [[0.1, 0.2]]},
+        ),
+        adata_ref=MiniAnnData(
+            pd.DataFrame({"cell_subtype": ["mDA"]}, index=["r1"]),
+            obsm={"X_scVI": [[0.0, 1.0]]},
+        ),
+        target_class="mDA",
+        output_dir=tmp_path,
+        dataset_id="demo",
+    )
+
+    result = component_E(ctx)
+
+    assert result.global_score == 0.6
+    assert captured["rep_key_ref"] == "X_scVI"
+    assert captured["rep_key_org"] == "X_pca"
 
 
 def test_score_rejects_unknown_component(tmp_path):

@@ -4,14 +4,16 @@ import importlib
 import sys
 
 import pandas as pd
+import pytest
 
-from bridge.identity import IdentityResult, assess_identity_probabilities, identify
+from bridge.identity import IdentityResult, assess_identity_probabilities, calibrate_threshold_from_ref, identify
 from bridge.identity.api import build_identity_summary
 from bridge.identity.results import IdentityThresholds
 from tests.helpers import DummyAnnData
 
 
 def test_identity_public_imports_do_not_require_scvi_at_import_time():
+    sys.modules.pop("scvi", None)
     identity_pkg = importlib.import_module("bridge.identity")
 
     assert "scvi" not in sys.modules
@@ -69,3 +71,13 @@ def test_build_identity_summary_counts_candidates_and_thresholds():
     }
     assert summary["training"] == {"max_epochs": 10, "ensemble_size": 3, "seed": 42}
     assert summary["outputs"] == {"thresholds_json": "/tmp/demo.thresholds.json"}
+
+
+def test_calibrate_threshold_uses_fbeta_among_real_precision_valid_thresholds():
+    probs = pd.Series([0.9, 0.8, 0.7, 0.1], index=["r1", "r2", "r3", "r4"])
+    labels = pd.Series(["target", "target", "other", "other"], index=probs.index)
+
+    threshold = calibrate_threshold_from_ref(probs, labels, "target", target_precision=0.8, threshold_beta=0.5)
+
+    assert threshold == pytest.approx(0.8)
+    assert threshold != pytest.approx(0.9)
