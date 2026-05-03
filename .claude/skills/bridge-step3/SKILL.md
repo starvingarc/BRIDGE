@@ -22,16 +22,16 @@ Codex:
 
 ## Required Inputs
 
-- Step2 artifact set
-- CLS configuration
-- component-specific assets required by enabled components
+- Step2 `bdata` and `adata_ref` objects or loaded Step2 artifact h5ad files
+- `probs_ref_cal` when running components A or C
+- component-specific assets required by selected components
 
 ## Agent Responsibilities
 
 1. Validate that required Step2 artifacts exist.
-2. Run enabled CLS components through the BRIDGE workflow surface.
-3. Save component-level JSON and detail tables.
-4. Run report summarization.
+2. Build `Step3Context` in the Step3 notebook.
+3. Run selected `component_A(ctx)` through `component_F(ctx)`, or call `step3(ctx)` for the default full pass.
+4. Save component-level JSON/detail tables plus `summary.csv` and `manifest.json`.
 5. Produce a simple final summary while polished plots and interpretation templates remain pending.
 
 ## Expected Outputs

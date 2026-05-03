@@ -20,7 +20,7 @@ Agent responsibility:
 
 Expected current outcome:
 - BRIDGE source or package is available
-- the agent can run `bridge --help` once the environment is active
+- the agent can run a package import smoke check once the environment is active
 - the user is ready to run Step0
 
 Future demo polish:
@@ -160,22 +160,21 @@ Codex command:
 ```
 
 Required input:
-- Step2 artifact set
-- CLS configuration
-- any component-specific assets required by enabled components
+- Step2 `bdata` and `adata_ref` objects or loaded Step2 artifact h5ad files
+- `probs_ref_cal` when running components A or C
+- component-specific assets required by selected components, such as embeddings or regulon assets
 
 Agent responsibility:
-- run enabled CLS components
-- save component-level outputs
-- run report summarization
+- build `Step3Context` in the Step3 notebook
+- run selected `component_A(ctx)` through `component_F(ctx)`, or call `step3(ctx)` for the default full pass
 - preserve machine-readable output contracts
 - produce a simple final summary while plotting/report polish is still pending
 
 Expected current artifacts:
 - component global JSON files
 - component detail tables when available
-- report summary CSV
-- report manifest JSON
+- `summary.csv`
+- `manifest.json`
 
 Future notebook/report goals:
 - component A-F visual summary

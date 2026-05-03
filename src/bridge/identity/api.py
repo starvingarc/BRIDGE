@@ -142,7 +142,7 @@ def identity_assessment(
     """Run Step2 target identity assessment on AnnData objects.
 
     This notebook-first entrypoint preserves the Step2 artifact contract while avoiding
-    YAML/CLI orchestration. It expects a Step1 RG candidate query object and a
+    YAML/workflow orchestration. It expects a Step1 RG candidate query object and a
     target-specific reference object that match the provided scANVI reference model.
     """
     if not str(target_class).strip():

@@ -5,7 +5,7 @@
 BRIDGE is an open-source research software package and agent-guided workflow for evaluating in vitro cell products against in vivo developmental references.
 
 BRIDGE is designed to be usable in two ways:
-- as a Python package for notebook-callable Step1 prescreening and Step2 identity assessment, plus remaining CLI workflows for Step3/report packaging
+- as a Python package for notebook-callable Step1 prescreening, Step2 identity assessment, and Step3 CLS scoring
 - as an agent-first demo workflow where a first-time user asks Claude Code or Codex to run each step from repository-local guidance
 
 ## Agent-First Quick Start
@@ -84,7 +84,7 @@ Codex:
 @bridge-step3 score CLS for ./bridge-demo/runs/demo_dataset/step2 using ./bridge-demo/bridge.run.yaml
 ```
 
-Step3 consumes Step2 artifacts, runs CLS components, and summarizes the final BRIDGE scoring outputs.
+Step3 consumes Step2 objects/artifacts, runs CLS components A-F, and summarizes the final BRIDGE scoring outputs. In notebooks, agents should create `Step3Context`, run selected `component_A(ctx)` through `component_F(ctx)`, or call `step3(ctx)` for the default full scoring pass.
 
 Command names are lowercase for agent compatibility. The project brand remains **BRIDGE**.
 
@@ -101,7 +101,7 @@ BRIDGE organizes a three-step biological workflow plus a setup step:
 Current package surface:
 - Step1 whole-brain prescreening is available as a notebook-callable Python API
 - Step2 is available as a notebook-callable Python API
-- Step3 is available as formal package code and CLI workflow
+- Step3 is available as component-first notebook-callable Python API
 - Step0 remains agent-guided setup and model/config initialization
 - upstream reference construction remains roadmap/model-building context
 
@@ -132,25 +132,30 @@ pip install -e .[regulon]
 pip install -e .[notebook]
 ```
 
-## Python API and CLI Overview
+## Python API Overview
 
 Notebook-callable APIs:
 - `from bridge.prescreen import prescreen`
 - `from bridge.identity import identity_assessment`
+- `from bridge.cls import Step3Context, component_A, component_B, component_C, component_D, component_E, component_F, step3`
 
-Remaining workflow-level CLI commands:
-- `bridge cls run`
-- `bridge report summarize`
-- `bridge report summarize-batch`
+Step3 can be run component-by-component or with the default full scoring helper:
 
-Step1 and Step2 are notebook-first APIs. The CLI remains for Step3 CLS and report packaging.
+```python
+from bridge.cls import Step3Context, component_A, component_B, step3
 
-Start from the minimal editable workflow template when preparing Step3/report configuration:
+ctx = Step3Context(
+    bdata=bdata_step2,
+    adata_ref=adata_ref_step2,
+    target_class="RG_Mesencephalon_FP",
+    output_dir="./runs/demo_dataset/step3",
+    dataset_id="demo_dataset",
+    probs_ref_cal=probs_ref_cal,
+)
 
-```bash
-cp configs/bridge.minimal.yaml my-run.yaml
-bridge --help
-bridge cls run --config my-run.yaml --dry-run
+component_A(ctx)
+component_B(ctx)
+result = step3(ctx)
 ```
 
 ## Skill Interface

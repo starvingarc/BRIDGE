@@ -7,20 +7,18 @@ Use this skill for BRIDGE Step 3 work.
 This skill covers:
 - CLS component execution
 - Step 3 prerequisites
-- report generation from Step 2 + Step 3 artifacts
+- summary and manifest generation from Step 2 + Step 3 artifacts
 
 ## Core package areas
 
 - `src/bridge/cls`
-- `src/bridge/workflows/cls.py`
-- `src/bridge/workflows/report.py`
 
 ## Step 3 prerequisites
 
-At minimum, Step 3 depends on Step 2 outputs:
-- `<prefix>.bdata_step2.h5ad`
-- `<prefix>.adata_ref_step2.h5ad`
-- `<prefix>.probs_ref_cal.csv`
+At minimum, Step 3 depends on Step 2 objects or loaded Step2 artifacts:
+- candidate-bearing `bdata`
+- target-specific `adata_ref`
+- `probs_ref_cal` for components A and C
 
 Additional component-specific inputs may be required for:
 - embeddings
@@ -32,4 +30,4 @@ Additional component-specific inputs may be required for:
 Step 3 writes:
 - component-level global JSON files
 - optional detail tables
-- report summaries and manifests
+- `summary.csv` and `manifest.json`

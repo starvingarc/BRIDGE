@@ -20,31 +20,29 @@ More concretely:
 - `src/bridge/prescreen` provides the Step 1 notebook-callable prescreening layer
 - `src/bridge/identity` provides the Step 2 package layer
 - `src/bridge/cls` provides the Step 3 scoring layer
-- `src/bridge/io` and `src/bridge/workflows` support packaging and workflow organization
+- `src/bridge/io` supports artifact packaging and `src/bridge/workflows` retains config helpers
 
 The public repository is intended to present BRIDGE as software:
 - installable from GitHub
-- usable through notebook-first Python APIs plus the remaining Step3/report CLI
-- configured through public templates where Step3/report configuration is needed
+- usable through notebook-first Python APIs
+- supported by public templates that can guide notebook parameters
 - documented as a workflow package for external readers and coding agents
 
 ## Executable Entrypoints
 
-BRIDGE v1 exposes Step1 and Step2 as notebook-callable APIs, with CLI support retained for Step3/report packaging:
+BRIDGE v1 exposes Step1-Step3 as notebook-callable APIs:
 - `from bridge.prescreen import prescreen`
 - `from bridge.identity import identity_assessment`
-- `bridge cls run --config <yaml>`
-- `bridge report summarize --config <yaml>`
-- `bridge report summarize-batch --config-list <yaml>`
+- `from bridge.cls import Step3Context, component_A, component_B, component_C, component_D, component_E, component_F, step3`
 
 The current execution model centers on:
 - Step 1 as notebook-callable whole-brain prescreening API
 - Step 2 as notebook-callable target identity assessment API
-- Step 3 as a formal workflow and reporting layer
+- Step 3 as component-first notebook-callable CLS and report API
 
 ## Configuration Contract
 
-BRIDGE v1 uses a single YAML file per run. The top-level sections are:
+BRIDGE v1 keeps YAML templates as editable parameter references. The top-level sections are:
 - `version`
 - `dataset`
 - `paths`
@@ -61,7 +59,7 @@ Important semantics:
 - `cls` defines enabled Step 3 components and component-specific settings
 - `report` defines summary output filenames and optional CLS weights
 
-For multi-run analyses, BRIDGE also supports config-list driven Step3/report generation through `bridge report summarize-batch`.
+Multi-run report generation is a roadmap item after the single-dataset notebook path is polished.
 
 ## Step 1 Status
 
@@ -90,10 +88,10 @@ The current formal Step 2 package includes:
 Step 3 is the formal **concordance scoring and reporting** layer. Its role is to evaluate how well the selected in vitro candidates reconstruct the intended in vivo developmental program.
 
 The current formal Step 3 package includes:
-- CLS component A-F
+- component-first CLS A-F notebook APIs
 - shared result packaging
-- serialization scaffolding
-- reporting and visualization scaffolding
+- summary CSV and manifest JSON generation
+- visualization placeholders tracked in the roadmap
 
 In the current phase, the report layer consumes both:
 - Step 2 artifacts such as thresholds JSON and candidate-bearing Step 2 h5ad outputs

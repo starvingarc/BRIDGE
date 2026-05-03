@@ -1,6 +1,6 @@
 # BRIDGE Roadmap
 
-This roadmap tracks the public agent-first BRIDGE demo path. It complements the formal package roadmap: Step1 prescreening and Step2 identity assessment now have notebook-callable package APIs, Step3 retains package/CLI workflows, and Step0 remains agent-guided setup.
+This roadmap tracks the public agent-first BRIDGE demo path. It complements the formal package roadmap: Step1 prescreening, Step2 identity assessment, and Step3 CLS scoring now have notebook-callable package APIs, and Step0 remains agent-guided setup.
 
 ## Phase 1: Agent-First Documentation and Step Skills
 
@@ -12,7 +12,7 @@ Planned deliverables:
 - repository-local skills for `bridge-step0`, `bridge-step1`, `bridge-step2`, and `bridge-step3`
 - supporting docs for models, notebooks, and skill behavior
 
-Status: agent docs and skills are present; Step1 and Step2 are connected as notebook-callable package code.
+Status: agent docs and skills are present; Step1, Step2, and Step3 are connected as notebook-callable package code.
 
 ## Phase 2: Model Assets and Step0 Validation
 
@@ -60,5 +60,5 @@ Goal: turn the single-dataset demo into a polished public workflow and extend it
 Planned deliverables:
 - complete end-to-end video demo script
 - fully executed example run with public-safe paths and assets
-- batch report guidance for comparing multiple in vitro differentiation datasets
+- batch report API and guidance for comparing multiple in vitro differentiation datasets
 - final documentation pass for external users and reviewers

@@ -28,7 +28,7 @@ Codex:
 
 ## Agent Responsibilities
 
-1. Prefer notebook-callable package code over a CLI for Step1.
+1. Prefer notebook-callable package code for Step1.
 2. Generate or update a Step1 notebook that imports `from bridge.prescreen import prescreen`.
 3. Validate that the input `.h5ad` exists and can be read in the active environment.
 4. Validate the whole-brain reference model path.

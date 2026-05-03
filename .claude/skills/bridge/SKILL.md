@@ -14,14 +14,14 @@ This skill helps an agent:
 
 - Step 1 prescreening is notebook-callable package code; upstream reference construction remains setup/model-building context.
 - Step 2 maps to the `identity` package.
-- Step 3 maps to the `cls`, `io`, and `workflows` packages.
+- Step 3 maps to the `cls` and `io` packages.
 
 ## Repository landmarks
 
 - `src/bridge/prescreen`: Step 1 prescreening
 - `src/bridge/identity`: Step 2
 - `src/bridge/cls`: Step 3 component logic
-- `src/bridge/workflows`: remaining Step3/report workflow entrypoints
+- `src/bridge/workflows`: config helpers and public parameter templates
 - `configs/`: public config templates
 - `docs/`: concept and usage docs
 
@@ -31,4 +31,4 @@ If the task is:
 - about whole-brain prescreening or Step1 outputs, use `bridge-step1`
 - about candidate selection or Step 2 outputs, use `bridge-identity`
 - about CLS execution or component prerequisites, use `bridge-cls`
-- about public package structure, remaining CLI, config, or docs, keep work at this top-level skill
+- about public package structure, config templates, or docs, keep work at this top-level skill

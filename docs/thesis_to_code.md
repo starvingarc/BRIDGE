@@ -14,18 +14,16 @@ This repository is intentionally structured so that a reader can map the thesis 
 
 - **Thesis Step 3**: concordance scoring, result packaging, and reporting
   - repository status: formalized in BRIDGE v1
-  - repository location: `src/bridge/cls`, `src/bridge/io`, and `src/bridge/workflows`
+  - repository location: `src/bridge/cls` and `src/bridge/io`
 
 ## API and Workflow Mapping
 
 The released execution layer mirrors the thesis structure:
 - `from bridge.prescreen import prescreen` -> thesis Step 1 prescreening
 - `from bridge.identity import identity_assessment` -> thesis Step 2
-- `bridge cls run` -> thesis Step 3 scoring
-- `bridge report summarize` -> thesis Step 3 reporting/output packaging
-- `bridge report summarize-batch` -> multi-dataset Step 3/report wrapper
+- `from bridge.cls import Step3Context, component_A, ..., step3` -> thesis Step 3 scoring and reporting
 
-Step 1 and Step 2 are exposed as notebook-callable Python APIs. The CLI focuses on the remaining Step 3 execution and report surface.
+Step 1, Step 2, and Step 3 are exposed as notebook-callable Python APIs.
 
 ## Why CLS Appears in Step 3
 
@@ -55,7 +53,7 @@ If you are reading BRIDGE from the perspective of the code:
 - treat Step 2 and Step 3 as the actual released v1 package surface
 
 Reporting note:
-- the current report layer intentionally reaches back into Step 2 artifacts so that candidate-selection context is not lost when Step 3 results are summarized
+- `step3(ctx)` writes summary CSV and manifest JSON so candidate-selection context and CLS component outputs remain machine-readable
 
 Repository note:
 - the public repository is meant to expose the stable software surface

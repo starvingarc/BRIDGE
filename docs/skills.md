@@ -2,7 +2,7 @@
 
 BRIDGE exposes a repository-local skill interface through `.claude/skills`.
 
-The skill interface is a structured guidance layer for coding agents and workflow-aware assistants that operate inside this repository. Runtime execution flows through the Python package, notebooks, the remaining Step3/report CLI, and documented artifacts.
+The skill interface is a structured guidance layer for coding agents and workflow-aware assistants that operate inside this repository. Runtime execution flows through the Python package, notebooks, and documented artifacts.
 
 ## Location
 
@@ -23,7 +23,7 @@ The public demo path uses lowercase command names for compatibility:
 - `bridge-step2`
   - run mDA progenitor identity assessment from Step1 RG candidates
 - `bridge-step3`
-  - run CLS scoring and report summarization from Step2 artifacts
+  - run component-first CLS scoring and summary generation from Step2 artifacts
 
 For Claude Code, these are intended to be invoked as `/bridge-step0` through `/bridge-step3` when the repository skills are available. For Codex-oriented demos, docs show the analogous `@bridge-step0` through `@bridge-step3` prompts.
 

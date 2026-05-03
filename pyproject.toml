@@ -9,14 +9,13 @@ description = "Workflow-oriented software for brain-referenced in vivo-to-in vit
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-keywords = ["single-cell", "development", "organoid", "reference-mapping", "evaluation", "cli"]
+keywords = ["single-cell", "development", "organoid", "reference-mapping", "evaluation"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Environment :: Console",
   "Intended Audience :: Science/Research",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
@@ -48,8 +47,6 @@ notebook = [
   "jupyterlab",
 ]
 
-[project.scripts]
-bridge = "bridge.cli:main"
 
 [project.urls]
 Repository = "https://github.com/starvingarc/BRIDGE"

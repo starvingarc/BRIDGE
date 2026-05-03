@@ -5,7 +5,7 @@ This document describes the intended runtime model for BRIDGE in infrastructure-
 ## Runtime Model
 
 BRIDGE supports two execution modes:
-- notebook execution for released Step 1 and Step 2 APIs plus direct workflow execution for Step 3/report modules
+- notebook execution for released Step 1, Step 2, and Step 3 APIs
 - artifact-driven reporting from previously generated Step 2 and Step 3 outputs
 
 ## Artifact Ownership
@@ -20,6 +20,6 @@ Typical artifact groups include:
 
 ## Reproducibility Notes
 
-- Runtime configuration should be explicit and file-based.
-- Reporting can consume precomputed artifacts and reuse existing workflow outputs.
+- Runtime configuration should be explicit in notebooks or file-backed parameter templates.
+- Reporting can consume precomputed artifacts and reuse existing Step3 outputs.
 - Environment-specific paths and operational deployment details should be maintained outside the public repository.
