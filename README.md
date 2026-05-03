@@ -4,7 +4,7 @@
 
 BRIDGE is a research software package and agent-guided notebook workflow for evaluating in vitro cell products against in vivo developmental references. The public workflow is notebook-first: Step1 prescreens candidate RG-like cells, Step2 identifies target mDA progenitor candidates, and Step3 scores developmental concordance with CLS components.
 
-## Quick Start
+## Agent Install And Use (Recommended)
 
 For a first-time install, send this to Claude Code, Codex, or a similar coding agent:
 
@@ -23,7 +23,7 @@ Then run the workflow through the repository-local skills:
 
 Command names are lowercase for compatibility. The project brand remains **BRIDGE**. Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md).
 
-## Python API
+## Manual Install And Use
 
 Install from GitHub or from a local checkout:
 
@@ -38,14 +38,14 @@ Notebook-callable entry points:
 ```python
 from bridge.prescreen import prescreen
 from bridge.identity import identify
-from bridge.cls import CLSContext, component_A, component_B, score
+from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score
 
 from bridge.prescreen.report import write_report as write_prescreen_report
 from bridge.identity.report import write_report as write_identity_report
 from bridge.cls.report import write_report as write_cls_report, compare_reports
 ```
 
-The high-level notebook flow is:
+The high-level manual notebook flow is:
 
 ```python
 step1 = prescreen(adata, ref_model_dir="./models/whole_brain_ref_model", output_dir="./runs/demo_dataset/step1", prefix="demo_dataset")
@@ -63,8 +63,15 @@ ctx = CLSContext(
     probs_ref_cal=step2.probabilities.probs_ref_cal,
 )
 
-component_A(ctx)
-component_B(ctx)
+# Each CLS component is callable on its own when debugging or customizing the analysis.
+# a = component_A(ctx)
+# b = component_B(ctx)
+# c = component_C(ctx)
+# d = component_D(ctx)
+# e = component_E(ctx)
+# f = component_F(ctx)
+
+# For the default reportable A-F run, call score(ctx).
 cls_result = score(ctx)
 write_cls_report(result=cls_result, ctx=ctx, output_dir="./runs/demo_dataset/step3/report", prefix="demo_dataset")
 ```

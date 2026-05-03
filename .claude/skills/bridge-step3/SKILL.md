@@ -30,7 +30,7 @@ Codex:
 
 1. Validate that required Step2 artifacts exist.
 2. Build `CLSContext` in the Step3 notebook.
-3. Run selected `component_A(ctx)` through `component_F(ctx)`, or call `score(ctx)` for the default full pass.
+3. Run any selected `component_A(ctx)` through `component_F(ctx)` independently, or call `score(ctx)` for the default full A-F pass.
 4. Save component-level JSON/detail tables plus `summary.csv` and `manifest.json`.
 5. Call `from bridge.cls.report import write_report as write_cls_report, compare_reports`.
 6. Run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)` at the notebook tail.
@@ -52,11 +52,15 @@ ctx = CLSContext(
     probs_ref_cal=probs_ref_cal,
 )
 
-# Optional component-by-component debug/customization.
-a = component_A(ctx)
-b = component_B(ctx)
+# Each component can be run independently when debugging or customizing.
+# a = component_A(ctx)
+# b = component_B(ctx)
+# c = component_C(ctx)
+# d = component_D(ctx)
+# e = component_E(ctx)
+# f = component_F(ctx)
 
-# Default full run.
+# Default full A-F run for report generation.
 result = score(ctx)
 
 report = write_cls_report(
