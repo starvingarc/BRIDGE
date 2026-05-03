@@ -112,7 +112,7 @@ def save_figure(fig, path_base: str | Path, *, formats=("png",), dpi: int = 300)
     base.parent.mkdir(parents=True, exist_ok=True)
     primary: str | None = None
     for fmt in formats:
-        out = base.with_suffix(f".{fmt}")
+        out = base.parent / f"{base.name}.{fmt}"
         fig.savefig(out, dpi=dpi, bbox_inches="tight")
         if primary is None:
             primary = str(out)

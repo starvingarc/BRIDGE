@@ -107,3 +107,23 @@ def test_compare_reports_warns_when_component_artifact_is_missing(tmp_path):
 
     manifest = json.loads(Path(report.manifest_json).read_text(encoding="utf-8"))
     assert any("missing" in warning.lower() for warning in manifest["warnings"])
+
+
+
+def test_cls_report_public_notebook_helpers(tmp_path):
+    from bridge.cls.report import build_component_score_table, build_interpretation, plot_component_A, plot_component_scores_bar, plot_component_scores_heatmap, plot_weighted_cls
+
+    result, ctx = _cls_result(tmp_path)
+    score_df = build_component_score_table(result)
+    interpretation = build_interpretation(result)
+    fig_bar = plot_component_scores_bar(score_df)
+    fig_heatmap = plot_component_scores_heatmap(score_df)
+    fig_weighted = plot_weighted_cls(result.weighted_total_cls)
+    fig_a = plot_component_A(result.component_results["A"])
+
+    assert score_df["Component"].tolist()[:2] == ["A", "B"]
+    assert "overview" in interpretation
+    assert fig_bar is not None
+    assert fig_heatmap is not None
+    assert fig_weighted is not None
+    assert fig_a is not None

@@ -81,3 +81,7 @@ Step1 is in vitro prescreening, not supervised test-set evaluation. Do not repor
 ## Report Coverage
 
 The Step1 report API covers predicted label counts, RG candidate summaries, confidence distributions, optional UMAP views when `X_umap` exists, and concise English interpretation of identity composition and RG candidate fraction.
+
+## Notebook-Visible Report Sections
+
+After the core workflow runs, the notebook must include notebook-visible report sections rather than only writing files under `report/`. For each report table, add a short Markdown context cell, a code cell that builds and displays the table, and a concise interpretation Markdown cell. For each report figure, add a short Markdown context cell, a code cell that calls the public `plot_*` function and displays the figure, and a concise interpretation Markdown cell. The final cell should still call `write_report(...)`, print artifact paths, and save the standard Markdown, manifest, CSV, and image files. Agents should display each table and display each figure as code-cell output.

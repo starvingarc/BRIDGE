@@ -94,3 +94,22 @@ def test_identity_report_requires_step2_obs_columns(tmp_path):
 
     with pytest.raises(KeyError, match="p_std"):
         write_report(result=result, output_dir=tmp_path, prefix="demo", target_class=TARGET)
+
+
+
+def test_identity_report_public_notebook_helpers():
+    from bridge.identity.report import build_interpretation, build_report_tables, plot_candidate_fraction, plot_identity_composition, plot_metric_histograms
+
+    result = _identity_result()
+    tables = build_report_tables(result, target_class=TARGET)
+    interpretation = build_interpretation(result, target_class=TARGET)
+    fig_fraction = plot_candidate_fraction(result, target_class=TARGET)
+    fig_metrics = plot_metric_histograms(result, target_class=TARGET)
+    fig_comp = plot_identity_composition(tables["identity_composition"])
+
+    assert set(tables) == {"candidate_summary", "thresholds", "identity_composition"}
+    assert tables["candidate_summary"].loc[0, "candidate_count"] == 2
+    assert "candidate_selection" in interpretation
+    assert fig_fraction is not None
+    assert fig_metrics is not None
+    assert fig_comp is not None

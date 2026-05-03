@@ -2,7 +2,7 @@
 
 This document describes the intended public demo flow for BRIDGE. The demo is agent-first: a first-time user copies commands from GitHub into Claude Code or Codex and lets the agent run the workflow.
 
-The current public deliverable includes workflow guidance, notebook-callable package APIs, artifact contracts, and per-step report APIs for figures, Markdown reports, JSON manifests, and concise English interpretation. Formal polished example notebooks are still a roadmap item.
+The current public deliverable includes workflow guidance, notebook-callable package APIs, artifact contracts, and per-step report APIs for figures, Markdown reports, JSON manifests, and concise English interpretation. Formal polished example notebooks are still a roadmap item. Notebook display rule: report tables and figures should appear as executed code-cell outputs with short context and interpretation around them, while the saved `report/` folder remains the artifact contract.
 
 ## Part 1: Install BRIDGE
 
@@ -88,7 +88,7 @@ Agent responsibility:
 - annotate cells as `RG_candidate` or `non_RG`
 - save the full prescreened object, RG candidate subset, probability table, and summary JSON through the API
 - call `from bridge.prescreen.report import write_report as write_prescreen_report`
-- run `write_prescreen_report(result=step1, output_dir=..., prefix=...)` to write figures, tables, Markdown, manifest, and English interpretation
+- build and display Step1 report tables, figures, and interpretation in notebook cells, then run `write_prescreen_report(result=step1, output_dir=..., prefix=...)` to save figures, tables, Markdown, manifest, and English interpretation
 
 Expected current artifacts:
 - `<prefix>.step1_prescreened.h5ad`
@@ -131,7 +131,7 @@ Agent responsibility:
 - run `from bridge.identity import identify` in the Step2 notebook
 - call `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)` and preserve the current Step2 artifact contract
 - call `from bridge.identity.report import write_report as write_identity_report`
-- run `write_identity_report(result=step2, output_dir=..., prefix=..., target_class=...)`
+- build and display Step2 report tables, figures, and interpretation in notebook cells, then run `write_identity_report(result=step2, output_dir=..., prefix=..., target_class=...)`
 - summarize candidate count and threshold metadata without overclaiming biological interpretation
 
 Expected current artifacts:
@@ -176,7 +176,7 @@ Agent responsibility:
 - run selected `component_A(ctx)` through `component_F(ctx)`, or call `score(ctx)` for the default full pass
 - preserve machine-readable output contracts
 - call `from bridge.cls.report import write_report as write_cls_report, compare_reports`
-- run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)`
+- build and display Step3 report tables, figures, and interpretation in notebook cells, then run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)`
 - use `compare_reports(...)` when comparing multiple protocols or datasets
 
 Expected current artifacts:

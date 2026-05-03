@@ -42,3 +42,7 @@ The report APIs are available package code. They produce standard figure files, 
 ## Environment Expectations
 
 Step0 should install workflow extras from a source checkout with `python -m pip install -e ".[workflow]"` and verify imports for `torch`, `anndata`, `scanpy`, and `scvi` before downstream notebook steps.
+
+## Notebook-Visible Reports
+
+Step notebooks should show report tables and figures as executed code-cell outputs, with short context before each table or figure and concise interpretation after it. The saved `report/` directory remains the machine-readable artifact contract.

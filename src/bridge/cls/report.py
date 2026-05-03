@@ -291,6 +291,196 @@ def _score_interpretation(score_df: pd.DataFrame, weighted_total_cls: float | No
     }
 
 
+def build_component_score_table(result: Any) -> pd.DataFrame:
+    return _component_score_frame(getattr(result, "component_results", {}) or {})
+
+
+def build_interpretation(result: Any, cls_weights: Mapping[str, float] | None = None) -> dict[str, str]:
+    score_df = build_component_score_table(result)
+    weighted_total_cls = _finite_float(getattr(result, "weighted_total_cls", None))
+    if weighted_total_cls is None and not score_df.empty:
+        weighted_total_cls = _weighted_total(dict(zip(score_df["Component"], score_df["Score"])), cls_weights)
+    return _score_interpretation(score_df, weighted_total_cls)
+
+
+def plot_component_scores_bar(score_df: pd.DataFrame):
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(7.2, 4.2))
+    labels = [f"{row.Component}\n{row.Label}" for row in score_df.itertuples()]
+    scores = score_df["Score"].astype(float).fillna(0.0).to_numpy()
+    colors = ["#4c72b0", "#55a868", "#c44e52", "#8172b2", "#ccb974", "#64b5cd"][: len(scores)]
+    bars = ax.bar(labels, scores, color=colors, edgecolor="#333333", linewidth=0.7)
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("Component score")
+    ax.set_title("CLS component scores")
+    ax.grid(axis="y", alpha=0.25, linewidth=0.7)
+    for bar, score in zip(bars, scores):
+        ax.text(bar.get_x() + bar.get_width() / 2, min(score + 0.025, 1.02), f"{score:.2f}", ha="center", va="bottom", fontsize=9)
+    return fig
+
+
+def plot_component_scores_heatmap(score_df: pd.DataFrame, title: str = "CLS component heatmap"):
+    plt = import_pyplot()
+    values = score_df["Score"].astype(float).fillna(0.0).to_numpy()[None, :]
+    fig, ax = plt.subplots(figsize=(7.6, 2.5))
+    image = ax.imshow(values, vmin=0, vmax=1, cmap="YlGnBu", aspect="auto")
+    ax.set_xticks(np.arange(len(score_df)))
+    ax.set_xticklabels([f"{row.Component}: {row.Label}" for row in score_df.itertuples()], rotation=35, ha="right")
+    ax.set_yticks([0])
+    ax.set_yticklabels(["Score"])
+    for idx, value in enumerate(values[0]):
+        ax.text(idx, 0, f"{value:.2f}", ha="center", va="center", color="#1f1f1f", fontsize=9)
+    ax.set_title(title)
+    fig.colorbar(image, ax=ax, fraction=0.035, pad=0.04, label="Score")
+    return fig
+
+
+def plot_weighted_cls(weighted_total_cls: float | None):
+    plt = import_pyplot()
+    value = 0.0 if weighted_total_cls is None else float(weighted_total_cls)
+    fig, ax = plt.subplots(figsize=(5.0, 3.0))
+    ax.bar(["Weighted CLS"], [value], color="#4c72b0", edgecolor="#333333", linewidth=0.7)
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("Score")
+    ax.set_title("Weighted CLS summary")
+    ax.text(0, min(value + 0.03, 1.02), "n/a" if weighted_total_cls is None else f"{value:.3f}", ha="center", va="bottom", fontsize=11)
+    ax.grid(axis="y", alpha=0.25, linewidth=0.7)
+    return fig
+
+
+def plot_component_A(result: Any):
+    df = getattr(result, "score_df", pd.DataFrame())
+    if not {"sA1_mean", "sA2_ks"}.issubset(df.columns):
+        return None
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(5.2, 4.6))
+    size = df["n_cells"].astype(float).clip(lower=10) if "n_cells" in df.columns else pd.Series(np.repeat(30, len(df)))
+    ax.scatter(df["sA1_mean"], df["sA2_ks"], s=size * 4, color="#4c72b0", alpha=0.75, edgecolor="white", linewidth=0.7)
+    if "batch" in df.columns:
+        for _, row in df.iterrows():
+            ax.annotate(str(row["batch"]), (row["sA1_mean"], row["sA2_ks"]), xytext=(4, 4), textcoords="offset points", fontsize=8)
+    ax.set_xlim(0, 1.02)
+    ax.set_ylim(0, 1.02)
+    ax.set_xlabel("A1 mean target probability")
+    ax.set_ylabel("A2 distribution similarity")
+    ax.set_title("Component A identity alignment")
+    ax.grid(alpha=0.25, linewidth=0.7)
+    return fig
+
+
+def plot_component_B(result: Any):
+    df = getattr(result, "score_df", pd.DataFrame())
+    if "sB" not in df.columns:
+        return None
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(6.2, 3.8))
+    labels = df["batch"].astype(str) if "batch" in df.columns else pd.Series([str(i) for i in range(len(df))])
+    ax.bar(labels, df["sB"].astype(float), color="#55a868", edgecolor="#333333", linewidth=0.6)
+    if "r" in df.columns:
+        ax.plot(labels, df["r"].astype(float), color="#c44e52", marker="o", linewidth=1.4, label="r")
+        ax.legend(frameon=False)
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("Score")
+    ax.set_title("Component B pseudo-bulk agreement")
+    ax.tick_params(axis="x", rotation=35)
+    ax.grid(axis="y", alpha=0.25, linewidth=0.7)
+    return fig
+
+
+def plot_component_C(result: Any):
+    df = getattr(result, "score_df", pd.DataFrame())
+    if not {"AUC_org", "sC"}.issubset(df.columns):
+        return None
+    auc_ref = None
+    meta = getattr(result, "meta", {}) or {}
+    if isinstance(meta, Mapping):
+        details = meta.get("auc_ref_details")
+        auc_ref = details.get("AUC_ref") if isinstance(details, Mapping) else None
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(5.6, 4.4))
+    ax.scatter(df["AUC_org"].astype(float), df["sC"].astype(float), s=65, color="#8172b2", alpha=0.8, edgecolor="white", linewidth=0.7)
+    if auc_ref is not None:
+        ax.axvline(float(auc_ref), color="#333333", linestyle="--", linewidth=1.0, label="Reference AUC")
+        ax.legend(frameon=False)
+    ax.set_xlim(0, 1.02)
+    ax.set_ylim(0, 1.02)
+    ax.set_xlabel("Query AUC")
+    ax.set_ylabel("Component C score")
+    ax.set_title("Component C transferability")
+    ax.grid(alpha=0.25, linewidth=0.7)
+    return fig
+
+
+def plot_component_D(result: Any):
+    df = getattr(result, "score_df", pd.DataFrame())
+    if not {"sD_query", "sD_ref"}.issubset(df.columns):
+        return None
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(5.4, 4.7))
+    sizes = df["n_candidate"].astype(float).clip(lower=5) * 4 if "n_candidate" in df.columns else pd.Series(np.repeat(45, len(df)))
+    ax.scatter(df["sD_query"], df["sD_ref"], s=sizes, color="#64b5cd", alpha=0.78, edgecolor="white", linewidth=0.7)
+    for iso in (0.4, 0.6, 0.8):
+        ax.plot([0, 1], [iso, iso], color="#bdbdbd", linewidth=0.7, linestyle=":")
+    ax.set_xlim(0, 1.02)
+    ax.set_ylim(0, 1.02)
+    ax.set_xlabel("Query neighborhood structure")
+    ax.set_ylabel("Reference neighborhood structure")
+    ax.set_title("Component D neighborhood concordance")
+    ax.grid(alpha=0.25, linewidth=0.7)
+    return fig
+
+
+def plot_component_E(result: Any, ctx: Any | None = None):
+    genes_path = _component_e_genes_path(result, ctx) if ctx is not None else None
+    plt = import_pyplot()
+    if genes_path is not None:
+        genes = pd.read_csv(genes_path)
+        if "rho" in genes.columns:
+            fig, ax = plt.subplots(figsize=(5.8, 3.8))
+            ax.hist(genes["rho"].dropna().astype(float), bins=30, color="#ccb974", edgecolor="white", alpha=0.9)
+            ax.axvline(0, color="#333333", linestyle="--", linewidth=1.0)
+            ax.set_xlabel("Gene-level pseudotime correlation")
+            ax.set_ylabel("Gene count")
+            ax.set_title("Component E pseudotime gene agreement")
+            return fig
+    df = getattr(result, "score_df", pd.DataFrame())
+    score_col = "E_dev" if "E_dev" in df.columns else ("sE" if "sE" in df.columns else None)
+    if score_col is None:
+        return None
+    fig, ax = plt.subplots(figsize=(5.8, 3.8))
+    labels = df["branch"].astype(str) if "branch" in df.columns else pd.Series([str(i) for i in range(len(df))])
+    ax.bar(labels, df[score_col].astype(float), color="#ccb974", edgecolor="#333333", linewidth=0.6)
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("Score")
+    ax.set_title("Component E pseudotime structure")
+    ax.tick_params(axis="x", rotation=35)
+    ax.grid(axis="y", alpha=0.25, linewidth=0.7)
+    return fig
+
+
+def plot_component_F_activity(result: Any, ctx: Any, warnings: list[str] | None = None):
+    local_warnings = [] if warnings is None else warnings
+    query_path = _component_f_query_path(result, ctx)
+    if query_path is None:
+        local_warnings.append("component F activity alignment skipped because query_aucell.csv is not available.")
+        return None
+    if getattr(ctx, "ref_sceniclike", None) is None:
+        local_warnings.append("component F activity alignment skipped because CLSContext.ref_sceniclike is not available.")
+        return None
+    aucell = pd.read_csv(query_path, index_col=0)
+    numeric = aucell.select_dtypes(include=["number"])
+    if numeric.empty:
+        local_warnings.append("component F activity alignment skipped because query_aucell.csv has no numeric regulon activity columns.")
+        return None
+    top = numeric.mean(axis=0).sort_values(ascending=False).head(20)
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(7.0, max(3.5, 0.25 * len(top))))
+    ax.barh(top.index[::-1], top.values[::-1], color="#dd8452", edgecolor="#333333", linewidth=0.5)
+    ax.set_xlabel("Mean query AUCell")
+    ax.set_title("Component F regulon activity diagnostics")
+    return fig
+
+
 def write_report(
     *,
     result: Any,

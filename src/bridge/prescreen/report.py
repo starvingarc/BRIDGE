@@ -10,8 +10,38 @@ from bridge.reporting import ReportResult, ensure_dir, require_obs_columns, save
 from bridge.reporting.core import STEP_COLORS, fraction_text, import_pyplot, value_counts_frame
 
 
-def _prescreen_count_figure(counts: pd.Series, path_base: Path, *, formats, dpi: int) -> str:
+def build_report_tables(result) -> dict[str, pd.DataFrame]:
+    adata = result.adata
+    require_obs_columns(adata, ["step1_pred_cell_type", PRESCREEN_COLUMN], context="Step1 report")
+    counts = adata.obs[PRESCREEN_COLUMN].astype(str).value_counts()
+    return {
+        "predicted_label_counts": value_counts_frame(adata.obs["step1_pred_cell_type"], label="predicted_label"),
+        "prescreen_counts": counts.rename_axis("prescreen_label").reset_index(name="count"),
+    }
+
+
+def build_interpretation(result_or_summary) -> dict[str, str]:
+    summary = dict(getattr(result_or_summary, "summary", result_or_summary))
+    fraction = fraction_text(summary.get("rg_candidate_fraction"))
+    rg_count = summary.get("rg_candidate_count", 0)
+    query_count = summary.get("query_count", 0)
+    return {
+        "overview": (
+            f"Step1 maps the in vitro sample to a whole-brain reference and separates broad RG-like candidates from non-RG cells. "
+            f"In this run, {rg_count} of {query_count} cells ({fraction}) were retained as RG candidates."
+        ),
+        "boundary": (
+            "This step is a prescreening and composition check for in vitro data. It should be interpreted as a routing and quality-control layer before target-specific identity assessment."
+        ),
+    }
+
+
+def plot_prescreen_counts(result_or_counts):
     plt = import_pyplot()
+    if isinstance(result_or_counts, pd.Series):
+        counts = result_or_counts
+    else:
+        counts = result_or_counts.adata.obs[PRESCREEN_COLUMN].astype(str).value_counts()
     labels = [RG_CANDIDATE, NON_RG]
     values = [int(counts.get(label, 0)) for label in labels]
     colors = [STEP_COLORS["on"], STEP_COLORS["off"]]
@@ -25,10 +55,11 @@ def _prescreen_count_figure(counts: pd.Series, path_base: Path, *, formats, dpi:
     for bar, value in zip(bars, values):
         pct = (value / total * 100) if total else 0.0
         ax.text(bar.get_x() + bar.get_width() / 2, value, f"{value}\n{pct:.1f}%", ha="center", va="bottom", fontsize=9)
-    return save_figure(fig, path_base, formats=formats, dpi=dpi)
+    return fig
 
 
-def _confidence_figure(obs: pd.DataFrame, path_base: Path, *, formats, dpi: int) -> str | None:
+def plot_prediction_confidence(result_or_obs):
+    obs = result_or_obs if isinstance(result_or_obs, pd.DataFrame) else result_or_obs.adata.obs
     if "step1_pred_maxp" not in obs.columns:
         return None
     plt = import_pyplot()
@@ -40,22 +71,18 @@ def _confidence_figure(obs: pd.DataFrame, path_base: Path, *, formats, dpi: int)
     ax.set_title("Step1 prediction confidence")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
+    return fig
+
+
+def _prescreen_count_figure(counts: pd.Series, path_base: Path, *, formats, dpi: int) -> str:
+    return save_figure(plot_prescreen_counts(counts), path_base, formats=formats, dpi=dpi)
+
+
+def _confidence_figure(obs: pd.DataFrame, path_base: Path, *, formats, dpi: int) -> str | None:
+    fig = plot_prediction_confidence(obs)
+    if fig is None:
+        return None
     return save_figure(fig, path_base, formats=formats, dpi=dpi)
-
-
-def _interpret(summary: dict[str, Any]) -> dict[str, str]:
-    fraction = fraction_text(summary.get("rg_candidate_fraction"))
-    rg_count = summary.get("rg_candidate_count", 0)
-    query_count = summary.get("query_count", 0)
-    return {
-        "overview": (
-            f"Step1 maps the in vitro sample to a whole-brain reference and separates broad RG-like candidates from non-RG cells. "
-            f"In this run, {rg_count} of {query_count} cells ({fraction}) were retained as RG candidates."
-        ),
-        "boundary": (
-            "This step is a prescreening and composition check for in vitro data. It should be interpreted as a routing and quality-control layer before target-specific identity assessment."
-        ),
-    }
 
 
 def write_report(
@@ -74,12 +101,10 @@ def write_report(
 
     summary = dict(result.summary)
     counts = adata.obs[PRESCREEN_COLUMN].astype(str).value_counts()
-    predicted_counts = value_counts_frame(adata.obs["step1_pred_cell_type"], label="predicted_label")
-    prescreen_counts = counts.rename_axis("prescreen_label").reset_index(name="count")
-
+    table_frames = build_report_tables(result)
     tables = {
-        "predicted_label_counts": write_table(predicted_counts, tabledir / f"{prefix}.predicted_label_counts.csv"),
-        "prescreen_counts": write_table(prescreen_counts, tabledir / f"{prefix}.prescreen_counts.csv"),
+        name: write_table(frame, tabledir / f"{prefix}.{name}.csv")
+        for name, frame in table_frames.items()
     }
     figures: dict[str, str] = {
         "prescreen_counts": _prescreen_count_figure(counts, figdir / f"{prefix}.prescreen_counts", formats=formats, dpi=dpi),
@@ -103,7 +128,7 @@ def write_report(
             break
         figures[key] = umap
 
-    interpretation = _interpret(summary)
+    interpretation = build_interpretation(summary)
     markdown = [
         f"# Step1 Prescreening Report: {prefix}",
         "",

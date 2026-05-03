@@ -98,3 +98,7 @@ comparison = compare_reports(
 ## Report Coverage
 
 The Step3 report API covers component score bar and heatmap, weighted CLS summary, available A-F diagnostic panels when required columns or files exist, and multi-protocol comparison figures. Missing optional component diagnostics should be recorded as manifest warnings, not treated as fatal errors.
+
+## Notebook-Visible Report Sections
+
+After the core workflow runs, the notebook must include notebook-visible report sections rather than only writing files under `report/`. For each report table, add a short Markdown context cell, a code cell that builds and displays the table, and a concise interpretation Markdown cell. For each report figure, add a short Markdown context cell, a code cell that calls the public `plot_*` function and displays the figure, and a concise interpretation Markdown cell. The final cell should still call `write_report(...)`, print artifact paths, and save the standard Markdown, manifest, CSV, and image files. Agents should display each table and display each figure as code-cell output.

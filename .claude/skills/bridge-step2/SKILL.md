@@ -77,3 +77,7 @@ report = write_identity_report(
 ## Report Coverage
 
 The Step2 report API covers target probability, uncertainty, entropy, candidate summaries, optional UMAP views, and mean-probability identity composition with an `Uncertain` label below cutoff. Interpret high `p_mean` with low `p_std`/`Hnorm` as stable target convergence; interpret high uncertainty as boundary, transition, or competing-fate structure.
+
+## Notebook-Visible Report Sections
+
+After the core workflow runs, the notebook must include notebook-visible report sections rather than only writing files under `report/`. For each report table, add a short Markdown context cell, a code cell that builds and displays the table, and a concise interpretation Markdown cell. For each report figure, add a short Markdown context cell, a code cell that calls the public `plot_*` function and displays the figure, and a concise interpretation Markdown cell. The final cell should still call `write_report(...)`, print artifact paths, and save the standard Markdown, manifest, CSV, and image files. Agents should display each table and display each figure as code-cell output.
