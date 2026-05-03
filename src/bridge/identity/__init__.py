@@ -1,13 +1,14 @@
 """Identity assessment package."""
 
 from bridge.identity.adapters import write_identity_outputs_to_obs
-from bridge.identity.api import run_identity_assessment
+from bridge.identity.api import build_identity_summary, identity_assessment, run_identity_assessment
 from bridge.identity.calibration import (
     apply_calibrators,
     calibrate_probs,
     fit_isotonic_per_class,
 )
 from bridge.identity.results import (
+    IdentityAssessmentResult,
     IdentityProbabilities,
     IdentitySelectionResult,
     IdentityThresholds,
@@ -27,11 +28,13 @@ from bridge.identity.uncertainty import (
 )
 
 __all__ = [
+    "IdentityAssessmentResult",
     "IdentityProbabilities",
     "IdentitySelectionResult",
     "IdentityThresholds",
     "IdentityUncertainty",
     "apply_calibrators",
+    "build_identity_summary",
     "approx_std_from_p",
     "calibrate_probs",
     "calibrate_threshold_from_ref",
@@ -39,6 +42,7 @@ __all__ = [
     "ensemble_mean_std",
     "estimate_u_from_std",
     "fit_isotonic_per_class",
+    "identity_assessment",
     "predictive_entropy_norm",
     "run_identity_assessment",
     "run_query_ensemble",

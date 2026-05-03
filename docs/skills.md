@@ -2,7 +2,7 @@
 
 BRIDGE exposes a repository-local skill interface through `.claude/skills`.
 
-The skill interface is a structured guidance layer for coding agents and workflow-aware assistants that operate inside this repository. Runtime execution still flows through the Python package, CLI, notebooks, and documented artifacts.
+The skill interface is a structured guidance layer for coding agents and workflow-aware assistants that operate inside this repository. Runtime execution flows through the Python package, notebooks, the remaining Step3/report CLI, and documented artifacts.
 
 ## Location
 

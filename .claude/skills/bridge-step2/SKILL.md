@@ -23,14 +23,14 @@ Codex:
 ## Required Inputs
 
 - Step1 RG candidate subset
-- target-specific model and reference configuration
+- target-specific reference AnnData and scANVI model path
 - writable Step2 output directory
 
 ## Agent Responsibilities
 
 1. Locate the Step1 RG candidate h5ad.
 2. Validate the target-specific model and config.
-3. Run the BRIDGE identity workflow or equivalent package API.
+3. In the Step2 notebook, call `from bridge.identity import identity_assessment` and run `identity_assessment(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)`.
 4. Preserve the current Step2 artifact contract.
 5. Summarize candidate count and threshold metadata without overclaiming final biological interpretation.
 

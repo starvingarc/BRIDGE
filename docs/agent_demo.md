@@ -120,13 +120,13 @@ Codex command:
 
 Required input:
 - Step1 RG candidate subset
-- target-specific reference/model metadata from the config
+- target-specific reference AnnData and scANVI model path
 - writable Step2 output directory
 
 Agent responsibility:
 - consume the Step1 RG candidate subset
-- run target-specific identity assessment for mDA progenitor candidates
-- preserve the current Step2 artifact contract
+- run `from bridge.identity import identity_assessment` in the Step2 notebook
+- call `identity_assessment(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)` and preserve the current Step2 artifact contract
 - summarize candidate count and threshold metadata without overclaiming biological interpretation
 
 Expected current artifacts:

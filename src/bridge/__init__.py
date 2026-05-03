@@ -9,10 +9,10 @@ def run_identity_assessment(*args, **kwargs):
     return _run_identity_assessment(*args, **kwargs)
 
 
-def run_identity_workflow(*args, **kwargs):
-    from bridge.workflows.identity import run_identity_workflow as _run_identity_workflow
+def identity_assessment(*args, **kwargs):
+    from bridge.identity.api import identity_assessment as _identity_assessment
 
-    return _run_identity_workflow(*args, **kwargs)
+    return _identity_assessment(*args, **kwargs)
 
 
 def run_cls_workflow(*args, **kwargs):
@@ -27,4 +27,4 @@ def run_report_summary(*args, **kwargs):
     return _run_report_summary(*args, **kwargs)
 
 
-__all__ = ["load_config", "run_cls_workflow", "run_identity_assessment", "run_identity_workflow", "run_report_summary"]
+__all__ = ["identity_assessment", "load_config", "run_cls_workflow", "run_identity_assessment", "run_report_summary"]

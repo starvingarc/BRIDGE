@@ -16,12 +16,6 @@ from bridge.workflows.config import (
 )
 
 
-def run_identity_workflow(*args, **kwargs):
-    from bridge.workflows.identity import run_identity_workflow as _run_identity_workflow
-
-    return _run_identity_workflow(*args, **kwargs)
-
-
 def run_cls_workflow(*args, **kwargs):
     from bridge.workflows.cls import run_cls_workflow as _run_cls_workflow
 
@@ -54,7 +48,6 @@ __all__ = [
     "load_config",
     "load_config_list",
     "run_cls_workflow",
-    "run_identity_workflow",
     "run_report_summary",
     "run_report_summary_batch",
 ]

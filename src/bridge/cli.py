@@ -10,12 +10,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bridge", description="BRIDGE workflow CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    identity_parser = subparsers.add_parser("identity", help="Run Step 2 identity assessment workflows")
-    identity_subparsers = identity_parser.add_subparsers(dest="subcommand", required=True)
-    identity_run = identity_subparsers.add_parser("run", help="Run identity workflow")
-    identity_run.add_argument("--config", required=True, help="Path to workflow YAML config")
-    identity_run.add_argument("--dry-run", action="store_true", help="Validate config and print run plan only")
-
     cls_parser = subparsers.add_parser("cls", help="Run Step 3 CLS workflows")
     cls_subparsers = cls_parser.add_subparsers(dest="subcommand", required=True)
     cls_run = cls_subparsers.add_parser("run", help="Run CLS workflow")
@@ -41,12 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    if args.command == "identity" and args.subcommand == "run":
-        from bridge.workflows.identity import run_identity_workflow
-
-        config = load_config(args.config)
-        result = run_identity_workflow(config, dry_run=args.dry_run)
-    elif args.command == "cls" and args.subcommand == "run":
+    if args.command == "cls" and args.subcommand == "run":
         from bridge.workflows.cls import run_cls_workflow
 
         config = load_config(args.config)

@@ -24,21 +24,22 @@ More concretely:
 
 The public repository is intended to present BRIDGE as software:
 - installable from GitHub
-- usable through a CLI
-- configured through public templates
+- usable through notebook-first Python APIs plus the remaining Step3/report CLI
+- configured through public templates where Step3/report configuration is needed
 - documented as a workflow package for external readers and coding agents
 
 ## Executable Entrypoints
 
-BRIDGE v1 exposes workflow-level commands rather than component-level CLI commands:
-- `bridge identity run --config <yaml>`
+BRIDGE v1 exposes Step1 and Step2 as notebook-callable APIs, with CLI support retained for Step3/report packaging:
+- `from bridge.prescreen import prescreen`
+- `from bridge.identity import identity_assessment`
 - `bridge cls run --config <yaml>`
 - `bridge report summarize --config <yaml>`
 - `bridge report summarize-batch --config-list <yaml>`
 
 The current execution model centers on:
 - Step 1 as notebook-callable whole-brain prescreening API
-- Step 2 as a formal workflow
+- Step 2 as notebook-callable target identity assessment API
 - Step 3 as a formal workflow and reporting layer
 
 ## Configuration Contract
@@ -56,11 +57,11 @@ Important semantics:
 - `dataset.id` is the canonical run-level identifier for Step 3 outputs
 - `dataset.prefix` is the canonical naming prefix for Step 2 artifacts
 - `paths` are resolved relative to the YAML file location
-- `identity` defines the Step 2 candidate-selection logic
+- `identity` records the target class and Step2 artifact conventions used by downstream Step3/report code
 - `cls` defines enabled Step 3 components and component-specific settings
 - `report` defines summary output filenames and optional CLS weights
 
-For multi-run analyses, BRIDGE also supports config-list driven report generation through `bridge report summarize-batch`.
+For multi-run analyses, BRIDGE also supports config-list driven Step3/report generation through `bridge report summarize-batch`.
 
 ## Step 1 Status
 

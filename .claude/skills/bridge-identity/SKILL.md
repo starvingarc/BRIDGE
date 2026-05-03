@@ -5,14 +5,13 @@ Use this skill for BRIDGE Step 2 work.
 ## Purpose
 
 This skill covers:
-- identity workflow execution
+- notebook-callable identity assessment
 - candidate-selection artifacts
 - thresholds, probabilities, uncertainty, and entropy outputs
 
 ## Core package areas
 
 - `src/bridge/identity`
-- `src/bridge/workflows/identity.py`
 
 ## Expected Step 2 artifact set
 

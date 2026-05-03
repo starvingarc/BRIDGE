@@ -40,3 +40,13 @@ class IdentitySelectionResult:
     candidate_mask: pd.Series
     thresholds: IdentityThresholds
     target_class: str
+
+@dataclass(frozen=True)
+class IdentityAssessmentResult:
+    bdata: Any
+    adata_ref: Any
+    probabilities: IdentityProbabilities
+    uncertainty: IdentityUncertainty
+    selection: IdentitySelectionResult
+    summary: dict[str, Any]
+    output_paths: dict[str, str]

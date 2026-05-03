@@ -5,7 +5,7 @@ This document describes the intended runtime model for BRIDGE in infrastructure-
 ## Runtime Model
 
 BRIDGE supports two execution modes:
-- direct workflow execution for released Step 2 and Step 3 modules
+- notebook execution for released Step 1 and Step 2 APIs plus direct workflow execution for Step 3/report modules
 - artifact-driven reporting from previously generated Step 2 and Step 3 outputs
 
 ## Artifact Ownership

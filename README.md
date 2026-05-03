@@ -5,7 +5,7 @@
 BRIDGE is an open-source research software package and agent-guided workflow for evaluating in vitro cell products against in vivo developmental references.
 
 BRIDGE is designed to be usable in two ways:
-- as a Python package for notebook-callable Step1 prescreening plus CLI workflows for formal Step 2 and Step 3
+- as a Python package for notebook-callable Step1 prescreening and Step2 identity assessment, plus remaining CLI workflows for Step3/report packaging
 - as an agent-first demo workflow where a first-time user asks Claude Code or Codex to run each step from repository-local guidance
 
 ## Agent-First Quick Start
@@ -68,7 +68,7 @@ Codex:
 @bridge-step2 identify mDA progenitor candidates from ./bridge-demo/runs/demo_dataset/step1 using ./bridge-demo/bridge.run.yaml
 ```
 
-Step2 consumes the Step1 RG candidate subset and runs target-specific identity assessment for mDA progenitor candidates.
+Step2 consumes the Step1 RG candidate subset and runs target-specific identity assessment for mDA progenitor candidates. In notebooks, agents should call `from bridge.identity import identity_assessment` and then `identity_assessment(bdata_rg, adata_ref, ref_model_dir=..., target_class=...)`.
 
 ### 5. Step3: CLS scoring and report generation
 
@@ -100,7 +100,7 @@ BRIDGE organizes a three-step biological workflow plus a setup step:
 
 Current package surface:
 - Step1 whole-brain prescreening is available as a notebook-callable Python API
-- Step2 is available as formal package code and CLI workflow
+- Step2 is available as a notebook-callable Python API
 - Step3 is available as formal package code and CLI workflow
 - Step0 remains agent-guided setup and model/config initialization
 - upstream reference construction remains roadmap/model-building context
@@ -132,22 +132,24 @@ pip install -e .[regulon]
 pip install -e .[notebook]
 ```
 
-## CLI Overview
+## Python API and CLI Overview
 
-Current workflow-level commands:
-- `bridge identity run`
+Notebook-callable APIs:
+- `from bridge.prescreen import prescreen`
+- `from bridge.identity import identity_assessment`
+
+Remaining workflow-level CLI commands:
 - `bridge cls run`
 - `bridge report summarize`
 - `bridge report summarize-batch`
 
-These commands expose the Step2 and Step3 package surface. Step1 is exposed as a notebook-callable API rather than a CLI command.
+Step1 and Step2 are notebook-first APIs. The CLI remains for Step3 CLS and report packaging.
 
-Start from the minimal editable workflow template:
+Start from the minimal editable workflow template when preparing Step3/report configuration:
 
 ```bash
 cp configs/bridge.minimal.yaml my-run.yaml
 bridge --help
-bridge identity run --config my-run.yaml --dry-run
 bridge cls run --config my-run.yaml --dry-run
 ```
 

@@ -16,15 +16,16 @@ This repository is intentionally structured so that a reader can map the thesis 
   - repository status: formalized in BRIDGE v1
   - repository location: `src/bridge/cls`, `src/bridge/io`, and `src/bridge/workflows`
 
-## CLI and Workflow Mapping
+## API and Workflow Mapping
 
 The released execution layer mirrors the thesis structure:
-- `bridge identity run` -> thesis Step 2
+- `from bridge.prescreen import prescreen` -> thesis Step 1 prescreening
+- `from bridge.identity import identity_assessment` -> thesis Step 2
 - `bridge cls run` -> thesis Step 3 scoring
 - `bridge report summarize` -> thesis Step 3 reporting/output packaging
-- `bridge report summarize-batch` -> multi-dataset Step 2 + Step 3 reporting wrapper
+- `bridge report summarize-batch` -> multi-dataset Step 3/report wrapper
 
-Step 1 prescreening is exposed as a notebook-callable Python API. The CLI focuses on the released Step 2 and Step 3 execution surface.
+Step 1 and Step 2 are exposed as notebook-callable Python APIs. The CLI focuses on the remaining Step 3 execution and report surface.
 
 ## Why CLS Appears in Step 3
 
