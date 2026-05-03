@@ -15,9 +15,9 @@ Skills live under:
 | Skill | Claude Code | Codex | Purpose |
 | --- | --- | --- | --- |
 | `bridge-step0` | `/bridge-step0` | `@bridge-step0` | Initialize environment, model assets, config, and run directory. |
-| `bridge-step1` | `/bridge-step1` | `@bridge-step1` | Run whole-brain prescreening on one in vitro `.h5ad`. |
-| `bridge-step2` | `/bridge-step2` | `@bridge-step2` | Run mDA progenitor identity assessment from Step1 RG candidates. |
-| `bridge-step3` | `/bridge-step3` | `@bridge-step3` | Run component-first CLS scoring and summary generation from Step2 artifacts. |
+| `bridge-step1` | `/bridge-step1` | `@bridge-step1` | Run whole-brain prescreening and call the Step1 report API. |
+| `bridge-step2` | `/bridge-step2` | `@bridge-step2` | Run mDA progenitor identity assessment and call the Step2 report API. |
+| `bridge-step3` | `/bridge-step3` | `@bridge-step3` | Run component-first CLS scoring, single-dataset reports, and optional protocol comparison. |
 
 ## What Skills Are For
 
@@ -25,8 +25,16 @@ Skills help an agent or advanced collaborator understand:
 - what inputs each workflow step requires
 - which notebook API to call for that step
 - what artifacts each step should produce
-- which outputs are current artifact contracts versus future plotting/report polish
+- how to write the figures, Markdown report, JSON manifest, and English interpretation after each core workflow
 
-## Current Visualization Boundary
+## Report APIs
 
-The Step0-Step3 skills may ask agents to create simple artifact summaries or notebook skeletons. They should not claim that polished plotting functions or rich biological interpretation templates already exist. Those are tracked in `docs/roadmap.md` and should be integrated after per-step plotting functions are supplied.
+Recommended notebook imports:
+
+```python
+from bridge.prescreen.report import write_report as write_prescreen_report
+from bridge.identity.report import write_report as write_identity_report
+from bridge.cls.report import write_report as write_cls_report, compare_reports
+```
+
+The report APIs are available package code. They produce standard figure files, tables, Markdown reports, JSON manifests, and concise interpretation text. Formal public example notebooks remain a roadmap item.

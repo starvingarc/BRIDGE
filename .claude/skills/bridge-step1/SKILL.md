@@ -34,12 +34,15 @@ Codex:
 4. Validate the whole-brain reference model path.
 5. Call `prescreen(adata, ref_model_dir=..., output_dir=..., prefix=...)` with explicit parameters.
 6. Save the full prescreened object, RG candidate subset, probability table, and summary JSON through the API.
-7. Create a simple run summary or notebook skeleton when notebook scaffolding is available.
+7. Call `from bridge.prescreen.report import write_report as write_prescreen_report`.
+8. Run `write_prescreen_report(result=result, output_dir=..., prefix=...)` at the notebook tail.
+9. Keep Step1 interpretation as in vitro prescreening, not supervised test-set evaluation.
 
 ## Notebook API
 
 ```python
 from bridge.prescreen import prescreen
+from bridge.prescreen.report import write_report as write_prescreen_report
 
 result = prescreen(
     adata,
@@ -48,6 +51,12 @@ result = prescreen(
     counts_layer="counts",
     train_query=False,
     output_dir="./outputs/prescreen",
+    prefix="demo_prefix",
+)
+
+report = write_prescreen_report(
+    result=result,
+    output_dir="./outputs/prescreen/report",
     prefix="demo_prefix",
 )
 
@@ -61,11 +70,14 @@ summary = result.summary
 - `<prefix>.step1_rg_candidates.h5ad`
 - `<prefix>.step1_scanvi_probs.csv`
 - `<prefix>.step1_summary.json`
+- Step1 report Markdown
+- Step1 report manifest JSON
+- report tables and available figures
 
 ## Interpretation Rule
 
-Step1 is in vitro prescreening, not supervised test-set evaluation. Do not report accuracy, recall, confusion matrices, or crosstabs as performance metrics for this step.
+Step1 is in vitro prescreening, not supervised test-set evaluation. Do not report accuracy, recall, confusion matrices, ROC/AUC, or crosstabs as performance metrics for this step.
 
-## Roadmap Boundary
+## Report Coverage
 
-Future plotting may include prediction distributions, RG candidate summaries, and UMAP-style summaries. Do not invent polished plotting functions before they are added to the repository.
+The Step1 report API covers predicted label counts, RG candidate summaries, confidence distributions, optional UMAP views when `X_umap` exists, and concise English interpretation of identity composition and RG candidate fraction.

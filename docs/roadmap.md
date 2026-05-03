@@ -1,6 +1,6 @@
 # BRIDGE Roadmap
 
-This roadmap tracks the public agent-first BRIDGE demo path. It complements the formal package roadmap: Step1 prescreening, Step2 identity assessment, and Step3 CLS scoring now have notebook-callable package APIs, and Step0 remains agent-guided setup.
+This roadmap tracks the public agent-first BRIDGE demo path. It complements the formal package roadmap: Step1 prescreening, Step2 identity assessment, Step3 CLS scoring, and per-step reports now have notebook-callable package APIs; Step0 remains agent-guided setup.
 
 ## Phase 1: Agent-First Documentation and Step Skills
 
@@ -12,7 +12,7 @@ Planned deliverables:
 - repository-local skills for `bridge-step0`, `bridge-step1`, `bridge-step2`, and `bridge-step3`
 - supporting docs for models, notebooks, and skill behavior
 
-Status: agent docs and skills are present; Step1, Step2, and Step3 are connected as notebook-callable package code.
+Status: agent docs and skills are present; Step1, Step2, Step3, and report APIs are connected as notebook-callable package code.
 
 ## Phase 2: Model Assets and Step0 Validation
 
@@ -32,33 +32,38 @@ Model note:
 Goal: ensure each biological step can leave a readable executed notebook or notebook-like run record.
 
 Planned deliverables:
-- Step1 prescreening notebook skeleton
-- Step2 mDA progenitor identity notebook skeleton
-- Step3 CLS/report notebook skeleton
+- Step1 prescreening notebook skeleton that calls `prescreen(...)` and `bridge.prescreen.report.write_report(...)`
+- Step2 mDA progenitor identity notebook skeleton that calls `identify(...)` and `bridge.identity.report.write_report(...)`
+- Step3 CLS notebook skeleton that calls component APIs, `score(...)`, `bridge.cls.report.write_report(...)`, and optional `compare_reports(...)`
 - consistent links between notebooks and machine-readable artifacts
 
 Current boundary:
-- notebook skeletons may include simple summaries and artifact tables
-- polished plotting and rich biological interpretation are not required in this phase
+- package report APIs are available
+- formal public-safe executed notebooks still need to be curated and verified
 
-## Phase 4: Plotting Functions and Interpretation Templates
+## Phase 4: Report Polish and Interpretation Refinement
 
-Goal: integrate the per-step plotting functions and result interpretation text after those functions are supplied.
+Goal: refine the package report APIs and interpretation text as demo data, model assets, and public notebooks stabilize.
 
-Planned deliverables:
-- Step1 prediction distribution, RG candidate, and UMAP-style summaries
-- Step2 probability, uncertainty, entropy, and candidate summaries
-- Step3 component A-F, weighted CLS, and final interpretation summaries
-- result-oriented interpretation templates for each step
+Available now:
+- Step1 prediction distribution, RG candidate, and optional UMAP-style summaries
+- Step2 probability, uncertainty, entropy, candidate, and optional UMAP summaries
+- Step3 component A-F diagnostics when supporting files exist
+- weighted CLS and multi-protocol comparison figures
+- concise English interpretation templates for each step
 
-Status: pending user-supplied plotting functions.
+Future polish:
+- tune figure styling on the final public demo dataset
+- add any additional panels you want after reviewing executed outputs
+- expand interpretation templates only where the data supports it
 
 ## Phase 5: Polished Demo and Batch Extensions
 
-Goal: turn the single-dataset demo into a polished public workflow and extend it to multi-dataset use.
+Goal: turn the single-dataset demo into a polished public workflow and extend it to broader multi-dataset use.
 
 Planned deliverables:
 - complete end-to-end video demo script
 - fully executed example run with public-safe paths and assets
-- batch report API and guidance for comparing multiple in vitro differentiation datasets
+- multi-protocol comparison guidance using `compare_reports(...)`
+- broader batch/multi-dataset extensions beyond the initial demo
 - final documentation pass for external users and reviewers

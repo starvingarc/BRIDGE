@@ -2,7 +2,7 @@
 
 This document describes the intended public demo flow for BRIDGE. The demo is agent-first: a first-time user copies commands from GitHub into Claude Code or Codex and lets the agent run the workflow.
 
-The current public deliverable is documentation, workflow guidance, and artifact contracts. Final plotting functions, rich report interpretation, and polished executed notebooks are roadmap items that will be added after the per-step plotting functions are supplied.
+The current public deliverable includes workflow guidance, notebook-callable package APIs, artifact contracts, and per-step report APIs for figures, Markdown reports, JSON manifests, and concise English interpretation. Formal polished example notebooks are still a roadmap item.
 
 ## Part 1: Install BRIDGE
 
@@ -59,7 +59,7 @@ Expected current artifacts:
 - environment verification output
 - model validation summary
 
-Future notebook/report goals:
+Future demo polish:
 - a setup notebook or setup report is optional; it should remain lightweight and focus on reproducibility
 
 ## Part 3: Step1 Whole-Brain Prescreening
@@ -87,22 +87,25 @@ Agent responsibility:
 - call `prescreen(adata, ref_model_dir=..., output_dir=..., prefix=...)`
 - annotate cells as `RG_candidate` or `non_RG`
 - save the full prescreened object, RG candidate subset, probability table, and summary JSON through the API
-- produce a simple executed notebook or run log when notebook scaffolding is available
+- call `from bridge.prescreen.report import write_report as write_prescreen_report`
+- run `write_prescreen_report(result=step1, output_dir=..., prefix=...)` to write figures, tables, Markdown, manifest, and English interpretation
 
 Expected current artifacts:
 - `<prefix>.step1_prescreened.h5ad`
 - `<prefix>.step1_rg_candidates.h5ad`
 - `<prefix>.step1_scanvi_probs.csv`
 - `<prefix>.step1_summary.json`
+- report directory with Markdown report, manifest JSON, tables, and available figures
 
 Important interpretation rule:
 - Step1 is in vitro prescreening, not a held-out labeled test set. Do not report accuracy, recall, confusion matrices, or other supervised test-set metrics for this step.
 
-Future notebook/report goals:
-- prediction distribution plots
-- RG candidate summaries
-- UMAP-style visual summaries
-- short result-oriented interpretation text
+Report API coverage:
+- prediction label counts
+- RG candidate versus non-RG summary
+- prediction confidence distribution
+- optional UMAP views when `X_umap` is present
+- concise interpretation of global identity composition and RG candidate fraction
 
 ## Part 4: Step2 mDA Progenitor Identity Assessment
 
@@ -127,6 +130,8 @@ Agent responsibility:
 - consume the Step1 RG candidate subset
 - run `from bridge.identity import identify` in the Step2 notebook
 - call `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)` and preserve the current Step2 artifact contract
+- call `from bridge.identity.report import write_report as write_identity_report`
+- run `write_identity_report(result=step2, output_dir=..., prefix=..., target_class=...)`
 - summarize candidate count and threshold metadata without overclaiming biological interpretation
 
 Expected current artifacts:
@@ -138,12 +143,14 @@ Expected current artifacts:
 - `<prefix>.mean_org.csv`
 - `<prefix>.std_org.csv`
 - `<prefix>.Hnorm.csv`
+- report directory with Markdown report, manifest JSON, tables, and available figures
 
-Future notebook/report goals:
-- probability distribution plots
-- uncertainty and entropy summaries
-- mDA progenitor candidate visual summaries
-- concise result-oriented interpretation text
+Report API coverage:
+- target probability, uncertainty, and entropy distributions
+- candidate fraction summary
+- mean-probability identity composition with an `Uncertain` label below cutoff
+- optional UMAP views when `X_umap` is present
+- interpretation of stable target convergence versus boundary, transition, or competing-fate cells
 
 ## Part 5: Step3 CLS Scoring and Report Generation
 
@@ -168,16 +175,21 @@ Agent responsibility:
 - build `CLSContext` in the Step3 notebook
 - run selected `component_A(ctx)` through `component_F(ctx)`, or call `score(ctx)` for the default full pass
 - preserve machine-readable output contracts
-- produce a simple final summary while plotting/report polish is still pending
+- call `from bridge.cls.report import write_report as write_cls_report, compare_reports`
+- run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)`
+- use `compare_reports(...)` when comparing multiple protocols or datasets
 
 Expected current artifacts:
 - component global JSON files
 - component detail tables when available
 - `summary.csv`
 - `manifest.json`
+- report directory with Markdown report, manifest JSON, tables, and available single-dataset figures
+- optional multi-protocol comparison report with radar, weighted CLS bar, and component heatmap
 
-Future notebook/report goals:
-- component A-F visual summary
-- weighted total CLS figure
-- final biological interpretation section
-- multi-dataset comparison extensions
+Report API coverage:
+- component score bar and heatmap
+- weighted CLS summary
+- available A-F diagnostic panels when the required component columns or files exist
+- multi-protocol comparison figures inspired by the thesis Fig 3-9 / Fig 3-10 style
+- interpretation that emphasizes component decomposition and structural differences rather than simple protocol ranking

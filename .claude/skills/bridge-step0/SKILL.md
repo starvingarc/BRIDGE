@@ -42,4 +42,4 @@ Codex:
 
 ## Current Boundary
 
-Do not claim that final model assets, plotting functions, or polished notebooks are complete unless the files exist in the repository. If required model files are missing, report the expected `models/` location and stop before running downstream steps.
+Do not claim that final model assets or polished public notebooks are complete unless the files exist in the repository. Report APIs are available package code, but public demo notebooks still need to be created from a verified run. If required model files are missing, report the expected `models/` location and stop before running downstream steps.
