@@ -42,13 +42,13 @@ Codex command:
 
 Required input:
 - a BRIDGE checkout or installed package
-- model assets under `models/` or a model manifest pointing to them
+- model assets under `models/` or public object-storage URLs declared in `models/assets.json`
 - permission to create or validate a conda environment named `bridge`
 
 Agent responsibility:
 - create or validate the `bridge` conda environment
 - install BRIDGE in editable or package mode
-- validate that required model directories and metadata exist under `models/`
+- validate `models/assets.json` and download or verify required model assets under `models/`
 - create a run directory such as `./bridge-demo/runs/demo_dataset/`
 - create an initial run config such as `./bridge-demo/bridge.run.yaml`
 - print the next Step1 command with the user data path left explicit

@@ -2,22 +2,34 @@
 
 This directory is the public entry point for BRIDGE model assets and model metadata.
 
-Model files may be committed when they are intentionally part of the public BRIDGE software distribution or required reproducible artifacts. If model files are large, store them with Git LFS rather than normal Git blobs.
+Large model files are distributed through public object-storage URLs instead of normal Git blobs. The repository tracks only the manifest and documentation needed to fetch them.
 
-## Expected Role in the Agent Demo
+## Asset Manifest
 
-Step0 should inspect this directory to validate that the required reference models and metadata are available before Step1-Step3 are run.
+`models/assets.json` lists the public object-storage download URL, BRIDGE step, and repository-relative destination for each required asset. These URLs must not contain private server names, IP addresses, user names, or internal filesystem paths.
 
-Recommended model documentation for each model directory:
-- model name and BRIDGE step
-- expected input object type, usually `.h5ad`
-- required count layer or expression layer
-- reference label key and target labels
-- files required to load the model
-- downstream step that consumes the model
+Expected downloaded layout:
 
-## Current Boundary
+```text
+models/whole_brain_ref_model/model.pt
+models/target_ref_model/model.pt
+models/ref_sceniclike.h5ad
+models/regulons.json
+```
 
-This directory may contain metadata before the final public model assets are added. Step skills should treat missing large model files as a setup issue and report the expected location clearly rather than inventing paths.
+## Download
 
-Keep model metadata and model files clearly separated from dataset-specific runtime configuration.
+From the repository root:
+
+```bash
+python scripts/download_model_assets.py --dry-run
+python scripts/download_model_assets.py
+```
+
+The dry run prints the planned public object-storage URLs and destinations without downloading files. The full command creates the expected `models/` layout. Use `--force` to replace existing downloaded assets.
+
+## Step0 Validation
+
+Step0 should inspect `models/assets.json`, download missing public assets when requested, and validate that the expected files exist before Step1-Step3 are run.
+
+Downloaded model files should remain local runtime assets. Do not commit them back into the repository.

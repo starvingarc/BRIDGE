@@ -16,3 +16,11 @@ artifacts/
 tmp/
 configs/real/
 artifacts/real_reports/
+
+# External BRIDGE model assets; download via models/assets.json.
+models/whole_brain_ref_model/
+models/target_ref_model/
+models/ref_sceniclike.h5ad
+models/regulons.json
+models/**/*.pt
+models/**/*.h5ad

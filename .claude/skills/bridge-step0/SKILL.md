@@ -7,7 +7,7 @@ Use this skill to initialize BRIDGE before a public demo run.
 Step0 prepares the runtime context for BRIDGE:
 - create or validate the `bridge` conda environment
 - install BRIDGE
-- validate model assets under `models/`
+- validate or download model assets declared by `models/assets.json`
 - create an initial run config and run directory
 
 ## Expected User Prompt
@@ -26,20 +26,22 @@ Codex:
 
 ## Agent Responsibilities
 
-1. Inspect the repository root, `configs/`, `models/`, and `docs/`.
+1. Inspect the repository root, `configs/`, `models/`, `docs/`, and `.claude/skills/`.
 2. Create or validate the requested conda environment, defaulting to `bridge`.
 3. Install BRIDGE in editable mode when operating from a source checkout.
-4. Validate model metadata and expected model directories under `models/`.
-5. Create the run root and an editable run config.
-6. Print the next Step1 command with the user data path left explicit.
+4. Inspect `models/assets.json` and validate the expected model asset destinations.
+5. If assets are missing, run `python scripts/download_model_assets.py --dry-run`, then ask before running the full download unless the user already requested automatic setup.
+6. Validate that required model files exist under `models/` after download or manual placement.
+7. Create the run root and an editable run config.
+8. Print the next Step1 command with the user data path left explicit.
 
 ## Expected Outputs
 
 - initialized run directory
 - editable YAML config
 - environment validation summary
-- model validation summary
+- model asset validation summary
 
 ## Current Boundary
 
-Do not claim that final model assets or polished public notebooks are complete unless the files exist in the repository. Report APIs are available package code, but public demo notebooks still need to be created from a verified run. If required model files are missing, report the expected `models/` location and stop before running downstream steps.
+Do not claim downstream analysis is ready until required model assets exist locally. Report APIs are available package code, but public demo notebooks still need to be created from a verified run. If public object-storage assets are unavailable or downloads fail, report the missing asset URL and stop before running downstream steps. Never use private server paths, internal IPs, or user-specific paths as public asset URLs.

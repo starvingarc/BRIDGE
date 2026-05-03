@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "release": "model-assets-v1",
+  "description": "Public BRIDGE model assets are distributed outside Git history through public object-storage URLs. Use scripts/download_model_assets.py to fetch these files.",
+  "assets": [
+    {
+      "id": "whole_brain_ref_model",
+      "step": "prescreen",
+      "description": "Whole-brain scANVI reference model used by bridge.prescreen.prescreen.",
+      "url": "https://storage.googleapis.com/bridge-model-assets/model-assets-v1/whole_brain_ref_model.model.pt",
+      "destination": "models/whole_brain_ref_model/model.pt",
+      "required": true
+    },
+    {
+      "id": "target_ref_model",
+      "step": "identity",
+      "description": "Target-specific scANVI reference model used by bridge.identity.identify.",
+      "url": "https://storage.googleapis.com/bridge-model-assets/model-assets-v1/target_ref_model.model.pt",
+      "destination": "models/target_ref_model/model.pt",
+      "required": true
+    },
+    {
+      "id": "ref_sceniclike",
+      "step": "cls",
+      "description": "Reference SCENIC-like AnnData used by bridge.cls.component_F.",
+      "url": "https://storage.googleapis.com/bridge-model-assets/model-assets-v1/ref_sceniclike.h5ad",
+      "destination": "models/ref_sceniclike.h5ad",
+      "required": true
+    },
+    {
+      "id": "regulons",
+      "step": "cls",
+      "description": "Regulon metadata used by bridge.cls.component_F.",
+      "url": "https://storage.googleapis.com/bridge-model-assets/model-assets-v1/regulons.json",
+      "destination": "models/regulons.json",
+      "required": true
+    }
+  ]
+}

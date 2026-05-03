@@ -21,7 +21,7 @@ Then run the workflow through the repository-local skills:
 | `bridge-step2` | `/bridge-step2` or `@bridge-step2` | Run mDA progenitor identity assessment and write a Step2 report. |
 | `bridge-step3` | `/bridge-step3` or `@bridge-step3` | Run CLS components, single-dataset reports, and optional multi-protocol comparison. |
 
-Command names are lowercase for compatibility. The project brand remains **BRIDGE**. Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md).
+Command names are lowercase for compatibility. The project brand remains **BRIDGE**. Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are fetched separately from public object-storage URLs declared in [models/assets.json](models/assets.json).
 
 ## Manual Install And Use
 
