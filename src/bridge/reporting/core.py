@@ -130,17 +130,14 @@ def has_umap(adata) -> bool:
     return obsm is not None and "X_umap" in obsm
 
 
-def save_optional_umap(
+def plot_umap(
     adata,
     *,
     color,
-    path_base: str | Path,
     title: str | None = None,
     cmap: str | None = None,
     palette: dict[str, str] | None = None,
-    formats=("png",),
-    dpi: int = 300,
-) -> str | None:
+):
     if not has_umap(adata):
         return None
     sc = import_scanpy()
@@ -157,6 +154,23 @@ def save_optional_umap(
     )
     if fig is None:
         fig = plt.gcf()
+    return fig
+
+
+def save_optional_umap(
+    adata,
+    *,
+    color,
+    path_base: str | Path,
+    title: str | None = None,
+    cmap: str | None = None,
+    palette: dict[str, str] | None = None,
+    formats=("png",),
+    dpi: int = 300,
+) -> str | None:
+    fig = plot_umap(adata, color=color, title=title, cmap=cmap, palette=palette)
+    if fig is None:
+        return None
     return save_figure(fig, path_base, formats=formats, dpi=dpi)
 
 

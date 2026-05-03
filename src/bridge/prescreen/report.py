@@ -6,7 +6,7 @@ from typing import Any
 import pandas as pd
 
 from bridge.prescreen.api import NON_RG, PRESCREEN_COLUMN, RG_CANDIDATE
-from bridge.reporting import ReportResult, ensure_dir, require_obs_columns, save_figure, save_optional_umap, write_json, write_markdown, write_table
+from bridge.reporting import ReportResult, ensure_dir, plot_umap, require_obs_columns, save_figure, save_optional_umap, write_json, write_markdown, write_table
 from bridge.reporting.core import STEP_COLORS, fraction_text, import_pyplot, value_counts_frame
 
 
@@ -72,6 +72,29 @@ def plot_prediction_confidence(result_or_obs):
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     return fig
+
+
+def _adata_from_result(result_or_adata):
+    return getattr(result_or_adata, "adata", result_or_adata)
+
+
+def plot_prescreen_umap(result_or_adata, *, color: str, title: str | None = None, cmap: str | None = None):
+    adata = _adata_from_result(result_or_adata)
+    if color not in adata.obs.columns:
+        return None
+    return plot_umap(adata, color=color, title=title or color, cmap=cmap)
+
+
+def plot_predicted_cell_type_umap(result_or_adata):
+    return plot_prescreen_umap(result_or_adata, color="step1_pred_cell_type", title="Step1 predicted cell type")
+
+
+def plot_prediction_confidence_umap(result_or_adata):
+    return plot_prescreen_umap(result_or_adata, color="step1_pred_maxp", title="Step1 prediction confidence", cmap="Reds")
+
+
+def plot_cell_type_umap(result_or_adata):
+    return plot_prescreen_umap(result_or_adata, color="cell_type", title="Input cell type")
 
 
 def _prescreen_count_figure(counts: pd.Series, path_base: Path, *, formats, dpi: int) -> str:

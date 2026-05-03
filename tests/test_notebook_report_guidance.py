@@ -48,3 +48,17 @@ def test_step3_skill_requires_four_protocol_comparison_guidance():
         "component heatmap",
     ]:
         assert phrase in text
+
+
+def test_step1_skill_requires_explicit_umap_sections():
+    root = Path(__file__).resolve().parents[1]
+    text = (root / ".claude" / "skills" / "bridge-step1" / "SKILL.md").read_text(encoding="utf-8")
+    for phrase in [
+        "plot_predicted_cell_type_umap",
+        "plot_prediction_confidence_umap",
+        "plot_cell_type_umap",
+        "predicted identity UMAP",
+        "prediction confidence UMAP",
+        "one code cell per UMAP",
+    ]:
+        assert phrase in text

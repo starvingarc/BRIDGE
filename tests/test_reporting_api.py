@@ -142,3 +142,17 @@ def test_display_matplotlib_figure_emits_png_image(monkeypatch):
     assert image.format == "png"
     assert image.filename is None
     assert image.data.startswith(b"\x89PNG")
+
+
+
+def test_plot_umap_skips_without_umap_without_scanpy_import():
+    import sys
+    import pandas as pd
+    from bridge.reporting import plot_umap
+    from tests.helpers import DummyAnnData
+
+    sys.modules.pop("scanpy", None)
+    adata = DummyAnnData(pd.DataFrame({"label": ["a", "b"]}, index=["c1", "c2"]))
+
+    assert plot_umap(adata, color="label") is None
+    assert "scanpy" not in sys.modules

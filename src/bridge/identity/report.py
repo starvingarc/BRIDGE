@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from bridge.reporting import ReportResult, ensure_dir, require_obs_columns, save_figure, save_optional_umap, write_json, write_markdown, write_table
+from bridge.reporting import ReportResult, ensure_dir, plot_umap, require_obs_columns, save_figure, save_optional_umap, write_json, write_markdown, write_table
 from bridge.reporting.core import STEP_COLORS, fraction_text, import_pyplot, value_counts_frame
 
 OBS_IDENTITY_COL = "pred_identity_meanorg"
@@ -136,6 +136,36 @@ def plot_identity_composition(composition: pd.DataFrame):
     ax.spines["right"].set_visible(False)
     fig.tight_layout()
     return fig
+
+
+def plot_identity_umap(result, *, color: str, title: str | None = None, cmap: str | None = None):
+    bdata = result.bdata
+    if color not in bdata.obs.columns:
+        return None
+    return plot_umap(bdata, color=color, title=title or color, cmap=cmap)
+
+
+def plot_mean_identity_umap(result):
+    return plot_identity_umap(result, color=OBS_IDENTITY_COL, title="Mean-probability identity")
+
+
+def plot_target_pmean_umap(result, *, target_class: str | None = None):
+    target = _target_class(result, target_class)
+    return plot_identity_umap(result, color=f"p_mean_{target}", title=f"Target mean probability: {target}", cmap="coolwarm")
+
+
+def plot_target_pstd_umap(result, *, target_class: str | None = None):
+    target = _target_class(result, target_class)
+    return plot_identity_umap(result, color=f"p_std_{target}", title=f"Target probability variability: {target}", cmap="Reds")
+
+
+def plot_entropy_umap(result):
+    return plot_identity_umap(result, color="Hnorm", title="Normalized entropy", cmap="Blues")
+
+
+def plot_candidate_umap(result, *, target_class: str | None = None):
+    target = _target_class(result, target_class)
+    return plot_identity_umap(result, color=f"is_candidate_{target}", title=f"Step2 candidates: {target}")
 
 
 def _candidate_fraction_figure(result, target_class: str, path_base: Path, *, formats, dpi: int) -> str:

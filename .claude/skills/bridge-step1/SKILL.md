@@ -80,7 +80,7 @@ Step1 is in vitro prescreening, not supervised test-set evaluation. Do not repor
 
 ## Report Coverage
 
-The Step1 report API covers predicted label counts, RG candidate summaries, confidence distributions, optional UMAP views when `X_umap` exists, and concise English interpretation of identity composition and RG candidate fraction.
+The Step1 report API covers predicted label counts, RG candidate summaries, confidence distributions, optional UMAP views when `X_umap` exists, and concise English interpretation of identity composition and RG candidate fraction. Use the public UMAP helpers `plot_predicted_cell_type_umap`, `plot_prediction_confidence_umap`, and `plot_cell_type_umap` instead of writing ad hoc `scanpy.pl.umap` code.
 
 ## Notebook-Visible Report Sections
 
@@ -92,7 +92,7 @@ Generated notebooks must be notebook-native analysis records, not a report dump 
 
 1. Opening Markdown: explain what this step does, why it matters in BRIDGE, what biological question it addresses, and what artifacts it will produce.
 2. Core workflow cells: load input, validate config/model paths, run the step, and print only concise run metadata.
-3. Notebook-visible report sections: create one logical section per table or figure. Each section must contain:
+3. Notebook-visible report sections: create one logical section per table or figure. Include the predicted identity UMAP, prediction confidence UMAP, and optional input cell-type UMAP whenever `result.adata.obsm["X_umap"]` is present. Use one code cell per UMAP and one interpretation Markdown cell immediately after it. Each section must contain:
    - purpose/context Markdown before the code, explaining what this table or figure is meant to evaluate;
    - exactly one code cell that builds one table or one figure;
    - for table cells, call `display(table_df)`;
@@ -102,5 +102,36 @@ Generated notebooks must be notebook-native analysis records, not a report dump 
 5. Final artifact cell: call `write_report(...)`, print saved paths, and do not re-display every report artifact. The saved `report/` folder remains the artifact contract.
 
 Do not use a final cell that loops through report tables/figures and displays them all together. Do not rely on a bare `fig` expression, because some notebook renderers show only `<Figure size ...>` instead of the image.
+
+## Required Step1 UMAP Cells
+
+When `X_umap` is available, include these cells as separate sections, not as a combined panel:
+
+```python
+from bridge.prescreen.report import plot_predicted_cell_type_umap
+from bridge.reporting.notebook import display_matplotlib_figure
+
+fig = plot_predicted_cell_type_umap(result)
+if fig is not None:
+    _ = display_matplotlib_figure(fig)
+```
+
+```python
+from bridge.prescreen.report import plot_prediction_confidence_umap
+
+fig = plot_prediction_confidence_umap(result)
+if fig is not None:
+    _ = display_matplotlib_figure(fig)
+```
+
+```python
+from bridge.prescreen.report import plot_cell_type_umap
+
+fig = plot_cell_type_umap(result)
+if fig is not None:
+    _ = display_matplotlib_figure(fig)
+```
+
+Interpret the first UMAP as the broad whole-brain identity routing, the second as spatial confidence in the routing, and the optional cell-type UMAP as the relationship between user-provided labels and BRIDGE prescreening. Do not place these UMAPs only in the saved report folder.
 
 Step1 biological interpretation should emphasize RG enrichment, exclusion of non-RG/neuroblast-like/off-target populations, confidence of whole-brain mapping, and readiness for Step2 target-specific assessment. It must not use supervised accuracy, recall, ROC/AUC, or confusion-matrix language.

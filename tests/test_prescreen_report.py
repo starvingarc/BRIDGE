@@ -50,7 +50,6 @@ def test_prescreen_report_writes_manifest_markdown_and_summary_table(tmp_path):
     assert manifest["summary"]["rg_candidate_count"] == 2
 
 
-
 def test_prescreen_report_public_notebook_helpers():
     from bridge.prescreen.report import build_interpretation, build_report_tables, plot_prediction_confidence, plot_prescreen_counts
 
@@ -80,3 +79,30 @@ def test_prescreen_report_public_notebook_helpers():
     assert "overview" in interpretation
     assert fig_counts is not None
     assert fig_conf is not None
+
+
+def test_prescreen_umap_helpers_skip_without_umap_and_scanpy_import():
+    import sys
+    from bridge.prescreen.report import plot_cell_type_umap, plot_predicted_cell_type_umap, plot_prediction_confidence_umap
+
+    sys.modules.pop("scanpy", None)
+    obs = pd.DataFrame(
+        {
+            "step1_pred_cell_type": ["Radial Glia", "Neuroblast"],
+            "step1_pred_maxp": [0.91, 0.72],
+            "step1_prescreen": ["RG_candidate", "non_RG"],
+        },
+        index=["c1", "c2"],
+    )
+    result = PrescreenResult(
+        adata=DummyAnnData(obs),
+        probabilities=pd.DataFrame(index=obs.index),
+        annotations=obs.copy(),
+        summary={"query_count": 2, "rg_candidate_count": 1, "non_rg_count": 1, "rg_candidate_fraction": 0.5},
+        output_paths={},
+    )
+
+    assert plot_predicted_cell_type_umap(result) is None
+    assert plot_prediction_confidence_umap(result) is None
+    assert plot_cell_type_umap(result) is None
+    assert "scanpy" not in sys.modules

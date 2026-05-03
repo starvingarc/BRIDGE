@@ -83,7 +83,7 @@ report = write_identity_report(
 
 ## Report Coverage
 
-The Step2 report API covers target probability, uncertainty, entropy, candidate summaries, optional UMAP views, and mean-probability identity composition with an `Uncertain` label below cutoff. Interpret high `p_mean` with low `p_std`/`Hnorm` as stable target convergence; interpret high uncertainty as boundary, transition, or competing-fate structure.
+The Step2 report API covers target probability, uncertainty, entropy, candidate summaries, optional UMAP views, and mean-probability identity composition with an `Uncertain` label below cutoff. Use the public UMAP helpers `plot_mean_identity_umap`, `plot_target_pmean_umap`, `plot_target_pstd_umap`, `plot_entropy_umap`, and `plot_candidate_umap` when adding notebook-visible UMAP sections. Interpret high `p_mean` with low `p_std`/`Hnorm` as stable target convergence; interpret high uncertainty as boundary, transition, or competing-fate structure.
 
 ## Notebook-Visible Report Sections
 
