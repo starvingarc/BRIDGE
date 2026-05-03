@@ -81,3 +81,22 @@ The Step2 report API covers target probability, uncertainty, entropy, candidate 
 ## Notebook-Visible Report Sections
 
 After the core workflow runs, the notebook must include notebook-visible report sections rather than only writing files under `report/`. For each report table, add a short Markdown context cell, a code cell that builds and displays the table, and a concise interpretation Markdown cell. For each report figure, add a short Markdown context cell, a code cell that calls the public `plot_*` function and displays the figure, and a concise interpretation Markdown cell. The final cell should still call `write_report(...)`, print artifact paths, and save the standard Markdown, manifest, CSV, and image files. Agents should display each table and display each figure as code-cell output.
+
+## Narrative Notebook Structure
+
+Generated notebooks must be notebook-native analysis records, not a report dump at the end. Use this exact structure:
+
+1. Opening Markdown: explain what this step does, why it matters in BRIDGE, what biological question it addresses, and what artifacts it will produce.
+2. Core workflow cells: load input, validate config/model paths, run the step, and print only concise run metadata.
+3. Notebook-visible report sections: create one logical section per table or figure. Each section must contain:
+   - purpose/context Markdown before the code, explaining what this table or figure is meant to evaluate;
+   - exactly one code cell that builds one table or one figure;
+   - for table cells, call `display(table_df)`;
+   - for figure cells, call `fig = plot_...(...)` followed by `_ = display_matplotlib_figure(fig)` from `bridge.reporting.notebook`;
+   - biological interpretation Markdown after the output, grounded in the observed values and developmental meaning.
+4. Final Markdown summary: summarize what this step concluded and how it feeds the next BRIDGE step.
+5. Final artifact cell: call `write_report(...)`, print saved paths, and do not re-display every report artifact. The saved `report/` folder remains the artifact contract.
+
+Do not use a final cell that loops through report tables/figures and displays them all together. Do not rely on a bare `fig` expression, because some notebook renderers show only `<Figure size ...>` instead of the image.
+
+Step2 biological interpretation should distinguish stable target convergence from uncertain, transitional, or competing-fate cells using target probability, variability, entropy, candidate fraction, and identity composition.

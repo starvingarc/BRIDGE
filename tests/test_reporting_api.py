@@ -102,3 +102,43 @@ def test_notebook_display_helpers_render_files(monkeypatch, tmp_path):
     assert isinstance(calls[0], FakeMarkdown)
     assert isinstance(calls[2], FakeImage)
     assert "overview" in calls[3].text
+
+
+
+def test_display_matplotlib_figure_emits_png_image(monkeypatch):
+    import importlib
+    from types import SimpleNamespace
+
+    calls = []
+
+    class FakeImage:
+        def __init__(self, data=None, format=None, filename=None):
+            self.data = data
+            self.format = format
+            self.filename = filename
+
+    def fake_display(obj):
+        calls.append(obj)
+
+    real_import = importlib.import_module
+
+    def fake_import(name, *args, **kwargs):
+        if name == "IPython.display":
+            return SimpleNamespace(Image=FakeImage, display=fake_display)
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(importlib, "import_module", fake_import)
+
+    from bridge.reporting.core import import_pyplot
+    from bridge.reporting.notebook import display_matplotlib_figure
+
+    plt = import_pyplot()
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], [1, 0])
+
+    image = display_matplotlib_figure(fig)
+
+    assert calls == [image]
+    assert image.format == "png"
+    assert image.filename is None
+    assert image.data.startswith(b"\x89PNG")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import io
 from pathlib import Path
 from typing import Any
 
@@ -45,3 +46,20 @@ def display_interpretation(report_or_interpretation: Any):
     obj = module.Markdown("\n".join(lines))
     module.display(obj)
     return obj
+
+
+
+def display_matplotlib_figure(fig, *, dpi: int = 150, close: bool = True):
+    module = _display_module()
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png", dpi=dpi, bbox_inches="tight")
+    data = buffer.getvalue()
+    image = module.Image(data=data, format="png")
+    module.display(image)
+    if close:
+        try:
+            import matplotlib.pyplot as plt
+            plt.close(fig)
+        except Exception:
+            pass
+    return image
