@@ -36,6 +36,8 @@ pip install -e ".[workflow]"
 Notebook-callable entry points:
 
 ```python
+import scanpy as sc
+
 from bridge.prescreen import prescreen
 from bridge.identity import identify
 from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score
@@ -51,7 +53,11 @@ The high-level manual notebook flow is:
 step1 = prescreen(adata, ref_model_dir="./models/whole_brain_ref_model", output_dir="./runs/demo_dataset/step1", prefix="demo_dataset")
 write_prescreen_report(result=step1, output_dir="./runs/demo_dataset/step1/report", prefix="demo_dataset")
 
-step2 = identify(bdata_rg, adata_ref, ref_model_dir="./models/target_ref_model", target_class="RG_Mesencephalon_FP", output_dir="./runs/demo_dataset/step2", prefix="demo_dataset")
+adata_ref = sc.read_h5ad("./models/target_reference.h5ad")
+step2 = identify(
+    bdata_rg, adata_ref, ref_model_dir="./models/target_ref_model",
+    target_class="RG_Mesencephalon_FP", output_dir="./runs/demo_dataset/step2", prefix="demo_dataset"
+)
 write_identity_report(result=step2, output_dir="./runs/demo_dataset/step2/report", prefix="demo_dataset", target_class="RG_Mesencephalon_FP")
 
 ctx = CLSContext(

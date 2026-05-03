@@ -29,7 +29,7 @@ Codex:
 1. Inspect the repository root, `configs/`, `models/`, `docs/`, and `.claude/skills/`.
 2. Create or validate the requested conda environment, defaulting to `bridge`.
 3. Install BRIDGE with workflow extras when operating from a source checkout: `python -m pip install -e ".[workflow]"`. If the environment already has a CUDA-enabled PyTorch stack, keep it and still verify `torch`, `anndata`, `scanpy`, and `scvi` imports.
-4. Inspect `models/assets.json` and validate the expected model asset destinations.
+4. Inspect `models/assets.json` and validate the expected model/reference asset destinations, including the Step2 target reference AnnData.
 5. If assets are missing, run `python scripts/download_model_assets.py --dry-run`, then ask before running the full download unless the user already requested automatic setup.
 6. Validate that required model files exist under `models/` after download or manual placement.
 7. Create the run root and an editable run config.

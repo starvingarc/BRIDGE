@@ -13,9 +13,12 @@ Expected downloaded layout:
 ```text
 models/whole_brain_ref_model/model.pt
 models/target_ref_model/model.pt
+models/target_reference.h5ad
 models/ref_sceniclike.h5ad
 models/regulons.json
 ```
+
+`target_reference.h5ad` is the target-specific AnnData paired with `target_ref_model` for Step2 identity assessment. Do not substitute `ref_sceniclike.h5ad` for Step2; that file is a reduced SCENIC-like reference used only by Step3 component F.
 
 ## Download
 

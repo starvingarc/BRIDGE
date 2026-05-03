@@ -50,3 +50,5 @@ Step notebooks should show report tables and figures as executed code-cell outpu
 ## Narrative Notebook Reports
 
 Step notebooks should use one section per table or figure: purpose/context Markdown, one executable code cell, and biological interpretation Markdown. Figure cells should render with `_ = display_matplotlib_figure(fig)` from `bridge.reporting.notebook`, and final artifact cells should save reports without re-displaying all report artifacts together.
+
+Step2 must use `paths.reference_h5ad` as the target-specific reference AnnData. `paths.ref_sceniclike_h5ad` is only for Step3 component F and must not be substituted into Step2.

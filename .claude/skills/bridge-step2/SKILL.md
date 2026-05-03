@@ -23,19 +23,23 @@ Codex:
 ## Required Inputs
 
 - Step1 RG candidate subset
-- target-specific reference AnnData and scANVI model path
+- target-specific reference AnnData from `paths.reference_h5ad`
+- target-specific scANVI model path from `paths.ref_model_dir`
 - writable Step2 output directory
+
+`paths.ref_sceniclike_h5ad` is not a Step2 input. It is reserved for Step3 component F and must never be used as a fallback Step2 reference.
 
 ## Agent Responsibilities
 
 1. Locate the Step1 RG candidate h5ad.
-2. Validate the target-specific model and config.
+2. Validate `paths.reference_h5ad`, `paths.ref_model_dir`, `identity.target_class`, and the Step2 output directory.
 3. In the Step2 notebook, call `from bridge.identity import identify`.
 4. Run `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)`.
 5. Preserve the current Step2 artifact contract.
 6. Call `from bridge.identity.report import write_report as write_identity_report`.
 7. Run `write_identity_report(result=result, output_dir=..., prefix=..., target_class=...)` at the notebook tail.
 8. Summarize candidate count, candidate fraction, and threshold metadata without overclaiming final biological interpretation.
+9. If the configured target reference is missing, unreadable, or has a gene set incompatible with the target model, stop and report the exact problem. Do not search unrelated server paths or substitute another reference file.
 
 ## Notebook API
 
@@ -43,10 +47,12 @@ Codex:
 from bridge.identity import identify
 from bridge.identity.report import write_report as write_identity_report
 
+adata_ref = sc.read_h5ad(config.paths.reference_h5ad)
+
 result = identify(
     bdata_rg,
     adata_ref,
-    ref_model_dir="./models/target_ref_model",
+    ref_model_dir=config.paths.ref_model_dir,
     target_class="RG_Mesencephalon_FP",
     output_dir="./outputs/identity",
     prefix="demo_prefix",
@@ -98,5 +104,9 @@ Generated notebooks must be notebook-native analysis records, not a report dump 
 5. Final artifact cell: call `write_report(...)`, print saved paths, and do not re-display every report artifact. The saved `report/` folder remains the artifact contract.
 
 Do not use a final cell that loops through report tables/figures and displays them all together. Do not rely on a bare `fig` expression, because some notebook renderers show only `<Figure size ...>` instead of the image.
+
+## Reference Guardrails
+
+Step2 target identity assessment must use the RG target reference AnnData paired with the target scANVI model. The reference should contain the model gene set, the configured `identity.ref_label_key`, and the configured `identity.counts_layer`. `ref_sceniclike_h5ad` has a reduced gene/regulon-oriented feature space for Step3 component F and is biologically and technically invalid for Step2 scANVI query mapping.
 
 Step2 biological interpretation should distinguish stable target convergence from uncertain, transitional, or competing-fate cells using target probability, variability, entropy, candidate fraction, and identity composition.

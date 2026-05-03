@@ -5,9 +5,9 @@ dataset:
   prefix: "example_prefix"
 
 paths:
-  reference_h5ad: "./path/to/reference.h5ad"
+  reference_h5ad: "./models/target_reference.h5ad"
   query_h5ad: "./path/to/query.h5ad"
-  ref_model_dir: "./path/to/ref_model"
+  ref_model_dir: "./models/target_ref_model"
   identity_output_dir: "./artifacts/identity"
   cls_output_dir: "./artifacts/cls"
   report_output_dir: "./artifacts/report"

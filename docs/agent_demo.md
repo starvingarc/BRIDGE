@@ -123,13 +123,14 @@ Codex command:
 
 Required input:
 - Step1 RG candidate subset
-- target-specific reference AnnData and scANVI model path
+- target-specific reference AnnData from `paths.reference_h5ad`
+- target-specific scANVI model from `paths.ref_model_dir`
 - writable Step2 output directory
 
 Agent responsibility:
 - consume the Step1 RG candidate subset
 - run `from bridge.identity import identify` in the Step2 notebook
-- call `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)` and preserve the current Step2 artifact contract
+- load only the configured target reference AnnData, never `paths.ref_sceniclike_h5ad`, then call `identify(bdata_rg, adata_ref, ref_model_dir=..., target_class=..., output_dir=..., prefix=...)` and preserve the current Step2 artifact contract
 - call `from bridge.identity.report import write_report as write_identity_report`
 - build and display Step2 report tables, figures, and interpretation in notebook cells, then run `write_identity_report(result=step2, output_dir=..., prefix=..., target_class=...)`
 - summarize candidate count and threshold metadata without overclaiming biological interpretation

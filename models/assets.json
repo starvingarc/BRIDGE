@@ -20,6 +20,14 @@
       "required": true
     },
     {
+      "id": "target_reference_h5ad",
+      "step": "identity",
+      "description": "Target-specific reference AnnData paired with the target scANVI model for bridge.identity.identify.",
+      "url": "https://storage.googleapis.com/bridge-model-assets/model-assets-v1/target_reference.h5ad",
+      "destination": "models/target_reference.h5ad",
+      "required": true
+    },
+    {
       "id": "ref_sceniclike",
       "step": "cls",
       "description": "Reference SCENIC-like AnnData used by bridge.cls.component_F.",

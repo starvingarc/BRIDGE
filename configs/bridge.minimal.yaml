@@ -5,9 +5,9 @@ dataset:
   prefix: "demo_prefix"
 
 paths:
-  reference_h5ad: "./data/reference.h5ad"
+  reference_h5ad: "./models/target_reference.h5ad"
   query_h5ad: "./data/query.h5ad"
-  ref_model_dir: "./models/ref_model"
+  ref_model_dir: "./models/target_ref_model"
   identity_output_dir: "./outputs/identity"
   cls_output_dir: "./outputs/cls"
   report_output_dir: "./outputs/report"
@@ -19,7 +19,7 @@ runtime:
   n_jobs: 1
 
 identity:
-  target_class: "RG"
+  target_class: "RG_Mesencephalon_FP"
   counts_layer: "counts"
   ref_label_key: "cell_subtype"
   max_epochs: 5
