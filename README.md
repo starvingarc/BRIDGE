@@ -1,31 +1,71 @@
+<div align="center">
+
 # BRIDGE
 
-**Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation**
+**Brain-referenced developmental guidance for in vitro cell products.**
 
-BRIDGE is a research software package and agent-guided notebook workflow for evaluating in vitro cell products against in vivo developmental references. The public workflow is notebook-first: Step1 prescreens candidate RG-like cells, Step2 identifies target mDA progenitor candidates, and Step3 scores developmental concordance with CLS components.
+<em>🌉 From candidate discovery to developmental concordance scoring.</em>
 
-## Agent Install And Use (Recommended)
+<p>
+  <a href="docs/agent_demo.md"><img alt="Demo" src="https://img.shields.io/badge/demo-agent%20workflow-5bbfb1?style=flat-square"></a>
+  <a href="docs/formal_workflows.md"><img alt="Docs" src="https://img.shields.io/badge/docs-workflows-2f6f68?style=flat-square"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-2f6f68?style=flat-square">
+  <img alt="Status" src="https://img.shields.io/badge/status-research%20software-8fb8f7?style=flat-square">
+</p>
 
-For a first-time install, send this to Claude Code, Codex, or a similar coding agent:
+<img src="docs/assets/bridge-overview.png" alt="BRIDGE workflow overview" width="960">
+
+<p>
+  <sub><strong>Workflow overview</strong> · In vivo reference atlases, in vitro candidate cells, and notebook-native reports.</sub>
+</p>
+
+</div>
+
+## 🧭 Concept
+
+BRIDGE asks a careful question: <em>do these in vitro cells resemble the in vivo developmental state they are meant to approximate?</em>
+
+The package brings that question into a reproducible notebook workflow. It routes cells through whole-brain prescreening, target identity assessment, and component-level concordance scoring, then leaves behind visible evidence: annotated `.h5ad` files, probability tables, figures, manifests, and narrative reports.
+
+BRIDGE is not meant to replace biological judgment. It is meant to make the judgment quieter, more structured, and easier to revisit.
+
+```text
+in vivo developmental reference
+-> Step1 prescreening
+-> Step2 target identity assessment
+-> Step3 CLS concordance scoring
+-> notebook reports and protocol comparison
+```
+
+## ✨ Workflow
+
+| Step | Role | Output |
+| --- | --- | --- |
+| **Step0** | Prepare environment, config, model assets, and run directory. | Ready-to-run workspace |
+| **Step1** | Map one in vitro `.h5ad` against a whole-brain reference. | RG candidate annotations and Step1 report |
+| **Step2** | Assess mDA progenitor identity with calibrated probability and uncertainty. | Candidate-bearing data, thresholds, probability tables, Step2 report |
+| **Step3** | Score developmental concordance across CLS components A-F. | Component scores, weighted CLS, single-dataset and protocol-comparison reports |
+
+## 🚀 Agent Use (Recommended)
+
+For a first-time install, send this to Claude Code, Codex, or another coding agent:
 
 ```text
 Help me install https://github.com/starvingarc/BRIDGE
 ```
 
-Then run the workflow through the repository-local skills:
+Then copy the step command you need. Use `/...` in Claude Code and `@...` in Codex.
 
-| Skill | Invocation | Purpose |
-| --- | --- | --- |
-| `bridge-step0` | `/bridge-step0` or `@bridge-step0` | Initialize environment, model assets, config, and run directory. |
-| `bridge-step1` | `/bridge-step1` or `@bridge-step1` | Prescreen one in vitro `.h5ad` dataset and produce RG candidate artifacts plus a Step1 report. |
-| `bridge-step2` | `/bridge-step2` or `@bridge-step2` | Run mDA progenitor identity assessment and write a Step2 report. |
-| `bridge-step3` | `/bridge-step3` or `@bridge-step3` | Run CLS components, single-dataset reports, and optional different-protocol comparison against the thesis baselines. |
+| Skill | Claude Code | Codex | Purpose |
+| --- | --- | --- | --- |
+| `bridge-step0` | `/bridge-step0` | `@bridge-step0` | Initialize environment, assets, config, and run directory. |
+| `bridge-step1` | `/bridge-step1` | `@bridge-step1` | Prescreen an in vitro dataset and write a notebook-native Step1 report. |
+| `bridge-step2` | `/bridge-step2` | `@bridge-step2` | Run target identity assessment and write a Step2 report. |
+| `bridge-step3` | `/bridge-step3` | `@bridge-step3` | Run CLS scoring and optional protocol comparison. |
 
-Command names are lowercase for compatibility. The project brand remains **BRIDGE**. Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are fetched separately from public object-storage URLs declared in [models/assets.json](models/assets.json).
+Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are declared in [models/assets.json](models/assets.json) and fetched separately.
 
-## Manual Install And Use
-
-Install from GitHub or from a local checkout:
+## 🧪 Manual Use
 
 ```bash
 pip install git+https://github.com/starvingarc/BRIDGE.git
@@ -33,11 +73,9 @@ pip install git+https://github.com/starvingarc/BRIDGE.git
 pip install -e ".[workflow]"
 ```
 
-Notebook-callable entry points:
+Notebook entry points:
 
 ```python
-import scanpy as sc
-
 from bridge.prescreen import prescreen
 from bridge.identity import identify
 from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score
@@ -47,59 +85,31 @@ from bridge.identity.report import write_report as write_identity_report
 from bridge.cls.report import write_report as write_cls_report, compare_reports
 ```
 
-The high-level manual notebook flow is:
+Each step is designed to be called from a notebook, with report functions that render figures and tables in the notebook while also saving reproducible artifacts under `report/`.
 
-```python
-step1 = prescreen(adata, ref_model_dir="./models/whole_brain_ref_model", output_dir="./runs/demo_dataset/step1", prefix="demo_dataset")
-write_prescreen_report(result=step1, output_dir="./runs/demo_dataset/step1/report", prefix="demo_dataset")
+## 🗺️ Explore
 
-adata_ref = sc.read_h5ad("./models/target_reference.h5ad")
-step2 = identify(
-    bdata_rg, adata_ref, ref_model_dir="./models/target_ref_model",
-    target_class="RG_Mesencephalon_FP", output_dir="./runs/demo_dataset/step2", prefix="demo_dataset",
-    reference_h5ad_path="./models/target_reference.h5ad",
-)
-write_identity_report(result=step2, output_dir="./runs/demo_dataset/step2/report", prefix="demo_dataset", target_class="RG_Mesencephalon_FP")
+- [Agent demo script](docs/agent_demo.md)
+- [Skills](docs/skills.md)
+- [Formal workflows](docs/formal_workflows.md)
+- [Thesis-to-code mapping](docs/thesis_to_code.md)
+- [Roadmap](docs/roadmap.md)
 
-ctx = CLSContext(
-    bdata=step2.bdata,
-    adata_ref=step2.adata_ref,
-    target_class="RG_Mesencephalon_FP",
-    output_dir="./runs/demo_dataset/step3",
-    dataset_id="demo_dataset",
-    probs_ref_cal=step2.probabilities.probs_ref_cal,
-)
+## 🛠️ Development
 
-# Each CLS component is callable on its own when debugging or customizing the analysis.
-# a = component_A(ctx)
-# b = component_B(ctx)
-# c = component_C(ctx)
-# d = component_D(ctx)
-# e = component_E(ctx)
-# f = component_F(ctx)
-
-# For the default reportable A-F run, call score(ctx). Pass component_params
-# when a dataset needs explicit layer, embedding, or short demo-training choices.
-component_params = {}
-cls_result = score(ctx, component_params=component_params)
-write_cls_report(result=cls_result, ctx=ctx, output_dir="./runs/demo_dataset/step3/report", prefix="demo_dataset")
+```bash
+PYTHONPATH=src pytest -q
 ```
-
-## Documentation
-
-- [Agent demo script](docs/agent_demo.md): full video/demo flow.
-- [Skills](docs/skills.md): repository-local Step0-Step3 skill interface.
-- [Formal workflows](docs/formal_workflows.md): package surface and artifact contracts.
-- [Thesis-to-code mapping](docs/thesis_to_code.md): how the thesis workflow maps to the repository.
-- [Roadmap](docs/roadmap.md): model assets, notebooks, report polish, and future extensions.
-
-## Repository Map
 
 ```text
 src/bridge/        Python package
 configs/           public config templates
-models/            model metadata and model-asset entry point
-notebooks/         placeholder area for formal notebook examples
-docs/              detailed workflow and roadmap documentation
+models/            model metadata and asset entry point
+notebooks/         formal notebook examples and placeholders
+docs/              workflow documentation and roadmap
 .claude/skills/    repository-local Step0-Step3 skills
 ```
+
+## Citation
+
+BRIDGE is research software under active development. If you use it in a study, please cite the repository and include the commit hash used for analysis.
