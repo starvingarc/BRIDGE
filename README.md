@@ -37,26 +37,9 @@ BRIDGE uses human embryonic ventral midbrain references to guide candidate-cell 
 | **Step2** | Refine mDA progenitor identity with probability and uncertainty. | Candidate-bearing data, thresholds, probability tables, Step2 report |
 | **Step3** | Quantify developmental concordance with CLS components A-F. | Component scores, weighted CLS, single-dataset and protocol-comparison reports |
 
-## 🚀 Agent Use (Recommended)
+## 🚀 Getting Started
 
-The public demo flow is designed to be driven by a coding agent. For a first-time install, send this to Claude Code, Codex, or another agent:
-
-```text
-Help me install https://github.com/starvingarc/BRIDGE
-```
-
-Then copy the step command you need. Command names are shared across agents; use the prefix your agent expects, such as `/bridge-step1` or `@bridge-step1`.
-
-| Step | Agent command | Purpose |
-| --- | --- | --- |
-| Step0 | `bridge-step0` | Initialize environment, assets, config, and run directory. |
-| Step1 | `bridge-step1` | Prescreen an in vitro dataset and write a notebook-native report. |
-| Step2 | `bridge-step2` | Run target identity assessment and write an identity report. |
-| Step3 | `bridge-step3` | Run CLS scoring and protocol comparison. |
-
-Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are declared in [models/assets.json](models/assets.json) and fetched separately from public object storage.
-
-## 🧪 Manual Use
+### Installation
 
 ```bash
 pip install git+https://github.com/starvingarc/BRIDGE.git
@@ -64,7 +47,26 @@ pip install git+https://github.com/starvingarc/BRIDGE.git
 pip install -e ".[workflow]"
 ```
 
-Notebook entry points:
+For agent-assisted setup, send this prompt to your coding agent:
+
+```text
+Help me install https://github.com/starvingarc/BRIDGE
+```
+
+### Agent-Guided Workflow
+
+BRIDGE includes repository-local skills that guide an agent through reproducible Step0-Step3 notebooks. Use the prefix supported by your agent, for example `/bridge-step1` or `@bridge-step1`.
+
+| Step | Skill | Output |
+| --- | --- | --- |
+| Step0 | `bridge-step0` | Environment, assets, config, and run directory |
+| Step1 | `bridge-step1` | Prescreened data, RG candidates, and notebook report |
+| Step2 | `bridge-step2` | Identity candidates, thresholds, probabilities, and notebook report |
+| Step3 | `bridge-step3` | CLS component scores and protocol comparison |
+
+Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are declared in [models/assets.json](models/assets.json) and fetched separately from public object storage.
+
+### Python Usage
 
 ```python
 from bridge.prescreen import prescreen
@@ -76,7 +78,7 @@ from bridge.identity.report import write_report as write_identity_report
 from bridge.cls.report import write_report as write_cls_report, compare_reports
 ```
 
-Each step is designed to be called from a notebook. Report modules provide notebook-visible table/figure helpers and writers for reproducible artifacts under `report/`.
+Each step is a Python function that can be used in notebooks or scripts. Report modules provide displayable table/figure helpers and writers for reproducible artifacts under `report/`.
 
 ## 🗺️ Explore
 

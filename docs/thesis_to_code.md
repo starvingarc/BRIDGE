@@ -5,7 +5,7 @@ This repository is intentionally structured so that a reader can map the thesis 
 ## High-Level Mapping
 
 - **Thesis Step 1**: reference construction and whole-brain pre-screening
-  - repository status: whole-brain prescreening is available as notebook-callable package code; upstream reference construction remains model-building context
+  - repository status: whole-brain prescreening is available as package code designed for notebook-based analysis; upstream reference construction remains model-building context
   - repository location: `src/bridge/prescreen` plus workflow documentation in `docs/`
 
 - **Thesis Step 2**: identity assessment and candidate selection
@@ -23,7 +23,7 @@ The released execution layer mirrors the thesis structure:
 - `from bridge.identity import identify` -> thesis Step 2
 - `from bridge.cls import CLSContext, component_A, ..., score` -> thesis Step 3 scoring and reporting
 
-Step 1, Step 2, and Step 3 are exposed as notebook-callable Python APIs.
+Step 1, Step 2, and Step 3 are exposed as Python interfaces designed for notebook-based analysis.
 
 ## Why CLS Appears in Step 3
 

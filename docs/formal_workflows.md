@@ -1,6 +1,6 @@
 # Formal Workflows
 
-BRIDGE v1 exposes the thesis workflow as notebook-first Python APIs. Step0 is agent-guided setup; Step1-Step3 are package calls that can be executed and documented inside notebooks.
+BRIDGE v1 exposes the thesis workflow as Python interfaces designed for notebook-based analysis. Step0 is agent-guided setup; Step1-Step3 are package calls that can be executed and documented inside notebooks.
 
 ## Pipeline
 
@@ -11,7 +11,7 @@ BRIDGE v1 exposes the thesis workflow as notebook-first Python APIs. Step0 is ag
 | Step2 | `bridge.identity` | Target-specific mDA progenitor identity assessment using calibrated probability and uncertainty. |
 | Step3 | `bridge.cls` | Component-level developmental concordance scoring and reporting. |
 
-## Notebook APIs
+## Python Interfaces
 
 Recommended imports:
 
