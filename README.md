@@ -12,17 +12,21 @@
 
 # BRIDGE
 
-**Brain-referenced developmental guidance for in vitro cell products.**
+**A developmental-reference evaluation platform for pre-transplant mDA progenitor cell products.**
 
-<em>🌉 From candidate discovery to developmental concordance scoring.</em>
+<em>🌉 Candidate discovery, identity stability, and multidimensional developmental concordance.</em>
 
-BRIDGE is a notebook-first framework for asking a careful question: <em>do these in vitro cells resemble the in vivo developmental state they are meant to approximate?</em> It routes cells through reference-guided prescreening, target identity assessment, and component-level concordance scoring, then leaves behind visible evidence for review.
+## 🧭 Background
 
-| What BRIDGE keeps visible | Why it matters |
+Stem-cell-based replacement therapy is an important regenerative strategy for Parkinsonian dopaminergic circuit repair. Pre-transplant mDA progenitor products are evaluated as developmentally staged cells with defined regional identity, fate stability, and subsequent differentiation potential.
+
+BRIDGE uses human embryonic ventral midbrain references to guide candidate-cell discovery, target identity assessment, and multidimensional developmental concordance scoring. The workflow organizes single-cell evidence for quality control, process optimization, and cross-protocol comparison.
+
+| Evaluation layer | Biological focus |
 | --- | --- |
-| **Reference context** | Candidate cells are evaluated against in vivo developmental atlases, not in isolation. |
-| **Notebook-native evidence** | Figures, tables, interpretations, and manifests stay together in executed notebooks. |
-| **Component-level scoring** | CLS separates identity, expression, transferability, neighborhood, trajectory, and regulon axes instead of hiding them in one number. |
+| **Developmental reference** | Human embryonic ventral midbrain programs as the in vivo baseline. |
+| **Candidate identity** | Calibrated probability, prediction variability, and entropy. |
+| **Composite Likeness Score** | Identity, expression, transferability, neighborhood, trajectory, and regulon concordance. |
 
 ## ✨ Workflow
 
@@ -30,8 +34,8 @@ BRIDGE is a notebook-first framework for asking a careful question: <em>do these
 | --- | --- | --- |
 | **Step0** | Prepare environment, config, model assets, and run directory. | Ready-to-run workspace |
 | **Step1** | Map one in vitro `.h5ad` against a whole-brain reference. | RG candidate annotations and Step1 report |
-| **Step2** | Assess mDA progenitor identity with calibrated probability and uncertainty. | Candidate-bearing data, thresholds, probability tables, Step2 report |
-| **Step3** | Score developmental concordance across CLS components A-F. | Component scores, weighted CLS, single-dataset and protocol-comparison reports |
+| **Step2** | Refine mDA progenitor identity with probability and uncertainty. | Candidate-bearing data, thresholds, probability tables, Step2 report |
+| **Step3** | Quantify developmental concordance with CLS components A-F. | Component scores, weighted CLS, single-dataset and protocol-comparison reports |
 
 ## 🚀 Agent Use (Recommended)
 
