@@ -25,6 +25,7 @@ Codex:
 - Step2 `bdata` and `adata_ref` objects or loaded Step2 artifact h5ad files
 - `probs_ref_cal` when running components A or C
 - component-specific assets required by selected components
+- for thesis-style different-protocol comparison: optional `comparison.reference_h5ad`, `comparison.ref_sceniclike_h5ad`, `comparison.regulons_json`, and per-protocol `query_h5ad` plus `query_aucell_csv` entries; fall back to `paths.reference_h5ad`, `paths.ref_sceniclike_h5ad`, and `paths.regulons_json` when comparison-level fields are absent
 
 ## Agent Responsibilities
 
@@ -91,7 +92,11 @@ protocols = [
     {"name": "Current dataset", "dataset_id": ctx.dataset_id, "step3_dir": ctx.output_dir},
 ]
 
-# Optional thesis-style B/F inputs are read from user config when present.
+# Optional thesis-style B/F inputs are read from user config when present:
+# - comparison.reference_h5ad or paths.reference_h5ad for Component B
+# - per-protocol query_h5ad for Component B and F1
+# - comparison.ref_sceniclike_h5ad plus comparison.regulons_json for F1/F2
+# - per-protocol query_aucell_csv for F2
 # Use AnnData objects or paths keyed by dataset_id/name; use AUCell tables for F2.
 comparison = compare_reports(
     protocols=protocols,

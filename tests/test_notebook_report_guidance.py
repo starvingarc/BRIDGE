@@ -51,6 +51,10 @@ def test_step3_skill_requires_different_protocol_comparison_guidance():
         "plot_protocol_component_B_pseudobulk",
         "plot_protocol_component_F1_regulon_heatmap",
         "plot_protocol_component_F2_regulon_activity",
+        "query_h5ad",
+        "query_aucell_csv",
+        "ref_sceniclike_h5ad",
+        "regulons_json",
         "F1 regulon target overlap",
         "F2 regulon activity alignment",
     ]:
