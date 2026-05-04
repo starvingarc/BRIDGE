@@ -155,7 +155,7 @@ def plot_identity_composition(composition: pd.DataFrame):
         wedgeprops={"width": 0.48, "edgecolor": "white", "linewidth": 1.0},
         textprops={"fontsize": 9},
     )
-    ax.text(0, 0, f"{total}\\ncells", ha="center", va="center", fontsize=11)
+    ax.text(0, 0, f"{total}\ncells", ha="center", va="center", fontsize=11)
     ax.legend(
         wedges,
         [f"{label} ({count})" for label, count in zip(labels, comp["count"])],

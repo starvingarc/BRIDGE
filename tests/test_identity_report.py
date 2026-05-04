@@ -128,3 +128,4 @@ def test_identity_composition_plot_uses_donut_pie():
     wedges = [patch for patch in fig.axes[0].patches if isinstance(patch, Wedge)]
     assert len(wedges) == len(composition)
     assert all(wedge.width is not None for wedge in wedges)
+    assert any(text.get_text() == "3\ncells" for text in fig.axes[0].texts)
