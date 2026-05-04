@@ -74,7 +74,7 @@ report = write_cls_report(
 )
 ```
 
-Thesis-style four-protocol comparison:
+Different-protocol comparison:
 
 ```python
 comparison = compare_reports(
@@ -99,11 +99,11 @@ comparison = compare_reports(
 - Step3 report manifest JSON
 - report tables and available figures
 - optional multi-protocol comparison report
-- optional four-protocol thesis-style comparison report for SphereDiff, MacroDiff, MSK-DA01, and the current dataset
+- optional different-protocol thesis-style comparison report for SphereDiff, MacroDiff, MSK-DA01, and the current dataset
 
 ## Report Coverage
 
-The Step3 report API uses the thesis-style CLS visual language from the project visualization notebooks. It covers component score overview, radar profile, weighted CLS, weighted contribution stack, component heatmap, and available A-F diagnostic panels when required columns or files exist. For protocol comparison, include the thesis-style A/C/D/E diagnostics when the component batch or gene artifacts are present. Missing optional component diagnostics should be recorded as manifest warnings, not treated as fatal errors.
+The Step3 report API uses the thesis-style CLS visual language from the project visualization notebooks. It covers component score overview, radar profile, weighted CLS, weighted contribution stack, component heatmap, and available A-F diagnostic panels when required columns or files exist. In generated notebooks, the single-dataset visible report should show only the component score table and one plot: `plot_component_scores_bar(component_score_table)`. Put detailed A-F diagnostics in the different-protocol comparison section, including B, F1, and F2 when the component batch artifacts are present. Missing optional component diagnostics should be recorded as manifest warnings, not treated as fatal errors.
 
 ## Notebook-Visible Report Sections
 
@@ -126,4 +126,16 @@ Generated notebooks must be notebook-native analysis records, not a report dump 
 
 Do not use a final cell that loops through report tables/figures and displays them all together. Do not rely on a bare `fig` expression, because some notebook renderers show only `<Figure size ...>` instead of the image.
 
-Step3 biological interpretation should explain component-level concordance and divergence across identity, expression, transferability, neighborhood, pseudotime, and regulon axes rather than presenting a simple ranking. For the four-protocol comparison, display the comparison score table, grouped component overview, radar plot, weighted CLS bar plot, weighted contribution stack, component heatmap, and available A/C/D/E diagnostic panels as separate notebook sections, each with context before the code and biological interpretation after the output. Prefer the public plotting helpers in `bridge.cls.report` so the notebook visibly executes the same code used by the saved report artifacts.
+For the single-dataset plot cell, use exactly this pattern and do not add separate single-dataset A-F diagnostic plot cells:
+
+```python
+fig = plot_component_scores_bar(component_score_table)
+if fig is not None:
+    _ = display_matplotlib_figure(fig)
+else:
+    display(Markdown("Component Score Bar Plot was not generated."))
+```
+
+For the different-protocol comparison, use separate cells for `plot_protocol_component_B(...)`, `plot_protocol_component_F1(...)`, and `plot_protocol_component_F2(...)` when the saved comparison report includes the corresponding figure paths or when the required batch tables are available.
+
+Step3 biological interpretation should explain component-level concordance and divergence across identity, expression, transferability, neighborhood, pseudotime, and regulon axes rather than presenting a simple ranking. The comparison heading should be `不同方案的对比报告`. For the different-protocol comparison, display the comparison score table, grouped component overview, radar plot, weighted CLS bar plot, weighted contribution stack, component heatmap, and available A-F diagnostic panels as separate notebook sections. Include Component B pseudo-bulk agreement and split Component F into two separate notebook sections: F1 regulon target overlap and F2 regulon activity alignment. Each section must have context before the code and biological interpretation after the output. Prefer the public plotting helpers in `bridge.cls.report` so the notebook visibly executes the same code used by the saved report artifacts.

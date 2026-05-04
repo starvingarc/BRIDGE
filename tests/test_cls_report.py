@@ -55,11 +55,12 @@ def test_cls_report_writes_single_dataset_figures_manifest_and_warnings(tmp_path
     assert Path(report.figures["component_scores_heatmap"]).exists()
     assert Path(report.figures["component_A_identity"]).exists()
     assert Path(report.figures["component_E_pseudotime"]).exists()
+    assert Path(report.figures["component_F1_regulon_overlap"]).exists()
+    assert Path(report.figures["component_F2_activity_alignment"]).exists()
     assert "component_F_activity_alignment" not in report.figures
 
     manifest = json.loads(Path(report.manifest_json).read_text(encoding="utf-8"))
     assert manifest["summary"]["weighted_total_cls"] == 0.77
-    assert any("component F" in warning for warning in manifest["warnings"])
 
 
 def _write_component_json(base: Path, dataset_id: str, component: str, score: float) -> None:
@@ -111,7 +112,16 @@ def test_compare_reports_warns_when_component_artifact_is_missing(tmp_path):
 
 
 def test_cls_report_public_notebook_helpers(tmp_path):
-    from bridge.cls.report import build_component_score_table, build_interpretation, plot_component_A, plot_component_scores_bar, plot_component_scores_heatmap, plot_weighted_cls
+    from bridge.cls.report import (
+        build_component_score_table,
+        build_interpretation,
+        plot_component_A,
+        plot_component_F1_regulon_overlap,
+        plot_component_F2_activity_alignment,
+        plot_component_scores_bar,
+        plot_component_scores_heatmap,
+        plot_weighted_cls,
+    )
 
     result, ctx = _cls_result(tmp_path)
     score_df = build_component_score_table(result)
@@ -120,6 +130,8 @@ def test_cls_report_public_notebook_helpers(tmp_path):
     fig_heatmap = plot_component_scores_heatmap(score_df)
     fig_weighted = plot_weighted_cls(result.weighted_total_cls)
     fig_a = plot_component_A(result.component_results["A"])
+    fig_f1 = plot_component_F1_regulon_overlap(result.component_results["F"])
+    fig_f2 = plot_component_F2_activity_alignment(result.component_results["F"])
 
     assert score_df["Component"].tolist()[:2] == ["A", "B"]
     assert "overview" in interpretation
@@ -127,6 +139,8 @@ def test_cls_report_public_notebook_helpers(tmp_path):
     assert fig_heatmap is not None
     assert fig_weighted is not None
     assert fig_a is not None
+    assert fig_f1 is not None
+    assert fig_f2 is not None
 
 def _write_component_batch(base: Path, dataset_id: str, component: str, df: pd.DataFrame) -> None:
     comp_dir = base / dataset_id / component
@@ -154,6 +168,12 @@ def test_compare_reports_writes_thesis_style_component_diagnostics(tmp_path):
         _write_component_batch(
             tmp_path,
             dataset_id,
+            "B",
+            pd.DataFrame({"batch": ["b1", "b2"], "n_cells": [20, 30], "r": [0.78, 0.82], "sB": [0.89, 0.91]}),
+        )
+        _write_component_batch(
+            tmp_path,
+            dataset_id,
             "C",
             pd.DataFrame({"batch": ["b1", "b2"], "n_candidate": [20, 30], "AUC_org": [0.96, 0.98], "AUC_ref": [0.97, 0.97], "sC": [0.99, 0.99]}),
         )
@@ -167,6 +187,12 @@ def test_compare_reports_writes_thesis_style_component_diagnostics(tmp_path):
             tmp_path,
             dataset_id,
             pd.DataFrame({"gene": [f"G{i}" for i in range(30)], "rho": [(-1 + i / 15) for i in range(30)]}),
+        )
+        _write_component_batch(
+            tmp_path,
+            dataset_id,
+            "F",
+            pd.DataFrame({"batch": ["b1", "b2"], "n_cells": [20, 30], "J": [0.52, 0.58], "ra": [0.72, 0.78], "sF": [0.74, 0.77], "n_reg_used": [120, 130]}),
         )
 
     report = compare_reports(
@@ -182,9 +208,12 @@ def test_compare_reports_writes_thesis_style_component_diagnostics(tmp_path):
         "comparison_component_scores",
         "comparison_weighted_contribution",
         "comparison_component_A_identity",
+        "comparison_component_B_pseudobulk",
         "comparison_component_C_transfer_auc",
         "comparison_component_D_neighborhood",
         "comparison_component_E_pseudotime",
+        "comparison_component_F1_regulon_overlap",
+        "comparison_component_F2_activity_alignment",
     ]:
         assert key in report.figures
         assert Path(report.figures[key]).exists()

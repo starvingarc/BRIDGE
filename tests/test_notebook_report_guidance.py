@@ -37,15 +37,19 @@ def test_step_skills_require_narrative_notebook_structure():
             assert phrase in text, (skill, phrase)
 
 
-def test_step3_skill_requires_four_protocol_comparison_guidance():
+def test_step3_skill_requires_different_protocol_comparison_guidance():
     root = Path(__file__).resolve().parents[1]
     text = (root / ".claude" / "skills" / "bridge-step3" / "SKILL.md").read_text(encoding="utf-8")
     for phrase in [
         "SphereDiff (CSC 2025)",
         "MacroDiff (unpublished)",
         "MSK-DA01 (CSC 2021)",
-        "four-protocol comparison",
+        "Different-protocol comparison",
+        "不同方案的对比报告",
         "component heatmap",
+        "Component B",
+        "F1 regulon target overlap",
+        "F2 regulon activity alignment",
     ]:
         assert phrase in text
 

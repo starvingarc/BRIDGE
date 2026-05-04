@@ -212,6 +212,14 @@ def _save_component_f_activity(result: Any, ctx: Any, path_base: Path, *, format
     return _save_figure_or_none(plot_component_F_activity(result, ctx, warnings), path_base, formats=formats, dpi=dpi)
 
 
+def _save_component_f1(result: Any, path_base: Path, *, formats: Sequence[str], dpi: int) -> str | None:
+    return _save_figure_or_none(plot_component_F1_regulon_overlap(result), path_base, formats=formats, dpi=dpi)
+
+
+def _save_component_f2(result: Any, path_base: Path, *, formats: Sequence[str], dpi: int) -> str | None:
+    return _save_figure_or_none(plot_component_F2_activity_alignment(result), path_base, formats=formats, dpi=dpi)
+
+
 def _score_interpretation(score_df: pd.DataFrame, weighted_total_cls: float | None) -> dict[str, str]:
     if score_df.empty:
         return {
@@ -614,6 +622,70 @@ def plot_component_F_activity(result: Any, ctx: Any, warnings: list[str] | None 
     return fig
 
 
+def plot_component_F1_regulon_overlap(result: Any):
+    df = getattr(result, "score_df", pd.DataFrame())
+    if "J" not in df.columns:
+        return None
+    plot_df = df.copy()
+    plot_df["J"] = pd.to_numeric(plot_df["J"], errors="coerce")
+    plot_df = plot_df[np.isfinite(plot_df["J"])].copy()
+    if plot_df.empty:
+        return None
+    labels = plot_df["batch"].astype(str).tolist() if "batch" in plot_df.columns else [str(i) for i in range(plot_df.shape[0])]
+    x = np.arange(plot_df.shape[0])
+    size_source = plot_df["n_reg_used"] if "n_reg_used" in plot_df.columns else (plot_df["n_cells"] if "n_cells" in plot_df.columns else np.ones(plot_df.shape[0]))
+    sizes = _scale_marker_sizes(size_source, min_size=90, max_size=260)
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(max(5.6, 0.95 * len(labels) + 2.2), 4.4))
+    ax.scatter(x, plot_df["J"], s=sizes, color="#D8B4E2", edgecolor="black", linewidth=0.8, zorder=3, label="J")
+    for i, value in enumerate(plot_df["J"]):
+        ax.text(x[i], min(float(value) + 0.035, 0.98), f"{float(value):.3f}", ha="center", va="bottom", fontsize=9)
+    score = _finite_float(getattr(result, "global_score", None))
+    if score is not None:
+        ax.text(0.02, 0.96, f"sF={score:.3f}", transform=ax.transAxes, ha="left", va="top", fontsize=10, bbox=dict(boxstyle="round,pad=0.22", facecolor="white", edgecolor="none", alpha=0.9))
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=25, ha="right")
+    ax.set_ylim(0.0, 1.02)
+    ax.set_ylabel("Mean Jaccard overlap")
+    ax.set_title("Component F1: regulon target overlap")
+    ax.grid(axis="y", alpha=0.22, linewidth=0.7)
+    _hide_top_right_spines(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_component_F2_activity_alignment(result: Any):
+    df = getattr(result, "score_df", pd.DataFrame())
+    if "ra" not in df.columns:
+        return None
+    plot_df = df.copy()
+    plot_df["ra"] = pd.to_numeric(plot_df["ra"], errors="coerce")
+    plot_df = plot_df[np.isfinite(plot_df["ra"])].copy()
+    if plot_df.empty:
+        return None
+    labels = plot_df["batch"].astype(str).tolist() if "batch" in plot_df.columns else [str(i) for i in range(plot_df.shape[0])]
+    x = np.arange(plot_df.shape[0])
+    size_source = plot_df["n_cells"] if "n_cells" in plot_df.columns else np.ones(plot_df.shape[0])
+    sizes = _scale_marker_sizes(size_source, min_size=90, max_size=260)
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(max(5.6, 0.95 * len(labels) + 2.2), 4.4))
+    ax.axhline(0.0, linestyle="--", linewidth=1.0, color="gray", alpha=0.45, zorder=1)
+    ax.scatter(x, plot_df["ra"], s=sizes, marker="s", color="#A7C7E7", edgecolor="black", linewidth=0.8, zorder=3, label="ra")
+    for i, value in enumerate(plot_df["ra"]):
+        ax.text(x[i], min(float(value) + 0.045, 0.96), f"{float(value):.3f}", ha="center", va="bottom", fontsize=9)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=25, ha="right")
+    ymin = min(-0.05, float(plot_df["ra"].min()) - 0.08)
+    ymax = max(0.2, float(plot_df["ra"].max()) + 0.08)
+    ax.set_ylim(max(-1.0, ymin), min(1.0, ymax))
+    ax.set_ylabel("Regulon activity correlation (ra)")
+    ax.set_title("Component F2: regulon activity alignment")
+    ax.grid(axis="y", alpha=0.22, linewidth=0.7)
+    _hide_top_right_spines(ax)
+    fig.tight_layout()
+    return fig
+
+
 def write_report(
     *,
     result: Any,
@@ -688,16 +760,12 @@ def write_report(
             figures["component_E_pseudotime"] = path
     component_f = component_results.get("F")
     if component_f is not None:
-        path = _save_component_f_activity(
-            component_f,
-            ctx,
-            figdir / f"{prefix}.component_F_activity_alignment",
-            formats=formats,
-            dpi=dpi,
-            warnings=warnings,
-        )
+        path = _save_component_f1(component_f, figdir / f"{prefix}.component_F1_regulon_overlap", formats=formats, dpi=dpi)
         if path:
-            figures["component_F_activity_alignment"] = path
+            figures["component_F1_regulon_overlap"] = path
+        path = _save_component_f2(component_f, figdir / f"{prefix}.component_F2_activity_alignment", formats=formats, dpi=dpi)
+        if path:
+            figures["component_F2_activity_alignment"] = path
 
     interpretation = _score_interpretation(score_df, weighted_total_cls)
     markdown_lines = [
@@ -955,6 +1023,44 @@ def plot_protocol_component_A(summary_df: pd.DataFrame):
     return fig
 
 
+def plot_protocol_component_B(batch_df: pd.DataFrame, global_df: pd.DataFrame):
+    if batch_df.empty or not ({"r", "sB"} & set(batch_df.columns)):
+        return None
+    metric = "r" if "r" in batch_df.columns else "sB"
+    plot_df = batch_df.copy().reset_index(drop=True)
+    plot_df[metric] = pd.to_numeric(plot_df[metric], errors="coerce")
+    plot_df = plot_df[np.isfinite(plot_df[metric])].copy()
+    if plot_df.empty:
+        return None
+    protocols = plot_df["Protocol"].drop_duplicates().tolist()
+    x_map = {protocol: idx for idx, protocol in enumerate(protocols)}
+    rng = np.random.default_rng(0)
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(max(6.4, 1.05 * len(protocols) + 2.4), 4.8))
+    for idx, protocol in enumerate(protocols):
+        sub = plot_df[plot_df["Protocol"] == protocol]
+        jitter = rng.normal(0, 0.035, size=sub.shape[0]) if sub.shape[0] > 1 else np.zeros(sub.shape[0])
+        size_source = sub["n_cells"] if "n_cells" in sub.columns else np.ones(sub.shape[0])
+        sizes = _scale_marker_sizes(size_source, min_size=80, max_size=220)
+        ax.scatter(np.full(sub.shape[0], x_map[protocol]) + jitter, sub[metric], s=sizes, color=_protocol_color(protocol, idx), edgecolor="black", linewidth=0.8, alpha=0.92, label=_short_protocol_name(protocol), zorder=3)
+    if not global_df.empty and "sB_global" in global_df.columns:
+        for _, row in global_df.iterrows():
+            protocol = row["Protocol"]
+            if protocol in x_map:
+                value = _finite_float(row["sB_global"])
+                if value is not None:
+                    ax.text(x_map[protocol], 0.04, f"sB={value:.3f}", ha="center", va="bottom", fontsize=9, bbox=dict(boxstyle="round,pad=0.18", facecolor="white", edgecolor="none", alpha=0.85))
+    ax.set_xticks(np.arange(len(protocols)))
+    ax.set_xticklabels([_short_protocol_name(protocol) for protocol in protocols], rotation=20, ha="right")
+    ax.set_ylabel("Pseudo-bulk Pearson r" if metric == "r" else "Pseudo-bulk score sB")
+    ax.set_title("Component B: pseudo-bulk expression agreement")
+    ax.set_ylim(-1.0 if metric == "r" and float(plot_df[metric].min()) < 0 else 0.0, 1.02)
+    ax.grid(axis="y", alpha=0.22, linewidth=0.7)
+    _hide_top_right_spines(ax)
+    fig.tight_layout()
+    return fig
+
+
 def plot_protocol_component_C(batch_df: pd.DataFrame, global_df: pd.DataFrame, auc_ref: float | None = None):
     if batch_df.empty or "AUC_org" not in batch_df.columns:
         return None
@@ -1038,6 +1144,76 @@ def plot_protocol_component_E(gene_frames: Mapping[str, pd.DataFrame], scores: M
     return _plot_gene_rho_density(gene_frames, scores)
 
 
+def plot_protocol_component_F1(batch_df: pd.DataFrame, global_df: pd.DataFrame):
+    if batch_df.empty or "J" not in batch_df.columns:
+        return None
+    plot_df = batch_df.copy().reset_index(drop=True)
+    plot_df["J"] = pd.to_numeric(plot_df["J"], errors="coerce")
+    plot_df = plot_df[np.isfinite(plot_df["J"])].copy()
+    if plot_df.empty:
+        return None
+    protocols = plot_df["Protocol"].drop_duplicates().tolist()
+    x_map = {protocol: idx for idx, protocol in enumerate(protocols)}
+    rng = np.random.default_rng(0)
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(max(6.4, 1.05 * len(protocols) + 2.4), 4.8))
+    for idx, protocol in enumerate(protocols):
+        sub = plot_df[plot_df["Protocol"] == protocol]
+        jitter = rng.normal(0, 0.035, size=sub.shape[0]) if sub.shape[0] > 1 else np.zeros(sub.shape[0])
+        size_source = sub["n_reg_used"] if "n_reg_used" in sub.columns else (sub["n_cells"] if "n_cells" in sub.columns else np.ones(sub.shape[0]))
+        sizes = _scale_marker_sizes(size_source, min_size=80, max_size=220)
+        ax.scatter(np.full(sub.shape[0], x_map[protocol]) + jitter, sub["J"], s=sizes, color=_protocol_color(protocol, idx), edgecolor="black", linewidth=0.8, alpha=0.92, label=_short_protocol_name(protocol), zorder=3)
+    if not global_df.empty and "sF_global" in global_df.columns:
+        for _, row in global_df.iterrows():
+            protocol = row["Protocol"]
+            if protocol in x_map:
+                value = _finite_float(row["sF_global"])
+                if value is not None:
+                    ax.text(x_map[protocol], 0.04, f"sF={value:.3f}", ha="center", va="bottom", fontsize=9, bbox=dict(boxstyle="round,pad=0.18", facecolor="white", edgecolor="none", alpha=0.85))
+    ax.set_xticks(np.arange(len(protocols)))
+    ax.set_xticklabels([_short_protocol_name(protocol) for protocol in protocols], rotation=20, ha="right")
+    ax.set_ylim(0.0, 1.02)
+    ax.set_ylabel("Mean Jaccard overlap")
+    ax.set_title("Component F1: regulon target overlap")
+    ax.grid(axis="y", alpha=0.22, linewidth=0.7)
+    _hide_top_right_spines(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_protocol_component_F2(batch_df: pd.DataFrame, global_df: pd.DataFrame):
+    if batch_df.empty or "ra" not in batch_df.columns:
+        return None
+    plot_df = batch_df.copy().reset_index(drop=True)
+    plot_df["ra"] = pd.to_numeric(plot_df["ra"], errors="coerce")
+    plot_df = plot_df[np.isfinite(plot_df["ra"])].copy()
+    if plot_df.empty:
+        return None
+    protocols = plot_df["Protocol"].drop_duplicates().tolist()
+    x_map = {protocol: idx for idx, protocol in enumerate(protocols)}
+    rng = np.random.default_rng(0)
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(max(6.4, 1.05 * len(protocols) + 2.4), 4.8))
+    ax.axhline(0.0, linestyle="--", linewidth=1.0, color="gray", alpha=0.45, zorder=1)
+    for idx, protocol in enumerate(protocols):
+        sub = plot_df[plot_df["Protocol"] == protocol]
+        jitter = rng.normal(0, 0.035, size=sub.shape[0]) if sub.shape[0] > 1 else np.zeros(sub.shape[0])
+        size_source = sub["n_cells"] if "n_cells" in sub.columns else np.ones(sub.shape[0])
+        sizes = _scale_marker_sizes(size_source, min_size=80, max_size=220)
+        ax.scatter(np.full(sub.shape[0], x_map[protocol]) + jitter, sub["ra"], s=sizes, marker="s", color=_protocol_color(protocol, idx), edgecolor="black", linewidth=0.8, alpha=0.92, label=_short_protocol_name(protocol), zorder=3)
+    ax.set_xticks(np.arange(len(protocols)))
+    ax.set_xticklabels([_short_protocol_name(protocol) for protocol in protocols], rotation=20, ha="right")
+    ymin = min(-0.05, float(plot_df["ra"].min()) - 0.08)
+    ymax = max(0.2, float(plot_df["ra"].max()) + 0.08)
+    ax.set_ylim(max(-1.0, ymin), min(1.0, ymax))
+    ax.set_ylabel("Regulon activity correlation (ra)")
+    ax.set_title("Component F2: regulon activity alignment")
+    ax.grid(axis="y", alpha=0.22, linewidth=0.7)
+    _hide_top_right_spines(ax)
+    fig.tight_layout()
+    return fig
+
+
 def _save_comparison_component_scores(df: pd.DataFrame, path_base: Path, *, formats: Sequence[str], dpi: int) -> str | None:
     return _save_figure_or_none(plot_protocol_component_scores(df), path_base, formats=formats, dpi=dpi)
 
@@ -1075,6 +1251,23 @@ def _save_comparison_component_a(protocols: Sequence[Mapping[str, Any]], path_ba
             }
         )
     return _save_figure_or_none(plot_protocol_component_A(pd.DataFrame(rows)), path_base, formats=formats, dpi=dpi)
+
+
+def _save_comparison_component_b(protocols: Sequence[Mapping[str, Any]], path_base: Path, *, formats: Sequence[str], dpi: int) -> str | None:
+    batches: list[pd.DataFrame] = []
+    globals_: list[dict[str, Any]] = []
+    for record in _protocol_records(protocols):
+        batch = _read_component_batch(record["step3_dir"], record["dataset_id"], "B")
+        score = _read_component_score(record["step3_dir"], record["dataset_id"], "B")
+        if batch is None or score is None or not ({"r", "sB"} & set(batch.columns)):
+            continue
+        batch = batch.copy()
+        batch["Protocol"] = record["name"]
+        batches.append(batch)
+        globals_.append({"Protocol": record["name"], "sB_global": float(score)})
+    if not batches:
+        return None
+    return _save_figure_or_none(plot_protocol_component_B(pd.concat(batches, ignore_index=True), pd.DataFrame(globals_)), path_base, formats=formats, dpi=dpi)
 
 
 def _save_comparison_component_c(protocols: Sequence[Mapping[str, Any]], path_base: Path, *, formats: Sequence[str], dpi: int) -> str | None:
@@ -1134,6 +1327,40 @@ def _save_comparison_component_e(protocols: Sequence[Mapping[str, Any]], path_ba
         gene_frames[record["name"]] = genes
         scores[record["name"]] = _read_component_score(record["step3_dir"], record["dataset_id"], "E")
     return _save_figure_or_none(plot_protocol_component_E(gene_frames, scores), path_base, formats=formats, dpi=dpi)
+
+
+def _save_comparison_component_f1(protocols: Sequence[Mapping[str, Any]], path_base: Path, *, formats: Sequence[str], dpi: int) -> str | None:
+    batches: list[pd.DataFrame] = []
+    globals_: list[dict[str, Any]] = []
+    for record in _protocol_records(protocols):
+        batch = _read_component_batch(record["step3_dir"], record["dataset_id"], "F")
+        score = _read_component_score(record["step3_dir"], record["dataset_id"], "F")
+        if batch is None or score is None or "J" not in batch.columns:
+            continue
+        batch = batch.copy()
+        batch["Protocol"] = record["name"]
+        batches.append(batch)
+        globals_.append({"Protocol": record["name"], "sF_global": float(score)})
+    if not batches:
+        return None
+    return _save_figure_or_none(plot_protocol_component_F1(pd.concat(batches, ignore_index=True), pd.DataFrame(globals_)), path_base, formats=formats, dpi=dpi)
+
+
+def _save_comparison_component_f2(protocols: Sequence[Mapping[str, Any]], path_base: Path, *, formats: Sequence[str], dpi: int) -> str | None:
+    batches: list[pd.DataFrame] = []
+    globals_: list[dict[str, Any]] = []
+    for record in _protocol_records(protocols):
+        batch = _read_component_batch(record["step3_dir"], record["dataset_id"], "F")
+        score = _read_component_score(record["step3_dir"], record["dataset_id"], "F")
+        if batch is None or score is None or "ra" not in batch.columns:
+            continue
+        batch = batch.copy()
+        batch["Protocol"] = record["name"]
+        batches.append(batch)
+        globals_.append({"Protocol": record["name"], "sF_global": float(score)})
+    if not batches:
+        return None
+    return _save_figure_or_none(plot_protocol_component_F2(pd.concat(batches, ignore_index=True), pd.DataFrame(globals_)), path_base, formats=formats, dpi=dpi)
 
 
 def _comparison_interpretation(df: pd.DataFrame) -> dict[str, str]:
@@ -1205,6 +1432,9 @@ def compare_reports(
         path = _save_comparison_component_a(protocols, figdir / f"{prefix}.component_A_identity", formats=formats, dpi=dpi)
         if path:
             figures["comparison_component_A_identity"] = path
+        path = _save_comparison_component_b(protocols, figdir / f"{prefix}.component_B_pseudobulk", formats=formats, dpi=dpi)
+        if path:
+            figures["comparison_component_B_pseudobulk"] = path
         path = _save_comparison_component_c(protocols, figdir / f"{prefix}.component_C_transfer_auc", formats=formats, dpi=dpi)
         if path:
             figures["comparison_component_C_transfer_auc"] = path
@@ -1214,6 +1444,12 @@ def compare_reports(
         path = _save_comparison_component_e(protocols, figdir / f"{prefix}.component_E_pseudotime", formats=formats, dpi=dpi)
         if path:
             figures["comparison_component_E_pseudotime"] = path
+        path = _save_comparison_component_f1(protocols, figdir / f"{prefix}.component_F1_regulon_overlap", formats=formats, dpi=dpi)
+        if path:
+            figures["comparison_component_F1_regulon_overlap"] = path
+        path = _save_comparison_component_f2(protocols, figdir / f"{prefix}.component_F2_activity_alignment", formats=formats, dpi=dpi)
+        if path:
+            figures["comparison_component_F2_activity_alignment"] = path
 
     interpretation = _comparison_interpretation(df)
     markdown_lines = [
