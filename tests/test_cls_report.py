@@ -127,3 +127,64 @@ def test_cls_report_public_notebook_helpers(tmp_path):
     assert fig_heatmap is not None
     assert fig_weighted is not None
     assert fig_a is not None
+
+def _write_component_batch(base: Path, dataset_id: str, component: str, df: pd.DataFrame) -> None:
+    comp_dir = base / dataset_id / component
+    comp_dir.mkdir(parents=True, exist_ok=True)
+    df.to_csv(comp_dir / f"component_{component}_batch.csv", index=False)
+
+
+def _write_component_genes(base: Path, dataset_id: str, df: pd.DataFrame) -> None:
+    comp_dir = base / dataset_id / "E"
+    comp_dir.mkdir(parents=True, exist_ok=True)
+    df.to_csv(comp_dir / "component_E_genes.csv", index=False)
+
+
+def test_compare_reports_writes_thesis_style_component_diagnostics(tmp_path):
+    for idx, dataset_id in enumerate(["sphere", "macro"]):
+        scores = {"A": 0.8 - idx * 0.05, "B": 0.9, "C": 0.95, "D": 0.75, "E": 0.7, "F": 0.76}
+        for component, score in scores.items():
+            _write_component_json(tmp_path, dataset_id, component, score)
+        _write_component_batch(
+            tmp_path,
+            dataset_id,
+            "A",
+            pd.DataFrame({"batch": ["b1", "b2"], "n_cells": [20, 30], "sA1_mean": [0.86, 0.92], "sA2_ks": [0.62, 0.72]}),
+        )
+        _write_component_batch(
+            tmp_path,
+            dataset_id,
+            "C",
+            pd.DataFrame({"batch": ["b1", "b2"], "n_candidate": [20, 30], "AUC_org": [0.96, 0.98], "AUC_ref": [0.97, 0.97], "sC": [0.99, 0.99]}),
+        )
+        _write_component_batch(
+            tmp_path,
+            dataset_id,
+            "D",
+            pd.DataFrame({"batch": ["b1", "b2"], "n_candidate": [20, 30], "sD_query": [0.85, 0.9], "sD_ref": [0.7, 0.75], "sD": [0.77, 0.82]}),
+        )
+        _write_component_genes(
+            tmp_path,
+            dataset_id,
+            pd.DataFrame({"gene": [f"G{i}" for i in range(30)], "rho": [(-1 + i / 15) for i in range(30)]}),
+        )
+
+    report = compare_reports(
+        protocols=[
+            {"name": "SphereDiff", "dataset_id": "sphere", "step3_dir": tmp_path},
+            {"name": "MacroDiff", "dataset_id": "macro", "step3_dir": tmp_path},
+        ],
+        output_dir=tmp_path / "comparison_with_batches",
+        prefix="cls_comparison",
+    )
+
+    for key in [
+        "comparison_component_scores",
+        "comparison_weighted_contribution",
+        "comparison_component_A_identity",
+        "comparison_component_C_transfer_auc",
+        "comparison_component_D_neighborhood",
+        "comparison_component_E_pseudotime",
+    ]:
+        assert key in report.figures
+        assert Path(report.figures[key]).exists()

@@ -103,7 +103,7 @@ comparison = compare_reports(
 
 ## Report Coverage
 
-The Step3 report API covers component score bar and heatmap, weighted CLS summary, available A-F diagnostic panels when required columns or files exist, and multi-protocol comparison figures. Missing optional component diagnostics should be recorded as manifest warnings, not treated as fatal errors.
+The Step3 report API uses the thesis-style CLS visual language from the project visualization notebooks. It covers component score overview, radar profile, weighted CLS, weighted contribution stack, component heatmap, and available A-F diagnostic panels when required columns or files exist. For protocol comparison, include the thesis-style A/C/D/E diagnostics when the component batch or gene artifacts are present. Missing optional component diagnostics should be recorded as manifest warnings, not treated as fatal errors.
 
 ## Notebook-Visible Report Sections
 
@@ -126,4 +126,4 @@ Generated notebooks must be notebook-native analysis records, not a report dump 
 
 Do not use a final cell that loops through report tables/figures and displays them all together. Do not rely on a bare `fig` expression, because some notebook renderers show only `<Figure size ...>` instead of the image.
 
-Step3 biological interpretation should explain component-level concordance and divergence across identity, expression, transferability, neighborhood, pseudotime, and regulon axes rather than presenting a simple ranking. For the four-protocol comparison, display the comparison score table, radar plot, weighted CLS bar plot, and component heatmap as separate notebook sections, each with context before the code and biological interpretation after the output.
+Step3 biological interpretation should explain component-level concordance and divergence across identity, expression, transferability, neighborhood, pseudotime, and regulon axes rather than presenting a simple ranking. For the four-protocol comparison, display the comparison score table, grouped component overview, radar plot, weighted CLS bar plot, weighted contribution stack, component heatmap, and available A/C/D/E diagnostic panels as separate notebook sections, each with context before the code and biological interpretation after the output. Prefer the public plotting helpers in `bridge.cls.report` so the notebook visibly executes the same code used by the saved report artifacts.
