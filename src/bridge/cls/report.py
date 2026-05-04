@@ -70,6 +70,115 @@ def _scale_marker_sizes(values: Any, *, min_size: float = 55.0, max_size: float 
     return min_size + (series.to_numpy() - lo) / (hi - lo) * (max_size - min_size)
 
 
+def _read_h5ad_if_path(value: Any):
+    if isinstance(value, (str, Path)):
+        try:
+            import scanpy as sc
+        except Exception as exc:
+            raise ImportError("scanpy is required to read h5ad paths for CLS report plotting.") from exc
+        return sc.read_h5ad(value)
+    return value
+
+
+def _load_table_if_path(value: Any) -> pd.DataFrame:
+    if isinstance(value, pd.DataFrame):
+        return value
+    if isinstance(value, (str, Path)):
+        return pd.read_csv(value, index_col=0)
+    raise TypeError(f"Expected pandas DataFrame or CSV path, got {type(value)!r}.")
+
+
+def _load_regulons(value: Any) -> dict[str, list[str]]:
+    if isinstance(value, Mapping):
+        return {str(k): list(v) for k, v in value.items()}
+    if isinstance(value, (str, Path)):
+        with Path(value).open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if not isinstance(payload, Mapping):
+            raise ValueError("regulons JSON must contain an object mapping TF names to target genes.")
+        return {str(k): list(v) for k, v in payload.items()}
+    raise TypeError(f"Expected regulon mapping or JSON path, got {type(value)!r}.")
+
+
+def _normalise_protocol_records(protocols: Sequence[Mapping[str, Any]] | None, keyed_inputs: Mapping[str, Any]) -> list[dict[str, str]]:
+    if protocols is None:
+        return [{"name": str(key), "dataset_id": str(key)} for key in keyed_inputs]
+    records: list[dict[str, str]] = []
+    for protocol in protocols:
+        name = str(protocol.get("name") or protocol.get("dataset_id") or "protocol")
+        dataset_id = str(protocol.get("dataset_id") or name)
+        records.append({"name": name, "dataset_id": dataset_id})
+    return records
+
+
+def _input_for_protocol(inputs: Mapping[str, Any], record: Mapping[str, str]) -> Any | None:
+    for key in (record.get("dataset_id"), record.get("name"), _short_protocol_name(record.get("name", ""))):
+        if key in inputs:
+            return inputs[key]
+    return None
+
+
+def _mean_vector(X: Any) -> np.ndarray:
+    try:
+        from scipy import sparse
+    except Exception:
+        sparse = None
+    if sparse is not None and sparse.issparse(X):
+        return np.asarray(X.mean(axis=0)).ravel()
+    return np.asarray(X).mean(axis=0).ravel()
+
+
+def _matrix_for_layer(adata: Any, layer: str | None):
+    if layer and hasattr(adata, "layers") and layer in adata.layers:
+        return adata.layers[layer]
+    return adata.X
+
+
+def _safe_pearson(x: Any, y: Any) -> float:
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = np.isfinite(x) & np.isfinite(y)
+    if int(mask.sum()) < 2:
+        return float("nan")
+    x = x[mask]
+    y = y[mask]
+    if np.std(x) <= 0 or np.std(y) <= 0:
+        return float("nan")
+    return float(np.corrcoef(x, y)[0, 1])
+
+
+def _det_rate(X: Any) -> np.ndarray:
+    try:
+        from scipy import sparse
+    except Exception:
+        sparse = None
+    if sparse is not None and sparse.issparse(X):
+        return np.asarray((X > 0).mean(axis=0)).ravel()
+    return (np.asarray(X) > 0).mean(axis=0)
+
+
+def _active_targets(adata: Any, regulons: Mapping[str, list[str]], tf: str, *, expr_layer: str = "logcounts", det_rate_threshold: float = 0.05) -> set[str]:
+    X = _matrix_for_layer(adata, expr_layer)
+    det = pd.Series(_det_rate(X), index=pd.Index(adata.var_names).astype(str))
+    targets = [str(gene) for gene in regulons.get(str(tf), []) if str(gene) in det.index]
+    return {gene for gene in targets if float(det[gene]) >= float(det_rate_threshold)}
+
+
+def _jaccard(a: set[str] | None, b: set[str] | None) -> float:
+    if a is None or b is None:
+        return float("nan")
+    if len(a) == 0 and len(b) == 0:
+        return float("nan")
+    union = len(a | b)
+    return float(len(a & b) / union) if union else float("nan")
+
+
+def _candidate_mask(adata: Any, flag_col: str) -> np.ndarray:
+    if flag_col not in adata.obs:
+        raise KeyError(f"Required candidate flag column {flag_col!r} is missing from query AnnData.obs.")
+    return adata.obs[flag_col].astype(bool).to_numpy()
+
+
 def _optional_gaussian_kde():
     try:
         from scipy.stats import gaussian_kde
@@ -1061,6 +1170,205 @@ def plot_protocol_component_B(batch_df: pd.DataFrame, global_df: pd.DataFrame):
     return fig
 
 
+def plot_protocol_component_B_pseudobulk(
+    adata_ref: Any,
+    query_adatas: Mapping[str, Any],
+    *,
+    target_class: str,
+    protocols: Sequence[Mapping[str, Any]] | None = None,
+    ref_label_key: str = "cell_subtype",
+    candidate_flag_prefix: str = "is_candidate_",
+    layer: str | None = "logcounts",
+):
+    ref = _read_h5ad_if_path(adata_ref)
+    records = _normalise_protocol_records(protocols, query_adatas)
+    if ref_label_key not in ref.obs:
+        raise KeyError(f"ref_label_key {ref_label_key!r} is missing from reference AnnData.obs.")
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(6.4, 5.6))
+    all_ref: list[np.ndarray] = []
+    all_query: list[np.ndarray] = []
+    plotted = 0
+    for idx, record in enumerate(records):
+        raw_query = _input_for_protocol(query_adatas, record)
+        if raw_query is None:
+            continue
+        query = _read_h5ad_if_path(raw_query)
+        common = pd.Index(ref.var_names).astype(str).intersection(pd.Index(query.var_names).astype(str))
+        if len(common) == 0:
+            continue
+        ref_al = ref[:, common]
+        query_al = query[:, common]
+        ref_mask = ref_al.obs[ref_label_key].astype(str).to_numpy() == str(target_class)
+        if int(ref_mask.sum()) == 0:
+            continue
+        flag_col = f"{candidate_flag_prefix}{target_class}"
+        cand_mask = _candidate_mask(query_al, flag_col)
+        if int(cand_mask.sum()) == 0:
+            continue
+        mu_ref = _mean_vector(_matrix_for_layer(ref_al[ref_mask], layer))
+        mu_query = _mean_vector(_matrix_for_layer(query_al[cand_mask], layer))
+        r = _safe_pearson(mu_query, mu_ref)
+        protocol = record["name"]
+        ax.scatter(
+            mu_ref,
+            mu_query,
+            s=8,
+            alpha=0.35,
+            color=_protocol_color(protocol, idx),
+            label=f"{_short_protocol_name(protocol)}  (r={r:.3f})",
+        )
+        all_ref.append(mu_ref)
+        all_query.append(mu_query)
+        plotted += 1
+    if plotted == 0:
+        return None
+    xvals = np.concatenate(all_ref)
+    yvals = np.concatenate(all_query)
+    lo = float(np.nanmin([xvals.min(), yvals.min()]))
+    hi = float(np.nanmax([xvals.max(), yvals.max()]))
+    ax.plot([lo, hi], [lo, hi], linestyle="--", linewidth=1.5, color="gray", alpha=0.6)
+    ax.set_xlabel(r"Reference pseudo-bulk $\mu_E$")
+    ax.set_ylabel(r"Organoid pseudo-bulk $\mu_O$")
+    ax.legend(frameon=False, loc="upper left")
+    _hide_top_right_spines(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_protocol_component_F1_regulon_heatmap(
+    ref_sceniclike: Any,
+    query_adatas: Mapping[str, Any],
+    regulons: Mapping[str, list[str]] | str | Path,
+    *,
+    protocols: Sequence[Mapping[str, Any]] | None = None,
+    expr_layer: str = "logcounts",
+    det_rate_threshold: float = 0.05,
+    min_targets: int = 10,
+    max_tfs: int = 10,
+    anchors: Sequence[str] | None = None,
+    annotate_values: bool = True,
+):
+    ref = _read_h5ad_if_path(ref_sceniclike)
+    regulon_map = _load_regulons(regulons)
+    records = _normalise_protocol_records(protocols, query_adatas)
+    ref_active: dict[str, set[str]] = {}
+    ref_sizes: dict[str, int] = {}
+    for tf in regulon_map:
+        active = _active_targets(ref, regulon_map, tf, expr_layer=expr_layer, det_rate_threshold=det_rate_threshold)
+        if len(active) >= int(min_targets):
+            ref_active[str(tf)] = active
+            ref_sizes[str(tf)] = len(active)
+    if not ref_active:
+        return None
+    if anchors is None:
+        anchors = ["FOXA2", "LMX1A", "LMX1B", "OTX2", "EN1", "WNT1", "FGF8", "GLI1", "NR4A2", "MSX1", "FOXA1", "CORIN", "SHH", "PTCH1", "ASCL1", "NEUROG2"]
+    tfs_keep = [tf for tf in anchors if tf in ref_active]
+    if len(tfs_keep) < int(max_tfs):
+        for tf in sorted(ref_active, key=lambda key: ref_sizes[key], reverse=True):
+            if tf not in tfs_keep:
+                tfs_keep.append(tf)
+            if len(tfs_keep) >= int(max_tfs):
+                break
+    tfs_keep = tfs_keep[: int(max_tfs)]
+    heat = pd.DataFrame(index=tfs_keep, columns=[record["name"] for record in records], dtype=float)
+    for record in records:
+        raw_query = _input_for_protocol(query_adatas, record)
+        if raw_query is None:
+            continue
+        query = _read_h5ad_if_path(raw_query)
+        common = pd.Index(ref.var_names).astype(str).intersection(pd.Index(query.var_names).astype(str))
+        if len(common) == 0:
+            continue
+        query_al = query[:, common].copy()
+        for tf in tfs_keep:
+            ref_set = ref_active.get(tf)
+            if ref_set is None:
+                continue
+            query_set = _active_targets(query_al, regulon_map, tf, expr_layer=expr_layer, det_rate_threshold=det_rate_threshold)
+            if len(query_set) < int(min_targets):
+                continue
+            heat.loc[tf, record["name"]] = _jaccard(ref_set, query_set)
+    if heat.dropna(how="all").empty:
+        return None
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(7.2, max(5.0, 0.35 * len(tfs_keep))))
+    matrix = heat.to_numpy(dtype=float)
+    image = ax.imshow(matrix, aspect="auto", cmap="coolwarm", vmin=0.0, vmax=1.0)
+    ax.set_yticks(np.arange(len(heat.index)))
+    ax.set_yticklabels(heat.index.tolist(), fontsize=11)
+    ax.set_xticks(np.arange(len(records)))
+    ax.set_xticklabels([_short_protocol_name(record["name"]) for record in records], fontsize=12)
+    if annotate_values:
+        for i in range(matrix.shape[0]):
+            for j in range(matrix.shape[1]):
+                value = matrix[i, j]
+                if np.isfinite(value):
+                    ax.text(j, i, f"{value:.2f}", ha="center", va="center", fontsize=10, bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.55))
+    cbar = fig.colorbar(image, ax=ax, fraction=0.05, pad=0.02)
+    cbar.set_label("Jaccard overlap of active targets", fontsize=12)
+    ax.set_title("Component F1: Regulon target overlap (TF x Protocol)", fontsize=13, pad=10)
+    _hide_top_right_spines(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_protocol_component_F2_regulon_activity(
+    ref_sceniclike: Any,
+    query_aucell_tables: Mapping[str, Any],
+    *,
+    protocols: Sequence[Mapping[str, Any]] | None = None,
+):
+    ref = _read_h5ad_if_path(ref_sceniclike)
+    if "X_regulon_auc" not in ref.obsm:
+        raise KeyError("ref_sceniclike.obsm['X_regulon_auc'] is required for Component F2 plotting.")
+    if "regulon_names" not in ref.uns:
+        raise KeyError("ref_sceniclike.uns['regulon_names'] is required for Component F2 plotting.")
+    ref_auc = pd.DataFrame(ref.obsm["X_regulon_auc"], index=ref.obs_names, columns=list(ref.uns["regulon_names"]))
+    v_ref = ref_auc.mean(axis=0)
+    records = _normalise_protocol_records(protocols, query_aucell_tables)
+    plt = import_pyplot()
+    fig, ax = plt.subplots(figsize=(7.6, 5.6))
+    all_values: list[np.ndarray] = []
+    legend_handles = []
+    legend_labels = []
+    plotted = 0
+    for idx, record in enumerate(records):
+        raw_auc = _input_for_protocol(query_aucell_tables, record)
+        if raw_auc is None:
+            continue
+        query_auc = _load_table_if_path(raw_auc)
+        common_regs = v_ref.index.intersection(query_auc.columns)
+        if len(common_regs) == 0:
+            continue
+        vr = v_ref.loc[common_regs].to_numpy(dtype=float)
+        vq = query_auc[common_regs].mean(axis=0).to_numpy(dtype=float)
+        ra = _safe_pearson(vr, vq)
+        color = _protocol_color(record["name"], idx)
+        ax.scatter(vr, vq, s=12, alpha=1.0, color=color, edgecolors="none")
+        handle = ax.scatter([], [], s=30, color=color, edgecolors="none")
+        legend_handles.append(handle)
+        legend_labels.append(f"{_short_protocol_name(record['name'])}  (ra={ra:.2f})")
+        all_values.extend([vr, vq])
+        plotted += 1
+    if plotted == 0:
+        return None
+    values = np.concatenate(all_values)
+    mn = float(np.min(values))
+    mx = float(np.max(values))
+    pad = 0.02 * (mx - mn + 1e-12)
+    ax.plot([mn - pad, mx + pad], [mn - pad, mx + pad], linestyle="--", linewidth=1.2, color="gray", alpha=0.65)
+    ax.set_xlim(mn - pad, mx + pad)
+    ax.set_ylim(mn - pad, mx + pad)
+    ax.set_xlabel(r"Ref mean regulon AUC ($\bar{v}_{ref}$)")
+    ax.set_ylabel(r"Query mean regulon AUC ($\bar{v}_{query}$)")
+    _hide_top_right_spines(ax)
+    ax.legend(legend_handles, legend_labels, frameon=False, loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=11, handletextpad=0.5, scatterpoints=1)
+    ax.set_title("Component F2: Regulon activity alignment", fontsize=13)
+    fig.tight_layout()
+    return fig
+
+
 def plot_protocol_component_C(batch_df: pd.DataFrame, global_df: pd.DataFrame, auc_ref: float | None = None):
     if batch_df.empty or "AUC_org" not in batch_df.columns:
         return None
@@ -1387,6 +1695,19 @@ def compare_reports(
     cls_weights: Mapping[str, float] | None = None,
     formats: Sequence[str] = ("png",),
     dpi: int = 300,
+    adata_ref: Any | None = None,
+    query_adatas: Mapping[str, Any] | None = None,
+    target_class: str | None = None,
+    ref_label_key: str = "cell_subtype",
+    candidate_flag_prefix: str = "is_candidate_",
+    layer: str | None = "logcounts",
+    ref_sceniclike: Any | None = None,
+    regulons: Mapping[str, list[str]] | str | Path | None = None,
+    query_aucell_tables: Mapping[str, Any] | None = None,
+    expr_layer: str = "logcounts",
+    det_rate_threshold: float = 0.05,
+    min_targets: int = 10,
+    max_tfs: int = 10,
 ) -> ReportResult:
     outdir = ensure_dir(output_dir)
     figdir = ensure_dir(outdir / "figures")
@@ -1432,7 +1753,23 @@ def compare_reports(
         path = _save_comparison_component_a(protocols, figdir / f"{prefix}.component_A_identity", formats=formats, dpi=dpi)
         if path:
             figures["comparison_component_A_identity"] = path
-        path = _save_comparison_component_b(protocols, figdir / f"{prefix}.component_B_pseudobulk", formats=formats, dpi=dpi)
+        if adata_ref is not None and query_adatas is not None and target_class is not None:
+            path = _save_figure_or_none(
+                plot_protocol_component_B_pseudobulk(
+                    adata_ref,
+                    query_adatas,
+                    target_class=target_class,
+                    protocols=protocols,
+                    ref_label_key=ref_label_key,
+                    candidate_flag_prefix=candidate_flag_prefix,
+                    layer=layer,
+                ),
+                figdir / f"{prefix}.component_B_pseudobulk",
+                formats=formats,
+                dpi=dpi,
+            )
+        else:
+            path = _save_comparison_component_b(protocols, figdir / f"{prefix}.component_B_pseudobulk", formats=formats, dpi=dpi)
         if path:
             figures["comparison_component_B_pseudobulk"] = path
         path = _save_comparison_component_c(protocols, figdir / f"{prefix}.component_C_transfer_auc", formats=formats, dpi=dpi)
@@ -1444,10 +1781,39 @@ def compare_reports(
         path = _save_comparison_component_e(protocols, figdir / f"{prefix}.component_E_pseudotime", formats=formats, dpi=dpi)
         if path:
             figures["comparison_component_E_pseudotime"] = path
-        path = _save_comparison_component_f1(protocols, figdir / f"{prefix}.component_F1_regulon_overlap", formats=formats, dpi=dpi)
+        if ref_sceniclike is not None and query_adatas is not None and regulons is not None:
+            path = _save_figure_or_none(
+                plot_protocol_component_F1_regulon_heatmap(
+                    ref_sceniclike,
+                    query_adatas,
+                    regulons,
+                    protocols=protocols,
+                    expr_layer=expr_layer,
+                    det_rate_threshold=det_rate_threshold,
+                    min_targets=min_targets,
+                    max_tfs=max_tfs,
+                ),
+                figdir / f"{prefix}.component_F1_regulon_overlap",
+                formats=formats,
+                dpi=dpi,
+            )
+        else:
+            path = _save_comparison_component_f1(protocols, figdir / f"{prefix}.component_F1_regulon_overlap", formats=formats, dpi=dpi)
         if path:
             figures["comparison_component_F1_regulon_overlap"] = path
-        path = _save_comparison_component_f2(protocols, figdir / f"{prefix}.component_F2_activity_alignment", formats=formats, dpi=dpi)
+        if ref_sceniclike is not None and query_aucell_tables is not None:
+            path = _save_figure_or_none(
+                plot_protocol_component_F2_regulon_activity(
+                    ref_sceniclike,
+                    query_aucell_tables,
+                    protocols=protocols,
+                ),
+                figdir / f"{prefix}.component_F2_activity_alignment",
+                formats=formats,
+                dpi=dpi,
+            )
+        else:
+            path = _save_comparison_component_f2(protocols, figdir / f"{prefix}.component_F2_activity_alignment", formats=formats, dpi=dpi)
         if path:
             figures["comparison_component_F2_activity_alignment"] = path
 

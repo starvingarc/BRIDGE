@@ -32,7 +32,14 @@ Codex:
 2. Build `CLSContext` in the Step3 notebook.
 3. Run any selected `component_A(ctx)` through `component_F(ctx)` independently, or call `score(ctx)` for the default full A-F pass.
 4. Save component-level JSON/detail tables plus `summary.csv` and `manifest.json`.
-5. Call `from bridge.cls.report import write_report as write_cls_report, compare_reports`.
+5. Call `from bridge.cls.report import (
+    compare_reports,
+    plot_component_scores_bar,
+    plot_protocol_component_B_pseudobulk,
+    plot_protocol_component_F1_regulon_heatmap,
+    plot_protocol_component_F2_regulon_activity,
+    write_report as write_cls_report,
+)`.
 6. Run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)` at the notebook tail.
 7. For the demo comparison, use `compare_reports(...)` to place the current dataset beside the three thesis protocols: SphereDiff (CSC 2025), MacroDiff (unpublished), and MSK-DA01 (CSC 2021). Do not hard-code private server paths in committed notebooks or docs; read the paper baseline CLS root from the user prompt or local config.
 8. Interpret CLS as multidimensional concordance; use component decomposition to explain structural differences rather than simple ranking.
@@ -77,15 +84,25 @@ report = write_cls_report(
 Different-protocol comparison:
 
 ```python
+protocols = [
+    {"name": "SphereDiff (CSC 2025)", "dataset_id": "zxy_XPBD28B", "step3_dir": "./paper_cls_results"},
+    {"name": "MacroDiff (unpublished)", "dataset_id": "oyqk_organoid_OYQK_OMYD28", "step3_dir": "./paper_cls_results"},
+    {"name": "MSK-DA01 (CSC 2021)", "dataset_id": "StuderD16", "step3_dir": "./paper_cls_results"},
+    {"name": "Current dataset", "dataset_id": ctx.dataset_id, "step3_dir": ctx.output_dir},
+]
+
+# Optional thesis-style B/F inputs are read from user config when present.
+# Use AnnData objects or paths keyed by dataset_id/name; use AUCell tables for F2.
 comparison = compare_reports(
-    protocols=[
-        {"name": "SphereDiff (CSC 2025)", "dataset_id": "zxy_XPBD28B", "step3_dir": "./paper_cls_results"},
-        {"name": "MacroDiff (unpublished)", "dataset_id": "oyqk_organoid_OYQK_OMYD28", "step3_dir": "./paper_cls_results"},
-        {"name": "MSK-DA01 (CSC 2021)", "dataset_id": "StuderD16", "step3_dir": "./paper_cls_results"},
-        {"name": "Current dataset", "dataset_id": ctx.dataset_id, "step3_dir": ctx.output_dir},
-    ],
+    protocols=protocols,
     output_dir="./runs/comparison/cls_report",
-    prefix="four_protocol_cls_comparison",
+    prefix="protocol_cls_comparison",
+    adata_ref=adata_ref_step2,
+    query_adatas=query_adatas,
+    target_class=ctx.target_class,
+    ref_sceniclike=ref_sceniclike,
+    regulons=regulons,
+    query_aucell_tables=query_aucell_tables,
 )
 ```
 
@@ -103,7 +120,7 @@ comparison = compare_reports(
 
 ## Report Coverage
 
-The Step3 report API uses the thesis-style CLS visual language from the project visualization notebooks. It covers component score overview, radar profile, weighted CLS, weighted contribution stack, component heatmap, and available A-F diagnostic panels when required columns or files exist. In generated notebooks, the single-dataset visible report should show only the component score table and one plot: `plot_component_scores_bar(component_score_table)`. Put detailed A-F diagnostics in the different-protocol comparison section, including B, F1, and F2 when the component batch artifacts are present. Missing optional component diagnostics should be recorded as manifest warnings, not treated as fatal errors.
+The Step3 report API uses the thesis-style CLS visual language from the project visualization notebooks. It covers component score overview, radar profile, weighted CLS, weighted contribution stack, component heatmap, and available A-F diagnostic panels when required columns or files exist. In generated notebooks, the single-dataset visible report should show only the component score table and one plot: `plot_component_scores_bar(component_score_table)`. Put detailed A-F diagnostics in the different-protocol comparison section. Prefer thesis-style Component B and F plots from the identity visualization logic when real comparison assets are available: B uses reference/query AnnData pseudo-bulk expression, F1 uses regulon active-target overlap, and F2 uses query AUCell tables against reference regulon activity. Artifact-only B/F summaries are fallbacks, not the preferred demo figures. Missing optional component diagnostics should be recorded as manifest warnings, not treated as fatal errors.
 
 ## Notebook-Visible Report Sections
 
@@ -136,6 +153,6 @@ else:
     display(Markdown("Component Score Bar Plot was not generated."))
 ```
 
-For the different-protocol comparison, use separate cells for `plot_protocol_component_B(...)`, `plot_protocol_component_F1(...)`, and `plot_protocol_component_F2(...)` when the saved comparison report includes the corresponding figure paths or when the required batch tables are available.
+For the different-protocol comparison, use separate cells for `plot_protocol_component_B_pseudobulk(...)`, `plot_protocol_component_F1_regulon_heatmap(...)`, and `plot_protocol_component_F2_regulon_activity(...)` when the required AnnData, regulon, and AUCell assets are available. If those assets are absent, clearly state that the thesis-style B/F diagnostic panel was skipped or use the package artifact fallback only as a secondary summary.
 
 Step3 biological interpretation should explain component-level concordance and divergence across identity, expression, transferability, neighborhood, pseudotime, and regulon axes rather than presenting a simple ranking. The comparison heading should be `不同方案的对比报告`. For the different-protocol comparison, display the comparison score table, grouped component overview, radar plot, weighted CLS bar plot, weighted contribution stack, component heatmap, and available A-F diagnostic panels as separate notebook sections. Include Component B pseudo-bulk agreement and split Component F into two separate notebook sections: F1 regulon target overlap and F2 regulon activity alignment. Each section must have context before the code and biological interpretation after the output. Prefer the public plotting helpers in `bridge.cls.report` so the notebook visibly executes the same code used by the saved report artifacts.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from bridge.cls import CLSContext, CLSResult
@@ -120,6 +121,9 @@ def test_cls_report_public_notebook_helpers(tmp_path):
         plot_component_F2_activity_alignment,
         plot_component_scores_bar,
         plot_component_scores_heatmap,
+        plot_protocol_component_B_pseudobulk,
+        plot_protocol_component_F1_regulon_heatmap,
+        plot_protocol_component_F2_regulon_activity,
         plot_weighted_cls,
     )
 
@@ -141,6 +145,105 @@ def test_cls_report_public_notebook_helpers(tmp_path):
     assert fig_a is not None
     assert fig_f1 is not None
     assert fig_f2 is not None
+    assert callable(plot_protocol_component_B_pseudobulk)
+    assert callable(plot_protocol_component_F1_regulon_heatmap)
+    assert callable(plot_protocol_component_F2_regulon_activity)
+
+
+def _mini_ref_and_queries():
+    import anndata as ad
+
+    genes = ["FOXA2", "LMX1A", "G1", "G2"]
+    ref = ad.AnnData(
+        X=np.array(
+            [
+                [3.0, 2.0, 1.0, 0.0],
+                [2.5, 2.1, 1.0, 0.1],
+                [0.2, 0.1, 2.0, 3.0],
+            ]
+        ),
+        obs=pd.DataFrame({"cell_subtype": ["RG_Mesencephalon_FP", "RG_Mesencephalon_FP", "other"]}, index=["r1", "r2", "r3"]),
+        var=pd.DataFrame(index=genes),
+    )
+    ref.layers["logcounts"] = ref.X.copy()
+    query_a = ad.AnnData(
+        X=np.array(
+            [
+                [2.8, 1.8, 1.0, 0.0],
+                [0.1, 0.2, 2.2, 2.8],
+                [2.7, 2.0, 0.9, 0.2],
+            ]
+        ),
+        obs=pd.DataFrame({"is_candidate_RG_Mesencephalon_FP": [True, False, True]}, index=["a1", "a2", "a3"]),
+        var=pd.DataFrame(index=genes),
+    )
+    query_b = ad.AnnData(
+        X=np.array(
+            [
+                [2.6, 2.2, 1.1, 0.1],
+                [0.0, 0.1, 2.0, 3.1],
+                [2.4, 1.9, 1.0, 0.0],
+            ]
+        ),
+        obs=pd.DataFrame({"is_candidate_RG_Mesencephalon_FP": [True, False, True]}, index=["b1", "b2", "b3"]),
+        var=pd.DataFrame(index=genes),
+    )
+    query_a.layers["logcounts"] = query_a.X.copy()
+    query_b.layers["logcounts"] = query_b.X.copy()
+    ref.obsm["X_regulon_auc"] = np.array([[0.9, 0.7], [0.8, 0.6], [0.2, 0.3]])
+    ref.uns["regulon_names"] = ["FOXA2", "LMX1A"]
+    return ref, {"sphere": query_a, "macro": query_b}
+
+
+def test_protocol_component_b_uses_reference_and_candidate_pseudobulk():
+    from bridge.cls.report import plot_protocol_component_B_pseudobulk
+
+    ref, query_adatas = _mini_ref_and_queries()
+
+    fig = plot_protocol_component_B_pseudobulk(
+        ref,
+        query_adatas,
+        target_class="RG_Mesencephalon_FP",
+        protocols=[
+            {"name": "SphereDiff (CSC 2025)", "dataset_id": "sphere"},
+            {"name": "MacroDiff (unpublished)", "dataset_id": "macro"},
+        ],
+    )
+
+    assert fig is not None
+    assert fig.axes[0].get_xlabel().startswith("Reference pseudo-bulk")
+    assert len(fig.axes[0].collections) >= 2
+
+
+def test_protocol_component_f1_and_f2_use_regulon_inputs():
+    from bridge.cls.report import plot_protocol_component_F1_regulon_heatmap, plot_protocol_component_F2_regulon_activity
+
+    ref, query_adatas = _mini_ref_and_queries()
+    protocols = [
+        {"name": "SphereDiff (CSC 2025)", "dataset_id": "sphere"},
+        {"name": "MacroDiff (unpublished)", "dataset_id": "macro"},
+    ]
+    regulons = {"FOXA2": ["FOXA2", "G1"], "LMX1A": ["LMX1A", "G2"]}
+    query_auc = {
+        "sphere": pd.DataFrame({"FOXA2": [0.85, 0.8], "LMX1A": [0.65, 0.62]}, index=["a1", "a3"]),
+        "macro": pd.DataFrame({"FOXA2": [0.75, 0.72], "LMX1A": [0.58, 0.56]}, index=["b1", "b3"]),
+    }
+
+    fig_f1 = plot_protocol_component_F1_regulon_heatmap(
+        ref,
+        query_adatas,
+        regulons,
+        protocols=protocols,
+        min_targets=1,
+        max_tfs=2,
+    )
+    fig_f2 = plot_protocol_component_F2_regulon_activity(ref, query_auc, protocols=protocols)
+
+    assert fig_f1 is not None
+    assert fig_f1.axes[0].get_title().startswith("Component F1")
+    assert fig_f2 is not None
+    assert fig_f2.axes[0].get_title().startswith("Component F2")
+
 
 def _write_component_batch(base: Path, dataset_id: str, component: str, df: pd.DataFrame) -> None:
     comp_dir = base / dataset_id / component
