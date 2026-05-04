@@ -126,14 +126,44 @@ def plot_metric_histograms(result, *, target_class: str | None = None, columns: 
 
 def plot_identity_composition(composition: pd.DataFrame):
     plt = import_pyplot()
-    fig, ax = plt.subplots(figsize=(6.4, 4.2))
-    comp = composition.sort_values("count", ascending=False)
-    ax.bar(comp["pred_identity"].astype(str), comp["count"], color=STEP_COLORS["accent"])
-    ax.set_ylabel("Cells")
+    comp = composition.copy()
+    comp["pred_identity"] = comp["pred_identity"].astype(str)
+    comp["count"] = pd.to_numeric(comp["count"], errors="coerce").fillna(0).astype(int)
+    comp = comp.loc[comp["count"] > 0].sort_values("count", ascending=False)
+
+    fig, ax = plt.subplots(figsize=(6.2, 5.0))
     ax.set_title("Mean-probability identity assignment")
-    ax.tick_params(axis="x", rotation=35)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    if comp.empty:
+        ax.text(0.5, 0.5, "No identity counts", ha="center", va="center", transform=ax.transAxes)
+        ax.axis("off")
+        return fig
+
+    values = comp["count"].to_numpy(dtype=float)
+    labels = comp["pred_identity"].tolist()
+    total = int(values.sum())
+    cmap = plt.get_cmap("tab20")
+    colors = [cmap(i % cmap.N) for i in range(len(values))]
+
+    wedges, _, _ = ax.pie(
+        values,
+        labels=None,
+        colors=colors,
+        startangle=90,
+        counterclock=False,
+        autopct=lambda pct: f"{pct:.1f}%" if pct >= 3 else "",
+        pctdistance=0.74,
+        wedgeprops={"width": 0.48, "edgecolor": "white", "linewidth": 1.0},
+        textprops={"fontsize": 9},
+    )
+    ax.text(0, 0, f"{total}\\ncells", ha="center", va="center", fontsize=11)
+    ax.legend(
+        wedges,
+        [f"{label} ({count})" for label, count in zip(labels, comp["count"])],
+        loc="center left",
+        bbox_to_anchor=(1.0, 0.5),
+        frameon=False,
+    )
+    ax.axis("equal")
     fig.tight_layout()
     return fig
 

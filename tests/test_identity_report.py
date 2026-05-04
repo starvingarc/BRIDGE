@@ -113,3 +113,18 @@ def test_identity_report_public_notebook_helpers():
     assert fig_fraction is not None
     assert fig_metrics is not None
     assert fig_comp is not None
+
+
+def test_identity_composition_plot_uses_donut_pie():
+    from matplotlib.patches import Wedge
+
+    from bridge.identity.report import build_report_tables, plot_identity_composition
+
+    result = _identity_result()
+    composition = build_report_tables(result, target_class=TARGET)["identity_composition"]
+
+    fig = plot_identity_composition(composition)
+
+    wedges = [patch for patch in fig.axes[0].patches if isinstance(patch, Wedge)]
+    assert len(wedges) == len(composition)
+    assert all(wedge.width is not None for wedge in wedges)
