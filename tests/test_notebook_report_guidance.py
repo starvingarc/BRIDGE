@@ -37,6 +37,29 @@ def test_step_skills_require_narrative_notebook_structure():
             assert phrase in text, (skill, phrase)
 
 
+def test_step_skills_require_notebook_output_validation():
+    root = Path(__file__).resolve().parents[1]
+    required_phrases = [
+        "Notebook Output Validation",
+        "validate the `.ipynb` file itself",
+        "not only the saved `report/` folder",
+        "image/png",
+        "displayed table output",
+        "text/plain` fallback",
+        "<Figure size ...>",
+        "<IPython.core.display.Image object>",
+        "embedding the saved PNG into that exact cell output",
+        "Remove stale text-only fallbacks",
+        "report artifacts are newer than the notebook",
+        "jupyter trust <notebook>",
+        "no error outputs",
+    ]
+    for skill in ["bridge-step1", "bridge-step2", "bridge-step3"]:
+        text = (root / ".claude" / "skills" / skill / "SKILL.md").read_text(encoding="utf-8")
+        for phrase in required_phrases:
+            assert phrase in text, (skill, phrase)
+
+
 def test_step3_skill_requires_different_protocol_comparison_guidance():
     root = Path(__file__).resolve().parents[1]
     text = (root / ".claude" / "skills" / "bridge-step3" / "SKILL.md").read_text(encoding="utf-8")

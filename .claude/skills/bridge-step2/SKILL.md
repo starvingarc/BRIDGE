@@ -106,6 +106,16 @@ Generated notebooks must be notebook-native analysis records, not a report dump 
 
 Do not use a final cell that loops through report tables/figures and displays them all together. Do not rely on a bare `fig` expression, because some notebook renderers show only `<Figure size ...>` instead of the image.
 
+## Notebook Output Validation
+
+After executing the notebook, validate the `.ipynb` file itself, not only the saved `report/` folder. Open or parse the notebook JSON and confirm that every notebook-visible table/figure code cell has a real output. Figure cells must contain an `image/png` payload; table cells must contain a displayed table output. Do not accept a notebook that only saved report artifacts while the notebook cells are empty.
+
+If an image cell contains only a `text/plain` fallback, `<Figure size ...>`, or `<IPython.core.display.Image object>`, repair it before finishing by re-running that cell with `display_matplotlib_figure(...)` or by embedding the saved PNG into that exact cell output. Remove stale text-only fallbacks from image outputs so Jupyter and VS Code render the actual figure.
+
+Check file freshness: if report artifacts are newer than the notebook, assume notebook output may not have been flushed and re-save or repair the notebook. Then run `jupyter trust <notebook>` when available, and re-check that the notebook has no error outputs and that each required figure/table appears in its own code cell.
+
+This validation is required for Step2 even when the report folder looks correct.
+
 ## Reference Guardrails
 
 Step2 target identity assessment must use the RG target reference AnnData paired with the target scANVI model. The reference should contain the model gene set, the configured `identity.ref_label_key`, and the configured `identity.counts_layer`. `ref_sceniclike_h5ad` has a reduced gene/regulon-oriented feature space for Step3 component F and is biologically and technically invalid for Step2 scANVI query mapping.

@@ -103,6 +103,16 @@ Generated notebooks must be notebook-native analysis records, not a report dump 
 
 Do not use a final cell that loops through report tables/figures and displays them all together. Do not rely on a bare `fig` expression, because some notebook renderers show only `<Figure size ...>` instead of the image.
 
+## Notebook Output Validation
+
+After executing the notebook, validate the `.ipynb` file itself, not only the saved `report/` folder. Open or parse the notebook JSON and confirm that every notebook-visible table/figure code cell has a real output. Figure cells must contain an `image/png` payload; table cells must contain a displayed table output. Do not accept a notebook that only saved report artifacts while the notebook cells are empty.
+
+If an image cell contains only a `text/plain` fallback, `<Figure size ...>`, or `<IPython.core.display.Image object>`, repair it before finishing by re-running that cell with `display_matplotlib_figure(...)` or by embedding the saved PNG into that exact cell output. Remove stale text-only fallbacks from image outputs so Jupyter and VS Code render the actual figure.
+
+Check file freshness: if report artifacts are newer than the notebook, assume notebook output may not have been flushed and re-save or repair the notebook. Then run `jupyter trust <notebook>` when available, and re-check that the notebook has no error outputs and that each required figure/table appears in its own code cell.
+
+This validation is required for Step1 even when the report folder looks correct.
+
 ## Required Step1 UMAP Cells
 
 When `X_umap` is available, include these cells as separate sections, not as a combined panel:
