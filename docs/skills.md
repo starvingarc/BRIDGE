@@ -2,12 +2,14 @@
 
 BRIDGE ships repository-local skills through `.claude/skills`. These are the public agent workflow for the demo; there is no separate agent-demo skill layer.
 
-| Skill | Claude Code | Codex | Purpose |
-| --- | --- | --- | --- |
-| `bridge-step0` | `/bridge-step0` | `@bridge-step0` | Prepare environment, model assets, config, and run directory. |
-| `bridge-step1` | `/bridge-step1` | `@bridge-step1` | Run whole-brain prescreening and a notebook-visible Step1 report. |
-| `bridge-step2` | `/bridge-step2` | `@bridge-step2` | Run mDA progenitor identity assessment and a Step2 report. |
-| `bridge-step3` | `/bridge-step3` | `@bridge-step3` | Run CLS scoring, single-dataset reporting, and optional protocol comparison. |
+Use the same skill names across agents. Add the prefix your agent expects, such as `/bridge-step1` or `@bridge-step1`.
+
+| Step | Skill | Purpose |
+| --- | --- | --- |
+| Step0 | `bridge-step0` | Prepare environment, model assets, config, and run directory. |
+| Step1 | `bridge-step1` | Run whole-brain prescreening and a notebook-visible report. |
+| Step2 | `bridge-step2` | Run mDA progenitor identity assessment and an identity report. |
+| Step3 | `bridge-step3` | Run CLS scoring, single-dataset reporting, and optional protocol comparison. |
 
 ## What Skills Specify
 

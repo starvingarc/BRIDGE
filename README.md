@@ -45,14 +45,14 @@ The public demo flow is designed to be driven by a coding agent. For a first-tim
 Help me install https://github.com/starvingarc/BRIDGE
 ```
 
-Then copy the step command you need. Use `/...` in Claude Code and `@...` in Codex.
+Then copy the step command you need. Command names are shared across agents; use the prefix your agent expects, such as `/bridge-step1` or `@bridge-step1`.
 
-| Skill | Claude Code | Codex | Purpose |
-| --- | --- | --- | --- |
-| `bridge-step0` | `/bridge-step0` | `@bridge-step0` | Initialize environment, assets, config, and run directory. |
-| `bridge-step1` | `/bridge-step1` | `@bridge-step1` | Prescreen an in vitro dataset and write a notebook-native Step1 report. |
-| `bridge-step2` | `/bridge-step2` | `@bridge-step2` | Run target identity assessment and write a Step2 report. |
-| `bridge-step3` | `/bridge-step3` | `@bridge-step3` | Run CLS scoring and optional protocol comparison. |
+| Step | Agent command | Purpose |
+| --- | --- | --- |
+| Step0 | `bridge-step0` | Initialize environment, assets, config, and run directory. |
+| Step1 | `bridge-step1` | Prescreen an in vitro dataset and write a notebook-native report. |
+| Step2 | `bridge-step2` | Run target identity assessment and write an identity report. |
+| Step3 | `bridge-step3` | Run CLS scoring and protocol comparison. |
 
 Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are declared in [models/assets.json](models/assets.json) and fetched separately from public object storage.
 
