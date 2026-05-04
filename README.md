@@ -76,7 +76,7 @@ from bridge.identity.report import write_report as write_identity_report
 from bridge.cls.report import write_report as write_cls_report, compare_reports
 ```
 
-Each step is designed to be called from a notebook, with report functions that render figures and tables in the notebook while also saving reproducible artifacts under `report/`.
+Each step is designed to be called from a notebook. Report modules provide notebook-visible table/figure helpers and writers for reproducible artifacts under `report/`.
 
 ## 🗺️ Explore
 
@@ -96,7 +96,7 @@ PYTHONPATH=src pytest -q
 src/bridge/        Python package
 configs/           public config templates
 models/            model metadata and asset entry point
-notebooks/         formal notebook examples and placeholders
+notebooks/         curated notebook examples; generated notebooks are run artifacts
 docs/              workflow documentation and roadmap
 .claude/skills/    repository-local Step0-Step3 skills
 ```

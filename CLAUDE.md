@@ -1,74 +1,46 @@
-# CLAUDE.md
+# BRIDGE Agent Notes
 
-## Project Positioning
+BRIDGE is a notebook-first research software package for brain-referenced evaluation of in vitro mDA progenitor products.
 
-BRIDGE is a formal repository for the parts of the workflow that are stable enough to be versioned, documented, and tested.
+## Current Public Surface
 
-The intended end-to-end BRIDGE pipeline has three steps:
-- **Step 1**: reference construction and whole-brain pre-screening
-- **Step 2**: identity assessment and candidate selection
-- **Step 3**: CLS-based concordance scoring, reporting, and visualization
+- Step0 setup is handled by `.claude/skills/bridge-step0`.
+- Step1 prescreening is implemented in `src/bridge/prescreen`.
+- Step2 identity assessment is implemented in `src/bridge/identity`.
+- Step3 CLS scoring and reporting are implemented in `src/bridge/cls`.
+- Shared report utilities live in `src/bridge/reporting`.
+- YAML config helpers live in `src/bridge/workflows/config.py`.
 
-Current repository scope for **v1**:
-- formal package code for Step 2
-- formal package code for Step 3
-- documentation that explains how Step 1 fits into the full architecture
+The public workflow is API/notebook-first. BRIDGE does not expose a package CLI for Step1-Step3.
 
-## Code Organization Principles
+## Preferred Notebook Imports
 
-- `src/bridge/identity` maps to formal Step 2 logic.
-- `src/bridge/cls` maps to formal Step 3 logic.
-- `src/bridge/io` and `src/bridge/workflows` host output handling and orchestration.
-- notebooks must not carry core business logic.
-- `.claude/skills` provides repository-local coding-agent guidance.
+```python
+from bridge.prescreen import prescreen
+from bridge.identity import identify
+from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score
+```
 
-Interpretation rule:
-- Step 1 lives in `docs/` as upstream architecture and interface roadmap.
-- Step 2 and Step 3 evolve as public package modules because they already have stable code structure.
+Report imports:
 
-## What May Enter the Formal Codebase
+```python
+from bridge.prescreen.report import write_report as write_prescreen_report
+from bridge.identity.report import write_report as write_identity_report
+from bridge.cls.report import write_report as write_cls_report, compare_reports
+```
 
-Allowed content includes:
-- standardized APIs
-- configuration-driven parameters
-- documented output contracts
-- testable modules
-- stable wrappers around query loading, scoring, serialization, and reporting
+## Development Rules
 
-## Companion Materials
+- Keep core workflow logic in `src/bridge`, not embedded only in notebooks.
+- Keep runtime data, downloaded assets, and private paths outside Git history.
+- Preserve Step1, Step2, and Step3 artifact contracts when refactoring.
+- Use lazy imports for runtime-heavy dependencies such as `scanpy`, `scvi`, and `decoupler`.
+- Public docs should describe the released notebook/API workflow and model assets without environment-specific server details.
 
-Keep the following outside the formal package until they have stable contracts:
-- `drafts`-style exploratory notebooks
-- thesis-only plotting scripts
-- provisional analysis fragments
-- unpublished ad hoc code awaiting documentation and verification
+## Thesis Alignment
 
-## Contribution Rules
+- Step1: whole-brain prescreening and RG candidate enrichment.
+- Step2: target-specific mDA progenitor identity assessment.
+- Step3: CLS component scoring, reporting, and protocol comparison.
 
-When adding new work:
-1. First classify it as either formal workflow code or exploratory extension.
-2. If it belongs to the formal workflow, place it in `src/bridge`.
-3. If it is exploratory, document it outside the formal package first.
-4. Move notebook logic into core modules after defining stable interfaces.
-
-## Output and Naming Rules
-
-- Keep output contracts explicit and documented.
-- Prefer stable directory and file naming over notebook-local conventions.
-- Commit model binaries when they are intentionally part of a release-artifact strategy.
-- Public repository terminology should remain consistent with the three-step BRIDGE workflow.
-
-## Thesis-to-Code Alignment
-
-The repository should remain legible to a reader who comes from the thesis:
-- Step 1 in the thesis corresponds to reference construction and whole-brain pre-screening and is documented as interface roadmap work.
-- Step 2 in the thesis corresponds to the `identity` package.
-- Step 3 in the thesis corresponds to the `cls` package plus shared output and workflow layers.
-
-If a new implementation choice changes the thesis-to-code mapping, document the mapping explicitly.
-
-## Migration Rules
-
-- Step 1 can be promoted into the formal repository only after method, interfaces, and outputs are stabilized.
-- Experimental materials can be migrated only after standardization, documentation, and testability are established.
-- Public repository structure takes precedence over preserving the layout of earlier research drafts.
+Reference construction and model training remain model-building context; the public package consumes the resulting model assets through `models/assets.json` and user-provided paths.

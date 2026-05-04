@@ -1,8 +1,20 @@
 # BRIDGE Agent Demo Script
 
-This document describes the intended public demo flow for BRIDGE. The demo is agent-first: a first-time user copies commands from GitHub into Claude Code or Codex and lets the agent run the workflow.
+BRIDGE is designed for an agent-first public demo: a user copies short commands from GitHub into Claude Code or Codex, and the agent runs each notebook/API step in a prepared workspace.
 
-The current public deliverable includes workflow guidance, notebook-callable package APIs, artifact contracts, and per-step report APIs for figures, Markdown reports, JSON manifests, and concise English interpretation. Formal polished example notebooks are still a roadmap item. Notebook display rule: report tables and figures should appear as executed code-cell outputs with short context and interpretation around them, while the saved `report/` folder remains the artifact contract.
+The demo has five parts: installation, Step0 setup, Step1 prescreening, Step2 identity assessment, and Step3 CLS scoring with protocol comparison. Each biological step should leave an executed notebook with visible code, tables, figures, short interpretation, and a saved `report/` artifact folder.
+
+## Notebook Record Standard
+
+For Step1-Step3, notebooks should read like an analysis record rather than a file dump:
+
+1. Opening Markdown explains the step, its biological role, inputs, and outputs.
+2. Core workflow cells load data, validate config/model assets, run the package API, and print concise metadata.
+3. Each table or figure has its own section: purpose/context Markdown, exactly one executable code cell, rendered output, and biological interpretation Markdown.
+4. A final Markdown summary states what the step concluded and how it feeds the next step.
+5. The final artifact cell calls `write_report(...)` and prints saved paths.
+
+Use `display_matplotlib_figure(fig)` from `bridge.reporting.notebook` for plot cells so Jupyter and VS Code store real `image/png` outputs.
 
 ## Part 1: Install BRIDGE
 
@@ -12,19 +24,16 @@ User prompt:
 Help me install https://github.com/starvingarc/BRIDGE
 ```
 
-Agent responsibility:
+Agent responsibilities:
 - clone or install BRIDGE from GitHub
 - inspect `README.md`, `docs/`, `configs/`, `models/`, and `.claude/skills/`
-- identify the recommended agent workflow commands
-- avoid putting runtime data into the repository checkout
+- install workflow dependencies in the requested environment
+- keep runtime data and downloaded model assets outside Git history
 
-Expected current outcome:
+Expected outcome:
 - BRIDGE source or package is available
-- the agent can run package and runtime import smoke checks once the environment is active
+- the environment can import the package and workflow runtime dependencies
 - the user is ready to run Step0
-
-Future demo polish:
-- include a short install verification cell or terminal transcript in the demo notes
 
 ## Part 2: Step0 Environment, Models, and Config
 
@@ -43,24 +52,19 @@ Codex command:
 Required input:
 - a BRIDGE checkout or installed package
 - model assets under `models/` or public object-storage URLs declared in `models/assets.json`
-- permission to create or validate a conda environment named `bridge`
+- permission to create or validate the requested conda environment
 
-Agent responsibility:
-- create or validate the `bridge` conda environment
-- install BRIDGE with workflow runtime dependencies, for example `python -m pip install -e ".[workflow]"` from a source checkout
-- validate `models/assets.json` and download or verify required model assets under `models/`
-- create a run directory such as `./bridge-demo/runs/demo_dataset/`
-- create an initial run config such as `./bridge-demo/bridge.run.yaml`
+Agent responsibilities:
+- create or validate the conda environment, defaulting to `bridge`
+- install BRIDGE with workflow runtime dependencies from a source checkout when needed
+- validate `models/assets.json` and fetch or verify model/reference assets under `models/`
+- create a run directory and editable run config such as `./bridge-demo/bridge.run.yaml`
 - print the next Step1 command with the user data path left explicit
 
-Expected current artifacts:
+Expected artifacts:
 - initialized run directory
 - editable YAML config
-- environment verification output
-- model validation summary
-
-Future demo polish:
-- a setup notebook or setup report is optional; it should remain lightweight and focus on reproducibility
+- environment and model validation summary
 
 ## Part 3: Step1 Whole-Brain Prescreening
 
@@ -81,31 +85,25 @@ Required input:
 - a whole-brain reference model configured by Step0
 - a writable Step1 output directory
 
-Agent responsibility:
-- generate or update a Step1 notebook that imports `from bridge.prescreen import prescreen`
-- read and validate the `.h5ad` input
+Agent responsibilities:
+- generate or update a Step1 notebook
+- import `from bridge.prescreen import prescreen`
 - call `prescreen(adata, ref_model_dir=..., output_dir=..., prefix=...)`
 - annotate cells as `RG_candidate` or `non_RG`
-- save the full prescreened object, RG candidate subset, probability table, and summary JSON through the API
-- call `from bridge.prescreen.report import write_report as write_prescreen_report`
-- build and display Step1 report tables, figures, and interpretation in notebook cells, then run `write_prescreen_report(result=step1, output_dir=..., prefix=...)` to save figures, tables, Markdown, manifest, and English interpretation
+- save the full prescreened object, RG candidate subset, probability table, and summary JSON
+- build notebook-visible tables/figures through `bridge.prescreen.report` helpers
+- call `write_prescreen_report(result=step1, output_dir=..., prefix=...)` to save the standard report artifacts
 
-Expected current artifacts:
+Expected artifacts:
 - `<prefix>.step1_prescreened.h5ad`
 - `<prefix>.step1_rg_candidates.h5ad`
 - `<prefix>.step1_scanvi_probs.csv`
 - `<prefix>.step1_summary.json`
-- report directory with Markdown report, manifest JSON, tables, and available figures
+- Step1 notebook and report folder with Markdown, manifest JSON, tables, and available figures
 
-Important interpretation rule:
-- Step1 is in vitro prescreening, not a held-out labeled test set. Do not report accuracy, recall, confusion matrices, or other supervised test-set metrics for this step.
-
-Report API coverage:
-- prediction label counts
-- RG candidate versus non-RG summary
-- prediction confidence distribution
-- optional UMAP views when `X_umap` is present
-- concise interpretation of global identity composition and RG candidate fraction
+Interpretation style:
+- describe broad identity composition, RG enrichment, exclusion of non-RG/neuroblast-like/off-target populations, and readiness for target-specific Step2 assessment
+- treat Step1 as in vitro prescreening rather than held-out test-set evaluation
 
 ## Part 4: Step2 mDA Progenitor Identity Assessment
 
@@ -127,33 +125,31 @@ Required input:
 - target-specific scANVI model from `paths.ref_model_dir`
 - writable Step2 output directory
 
-Agent responsibility:
+Agent responsibilities:
 - consume the Step1 RG candidate subset
-- run `from bridge.identity import identify` in the Step2 notebook
-- load only the configured target reference AnnData, never `paths.ref_sceniclike_h5ad`, then call `identify(..., reference_h5ad_path=...)` and preserve the Step2 artifact contract without duplicating the full reference file
-- call `from bridge.identity.report import write_report as write_identity_report`
-- build and display Step2 report tables, figures, and interpretation in notebook cells, then run `write_identity_report(result=step2, output_dir=..., prefix=..., target_class=...)`
-- summarize candidate count and threshold metadata without overclaiming biological interpretation
+- load the configured target reference AnnData
+- run `from bridge.identity import identify`
+- call `identify(..., reference_h5ad_path=...)` so large reference artifacts can be represented by a symlink when appropriate
+- preserve the Step2 artifact contract
+- build notebook-visible report tables/figures through `bridge.identity.report` helpers
+- call `write_identity_report(result=step2, output_dir=..., prefix=..., target_class=...)`
 
-Expected current artifacts:
+Expected artifacts:
 - `<prefix>.thresholds.json`
 - `<prefix>.bdata_step2.h5ad`
-- `<prefix>.adata_ref_step2.h5ad` (preferably a symlink to the configured target reference)
+- `<prefix>.adata_ref_step2.h5ad`
 - `<prefix>.probs_ref_cal.csv`
 - `<prefix>.probs_query_cal.csv`
 - `<prefix>.mean_org.csv`
 - `<prefix>.std_org.csv`
 - `<prefix>.Hnorm.csv`
-- report directory with Markdown report, manifest JSON, tables, and available figures
+- Step2 notebook and report folder with Markdown, manifest JSON, tables, and available figures
 
-Report API coverage:
-- target probability, uncertainty, and entropy distributions
-- candidate fraction summary
-- mean-probability identity composition with an `Uncertain` label below cutoff
-- optional UMAP views when `X_umap` is present
-- interpretation of stable target convergence versus boundary, transition, or competing-fate cells
+Interpretation style:
+- high calibrated target probability with low variability and low entropy supports stable target convergence
+- elevated uncertainty highlights boundary, transitional, or competing-fate structure
 
-## Part 5: Step3 CLS Scoring and Report Generation
+## Part 5: Step3 CLS Scoring and Protocol Comparison
 
 Claude Code command:
 
@@ -168,30 +164,26 @@ Codex command:
 ```
 
 Required input:
-- Step2 `bdata` and `adata_ref` objects or loaded Step2 artifact h5ad files
+- Step2 `bdata` and `adata_ref` objects or loaded Step2 h5ad artifacts
 - `probs_ref_cal` when running components A or C
-- component-specific assets required by selected components, such as embeddings or regulon assets
+- component-specific assets for selected CLS components
+- optional baseline protocol artifacts for comparison with SphereDiff, MacroDiff, and MSK-DA01
 
-Agent responsibility:
+Agent responsibilities:
 - build `CLSContext` in the Step3 notebook
-- run selected `component_A(ctx)` through `component_F(ctx)`, or call `score(ctx)` for the default full pass
-- preserve machine-readable output contracts
-- call `from bridge.cls.report import write_report as write_cls_report, compare_reports`
-- build and display Step3 report tables, figures, and interpretation in notebook cells, then run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)`
-- for the demo, use `compare_reports(...)` to show a different-protocol comparison: SphereDiff (CSC 2025), MacroDiff (unpublished), MSK-DA01 (CSC 2021), and the current BRIDGE demo dataset. The root directory for the three paper baseline CLS artifacts should come from local config or the user prompt, not from a committed private path.
+- run selected `component_A(ctx)` through `component_F(ctx)` or call `score(ctx)` for the default A-F pass
+- write component JSON/detail tables, `summary.csv`, and `manifest.json`
+- call `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)`
+- call `compare_reports(...)` when comparison protocol artifacts are available
+- show single-dataset component overview and different-protocol comparison panels as notebook-visible sections
 
-Expected current artifacts:
-- component global JSON files
-- component detail tables when available
+Expected artifacts:
+- component global JSON files and detail tables when available
 - `summary.csv`
 - `manifest.json`
-- report directory with Markdown report, manifest JSON, tables, and available single-dataset figures
-- optional multi-protocol comparison report with radar, weighted CLS bar, and component heatmap
-- different-protocol comparison report with radar, weighted CLS bar, component heatmap, component B diagnostics, F1/F2 regulon diagnostics, and a component score table when paper baseline artifacts are available
+- Step3 notebook and report folder
+- optional comparison report with radar, weighted CLS bar, component heatmap, Component B pseudo-bulk diagnostic, and Component F1/F2 regulon diagnostics
 
-Report API coverage:
-- component score bar and heatmap
-- weighted CLS summary
-- available A-F diagnostic panels when the required component columns or files exist
-- multi-protocol comparison figures inspired by the thesis Fig 3-9 / Fig 3-10 style
-- interpretation that emphasizes component decomposition and structural differences rather than simple protocol ranking
+Interpretation style:
+- CLS summarizes multidimensional developmental concordance after candidate selection
+- component decomposition should explain structural differences across identity, expression, transferability, neighborhood, pseudotime, and regulon axes

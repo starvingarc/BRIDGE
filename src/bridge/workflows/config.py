@@ -26,6 +26,8 @@ class PathsConfig:
     config_dir: Path
     reference_h5ad: Path | None
     query_h5ad: Path | None
+    whole_brain_ref_model_dir: Path | None
+    prescreen_output_dir: Path | None
     ref_model_dir: Path | None
     identity_output_dir: Path
     cls_output_dir: Path
@@ -38,6 +40,19 @@ class PathsConfig:
 class RuntimeConfig:
     seed: int = 0
     n_jobs: int = 1
+
+
+@dataclass(frozen=True)
+class PrescreenWorkflowConfig:
+    rg_label: str = "Radial Glia"
+    counts_layer: str = "counts"
+    train_query: bool = False
+    max_epochs: int = 0
+    plan_kwargs: dict[str, Any] | None = None
+    early_stopping: bool = False
+    early_stopping_patience: int = 10
+    inplace_subset_query_vars: bool = True
+    set_X_to_counts: bool = True
 
 
 @dataclass(frozen=True)
@@ -86,6 +101,7 @@ class BridgeRunConfig:
     dataset: DatasetConfig
     paths: PathsConfig
     runtime: RuntimeConfig
+    prescreen: PrescreenWorkflowConfig
     identity: IdentityWorkflowConfig
     cls: CLSWorkflowConfig
     report: ReportWorkflowConfig
@@ -146,6 +162,7 @@ def load_config(path: str | Path) -> BridgeRunConfig:
     dataset = _require_mapping(data["dataset"], "dataset")
     paths = _require_mapping(data["paths"], "paths")
     runtime = _require_mapping(data["runtime"], "runtime")
+    prescreen = _require_mapping(data.get("prescreen", {}), "prescreen")
     identity = _require_mapping(data["identity"], "identity")
     cls = _require_mapping(data["cls"], "cls")
     report = _require_mapping(data["report"], "report")
@@ -160,6 +177,10 @@ def load_config(path: str | Path) -> BridgeRunConfig:
         config_dir=base_dir,
         reference_h5ad=_resolve_path(base_dir, _require_key(paths, "reference_h5ad", "paths"), "paths.reference_h5ad"),
         query_h5ad=_resolve_path(base_dir, _require_key(paths, "query_h5ad", "paths"), "paths.query_h5ad"),
+        whole_brain_ref_model_dir=_resolve_path(
+            base_dir, paths.get("whole_brain_ref_model_dir"), "paths.whole_brain_ref_model_dir"
+        ),
+        prescreen_output_dir=_resolve_path(base_dir, paths.get("prescreen_output_dir"), "paths.prescreen_output_dir"),
         ref_model_dir=_resolve_path(base_dir, _require_key(paths, "ref_model_dir", "paths"), "paths.ref_model_dir"),
         identity_output_dir=_resolve_path(base_dir, _require_key(paths, "identity_output_dir", "paths"), "paths.identity_output_dir"),
         cls_output_dir=_resolve_path(base_dir, _require_key(paths, "cls_output_dir", "paths"), "paths.cls_output_dir"),
@@ -171,6 +192,21 @@ def load_config(path: str | Path) -> BridgeRunConfig:
     runtime_cfg = RuntimeConfig(
         seed=int(runtime.get("seed", 0)),
         n_jobs=int(runtime.get("n_jobs", 1)),
+    )
+
+    prescreen_plan_kwargs = prescreen.get("plan_kwargs")
+    if prescreen_plan_kwargs is not None and not isinstance(prescreen_plan_kwargs, dict):
+        raise ConfigValidationError("Config key 'prescreen.plan_kwargs' must be a mapping when provided.")
+    prescreen_cfg = PrescreenWorkflowConfig(
+        rg_label=str(prescreen.get("rg_label", "Radial Glia")),
+        counts_layer=str(prescreen.get("counts_layer", "counts")),
+        train_query=bool(prescreen.get("train_query", False)),
+        max_epochs=int(prescreen.get("max_epochs", 0)),
+        plan_kwargs=dict(prescreen_plan_kwargs) if prescreen_plan_kwargs else None,
+        early_stopping=bool(prescreen.get("early_stopping", False)),
+        early_stopping_patience=int(prescreen.get("early_stopping_patience", 10)),
+        inplace_subset_query_vars=bool(prescreen.get("inplace_subset_query_vars", True)),
+        set_X_to_counts=bool(prescreen.get("set_X_to_counts", True)),
     )
 
     identity_cfg = IdentityWorkflowConfig(
@@ -231,6 +267,7 @@ def load_config(path: str | Path) -> BridgeRunConfig:
         dataset=dataset_cfg,
         paths=paths_cfg,
         runtime=runtime_cfg,
+        prescreen=prescreen_cfg,
         identity=identity_cfg,
         cls=cls_cfg,
         report=report_cfg,

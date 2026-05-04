@@ -1,116 +1,95 @@
 # Formal Workflows
 
-## Conceptual BRIDGE Pipeline
+BRIDGE v1 exposes the thesis workflow as notebook-first Python APIs. Step0 is agent-guided setup; Step1-Step3 are package calls that can be executed and documented inside notebooks.
 
-BRIDGE follows a three-step conceptual pipeline:
-- **Step 1**: whole-brain pre-screening, with upstream reference construction as model-building context
-- **Step 2**: identity assessment and candidate selection
-- **Step 3**: CLS-based concordance scoring, reporting, and visualization
+## Pipeline
 
-This file explains the current public package surface and how it maps onto the full BRIDGE architecture.
+| Stage | Package surface | Biological role |
+| --- | --- | --- |
+| Step0 | `.claude/skills/bridge-step0` plus config/model manifests | Prepare environment, model assets, and run directory. |
+| Step1 | `bridge.prescreen` | Whole-brain prescreening of one in vitro `.h5ad` to enrich radial glia candidates. |
+| Step2 | `bridge.identity` | Target-specific mDA progenitor identity assessment using calibrated probability and uncertainty. |
+| Step3 | `bridge.cls` | Component-level developmental concordance scoring and reporting. |
 
-## What Is Formalized in BRIDGE v1
+## Notebook APIs
 
-The current public repository formalizes:
-- **Step 1**: notebook-callable whole-brain prescreening and report generation
-- **Step 2**: identity assessment and report generation
-- **Step 3**: CLS A-F, result packaging, single-dataset reports, and multi-protocol comparison
+Recommended imports:
 
-More concretely:
-- `src/bridge/prescreen` provides the Step1 notebook-callable prescreening layer
-- `src/bridge/prescreen/report.py` provides Step1 figures, tables, Markdown, manifest, and interpretation
-- `src/bridge/identity` provides the Step2 package layer
-- `src/bridge/identity/report.py` provides Step2 figures, tables, Markdown, manifest, and interpretation
-- `src/bridge/cls` provides Step3 scoring plus `bridge.cls.report` for single-dataset and comparison reports
-- `src/bridge/io` supports artifact packaging and `src/bridge/workflows` retains config helpers
+```python
+from bridge.prescreen import prescreen
+from bridge.identity import identify
+from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score
 
-The public repository is intended to present BRIDGE as software:
-- installable from GitHub
-- usable through notebook-first Python APIs
-- supported by public templates that can guide notebook parameters
-- documented as a workflow package for external readers and coding agents
+from bridge.prescreen.report import write_report as write_prescreen_report
+from bridge.identity.report import write_report as write_identity_report
+from bridge.cls.report import write_report as write_cls_report, compare_reports
+```
 
-## Executable Entrypoints
-
-BRIDGE v1 exposes Step1-Step3 as notebook-callable APIs:
-- `from bridge.prescreen import prescreen`
-- `from bridge.identity import identify`
-- `from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score`
-- `from bridge.prescreen.report import write_report as write_prescreen_report`
-- `from bridge.identity.report import write_report as write_identity_report`
-- `from bridge.cls.report import write_report as write_cls_report, compare_reports`
-
-The current execution model centers on:
-- Step1 as notebook-callable whole-brain prescreening API
-- Step2 as notebook-callable target identity assessment API
-- Step3 as component-first notebook-callable CLS API
-- report APIs called at the tail of each notebook
+Each step should be run from an executed notebook. Report modules provide table builders, plotting helpers, interpretation text, Markdown reports, JSON manifests, and saved figures. Notebook cells should display the same tables and figures that are saved into the `report/` artifact folder.
 
 ## Configuration Contract
 
-BRIDGE v1 keeps YAML templates as editable parameter references. The top-level sections are:
-- `version`
-- `dataset`
-- `paths`
-- `runtime`
-- `identity`
-- `cls`
-- `report`
+YAML templates under `configs/` are editable parameter references for agent and notebook workflows. The main sections are:
 
-Important semantics:
-- `dataset.id` is the canonical run-level identifier for Step3 outputs
-- `dataset.prefix` is the canonical naming prefix for Step2 artifacts
-- `paths` are resolved relative to the YAML file location
-- `identity` records the target class and Step2 artifact conventions used by downstream Step3/report code
-- `cls` defines enabled Step3 components and component-specific settings
-- `report` defines summary output filenames and optional CLS weights
+| Section | Role |
+| --- | --- |
+| `dataset` | Run identifier and filename prefix. |
+| `paths` | Query data, model assets, output directories, and optional comparison assets. |
+| `prescreen` | Step1 whole-brain prescreening defaults. |
+| `identity` | Step2 target class, reference labels, training, calibration, and selection settings. |
+| `cls` | Step3 enabled components and component-specific parameters. |
+| `comparison` | Optional protocol comparison metadata. |
+| `report` | Output filenames and CLS weights. |
 
-## Step 1 Status
+Paths are interpreted relative to the YAML file when they are not absolute.
 
-Step1 is the upstream reference-building layer in the BRIDGE architecture.
+## Step1: Prescreen
 
-In thesis terms, Step1 corresponds to:
-- reference atlas construction
-- integration of embryonic brain data into a biologically grounded reference space
-- whole-brain pre-screening before target-specific evaluation
+Step1 maps an in vitro query dataset against a whole-brain reference model and annotates cells as `RG_candidate` or `non_RG`.
 
-In repository terms, Step1 prescreening is represented by `src/bridge/prescreen`; upstream reference construction remains model-building context. The Step1 report API summarizes predicted identity composition and RG candidate fraction without supervised test-set metric language.
+Core outputs:
+- full prescreened h5ad
+- RG candidate h5ad subset
+- scANVI probability table
+- summary JSON
+- notebook-visible report and saved report artifacts
 
-## Step 2 Status
+Step1 interpretation describes global identity composition, RG enrichment, and exclusion of off-target or neuroblast-like populations. It is framed as in vitro prescreening rather than supervised benchmark evaluation.
 
-Step2 is the formal **Identity Assessment** layer. Its role is to identify high-confidence target candidates under a more specific reference.
+## Step2: Identify
 
-The current formal Step2 package includes:
-- query model loading
-- prediction and probability handling
-- calibration
-- uncertainty estimation
-- entropy-based and threshold-based candidate selection
-- report summaries for probability, uncertainty, entropy, and candidate structure
+Step2 consumes the Step1 RG candidate subset and evaluates target-specific mDA progenitor identity.
 
-## Step 3 Status
+Core outputs:
+- candidate-bearing Step2 h5ad
+- target reference artifact or symlink
+- calibrated reference/query probabilities
+- mean probability, standard deviation, entropy tables
+- threshold JSON
+- notebook-visible report and saved report artifacts
 
-Step3 is the formal **concordance scoring and reporting** layer. Its role is to evaluate how well the selected in vitro candidates reconstruct the intended in vivo developmental program.
+Step2 interpretation focuses on stable target convergence versus uncertain, transitional, or competing-fate cells.
 
-The current formal Step3 package includes:
-- component-first CLS A-F notebook APIs
-- shared result packaging
-- summary CSV and manifest JSON generation
-- single-dataset report API for component scores, weighted CLS, and available A-F diagnostics
-- multi-protocol comparison API for radar, weighted CLS, and component heatmap summaries
+## Step3: Score
 
-In the current phase, the report layer consumes both:
-- Step2 artifacts such as thresholds JSON and candidate-bearing Step2 h5ad outputs
-- Step3 component JSON outputs
+Step3 consumes Step2 artifacts and scores developmental concordance through CLS components A-F.
 
-This means reporting now spans thesis Step2 outputs plus Step3 outputs rather than only listing CLS component scores.
+Core outputs:
+- component global JSON files
+- component detail tables when available
+- summary CSV
+- manifest JSON
+- notebook-visible report and saved report artifacts
+- optional multi-protocol comparison report
 
-The public validation surface is smoke-oriented and package-oriented. Full scientific validation can be maintained in deployment or development environments.
+The component-first API allows individual component calls for debugging or customization. `score(ctx)` remains the default full-run entry point.
 
-## Why the Distinction Matters
+## Validation Surface
 
-The repository intentionally distinguishes:
-- the **full conceptual BRIDGE pipeline**
-- the **subset of that pipeline already formalized in public package code**
+Public validation is package-oriented and lightweight:
 
-This keeps the repository aligned with the thesis logic while making the released software surface easy to identify.
+```bash
+PYTHONPATH=src pytest -q
+```
+
+Full scientific validation depends on model assets, runtime data, and environment-specific notebooks managed outside Git history.

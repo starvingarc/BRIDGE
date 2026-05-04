@@ -6,7 +6,7 @@ This repository is intentionally structured so that a reader can map the thesis 
 
 - **Thesis Step 1**: reference construction and whole-brain pre-screening
   - repository status: whole-brain prescreening is available as notebook-callable package code; upstream reference construction remains model-building context
-  - repository location: `src/bridge/prescreen` plus roadmap and scope documents in `docs/`
+  - repository location: `src/bridge/prescreen` plus workflow documentation in `docs/`
 
 - **Thesis Step 2**: identity assessment and candidate selection
   - repository status: formalized in BRIDGE v1
@@ -49,8 +49,8 @@ If you are reading BRIDGE from the perspective of the thesis:
 - use `src/bridge/cls` for the released Step 3 implementation
 
 If you are reading BRIDGE from the perspective of the code:
-- treat Step 1 prescreening as notebook-callable package code, with reference construction as setup/model-building context
-- treat Step 2 and Step 3 as the actual released v1 package surface
+- treat Step 1, Step 2, and Step 3 as the released notebook/API package surface
+- treat reference construction and model training as setup/model-building context
 
 Reporting note:
 - `score(ctx)` writes summary CSV and manifest JSON so candidate-selection context and CLS component outputs remain machine-readable

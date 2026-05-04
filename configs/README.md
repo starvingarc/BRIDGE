@@ -1,12 +1,12 @@
 # Configs
 
-This directory stores public configuration templates and environment notes for formal BRIDGE workflows.
+This directory stores public configuration templates for notebook-driven BRIDGE workflows.
 
-Current templates:
-- `bridge.minimal.yaml`: smallest editable run template for a BRIDGE workflow
-- `bridge.example.yaml`: fuller schema example for formal Step 2 and Step 3 runs
+Templates:
+- `bridge.minimal.yaml`: compact editable template for a single-dataset run
+- `bridge.example.yaml`: fuller schema example covering Step1, Step2, Step3, reporting, and optional comparison
 
 Environment export:
 - `environments/pytorch-linux.yml`: sanitized Linux conda environment export for BRIDGE runtime setup
 
-The exported environment file keeps the package set while leaving machine-local paths and editable package entries out of the public template.
+Paths in YAML templates are intended to be edited by the user or agent. Machine-local paths, private storage locations, and downloaded model binaries belong outside Git history.

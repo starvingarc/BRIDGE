@@ -5,18 +5,31 @@ dataset:
   prefix: "example_prefix"
 
 paths:
-  reference_h5ad: "./models/target_reference.h5ad"
   query_h5ad: "./path/to/query.h5ad"
+  whole_brain_ref_model_dir: "./models/whole_brain_ref_model"
+  prescreen_output_dir: "./artifacts/prescreen"
+  reference_h5ad: "./models/target_reference.h5ad"
   ref_model_dir: "./models/target_ref_model"
   identity_output_dir: "./artifacts/identity"
   cls_output_dir: "./artifacts/cls"
   report_output_dir: "./artifacts/report"
-  ref_sceniclike_h5ad: "./path/to/ref_sceniclike.h5ad"
-  regulons_json: "./path/to/regulons.json"
+  ref_sceniclike_h5ad: "./models/ref_sceniclike.h5ad"
+  regulons_json: "./models/regulons.json"
 
 runtime:
   seed: 0
   n_jobs: 4
+
+prescreen:
+  rg_label: "Radial Glia"
+  counts_layer: "counts"
+  train_query: false
+  max_epochs: 0
+  plan_kwargs: null
+  early_stopping: false
+  early_stopping_patience: 10
+  inplace_subset_query_vars: true
+  set_X_to_counts: true
 
 identity:
   target_class: "RG_Mesencephalon_FP"

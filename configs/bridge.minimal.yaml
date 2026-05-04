@@ -5,8 +5,10 @@ dataset:
   prefix: "demo_prefix"
 
 paths:
-  reference_h5ad: "./models/target_reference.h5ad"
   query_h5ad: "./data/query.h5ad"
+  whole_brain_ref_model_dir: "./models/whole_brain_ref_model"
+  prescreen_output_dir: "./outputs/prescreen"
+  reference_h5ad: "./models/target_reference.h5ad"
   ref_model_dir: "./models/target_ref_model"
   identity_output_dir: "./outputs/identity"
   cls_output_dir: "./outputs/cls"
@@ -17,6 +19,12 @@ paths:
 runtime:
   seed: 0
   n_jobs: 1
+
+prescreen:
+  rg_label: "Radial Glia"
+  counts_layer: "counts"
+  train_query: false
+  max_epochs: 0
 
 identity:
   target_class: "RG_Mesencephalon_FP"

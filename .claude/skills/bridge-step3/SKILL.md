@@ -42,7 +42,7 @@ Codex:
     write_report as write_cls_report,
 )`.
 6. Run `write_cls_report(result=cls_result, ctx=ctx, output_dir=..., prefix=...)` at the notebook tail.
-7. For the demo comparison, use `compare_reports(...)` to place the current dataset beside the three thesis protocols: SphereDiff (CSC 2025), MacroDiff (unpublished), and MSK-DA01 (CSC 2021). Do not hard-code private server paths in committed notebooks or docs; read the paper baseline CLS root from the user prompt or local config.
+7. For the demo comparison, use `compare_reports(...)` to place the current dataset beside the three thesis protocols: SphereDiff (CSC 2025), MacroDiff (unpublished), and MSK-DA01 (CSC 2021). Read the paper baseline CLS root from the user prompt or local config so committed notebooks and docs stay public-safe.
 8. Interpret CLS as multidimensional concordance; use component decomposition to explain structural differences rather than simple ranking.
 
 ## Notebook API
@@ -125,7 +125,7 @@ comparison = compare_reports(
 
 ## Report Coverage
 
-The Step3 report API uses the thesis-style CLS visual language from the project visualization notebooks. It covers component score overview, radar profile, weighted CLS, weighted contribution stack, component heatmap, and available A-F diagnostic panels when required columns or files exist. In generated notebooks, the single-dataset visible report should show only the component score table and one plot: `plot_component_scores_bar(component_score_table)`. Put detailed A-F diagnostics in the different-protocol comparison section. Prefer thesis-style Component B and F plots from the identity visualization logic when real comparison assets are available: B uses reference/query AnnData pseudo-bulk expression, F1 uses regulon active-target overlap, and F2 uses query AUCell tables against reference regulon activity. Artifact-only B/F summaries are fallbacks, not the preferred demo figures. Missing optional component diagnostics should be recorded as manifest warnings, not treated as fatal errors.
+The Step3 report API uses the thesis-style CLS visual language from the project visualization notebooks. It covers component score overview, radar profile, weighted CLS, weighted contribution stack, component heatmap, and available A-F diagnostic panels when required columns or files exist. In generated notebooks, the single-dataset visible report should show only the component score table and one plot: `plot_component_scores_bar(component_score_table)`. Put detailed A-F diagnostics in the different-protocol comparison section. Prefer thesis-style Component B and F plots from the identity visualization logic when real comparison assets are available: B uses reference/query AnnData pseudo-bulk expression, F1 uses regulon active-target overlap, and F2 uses query AUCell tables against reference regulon activity. Thesis-style B/F figures are the preferred demo figures when real comparison assets are available. Artifact summaries provide secondary coverage, and missing optional diagnostics should be recorded as manifest warnings.
 
 ## Notebook-Visible Report Sections
 

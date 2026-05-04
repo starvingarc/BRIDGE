@@ -42,6 +42,6 @@ Codex:
 - environment validation summary including `torch`, `anndata`, `scanpy`, and `scvi` import checks
 - model asset validation summary
 
-## Current Boundary
+## Completion Standard
 
-Do not claim downstream analysis is ready until required model assets exist locally. Report APIs are available package code, but public demo notebooks still need to be created from a verified run. If public object-storage assets are unavailable or downloads fail, report the missing asset URL and stop before running downstream steps. Never use private server paths, internal IPs, or user-specific paths as public asset URLs.
+Step0 is complete when the requested environment, editable config, run directory, and required model assets are validated. If an asset download is unavailable, report the asset id and public URL that need attention before downstream steps are run. Public asset URLs should use object-storage style links and remain independent of private server paths, internal IPs, and user-specific paths.

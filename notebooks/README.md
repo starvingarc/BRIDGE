@@ -1,25 +1,17 @@
 # Notebooks
 
-This directory is reserved for formal notebook entrypoints and public-facing examples.
+Generated Step1-Step3 notebooks are run artifacts. In a demo or study workspace they should be written under that workspace, executed there, and kept together with the corresponding `runs/` outputs.
 
-Current draft research notebooks are not migrated into BRIDGE v1. Formal notebooks should be promoted only after their inputs, outputs, and artifact contracts are stable.
+This repository directory is reserved for curated public examples and lightweight templates. Add notebooks here only when their data inputs, model assets, outputs, and interpretation are public-safe and reproducible.
 
-## Agent Demo Notebook Roadmap
+Notebook standard:
+- opening Markdown explains the step and biological question
+- core workflow cells call `prescreen(...)`, `identify(...)`, or CLS component APIs
+- each table or figure appears in its own section with context and interpretation
+- final artifact cell calls the relevant `write_report(...)` function
 
-The intended public demo produces one executed notebook or notebook-like run record per biological step:
-- Step1 whole-brain prescreening
-- Step2 mDA progenitor identity assessment
-- Step3 CLS scoring and report generation
-
-Each step can now call a package report API at the notebook tail to write figures, tables, Markdown, JSON manifest, and interpretation text:
+Report APIs:
 - `bridge.prescreen.report.write_report(...)`
 - `bridge.identity.report.write_report(...)`
 - `bridge.cls.report.write_report(...)`
 - `bridge.cls.report.compare_reports(...)`
-
-Migration rule:
-- standardize inputs and outputs
-- document artifact contracts
-- call the package report APIs after the core workflow
-- verify on a public-safe demo dataset
-- then promote to formal notebooks

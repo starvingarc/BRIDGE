@@ -27,7 +27,7 @@ Codex:
 - target-specific scANVI model path from `paths.ref_model_dir`
 - writable Step2 output directory
 
-`paths.ref_sceniclike_h5ad` is not a Step2 input. It is reserved for Step3 component F and must never be used as a fallback Step2 reference.
+Use `paths.reference_h5ad` as the Step2 target reference AnnData. `paths.ref_sceniclike_h5ad` is reserved for Step3 component F.
 
 ## Agent Responsibilities
 
@@ -39,7 +39,7 @@ Codex:
 6. Call `from bridge.identity.report import write_report as write_identity_report`.
 7. Run `write_identity_report(result=result, output_dir=..., prefix=..., target_class=...)` at the notebook tail.
 8. Summarize candidate count, candidate fraction, and threshold metadata without overclaiming final biological interpretation.
-9. If the configured target reference is missing, unreadable, or has a gene set incompatible with the target model, stop and report the exact problem. Do not search unrelated server paths or substitute another reference file.
+9. If the configured target reference is missing, unreadable, or has a gene set incompatible with the target model, report the exact problem and wait for the configured asset to be fixed.
 
 ## Notebook API
 
