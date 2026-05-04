@@ -16,23 +16,13 @@
 
 <em>🌉 From candidate discovery to developmental concordance scoring.</em>
 
-<sub><strong>Workflow overview</strong> · In vivo reference atlases, in vitro candidate cells, and notebook-native reports.</sub>
+BRIDGE is a notebook-first framework for asking a careful question: <em>do these in vitro cells resemble the in vivo developmental state they are meant to approximate?</em> It routes cells through reference-guided prescreening, target identity assessment, and component-level concordance scoring, then leaves behind visible evidence for review.
 
-## 🧭 Concept
-
-BRIDGE asks a careful question: <em>do these in vitro cells resemble the in vivo developmental state they are meant to approximate?</em>
-
-The package brings that question into a reproducible notebook workflow. It routes cells through whole-brain prescreening, target identity assessment, and component-level concordance scoring, then leaves behind visible evidence: annotated `.h5ad` files, probability tables, figures, manifests, and narrative reports.
-
-BRIDGE is not meant to replace biological judgment. It is meant to make the judgment quieter, more structured, and easier to revisit.
-
-```text
-in vivo developmental reference
--> Step1 prescreening
--> Step2 target identity assessment
--> Step3 CLS concordance scoring
--> notebook reports and protocol comparison
-```
+| What BRIDGE keeps visible | Why it matters |
+| --- | --- |
+| **Reference context** | Candidate cells are evaluated against in vivo developmental atlases, not in isolation. |
+| **Notebook-native evidence** | Figures, tables, interpretations, and manifests stay together in executed notebooks. |
+| **Component-level scoring** | CLS separates identity, expression, transferability, neighborhood, trajectory, and regulon axes instead of hiding them in one number. |
 
 ## ✨ Workflow
 
@@ -45,7 +35,7 @@ in vivo developmental reference
 
 ## 🚀 Agent Use (Recommended)
 
-For a first-time install, send this to Claude Code, Codex, or another coding agent:
+The public demo flow is designed to be driven by a coding agent. For a first-time install, send this to Claude Code, Codex, or another agent:
 
 ```text
 Help me install https://github.com/starvingarc/BRIDGE
@@ -60,7 +50,7 @@ Then copy the step command you need. Use `/...` in Claude Code and `@...` in Cod
 | `bridge-step2` | `/bridge-step2` | `@bridge-step2` | Run target identity assessment and write a Step2 report. |
 | `bridge-step3` | `/bridge-step3` | `@bridge-step3` | Run CLS scoring and optional protocol comparison. |
 
-Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are declared in [models/assets.json](models/assets.json) and fetched separately.
+Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are declared in [models/assets.json](models/assets.json) and fetched separately from public object storage.
 
 ## 🧪 Manual Use
 
