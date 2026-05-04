@@ -1,4 +1,14 @@
-<div align="center">
+<p align="center">
+  <img src="docs/assets/bridge-overview.png" alt="BRIDGE workflow overview" width="100%">
+</p>
+
+<p align="center">
+  <img alt="Status" src="https://img.shields.io/badge/status-research%20software-8fb8f7?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-f2b8a8?style=flat-square">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-2f6f68?style=flat-square">
+  <a href="docs/formal_workflows.md"><img alt="Docs" src="https://img.shields.io/badge/docs-workflows-5bbfb1?style=flat-square"></a>
+  <a href="docs/agent_demo.md"><img alt="Demo" src="https://img.shields.io/badge/demo-agent%20workflow-7f6bb2?style=flat-square"></a>
+</p>
 
 # BRIDGE
 
@@ -6,20 +16,7 @@
 
 <em>🌉 From candidate discovery to developmental concordance scoring.</em>
 
-<p>
-  <a href="docs/agent_demo.md"><img alt="Demo" src="https://img.shields.io/badge/demo-agent%20workflow-5bbfb1?style=flat-square"></a>
-  <a href="docs/formal_workflows.md"><img alt="Docs" src="https://img.shields.io/badge/docs-workflows-2f6f68?style=flat-square"></a>
-  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-2f6f68?style=flat-square">
-  <img alt="Status" src="https://img.shields.io/badge/status-research%20software-8fb8f7?style=flat-square">
-</p>
-
-<img src="docs/assets/bridge-overview.png" alt="BRIDGE workflow overview" width="960">
-
-<p>
-  <sub><strong>Workflow overview</strong> · In vivo reference atlases, in vitro candidate cells, and notebook-native reports.</sub>
-</p>
-
-</div>
+<sub><strong>Workflow overview</strong> · In vivo reference atlases, in vitro candidate cells, and notebook-native reports.</sub>
 
 ## 🧭 Concept
 
