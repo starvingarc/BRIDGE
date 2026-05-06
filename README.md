@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/bridge-overview.png" alt="BRIDGE workflow overview" width="100%">
+  <img src="docs/assets/bridge-overview.png?raw=true&v=20260506" alt="BRIDGE workflow overview" width="100%">
 </p>
 
 <p align="center">
