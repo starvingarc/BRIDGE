@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">BRIDGE v2 five-layer cell product evaluation system</title>
+  <desc id="desc">A schematic diagram showing heterogeneous single-cell inputs flowing through five BRIDGE v2 layers into multidimensional scoring, reports, recommendations, and iterative model governance.</desc>
+  <defs>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#155e75"/>
+      <stop offset="0.55" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#334155"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .panel { fill: #ffffff; stroke: #d8e0ec; stroke-width: 1.4; filter: url(#shadow); }
+      .panel-soft { fill: #ffffff; stroke: #d8e0ec; stroke-width: 1.2; }
+      .title { font-family: Inter, Arial, sans-serif; font-size: 42px; font-weight: 800; fill: url(#titleGrad); }
+      .subtitle { font-family: Inter, Arial, sans-serif; font-size: 18px; fill: #475569; }
+      .section { font-family: Inter, Arial, sans-serif; font-size: 21px; font-weight: 800; fill: #0f172a; }
+      .label { font-family: Inter, Arial, sans-serif; font-size: 18px; font-weight: 760; fill: #0f172a; }
+      .small { font-family: Inter, Arial, sans-serif; font-size: 14.5px; fill: #334155; }
+      .tiny { font-family: Inter, Arial, sans-serif; font-size: 12.5px; fill: #475569; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; fill: #0f172a; }
+      .layer-title { font-family: Inter, Arial, sans-serif; font-size: 19px; font-weight: 800; fill: #0f172a; }
+      .layer-body { font-family: Inter, Arial, sans-serif; font-size: 13.5px; fill: #334155; }
+      .arrow { stroke: #334155; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .arrow-blue { stroke: #2563eb; stroke-width: 2.4; fill: none; marker-end: url(#arrowBlue); }
+      .loop { stroke: #7c3aed; stroke-width: 2.2; fill: none; stroke-dasharray: 8 7; marker-end: url(#arrowBlue); }
+      .badge { font-family: Inter, Arial, sans-serif; font-size: 12px; font-weight: 800; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1100"/>
+  <rect x="34" y="34" width="1532" height="1032" rx="28" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text class="title" x="80" y="92">BRIDGE v2: Iterative Cell Product Scoring &amp; Optimization System</text>
+  <text class="subtitle" x="82" y="125">Research-use and translational AI framework for pre-transplant PD mDA progenitor-oriented cell products</text>
+
+  <g transform="translate(72,170)">
+    <rect class="panel" x="0" y="0" width="315" height="635" rx="18"/>
+    <text class="section" x="26" y="42">Heterogeneous Inputs</text>
+    <text class="small" x="26" y="72">Complete product data, not only</text>
+    <text class="small" x="26" y="94">a favorable target subset</text>
+
+    <g transform="translate(24,125)">
+      <rect class="panel-soft" x="0" y="0" width="267" height="72" rx="12" fill="#ecfeff"/>
+      <text class="label" x="18" y="29">Single-cell matrices</text>
+      <text class="small" x="18" y="53">h5ad, Seurat RDS, 10x</text>
+    </g>
+    <g transform="translate(24,214)">
+      <rect class="panel-soft" x="0" y="0" width="267" height="72" rx="12" fill="#eff6ff"/>
+      <text class="label" x="18" y="29">Single-timepoint product</text>
+      <text class="small" x="18" y="53">Final pre-transplant sample</text>
+    </g>
+    <g transform="translate(24,303)">
+      <rect class="panel-soft" x="0" y="0" width="267" height="72" rx="12" fill="#f5f3ff"/>
+      <text class="label" x="18" y="29">Time-course protocols</text>
+      <text class="small" x="18" y="53">D7 / D14 / D21 / D28 ...</text>
+    </g>
+    <g transform="translate(24,392)">
+      <rect class="panel-soft" x="0" y="0" width="267" height="72" rx="12" fill="#f0fdf4"/>
+      <text class="label" x="18" y="29">Reference &amp; controls</text>
+      <text class="small" x="18" y="53">mDA, fetal, off-target, OOD</text>
+    </g>
+    <g transform="translate(24,481)">
+      <rect class="panel-soft" x="0" y="0" width="267" height="92" rx="12" fill="#fff7ed"/>
+      <text class="label" x="18" y="29">Optional future evidence</text>
+      <text class="small" x="18" y="53">Graft, electrophysiology,</text>
+      <text class="small" x="18" y="73">behavior, process variables</text>
+    </g>
+  </g>
+
+  <path class="arrow" d="M 393 490 C 430 490, 430 490, 460 490"/>
+
+  <g transform="translate(460,170)">
+    <rect class="panel" x="0" y="0" width="520" height="635" rx="18"/>
+    <text class="section" x="28" y="42">Five-Layer BRIDGE v2 Core</text>
+    <text class="small" x="28" y="72">Transparent BRIDGE v1 baseline evolves into AI-calibrated product scoring</text>
+
+    <g transform="translate(32,105)">
+      <rect x="0" y="0" width="456" height="82" rx="14" fill="#ecfeff" stroke="#0891b2" stroke-width="1.4"/>
+      <circle cx="31" cy="41" r="17" fill="#0891b2"/>
+      <text class="badge" x="26" y="46">1</text>
+      <text class="layer-title" x="62" y="30">Input Compatibility Layer</text>
+      <text class="layer-body" x="62" y="54">Layer and gene-space QC, metadata detection,</text>
+      <text class="layer-body" x="62" y="72">Product Data Manifest, eligibility and missingness flags</text>
+    </g>
+    <path class="arrow" d="M 260 196 L 260 224"/>
+
+    <g transform="translate(32,222)">
+      <rect x="0" y="0" width="456" height="82" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="1.4"/>
+      <circle cx="31" cy="41" r="17" fill="#2563eb"/>
+      <text class="badge" x="26" y="46">2</text>
+      <text class="layer-title" x="62" y="30">Biological Representation Layer</text>
+      <text class="layer-body" x="62" y="54">Composition, target-anchor stability, gene programs,</text>
+      <text class="layer-body" x="62" y="72">scVI/scANVI or optional foundation embeddings, trajectory</text>
+    </g>
+    <path class="arrow" d="M 260 313 L 260 341"/>
+
+    <g transform="translate(32,339)">
+      <rect x="0" y="0" width="456" height="82" rx="14" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4"/>
+      <circle cx="31" cy="41" r="17" fill="#7c3aed"/>
+      <text class="badge" x="26" y="46">3</text>
+      <text class="layer-title" x="62" y="30">AI Scoring Layer</text>
+      <text class="layer-body" x="62" y="54">Weak supervision from BRIDGE v1, ML calibration,</text>
+      <text class="layer-body" x="62" y="72">MIL / Set Transformer, OOD and uncertainty heads</text>
+    </g>
+    <path class="arrow" d="M 260 430 L 260 458"/>
+
+    <g transform="translate(32,456)">
+      <rect x="0" y="0" width="456" height="82" rx="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.4"/>
+      <circle cx="31" cy="41" r="17" fill="#16a34a"/>
+      <text class="badge" x="26" y="46">4</text>
+      <text class="layer-title" x="62" y="30">Optimization &amp; Recommendation Layer</text>
+      <text class="layer-body" x="62" y="54">Score drivers, timepoint ranking, off-target mitigation,</text>
+      <text class="layer-body" x="62" y="72">next assay or protocol-improvement hypotheses</text>
+    </g>
+    <path class="arrow" d="M 260 547 L 260 575"/>
+
+    <g transform="translate(32,573)">
+      <rect x="0" y="0" width="456" height="82" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="1.4"/>
+      <circle cx="31" cy="41" r="17" fill="#f97316"/>
+      <text class="badge" x="26" y="46">5</text>
+      <text class="layer-title" x="62" y="30">Learning Loop / Lifecycle Governance</text>
+      <text class="layer-body" x="62" y="54">Dataset cards, model cards, validation, monitoring,</text>
+      <text class="layer-body" x="62" y="72">expert feedback and versioned model releases</text>
+    </g>
+  </g>
+
+  <g transform="translate(515,830)">
+    <rect class="panel-soft" x="0" y="0" width="410" height="72" rx="14" fill="#f8fafc"/>
+    <text class="label" x="22" y="28">BRIDGE v1 Baseline</text>
+    <text class="small" x="22" y="52">Transparent rules + weak-label teacher + comparison anchor</text>
+  </g>
+  <path class="arrow-blue" d="M 715 830 C 705 770, 700 660, 720 590"/>
+
+  <path class="arrow" d="M 984 490 C 1022 490, 1022 490, 1052 490"/>
+
+  <g transform="translate(1052,170)">
+    <rect class="panel" x="0" y="0" width="475" height="635" rx="18"/>
+    <text class="section" x="28" y="42">Quantitative Scoring</text>
+    <text class="small" x="28" y="72">0-100 domain scores with raw evidence, normalized values,</text>
+    <text class="small" x="28" y="94">uncertainty, missing-data state and interpretation</text>
+
+    <g transform="translate(28,125)">
+      <rect x="0" y="0" width="418" height="262" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+      <text class="label" x="22" y="32">Multidimensional Score Matrix</text>
+      <text class="small" x="26" y="65">Target Identity Score</text>
+      <rect x="260" y="51" width="120" height="15" rx="7" fill="#dbeafe"/>
+      <rect x="260" y="51" width="92" height="15" rx="7" fill="#2563eb"/>
+      <text class="small" x="26" y="97">Potency Proxy Score</text>
+      <rect x="260" y="83" width="120" height="15" rx="7" fill="#ede9fe"/>
+      <rect x="260" y="83" width="78" height="15" rx="7" fill="#7c3aed"/>
+      <text class="small" x="26" y="129">Purity / Off-target Score</text>
+      <rect x="260" y="115" width="120" height="15" rx="7" fill="#dcfce7"/>
+      <rect x="260" y="115" width="86" height="15" rx="7" fill="#16a34a"/>
+      <text class="small" x="26" y="161">Safety Score</text>
+      <rect x="260" y="147" width="120" height="15" rx="7" fill="#fee2e2"/>
+      <rect x="260" y="147" width="98" height="15" rx="7" fill="#dc2626"/>
+      <text class="small" x="26" y="193">Process Robustness Score</text>
+      <rect x="260" y="179" width="120" height="15" rx="7" fill="#ffedd5"/>
+      <rect x="260" y="179" width="70" height="15" rx="7" fill="#f97316"/>
+      <text class="small" x="26" y="225">Evidence Confidence Score</text>
+      <rect x="260" y="211" width="120" height="15" rx="7" fill="#cffafe"/>
+      <rect x="260" y="211" width="82" height="15" rx="7" fill="#0891b2"/>
+    </g>
+
+    <g transform="translate(28,415)">
+      <rect x="0" y="0" width="418" height="118" rx="14" fill="#fefce8" stroke="#eab308"/>
+      <text class="label" x="22" y="34">Candidate Score Integration</text>
+      <text class="mono" x="22" y="66">Integrated score = calibrated model</text>
+      <text class="mono" x="46" y="91">domain matrix + safety constraints</text>
+      <text class="mono" x="46" y="113">+ evidence confidence + uncertainty</text>
+    </g>
+
+    <g transform="translate(28,558)">
+      <rect x="0" y="0" width="418" height="50" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+      <text class="small" x="22" y="31">Single-timepoint: score with lower temporal confidence, not hard failure</text>
+    </g>
+  </g>
+
+  <path class="arrow" d="M 1048 806 C 1048 855, 980 900, 900 900"/>
+
+  <g transform="translate(72,930)">
+    <rect class="panel" x="0" y="0" width="1455" height="92" rx="18"/>
+    <text class="section" x="28" y="39">Outputs</text>
+    <g transform="translate(150,20)">
+      <rect x="0" y="0" width="190" height="52" rx="12" fill="#ecfeff" stroke="#0891b2"/>
+      <text class="small" x="20" y="24">Product Data</text>
+      <text class="small" x="20" y="43">Manifest</text>
+    </g>
+    <g transform="translate(370,20)">
+      <rect x="0" y="0" width="190" height="52" rx="12" fill="#eff6ff" stroke="#2563eb"/>
+      <text class="small" x="20" y="24">BRIDGE v2</text>
+      <text class="small" x="20" y="43">Product Profile</text>
+    </g>
+    <g transform="translate(590,20)">
+      <rect x="0" y="0" width="190" height="52" rx="12" fill="#f5f3ff" stroke="#7c3aed"/>
+      <text class="small" x="20" y="24">Multidimensional</text>
+      <text class="small" x="20" y="43">Score Report</text>
+    </g>
+    <g transform="translate(810,20)">
+      <rect x="0" y="0" width="190" height="52" rx="12" fill="#f0fdf4" stroke="#16a34a"/>
+      <text class="small" x="20" y="24">Optimization</text>
+      <text class="small" x="20" y="43">Hypotheses</text>
+    </g>
+    <g transform="translate(1030,20)">
+      <rect x="0" y="0" width="190" height="52" rx="12" fill="#fff7ed" stroke="#f97316"/>
+      <text class="small" x="20" y="24">Model / Dataset</text>
+      <text class="small" x="20" y="43">Cards</text>
+    </g>
+    <g transform="translate(1250,20)">
+      <rect x="0" y="0" width="175" height="52" rx="12" fill="#f8fafc" stroke="#64748b"/>
+      <text class="small" x="18" y="24">Validation &amp;</text>
+      <text class="small" x="18" y="43">Audit Trail</text>
+    </g>
+  </g>
+
+  <path class="loop" d="M 1388 930 C 1455 850, 1455 720, 1455 650 C 1455 595, 1400 585, 1340 585"/>
+  <text class="tiny" x="1220" y="875">new data -> error analysis -> expert feedback -> model update -> validation</text>
+
+  <g transform="translate(82,1040)">
+    <rect x="0" y="0" width="1435" height="34" rx="17" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text class="tiny" x="22" y="22">Boundary: research-use / translational product-readiness scoring. Not a clinical release criterion, validated potency assay, therapeutic-efficacy predictor, or replacement for wet-lab, animal, manufacturing, or clinical validation.</text>
+  </g>
+</svg>
