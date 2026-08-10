@@ -15,9 +15,10 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
 
     assert registry.ids() == EXPECTED_IDS
     assert registry.describe("P0-01").implementation_state is ImplementationState.IMPLEMENTED
+    assert registry.describe("P0-02").implementation_state is ImplementationState.IMPLEMENTED
     assert all(
         registry.describe(tool_id).implementation_state is ImplementationState.SCAFFOLD
-        for tool_id in EXPECTED_IDS[1:]
+        for tool_id in EXPECTED_IDS[2:]
     )
 
 
@@ -25,7 +26,7 @@ def test_scaffold_run_returns_not_implemented_without_measurements(tmp_path: Pat
     registry = ToolRegistry.load_default()
     request = ToolRequest(
         request_id="request-scaffold",
-        tool_id="P0-02",
+        tool_id="P0-03",
         output_dir=tmp_path,
     )
 
@@ -56,7 +57,7 @@ def test_scaffold_run_rejects_declared_version_mismatch(tmp_path: Path) -> None:
     registry = ToolRegistry.load_default()
     request = ToolRequest(
         request_id="request-scaffold-version-mismatch",
-        tool_id="P0-02",
+        tool_id="P0-03",
         tool_version="9.9.9",
         output_dir=tmp_path,
     )
@@ -91,7 +92,7 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 10
+    assert len(SCHEMA_REFS) == 15
     for schema_ref in SCHEMA_REFS:
         schema = load_schema(schema_ref)
         assert schema["$id"] == schema_ref

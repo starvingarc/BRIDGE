@@ -34,6 +34,7 @@ test = [
 
 [project.scripts]
 bridge-tool = "bridge.toolkit.cli:main"
+bridge-reference = "bridge.tool_packages.p0_02_cell_state.reference_cli:main"
 
 [project.urls]
 Repository = "https://github.com/starvingarc/BRIDGE"
@@ -50,6 +51,8 @@ where = ["src"]
 "bridge.tool_packages.specs" = ["*.yaml"]
 "bridge.tool_packages.cards" = ["*.md"]
 "bridge.tool_packages.p0_01_input_qc.measurement_specs" = ["*.yaml"]
+"bridge.tool_packages.p0_02_cell_state.measurement_specs" = ["*.yaml"]
+"bridge.tool_packages.p0_02_cell_state.resources" = ["*.yaml"]
 "bridge.resources" = ["*.json.gz"]
 "bridge.resources.schemas" = ["*.json"]
 

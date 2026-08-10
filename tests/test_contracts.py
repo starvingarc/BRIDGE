@@ -62,7 +62,7 @@ def test_current_measurement_schema_rejects_available_score_state_without_score(
 def test_scaffold_tool_run_cannot_contain_measurements(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-1",
-        tool_id="P0-02",
+        tool_id="P0-03",
         output_dir=tmp_path,
     )
 
@@ -91,7 +91,7 @@ def test_scaffold_tool_run_cannot_contain_measurements(tmp_path: Path) -> None:
 def test_scaffold_tool_run_cannot_claim_success_without_payload(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-1",
-        tool_id="P0-02",
+        tool_id="P0-03",
         output_dir=tmp_path,
     )
 
@@ -128,7 +128,7 @@ def test_exported_json_schemas_enforce_score_and_scaffold_guards(tmp_path: Path)
 
     request = ToolRequest(
         request_id="request-1",
-        tool_id="P0-02",
+        tool_id="P0-03",
         output_dir=tmp_path,
     )
     tool_run_schema = load_schema("bridge://schemas/tool-run/v0.1")

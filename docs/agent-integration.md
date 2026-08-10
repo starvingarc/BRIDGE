@@ -24,8 +24,11 @@ The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Sc
 4. Treat `not_implemented`, `not_assessed`, `unavailable`, `unknown`, `negative` and `alert` as distinct states.
 5. Render only registered artifacts and preserve denominators, units, versions and evidence references.
 6. Use knowledge search for planning and explanation; never turn retrieval rank into scientific evidence weight.
+7. Declare `source_family_id` so the tool can exclude same-family references, and resolve logical QC/reference IDs through deployment-owned catalogs.
 
-P0-01 is the only executable scientific package in this branch. P0-02 through P0-12 deliberately return `not_implemented` without measurements. HTTP, MCP and queue adapters may wrap the same JSON contracts later without changing scientific semantics.
+P0-01 and P0-02 are executable candidate packages. P0-02 emits shadow Cell-State Evidence only; it does not publish a formal label or domain score. P0-03 through P0-12 deliberately return `not_implemented` without measurements. HTTP, MCP and queue adapters may wrap the same JSON contracts later without changing scientific semantics.
+
+Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.
 
 ## Failure Boundary
 

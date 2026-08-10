@@ -80,6 +80,15 @@ prohibited_interpretations / reviewer / validation_ref
 
 `EvidenceRecord` 在此基础上增加 Evidence ID、claim target、`derived_from`、evidence family、适用范围、支持/反对方向、冲突、缺失和 artifact 引用。LLM 不能创建或修改数值字段。
 
+当前 P0-02 还公开以下可执行对象：
+
+- `AnnotationVocabulary`：L1/L2/L3 标签、父子关系、别名、状态和审核来源。
+- `ReferenceManifest` / `ReferenceProfile`：source family、assay、解剖与发育上下文、evidence family、相对产物路径和 checksum。
+- `MarkerProgramCard`：候选 positive/negative marker、来源和审核状态。
+- `CellStateEvidenceProfile`：分来源支持、候选 prediction set、冲突、marker evidence、组成和敏感性；`domain_score` 固定为空。
+
+上述对象的当前机器可读合同以根目录 `schemas/` 为准。Agent 只读取冻结 reference snapshot；candidate snapshot 仅供科学团队验证。
+
 ## 6. 产品与比较对象
 
 `ProductEvidenceObject` 汇总一个 ProductCase 的 P0/P1/P2 结果、gates、alerts、Evidence Sufficiency、CaseEvidenceGraph 和合同快照。

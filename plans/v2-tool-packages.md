@@ -1,5 +1,7 @@
 # BRIDGE v2 Tool Packages
 
+> Completion snapshot for the initial runtime foundation. P0-02 execution is defined by the active Cell-State Evidence plan and current Tool Registry.
+
 | Field | Value |
 |---|---|
 | Branch | `v2-tool-packages` |
@@ -16,7 +18,7 @@ Rebuild BRIDGE around 12 high-level Tool Packages, complete the versioned method
 - Agent framework, HTTP/MCP service, job queue or Web implementation.
 - Clinical, safety, potency, GMP or absolute product-quality conclusions.
 - P0 domain scores before a separately validated `ScoreContract`.
-- Direct execution of the remaining 11 scientific packages in this iteration.
+- Direct execution of P0-03 through P0-12 in this iteration.
 
 ## Frozen Decisions
 
@@ -39,7 +41,7 @@ Rebuild BRIDGE around 12 high-level Tool Packages, complete the versioned method
 ## Acceptance
 
 - Registry discovers exactly P0-01 through P0-12.
-- Only P0-01 can create a `MeasurementResult`; all other runs reject with `not_implemented`.
+- P0-01 and P0-02 can create contract-bound results; P0-03 through P0-12 reject with `not_implemented`.
 - Every master-registry row resolves to a canonical Method Package and source record.
 - P0-01 supports declared h5ad and 10x count inputs without modifying them.
 - No candidate MeasurementSpec produces a formal score or frozen-quality claim.
@@ -52,9 +54,10 @@ Rebuild BRIDGE around 12 high-level Tool Packages, complete the versioned method
 
 ## Verification Record
 
-- Server test suite: 50 passed.
-- Registry: exactly 12 packages; P0-01 is executable and P0-02 through P0-12 return `not_implemented` without scientific payloads.
+- Server test suite: 68 passed after P0-02 completion.
+- Registry: exactly 12 packages; P0-01 and P0-02 are executable, while P0-03 through P0-12 return `not_implemented` without scientific payloads.
 - Knowledge snapshot: 396 source bindings, 354 canonical Method Packages and 385 verified public Source Cards, with no dangling references.
 - Generated catalog, cards and schemas are deterministic across consecutive rebuilds.
 - P0-01 completed immutable scRNA and snRNA server integration runs using separate candidate MeasurementSpecs.
+- P0-02 completed source-aware product, OOD and same-family holdout integration runs with shadow-only output.
 - Repository policy, privacy, schema, wheel-install and Conda-contract checks passed.

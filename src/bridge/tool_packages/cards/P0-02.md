@@ -2,44 +2,60 @@
 
 ## Purpose
 
-Produce multi-method cell-state evidence against the internal annotation vocabulary.
+Describe which fetal ventral-midbrain cell states are supported in a post-QC product expression view, while preserving source disagreement and unresolved labels.
 
 ## Contract
 
 | Field | Value |
 |---|---|
-| Package version | `0.1.0` |
-| Runtime state | `scaffold` |
-| Scientific state | `candidate` |
-| Optional | `no` |
+| Package version | `0.3.0` |
+| Runtime state | `implemented` |
+| Scientific state | `candidate / shadow` |
 | EnvironmentSpec | `ENV-P0-CORE-v0.1` |
 | Input schema | `bridge://schemas/tool-request/v0.1` |
 | Output schema | `bridge://schemas/tool-run/v0.1` |
 
-**Input:** QC-qualified expression views, declared scRNA/snRNA modality, internal annotation vocabulary, frozen reference candidates, and provenance.
+**Input:** one P0-01-qualified h5ad; declared scRNA/snRNA assay and source family; the matching Cell-State `MeasurementSpec`; a deployment-resolved reference snapshot.
 
-**Output:** Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, and product-level composition evidence.
+**Baseline evidence:**
 
-**Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
+1. Spearman support to source-specific `sample/donor x label` pseudobulk profiles, with cosine similarity as a sensitivity metric.
+2. Positive- and negative-marker expression from versioned shadow marker cards; no conflict threshold is inferred.
+
+Each source retains its full support vector, top label and margin. Source top labels form a candidate prediction set. Agreement is `consensus_supported`; disagreement is `source_conflict`. Neither is a calibrated assignment.
+
+Reference profiles from the query's declared source family are held out before support is computed.
+
+L1 runs on all observations. L2 runs only when the L1 prediction set contains `Radial_Glia` or `Neuroblast`. L3 remains `shadow_not_executed`.
+
+## Reference Policy
+
+- scRNA: Chen fetal vMB scRNA and La Manno fetal VM are independent primary sources.
+- snRNA: Chen fetal vMB snRNA is the primary source.
+- Chen sc/sn combined is sensitivity-only and never counted as a third source.
+- Braun and Zeng provide regional/OOD context outside the L1 identity vote.
+- Birtele is added only through a new reviewed snapshot.
+- `E-MTAB-14729` and competitor markers, labels, references and thresholds have zero data flow.
+
+The scientific-team command `bridge-reference build` turns a private deployment catalog into an immutable snapshot. Its manifest contains logical IDs, relative artifact names and checksums, never source paths. Agent runtimes only resolve the snapshot named by the `MeasurementSpec`.
+
+## Outputs
+
+- `cell_state_evidence.parquet`
+- `source_specific_support.parquet`
+- `marker_program_evidence.parquet`
+- L1/L2 shadow composition
+- reference, marker, composition and conflict figures
+- `CellStateEvidenceProfile` and artifact manifest
+
+All measurements remain `domain_score=null` and `score_state=shadow/unavailable`.
 
 ## Refusal Conditions
 
-Reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.
-
-Missing, unknown, unavailable, negative, and alert states remain distinct. No package may infer a clinical, safety, potency, GMP-release, or absolute product-ranking claim.
-
-## Visualization Contract
-
-Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.
-
-Every formal chart must retain its data version, denominator, units, evidence references, and missing-state semantics.
+The package refuses when the input lacks a P0-01 profile reference, assay and MeasurementSpec disagree, no applicable reference is installed, checksums fail, or shared gene coverage is below the candidate contract. Missing support is never rewritten as negative evidence.
 
 ## Validation Before Freeze
 
-Source/lab/modality holdouts, leave-one-state-out, rare-state mixtures, calibration, OOD detection, and product-composition error.
+Use source/lab/modality holdouts, leave-one-state-out, rare-state mixtures and true OOD datasets. scANVI, Symphony, scArches, scHPL and popV remain benchmark candidates and cannot alter this baseline until independently validated.
 
-Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe P0-02`.
-
-## Detailed Scientific Requirement
-
-Repository document: `docs/bridge_v2_spec_v0.1/cell_state_annotation_task_card.md`.
+Detailed scientific requirement: `docs/bridge_v2_spec_v0.1/cell_state_annotation_task_card.md`.

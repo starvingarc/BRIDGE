@@ -9,6 +9,7 @@
 | 适用范围 | 移植前 scRNA-seq / snRNA-seq；PD hPSC-mDA 为首个实例 |
 | Annotation snapshot | `BRIDGE-PD-vMB-ANNOTATION-v0.1-draft` |
 | 主要输出 | `CellStateEvidenceProfile` |
+| 当前实现 | P0-02 v0.2 透明 shadow baseline；复杂方法待统一 benchmark |
 
 ## 1. 任务目标
 
@@ -29,7 +30,7 @@ P0 不预设某一种注释方法更优。候选方法先按相同标签、refer
 
 | 层级 | 来源 | 规模 | 当前角色 | 状态 |
 | --- | --- | ---: | --- | --- |
-| L1 broad `cell_type` | `REF-CHEN-VMB-COMBINED-v1` | 148,922 cells；18 类 | P0 正式候选 | `freeze_required` |
+| L1 broad `cell_type` | 团队统一 vocabulary；运行时按 source-specific reference 分开支持 | 18 类 | P0 shadow 候选 | `freeze_required` |
 | L2 RG/Nb-derived states | `REF-CHEN-RGNB-v1` | 15,095 cells；14 类 | P0 正式候选 | `freeze_required` |
 | L3 neurogenesis subsubtypes | `REF-CHEN-NEUROGENESIS-SUBSUB-v1-draft` | 77,382 cells；16 类 | 细粒度候选 | `shadow` |
 
@@ -47,17 +48,20 @@ L3 包含：`RG_mFP`、`RG_mBMP`、`RG_mBIP`、`Nb_mFP`、`Nb_mBMP`、`Nb_mBIP`�
 | --- | --- | ---: | --- | --- |
 | `REF-CHEN-VMB-SC-v1` | scRNA-seq；GW7/8/9/12/16/20；人腹侧中脑 | 61,455 | 早期区域、祖细胞及 target/adjacent evidence | 与 snRNA 不是配对纵向数据 |
 | `REF-CHEN-VMB-SN-v1` | snRNA-seq；GW14/16/18/20/24/25；人腹侧中脑 | 87,467 | 中晚期神经元与 DA 状态 | 与胎龄耦合，需模态敏感性分析 |
-| `REF-CHEN-VMB-COMBINED-v1` | scRNA + snRNA 派生对象；GW7-GW25 | 148,922 | L1 broad 主参考 | source 对象的并集，不是独立证据 |
+| `REF-CHEN-VMB-COMBINED-v1` | scRNA + snRNA 派生对象；GW7-GW25 | 148,922 | 跨模态 sensitivity view | source 对象的并集，不是独立证据，不进入来源共识 |
 | `REF-CHEN-RGNB-v1` | combined 的 RG/Nb 派生子集 | 15,095 | L2 区域和谱系状态 | 父子层级待人工复核 |
 | `REF-CHEN-NEUROGENESIS-v1` | combined 的 neurogenesis 派生子集 | 83,017 | 发育和轨迹背景 | 不代表 causal lineage truth |
 | `REF-CHEN-NEUROGENESIS-SUBSUB-v1-draft` | neurogenesis 的 vMB 派生子集 | 77,382 | L3 shadow evidence | 模型版本和命名依据待冻结 |
-| `REF-LAMANNO-2016-v1` | scRNA-seq；PCW6-11；人胎腹侧中脑 | 1,977 | 小型独立 VM sensitivity reference | 平台较旧、样本量有限 |
+| `REF-LAMANNO-2016-v1` | scRNA-seq；PCW6-11；人胎腹侧中脑 | 1,977 | scRNA 小型独立 VM primary source | 平台较旧、样本量有限 |
+| `REF-BIRTELE-v1` | 人胎腹侧中脑；assay 与对象待转换审计 | 待核实 | 新版本独立 VM reference 候选 | 当前不进入首版 snapshot |
 | `REF-BRAUN-2023-v1` | scRNA-seq；PCW5-14；第一孕期全脑 | 1,548,209 | 全脑区域与 off-axis 背景 | 不能替代腹侧中脑产品定义 |
 | `REF-ZENG-2023-v1` | scRNA-seq；PCW3-12；全胚、头和脑 | 400,141 | 早期发育和 OOD 背景 | 本地统一标签仍需冻结 |
 
-`source`、`derived`、`holdout` 和 `competitor` 必须分别登记。派生对象不能与父对象重复计数，同一 source family 的细胞不能随机拆分后充当外部验证。
+`source`、`derived`、`holdout` 和 `competitor` 必须分别登记。查询必须声明 `source_family_id`，运行时排除同 source-family reference；派生对象不能与父对象重复计数，同一 source family 的细胞不能随机拆分后充当外部验证。
 
 ## 4. 分析流程
+
+当前可执行 baseline 固定为两条互补通道：source-specific pseudobulk Spearman/cosine support，以及版本化 marker/program evidence。它们分别保存，不转换为概率、不按工具数投票，也不设置未经验证的 OOD 阈值。scRNA 与 snRNA 使用独立 `MeasurementSpec`；Chen combined 对象只作 sensitivity。
 
 ```mermaid
 flowchart LR

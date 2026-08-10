@@ -206,6 +206,112 @@ class QCReadinessProfile(FrozenModel):
     domain_score: None = None
 
 
+class AnnotationLabel(FrozenModel):
+    state_id: str
+    display_name: str
+    level: Literal["L1", "L2", "L3"]
+    parent_state_ids: list[str] = Field(default_factory=list)
+    aliases: list[str] = Field(default_factory=list)
+    status: Literal["candidate", "shadow", "unresolved"]
+
+
+class AnnotationVocabulary(FrozenModel):
+    vocabulary_id: str
+    version: str
+    product_scope: str
+    status: str
+    labels: list[AnnotationLabel]
+    alias_map: dict[str, str] = Field(default_factory=dict)
+    unresolved_conflicts: list[str] = Field(default_factory=list)
+
+
+class ReferenceProfile(FrozenModel):
+    profile_id: str
+    source_id: str
+    source_family_id: str
+    evidence_family_id: str
+    assay: str
+    anatomy: str
+    developmental_time: str
+    label_level: Literal["L1", "L2", "L3"]
+    role: Literal["primary", "refinement", "context", "sensitivity"]
+    status: str
+    n_samples: int = 0
+    n_observations: int = 0
+    n_genes: int = 0
+    labels: list[str] = Field(default_factory=list)
+    matrix_file: str | None = None
+    matrix_sha256: str | None = None
+    metadata_file: str | None = None
+    metadata_sha256: str | None = None
+    source_sha256: str | None = None
+    feature_selection: dict[str, Any] = Field(default_factory=dict)
+    exclusions: dict[str, int] = Field(default_factory=dict)
+
+    @field_validator("matrix_file", "metadata_file")
+    @classmethod
+    def artifact_path_is_relative(cls, value: str | None) -> str | None:
+        if value is not None and (Path(value).is_absolute() or ".." in Path(value).parts):
+            raise ValueError("reference snapshot artifact paths must be relative")
+        return value
+
+
+class ReferenceManifest(FrozenModel):
+    snapshot_id: str
+    version: str
+    status: Literal["candidate", "frozen"]
+    vocabulary_file: str
+    vocabulary_sha256: str
+    marker_program_file: str
+    marker_program_sha256: str
+    measurement_spec_ids: list[str]
+    profiles: list[ReferenceProfile]
+    prohibited_source_families: list[str] = Field(default_factory=list)
+
+    @field_validator("vocabulary_file", "marker_program_file")
+    @classmethod
+    def manifest_artifact_path_is_relative(cls, value: str) -> str:
+        if Path(value).is_absolute() or ".." in Path(value).parts:
+            raise ValueError("reference snapshot artifact paths must be relative")
+        return value
+
+
+class MarkerProgramCard(FrozenModel):
+    card_id: str
+    version: str
+    state_id: str
+    level: Literal["L1", "L2", "L3"]
+    positive_markers: list[str] = Field(default_factory=list)
+    negative_markers: list[str] = Field(default_factory=list)
+    source_ids: list[str] = Field(default_factory=list)
+    review_status: str
+    allowed_use: list[str] = Field(default_factory=list)
+
+
+class CellStateEvidenceProfile(FrozenModel):
+    profile_id: str
+    assay: str
+    measurement_spec_id: str
+    measurement_spec_status: str
+    annotation_vocabulary_ref: str
+    reference_snapshot_ref: str
+    n_observations: int
+    n_genes: int
+    denominator: str
+    label_levels: dict[str, Any]
+    source_support: dict[str, Any]
+    marker_program_evidence: dict[str, Any]
+    prediction_sets: dict[str, Any]
+    composition: dict[str, Any]
+    gene_coverage: dict[str, Any]
+    modality_sensitivity: dict[str, Any]
+    unresolved_labels: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    score_state: CurrentScoreState = ScoreState.SHADOW
+    domain_score: None = None
+
+
 class EligibilityResult(FrozenModel):
     tool_id: str
     eligible: bool

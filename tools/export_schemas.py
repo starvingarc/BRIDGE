@@ -5,12 +5,17 @@ import json
 from pathlib import Path
 
 from bridge.toolkit.contracts import (
+    AnnotationVocabulary,
     ArtifactManifest,
+    CellStateEvidenceProfile,
     EligibilityResult,
     KnowledgeHit,
+    MarkerProgramCard,
     MeasurementResult,
     MeasurementSpec,
     QCReadinessProfile,
+    ReferenceManifest,
+    ReferenceProfile,
     ToolPackageSpec,
     ToolRequest,
     ToolRun,
@@ -19,12 +24,17 @@ from bridge.toolkit.contracts import (
 
 
 MODELS = {
+    "annotation_vocabulary": ("bridge://schemas/annotation-vocabulary/v0.1", AnnotationVocabulary),
     "artifact_manifest": ("bridge://schemas/artifact-manifest/v0.1", ArtifactManifest),
+    "cell_state_evidence_profile": ("bridge://schemas/cell-state-evidence-profile/v0.1", CellStateEvidenceProfile),
     "eligibility_result": ("bridge://schemas/eligibility-result/v0.1", EligibilityResult),
     "knowledge_hit": ("bridge://schemas/knowledge-hit/v0.1", KnowledgeHit),
+    "marker_program_card": ("bridge://schemas/marker-program-card/v0.1", MarkerProgramCard),
     "measurement_result": ("bridge://schemas/measurement-result/v0.1", MeasurementResult),
     "measurement_spec": ("bridge://schemas/measurement-spec/v0.1", MeasurementSpec),
     "qc_readiness_profile": ("bridge://schemas/qc-readiness-profile/v0.1", QCReadinessProfile),
+    "reference_manifest": ("bridge://schemas/reference-manifest/v0.1", ReferenceManifest),
+    "reference_profile": ("bridge://schemas/reference-profile/v0.1", ReferenceProfile),
     "tool_package_spec": ("bridge://schemas/tool-package-spec/v0.1", ToolPackageSpec),
     "tool_request": ("bridge://schemas/tool-request/v0.1", ToolRequest),
     "tool_run": ("bridge://schemas/tool-run/v0.1", ToolRun),

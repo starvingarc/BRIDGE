@@ -77,6 +77,8 @@ class ToolRegistry:
             )
         if request.tool_id == "P0-01":
             return self._check_input_qc_eligibility(request)
+        if request.tool_id == "P0-02":
+            return self._check_cell_state_eligibility(request)
         return EligibilityResult(
             tool_id=request.tool_id,
             eligible=False,
@@ -123,6 +125,60 @@ class ToolRegistry:
             reasons.append("output_dir_overlaps_input_asset")
         return EligibilityResult(tool_id=request.tool_id, eligible=not reasons, reason_codes=reasons)
 
+    @staticmethod
+    def _check_cell_state_eligibility(request: ToolRequest) -> EligibilityResult:
+        if len(request.assets) != 1:
+            return EligibilityResult(
+                tool_id=request.tool_id,
+                eligible=False,
+                reason_codes=["exactly_one_post_qc_expression_asset_required"],
+            )
+        asset = request.assets[0]
+        reasons: list[str] = []
+        if asset.format != "h5ad":
+            reasons.append("cell_state_requires_h5ad")
+        if not asset.path.exists():
+            reasons.append("input_asset_not_found")
+        if asset.assay not in {"scRNA-seq", "snRNA-seq"}:
+            reasons.append("assay_must_be_declared")
+        if asset.input_level.value not in {"analysis_ready", "count_ready"}:
+            reasons.append("post_cell_calling_expression_required")
+        if not asset.metadata.get("source_family_id"):
+            reasons.append("source_family_id_required")
+        try:
+            from bridge.tool_packages.p0_02_cell_state.qc import validate_upstream_qc
+
+            validate_upstream_qc(asset)
+        except ValueError as exc:
+            reasons.append(getattr(exc, "reason_code", "qc_profile_invalid"))
+        from bridge.tool_packages.p0_02_cell_state.measurement_specs import load_measurement_spec
+
+        measurement_spec = load_measurement_spec(request.measurement_spec_ref)
+        if measurement_spec is None:
+            reasons.append("measurement_spec_not_found")
+        else:
+            if measurement_spec.assay != asset.assay:
+                reasons.append("measurement_spec_assay_mismatch")
+            if asset.input_level.value not in measurement_spec.input_contract.get("supported_levels", []):
+                reasons.append("measurement_spec_input_level_mismatch")
+            try:
+                from bridge.tool_packages.p0_02_cell_state.reference import (
+                    resolve_reference_snapshot,
+                    validate_runtime_reference,
+                    validate_reference_snapshot,
+                )
+
+                root = resolve_reference_snapshot(measurement_spec.reference_refs[0])
+                manifest = validate_reference_snapshot(root)
+                validate_runtime_reference(manifest)
+                if measurement_spec.measurement_spec_id not in manifest.measurement_spec_ids:
+                    reasons.append("measurement_spec_not_supported_by_reference")
+            except ValueError as exc:
+                reasons.append(getattr(exc, "reason_code", "reference_snapshot_invalid"))
+        if asset.path.is_dir() and request.output_dir.resolve().is_relative_to(asset.path.resolve()):
+            reasons.append("output_dir_overlaps_input_asset")
+        return EligibilityResult(tool_id=request.tool_id, eligible=not reasons, reason_codes=sorted(set(reasons)))
+
     def run(self, request: ToolRequest) -> ToolRun:
         spec = self.describe(request.tool_id)
         if request.tool_version is not None and request.tool_version != spec.version:
@@ -161,4 +217,8 @@ class ToolRegistry:
             from bridge.tool_packages.p0_01_input_qc.executor import run_input_audit_qc
 
             return run_input_audit_qc(request, spec)
+        if request.tool_id == "P0-02":
+            from bridge.tool_packages.p0_02_cell_state.executor import run_cell_state_evidence
+
+            return run_cell_state_evidence(request, spec)
         raise RuntimeError(f"No executor registered for implemented tool {request.tool_id}")

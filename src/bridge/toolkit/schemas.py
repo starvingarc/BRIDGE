@@ -5,12 +5,17 @@ from importlib.resources import files
 
 
 SCHEMA_REFS = {
+    "bridge://schemas/annotation-vocabulary/v0.1": "annotation_vocabulary.schema.json",
     "bridge://schemas/artifact-manifest/v0.1": "artifact_manifest.schema.json",
+    "bridge://schemas/cell-state-evidence-profile/v0.1": "cell_state_evidence_profile.schema.json",
     "bridge://schemas/eligibility-result/v0.1": "eligibility_result.schema.json",
     "bridge://schemas/knowledge-hit/v0.1": "knowledge_hit.schema.json",
+    "bridge://schemas/marker-program-card/v0.1": "marker_program_card.schema.json",
     "bridge://schemas/measurement-result/v0.1": "measurement_result.schema.json",
     "bridge://schemas/measurement-spec/v0.1": "measurement_spec.schema.json",
     "bridge://schemas/qc-readiness-profile/v0.1": "qc_readiness_profile.schema.json",
+    "bridge://schemas/reference-manifest/v0.1": "reference_manifest.schema.json",
+    "bridge://schemas/reference-profile/v0.1": "reference_profile.schema.json",
     "bridge://schemas/tool-package-spec/v0.1": "tool_package_spec.schema.json",
     "bridge://schemas/tool-request/v0.1": "tool_request.schema.json",
     "bridge://schemas/tool-run/v0.1": "tool_run.schema.json",

@@ -1,35 +1,60 @@
 # BRIDGE v2
 
-BRIDGE v2 is a modular, evidence-aware toolkit for transcriptomic evaluation of cell-therapy products. PD hPSC-mDA is the first application scope being instantiated, while the public contracts are designed to support additional products later.
+**Development-aware transcriptomic evidence for cell-therapy products.**
 
-The active repository is being rebuilt around 12 high-level Tool Packages. P0-01 Input Audit & QC is the first executable package. The remaining packages expose versioned descriptions and eligibility contracts until their methods pass benchmark and freeze gates.
+Parkinson's disease hPSC-derived midbrain dopaminergic (hPSC-mDA) products are the first biological instance.
 
-## Current Boundary
+![BRIDGE v2 connects human fetal references and a pre-transplant cell product to five evidence domains and traceable outputs.](docs/assets/bridge-v2-biological-workflow.svg)
 
-- Research-use transcriptomic evidence only.
-- No clinical efficacy, safety, validated potency, GMP release, or absolute product ranking.
-- No P0 domain score is currently frozen; raw metrics and evidence states remain primary.
-- Agent systems call BRIDGE's high-level Python/JSON interface, not individual bioinformatics commands.
+## Biological question
 
-## Entry Points
+Given a pre-transplant cell product, which intended developmental and regional identities are supported by its transcriptome, where does the full composition diverge, and which uncertainties should be tested next?
 
-- Governance: [AGENTS.md](AGENTS.md)
-- Documentation: [docs/index.md](docs/index.md)
-- Active plan: [PLANS.md](PLANS.md)
-- Product requirements: [docs/BRIDGE_v2_PRD.md](docs/BRIDGE_v2_PRD.md)
-- Tool Packages: [tool_packages/](tool_packages/)
-- Method and source knowledge: [knowledge/README.md](knowledge/README.md)
-- JSON Schemas: [schemas/](schemas/)
-- Conda contracts: [environments/README.md](environments/README.md)
-- Request examples: [examples/README.md](examples/README.md)
+## Five evidence domains
+
+| Domain | Evidence question |
+|---|---|
+| Target identity | Are the intended lineage and cell states represented? |
+| Regional fidelity | Does the product support the intended anatomical identity rather than an off-axis fate? |
+| Developmental compatibility | How does the product align with a researcher-defined developmental window? |
+| Off-target control | What target, adjacent, off-axis, and unresolved states make up the whole product? |
+| Process integrity | Which proliferation, stress, and residual pluripotency-like transcriptomic signals require review? |
+
+## Current implementation status
+
+| Package | Status | Current output |
+|---|---|---|
+| P0-01 Input Audit & QC | Executable candidate | Input structure, matrix semantics, QC readiness, and traceable artifacts |
+| P0-02 Cell-State Evidence | Executable shadow | Source-specific reference support, marker/program evidence, prediction sets, and source conflicts |
+| P0-03 onward | Contracted | Scientific, input/output, environment, and validation contracts; executors pending |
+
+Candidate and shadow outputs remain subject to benchmark, biological review, and version freeze.
+
+## Minimal usage
 
 ```bash
-python -m pip install -e ".[test,qc]"
+python -m pip install -e ".[qc]"
 bridge-tool list
-bridge-tool describe P0-01
-bridge-tool knowledge search "ambient RNA" --module P0-01
+bridge-tool describe P0-02
+bridge-tool validate --request request.json
+bridge-tool run --request request.json
 ```
 
-`bridge-tool validate --request <request.json>` checks schema and eligibility without executing analysis. `bridge-tool run --request <request.json>` executes only implemented packages; P0-02 through P0-12 currently return `not_implemented` and never synthesize measurements.
+Each run preserves the input and records the applicable measurement, reference, method, artifact, and checksum provenance.
 
-Historical Step1-Step3 code is retained under `legacy/` for provenance and is not part of the installed package.
+## Scientific boundaries
+
+- BRIDGE reports research-use transcriptomic evidence, uncertainty, and evidence gaps.
+- Missing, unresolved, and out-of-reference evidence is not treated as a negative result.
+- Candidate or shadow evidence does not establish clinical efficacy, safety, potency, GMP release, or an absolute product ranking.
+- Post-transplant graft evidence is analyzed independently and is not back-propagated into the pre-transplant profile.
+- No frozen P0 domain score is currently published.
+
+## Documentation
+
+- [Documentation index](docs/index.md)
+- [Product requirements](docs/BRIDGE_v2_PRD.md)
+- [Scientific principles](docs/product-principles.md)
+- [Tool Package cards](tool_packages/)
+- [Method and source knowledge](knowledge/README.md)
+- [Agent integration](docs/agent-integration.md)
