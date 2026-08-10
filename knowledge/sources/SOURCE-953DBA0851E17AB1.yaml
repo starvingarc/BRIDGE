@@ -1,0 +1,12 @@
+source_id: SOURCE-953DBA0851E17AB1
+url: https://www.rfc-editor.org/rfc/rfc8785.html
+source_type: standard
+title: 'RFC 8785: JSON Canonicalization Scheme (JCS)'
+verification_status: verified
+http_status: 200
+resolved_url: https://www.rfc-editor.org/rfc/rfc8785.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CANONICALIZATION-ADAPTER
+- METHOD-CANONICALIZATION-LIBRARY

@@ -1,0 +1,48 @@
+method_id: METHOD-SCGATE
+display_name: scGate
+aliases:
+- RARE-SCGATE
+modules:
+- P0-05
+capabilities:
+- rare-state detection
+roles:
+- orthogonal marker check | Conditional orthogonal evidence
+input_requirements:
+- Curated positive/negative marker hierarchy
+output_semantics:
+- Marker-based pass/reject evidence
+environment_requirements:
+- R/Bioconductor 方法环境
+environment_policy:
+- 按该能力环境运行并冻结依赖、版本与 fixture
+scientific_status_raw:
+- conditional
+source_status_raw:
+- conditional
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- MIT
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境
+curation_notes: []
+source_tokens:
+- https://github.com/carmonalab/scGate
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-107E66057621CF23
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Does not define product role and shares marker evidence family
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCGATE/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R175

@@ -1,0 +1,14 @@
+source_id: SOURCE-7046586030E2017F
+url: https://github.com/file/file
+source_type: source_repository
+title: 'GitHub - file/file: Read-only mirror of file CVS repository, updated every
+  half hour. NOTE: do not make pull requests here, nor comment any commits, submit
+  them usual way to bug tracker or to the mailing list. Maintainer(s) are not tracking
+  this git mirror. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/file/file
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-OS-CLI

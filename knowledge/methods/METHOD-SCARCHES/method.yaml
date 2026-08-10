@@ -1,0 +1,65 @@
+method_id: METHOD-SCARCHES
+display_name: scArches
+aliases:
+- TOOL-CS-SCARCHES
+- TRG-SCARCHES
+modules:
+- P0-02
+- P0-03
+capabilities:
+- cell-state evidence
+- target identity
+roles:
+- reference mapping | mapping sensitivity
+- reference mapping | query-to-reference architectural surgery
+input_requirements:
+- compatible frozen model
+- compatible frozen model + query counts
+output_semantics:
+- mapped latent + label evidence
+- mapped latent and downstream labels
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+- conditional
+source_status_raw:
+- benchmark
+- conditional
+evidence_family_ids:
+- EF-CS-LATENT-MAPPING
+- latent_mapping
+evidence_family_state: assigned
+license_raw:
+- BSD-3-Clause
+- verify snapshot
+license_status: review_required
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://docs.scarches.org/
+- https://github.com/theislab/scarches
+- https://www.nature.com/articles/s41587-021-01001-7
+raw_source_token_count: 4
+public_source_assignment_count: 4
+source_ids:
+- SOURCE-3DB57426FEF86E2B
+- SOURCE-40DE6E1BDC79416E
+- SOURCE-DAF7CC5637BEFFD4
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Model and gene-schema compatibility are mandatory.
+- reference update must be versioned
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCARCHES/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R54
+- MASTER-20260810:Tools:R121

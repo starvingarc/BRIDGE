@@ -1,108 +1,35 @@
-<p align="center">
-  <img src="docs/assets/bridge-overview.png?raw=true&v=20260506" alt="BRIDGE workflow overview" width="100%">
-</p>
+# BRIDGE v2
 
-<p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/status-research%20software-8fb8f7?style=flat-square">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-f2b8a8?style=flat-square">
-  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-2f6f68?style=flat-square">
-  <a href="docs/formal_workflows.md"><img alt="Docs" src="https://img.shields.io/badge/docs-workflows-5bbfb1?style=flat-square"></a>
-  <a href="docs/agent_demo.md"><img alt="Demo" src="https://img.shields.io/badge/demo-agent%20workflow-7f6bb2?style=flat-square"></a>
-</p>
+BRIDGE v2 is a modular, evidence-aware toolkit for transcriptomic evaluation of cell-therapy products. PD hPSC-mDA is the first application scope being instantiated, while the public contracts are designed to support additional products later.
 
-# BRIDGE
+The active repository is being rebuilt around 12 high-level Tool Packages. P0-01 Input Audit & QC is the first executable package. The remaining packages expose versioned descriptions and eligibility contracts until their methods pass benchmark and freeze gates.
 
-**A developmental-reference evaluation platform for pre-transplant mDA progenitor cell products.**
+## Current Boundary
 
-<em>🌉 Candidate discovery, identity stability, and multidimensional developmental concordance.</em>
+- Research-use transcriptomic evidence only.
+- No clinical efficacy, safety, validated potency, GMP release, or absolute product ranking.
+- No P0 domain score is currently frozen; raw metrics and evidence states remain primary.
+- Agent systems call BRIDGE's high-level Python/JSON interface, not individual bioinformatics commands.
 
-## 🧭 Background
+## Entry Points
 
-Stem-cell-based replacement therapy is an important regenerative strategy for Parkinsonian dopaminergic circuit repair. Pre-transplant mDA progenitor products are evaluated as developmentally staged cells with defined regional identity, fate stability, and subsequent differentiation potential.
-
-BRIDGE uses human embryonic ventral midbrain references to guide candidate-cell discovery, target identity assessment, and multidimensional developmental concordance scoring. The workflow organizes single-cell evidence for quality control, process optimization, and cross-protocol comparison.
-
-| Evaluation layer | Biological focus |
-| --- | --- |
-| **Developmental reference** | Human embryonic ventral midbrain programs as the in vivo baseline. |
-| **Candidate identity** | Calibrated probability, prediction variability, and entropy. |
-| **Composite Likeness Score** | Identity, expression, transferability, neighborhood, trajectory, and regulon concordance. |
-
-## ✨ Workflow
-
-| Step | Role | Output |
-| --- | --- | --- |
-| **Step0** | Prepare environment, config, model assets, and run directory. | Ready-to-run workspace |
-| **Step1** | Map one in vitro `.h5ad` against a whole-brain reference. | RG candidate annotations and Step1 report |
-| **Step2** | Refine mDA progenitor identity with probability and uncertainty. | Candidate-bearing data, thresholds, probability tables, Step2 report |
-| **Step3** | Quantify developmental concordance with CLS components A-F. | Component scores, weighted CLS, single-dataset and protocol-comparison reports |
-
-## 🚀 Getting Started
-
-### Installation
+- Governance: [AGENTS.md](AGENTS.md)
+- Documentation: [docs/index.md](docs/index.md)
+- Active plan: [PLANS.md](PLANS.md)
+- Product requirements: [docs/BRIDGE_v2_PRD.md](docs/BRIDGE_v2_PRD.md)
+- Tool Packages: [tool_packages/](tool_packages/)
+- Method and source knowledge: [knowledge/README.md](knowledge/README.md)
+- JSON Schemas: [schemas/](schemas/)
+- Conda contracts: [environments/README.md](environments/README.md)
+- Request examples: [examples/README.md](examples/README.md)
 
 ```bash
-pip install git+https://github.com/starvingarc/BRIDGE.git
-# or, from a cloned source tree:
-pip install -e ".[workflow]"
+python -m pip install -e ".[test,qc]"
+bridge-tool list
+bridge-tool describe P0-01
+bridge-tool knowledge search "ambient RNA" --module P0-01
 ```
 
-For agent-assisted setup, send this prompt to your coding agent:
+`bridge-tool validate --request <request.json>` checks schema and eligibility without executing analysis. `bridge-tool run --request <request.json>` executes only implemented packages; P0-02 through P0-12 currently return `not_implemented` and never synthesize measurements.
 
-```text
-Help me install https://github.com/starvingarc/BRIDGE
-```
-
-### Agent-Guided Workflow
-
-BRIDGE includes repository-local skills that guide an agent through reproducible Step0-Step3 notebooks. Use the prefix supported by your agent, for example `/bridge-step1` or `@bridge-step1`.
-
-| Step | Skill | Output |
-| --- | --- | --- |
-| Step0 | `bridge-step0` | Environment, assets, config, and run directory |
-| Step1 | `bridge-step1` | Prescreened data, RG candidates, and notebook report |
-| Step2 | `bridge-step2` | Identity candidates, thresholds, probabilities, and notebook report |
-| Step3 | `bridge-step3` | CLS component scores and protocol comparison |
-
-Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are declared in [models/assets.json](models/assets.json) and fetched separately from public object storage.
-
-### Python Usage
-
-```python
-from bridge.prescreen import prescreen
-from bridge.identity import identify
-from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score
-
-from bridge.prescreen.report import write_report as write_prescreen_report
-from bridge.identity.report import write_report as write_identity_report
-from bridge.cls.report import write_report as write_cls_report, compare_reports
-```
-
-Each step is a Python function that can be used in notebooks or scripts. Report modules provide displayable table/figure helpers and writers for reproducible artifacts under `report/`.
-
-## 🗺️ Explore
-
-- [Agent demo script](docs/agent_demo.md)
-- [Skills](docs/skills.md)
-- [Formal workflows](docs/formal_workflows.md)
-- [Thesis-to-code mapping](docs/thesis_to_code.md)
-- [Roadmap](docs/roadmap.md)
-
-## 🛠️ Development
-
-```bash
-PYTHONPATH=src pytest -q
-```
-
-```text
-src/bridge/        Python package
-configs/           public config templates
-models/            model metadata and asset entry point
-notebooks/         curated notebook examples; generated notebooks are run artifacts
-docs/              workflow documentation and roadmap
-.claude/skills/    repository-local Step0-Step3 skills
-```
-
-## Citation
-
-BRIDGE is research software under active development. If you use it in a study, please cite the repository and include the commit hash used for analysis.
+Historical Step1-Step3 code is retained under `legacy/` for provenance and is not part of the installed package.

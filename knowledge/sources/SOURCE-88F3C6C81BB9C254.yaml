@@ -1,0 +1,11 @@
+source_id: SOURCE-88F3C6C81BB9C254
+url: https://www.nature.com/articles/s41467-025-56523-4
+source_type: primary_paper
+title: Spatial integration of multi-omics single-cell data with SIMO | Nature Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-025-56523-4?error=cookies_not_supported&code=4fd947d0-ac30-4d45-a5f7-db1f7cbc75a7
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SIMO

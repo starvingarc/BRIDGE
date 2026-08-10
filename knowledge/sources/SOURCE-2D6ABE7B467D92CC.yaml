@@ -1,0 +1,12 @@
+source_id: SOURCE-2D6ABE7B467D92CC
+url: https://docs.python.org/3/library/decimal.html
+source_type: official_documentation
+title: decimal — Decimal fixed-point and floating-point arithmetic — Python 3.14.7
+  documentation
+verification_status: verified
+http_status: 200
+resolved_url: https://docs.python.org/3/library/decimal.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-STANDARD-LIBRARY

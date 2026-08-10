@@ -1,0 +1,11 @@
+source_id: SOURCE-DB4D9B2F79E03EC1
+url: https://giniclust3.readthedocs.io/en/latest/
+source_type: official_documentation
+title: GiniClust3
+verification_status: verified
+http_status: 200
+resolved_url: https://giniclust3.readthedocs.io/en/latest/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-GINICLUST3

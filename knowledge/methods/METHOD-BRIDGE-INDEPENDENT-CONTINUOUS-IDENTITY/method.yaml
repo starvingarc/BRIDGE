@@ -1,0 +1,48 @@
+method_id: METHOD-BRIDGE-INDEPENDENT-CONTINUOUS-IDENTITY
+display_name: BRIDGE independent continuous identity
+aliases:
+- TOOL-CS-BRIDGE-CONTINUOUS
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- continuous/hybrid identity | independent program decomposition and abstention
+input_requirements:
+- internal reference, independently curated programs and held-out calibration
+output_semantics:
+- simplex weights, residual, distance, prediction set, hybrid/unknown reason and intervals
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- shortlisted
+source_status_raw:
+- shortlisted
+evidence_family_ids:
+- EF-CS-CONTINUOUS
+evidence_family_state: assigned
+license_raw:
+- internal
+license_status: internal
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- internal_no_public_url
+raw_source_token_count: 1
+public_source_assignment_count: 0
+source_ids: []
+source_status: internal_no_public_source
+primary_paper_status: not_applicable
+critical_boundaries:
+- No competitor code, programs, lineage map or empirical thresholds.
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-BRIDGE-INDEPENDENT-CONTINUOUS-IDENTITY/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R22

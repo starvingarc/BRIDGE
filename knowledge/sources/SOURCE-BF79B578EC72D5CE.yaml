@@ -1,0 +1,12 @@
+source_id: SOURCE-BF79B578EC72D5CE
+url: https://github.com/greenelab/miQC
+source_type: source_repository
+title: 'GitHub - greenelab/miQC: Flexible, probablistic metrics for quality control
+  of scRNA-seq data · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/greenelab/miQC
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-MIQC

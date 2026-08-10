@@ -1,0 +1,62 @@
+method_id: METHOD-SCCONFORM
+display_name: scConform
+aliases:
+- OOD-SCCONFORM
+- TOOL-CS-SCCONFORM
+modules:
+- P0-02
+- P0-05
+capabilities:
+- cell-state evidence
+- unknown and OOD
+roles:
+- open set/uncertainty | conformal prediction sets
+- open-set/ontology
+input_requirements:
+- Reference, labels and ontology-compatible input
+- base-classifier scores + independent calibration + optional hierarchy
+output_semantics:
+- Calibrated annotation and rejection evidence
+- prediction sets and coverage diagnostics
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- benchmark
+- shortlisted
+source_status_raw:
+- benchmark
+- shortlisted
+evidence_family_ids:
+- EF-CS-CONFORMAL
+- conformal_prediction
+evidence_family_state: assigned
+license_raw:
+- Artistic-2.0
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://arxiv.org/abs/2410.23786
+- https://bioconductor.org/packages/scConform/
+raw_source_token_count: 3
+public_source_assignment_count: 3
+source_ids:
+- SOURCE-C716978CEA210234
+- SOURCE-E16C46604A21CC4D
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Calibration split must be source-independent and frozen.
+- Requires isolated current Bioconductor stack
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCCONFORM/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R56
+- MASTER-20260810:Tools:R187

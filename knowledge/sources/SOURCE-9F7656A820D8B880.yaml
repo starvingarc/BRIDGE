@@ -1,0 +1,11 @@
+source_id: SOURCE-9F7656A820D8B880
+url: https://obofoundry.org/ontology/uberon.html
+source_type: official_resource
+title: OBO Foundry
+verification_status: verified
+http_status: 200
+resolved_url: https://obofoundry.org/ontology/uberon.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-UBERON-HSAPDV-CROSSWALK

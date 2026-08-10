@@ -1,0 +1,13 @@
+source_id: SOURCE-F9C4B175B100E042
+url: https://github.com/dmcable/spacexr
+source_type: source_repository
+title: 'GitHub - dmcable/spacexr: Spatial-eXpression-R: Cell type identification (including
+  cell type mixtures) and cell type-specific differential expression for spatial transcriptomics
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/dmcable/spacexr
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-RCTD-SPACEXR

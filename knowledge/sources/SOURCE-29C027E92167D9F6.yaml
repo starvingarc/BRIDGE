@@ -1,0 +1,13 @@
+source_id: SOURCE-29C027E92167D9F6
+url: https://github.com/shmsw25/FActScore
+source_type: source_repository
+title: 'GitHub - shmsw25/FActScore: A package to evaluate factuality of long-form
+  generation. Original implementation of our EMNLP 2023 paper "FActScore: Fine-grained
+  Atomic Evaluation of Factual Precision in Long Form Text Generation" · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/shmsw25/FActScore
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-FACTUALITY-PACKAGE

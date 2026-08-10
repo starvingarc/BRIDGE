@@ -1,0 +1,11 @@
+source_id: SOURCE-79F7317415DE0FF6
+url: https://doi.org/10.12688/f1000research.73600.2
+source_type: primary_paper
+title: Doublet identification in single-cell sequencing... | F1000Research
+verification_status: verified
+http_status: 200
+resolved_url: https://f1000research.com/articles/10-979/v2
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCDBLFINDER

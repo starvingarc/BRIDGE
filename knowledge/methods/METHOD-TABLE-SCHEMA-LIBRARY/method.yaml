@@ -1,0 +1,51 @@
+method_id: METHOD-TABLE-SCHEMA-LIBRARY
+display_name: table schema library
+aliases:
+- Pandera
+modules:
+- P0-08
+capabilities:
+- evidence sufficiency
+roles:
+- table schema library | MeasurementResult 和 Registry 表格合同候选
+input_requirements:
+- pandas/Polars tables
+output_semantics:
+- column/type/constraint validation
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- catalog_only
+source_status_raw:
+- catalog_only
+evidence_family_ids:
+- schema_validation
+evidence_family_state: assigned
+license_raw:
+- official repository license; audit at freeze
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://github.com/unionai-oss/pandera
+- https://pandera.readthedocs.io/en/stable/
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-71FFAB126F9CDF6A
+- SOURCE-CFEC6080F188D62A
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- 当前未安装；P0 不将其设为必需依赖
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-TABLE-SCHEMA-LIBRARY/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R292

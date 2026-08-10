@@ -1,0 +1,11 @@
+source_id: SOURCE-CEB7DDB07ABA4B86
+url: https://www.nature.com/articles/s41586-026-10689-z
+source_type: primary_paper
+title: Universal cell embedding provides a foundation model for cell biology | Nature
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41586-026-10689-z?error=cookies_not_supported&code=80bca959-190d-4afc-b9a8-c320752d51dd
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-UCE

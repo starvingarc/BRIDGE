@@ -1,0 +1,51 @@
+method_id: METHOD-SINGSCORE
+display_name: singscore
+aliases:
+- PROC-SCORE-SINGSCORE
+modules:
+- P0-06
+capabilities:
+- process programs
+roles:
+- rank-based single sample
+input_requirements:
+- Gene-by-sample expression + directional gene sets
+output_semantics:
+- Normalized within-sample rank score
+environment_requirements:
+- R/Bioconductor 方法环境
+environment_policy:
+- 按该能力环境运行并冻结依赖、版本与 fixture
+scientific_status_raw:
+- shadow
+source_status_raw:
+- shadow
+evidence_family_ids:
+- EF-METHOD-SINGSCORE
+evidence_family_state: assigned
+license_raw:
+- GPL-3
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境
+curation_notes: []
+source_tokens:
+- https://bioconductor.org/packages/release/bioc/html/singscore.html
+- https://git.bioconductor.org/packages/singscore
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-564F18D4C09C8900
+- SOURCE-C5E19AC03EC44884
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Compare only on the same gene universe; not a dedicated scRNA estimator
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SINGSCORE/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R216

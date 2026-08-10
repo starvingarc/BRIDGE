@@ -1,0 +1,12 @@
+source_id: SOURCE-4E6A48FE2FBE891A
+url: https://github.com/lihuamei/Cell2Spatial
+source_type: source_repository
+title: 'GitHub - lihuamei/Cell2Spatial: Precisely deciphering spatial transcriptomic
+  spots at single-cell granularity. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/lihuamei/Cell2Spatial
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELL2SPATIAL

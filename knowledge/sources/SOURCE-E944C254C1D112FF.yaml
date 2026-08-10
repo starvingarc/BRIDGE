@@ -1,0 +1,12 @@
+source_id: SOURCE-E944C254C1D112FF
+url: https://www.nature.com/articles/s41592-019-0529-1
+source_type: primary_paper
+title: Probabilistic cell-type assignment of single-cell RNA-seq for tumor microenvironment
+  profiling | Nature Methods
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41592-019-0529-1?error=cookies_not_supported&code=3b20fed3-c232-41c6-83f0-c01986677926
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLASSIGN

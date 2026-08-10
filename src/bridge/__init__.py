@@ -1,24 +1,16 @@
-"""BRIDGE public package surface."""
+"""BRIDGE v2 public package."""
 
-from bridge.workflows.config import load_config
+from bridge.toolkit.api import describe_tool, list_tools, run_tool, search_knowledge, validate_request
+from bridge.toolkit.registry import ToolRegistry
 
+__version__ = "0.2.0.dev0"
 
-def prescreen(*args, **kwargs):
-    from bridge.prescreen.api import prescreen as _prescreen
-
-    return _prescreen(*args, **kwargs)
-
-
-def identify(*args, **kwargs):
-    from bridge.identity.api import identify as _identify
-
-    return _identify(*args, **kwargs)
-
-
-def score(*args, **kwargs):
-    from bridge.cls.api import score as _score
-
-    return _score(*args, **kwargs)
-
-
-__all__ = ["identify", "load_config", "prescreen", "score"]
+__all__ = [
+    "ToolRegistry",
+    "__version__",
+    "describe_tool",
+    "list_tools",
+    "run_tool",
+    "search_knowledge",
+    "validate_request",
+]

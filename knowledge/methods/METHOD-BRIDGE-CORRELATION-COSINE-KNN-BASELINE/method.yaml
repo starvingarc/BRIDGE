@@ -1,0 +1,47 @@
+method_id: METHOD-BRIDGE-CORRELATION-COSINE-KNN-BASELINE
+display_name: BRIDGE correlation/cosine/kNN baseline
+aliases:
+- SP-KNN
+modules:
+- P0-03
+capabilities:
+- spatial projection
+roles:
+- direct projection | transparent primary baseline
+input_requirements:
+- query expression + segmented spatial profiles
+output_semantics:
+- cell/state location weights
+environment_requirements:
+- Python 单细胞核心环境；空间组学环境
+environment_policy:
+- 按能力拆分；兼容性验证通过前不合并环境
+scientific_status_raw:
+- candidate
+source_status_raw:
+- candidate
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- internal
+license_status: internal
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境；空间组学环境
+curation_notes: []
+source_tokens:
+- internal_no_public_url
+raw_source_token_count: 1
+public_source_assignment_count: 0
+source_ids: []
+source_status: internal_no_public_source
+primary_paper_status: not_applicable
+critical_boundaries:
+- batch/region mismatch
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-BRIDGE-CORRELATION-COSINE-KNN-BASELINE/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R99

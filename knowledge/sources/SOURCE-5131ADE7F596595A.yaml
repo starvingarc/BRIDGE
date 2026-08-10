@@ -1,0 +1,12 @@
+source_id: SOURCE-5131ADE7F596595A
+url: https://github.com/broadinstitute/infercnv
+source_type: source_repository
+title: 'GitHub - broadinstitute/infercnv: Inferring CNV from Single-Cell RNA-Seq ·
+  GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/broadinstitute/infercnv
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-INFERCNV

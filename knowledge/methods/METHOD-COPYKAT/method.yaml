@@ -1,0 +1,49 @@
+method_id: METHOD-COPYKAT
+display_name: CopyKAT
+aliases:
+- PROC-CNV-COPYKAT
+modules:
+- P0-06
+capabilities:
+- CNV shadow
+roles:
+- Aneuploid/diploid shadow comparator
+input_requirements:
+- Raw UMI matrix; preferably per sample; optional known normal cells
+output_semantics:
+- Relative CNV matrix and aneuploid/diploid/undefined labels
+environment_requirements:
+- R/Bioconductor 方法环境；工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- deferred
+source_status_raw:
+- deferred
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- 'non-clear: GPL-2 metadata plus restrictive Copyright file'
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境；工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://github.com/navinlabcode/copykat
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-51CA1C1AE8164E06
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Cancer-oriented assumptions; batch sensitivity; expression-derived label is not
+  genomic stability evidence
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-COPYKAT/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R190

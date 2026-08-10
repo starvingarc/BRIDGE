@@ -1,0 +1,11 @@
+source_id: SOURCE-0BD791107C756BEA
+url: https://proceedings.iclr.cc/paper_files/paper/2024/hash/173bcdbd820edbe43284e0941109ada9-Abstract-Conference.html
+source_type: official_resource
+title: 'CellPLM: Pre-training of Cell Language Model Beyond Single Cells'
+verification_status: verified
+http_status: 200
+resolved_url: https://proceedings.iclr.cc/paper_files/paper/2024/hash/173bcdbd820edbe43284e0941109ada9-Abstract-Conference.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLPLM

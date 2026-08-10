@@ -1,0 +1,12 @@
+source_id: SOURCE-0145AA86320D0F01
+url: https://github.com/saezlab/liana-py
+source_type: source_repository
+title: 'GitHub - saezlab/liana-py: LIANA+: an all-in-one framework for cell-cell communication
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/saezlab/liana-py
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-LIANA

@@ -1,0 +1,51 @@
+method_id: METHOD-SCHPL
+display_name: scHPL
+aliases:
+- TOOL-CS-SCHPL
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- label hierarchy | hierarchical learning across references
+input_requirements:
+- multiple labeled references + expression
+output_semantics:
+- hierarchy and hierarchical prediction
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+source_status_raw:
+- benchmark
+evidence_family_ids:
+- EF-CS-HIERARCHICAL
+evidence_family_state: assigned
+license_raw:
+- verify_before_freeze
+license_status: review_required
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://schpl.readthedocs.io/
+- https://www.nature.com/articles/s41467-021-23196-8
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-A3DEC13D47552B81
+- SOURCE-ACCE9D2601595FF8
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Generated hierarchy requires expert review before formal use.
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCHPL/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R61

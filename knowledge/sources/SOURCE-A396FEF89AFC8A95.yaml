@@ -1,0 +1,12 @@
+source_id: SOURCE-A396FEF89AFC8A95
+url: https://github.com/carmonalab/pyucell
+source_type: source_repository
+title: 'GitHub - carmonalab/pyucell: Robust and scalable single-cell signature scoring
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/carmonalab/pyucell
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-PYUCELL

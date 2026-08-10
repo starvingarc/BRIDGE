@@ -1,0 +1,17 @@
+name: bridge-p0-evidence
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pip=25.1
+  - pydantic=2.12
+  - jsonschema=4.25
+  - pyarrow=21
+  - networkx=3.5
+  - scikit-learn=1.7
+  - jinja2=3.1
+  - markdown-it-py=4.0
+  - pillow=11.3
+  - defusedxml=0.7
+  - pytest=8.4

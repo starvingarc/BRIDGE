@@ -1,0 +1,12 @@
+source_id: SOURCE-CD1CB5B5B252B6C0
+url: https://github.com/python/cpython
+source_type: source_repository
+title: 'GitHub - python/cpython: The Python programming language · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/python/cpython
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-STANDARD-LIBRARY
+- METHOD-STDLIB

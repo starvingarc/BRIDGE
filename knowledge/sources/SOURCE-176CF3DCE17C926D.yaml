@@ -1,0 +1,12 @@
+source_id: SOURCE-176CF3DCE17C926D
+url: https://python-jsonschema.readthedocs.io/
+source_type: official_documentation
+title: jsonschema 4.26.0 documentation
+verification_status: verified
+http_status: 200
+resolved_url: https://python-jsonschema.readthedocs.io/en/stable/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-PYTHON-LIBRARY
+- METHOD-SCHEMA-VALIDATOR

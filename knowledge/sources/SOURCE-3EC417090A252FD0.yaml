@@ -1,0 +1,11 @@
+source_id: SOURCE-3EC417090A252FD0
+url: https://arrow.apache.org/docs/python/
+source_type: official_resource
+title: Python — Apache Arrow v25.0.0
+verification_status: verified
+http_status: 200
+resolved_url: https://arrow.apache.org/docs/python/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-PYTHON-LIBRARY

@@ -1,0 +1,12 @@
+source_id: SOURCE-F2EB868987A7ED4A
+url: https://github.com/icbi-lab/infercnvpy
+source_type: source_repository
+title: 'GitHub - icbi-lab/infercnvpy: Infer copy number variation (CNV) from scRNA-seq
+  data. Plays nicely with Scanpy. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/icbi-lab/infercnvpy
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-INFERCNVPY

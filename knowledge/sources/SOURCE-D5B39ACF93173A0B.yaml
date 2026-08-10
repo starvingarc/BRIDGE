@@ -1,0 +1,12 @@
+source_id: SOURCE-D5B39ACF93173A0B
+url: https://github.com/PythonOT/POT
+source_type: source_repository
+title: 'GitHub - PythonOT/POT: POT : Python Optimal Transport · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/PythonOT/POT
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-GRAPH-COST-OPTIMAL-TRANSPORT
+- METHOD-GRAPH-COST-OPTIMAL-TRANSPORT-WITH-POT

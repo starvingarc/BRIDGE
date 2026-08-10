@@ -1,0 +1,12 @@
+source_id: SOURCE-2468C1824EE8D8D9
+url: https://github.com/LadybugDB/ladybug
+source_type: source_repository
+title: 'GitHub - LadybugDB/ladybug: LadybugDB a graph database · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/LadybugDB/ladybug
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-EMBEDDED-GRAPH-DATABASE
+- METHOD-LADYBUGDB

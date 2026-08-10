@@ -1,0 +1,13 @@
+source_id: SOURCE-15F65D50DC591CE7
+url: https://github.com/statsmodels/statsmodels
+source_type: source_repository
+title: 'GitHub - statsmodels/statsmodels: Statsmodels: statistical modeling and econometrics
+  in Python · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/statsmodels/statsmodels
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-BRIDGE-ICC-REPEATABILITY-ESTIMATOR
+- METHOD-BRIDGE-SAMPLE-LEVEL-EFFECT-SIZE-ENGINE

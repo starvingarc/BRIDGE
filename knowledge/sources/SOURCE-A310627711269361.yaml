@@ -1,0 +1,12 @@
+source_id: SOURCE-A310627711269361
+url: https://doi.org/10.1093/bioadv/vbac016
+source_type: primary_paper
+title: 'decoupleR: ensemble of computational methods to infer biological activities
+  from omics data'
+verification_status: verified_via_crossref
+http_status: 200
+resolved_url: https://doi.org/10.1093/bioadv/vbac016
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-DECOUPLER

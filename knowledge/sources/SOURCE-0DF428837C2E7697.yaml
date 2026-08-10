@@ -1,0 +1,12 @@
+source_id: SOURCE-0DF428837C2E7697
+url: https://www.nature.com/articles/s41588-024-01993-3
+source_type: primary_paper
+title: Consensus prediction of cell type labels in single-cell data with popV | Nature
+  Genetics
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41588-024-01993-3?error=cookies_not_supported&code=069adc58-0666-4245-856c-e74ba63cccc6
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-POPV

@@ -1,0 +1,12 @@
+source_id: SOURCE-D89F2CACE835D453
+url: https://doi.org/10.1038/s41467-020-19894-4
+source_type: primary_paper
+title: muscat detects subpopulation-specific state transitions from multi-sample multi-condition
+  single-cell transcriptomics data | Nature Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-020-19894-4?error=cookies_not_supported&code=3366f015-3469-4f8a-b69f-1215467eb094
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-MUSCAT

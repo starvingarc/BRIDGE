@@ -1,0 +1,46 @@
+method_id: METHOD-TOSICA-SCGPT-SCIMILARITY-REPRESENTATIVES
+display_name: TOSICA + scGPT + SCimilarity representatives
+aliases:
+- BL-CS-15
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- foundation shadow | test whether foundation models add value
+input_requirements:
+- internal labels through a separately trained head
+output_semantics:
+- embedding/classifier metrics and resource profile
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- shadow
+source_status_raw:
+- shadow
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw: []
+license_status: unresolved
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes: []
+source_tokens:
+- not_registered_in_source
+raw_source_token_count: 1
+public_source_assignment_count: 0
+source_ids: []
+source_status: not_registered
+primary_paper_status: unresolved
+critical_boundaries:
+- No formal evidence or method selection from sealed data
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-TOSICA-SCGPT-SCIMILARITY-REPRESENTATIVES/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R82

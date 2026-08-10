@@ -1,0 +1,48 @@
+method_id: METHOD-KUZU
+display_name: Kuzu
+aliases:
+- Kuzu
+modules:
+- P0-09
+capabilities:
+- evidence storage
+roles:
+- legacy reference only
+input_requirements:
+- on-disk embedded
+output_semantics:
+- Cypher
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- excluded
+source_status_raw:
+- excluded; use Ladybug successor review
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- MIT
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://github.com/kuzudb/kuzu
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-DF1F62DBA0C57BD4
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- 停止维护，不应作为新正式依赖
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-KUZU/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R309

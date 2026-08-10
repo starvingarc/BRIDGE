@@ -1,0 +1,51 @@
+method_id: METHOD-SCRUBLET
+display_name: Scrublet
+aliases:
+- SCRUBLET
+modules:
+- P0-01
+capabilities:
+- input audit and QC
+roles:
+- 同家族算法校验
+input_requirements:
+- count_ready | confirmed capture_id; raw UMI counts; expected rate provenance
+output_semantics:
+- per-capture score/class 与方法分歧
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- conditional
+source_status_raw:
+- conditional | existing_needs_freeze
+evidence_family_ids:
+- transcriptome_doublet
+evidence_family_state: assigned
+license_raw:
+- MIT
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://doi.org/10.1016/j.cels.2018.11.005
+- https://github.com/swolock/scrublet
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-313A6EA2863FB1A5
+- SOURCE-3A759A54DF40BD26
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- 多 capture 混跑、counts 不合格、阈值不稳定
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCRUBLET/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R16

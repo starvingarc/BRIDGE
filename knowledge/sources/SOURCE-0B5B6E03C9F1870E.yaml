@@ -1,0 +1,11 @@
+source_id: SOURCE-0B5B6E03C9F1870E
+url: https://gitlab.com/XenoCell/XenoCell
+source_type: source_repository
+title: XenoCell / XenoCell · GitLab
+verification_status: verified
+http_status: 200
+resolved_url: https://gitlab.com/XenoCell/XenoCell
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-XENOCELL

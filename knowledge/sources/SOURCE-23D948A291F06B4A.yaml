@@ -1,0 +1,11 @@
+source_id: SOURCE-23D948A291F06B4A
+url: https://portals.broadinstitute.org/harmony/
+source_type: official_resource
+title: Fast, Sensitive, and Accurate Integration of Single Cell Data • harmony
+verification_status: verified
+http_status: 200
+resolved_url: https://portals.broadinstitute.org/harmony/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-HARMONY

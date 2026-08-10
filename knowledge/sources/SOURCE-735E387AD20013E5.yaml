@@ -1,0 +1,11 @@
+source_id: SOURCE-735E387AD20013E5
+url: https://irrationone.github.io/cellassign/
+source_type: official_resource
+title: Automated, probabilistic assignment of scRNA-seq to cell types • cellassign
+verification_status: verified
+http_status: 200
+resolved_url: https://irrationone.github.io/cellassign/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLASSIGN

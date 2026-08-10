@@ -1,0 +1,13 @@
+source_id: SOURCE-C716978CEA210234
+url: https://bioconductor.org/packages/scConform/
+source_type: official_documentation
+title: Bioconductor - scConform
+verification_status: verified
+http_status: 200
+resolved_url: https://bioconductor.org/packages/release/bioc/html/scConform.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CONFORMAL-REGIONAL-PREDICTION
+- METHOD-SCCONFORM
+- METHOD-SCCONFORM-CONFORMAL-WRAPPER

@@ -1,0 +1,50 @@
+method_id: METHOD-BETA-BINOMIAL-SENSITIVITY
+display_name: Beta-binomial sensitivity
+aliases:
+- RARE-BETABIN
+modules:
+- P0-05
+capabilities:
+- rare-state detection
+roles:
+- overdispersion | Shadow sensitivity
+input_requirements:
+- Independent sample counts
+output_semantics:
+- Overdispersion-aware interval
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- shadow
+source_status_raw:
+- shadow
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- Tool-dependent
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://github.com/pymc-devs/pymc
+- https://www.pymc.io/
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-5AE29ECA0D454FC0
+- SOURCE-EC9756FA03B490C8
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Needs multiple preparations and prior checks
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-BETA-BINOMIAL-SENSITIVITY/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R166

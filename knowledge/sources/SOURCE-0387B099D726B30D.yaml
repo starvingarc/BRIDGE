@@ -1,0 +1,11 @@
+source_id: SOURCE-0387B099D726B30D
+url: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE221592
+source_type: official_resource
+title: GEO Accession viewer
+verification_status: verified
+http_status: 200
+resolved_url: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE221592
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-BRIDGE-SISBAR-ADAPTER-AND-TRANSITION-CALIBRATOR

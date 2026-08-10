@@ -1,0 +1,12 @@
+source_id: SOURCE-62DFB4C884482322
+url: https://github.com/carmonalab/STACAS
+source_type: source_repository
+title: 'GitHub - carmonalab/STACAS: R package for semi-supervised single-cell data
+  integration · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/carmonalab/STACAS
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-STACAS

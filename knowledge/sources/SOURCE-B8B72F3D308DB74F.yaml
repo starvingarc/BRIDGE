@@ -1,0 +1,12 @@
+source_id: SOURCE-B8B72F3D308DB74F
+url: https://gabrielhoffman.github.io/dreamlet/
+source_type: official_resource
+title: Scalable differential expression analysis of single cell transcriptomics datasets
+  with complex study designs • dreamlet
+verification_status: verified
+http_status: 200
+resolved_url: https://gabrielhoffman.github.io/dreamlet/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-DREAMLET-49F4B2

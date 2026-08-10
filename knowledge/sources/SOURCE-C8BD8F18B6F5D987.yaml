@@ -1,0 +1,11 @@
+source_id: SOURCE-C8BD8F18B6F5D987
+url: https://github.com/NNoureen/JASMINE
+source_type: source_repository
+title: 'GitHub - NNoureen/JASMINE: Single cell RNAseq Signature scoring · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/NNoureen/JASMINE
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-JASMINE

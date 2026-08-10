@@ -1,0 +1,51 @@
+method_id: METHOD-STATISTICS-LIBRARY
+display_name: statistics library
+aliases:
+- SciPy bootstrap
+modules:
+- P0-08
+capabilities:
+- evidence sufficiency
+roles:
+- statistics library | 核验上游 interval/stability 记录及方法版本
+input_requirements:
+- stored bootstrap result + metadata
+output_semantics:
+- validation metadata check
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- shortlisted
+source_status_raw:
+- shortlisted
+evidence_family_ids:
+- interval_validation
+evidence_family_state: assigned
+license_raw:
+- BSD-3-Clause
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html
+- https://github.com/scipy/scipy
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-23469E505384AA46
+- SOURCE-5164A379C52DEF7A
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- 本模块不擅自重采样，不重建域结果
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-STATISTICS-LIBRARY/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R291

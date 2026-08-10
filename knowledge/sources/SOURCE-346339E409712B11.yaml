@@ -1,0 +1,11 @@
+source_id: SOURCE-346339E409712B11
+url: https://www.bioconductor.org/books/release/SingleRBook/
+source_type: official_resource
+title: Assigning cell types with SingleR
+verification_status: verified
+http_status: 200
+resolved_url: https://www.bioconductor.org/books/release/SingleRBook/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SINGLER-795928

@@ -1,0 +1,60 @@
+method_id: METHOD-STDLIB
+display_name: stdlib
+aliases:
+- Python csv
+- Python hashlib
+- Python zipfile
+modules:
+- P0-11
+capabilities:
+- public-safe export
+roles:
+- stdlib | SHA-256 object and file hashes | controlled ZIP packaging | controlled
+  CSV serialization
+input_requirements:
+- canonical bytes / files | approved files + manifest | allowlisted rows
+output_semantics:
+- hex digest | candidate archive | CSV file
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- shortlisted
+source_status_raw:
+- shortlisted
+evidence_family_ids:
+- ARCHIVE
+- INTEGRITY
+- TABLE-SERIALIZATION
+evidence_family_state: assigned
+license_raw:
+- PSF-2.0
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://docs.python.org/3/library/csv.html
+- https://docs.python.org/3/library/hashlib.html
+- https://docs.python.org/3/library/zipfile.html
+- https://github.com/python/cpython
+raw_source_token_count: 4
+public_source_assignment_count: 4
+source_ids:
+- SOURCE-37E106D548B354EB
+- SOURCE-4A693406363562A5
+- SOURCE-9CFDE96BB911783C
+- SOURCE-CD1CB5B5B252B6C0
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- hash 证明完整性，不证明内容安全 | 拒绝绝对路径、父目录跳转和符号链接 | 需执行 spreadsheet formula injection policy
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-STDLIB/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R368

@@ -1,0 +1,12 @@
+source_id: SOURCE-ABED88EE43024F1F
+url: https://bioconductor.org/packages/release/bioc/html/muscat.html
+source_type: official_documentation
+title: Bioconductor - muscat
+verification_status: verified
+http_status: 200
+resolved_url: https://bioconductor.org/packages/release/bioc/html/muscat.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-MUSCAT
+- METHOD-MUSCAT-DIFFERENTIAL-STATE-WORKFLOW

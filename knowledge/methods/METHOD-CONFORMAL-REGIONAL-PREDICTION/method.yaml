@@ -1,0 +1,49 @@
+method_id: METHOD-CONFORMAL-REGIONAL-PREDICTION
+display_name: conformal regional prediction
+aliases:
+- REG-OPENSET
+modules:
+- P0-03
+capabilities:
+- regional fidelity
+roles:
+- open-set | abstention
+input_requirements:
+- frozen regional predictor
+output_semantics:
+- prediction set / empty set
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- shortlisted
+source_status_raw:
+- shortlisted
+evidence_family_ids:
+- regional_open_set
+evidence_family_state: assigned
+license_raw:
+- internal / Artistic-2.0
+license_status: internal
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://bioconductor.org/packages/scConform/
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-C716978CEA210234
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- calibration shift -> unavailable
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-CONFORMAL-REGIONAL-PREDICTION/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R91

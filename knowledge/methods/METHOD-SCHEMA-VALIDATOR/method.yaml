@@ -1,0 +1,57 @@
+method_id: METHOD-SCHEMA-VALIDATOR
+display_name: schema validator
+aliases:
+- jsonschema
+modules:
+- P0-09
+- P0-10
+capabilities:
+- claim verification
+- evidence compiler
+roles:
+- schema validator | independent JSON Schema validation
+input_requirements:
+- canonical JSON + schema
+output_semantics:
+- validation report
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- shortlisted
+source_status_raw:
+- shortlisted
+evidence_family_ids:
+- schema_validation
+evidence_family_state: assigned
+license_raw:
+- MIT
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://github.com/python-jsonschema/jsonschema
+- https://json-schema.org/specification
+- https://python-jsonschema.readthedocs.io/
+raw_source_token_count: 6
+public_source_assignment_count: 6
+source_ids:
+- SOURCE-176CF3DCE17C926D
+- SOURCE-68B7BDA54162DBB5
+- SOURCE-B1ED6CF928767B57
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- structure only
+- 只校验结构与约束
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCHEMA-VALIDATOR/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R303
+- MASTER-20260810:Tools:R336

@@ -1,0 +1,48 @@
+method_id: METHOD-TRADESEQ
+display_name: tradeSeq
+aliases:
+- TRJ-TRADESEQ
+modules:
+- P0-04
+capabilities:
+- trajectory benchmark
+roles:
+- gene dynamics along trajectory
+input_requirements:
+- Counts, pseudotime and lineage weights
+output_semantics:
+- GAM trends and trajectory-associated genes
+environment_requirements:
+- R/Bioconductor 方法环境；轨迹与 velocity 环境
+environment_policy:
+- 按能力拆分；兼容性验证通过前不合并环境
+scientific_status_raw:
+- conditional
+source_status_raw:
+- conditional
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- MIT + file LICENSE
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境；轨迹与 velocity 环境
+curation_notes: []
+source_tokens:
+- https://bioconductor.org/packages/tradeSeq/
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-A1EC1DCD5CE8D4A6
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- ''
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-TRADESEQ/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R153

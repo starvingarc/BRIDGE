@@ -1,0 +1,51 @@
+method_id: METHOD-RESEARCH-OBJECT-PACKAGING
+display_name: research object packaging
+aliases:
+- RO-Crate
+modules:
+- P0-09
+capabilities:
+- evidence compiler
+roles:
+- research object packaging | portable report/evidence package candidate
+input_requirements:
+- canonical artifacts + metadata
+output_semantics:
+- RO-Crate package
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- shadow
+source_status_raw:
+- shadow
+evidence_family_ids:
+- interop_export
+evidence_family_state: assigned
+license_raw:
+- community specification
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://github.com/ResearchObject/ro-crate
+- https://www.researchobject.org/ro-crate/specification/1.3/introduction.html
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-7272F9E9DCF46873
+- SOURCE-D1E61CF072A239E9
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- 不得把内部路径或 restricted metadata 放入 public crate
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-RESEARCH-OBJECT-PACKAGING/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R301

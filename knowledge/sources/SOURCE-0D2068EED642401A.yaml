@@ -1,0 +1,13 @@
+source_id: SOURCE-0D2068EED642401A
+url: https://github.com/theislab/scib
+source_type: source_repository
+title: 'GitHub - theislab/scib: Benchmarking analysis of data integration tools ·
+  GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/theislab/scib
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCIB
+- METHOD-SCIB-SCIB-METRICS

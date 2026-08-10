@@ -1,0 +1,48 @@
+method_id: METHOD-SCOPIT
+display_name: SCOPIT
+aliases:
+- RARE-SCOPIT
+modules:
+- P0-05
+capabilities:
+- rare-state detection
+roles:
+- experimental design | Design aid
+input_requirements:
+- Expected frequency and desired detection probability
+output_semantics:
+- Required-cell planning
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- catalog_only
+source_status_raw:
+- catalog_only
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- Article terms
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://pmc.ncbi.nlm.nih.gov/articles/PMC6852764/
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-0801A60B3963DA70
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Planning calculation, not rare-state discovery
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCOPIT/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R176

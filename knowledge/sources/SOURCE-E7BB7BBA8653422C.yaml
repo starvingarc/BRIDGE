@@ -1,0 +1,11 @@
+source_id: SOURCE-E7BB7BBA8653422C
+url: https://git.bioconductor.org/packages/limma
+source_type: source_repository
+title: https://git.bioconductor.org/packages/limma
+verification_status: verified
+http_status: 200
+resolved_url: https://git.bioconductor.org/packages/limma
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-LIMMA-VOOM

@@ -1,0 +1,12 @@
+source_id: SOURCE-09E8562C129F04CF
+url: https://www.nature.com/articles/s41586-024-08411-y
+source_type: primary_paper
+title: A cell atlas foundation model for scalable search of similar human cells |
+  Nature
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41586-024-08411-y?error=cookies_not_supported&code=af82a2a3-3173-4359-8315-9e5c68faabcb
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCIMILARITY

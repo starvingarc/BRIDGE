@@ -1,0 +1,12 @@
+source_id: SOURCE-8D01DB00B7ED936C
+url: https://github.com/calico/scnym
+source_type: source_repository
+title: 'GitHub - calico/scnym: Semi-supervised adversarial neural networks for classification
+  of single cell transcriptomics data · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/calico/scnym
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCNYM

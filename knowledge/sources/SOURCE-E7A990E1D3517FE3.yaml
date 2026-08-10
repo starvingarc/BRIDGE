@@ -1,0 +1,11 @@
+source_id: SOURCE-E7A990E1D3517FE3
+url: https://docs.falkordb.com/
+source_type: official_documentation
+title: FalkorDB Docs | Graph Database for GraphRAG, Cypher & Knowledge Graphs
+verification_status: verified
+http_status: 200
+resolved_url: https://docs.falkordb.com/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-FALKORDB

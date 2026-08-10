@@ -1,0 +1,12 @@
+source_id: SOURCE-B08BCA45633C76D3
+url: https://www.nature.com/articles/s41592-023-02035-2
+source_type: primary_paper
+title: Population-level integration of single-cell datasets enables multi-scale analysis
+  across samples | Nature Methods
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41592-023-02035-2?error=cookies_not_supported&code=6dfe2faf-7186-4c0e-ac60-3f25455a569e
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCPOLI

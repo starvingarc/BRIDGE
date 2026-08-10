@@ -1,0 +1,12 @@
+source_id: SOURCE-E16C46604A21CC4D
+url: https://arxiv.org/abs/2410.23786
+source_type: official_resource
+title: '[2410.23786] Conformal inference for cell type annotation with graph-structured
+  constraints'
+verification_status: verified
+http_status: 200
+resolved_url: https://arxiv.org/abs/2410.23786
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCCONFORM

@@ -1,0 +1,48 @@
+method_id: METHOD-SOURCE-AWARE-ORDINAL-CLASSIFIER
+display_name: source-aware ordinal classifier
+aliases:
+- DEV-ORDINAL
+modules:
+- P0-04
+capabilities:
+- developmental state
+roles:
+- independent stage mapping | formal candidate
+input_requirements:
+- Grouped training units, ordered stages and held-out sources
+output_semantics:
+- ordinal support distribution, prediction interval and calibration
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- candidate
+source_status_raw:
+- candidate
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- BSD-3-Clause dependencies
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://scikit-learn.org/stable/
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-D96CD7BAEC7D7F34
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- No cell-level random split; source/modality leakage blocks release.
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SOURCE-AWARE-ORDINAL-CLASSIFIER/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R134

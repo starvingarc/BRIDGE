@@ -1,0 +1,11 @@
+source_id: SOURCE-49B7C5AB3212201D
+url: https://git.bioconductor.org/packages/batchelor
+source_type: source_repository
+title: https://git.bioconductor.org/packages/batchelor
+verification_status: verified
+http_status: 200
+resolved_url: https://git.bioconductor.org/packages/batchelor
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-FASTMNN-2C7EA7

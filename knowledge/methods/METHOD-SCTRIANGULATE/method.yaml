@@ -1,0 +1,50 @@
+method_id: METHOD-SCTRIANGULATE
+display_name: scTriangulate
+aliases:
+- TOOL-CS-SCTRIANGULATE
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- label consensus | compare and reconcile candidate annotations
+input_requirements:
+- multiple annotation columns + embedding/markers
+output_semantics:
+- pruned consensus labels and diagnostics
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- catalog_only
+source_status_raw:
+- catalog_only
+evidence_family_ids:
+- EF-CS-CONSENSUS
+evidence_family_state: assigned
+license_raw:
+- verify_before_freeze
+license_status: review_required
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes:
+- The unavailable repository URL was replaced by the official maintained documentation.
+source_tokens:
+- https://sctriangulate.readthedocs.io/en/latest/
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-5DF0506C24735E0A
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Consensus cannot turn correlated methods into independent evidence.
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCTRIANGULATE/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R72

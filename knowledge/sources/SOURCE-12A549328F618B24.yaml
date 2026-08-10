@@ -1,0 +1,12 @@
+source_id: SOURCE-12A549328F618B24
+url: https://www.nature.com/articles/s41467-021-25957-x
+source_type: primary_paper
+title: Efficient and precise single-cell reference atlas mapping with Symphony | Nature
+  Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-021-25957-x?error=cookies_not_supported&code=7b7017d0-2d82-44d4-8fea-c526481cc5cf
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SYMPHONY

@@ -1,0 +1,12 @@
+source_id: SOURCE-DF1F62DBA0C57BD4
+url: https://github.com/kuzudb/kuzu
+source_type: source_repository
+title: 'GitHub - kuzudb/kuzu: Embedded property graph database built for speed. Vector
+  search and full-text search built in. Implements Cypher. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/kuzudb/kuzu
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-KUZU

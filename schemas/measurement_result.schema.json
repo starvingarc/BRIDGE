@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/measurement-result/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "denominator": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Denominator"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "interval": {
+      "anyOf": [
+        {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Interval"
+    },
+    "measurement_id": {
+      "title": "Measurement Id",
+      "type": "string"
+    },
+    "measurement_spec_id": {
+      "title": "Measurement Spec Id",
+      "type": "string"
+    },
+    "metric_name": {
+      "title": "Metric Name",
+      "type": "string"
+    },
+    "numerator": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Numerator"
+    },
+    "provenance_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "raw_value": {
+      "title": "Raw Value"
+    },
+    "score_state": {
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    }
+  },
+  "required": [
+    "measurement_id",
+    "measurement_spec_id",
+    "metric_name",
+    "raw_value",
+    "score_state",
+    "evidence_state"
+  ],
+  "title": "MeasurementResult",
+  "type": "object"
+}

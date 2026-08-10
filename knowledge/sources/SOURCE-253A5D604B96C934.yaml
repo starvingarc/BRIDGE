@@ -1,0 +1,13 @@
+source_id: SOURCE-253A5D604B96C934
+url: https://github.com/broadinstitute/CellBender
+source_type: source_repository
+title: 'GitHub - broadinstitute/CellBender: CellBender is a software package for eliminating
+  technical artifacts from high-throughput single-cell RNA sequencing (scRNA-seq)
+  data. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/broadinstitute/CellBender
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLBENDER-REMOVE-BACKGROUND

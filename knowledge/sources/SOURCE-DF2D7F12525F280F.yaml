@@ -1,0 +1,13 @@
+source_id: SOURCE-DF2D7F12525F280F
+url: https://github.com/Genentech/scimilarity
+source_type: source_repository
+title: 'GitHub - Genentech/scimilarity: A unifying representation of single cell expression
+  profiles that quantifies similarity between expression states and generalizes to
+  represent new studies without additional training. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/Genentech/scimilarity
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCIMILARITY

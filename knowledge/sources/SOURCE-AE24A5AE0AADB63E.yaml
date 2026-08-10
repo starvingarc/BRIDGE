@@ -1,0 +1,11 @@
+source_id: SOURCE-AE24A5AE0AADB63E
+url: https://github.com/biomed-AI/CellFM
+source_type: source_repository
+title: GitHub - biomed-AI/CellFM · GitHub
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/biomed-AI/CellFM
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLFM

@@ -1,0 +1,51 @@
+method_id: METHOD-SCGPT
+display_name: scGPT
+aliases:
+- TOOL-CS-SCGPT
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- foundation model | embedding or internal-label fine-tuning
+input_requirements:
+- model-specific tokenized expression
+output_semantics:
+- embedding or classifier output
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- shadow
+source_status_raw:
+- shadow
+evidence_family_ids:
+- EF-CS-FOUNDATION
+evidence_family_state: assigned
+license_raw:
+- MIT code; weights/data separate
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://github.com/bowang-lab/scGPT
+- https://www.nature.com/articles/s41592-024-02201-0
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-B59BAD90F037E789
+- SOURCE-C18BB23F63686825
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Shadow only; no formal evidence before leakage and calibration review.
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCGPT/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R60

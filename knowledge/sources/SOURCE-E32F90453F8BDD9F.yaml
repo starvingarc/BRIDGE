@@ -1,0 +1,13 @@
+source_id: SOURCE-E32F90453F8BDD9F
+url: https://github.com/ventolab/CellphoneDB
+source_type: source_repository
+title: 'GitHub - ventolab/CellphoneDB: CellPhoneDB can be used to search for a particular
+  ligand/receptor, or interrogate your own HUMAN single-cell transcriptomics data.
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/ventolab/CellphoneDB
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLPHONEDB

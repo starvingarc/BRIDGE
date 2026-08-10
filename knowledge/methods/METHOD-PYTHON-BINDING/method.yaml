@@ -1,0 +1,49 @@
+method_id: METHOD-PYTHON-BINDING
+display_name: Python binding
+aliases:
+- python-magic
+modules:
+- P0-11
+capabilities:
+- public-safe export
+roles:
+- Python binding | libmagic integration
+input_requirements:
+- candidate file
+output_semantics:
+- MIME record
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- proposed
+source_status_raw:
+- proposed
+evidence_family_ids:
+- MIME-CHECK
+evidence_family_state: assigned
+license_raw:
+- MIT
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://github.com/ahupp/python-magic
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-1D150F5701B55DBF
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- 与 file 同证据家族
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-PYTHON-BINDING/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R364

@@ -1,0 +1,11 @@
+source_id: SOURCE-FD18FB3B17C7348C
+url: https://git.bioconductor.org/packages/DESeq2
+source_type: source_repository
+title: https://git.bioconductor.org/packages/DESeq2
+verification_status: verified
+http_status: 200
+resolved_url: https://git.bioconductor.org/packages/DESeq2
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-DESEQ2

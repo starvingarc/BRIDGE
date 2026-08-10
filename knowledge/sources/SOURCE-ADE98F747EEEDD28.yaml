@@ -1,0 +1,12 @@
+source_id: SOURCE-ADE98F747EEEDD28
+url: https://celltypist.readthedocs.io/
+source_type: official_documentation
+title: Welcome to CellTypist’s documentation! — celltypist 1.7.1 documentation
+verification_status: verified
+http_status: 200
+resolved_url: https://celltypist.readthedocs.io/en/latest/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLTYPIST
+- METHOD-CELLTYPIST-CUSTOM-MODEL

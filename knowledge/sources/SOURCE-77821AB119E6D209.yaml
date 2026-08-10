@@ -1,0 +1,11 @@
+source_id: SOURCE-77821AB119E6D209
+url: https://doi.org/10.1038/nmeth.4463
+source_type: primary_paper
+title: 'SCENIC: single-cell regulatory network inference and clustering | Nature Methods'
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/nmeth.4463?error=cookies_not_supported&code=5bcc4102-7372-4eb5-a3e2-573c6dce1866
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-AUCELL-65EAB4

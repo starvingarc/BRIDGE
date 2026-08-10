@@ -1,0 +1,12 @@
+source_id: SOURCE-CE7E4E05E4B23BA9
+url: https://www.nature.com/articles/s41587-021-00830-w
+source_type: primary_paper
+title: Robust decomposition of cell type mixtures in spatial transcriptomics | Nature
+  Biotechnology
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41587-021-00830-w?error=cookies_not_supported&code=4cb2fca2-7e4c-46f8-9422-fe06a6ddd400
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-RCTD-SPACEXR

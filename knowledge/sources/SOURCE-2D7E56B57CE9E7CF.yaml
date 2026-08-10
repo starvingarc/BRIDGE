@@ -1,0 +1,12 @@
+source_id: SOURCE-2D7E56B57CE9E7CF
+url: https://github.com/theislab/nicheformer
+source_type: source_repository
+title: 'GitHub - theislab/nicheformer: Repository for Nicheformer: a foundation model
+  for single-cell and spatial omics · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/theislab/nicheformer
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-NICHEFORMER

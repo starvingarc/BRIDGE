@@ -1,0 +1,14 @@
+source_id: SOURCE-EC9756FA03B490C8
+url: https://github.com/pymc-devs/pymc
+source_type: source_repository
+title: 'GitHub - pymc-devs/pymc: Bayesian Modeling and Probabilistic Programming in
+  Python · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/pymc-devs/pymc
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-BETA-BINOMIAL-SENSITIVITY
+- METHOD-DIRICHLET-MULTINOMIAL-MODEL
+- METHOD-DIRICHLET-MULTINOMIAL-SENSITIVITY

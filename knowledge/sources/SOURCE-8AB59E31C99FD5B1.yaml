@@ -1,0 +1,12 @@
+source_id: SOURCE-8AB59E31C99FD5B1
+url: https://github.com/open-policy-agent/opa
+source_type: source_repository
+title: 'GitHub - open-policy-agent/opa: Open Policy Agent (OPA) is an open source,
+  general-purpose policy engine. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/open-policy-agent/opa
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-POLICY-ENGINE

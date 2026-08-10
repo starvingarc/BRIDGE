@@ -1,0 +1,12 @@
+source_id: SOURCE-EA0C2ECCF5D7EF7B
+url: https://github.com/dylkot/cNMF
+source_type: source_repository
+title: 'GitHub - dylkot/cNMF: Code and example data for running Consensus Non-negative
+  Matrix Factorization on single-cell RNA-Seq data · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/dylkot/cNMF
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CNMF

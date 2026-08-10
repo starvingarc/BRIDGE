@@ -1,0 +1,12 @@
+source_id: SOURCE-D96CD7BAEC7D7F34
+url: https://scikit-learn.org/stable/
+source_type: official_resource
+title: 'scikit-learn: machine learning in Python — scikit-learn 1.9.0 documentation'
+verification_status: verified
+http_status: 200
+resolved_url: https://scikit-learn.org/stable/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-MAXIMUM-PROBABILITY-ENTROPY-AND-MARGIN
+- METHOD-SOURCE-AWARE-ORDINAL-CLASSIFIER

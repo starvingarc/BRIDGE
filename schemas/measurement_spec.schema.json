@@ -1,0 +1,155 @@
+{
+  "$id": "bridge://schemas/measurement-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_unit": {
+      "title": "Analysis Unit",
+      "type": "string"
+    },
+    "applicable_product_cards": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Applicable Product Cards",
+      "type": "array"
+    },
+    "assay": {
+      "title": "Assay",
+      "type": "string"
+    },
+    "denominator": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Denominator"
+    },
+    "direction": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Direction"
+    },
+    "exclusion_rules": {
+      "additionalProperties": true,
+      "title": "Exclusion Rules",
+      "type": "object"
+    },
+    "input_contract": {
+      "additionalProperties": true,
+      "title": "Input Contract",
+      "type": "object"
+    },
+    "measurement_spec_id": {
+      "title": "Measurement Spec Id",
+      "type": "string"
+    },
+    "minimum_data": {
+      "additionalProperties": true,
+      "title": "Minimum Data",
+      "type": "object"
+    },
+    "missing_behavior": {
+      "title": "Missing Behavior",
+      "type": "string"
+    },
+    "numerator": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Numerator"
+    },
+    "prior_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Prior Refs",
+      "type": "array"
+    },
+    "raw_metric_definition": {
+      "additionalProperties": true,
+      "title": "Raw Metric Definition",
+      "type": "object"
+    },
+    "reference_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reference Refs",
+      "type": "array"
+    },
+    "scientific_question": {
+      "title": "Scientific Question",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "tool_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tool Refs",
+      "type": "array"
+    },
+    "uncertainty_method": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uncertainty Method"
+    },
+    "validation_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Validation Ref"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "measurement_spec_id",
+    "version",
+    "scientific_question",
+    "assay",
+    "status",
+    "input_contract",
+    "analysis_unit",
+    "raw_metric_definition",
+    "missing_behavior"
+  ],
+  "title": "MeasurementSpec",
+  "type": "object"
+}

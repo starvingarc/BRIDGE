@@ -1,0 +1,13 @@
+source_id: SOURCE-E9AC183AB92F53F5
+url: https://github.com/microsoft/presidio
+source_type: source_repository
+title: 'GitHub - data-privacy-stack/presidio: An open-source framework for detecting,
+  redacting, masking, and anonymizing sensitive data (PII) across text, images, and
+  structured data. Supports NLP, pattern matching, and customizable pipelines. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/data-privacy-stack/presidio
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCANNER

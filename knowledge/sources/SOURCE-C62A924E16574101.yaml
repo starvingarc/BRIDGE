@@ -1,0 +1,12 @@
+source_id: SOURCE-C62A924E16574101
+url: https://github.com/MarioniLab/miloR
+source_type: source_repository
+title: 'GitHub - MarioniLab/miloR: R package implementation of Milo for testing for
+  differential abundance in KNN graphs · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/MarioniLab/miloR
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-MILO-MILOR

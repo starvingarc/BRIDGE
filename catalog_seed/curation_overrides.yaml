@@ -1,0 +1,35 @@
+schema_version: 0.1.0
+methods:
+  SampleQC:
+    official_url: https://doi.org/10.1186/s13059-023-02859-3
+    license: MIT
+    note: The DOI suffix and repository license were checked against the primary publication and official repository.
+  scQCenrich:
+    license: MIT
+    note: The repository license was checked against the official source repository.
+  SoupX:
+    license: GPL-3.0
+    note: The license was corrected from the older registry value using the official repository.
+  CellBender remove-background:
+    version: 0.3.2
+    note: Version 0.3.2 is the documentation baseline; the known 0.3.1 incorrect-matrix issue must remain in version review.
+  scuttle:
+    note: No package-specific primary paper is registered; treat scuttle as a legacy utility and review maintained replacements before freezing.
+  MetaNeighbor:
+    official_url: https://bioconductor.org/packages/release/bioc/html/MetaNeighbor.html | https://git.bioconductor.org/packages/MetaNeighbor
+    note: The retired Bioconductor code-browser URL was replaced by the current package and source repository URLs.
+  scVI/scANVI/scArches:
+    official_url: https://github.com/scverse/scvi-tools | https://docs.scarches.org/en/stable/index.html
+    note: The retired scvi-tools notebook URL was replaced by the maintained scArches documentation.
+  scClassify:
+    official_url: https://doi.org/10.15252/msb.20199389 | https://github.com/SydneyBioX/scClassify
+    note: The incorrect registry DOI was replaced by the primary Molecular Systems Biology publication DOI.
+  scTriangulate:
+    official_url: https://sctriangulate.readthedocs.io/en/latest/
+    note: The unavailable repository URL was replaced by the official maintained documentation.
+  scSorter:
+    official_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC7898451/ | https://doi.org/10.1186/s13059-021-02281-7
+    note: The unavailable repository URL was replaced by the open primary publication record.
+  pertpy scCODA:
+    official_url: https://pertpy.readthedocs.io/en/latest/api/tools/pertpy.tools.Sccoda.html | https://github.com/scverse/pertpy | https://pertpy.readthedocs.io/en/latest/tutorials/notebooks/sccoda.html
+    note: The retired API path was replaced by the current pertpy API path.

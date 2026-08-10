@@ -1,0 +1,12 @@
+source_id: SOURCE-107E66057621CF23
+url: https://github.com/carmonalab/scGate
+source_type: source_repository
+title: 'GitHub - carmonalab/scGate: marker-based purification of cell types from single-cell
+  RNA-seq datasets · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/carmonalab/scGate
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCGATE

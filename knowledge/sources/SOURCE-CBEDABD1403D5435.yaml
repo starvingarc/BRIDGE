@@ -1,0 +1,12 @@
+source_id: SOURCE-CBEDABD1403D5435
+url: https://pmc.ncbi.nlm.nih.gov/articles/PMC6637521/
+source_type: primary_paper
+title: CellSIUS provides sensitive and specific detection of rare cell populations
+  from complex single-cell RNA-seq data - PMC
+verification_status: verified
+http_status: 200
+resolved_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC6637521/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLSIUS

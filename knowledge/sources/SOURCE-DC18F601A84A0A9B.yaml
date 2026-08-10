@@ -1,0 +1,11 @@
+source_id: SOURCE-DC18F601A84A0A9B
+url: https://www.nature.com/articles/nmeth.4644
+source_type: primary_paper
+title: 'scmap: projection of single-cell RNA-seq data across data sets | Nature Methods'
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/nmeth.4644?error=cookies_not_supported&code=b22a9f76-55fa-4356-a61c-172a4085dc52
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCMAP-D22D14

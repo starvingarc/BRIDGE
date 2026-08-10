@@ -1,0 +1,11 @@
+source_id: SOURCE-8ED839BC1CC677C4
+url: https://github.com/cole-trapnell-lab/garnett
+source_type: source_repository
+title: 'GitHub - cole-trapnell-lab/garnett: Automated cell type classification · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/cole-trapnell-lab/garnett
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-GARNETT

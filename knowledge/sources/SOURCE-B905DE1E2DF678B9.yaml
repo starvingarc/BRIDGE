@@ -1,0 +1,12 @@
+source_id: SOURCE-B905DE1E2DF678B9
+url: https://github.com/rdong08/GiniClust3
+source_type: source_repository
+title: 'GitHub - rdong08/GiniClust3: Rare cell identification tool for single cell
+  datasets · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/rdong08/GiniClust3
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-GINICLUST3

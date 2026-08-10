@@ -1,0 +1,12 @@
+source_id: SOURCE-287A359270DABA2F
+url: https://www.nature.com/articles/s41467-024-51649-3
+source_type: primary_paper
+title: Robust identification of perturbed cell types in single-cell RNA-seq data |
+  Nature Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-024-51649-3?error=cookies_not_supported&code=74533923-b52c-4b40-9c62-ceab2a713716
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCDIST

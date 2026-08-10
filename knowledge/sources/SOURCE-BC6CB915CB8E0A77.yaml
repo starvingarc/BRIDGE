@@ -1,0 +1,12 @@
+source_id: SOURCE-BC6CB915CB8E0A77
+url: https://arrow.apache.org/docs/python/parquet.html
+source_type: official_resource
+title: Reading and Writing the Apache Parquet Format — Apache Arrow v25.0.0
+verification_status: verified
+http_status: 200
+resolved_url: https://arrow.apache.org/docs/python/parquet.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CANONICAL-JSON-PARQUET
+- METHOD-COLUMNAR-STORAGE

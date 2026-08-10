@@ -1,0 +1,11 @@
+source_id: SOURCE-DE5336683014A85E
+url: https://satijalab.org/seurat/reference/findtransferanchors
+source_type: official_documentation
+title: Find transfer anchors — FindTransferAnchors • Seurat
+verification_status: verified
+http_status: 200
+resolved_url: https://satijalab.org/seurat/reference/findtransferanchors
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SEURAT-FINDTRANSFERANCHORS-TRANSFERDATA

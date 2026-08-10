@@ -1,0 +1,53 @@
+method_id: METHOD-SCCLASSIFY
+display_name: scClassify
+aliases:
+- TOOL-CS-SCCLASSIFY
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- traditional supervised/ensemble | ensemble classification with similarity metrics
+input_requirements:
+- multiple labeled references + query
+output_semantics:
+- cell labels, unassigned and ensemble outputs
+environment_requirements:
+- R/Bioconductor 方法环境
+environment_policy:
+- 按该能力环境运行并冻结依赖、版本与 fixture
+scientific_status_raw:
+- catalog_only
+source_status_raw:
+- catalog_only
+evidence_family_ids:
+- EF-CS-ENSEMBLE
+evidence_family_state: assigned
+license_raw:
+- verify_before_freeze
+license_status: review_required
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境
+curation_notes:
+- The incorrect registry DOI was replaced by the primary Molecular Systems Biology
+  publication DOI.
+source_tokens:
+- https://doi.org/10.15252/msb.20199389
+- https://github.com/SydneyBioX/scClassify
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-B85A4D4910A100C3
+- SOURCE-F08C4518E144D988
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Correlated classifiers and references must be deduplicated.
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCCLASSIFY/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R55

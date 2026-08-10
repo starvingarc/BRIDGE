@@ -1,0 +1,11 @@
+source_id: SOURCE-B1ED6CF928767B57
+url: https://json-schema.org/specification
+source_type: official_resource
+title: JSON Schema - Specification [#section]
+verification_status: verified
+http_status: 200
+resolved_url: https://json-schema.org/specification
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCHEMA-VALIDATOR

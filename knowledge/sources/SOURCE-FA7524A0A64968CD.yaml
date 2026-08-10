@@ -1,0 +1,11 @@
+source_id: SOURCE-FA7524A0A64968CD
+url: https://www.ebi.ac.uk/ols4/ontologies/uberon
+source_type: official_resource
+title: Ontology Lookup Service (OLS)
+verification_status: verified
+http_status: 200
+resolved_url: https://www.ebi.ac.uk/ols4/ontologies/uberon
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-UBERON-HSAPDV-CROSSWALK

@@ -1,0 +1,12 @@
+source_id: SOURCE-4F9069B750501447
+url: https://github.com/coreutils/coreutils
+source_type: source_repository
+title: 'GitHub - coreutils/coreutils: Public mirror. Pull requests and Issues accepted
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/coreutils/coreutils
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-OS-CLI

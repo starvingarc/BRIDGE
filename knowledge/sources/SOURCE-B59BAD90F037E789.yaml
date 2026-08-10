@@ -1,0 +1,12 @@
+source_id: SOURCE-B59BAD90F037E789
+url: https://www.nature.com/articles/s41592-024-02201-0
+source_type: primary_paper
+title: 'scGPT: toward building a foundation model for single-cell multi-omics using
+  generative AI | Nature Methods'
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41592-024-02201-0?error=cookies_not_supported&code=59290e8e-9eb0-4550-9b90-2ef2ddacdde9
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCGPT

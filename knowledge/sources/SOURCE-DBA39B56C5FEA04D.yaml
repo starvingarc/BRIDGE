@@ -1,0 +1,12 @@
+source_id: SOURCE-DBA39B56C5FEA04D
+url: https://github.com/cytoscape/cytoscape.js
+source_type: source_repository
+title: 'GitHub - cytoscape/cytoscape.js: Graph theory (network) library for visualisation
+  and analysis · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/cytoscape/cytoscape.js
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-WEB-GRAPH-RENDERER

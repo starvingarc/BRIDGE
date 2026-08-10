@@ -1,0 +1,12 @@
+source_id: SOURCE-EBB785D9306A18D5
+url: https://github.com/theislab/scCODA
+source_type: source_repository
+title: 'GitHub - theislab/scCODA: A Bayesian model for compositional single-cell data
+  analysis · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/theislab/scCODA
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCCODA

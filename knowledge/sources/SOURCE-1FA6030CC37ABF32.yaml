@@ -1,0 +1,14 @@
+source_id: SOURCE-1FA6030CC37ABF32
+url: https://github.com/dgrun/RaceID3_StemID2
+source_type: source_repository
+title: 'GitHub - dgrun/RaceID3_StemID2: Algorithm for the inference of cell types
+  and lineage trees from single-cell RNA-seq data. Please download the R package from
+  the RaceID3_StemID2_package repository, which contains the current version as an
+  R package. This repository will not be updated anymore. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/dgrun/RaceID3_StemID2
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-RACEID3

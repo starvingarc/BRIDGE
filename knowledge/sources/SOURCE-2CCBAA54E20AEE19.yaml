@@ -1,0 +1,11 @@
+source_id: SOURCE-2CCBAA54E20AEE19
+url: https://github.com/dpeerlab/Palantir
+source_type: source_repository
+title: 'GitHub - dpeerlab/Palantir: Single cell trajectory detection · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/dpeerlab/Palantir
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-PALANTIR

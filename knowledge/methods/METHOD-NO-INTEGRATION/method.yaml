@@ -1,0 +1,51 @@
+method_id: METHOD-NO-INTEGRATION
+display_name: No integration
+aliases:
+- BL-CS-11
+- TOOL-CS-NOINTEGRATION
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- integration sensitivity | frozen sensitivity baseline | mandatory baseline
+input_requirements:
+- normalized expression/PCA by source | all eligible annotation targets
+output_semantics:
+- uncorrected embedding and annotation outputs | unintegrated annotation and composition
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- shortlisted
+source_status_raw:
+- shortlisted
+evidence_family_ids:
+- EF-CS-NO-INTEGRATION
+evidence_family_state: assigned
+license_raw:
+- internal
+license_status: internal
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- internal_no_public_url
+- not_registered_in_source
+raw_source_token_count: 2
+public_source_assignment_count: 0
+source_ids: []
+source_status: internal_no_public_source
+primary_paper_status: not_applicable
+critical_boundaries:
+- Marker/program evidence always retains a non-integrated view. | Never omit because
+  an integrated view looks cleaner
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-NO-INTEGRATION/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R46

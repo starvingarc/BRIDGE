@@ -1,0 +1,11 @@
+source_id: SOURCE-21C57174911003BC
+url: https://jinja.palletsprojects.com/en/stable/
+source_type: official_resource
+title: Jinja — Jinja Documentation (3.1.x)
+verification_status: verified
+http_status: 200
+resolved_url: https://jinja.palletsprojects.com/en/stable/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-TEMPLATE-ENGINE

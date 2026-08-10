@@ -1,0 +1,11 @@
+source_id: SOURCE-4AC24BABBF016B99
+url: https://www.nature.com/articles/s41467-020-15523-2
+source_type: primary_paper
+title: SciBet as a portable and fast single cell type identifier | Nature Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-020-15523-2?error=cookies_not_supported&code=b2843f8e-1b9d-4bc0-9e02-5959c3f1fc14
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCIBET

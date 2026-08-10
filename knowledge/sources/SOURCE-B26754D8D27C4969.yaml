@@ -1,0 +1,12 @@
+source_id: SOURCE-B26754D8D27C4969
+url: https://github.com/PaulingLiu/scibet
+source_type: source_repository
+title: 'GitHub - PaulingLiu/scibet: A portable and fast single cell type identifier
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/PaulingLiu/scibet
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCIBET

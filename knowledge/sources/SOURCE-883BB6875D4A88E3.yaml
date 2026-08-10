@@ -1,0 +1,14 @@
+source_id: SOURCE-883BB6875D4A88E3
+url: https://github.com/Teichlab/celltypist
+source_type: source_repository
+title: 'GitHub - Teichlab/celltypist: A tool for semi-automatic cell type classification
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/Teichlab/celltypist
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLTYPIST
+- METHOD-CELLTYPIST-CUSTOM-CLASSIFIER
+- METHOD-CELLTYPIST-CUSTOM-MODEL

@@ -1,0 +1,69 @@
+{
+  "$id": "bridge://schemas/visualization-artifact/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "component_id": {
+      "title": "Component Id",
+      "type": "string"
+    },
+    "data_artifact_id": {
+      "title": "Data Artifact Id",
+      "type": "string"
+    },
+    "denominator": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Denominator"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "render_artifact_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Render Artifact Ids",
+      "type": "array"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "units": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Units"
+    },
+    "visualization_id": {
+      "title": "Visualization Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "visualization_id",
+    "component_id",
+    "data_artifact_id",
+    "evidence_ids",
+    "status"
+  ],
+  "title": "VisualizationArtifact",
+  "type": "object"
+}

@@ -1,0 +1,12 @@
+source_id: SOURCE-A747C7630DD08446
+url: https://doi.org/10.1186/s13059-021-02281-7
+source_type: primary_paper
+title: 'scSorter: assigning cells to known cell types according to marker genes |
+  Genome Biology | Springer Nature Link'
+verification_status: verified
+http_status: 200
+resolved_url: https://link.springer.com/article/10.1186/s13059-021-02281-7?error=cookies_not_supported&code=37a4fbee-e70b-45b1-95be-1d8bab9b9ecf
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCSORTER

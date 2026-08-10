@@ -1,0 +1,48 @@
+method_id: METHOD-SAME-SOURCE-D0-SPIKE-IN
+display_name: Same-source D0 spike-in
+aliases:
+- PROC-PSC-SPIKEIN
+modules:
+- P0-06
+capabilities:
+- proliferation and pluripotency
+roles:
+- analytical sensitivity
+input_requirements:
+- D0 and later matched hESC profiles with preserved provenance
+output_semantics:
+- Detection curve across predefined mixture fractions
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+source_status_raw:
+- benchmark
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- data-source terms
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE76381
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-63C33CEF1595E10C
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- D0 is not transformed-cell truth or an allowable contamination threshold
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SAME-SOURCE-D0-SPIKE-IN/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R224

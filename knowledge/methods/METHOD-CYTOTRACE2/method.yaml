@@ -1,0 +1,48 @@
+method_id: METHOD-CYTOTRACE2
+display_name: CytoTRACE2
+aliases:
+- CYTOTRACE2
+modules:
+- P0-12
+capabilities:
+- graft assessment
+roles:
+- maturation shadow | maturation/potency-like sensitivity
+input_requirements:
+- compatible expression
+output_semantics:
+- model score
+environment_requirements:
+- Python 单细胞核心环境；工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- shadow
+source_status_raw:
+- shadow
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- license_review_required
+license_status: review_required
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境；工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://github.com/digitalcytometry/cytotrace2
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-E6E69564B09374DB
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- ''
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-CYTOTRACE2/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R384

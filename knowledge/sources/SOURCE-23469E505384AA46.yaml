@@ -1,0 +1,18 @@
+source_id: SOURCE-23469E505384AA46
+url: https://github.com/scipy/scipy
+source_type: source_repository
+title: 'GitHub - scipy/scipy: SciPy library main repository · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/scipy/scipy
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-EXACT-BINOMIAL-CLOPPER-PEARSON
+- METHOD-JENSEN-SHANNON-DISTANCE
+- METHOD-PREPARATION-LEVEL-PERMUTATION
+- METHOD-PSEUDOBULK-CORRELATION-AND-DISTANCE
+- METHOD-PSEUDOBULK-CORRELATION-DISTANCE
+- METHOD-SCIPY-BOOTSTRAP
+- METHOD-STATISTICS-LIBRARY
+- METHOD-WASSERSTEIN-DISTANCE

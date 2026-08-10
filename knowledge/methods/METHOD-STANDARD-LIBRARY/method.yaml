@@ -1,0 +1,62 @@
+method_id: METHOD-STANDARD-LIBRARY
+display_name: standard library
+aliases:
+- Python Decimal
+- Python hashlib
+modules:
+- P0-09
+- P0-10
+capabilities:
+- claim verification
+- evidence compiler
+roles:
+- standard library | SHA-256 digest
+- standard library | exact decimal rendering
+input_requirements:
+- canonical bytes
+- canonical numeric strings
+output_semantics:
+- content_hash
+- exact formatted values
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- shortlisted
+source_status_raw:
+- shortlisted
+evidence_family_ids:
+- content_identity
+- numeric_fidelity
+evidence_family_state: assigned
+license_raw:
+- PSF
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://docs.python.org/3/library/decimal.html
+- https://docs.python.org/3/library/hashlib.html
+- https://github.com/python/cpython
+raw_source_token_count: 4
+public_source_assignment_count: 4
+source_ids:
+- SOURCE-2D6ABE7B467D92CC
+- SOURCE-4A693406363562A5
+- SOURCE-CD1CB5B5B252B6C0
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- does not define scientific units
+- 输入必须先规范化
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-STANDARD-LIBRARY/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R304
+- MASTER-20260810:Tools:R338

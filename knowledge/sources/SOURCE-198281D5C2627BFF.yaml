@@ -1,0 +1,13 @@
+source_id: SOURCE-198281D5C2627BFF
+url: https://github.com/amazon-science/RefChecker
+source_type: source_repository
+title: 'GitHub - amazon-science/RefChecker: RefChecker provides automatic checking
+  pipeline and benchmark dataset for detecting fine-grained hallucinations generated
+  by Large Language Models. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/amazon-science/RefChecker
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-HALLUCINATION-CHECKER

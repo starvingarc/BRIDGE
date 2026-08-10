@@ -1,0 +1,12 @@
+source_id: SOURCE-4EC458CDFFA9406E
+url: https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.3003477
+source_type: primary_paper
+title: Cell2Spatial is a computational framework that maps single cells to spatial
+  transcriptomic spots to reconstruct tissue architecture | PLOS Biology
+verification_status: verified
+http_status: 200
+resolved_url: https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.3003477
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELL2SPATIAL

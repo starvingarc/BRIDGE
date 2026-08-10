@@ -1,0 +1,11 @@
+source_id: SOURCE-3EEB290845969ACD
+url: https://www.nature.com/articles/s41467-021-25725-x
+source_type: primary_paper
+title: Leveraging the Cell Ontology to classify unseen cell types | Nature Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-021-25725-x?error=cookies_not_supported&code=7cf0526c-d142-4655-9cb2-24a6e7c01e9b
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-ONCLASS

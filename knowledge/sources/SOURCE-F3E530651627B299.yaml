@@ -1,0 +1,12 @@
+source_id: SOURCE-F3E530651627B299
+url: https://www.nature.com/articles/s41467-026-71180-x
+source_type: primary_paper
+title: Cell neighborhood topology directs rare cell population identification | Nature
+  Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-026-71180-x?error=cookies_not_supported&code=9d595907-44b9-46e6-b49b-84716ecc3302
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-RAREQ

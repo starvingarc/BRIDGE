@@ -1,0 +1,12 @@
+source_id: SOURCE-48E3E6AC5ED96680
+url: https://github.com/neurorestore/Augur
+source_type: source_repository
+title: 'GitHub - neurorestore/Augur: Cell type prioritization in single-cell data
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/neurorestore/Augur
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-AUGUR

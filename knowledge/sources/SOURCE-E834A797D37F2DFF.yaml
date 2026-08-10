@@ -1,0 +1,11 @@
+source_id: SOURCE-E834A797D37F2DFF
+url: https://www.gnu.org/software/coreutils/manual/html_node/sha2-utilities.html
+source_type: official_resource
+title: sha2 utilities (GNU Coreutils 9.11)
+verification_status: verified
+http_status: 200
+resolved_url: https://www.gnu.org/software/coreutils/manual/html_node/sha2-utilities.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-OS-CLI

@@ -1,0 +1,55 @@
+method_id: METHOD-CELLBENDER-REMOVE-BACKGROUND
+display_name: CellBender remove-background
+aliases:
+- CELLBENDER-RB
+modules:
+- P0-01
+capabilities:
+- input audit and QC
+roles:
+- 主模型候选
+input_requirements:
+- droplet_ready | capture_id; raw droplet matrix; expected cells; chemistry
+output_semantics:
+- corrected counts、posterior、metrics、report 与敏感性视图
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- conditional
+source_status_raw:
+- conditional | not_installed
+evidence_family_ids:
+- ambient_rna_model
+evidence_family_state: assigned
+license_raw:
+- BSD-3-Clause
+license_status: reported
+version: 0.3.2
+version_status: reported
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes:
+- Version 0.3.2 is the documentation baseline; the known 0.3.1 incorrect-matrix issue
+  must remain in version review.
+source_tokens:
+- https://cellbender.readthedocs.io/en/latest/usage/index.html
+- https://doi.org/10.1038/s41592-023-01943-7
+- https://github.com/broadinstitute/CellBender
+raw_source_token_count: 3
+public_source_assignment_count: 3
+source_ids:
+- SOURCE-253A5D604B96C934
+- SOURCE-5DF43B30192FA6D8
+- SOURCE-E938F2B26E6E0751
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- 缺 raw droplets、环境/GPU 不满足、已知问题未核对
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-CELLBENDER-REMOVE-BACKGROUND/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R8

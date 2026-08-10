@@ -1,0 +1,12 @@
+source_id: SOURCE-ADE2BB0A8E263B7F
+url: https://github.com/SingleR-inc/SingleR
+source_type: source_repository
+title: 'GitHub - SingleR-inc/SingleR: Clone of the Bioconductor repository for the
+  SingleR package. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/SingleR-inc/SingleR
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SINGLER-502879

@@ -1,0 +1,12 @@
+source_id: SOURCE-84F56F4409AB1CCF
+url: https://github.com/powellgenomicslab/scPred
+source_type: source_repository
+title: 'GitHub - powellgenomicslab/scPred: scPred package for cell type prediction
+  from scRNA-seq data · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/powellgenomicslab/scPred
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCPRED

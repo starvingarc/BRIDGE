@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bridge"
+version = "0.1.0"
+description = "Workflow-oriented software for brain-referenced in vivo-to-in vitro developmental evaluation"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+keywords = ["single-cell", "development", "organoid", "reference-mapping", "evaluation"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+  "numpy",
+  "pandas",
+  "PyYAML",
+  "scikit-learn",
+  "scipy",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+]
+runtime = [
+  "anndata",
+  "scanpy",
+  "scvi-tools",
+  "torch",
+]
+report = [
+  "matplotlib",
+  "seaborn",
+]
+trajectory = [
+  "cellrank",
+]
+regulon = [
+  "decoupler",
+]
+notebook = [
+  "ipykernel",
+  "jupyterlab",
+]
+workflow = [
+  "anndata",
+  "scanpy",
+  "scvi-tools",
+  "torch",
+  "matplotlib",
+  "seaborn",
+  "decoupler",
+  "ipykernel",
+  "jupyterlab",
+]
+
+
+[project.urls]
+Repository = "https://github.com/starvingarc/BRIDGE"
+Documentation = "https://github.com/starvingarc/BRIDGE/tree/main/docs"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

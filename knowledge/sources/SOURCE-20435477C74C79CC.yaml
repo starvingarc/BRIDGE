@@ -1,0 +1,12 @@
+source_id: SOURCE-20435477C74C79CC
+url: https://www.nature.com/articles/s41467-022-28803-w
+source_type: primary_paper
+title: Fully-automated and ultra-fast cell-type identification using specific marker
+  combinations from single-cell transcriptomic data | Nature Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-022-28803-w?error=cookies_not_supported&code=2426eb04-101c-44a3-aafc-ba52323c5427
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCTYPE

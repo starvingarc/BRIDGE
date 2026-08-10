@@ -1,0 +1,11 @@
+source_id: SOURCE-60937361B4079DFE
+url: https://arxiv.org/abs/2010.03759
+source_type: official_resource
+title: '[2010.03759] Energy-based Out-of-distribution Detection'
+verification_status: verified
+http_status: 200
+resolved_url: https://arxiv.org/abs/2010.03759
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-ENERGY-BASED-OOD-SCORE

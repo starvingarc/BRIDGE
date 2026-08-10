@@ -1,0 +1,12 @@
+source_id: SOURCE-C6799E23665081F7
+url: https://github.com/digitalcytometry/cytospace
+source_type: source_repository
+title: 'GitHub - digitalcytometry/cytospace: CytoSPACE: Optimal mapping of scRNA-seq
+  data to spatial transcriptomics data · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/digitalcytometry/cytospace
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CYTOSPACE

@@ -1,0 +1,11 @@
+source_id: SOURCE-C9D1BEB8B961BB58
+url: https://www.openpolicyagent.org/docs
+source_type: official_resource
+title: Open Policy Agent (OPA) | Open Policy Agent
+verification_status: verified
+http_status: 200
+resolved_url: https://www.openpolicyagent.org/docs
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-POLICY-ENGINE

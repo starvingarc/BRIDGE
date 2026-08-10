@@ -1,0 +1,12 @@
+source_id: SOURCE-FC2709467A351868
+url: https://github.com/welch-lab/liger
+source_type: source_repository
+title: 'GitHub - welch-lab/liger: R package for integrating and analyzing multiple
+  single-cell datasets · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/welch-lab/liger
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-LIGER

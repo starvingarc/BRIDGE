@@ -1,0 +1,11 @@
+source_id: SOURCE-12DE29B346731E30
+url: https://decoupler.readthedocs.io/
+source_type: official_documentation
+title: decoupler - Ensemble of methods to infer enrichment scores — decoupler
+verification_status: verified
+http_status: 200
+resolved_url: https://decoupler.readthedocs.io/en/latest/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-DECOUPLER

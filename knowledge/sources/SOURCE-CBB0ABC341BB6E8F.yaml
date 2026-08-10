@@ -1,0 +1,11 @@
+source_id: SOURCE-CBB0ABC341BB6E8F
+url: https://www.nature.com/articles/s41467-025-61667-4
+source_type: primary_paper
+title: High-resolution mapping of single cells in spatial context | Nature Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-025-61667-4?error=cookies_not_supported&code=7e0c5813-856d-4882-810b-7aa3b95e70e7
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CMAP

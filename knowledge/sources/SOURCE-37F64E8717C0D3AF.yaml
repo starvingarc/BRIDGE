@@ -1,0 +1,11 @@
+source_id: SOURCE-37F64E8717C0D3AF
+url: https://github.com/gitleaks/gitleaks
+source_type: source_repository
+title: 'GitHub - gitleaks/gitleaks: Find secrets with Gitleaks 🔑 · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/gitleaks/gitleaks
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCANNER-CLI

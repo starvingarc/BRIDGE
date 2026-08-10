@@ -1,0 +1,48 @@
+method_id: METHOD-INTERNAL-NUMERIC-ENGINE
+display_name: internal numeric engine
+aliases:
+- BRIDGE-VALUE-BINDING-CHECKER-v0.1
+modules:
+- P0-10
+capabilities:
+- claim verification
+roles:
+- internal numeric engine | Decimal/unit/denominator/interval fidelity
+input_requirements:
+- ValueBindings + FormattingSpecs
+output_semantics:
+- numeric check records
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- candidate
+source_status_raw:
+- candidate
+evidence_family_ids:
+- numeric_fidelity
+evidence_family_state: assigned
+license_raw:
+- BRIDGE internal
+license_status: internal
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- internal_no_public_url
+raw_source_token_count: 1
+public_source_assignment_count: 0
+source_ids: []
+source_status: internal_no_public_source
+primary_paper_status: not_applicable
+critical_boundaries:
+- 不允许浮点容差式通过
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-INTERNAL-NUMERIC-ENGINE/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R328

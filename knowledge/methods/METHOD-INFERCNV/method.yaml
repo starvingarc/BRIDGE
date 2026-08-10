@@ -1,0 +1,51 @@
+method_id: METHOD-INFERCNV
+display_name: inferCNV
+aliases:
+- PROC-CNV-DEFAULT-INFERCNV
+modules:
+- P0-06
+capabilities:
+- CNV shadow
+roles:
+- Historical R comparator
+input_requirements:
+- Raw counts, annotations, reference normals and genomic gene order
+output_semantics:
+- Smoothed relative expression CNV pattern
+environment_requirements:
+- R/Bioconductor 方法环境；工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- deferred
+source_status_raw:
+- deferred
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- BSD-3-Clause
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境；工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://github.com/broadinstitute/infercnv
+- https://github.com/broadinstitute/infercnv/wiki/Home
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-1A7D1908F0B66DCC
+- SOURCE-5131ADE7F596595A
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Reference- and expression-state-dependent; unsupported implementation cannot be
+  the formal route
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-INFERCNV/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R192

@@ -1,0 +1,51 @@
+method_id: METHOD-UNIT-LIBRARY
+display_name: unit library
+aliases:
+- Pint
+modules:
+- P0-10
+capabilities:
+- claim verification
+roles:
+- unit library | registered unit parsing/conversion candidate
+input_requirements:
+- value + unit registry
+output_semantics:
+- normalized quantity
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- proposed
+source_status_raw:
+- proposed
+evidence_family_ids:
+- unit_validation
+evidence_family_state: assigned
+license_raw:
+- BSD-3-Clause
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://github.com/hgrecco/pint
+- https://pint.readthedocs.io/en/latest/
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-CC56B5FB02CE3F1C
+- SOURCE-D967F31CC8346B17
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- only reviewed conversions accepted
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-UNIT-LIBRARY/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R341

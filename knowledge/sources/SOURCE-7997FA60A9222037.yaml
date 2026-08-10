@@ -1,0 +1,13 @@
+source_id: SOURCE-7997FA60A9222037
+url: https://github.com/LBMC/RAPToR
+source_type: source_repository
+title: 'GitHub - LBMC/RAPToR: RAPToR (Real Age Prediction from Transcriptome staging
+  on Reference) is a tool to accurately predict individual samples'' developmental
+  age from their gene expression profiles. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/LBMC/RAPToR
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-RAPTOR

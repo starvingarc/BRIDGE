@@ -1,0 +1,12 @@
+source_id: SOURCE-A062861DAAC1049E
+url: https://pmc.ncbi.nlm.nih.gov/articles/PMC6895264/
+source_type: primary_paper
+title: 'CHETAH: a selective, hierarchical cell type identification method for single-cell
+  RNA sequencing - PMC'
+verification_status: verified
+http_status: 200
+resolved_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC6895264/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CHETAH

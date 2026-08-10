@@ -1,0 +1,50 @@
+method_id: METHOD-CELLTREK
+display_name: CellTrek
+aliases:
+- SP-CELLTREK
+modules:
+- P0-03
+capabilities:
+- spatial projection
+roles:
+- direct projection | R cell-charting benchmark
+input_requirements:
+- Seurat sc + ST
+output_semantics:
+- predicted coordinates for retained cells
+environment_requirements:
+- R/Bioconductor 方法环境；空间组学环境
+environment_policy:
+- 按能力拆分；兼容性验证通过前不合并环境
+scientific_status_raw:
+- candidate
+source_status_raw:
+- candidate
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- license_review_required
+license_status: review_required
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境；空间组学环境
+curation_notes: []
+source_tokens:
+- https://github.com/navinlabcode/CellTrek
+- https://www.nature.com/articles/s41587-022-01233-1
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-6C90406451F4CB2F
+- SOURCE-716FEF42531EFB31
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- integration and threshold sensitive
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-CELLTREK/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R103

@@ -1,0 +1,12 @@
+source_id: SOURCE-9676FE37CA353922
+url: https://www.nature.com/articles/s41590-018-0276-y
+source_type: primary_paper
+title: Reference-based analysis of lung single-cell sequencing reveals a transitional
+  profibrotic macrophage | Nature Immunology
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41590-018-0276-y?error=cookies_not_supported&code=8c7c50c3-9a5a-402b-98a1-b10f0e044285
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SINGLER-502879

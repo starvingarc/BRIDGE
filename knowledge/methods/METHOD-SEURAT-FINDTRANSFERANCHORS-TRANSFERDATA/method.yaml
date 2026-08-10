@@ -1,0 +1,50 @@
+method_id: METHOD-SEURAT-FINDTRANSFERANCHORS-TRANSFERDATA
+display_name: Seurat FindTransferAnchors/TransferData
+aliases:
+- SEURAT-TRANSFER
+modules:
+- P0-12
+capabilities:
+- graft assessment
+roles:
+- reference mapping | historical and benchmark transfer
+input_requirements:
+- reference/query
+output_semantics:
+- prediction scores and labels
+environment_requirements:
+- R/Bioconductor 方法环境
+environment_policy:
+- 按该能力环境运行并冻结依赖、版本与 fixture
+scientific_status_raw:
+- candidate
+source_status_raw:
+- historical_candidate
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- MIT
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境
+curation_notes: []
+source_tokens:
+- https://github.com/satijalab/seurat
+- https://satijalab.org/seurat/reference/findtransferanchors
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-DE5336683014A85E
+- SOURCE-F5C94E127F69CE75
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- ''
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SEURAT-FINDTRANSFERANCHORS-TRANSFERDATA/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R397

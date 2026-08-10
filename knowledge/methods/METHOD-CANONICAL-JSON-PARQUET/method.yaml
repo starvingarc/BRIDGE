@@ -1,0 +1,50 @@
+method_id: METHOD-CANONICAL-JSON-PARQUET
+display_name: Canonical JSON + Parquet
+aliases:
+- Canonical JSON + Parquet
+modules:
+- P0-09
+capabilities:
+- evidence storage
+roles:
+- formal source of truth
+input_requirements:
+- JSON objects + Parquet node/edge tables + rebuild manifest
+output_semantics:
+- schema/table query
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- review_required
+source_status_raw:
+- authoritative canonical store
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- standards / Apache Arrow Apache-2.0
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://arrow.apache.org/docs/python/parquet.html
+- https://github.com/apache/arrow
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-733392686F48BD27
+- SOURCE-BC6CB915CB8E0A77
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- 复杂多跳查询需投影层
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-CANONICAL-JSON-PARQUET/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R307

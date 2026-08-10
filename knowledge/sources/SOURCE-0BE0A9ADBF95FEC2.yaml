@@ -1,0 +1,13 @@
+source_id: SOURCE-0BE0A9ADBF95FEC2
+url: https://github.com/DiseaseNeurogenomics/dreamlet
+source_type: source_repository
+title: 'GitHub - DiseaseNeuroGenomics/dreamlet: Perform differential expression analysis
+  on cohort-scale single cell datasets using linear mixed models · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/DiseaseNeurogenomics/dreamlet
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-DREAMLET-ED1165
+- METHOD-DREAMLET-NONLINEAR-REPEATED-MODEL

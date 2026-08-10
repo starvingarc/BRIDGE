@@ -1,0 +1,11 @@
+source_id: SOURCE-97672C91D70864A8
+url: https://pmc.ncbi.nlm.nih.gov/articles/PMC6929335/
+source_type: primary_paper
+title: 'scDC: single cell differential composition analysis - PMC'
+verification_status: verified
+http_status: 200
+resolved_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC6929335/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCDC

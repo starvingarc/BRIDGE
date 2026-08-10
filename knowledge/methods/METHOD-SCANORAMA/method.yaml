@@ -1,0 +1,62 @@
+method_id: METHOD-SCANORAMA
+display_name: Scanorama
+aliases:
+- JOINT-SCANORAMA
+- TOOL-CS-SCANORAMA
+modules:
+- P0-02
+- P0-07
+capabilities:
+- cell-state evidence
+- joint analysis shadow
+roles:
+- integration sensitivity | panorama-based integration
+- integration shadow
+input_requirements:
+- Per-batch expression matrices
+- multiple matrices with shared genes
+output_semantics:
+- Corrected embedding/expression
+- integrated embedding/expression
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+- shadow
+source_status_raw:
+- benchmark
+- shadow
+evidence_family_ids:
+- EF-CS-INTEGRATION
+- joint_representation
+evidence_family_state: assigned
+license_raw:
+- MIT
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://github.com/brianhie/scanorama
+- https://pmc.ncbi.nlm.nih.gov/articles/PMC6551256/
+raw_source_token_count: 3
+public_source_assignment_count: 3
+source_ids:
+- SOURCE-05B464CCAEACDC60
+- SOURCE-1BDA5FBB77D80B5F
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Corrected expression cannot silently replace frozen expression views.
+- Corrected expression is not used for formal pseudobulk DE
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCANORAMA/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R50
+- MASTER-20260810:Tools:R254

@@ -1,0 +1,13 @@
+source_id: SOURCE-E8A6EA38F92E425F
+url: https://github.com/microsoft/playwright
+source_type: source_repository
+title: 'GitHub - microsoft/playwright: Playwright is a framework for Web Testing and
+  Automation. It allows testing Chromium, Firefox and WebKit with a single API. ·
+  GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/microsoft/playwright
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-BROWSER-AUTOMATION

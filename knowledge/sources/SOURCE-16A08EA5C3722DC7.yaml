@@ -1,0 +1,11 @@
+source_id: SOURCE-16A08EA5C3722DC7
+url: https://cellrank.readthedocs.io/en/stable/api/_autosummary/kernels/cellrank.kernels.RealTimeKernel.html
+source_type: official_documentation
+title: cellrank.kernels.RealTimeKernel - cellrank documentation
+verification_status: verified
+http_status: 200
+resolved_url: https://cellrank.readthedocs.io/en/stable/api/_autosummary/kernels/cellrank.kernels.RealTimeKernel.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELLRANK-REALTIMEKERNEL

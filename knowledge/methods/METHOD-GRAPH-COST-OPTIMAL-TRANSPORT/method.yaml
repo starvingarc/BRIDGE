@@ -1,0 +1,49 @@
+method_id: METHOD-GRAPH-COST-OPTIMAL-TRANSPORT
+display_name: Graph-cost optimal transport
+aliases:
+- STAB-GRAPH-OT
+modules:
+- P0-07
+capabilities:
+- time and stability
+roles:
+- development distribution stability
+input_requirements:
+- Frozen state graph and sample mass
+output_semantics:
+- Pairwise graph-Wasserstein distance
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- shadow
+source_status_raw:
+- shadow
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw: []
+license_status: unresolved
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://github.com/PythonOT/POT
+- https://pythonot.github.io/
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-7EECF3DC2751E280
+- SOURCE-D5B39ACF93173A0B
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Reference graph sensitivity must be shown
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-GRAPH-COST-OPTIMAL-TRANSPORT/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R276

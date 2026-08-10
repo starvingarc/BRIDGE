@@ -14,8 +14,26 @@ build/
 
 artifacts/
 tmp/
-configs/real/
-artifacts/real_reports/
+run_artifacts/
+private_assets/
+knowledge/.cache/
+knowledge/index/*.npz
+knowledge/index/*.pkl
+.coverage
+.mypy_cache/
+.ruff_cache/
+
+# Scientific data stays outside Git except explicit tiny fixtures.
+*.h5ad
+*.h5
+*.loom
+*.zarr/
+*.mtx
+*.mtx.gz
+*.rds
+*.qs
+*.parquet
+!tests/fixtures/**/*.parquet
 
 # External BRIDGE model assets; download via models/assets.json.
 models/whole_brain_ref_model/

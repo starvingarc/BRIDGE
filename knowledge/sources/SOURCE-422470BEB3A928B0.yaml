@@ -1,0 +1,12 @@
+source_id: SOURCE-422470BEB3A928B0
+url: https://pmc.ncbi.nlm.nih.gov/articles/PMC12121363/
+source_type: primary_paper
+title: Evaluation of out-of-distribution detection methods for data shifts in single-cell
+  transcriptomics - PMC
+verification_status: verified
+http_status: 200
+resolved_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC12121363/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SYSTEMATIC-SINGLE-CELL-OOD-BENCHMARK

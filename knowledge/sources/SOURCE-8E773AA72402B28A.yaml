@@ -1,0 +1,15 @@
+source_id: SOURCE-8E773AA72402B28A
+url: https://github.com/scikit-learn/scikit-learn
+source_type: source_repository
+title: 'GitHub - scikit-learn/scikit-learn: scikit-learn: machine learning in Python
+  · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/scikit-learn/scikit-learn
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-KNN-DISTANCE-LOCAL-DENSITY
+- METHOD-MAXIMUM-PROBABILITY-ENTROPY-AND-MARGIN
+- METHOD-MODEL-EVALUATION-LIBRARY
+- METHOD-ROBUST-MAHALANOBIS-DISTANCE

@@ -1,0 +1,12 @@
+source_id: SOURCE-EBEBA84C4F95F9C4
+url: https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/inputs/cr-3p-references
+source_type: official_resource
+title: Building a Custom Reference for 3' Single Cell Gene Expression | Official 10x
+  Genomics Support
+verification_status: verified
+http_status: 200
+resolved_url: https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/inputs/cr-3p-references
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CELL-RANGER-CUSTOM-COMBINED-REFERENCE

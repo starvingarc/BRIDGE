@@ -1,0 +1,13 @@
+source_id: SOURCE-5C266F4DB75F0FE2
+url: https://www.pmda.go.jp/files/000277800.pdf
+source_type: official_resource
+title: https://www.pmda.go.jp/files/000277800.pdf
+verification_status: verified
+http_status: 200
+resolved_url: https://www.pmda.go.jp/files/000277800.pdf
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-DNA-BASED-CONFIRMATION
+- METHOD-FROZEN-PROGRAMSPEC-BENCHMARKED-SCORER
+- METHOD-QRT-PCR-DDPCR-FLOW-CYTOMETRY-OR-VALIDATED-CULTURE-ASSAY

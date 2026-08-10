@@ -1,0 +1,47 @@
+method_id: METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-221F0C
+display_name: sample-preserving hierarchical bootstrap
+aliases:
+- DEV-BOOTSTRAP
+modules:
+- P0-04
+capabilities:
+- developmental state
+roles:
+- composition uncertainty | formal candidate
+input_requirements:
+- Sample/preparation hierarchy and cell-level soft assignments
+output_semantics:
+- interval, interval_scope and effective units
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- candidate
+source_status_raw:
+- candidate
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- internal
+license_status: internal
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- internal_no_public_url
+raw_source_token_count: 1
+public_source_assignment_count: 0
+source_ids: []
+source_status: internal_no_public_source
+primary_paper_status: not_applicable
+critical_boundaries:
+- Single sample interval cannot represent batch-level biological variation.
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-221F0C/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R133

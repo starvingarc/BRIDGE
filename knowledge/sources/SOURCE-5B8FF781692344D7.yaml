@@ -1,0 +1,12 @@
+source_id: SOURCE-5B8FF781692344D7
+url: https://github.com/executablebooks/markdown-it-py
+source_type: source_repository
+title: 'GitHub - executablebooks/markdown-it-py: Markdown parser, done right. 100%
+  CommonMark support, extensions, syntax plugins & high speed. Now in Python! · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/executablebooks/markdown-it-py
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-MARKDOWN-PARSER

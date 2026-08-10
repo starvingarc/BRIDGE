@@ -1,0 +1,11 @@
+source_id: SOURCE-8F82BF28D373D537
+url: https://github.com/carmonalab/UCell
+source_type: source_repository
+title: 'GitHub - carmonalab/UCell: Gene set scoring for single-cell data · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/carmonalab/UCell
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-UCELL-7F85E7

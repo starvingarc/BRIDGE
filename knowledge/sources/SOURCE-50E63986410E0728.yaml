@@ -1,0 +1,12 @@
+source_id: SOURCE-50E63986410E0728
+url: https://github.com/broadinstitute/wot
+source_type: source_repository
+title: 'GitHub - broadinstitute/wot: A software package for analyzing snapshots of
+  developmental processes · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/broadinstitute/wot
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-WADDINGTON-OT

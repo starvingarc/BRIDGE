@@ -1,0 +1,47 @@
+method_id: METHOD-BRIDGE-LINEAGE-ADAPTER
+display_name: BRIDGE lineage adapter
+aliases:
+- LINEAGE-ADAPTER
+modules:
+- P0-12
+capabilities:
+- graft assessment
+roles:
+- lineage | barcode join and clone summary
+input_requirements:
+- expression + lineage tables
+output_semantics:
+- join/clone records
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- conditional
+source_status_raw:
+- conditional
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- internal
+license_status: internal
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes: []
+source_tokens:
+- internal_no_public_url
+raw_source_token_count: 1
+public_source_assignment_count: 0
+source_ids: []
+source_status: internal_no_public_source
+primary_paper_status: not_applicable
+critical_boundaries:
+- ''
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-BRIDGE-LINEAGE-ADAPTER/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R372

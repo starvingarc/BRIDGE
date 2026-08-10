@@ -1,0 +1,11 @@
+source_id: SOURCE-1A7D1908F0B66DCC
+url: https://github.com/broadinstitute/infercnv/wiki/Home
+source_type: source_repository
+title: Home · broadinstitute/infercnv Wiki · GitHub
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/broadinstitute/infercnv/wiki
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-INFERCNV

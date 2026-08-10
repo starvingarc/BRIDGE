@@ -1,0 +1,62 @@
+method_id: METHOD-POPV
+display_name: popV
+aliases:
+- TOOL-CS-POPV
+- TRG-POPV
+modules:
+- P0-02
+- P0-03
+capabilities:
+- cell-state evidence
+- target identity
+roles:
+- consensus | orchestration benchmark
+- label consensus/orchestration | multi-method annotation benchmark and consensus
+input_requirements:
+- labeled reference + query + ontology + registered methods
+- registered method outputs
+output_semantics:
+- consensus + disagreement
+- consensus and predictability diagnostics
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+- shadow
+source_status_raw:
+- benchmark
+- shadow
+evidence_family_ids:
+- EF-CS-CONSENSUS
+- consensus
+evidence_family_state: assigned
+license_raw:
+- MIT
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://github.com/YosefLab/popV
+- https://www.nature.com/articles/s41588-024-01993-3
+raw_source_token_count: 3
+public_source_assignment_count: 3
+source_ids:
+- SOURCE-0DF428837C2E7697
+- SOURCE-AF5352B8C37D9386
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Vote counts are not independent evidence counts.
+- votes are not independent evidence
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-POPV/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R48
+- MASTER-20260810:Tools:R118

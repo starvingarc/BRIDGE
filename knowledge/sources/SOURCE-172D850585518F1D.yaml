@@ -1,0 +1,11 @@
+source_id: SOURCE-172D850585518F1D
+url: https://infozip.sourceforge.net/
+source_type: official_resource
+title: Info-ZIP Home Page
+verification_status: verified
+http_status: 200
+resolved_url: https://infozip.sourceforge.net/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-OS-CLI

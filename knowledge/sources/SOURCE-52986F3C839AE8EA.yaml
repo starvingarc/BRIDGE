@@ -1,0 +1,12 @@
+source_id: SOURCE-52986F3C839AE8EA
+url: https://github.com/plger/scDblFinder
+source_type: source_repository
+title: 'GitHub - plger/scDblFinder: Methods for detecting doublets in single-cell
+  sequencing data · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/plger/scDblFinder
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SCDBLFINDER

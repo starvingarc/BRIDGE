@@ -1,0 +1,56 @@
+method_id: METHOD-CAPYBARABRAIN-AS-PUBLISHED
+display_name: CapybaraBrain as-published
+aliases:
+- BL-CS-14
+- TOOL-CS-CAPYBARABRAIN
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- continuous/hybrid identity | competitor reproduction | isolated external baseline
+input_requirements:
+- official reference, markers and query contract | published competitor state space
+  only
+output_semantics:
+- weights, binary programs, discrete/hybrid/transitioning/unknown | versioned reproduction
+  profiles
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- benchmark
+source_status_raw:
+- benchmark
+evidence_family_ids:
+- EF-CS-COMPETITOR
+evidence_family_state: assigned
+license_raw:
+- MIT code; data separate
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://doi.org/10.64898/2026.06.19.733041
+- https://github.com/VittoriaDBocchi/CapybaraBrain
+- not_registered_in_source
+raw_source_token_count: 3
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-797C8CF89D4BC3FE
+- SOURCE-88F698C6D76FB5ED
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Competitor-isolated; zero flow into BRIDGE RAG, markers, calibration or formal evidence.
+  | Zero flow into BRIDGE RAG, priors, markers, calibration or Evidence Graph
+retrieval_policy: competitor_isolated
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-CAPYBARABRAIN-AS-PUBLISHED/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R28

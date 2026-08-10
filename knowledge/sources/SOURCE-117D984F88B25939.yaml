@@ -1,0 +1,13 @@
+source_id: SOURCE-117D984F88B25939
+url: https://github.com/yoseflab/scib-metrics
+source_type: source_repository
+title: 'GitHub - YosefLab/scib-metrics: Accelerated, Python-only, single-cell integration
+  benchmarking metrics · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/yoseflab/scib-metrics
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-EVIDENCE-ADAPTER
+- METHOD-SCIB-METRICS

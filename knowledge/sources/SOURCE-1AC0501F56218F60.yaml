@@ -1,0 +1,11 @@
+source_id: SOURCE-1AC0501F56218F60
+url: https://www.nature.com/articles/s41467-023-35923-4
+source_type: primary_paper
+title: Transformer for one stop interpretable cell type annotation | Nature Communications
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41467-023-35923-4?error=cookies_not_supported&code=493aee51-8fc2-41d0-9e7f-14c17cd18638
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-TOSICA

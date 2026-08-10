@@ -1,0 +1,51 @@
+method_id: METHOD-SCIB-METRICS
+display_name: scib-metrics
+aliases:
+- JOINT-SCIBM
+modules:
+- P0-07
+capabilities:
+- joint analysis shadow
+roles:
+- accelerated benchmark
+input_requirements:
+- Joint embedding/graph and labels
+output_semantics:
+- Python/JAX integration metrics
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+source_status_raw:
+- benchmark
+evidence_family_ids:
+- integration_benchmark
+evidence_family_state: assigned
+license_raw:
+- BSD-3-Clause; verify release
+license_status: review_required
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://github.com/yoseflab/scib-metrics
+- https://scib-metrics.readthedocs.io/en/stable/
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-117D984F88B25939
+- SOURCE-5D72F2EBD3CB53D0
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Values are not directly interchangeable with original scIB implementations
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCIB-METRICS/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R256

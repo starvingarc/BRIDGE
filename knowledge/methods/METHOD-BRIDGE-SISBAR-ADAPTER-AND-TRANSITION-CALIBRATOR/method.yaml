@@ -1,0 +1,49 @@
+method_id: METHOD-BRIDGE-SISBAR-ADAPTER-AND-TRANSITION-CALIBRATOR
+display_name: BRIDGE SISBAR adapter and transition calibrator
+aliases:
+- BRIDGE-SISBAR-ADAPTER
+modules:
+- P0-04
+capabilities:
+- lineage calibration
+roles:
+- 连接表达对象与 lineage barcode，并按实验/replicate 重建 observed transitions
+input_requirements:
+- expression h5ad + lineage table + stage-pair/replicate manifest
+output_semantics:
+- LineageCalibrationRecord
+environment_requirements:
+- 工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- candidate
+source_status_raw:
+- candidate/conditional
+evidence_family_ids:
+- SISBAR lineage calibration
+evidence_family_state: assigned
+license_raw:
+- BRIDGE internal adapter
+license_status: internal
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- 工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE221592
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-0387B099D726B30D
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- 不得拼接独立实验形成虚假连续克隆轨迹
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-BRIDGE-SISBAR-ADAPTER-AND-TRANSITION-CALIBRATOR/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R135

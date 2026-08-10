@@ -1,0 +1,12 @@
+source_id: SOURCE-FC19DF6697D99B12
+url: https://proceedings.mlr.press/v48/gal16.html
+source_type: official_resource
+title: 'Dropout as a Bayesian Approximation: Representing Model Uncertainty in Deep
+  Learning'
+verification_status: verified
+http_status: 200
+resolved_url: https://proceedings.mlr.press/v48/gal16.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-MONTE-CARLO-DROPOUT

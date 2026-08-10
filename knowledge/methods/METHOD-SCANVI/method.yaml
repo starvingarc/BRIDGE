@@ -1,0 +1,75 @@
+method_id: METHOD-SCANVI
+display_name: scANVI
+aliases:
+- BL-CS-05
+- REG-SCANVI
+- TOOL-CS-SCANVI
+- TRG-SCANVI
+modules:
+- P0-02
+- P0-03
+capabilities:
+- cell-state evidence
+- regional fidelity
+- target identity
+roles:
+- reference mapping | latent mapping candidate
+- reference mapping | semi-supervised latent mapping | generative mapping candidate
+- regional mapping | latent channel
+input_requirements:
+- counts + batch/modality
+- raw counts + batch + partial internal labels | L1/L2 internal states
+output_semantics:
+- latent representation and known-class posterior | latent, known-class posterior
+  and composition
+- posterior + latent distance
+- regional posterior + distance
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+- shortlisted
+source_status_raw:
+- benchmark
+- shortlisted
+evidence_family_ids:
+- EF-CS-LATENT-MAPPING
+- latent_mapping
+- regional_mapping
+evidence_family_state: assigned
+license_raw:
+- BSD-3-Clause
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://docs.scvi-tools.org/en/stable/
+- https://docs.scvi-tools.org/en/stable/api/reference/scvi.model.SCANVI.html
+- https://github.com/scverse/scvi-tools
+- not_registered_in_source
+raw_source_token_count: 7
+public_source_assignment_count: 6
+source_ids:
+- SOURCE-7F48A0784539FD39
+- SOURCE-B7847218B5D1E371
+- SOURCE-DEB4E1480D9B3470
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Known-class posterior is not an open-set decision. | No preset priority; posterior
+  is not open-set proof
+- overcorrection or OOD -> unavailable
+- query adaptation cannot alter frozen model
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCANVI/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R52
+- MASTER-20260810:Tools:R93
+- MASTER-20260810:Tools:R120

@@ -1,0 +1,12 @@
+source_id: SOURCE-D556CE19CF901F67
+url: https://doi.org/10.1093/bioinformatics/btac582
+source_type: primary_paper
+title: <i>propeller:</i> testing for differences in cell type proportions in single
+  cell data
+verification_status: verified_via_crossref
+http_status: 200
+resolved_url: https://doi.org/10.1093/bioinformatics/btac582
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-SPECKLE-PROPELLER-BD4CF0

@@ -1,68 +1,39 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "bridge"
-version = "0.1.0"
-description = "Workflow-oriented software for brain-referenced in vivo-to-in vitro developmental evaluation"
+version = "0.2.0.dev0"
+description = "Modular evidence-aware tools for transcriptomic cell-therapy product evaluation"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
-keywords = ["single-cell", "development", "organoid", "reference-mapping", "evaluation"]
-classifiers = [
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Intended Audience :: Science/Research",
-  "Topic :: Scientific/Engineering :: Bio-Informatics",
-]
+requires-python = ">=3.12,<3.13"
 dependencies = [
-  "numpy",
-  "pandas",
-  "PyYAML",
-  "scikit-learn",
-  "scipy",
+  "numpy>=2.0,<3",
+  "pandas>=2.2,<3",
+  "pydantic>=2.10,<3",
+  "PyYAML>=6,<7",
+  "scikit-learn>=1.5,<2",
+  "scipy>=1.14,<2",
 ]
 
 [project.optional-dependencies]
+qc = [
+  "anndata>=0.11,<0.13",
+  "h5py>=3.11,<4",
+  "matplotlib>=3.9,<4",
+  "pyarrow>=18,<24",
+  "scanpy>=1.10,<1.12",
+  "scrublet>=0.2.3,<0.3",
+]
 test = [
-  "pytest",
-]
-runtime = [
-  "anndata",
-  "scanpy",
-  "scvi-tools",
-  "torch",
-]
-report = [
-  "matplotlib",
-  "seaborn",
-]
-trajectory = [
-  "cellrank",
-]
-regulon = [
-  "decoupler",
-]
-notebook = [
-  "ipykernel",
-  "jupyterlab",
-]
-workflow = [
-  "anndata",
-  "scanpy",
-  "scvi-tools",
-  "torch",
-  "matplotlib",
-  "seaborn",
-  "decoupler",
-  "ipykernel",
-  "jupyterlab",
+  "jsonschema>=4.23,<5",
+  "pytest>=8,<10",
 ]
 
+[project.scripts]
+bridge-tool = "bridge.toolkit.cli:main"
 
 [project.urls]
 Repository = "https://github.com/starvingarc/BRIDGE"
@@ -70,6 +41,18 @@ Documentation = "https://github.com/starvingarc/BRIDGE/tree/main/docs"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"bridge.tool_packages.specs" = ["*.yaml"]
+"bridge.tool_packages.cards" = ["*.md"]
+"bridge.tool_packages.p0_01_input_qc.measurement_specs" = ["*.yaml"]
+"bridge.resources" = ["*.json.gz"]
+"bridge.resources.schemas" = ["*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

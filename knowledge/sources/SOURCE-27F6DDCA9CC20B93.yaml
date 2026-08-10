@@ -1,0 +1,11 @@
+source_id: SOURCE-27F6DDCA9CC20B93
+url: https://pandas.pydata.org/docs/
+source_type: official_resource
+title: pandas documentation — pandas 3.0.5 documentation
+verification_status: verified
+http_status: 200
+resolved_url: https://pandas.pydata.org/docs/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-PYTHON-LIBRARY

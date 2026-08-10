@@ -1,0 +1,13 @@
+source_id: SOURCE-EF789C16B9ACB0F0
+url: https://github.com/FalkorDB/FalkorDB
+source_type: source_repository
+title: 'GitHub - FalkorDB/FalkorDB: A super fast Graph Database uses GraphBLAS under
+  the hood for its sparse adjacency matrix graph representation. Our goal is to provide
+  the best Knowledge Graph for LLM (GraphRAG). · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/FalkorDB/FalkorDB
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-FALKORDB

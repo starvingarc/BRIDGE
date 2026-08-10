@@ -1,0 +1,12 @@
+source_id: SOURCE-14AEA668F88060B5
+url: https://www.nature.com/articles/s41592-019-0535-3
+source_type: primary_paper
+title: Supervised classification enables rapid annotation of cell atlases | Nature
+  Methods
+verification_status: verified
+http_status: 200
+resolved_url: https://www.nature.com/articles/s41592-019-0535-3?error=cookies_not_supported&code=4858551d-05bb-4d88-9223-ea18d86e472d
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-GARNETT

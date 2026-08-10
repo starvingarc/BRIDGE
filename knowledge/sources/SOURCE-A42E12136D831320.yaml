@@ -1,0 +1,11 @@
+source_id: SOURCE-A42E12136D831320
+url: https://scikit-learn.org/stable/modules/covariance.html
+source_type: official_resource
+title: 2.6. Covariance estimation — scikit-learn 1.9.0 documentation
+verification_status: verified
+http_status: 200
+resolved_url: https://scikit-learn.org/stable/modules/covariance.html
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-ROBUST-MAHALANOBIS-DISTANCE

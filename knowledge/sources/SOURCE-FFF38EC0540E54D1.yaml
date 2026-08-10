@@ -1,0 +1,12 @@
+source_id: SOURCE-FFF38EC0540E54D1
+url: https://elifesciences.org/articles/43803
+source_type: official_resource
+title: Identifying gene expression programs of cell-type identity and cellular activity
+  with single-cell RNA-Seq | eLife
+verification_status: verified
+http_status: 200
+resolved_url: https://elifesciences.org/articles/43803
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-CNMF

@@ -1,0 +1,48 @@
+method_id: METHOD-SCANPY-SCORE-GENES-CELL-CYCLE
+display_name: Scanpy score_genes_cell_cycle
+aliases:
+- PROC-CYCLE-SCANPY
+modules:
+- P0-06
+capabilities:
+- proliferation and pluripotency
+roles:
+- S/G2M and discrete phase
+input_requirements:
+- AnnData + frozen S/G2M genes with sufficient coverage
+output_semantics:
+- S_score, G2M_score, phase and coverage
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+source_status_raw:
+- benchmark
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- BSD-3-Clause
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://scanpy.readthedocs.io/en/stable/api/scanpy.tl.score_genes_cell_cycle.html
+raw_source_token_count: 1
+public_source_assignment_count: 1
+source_ids:
+- SOURCE-3921FB2B7BCEDCE6
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- Transcriptomic phase is not a direct proliferation-rate or growth assay
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCANPY-SCORE-GENES-CELL-CYCLE/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R225

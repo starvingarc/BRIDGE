@@ -1,0 +1,12 @@
+source_id: SOURCE-881745EC28A79E0D
+url: https://github.com/scverse/decoupler
+source_type: source_repository
+title: 'GitHub - scverse/decoupler: Python package to perform enrichment analysis
+  from omics data. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/scverse/decoupler
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-DECOUPLER

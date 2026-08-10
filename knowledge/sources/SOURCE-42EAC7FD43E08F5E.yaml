@@ -1,0 +1,11 @@
+source_id: SOURCE-42EAC7FD43E08F5E
+url: https://www.statsmodels.org/
+source_type: official_resource
+title: https://www.statsmodels.org/
+verification_status: verified
+http_status: 200
+resolved_url: https://www.statsmodels.org/
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-STATSMODELS-SPLINE-BASIS

@@ -1,0 +1,51 @@
+method_id: METHOD-TEMPLATE-ENGINE
+display_name: template engine
+aliases:
+- Jinja2
+modules:
+- P0-10
+capabilities:
+- claim verification
+roles:
+- template engine | controlled statement/report rendering
+input_requirements:
+- structured blocks + templates
+output_semantics:
+- rendered text
+environment_requirements:
+- Evidence 与报告治理环境
+environment_policy:
+- 可共用治理环境；冻结 schema、policy 与 fixture
+scientific_status_raw:
+- shortlisted
+source_status_raw:
+- shortlisted
+evidence_family_ids:
+- report_rendering
+evidence_family_state: assigned
+license_raw:
+- BSD-3-Clause
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Evidence 与报告治理环境
+curation_notes: []
+source_tokens:
+- https://github.com/pallets/jinja
+- https://jinja.palletsprojects.com/en/stable/
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-216A52EFAC635531
+- SOURCE-21C57174911003BC
+source_status: registered
+primary_paper_status: unresolved
+critical_boundaries:
+- template text still needs Statement IDs
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-TEMPLATE-ENGINE/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R339

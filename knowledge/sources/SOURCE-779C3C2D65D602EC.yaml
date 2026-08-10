@@ -1,0 +1,13 @@
+source_id: SOURCE-779C3C2D65D602EC
+url: https://github.com/memgraph/memgraph
+source_type: source_repository
+title: 'GitHub - memgraph/memgraph: High-performance open-source in-memory graph database
+  for GraphRAG, AI memory, agentic AI, and real-time graph analytics. Cypher-compatible,
+  built in C++. · GitHub'
+verification_status: verified
+http_status: 200
+resolved_url: https://github.com/memgraph/memgraph
+verified_at: '2026-08-10'
+access_policy: public_metadata
+method_ids:
+- METHOD-MEMGRAPH

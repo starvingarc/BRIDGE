@@ -1,0 +1,52 @@
+method_id: METHOD-SCCODA
+display_name: scCODA
+aliases:
+- SCCODA
+modules:
+- P0-12
+capabilities:
+- graft assessment
+roles:
+- composition | Bayesian compositional model
+input_requirements:
+- cell-type counts + covariates
+output_semantics:
+- effects and inclusion evidence
+environment_requirements:
+- R/Bioconductor 方法环境；工具专用隔离环境
+environment_policy:
+- 工具级隔离；独立锁定依赖、模型或外部运行时
+scientific_status_raw:
+- shadow
+source_status_raw:
+- shadow
+evidence_family_ids: []
+evidence_family_state: unassigned
+license_raw:
+- license_review_required
+license_status: review_required
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- R/Bioconductor 方法环境；工具专用隔离环境
+curation_notes: []
+source_tokens:
+- https://doi.org/10.1038/s41467-021-27150-6
+- https://github.com/theislab/scCODA
+- https://sccoda.readthedocs.io/
+raw_source_token_count: 3
+public_source_assignment_count: 3
+source_ids:
+- SOURCE-349C489F963C9F75
+- SOURCE-7FB96376D777BBE7
+- SOURCE-EBB785D9306A18D5
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- ''
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCCODA/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R392

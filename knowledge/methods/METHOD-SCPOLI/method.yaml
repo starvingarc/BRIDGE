@@ -1,0 +1,51 @@
+method_id: METHOD-SCPOLI
+display_name: scPoli
+aliases:
+- TOOL-CS-SCPOLI
+modules:
+- P0-02
+capabilities:
+- cell-state evidence
+roles:
+- reference mapping | prototype and condition-aware mapping
+input_requirements:
+- counts + condition + internal labels/prototypes
+output_semantics:
+- cell/sample embedding and prototype labels
+environment_requirements:
+- Python 单细胞核心环境
+environment_policy:
+- 可共用核心环境；正式运行前冻结依赖与 fixture
+scientific_status_raw:
+- benchmark
+source_status_raw:
+- benchmark
+evidence_family_ids:
+- EF-CS-PROTOTYPE-MAPPING
+evidence_family_state: assigned
+license_raw:
+- BSD-3-Clause
+license_status: reported
+version: unresolved
+version_status: not_frozen
+maintenance_status: requires_live_review
+compute_requirements:
+- Python 单细胞核心环境
+curation_notes: []
+source_tokens:
+- https://docs.scarches.org/en/latest/api/models.html
+- https://www.nature.com/articles/s41592-023-02035-2
+raw_source_token_count: 2
+public_source_assignment_count: 2
+source_ids:
+- SOURCE-2ADE4BEEFBF1DA0D
+- SOURCE-B08BCA45633C76D3
+source_status: registered
+primary_paper_status: available
+critical_boundaries:
+- Condition labels cannot substitute for biological replicates.
+retrieval_policy: registered_local_snapshot
+formal_eligible: false
+card_ref: knowledge/methods/METHOD-SCPOLI/README.md
+provenance_refs:
+- MASTER-20260810:Tools:R67
