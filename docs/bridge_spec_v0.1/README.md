@@ -13,13 +13,22 @@
 | --- | --- |
 | [唯一主规范：BRIDGE PRD](../BRIDGE_PRD.md) | BRIDGE 评估什么、Agent 必须实现什么、系统边界在哪里 |
 | [数据与 Reference Registry](data_reference_registry.md) | 当前有哪些数据和 reference、彼此是什么血缘、分别允许做什么 |
-| [Tool Registry](tool_registry.md) | 每类分析需求可调用什么工具、需要什么输入、何时拒答 |
-| [Knowledge Registry](knowledge_registry.md) | 外部知识如何版本化、可用于量化还是解释、许可边界是什么 |
-| [Analysis Task Cards](analysis_task_cards.md) | 每项分析的科学问题、输入合同、MeasurementSpec、失败和晋升规则 |
-| [Object Schemas](object_schemas.md) | ProductCase、证据、比较、可视化、建议和报告的最小对象合同 |
-| [Visualization Registry](visualization_registry.md) | Web 与正式报告可调用的图表组件及数据绑定要求 |
+| [P0-01 输入审计与 QC](input_audit_qc_task_card.md) | 输入、QC、拒答与 readiness 合同 |
+| [P0-02 Cell-State Evidence](cell_state_annotation_task_card.md) | 状态证据、方法 benchmark 与释放边界 |
+| [P0-03 目标与区域身份](target_regional_identity_task_card.md) | 目标谱系与区域支持合同 |
+| [P0-04 发育兼容性](developmental_compatibility_task_card.md) | 发育窗口与比较合同 |
+| [P0-05 Off-target Control](off_target_control_task_card.md) | 全制剂组成、OOD 与稀有状态边界 |
+| [P0-06 Process Integrity](process_integrity_task_card.md) | 过程程序和风险信号合同 |
+| [P0-07 产品比较与稳定性](product_comparison_stability_task_card.md) | 可比性、分析单位与敏感性合同 |
+| [P0-08 Evidence Sufficiency](evidence_sufficiency_task_card.md) | 数据、模型与 prior 充分性门禁 |
+| [P0-09 Evidence Compiler](evidence_compiler_task_card.md) | 原子证据、来源和冲突协调 |
+| [P0-10 Claim Verifier](claim_verifier_task_card.md) | 数字、主张和发布核验 |
+| [P0-11 Public-safe Export](public_safe_export_task_card.md) | 字段白名单和公开导出 |
+| [P0-12 Graft Assessment](graft_assessment_task_card.md) | 独立后验 graft 证据边界 |
+| [公开 JSON Schema](../../schemas/) | Agent、证据、比较、可视化和运行对象合同 |
+| [Tool Package Cards](../../tool_packages/) | 当前可调用工具、输入输出和实现状态 |
+| [Active Methods](../../knowledge/active-methods.md) | P0-01、P0-02 与 P0-03 当前选定方法 |
 | [Conda 环境合同](../../environments/README.md) | 当前运行能力所需的最小环境与待建环境 |
-| [v0.1 桌面走查记录](validation_walkthrough_v0.1.md) | 湿实验与 Agent 实现两种视角下哪些已闭环、哪些需要真实团队确认 |
 
 ## 状态词
 

@@ -78,7 +78,10 @@ def test_every_tool_package_has_resolvable_contract_files() -> None:
         assert spec.environment_spec_id
         assert registry.resolve_schema(spec.input_schema_ref)["title"]
         assert registry.resolve_schema(spec.output_schema_ref)["title"]
-        assert spec.method_ids
+        if spec.implementation_state is ImplementationState.IMPLEMENTED:
+            assert spec.method_ids
+        else:
+            assert spec.method_ids == []
 
 
 def test_public_registry_payload_contains_no_absolute_paths() -> None:
@@ -92,7 +95,7 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 23
+    assert len(SCHEMA_REFS) == 20
     for schema_ref in SCHEMA_REFS:
         schema = load_schema(schema_ref)
         assert schema["$id"] == schema_ref

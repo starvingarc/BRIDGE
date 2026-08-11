@@ -1,7 +1,7 @@
-# BRIDGE Method And Source Knowledge
+# BRIDGE Knowledge
 
-This versioned catalog contains 396 module-capability bindings and 354 canonical Method Packages. The raw registry contained 388 distinct public URLs; correcting retired links and merging identical destinations produced 385 Source Cards. 385 Source Cards were reachable directly or verified through Crossref in this snapshot.
+BRIDGE runtime retrieval uses the immutable packaged snapshot at `src/bridge/resources/knowledge_snapshot.json.gz`. Its curated inputs and source-verification record live in `catalog_seed/`.
 
-Markdown and YAML are the human-reviewable facts; `index/chunks.jsonl` and the packaged snapshot are deterministic retrieval projections. `bindings.yaml` preserves every original module-capability record, while `alias_map.yaml` records canonical method resolution.
+The generated [active-methods shortlist](active-methods.md) shows only the methods selected by P0-01, P0-02 and P0-03. The repository does not track exploded Method Cards, Source Cards, bindings, aliases, retrieval chunks or source URL lists.
 
-Source accessibility and scientific validity are separate. Candidate, shadow, conditional and deferred methods retain those states after documentation is complete.
+Source accessibility and scientific validity remain separate. A verified URL does not promote a method to formal eligibility.

@@ -7,7 +7,6 @@ import hashlib
 import io
 import json
 import re
-import shutil
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -16,6 +15,7 @@ import yaml
 
 
 SNAPSHOT_ID = "BRIDGE-KNOWLEDGE-20260810-v0.1"
+ACTIVE_MODULE_IDS = ("P0-01", "P0-02", "P0-03")
 PUBLIC_URL = re.compile(r"^https?://", re.IGNORECASE)
 SENTINELS = {"internal_no_public_url", "not_registered_in_source"}
 
@@ -28,7 +28,8 @@ def main() -> int:
     parser.add_argument("--overrides", type=Path)
     args = parser.parse_args()
 
-    verification = _load_json(args.verification) if args.verification and args.verification.exists() else {}
+    verification_path = args.verification or args.repo / "catalog_seed" / "source_verification.json"
+    verification = _load_json(verification_path) if verification_path.exists() else {}
     rows, source_hash = _read_registry(args.registry)
     if len(rows) != 396:
         raise ValueError(f"Expected 396 registry rows, found {len(rows)}")
@@ -64,7 +65,6 @@ def main() -> int:
         canonical_url_token_count,
         canonical_public_assignments,
     )
-    _update_tool_specs(args.repo, methods)
     return 0
 
 
@@ -143,7 +143,7 @@ def _normalize_methods(rows: list[dict[str, Any]]) -> tuple[list[dict], list[dic
                 "critical_boundaries": sorted({str(row["key_boundary"]).strip() for row in group_rows}),
                 "retrieval_policy": "competitor_isolated" if competitor_isolated else "registered_local_snapshot",
                 "formal_eligible": False,
-                "card_ref": f"knowledge/methods/{method_id}/README.md",
+                "card_ref": f"bridge://knowledge/methods/{method_id}",
                 "provenance_refs": [f"MASTER-20260810:Tools:R{excel_row}" for excel_row, _ in group],
             }
             methods.append(method)
@@ -264,42 +264,9 @@ def _write_catalog(
     canonical_public_assignments: int,
 ) -> None:
     knowledge = repo / "knowledge"
-    if knowledge.exists():
-        shutil.rmtree(knowledge)
-    (knowledge / "methods").mkdir(parents=True)
-    (knowledge / "sources").mkdir()
-    (knowledge / "index").mkdir()
-    shutil.copyfile(repo / "catalog_seed" / "KNOWLEDGE_AGENTS.md", knowledge / "AGENTS.md")
+    knowledge.mkdir(parents=True, exist_ok=True)
 
     source_lookup = {source["source_id"]: source for source in sources}
-    for method in methods:
-        root = knowledge / "methods" / method["method_id"]
-        root.mkdir()
-        _write_yaml(root / "method.yaml", method)
-        (root / "README.md").write_text(_method_markdown(method, source_lookup), encoding="utf-8")
-    for source in sources:
-        _write_yaml(knowledge / "sources" / f"{source['source_id']}.yaml", source)
-        (knowledge / "sources" / f"{source['source_id']}.md").write_text(_source_markdown(source), encoding="utf-8")
-
-    _write_yaml(knowledge / "bindings.yaml", {"bindings": bindings})
-    _write_yaml(knowledge / "alias_map.yaml", {"aliases": aliases})
-    source_urls = [source["url"] for source in sources]
-    (knowledge / "source_urls.json").write_text(json.dumps(source_urls, indent=2) + "\n", encoding="utf-8")
-    verification_payload = {
-        source["url"]: {
-            "status": source["verification_status"],
-            "http_status": source["http_status"],
-            "resolved_url": source["resolved_url"],
-            "title": source["title"],
-            "checked_at": source["verified_at"],
-        }
-        for source in sources
-    }
-    (knowledge / "source_verification.json").write_text(
-        json.dumps(verification_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-
     documents = [_retrieval_document(method, source_lookup) for method in methods if method["retrieval_policy"] != "competitor_isolated"]
     summary = {
         "binding_count": len(bindings),
@@ -330,11 +297,9 @@ def _write_catalog(
     }
     canonical = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     snapshot["content_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-    _write_yaml(knowledge / "snapshot.yaml", {key: value for key, value in snapshot.items() if key not in {"methods", "sources", "bindings", "aliases", "documents"}})
-    with (knowledge / "index" / "chunks.jsonl").open("w", encoding="utf-8") as handle:
-        for document in documents:
-            handle.write(json.dumps(document, ensure_ascii=False, sort_keys=True) + "\n")
-    (knowledge / "README.md").write_text(_knowledge_readme(summary), encoding="utf-8")
+    (knowledge / "active-methods.md").write_text(
+        _active_methods_markdown(repo, methods), encoding="utf-8"
+    )
 
     resources = repo / "src" / "bridge" / "resources"
     resources.mkdir(parents=True, exist_ok=True)
@@ -345,17 +310,36 @@ def _write_catalog(
                 json.dump(snapshot, text_handle, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-def _update_tool_specs(repo: Path, methods: list[dict]) -> None:
-    by_module: dict[str, list[str]] = defaultdict(list)
-    for method in methods:
-        for module in method["modules"]:
-            by_module[module].append(method["method_id"])
-    for module, method_ids in by_module.items():
-        path = repo / "src" / "bridge" / "tool_packages" / "specs" / module.lower().replace("-", "_")
-        path = path.with_suffix(".yaml")
-        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-        payload["method_ids"] = sorted(set(method_ids))
-        path.write_text(yaml.safe_dump(payload, allow_unicode=True, sort_keys=False), encoding="utf-8")
+def _active_methods_markdown(repo: Path, methods: list[dict]) -> str:
+    method_lookup = {method["method_id"]: method for method in methods}
+    sections: list[str] = [
+        "# Active BRIDGE Methods",
+        "",
+        "This generated shortlist mirrors the methods selected by the active P0-01, P0-02 and P0-03 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.",
+    ]
+    for module_id in ACTIVE_MODULE_IDS:
+        spec_path = (
+            repo
+            / "src"
+            / "bridge"
+            / "tool_packages"
+            / "specs"
+            / f"{module_id.lower().replace('-', '_')}.yaml"
+        )
+        spec = _load_yaml(spec_path)
+        method_ids = list(spec["method_ids"])
+        missing = sorted(set(method_ids).difference(method_lookup))
+        if missing:
+            raise ValueError(f"Unknown active methods for {module_id}: {missing}")
+        sections.extend(["", f"## {module_id}: {spec['name']}", ""])
+        if not method_ids:
+            sections.append("No methods are selected while this package remains a scaffold.")
+            continue
+        sections.extend(
+            f"- `{method_id}` — {method_lookup[method_id]['display_name']} ([catalog record]({method_lookup[method_id]['card_ref']}))"
+            for method_id in method_ids
+        )
+    return "\n".join(sections) + "\n"
 
 
 def _retrieval_document(method: dict, source_lookup: dict[str, dict]) -> dict:
@@ -382,75 +366,6 @@ def _retrieval_document(method: dict, source_lookup: dict[str, dict]) -> dict:
         "retrieval_text": text,
         "allowed_use": ["catalog", "planning", "explanation"],
     }
-
-
-def _method_markdown(method: dict, source_lookup: dict[str, dict]) -> str:
-    sources = "\n".join(
-        f"- [{source_lookup[source_id]['title']}]({source_lookup[source_id]['url']}) (`{source_id}`)"
-        for source_id in method["source_ids"]
-    ) or "- No public source registered; see `source_status`."
-    return f"""# {method['display_name']}
-
-| Field | Value |
-|---|---|
-| Method ID | `{method['method_id']}` |
-| Modules | {', '.join(method['modules'])} |
-| Scientific status | {', '.join(method['scientific_status_raw'])} |
-| Source status | `{method['source_status']}` |
-| License status | `{method['license_status']}` |
-| Version | `{method['version']}` (`{method['version_status']}`) |
-| Maintenance | `{method['maintenance_status']}` |
-| Primary paper | `{method['primary_paper_status']}` |
-| Evidence family | {', '.join(method['evidence_family_ids']) or '`unassigned`'} |
-| Retrieval policy | `{method['retrieval_policy']}` |
-
-## BRIDGE Use
-
-{' | '.join(method['capabilities'])}
-
-## Inputs
-
-{' | '.join(method['input_requirements'])}
-
-## Outputs
-
-{' | '.join(method['output_semantics'])}
-
-## Boundaries
-
-{' | '.join(method['critical_boundaries'])}
-
-## Environment
-
-{' | '.join(method['environment_requirements'])}
-
-## Curation Notes
-
-{' | '.join(method['curation_notes']) or 'No method-specific correction is recorded in this snapshot.'}
-
-## Official Sources
-
-{sources}
-
-Source verification records confirm provenance and accessibility only; they do not promote scientific status.
-"""
-
-
-def _source_markdown(source: dict) -> str:
-    return f"""# {source['title']}
-
-| Field | Value |
-|---|---|
-| Source ID | `{source['source_id']}` |
-| Type | `{source['source_type']}` |
-| Verification | `{source['verification_status']}` |
-| HTTP status | `{source['http_status']}` |
-| Access policy | `{source['access_policy']}` |
-
-URL: {source['url']}
-
-This Source Card records provenance and retrieval metadata. It does not reproduce restricted full text.
-"""
 
 
 def _source_type(url: str) -> str:
@@ -521,21 +436,6 @@ def _normalize_aliases(items: list[dict]) -> list[dict]:
             }
         )
     return sorted(result, key=lambda item: (item["raw_tool_id"], item["method_id"]))
-
-
-def _knowledge_readme(summary: dict) -> str:
-    return f"""# BRIDGE Method And Source Knowledge
-
-This versioned catalog contains {summary['binding_count']} module-capability bindings and {summary['method_count']} canonical Method Packages. The raw registry contained {summary['raw_distinct_public_url_count']} distinct public URLs; correcting retired links and merging identical destinations produced {summary['canonical_public_source_count']} Source Cards. {summary['verified_public_source_count']} Source Cards were reachable directly or verified through Crossref in this snapshot.
-
-Markdown and YAML are the human-reviewable facts; `index/chunks.jsonl` and the packaged snapshot are deterministic retrieval projections. `bindings.yaml` preserves every original module-capability record, while `alias_map.yaml` records canonical method resolution.
-
-Source accessibility and scientific validity are separate. Candidate, shadow, conditional and deferred methods retain those states after documentation is complete.
-"""
-
-
-def _write_yaml(path: Path, payload: dict) -> None:
-    path.write_text(yaml.safe_dump(payload, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
 
 def _load_json(path: Path | None) -> dict:

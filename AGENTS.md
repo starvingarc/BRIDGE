@@ -46,12 +46,12 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 | `src/bridge/toolkit/` | 公共对象、Registry、运行器、产物与知识检索 |
 | `src/bridge/tool_packages/` | 12 个高层科学工具包；底层方法不直接暴露给 Agent |
 | `tool_packages/` | 人可读 Tool Card、输入输出、环境、可视化与验证合同 |
-| `knowledge/` | 去重后的 Method Card、Source Card 与版本化检索索引 |
+| `knowledge/` | 紧凑的人类导航与当前 P0 方法短名单；完整目录仅以打包快照发布 |
+| `catalog_seed/` | 方法目录策展、来源核验与确定性重建输入 |
 | `schemas/` | 对外 JSON Schema；语义变更必须版本化 |
 | `tests/` | 当前活动实现的可执行合同与回归测试 |
 | `docs/` | 稳定科学和工程事实 |
 | `plans/` | 当前主题分支的临时实施计划 |
-| `legacy/` | 历史实现，仅供追溯；不安装、不测试、不调用 |
 
 `src/bridge/toolkit/contracts.py`、公开 JSON Schema、Tool ID、状态枚举、`MeasurementSpec` 和知识 Source ID 是高冲突表面，默认单写者。
 
@@ -100,7 +100,7 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 - 未实现工具返回 `not_implemented`，不得伪造 `MeasurementResult`。
 - 输入不足返回 `unavailable`、`not_assessed` 或明确 eligibility reason，不把技术不足解释为产品失败。
 - 正式运行只读取本地版本化知识快照；实时联网结果只能用于候选策展。
-- 每个 Method Card 必须记录官方文档、源码、论文或 `not_applicable` 原因、版本、许可、输入输出、边界和来源状态。
+- 每个打包 Method 记录必须包含官方文档、源码、论文或 `not_applicable` 原因、版本、许可、输入输出、边界和来源状态。
 - 安装成功只表示环境可用，不表示方法科学验证通过。
 
 ## 隐私与来源

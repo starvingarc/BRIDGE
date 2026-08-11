@@ -22,10 +22,10 @@ finding or an explicit statement of what the product assessment still cannot cla
 Do not assign review or data-supply actions to an external collaborator unless that
 responsibility has been explicitly agreed.
 
-## Knowledge Cards
+## Knowledge Catalog
 
-Method and Source Cards use machine-readable YAML plus concise Markdown. Facts cite official sources. A missing paper, license or version is represented explicitly rather than inferred.
+Catalog curation and source-verification inputs live under `catalog_seed/`. Runtime retrieval uses the packaged gzip snapshot, while `knowledge/active-methods.md` is the compact human shortlist. Exploded Method Cards, Source Cards and retrieval indexes are not tracked. A missing paper, license or version is represented explicitly rather than inferred.
 
 ## Historical Material
 
-Superseded implementation and documents live under `legacy/` or Git history. They are not linked as current contracts and cannot silently supply values to current BRIDGE tools.
+Superseded implementation and documents remain in Git history. They are not linked as current contracts and cannot silently supply values to current BRIDGE tools.

@@ -67,3 +67,4 @@ rules are approved. Failure at that point leaves the affected state as `shadow` 
 - Evidence run: `CELLSTATE-EVIDENCE-3268ddfd0caf`.
 - Repeated summaries were content-stable.
 - Runtime remains fail-closed without approved review, gate and release records.
+- Repository navigation now points to the compact knowledge snapshot and active P0 method shortlist; catalog-only methods do not populate scaffold Tool Package specs.

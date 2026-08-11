@@ -29,6 +29,8 @@ Every package supports:
 | `FreezeGateSpec` | Human-signed thresholds fixed before locked assets are opened |
 | `CellStateReleaseManifest` | Approved per-state release state and runtime method selection |
 
+Implemented Tool Packages retain at least one selected `method_id`. Scaffold packages keep `method_ids` empty until an executable, benchmark-bound method contract exists; candidate catalog entries do not imply implementation.
+
 Expression assets declare one of `analysis_ready`, `count_ready` or `droplet_ready`. `analysis_ready` accepts declared normalized h5ad expression; `count_ready` requires raw counts; `droplet_ready` requires a 10x raw-droplet object and currently performs contract audit only. Gene-set metrics bind either `var_names` or an explicitly declared `var` column; absent marker coverage returns `unavailable`, never zero.
 
 ## State Separation

@@ -422,7 +422,7 @@ graft 的 scRNA-seq 和 snRNA-seq 需要分别处理。其结果不回填移植�
 
 ## 4. 分析工具与知识库
 
-本章只确定分析任务、推荐工具组合、基本流程和发布条件。工具版本、参数、环境、许可证、完整输入条件、benchmark 及官方资料统一记录在附录 [Analysis Task Cards](bridge_spec_v0.1/analysis_task_cards.md)。
+本章只确定分析任务、推荐工具组合、基本流程和发布条件。工具版本、参数、环境、许可证、完整输入条件、benchmark 及官方资料统一记录在 [P0 科学规格索引](bridge_spec_v0.1/README.md) 链接的任务卡、Tool Package Card 与知识快照中。
 
 ### 4.1 使用原则
 
@@ -473,7 +473,7 @@ Cell-State 各状态轴分别比较 marker/program、reference correlation、监
 
 ### 4.5 附录任务卡
 
-每项分析任务建立独立 [Analysis Task Card](bridge_spec_v0.1/analysis_task_cards.md)，记录：
+每项分析任务建立独立任务卡，并由 [P0 科学规格索引](bridge_spec_v0.1/README.md) 导航，记录：
 
 - 科学问题和适用场景。
 - 官方文档、官方源码和方法依据。
@@ -676,7 +676,7 @@ Visualization Composer 接收分析结果、ProductEvidenceObject、Evidence Gra
 
 可视化遵循以下顺序：
 
-1. 优先调用 [Visualization Registry](bridge_spec_v0.1/visualization_registry.md) 中已注册的组件。
+1. 优先调用当前 [Tool Package Cards](../tool_packages/) 声明且能绑定 `VisualizationArtifact` 的组件。
 2. 缺少组件时，检索分析工具的官方绘图接口、官方源码示例和绘图 skill。
 3. 在隔离环境中生成候选图表并检查数据绑定、尺度、标签、缺失状态和视觉质量。
 4. 未注册图表可以标记为 `exploratory` 展示，通过审核前不能进入正式报告。
@@ -716,7 +716,7 @@ Claim Verifier 检查：
 
 核验失败时返回 `release_blocked`。内部报告草稿可以自动生成；正式发布或 public-safe 导出需要用户确认。
 
-`ProductCase`、`AnalysisPlan`、`MeasurementSpec`、`ScoreContract`、`MeasurementResult`、`ProductEvidenceObject`、`CaseEvidenceGraph`、`ComparisonEvidenceGraph`、`ComparisonRecord`、`VisualizationArtifact`、`RecommendationCard` 和 `VerifiedReport` 均采用追加式版本管理，详细字段见 [Object Schemas](bridge_spec_v0.1/object_schemas.md)。
+`ProductCase`、`AnalysisPlan`、`MeasurementSpec`、`ScoreContract`、`MeasurementResult`、`ProductEvidenceObject`、`CaseEvidenceGraph`、`ComparisonEvidenceGraph`、`ComparisonRecord`、`VisualizationArtifact`、`RecommendationCard` 和 `VerifiedReport` 均采用追加式版本管理；当前对外字段以 [公开 JSON Schema](../schemas/) 为准，尚未实现的对象保持候选设计。
 
 ### 6.9 P0 验收要求
 
@@ -736,10 +736,9 @@ Claim Verifier 检查：
 | 附录 | 文档 | 用途 |
 | --- | --- | --- |
 | A | [数据与 Reference Registry](bridge_spec_v0.1/data_reference_registry.md) | 数据角色、血缘、状态、访问与评测资格 |
-| B | [Tool Registry](bridge_spec_v0.1/tool_registry.md) | 工具、输入、输出、边界、环境和晋升状态 |
-| C | [Knowledge Registry](bridge_spec_v0.1/knowledge_registry.md) | 知识快照、许可、evidence family 和允许用途 |
+| B | [Tool Package Cards](../tool_packages/) | 工具、输入、输出、边界、环境和实现状态 |
+| C | [Knowledge Catalog](../knowledge/README.md) | 打包知识快照、当前方法短名单与策展入口 |
 | D | [Conda Environment Contracts](../environments/README.md) | 工具运行所需的通用 Conda 环境合同 |
-| E | [Analysis Task Cards](bridge_spec_v0.1/analysis_task_cards.md) | 分析任务合同、验证要求和发布状态 |
-| F | [Object Schemas](bridge_spec_v0.1/object_schemas.md) | Agent、证据、比较、可视化和报告对象合同 |
-| G | [Visualization Registry](bridge_spec_v0.1/visualization_registry.md) | 正式图表组件、输入绑定和发布要求 |
-| H | [v0.1 走查记录](bridge_spec_v0.1/validation_walkthrough_v0.1.md) | 当前桌面走查和待真实团队确认事项 |
+| E | [P0 Scientific Specifications](bridge_spec_v0.1/README.md) | 各分析任务合同、验证要求和发布状态 |
+| F | [Public JSON Schemas](../schemas/) | 当前 Agent、证据、比较、可视化和运行对象合同 |
+| G | [Validation Records](validation/) | 当前服务器集成和科学 pilot 证据 |

@@ -25,11 +25,11 @@ def test_catalog_preserves_all_capability_bindings_and_resolves_methods() -> Non
     assert summary["dangling_source_refs"] == []
 
 
-def test_every_method_has_human_card_and_source_or_explicit_reason() -> None:
+def test_every_method_has_logical_catalog_ref_and_source_or_explicit_reason() -> None:
     registry = KnowledgeRegistry.load_default()
 
     for method in registry.methods:
-        assert method["card_ref"].startswith("knowledge/methods/")
+        assert method["card_ref"].startswith("bridge://knowledge/methods/")
         assert method["source_ids"] or method["source_status"] in {
             "internal_no_public_source",
             "not_registered",

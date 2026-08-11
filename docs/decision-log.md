@@ -2,7 +2,7 @@
 
 ## 2026-08-10: Rebuild The Active Package
 
-The historical Step1-Step3 implementation moves to `legacy/v1`. BRIDGE uses new high-level Tool Package contracts and has no compatibility requirement with historical score or report APIs.
+The historical Step1-Step3 implementation remains available through Git history. BRIDGE uses new high-level Tool Package contracts and has no compatibility requirement with historical score or report APIs.
 
 ## 2026-08-10: Separate Scientific Tools From Agent Infrastructure
 
@@ -14,7 +14,7 @@ The PRD's 0-100 language is a future design target. No current `ScoreContract` i
 
 ## 2026-08-10: Versioned Local Knowledge
 
-Markdown and YAML are canonical. All catalogued methods receive source-verified cards, while a deterministic generated index supports metadata and full-text retrieval. Formal runs cannot depend on live Web results.
+Curated registry rows, overrides and source-verification records are the rebuild inputs. Runtime retrieval uses one deterministic packaged snapshot; only the active P0 method shortlist is expanded as Markdown. Formal runs cannot depend on live Web results.
 
 ## 2026-08-10: First Executable Package
 

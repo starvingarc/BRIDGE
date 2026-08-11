@@ -63,6 +63,20 @@ class FrozenModel(BaseModel):
 
 
 class ToolPackageSpec(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"implementation_state": {"const": "implemented"}},
+                        "required": ["implementation_state"],
+                    },
+                    "then": {"properties": {"method_ids": {"minItems": 1}}},
+                }
+            ]
+        }
+    )
+
     tool_id: str = Field(pattern=r"^P0-(0[1-9]|1[0-2])$")
     name: str
     version: str
@@ -73,8 +87,14 @@ class ToolPackageSpec(FrozenModel):
     environment_spec_id: str
     input_schema_ref: str
     output_schema_ref: str
-    method_ids: list[str] = Field(min_length=1)
+    method_ids: list[str]
     card_ref: str
+
+    @model_validator(mode="after")
+    def implemented_package_has_methods(self) -> "ToolPackageSpec":
+        if self.implementation_state is ImplementationState.IMPLEMENTED and not self.method_ids:
+            raise ValueError("implemented ToolPackageSpec requires at least one method")
+        return self
 
 
 class InputAsset(FrozenModel):

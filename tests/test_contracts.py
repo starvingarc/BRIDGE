@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
-from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
 from pydantic import ValidationError
 
 from bridge.toolkit.contracts import (
@@ -16,6 +15,7 @@ from bridge.toolkit.contracts import (
     ScoreState,
     ToolRequest,
     ToolRun,
+    ToolPackageSpec,
 )
 from bridge.toolkit.schemas import load_schema
 
@@ -107,6 +107,63 @@ def test_scaffold_tool_run_cannot_claim_success_without_payload(tmp_path: Path) 
         )
 
 
+def test_scaffold_spec_allows_no_selected_methods() -> None:
+    spec = ToolPackageSpec(
+        tool_id="P0-03",
+        name="Target Identity & Regional Fidelity",
+        version="0.1.0",
+        summary="Scaffold contract.",
+        implementation_state=ImplementationState.SCAFFOLD,
+        scientific_status="candidate",
+        environment_spec_id="ENV-P0-CORE-v0.1",
+        input_schema_ref="bridge://schemas/tool-request/v0.1",
+        output_schema_ref="bridge://schemas/tool-run/v0.1",
+        method_ids=[],
+        card_ref="bridge://tool-cards/P0-03",
+    )
+
+    assert spec.method_ids == []
+
+
+def test_implemented_spec_requires_a_selected_method() -> None:
+    with pytest.raises(ValidationError, match="requires at least one method"):
+        ToolPackageSpec(
+            tool_id="P0-01",
+            name="Input Audit & QC",
+            version="0.1.0",
+            summary="Executable contract.",
+            implementation_state=ImplementationState.IMPLEMENTED,
+            scientific_status="candidate",
+            environment_spec_id="ENV-P0-CORE-v0.1",
+            input_schema_ref="bridge://schemas/tool-request/v0.1",
+            output_schema_ref="bridge://schemas/tool-run/v0.1",
+            method_ids=[],
+            card_ref="bridge://tool-cards/P0-01",
+        )
+
+
+def test_tool_package_schema_allows_empty_scaffolds_but_not_empty_implementations() -> None:
+    validator = Draft202012Validator(load_schema("bridge://schemas/tool-package-spec/v0.1"))
+    payload = {
+        "tool_id": "P0-03",
+        "name": "Target Identity & Regional Fidelity",
+        "version": "0.1.0",
+        "summary": "Scaffold contract.",
+        "implementation_state": "scaffold",
+        "scientific_status": "candidate",
+        "optional": False,
+        "environment_spec_id": "ENV-P0-CORE-v0.1",
+        "input_schema_ref": "bridge://schemas/tool-request/v0.1",
+        "output_schema_ref": "bridge://schemas/tool-run/v0.1",
+        "method_ids": [],
+        "card_ref": "bridge://tool-cards/P0-03",
+    }
+
+    assert list(validator.iter_errors(payload)) == []
+    payload["implementation_state"] = "implemented"
+    assert list(validator.iter_errors(payload))
+
+
 def test_exported_json_schemas_enforce_score_and_scaffold_guards(tmp_path: Path) -> None:
     measurement_schema = load_schema("bridge://schemas/measurement-result/v0.1")
     measurement_validator = Draft202012Validator(measurement_schema)
@@ -186,11 +243,8 @@ def test_input_level_and_matrix_semantics_must_agree(tmp_path: Path) -> None:
     "schema_ref",
     [
         "bridge://schemas/biological-review-record/v0.1",
-        "bridge://schemas/cell-state-benchmark-spec/v0.1",
         "bridge://schemas/cell-state-benchmark-spec/v0.2",
-        "bridge://schemas/benchmark-split-manifest/v0.1",
         "bridge://schemas/benchmark-split-manifest/v0.2",
-        "bridge://schemas/freeze-gate-spec/v0.1",
         "bridge://schemas/freeze-gate-spec/v0.2",
         "bridge://schemas/cell-state-release-manifest/v0.1",
     ],
@@ -199,51 +253,3 @@ def test_cell_state_freeze_contracts_are_exported(schema_ref: str) -> None:
     schema = load_schema(schema_ref)
 
     assert schema["$id"] == schema_ref
-
-
-def test_legacy_benchmark_schema_remains_loadable() -> None:
-    payload = {
-        "benchmark_spec_id": "CELLSTATE-BENCHMARK-scRNA-pilot-v0.1",
-        "version": "0.1.0",
-        "phase": "pilot",
-        "assay": "scRNA-seq",
-        "annotation_vocabulary_ref": "BRIDGE-PD-vMB-ANNOTATION-v0.1-draft",
-        "reference_snapshot_ref": "REF-PD-vMB-CELLSTATE-v0.2",
-        "methods": ["source_specific_correlation"],
-    }
-    Draft202012Validator(
-        load_schema("bridge://schemas/cell-state-benchmark-spec/v0.1")
-    ).validate(payload)
-    with pytest.raises(JSONSchemaValidationError):
-        Draft202012Validator(
-            load_schema("bridge://schemas/cell-state-benchmark-spec/v0.2")
-        ).validate(payload)
-
-
-def test_legacy_split_and_gate_payloads_remain_loadable() -> None:
-    split = {
-        "split_manifest_id": "CELLSTATE-SPLIT-pilot-v0.1-fixture",
-        "benchmark_spec_ref": "CELLSTATE-BENCHMARK-scRNA-pilot-v0.1",
-        "phase": "pilot",
-        "random_seed": 7,
-        "input_catalog_sha256": "a" * 64,
-        "records": [],
-    }
-    Draft202012Validator(
-        load_schema("bridge://schemas/benchmark-split-manifest/v0.1")
-    ).validate(split)
-    with pytest.raises(JSONSchemaValidationError):
-        Draft202012Validator(
-            load_schema("bridge://schemas/benchmark-split-manifest/v0.2")
-        ).validate(split)
-
-    gate = {
-        "gate_spec_id": "FREEZE-GATE-CELLSTATE-scRNA-v0.1-draft",
-        "version": "0.1.0",
-        "status": "proposed",
-        "benchmark_spec_ref": "CELLSTATE-BENCHMARK-scRNA-pilot-v0.1",
-        "criteria": [],
-    }
-    Draft202012Validator(
-        load_schema("bridge://schemas/freeze-gate-spec/v0.1")
-    ).validate(gate)
