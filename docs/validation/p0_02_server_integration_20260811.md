@@ -42,4 +42,4 @@ The two OOD runs remain shadow candidate sets rather than final assignments. The
 - Repeating the full GSE204796 request produced the same run ID and all 16 artifact hashes.
 - The full repository suite collected and passed 68 tests in the server Python 3.12 scientific environment.
 
-This record establishes an executable, traceable shadow baseline. It does not establish a frozen annotation method, calibrated OOD detector, formal domain score, product ranking, clinical efficacy, safety, potency or release decision.
+This historical record establishes an executable, traceable shadow baseline. It does not establish a frozen annotation method, calibrated OOD detector, formal domain score, product ranking, clinical efficacy, safety, potency or release decision. The current `ENV-P0-CORE-v0.1` state remains `rebuild_validation_required` until Task 5 records a fresh server rebuild validation.

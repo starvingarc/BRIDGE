@@ -214,8 +214,8 @@ P0 正式主流程不依赖 GPU。深度 OOD 与 ensemble 仅作 `shadow` benchm
 - mDA progenitor enrichment: https://www.jci.org/articles/view/156768
 - SciPy exact binomial test: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binomtest.html
 - scikit-learn OOD primitives: https://scikit-learn.org/stable/
-- Conformal cell annotation: https://pmc.ncbi.nlm.nih.gov/articles/PMC12506889/
-- scConform: https://bioconductor.org/packages/scConform/
+- Lopez-De-Castro conformal cell annotator: https://doi.org/10.1093/bioinformatics/btaf521 and https://pmc.ncbi.nlm.nih.gov/articles/PMC12506889/
+- scConform prediction-set/hierarchical coverage calibration: https://arxiv.org/abs/2410.23786, https://doi.org/10.1093/jrsssc/qlag037 and https://bioconductor.org/packages/scConform/
 - speckle/propeller: https://bioconductor.org/packages/speckle/
 - pertpy/scCODA: https://pertpy.readthedocs.io/en/latest/tutorials/notebooks/sccoda.html
 - sccomp: https://bioconductor.org/packages/sccomp/

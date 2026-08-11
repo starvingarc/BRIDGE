@@ -32,4 +32,14 @@ prior_refs:
   - BRIDGE-PD-vMB-MARKERS-v0.1-draft
 validation_ref: VALIDATION-CELLSTATE-v0.1-draft
 exclusion_rules:
-  competitor_source_families: [STUDER_CAPYBARABRAIN, EMTAB14729]
+  competitor_source_families:
+    - STUDER
+    - CAPYBARABRAIN
+    - STUDER_CAPYBARABRAIN
+    - HDNA
+    - STUDER_HDNA
+    - FETAL_ATLAS
+    - FETAL-ATLAS
+    - STUDER_FETAL_ATLAS
+    - EMTAB14729
+    - E-MTAB-14729

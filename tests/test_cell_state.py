@@ -307,6 +307,61 @@ def test_reference_build_normalizes_neuron_chat_alias(tmp_path: Path, monkeypatc
     assert DENIED_SOURCE_FAMILIES.issubset(set(manifest.prohibited_source_families))
 
 
+def test_measurement_specs_share_complete_competitor_reference_denylist() -> None:
+    spec_root = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "bridge"
+        / "tool_packages"
+        / "p0_02_cell_state"
+        / "measurement_specs"
+    )
+    expected_aliases = {
+        "HDNA",
+        "STUDER_HDNA",
+        "FETAL_ATLAS",
+        "FETAL-ATLAS",
+        "STUDER_FETAL_ATLAS",
+    }
+
+    assert expected_aliases <= DENIED_SOURCE_FAMILIES
+    for filename in (
+        "cell_state_scrna_shadow_v0.1.yaml",
+        "cell_state_snrna_shadow_v0.1.yaml",
+    ):
+        spec = yaml.safe_load((spec_root / filename).read_text(encoding="utf-8"))
+        assert set(spec["exclusion_rules"]["competitor_source_families"]) == set(
+            DENIED_SOURCE_FAMILIES
+        )
+
+
+@pytest.mark.parametrize(
+    "source_family_id",
+    ["HDNA", "STUDER_HDNA", "FETAL_ATLAS", "FETAL-ATLAS", "STUDER_FETAL_ATLAS"],
+)
+def test_competitor_atlas_aliases_are_rejected_from_reference_build(
+    tmp_path: Path, monkeypatch, source_family_id: str
+) -> None:
+    _build_snapshot(tmp_path, monkeypatch)
+    catalog = yaml.safe_load((tmp_path / "catalog.yaml").read_text(encoding="utf-8"))
+    catalog.pop("prohibited_source_families")
+    competitor = dict(catalog["sources"][0])
+    competitor.update(
+        {
+            "source_id": f"AAA-{source_family_id}",
+            "source_family_id": source_family_id,
+            "evidence_family_id": "EF-COMPETITOR-ATLAS",
+        }
+    )
+    catalog["sources"].append(competitor)
+    path = tmp_path / f"competitor-{source_family_id}.yaml"
+    path.write_text(yaml.safe_dump(catalog, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReferenceError) as error:
+        build_reference_snapshot(path, tmp_path / f"snapshot-{source_family_id}")
+    assert error.value.reason_code == "prohibited_reference_source_family"
+
+
 def test_reference_snapshot_is_immutable_after_manifest_creation(tmp_path: Path, monkeypatch) -> None:
     snapshot = _build_snapshot(tmp_path, monkeypatch)
 

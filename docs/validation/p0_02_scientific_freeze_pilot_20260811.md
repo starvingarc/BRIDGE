@@ -43,9 +43,10 @@ that either method is ready for product use.
 
 scANVI separated the seven L2 states more accurately than the transparent
 correlation and marker baselines. Its pilot was transductive, however, and no
-independent external label source has yet confirmed these fine states. scConform
-covered 83.3% of L2 true labels against a nominal 90% target, so its abstention
-behavior is not sufficient.
+independent external label source has yet confirmed these fine states. scConform,
+used only as a prediction-set/hierarchical coverage layer over a preregistered base
+classifier, covered 83.3% of L2 true labels against a nominal 90% target. This does
+not establish a standalone OOD detector or sufficient abstention behavior.
 
 ### Unrelated cells are still forced into known labels
 
@@ -106,8 +107,9 @@ and composition MAE measures error in the estimated product composition.
 | SingleR | No complete L1 result | Partial L2 output excluded | Exceeded the 3,600-second development budget |
 
 SingleR and scmap belong to the same reference-similarity evidence family.
-scConform calibrates scANVI probabilities and is not counted as an independent
-biological evidence source. No method was selected or frozen from this pilot.
+scConform wraps the preregistered scANVI base probabilities to assess prediction-set
+coverage and is not counted as an independent OOD detector or biological evidence
+source. No method was selected or frozen from this pilot.
 
 ## Engineering record
 
@@ -119,7 +121,7 @@ biological evidence source. No method was selected or frozen from this pilot.
 | Evidence artifact SHA-256 | `ffe78a0ba64f632b4cb25191062e91fc053de22e11bf4aa5b5f9e91a864e1590` |
 | Locked assets opened | `false` |
 | Sealed assets opened | `false` |
-| Local Python 3.12 suite | 171 passed, 3 warnings |
+| Historical local Python 3.12 suite | 171 passed, 3 warnings; diagnostic only, not current formal evidence |
 | Server Python 3.12 suite | 171 passed, 2 warnings |
 
 Repeated summaries were byte-identical and retained the same Evidence ID.

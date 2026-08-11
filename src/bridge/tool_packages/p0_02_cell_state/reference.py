@@ -28,7 +28,18 @@ class ReferenceError(ValueError):
 
 
 DENIED_SOURCE_FAMILIES = frozenset(
-    {"STUDER", "CAPYBARABRAIN", "STUDER_CAPYBARABRAIN", "EMTAB14729", "E-MTAB-14729"}
+    {
+        "STUDER",
+        "CAPYBARABRAIN",
+        "STUDER_CAPYBARABRAIN",
+        "HDNA",
+        "STUDER_HDNA",
+        "FETAL_ATLAS",
+        "FETAL-ATLAS",
+        "STUDER_FETAL_ATLAS",
+        "EMTAB14729",
+        "E-MTAB-14729",
+    }
 )
 
 

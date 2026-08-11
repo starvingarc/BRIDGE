@@ -130,7 +130,8 @@ LLM 可以解释 reason code、帮助研究者补充缺失信息和生成湿实�
 | Pandera | MeasurementResult/benchmark 表格合同候选 | `catalog_only` | `ENV-EVIDENCE-SCHEMA-v0.1` | 非 P0 必需依赖 |
 | SciPy bootstrap | 检查区间方法和验证 fixture | `shortlisted/conditional` | `ENV-EVIDENCE-v0.1` | 本模块不擅自对产品细胞重采样 |
 | scikit-learn calibration | 校准记录、reliability 和 proper-score 校验 | `shortlisted/conditional` | `ENV-EVIDENCE-v0.1` | 单一指标不能代表完整校准 |
-| scConform/conformal outputs | prediction-set coverage 与 OOD 证据输入 | `external_result_only`；`conditional` | 上游 Cell-State benchmark 环境 | 本模块不重跑模型，也不放宽 exchangeability 假设 |
+| scConform outputs | marginal/classwise prediction-set coverage、set size 与 hierarchy diagnostics | `external_result_only`；`conditional` | 上游 Cell-State benchmark 环境 | scConform 是 base-classifier coverage layer，不是独立 standalone OOD detector；本模块不重跑或放宽 exchangeability 假设 |
+| Lopez-De-Castro conformal annotator outputs | conformal annotation/rejection candidate evidence | `external_result_only`；`conditional` | 独立上游 benchmark 环境 | 与 scConform 分开登记；只有 source-aware 外部验证后才能用于 OOD robustness |
 | scIB/scib-metrics outputs | integration 与 biological-conservation 稳健性输入 | `external_result_only`；`conditional` | 上游 Comparison benchmark 环境 | batch removal 和 biology conservation 必须同时看 |
 | `BRIDGE-PRIOR-APPLICABILITY-MATCHER-v0.1` | 上下文、覆盖和版本规则匹配 | `adopted_spec`；实现 `proposed/candidate` | `ENV-EVIDENCE-v0.1`，CPU | 不根据数据库条目数量计算支持度 |
 | OAK | ontology traversal/crosswalk 候选 | `proposed_optional`；`catalog_only` | `knowledge_curator` | 不作为 P0 正式门控依赖 |
@@ -162,7 +163,7 @@ created_at / deterministic_run_ref
 | --- | --- | --- |
 | `ENV-EVIDENCE-v0.1` | Pydantic、pandas、SciPy、scikit-learn 与确定性门控 | `proposed` |
 | `ENV-EVIDENCE-SCHEMA-v0.1` | Pandera 及 schema fixture | `proposed_optional`；不阻塞 P0 |
-| upstream benchmark environments | scConform、scIB 和其他域级 benchmark | `external_result_only` |
+| upstream benchmark environments | scConform、Lopez-De-Castro conformal annotator、scIB 和其他域级 benchmark | `external_result_only` |
 | `knowledge_curator` | OAK 与 ontology 审核工具 | `proposed_optional` |
 
 主流程使用 CPU。正式冻结需保存 package lock、gate-rule snapshot、schema fixture、reason-code catalog 和确定性回归测试。
@@ -224,6 +225,7 @@ created_at / deterministic_run_ref
 - Pandera：https://pandera.readthedocs.io/en/stable/
 - SciPy bootstrap：https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html
 - scikit-learn probability calibration：https://scikit-learn.org/stable/modules/calibration.html
-- scConform / conformal single-cell annotation：https://pmc.ncbi.nlm.nih.gov/articles/PMC12506889/
+- scConform prediction-set/hierarchical coverage calibration：https://arxiv.org/abs/2410.23786 、https://doi.org/10.1093/jrsssc/qlag037 、https://bioconductor.org/packages/scConform/
+- Lopez-De-Castro conformal single-cell annotator：https://doi.org/10.1093/bioinformatics/btaf521 、https://pmc.ncbi.nlm.nih.gov/articles/PMC12506889/
 - scIB metrics：https://scib-metrics.readthedocs.io/en/stable/api.html
 - Ontology Access Kit：https://incatools.github.io/ontology-access-kit/introduction.html

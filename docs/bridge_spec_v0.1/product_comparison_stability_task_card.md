@@ -77,10 +77,10 @@ Pareto 判断必须逐域使用冻结方向、区间和最小可分辨差异；�
 | Asset ID | 体系/时间 | 规模 | 主要用途 | 当前限制 |
 | --- | --- | ---: | --- | --- |
 | `Q-GSE204796-v1` | mDA scRNA；D8/D14/D21/D28/D35 | 37,397 | 真实时间序列与阶段差异 | timepoint 必须按 sample/preparation 拆分 |
-| `Q-GSE227071-v1` | H9/4X LR-USC；D16/D28/D62 | 48,196 | cell source、阶段和方案 shift | D62 与 D16/D28 不属于同一产品阶段 |
+| `Q-GSE227070-v1` | H9/4X LR-USC；D16/D28/D62；parent SuperSeries `GSE227071` | 48,196 | cell source、阶段和方案 shift | 本 scRNA query 不含 GBX2-KO；D62 与 D16/D28 不属于同一产品阶段 |
 | `Q-GSE76381-ES-v1` | hESC mDA；D0/D12/D17/D35 | 1,715 | 小型历史时间序列 sanity | 样本量低；D0 不是产品 |
 | `Q-JERBER-v1` | population-scale iPSC DA；D11/D30/D52 | >750,000 | donor、batch、timepoint 与扰动稳健性 | 需冻结 donor/batch/condition map 并按 source family 去重 |
-| `Q-BRAINSTEM-TOH-v1` | midbrain organoid；D20-D60 | 34,702 | 3D 时间序列与 domain shift | organoid 不与 2D product 直接排名 |
+| `Q-BRAINSTEM-TOH-v1` | midbrain organoid；D20/D25/D30/D40/D50/D60 | 34,702；48 sequencing sublibraries（每个时间点 8 个） | 3D 时间点描述与 domain shift | biological sample/organoid/replicate map 冻结前只作 `descriptive_only`；48 sublibraries 不是 48 biological replicates；organoid 不与 2D product 直接排名 |
 | `Q-FIORENZANO-v1` | VM organoid；D15-D120 | 91,034 | 3D trajectory comparator | 只作 contextual comparator |
 | `Q-GSE200610-D16-v1` | RC17 VM；D16 | 8,166 | 单时间点临床相关 comparator | 不等于患者 GMP lot；默认描述性 |
 | `Q-SPHEREDIFF-v1` | 3D mDAP；D28 | 9,547 | 内部/已发表 comparator | source metadata 和 disclosure 需冻结 |

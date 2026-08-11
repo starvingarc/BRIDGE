@@ -131,7 +131,7 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 | Braun et al., 2023 (`EGAS00001004107`; HCA `cbd2911f-252b-4428-abde-69e270aefdfc`) | scRNA-seq；论文另含 spatial | PCW5-14；第一孕期全脑多区域 | 1,548,209 cells | 全脑区域和广谱离轴背景 | `available`；全脑 reference 不替代 vMB reference |
 | Zeng et al., 2023 (`GSE155121`) | scRNA-seq；PCW4 10x spatial | PCW3-12；全胚、全头和全脑 | 400,141 human cells | 早期胚胎、神经管、脑和非神经背景 | `available`；区域与年龄标签需冻结 |
 | La Manno et al., 2016 (`GSE76381`) | 人胎 VM scRNA-seq | PCW6-11；腹侧中脑 | 1,977 fetal cells | 独立经典 VM 发育 reference | `available`；旧平台且样本量较小 |
-| Birtele et al., 2022 (`GSE192405`) | 人胎 VM scRNA-seq 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 原始数据已下载 | 原代胎儿 VM maturation reference | `pending`；尚未转换为当前可运行对象 |
+| Birtele et al., 2022 (`GSE192405`) | 人胎 VM scRNA-seq 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 13 个 GEO samples；processed CSV 可用 | 原代胎儿 VM maturation external-source 候选 | `processed_available_pending_conversion`；因隐私不提供 raw reads；`GSE192405_RAW.tar` 是 CSV 容器而非 raw reads；尚未转换为当前对象 |
 
 旧 Step1 reference 由 Chen legacy scRNA、Braun 和 Zeng 构建，full object 为 2,011,383 profiles。其 350,000-cell train、100,000-cell technical holdout 和 523,478-profile regional RG 仅用于旧流程复现、软件回归和血缘审计，不视为新 BRIDGE 的独立生物学验证。
 
@@ -142,10 +142,10 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 | Xu/Chen 2022 (`GSE204796`) | hPSC；2D/神经球 mDA 分化；VM floor-plate/mDA progenitors | scRNA-seq；D8/D14/D21/D28/D35 | 37,397 cells | 发育时间序列和方法开发 | `available`；五个时间点分开建案，graft 分开 |
 | Studer/Tabar Boost vs Boost+ (`E-MTAB-14729`) | hPSC；2D Boost/Boost+ mDA 分化；VM floor-plate/mDA progenitors | scRNA-seq；D16/D25/D40 | 26,303 cells | 冻结后的 sealed competitor test | `sealed`；仅在 BRIDGE 合同冻结后运行，不进入 RAG、reference、prior、训练、校准或调参 |
 | Storm/Parmar RC17 (`GSE200610`) | RC17 hESC；2D VM 分化；移植用 VM floor-plate/mDA progenitors | scRNA-seq D16；multiome D16/D18 | D16 scRNA 8,166 cells | 单时间点临床相关比较 | `sealed`；不等于患者 GMP lot，graft 与 multiome 分层 |
-| LR-USC mDA (`GSE227071`) | H9 hESC、GBX2-KO 和 4X lineage-restricted USC；2D mDA 分化 | scRNA-seq；D16/D28/D62 | 48,196 cells | cell-source、stage 和 protocol shift | `available`；D62 与 D16/D28 不视为同一产品阶段 |
+| LR-USC mDA scRNA (`GSE227070`; parent SuperSeries `GSE227071`) | H9 hESC 和 4X lineage-restricted USC；2D mDA 分化 | scRNA-seq；D16/D28/D62 | 48,196 cells | cell-source、stage 和 protocol shift | `available`；本 scRNA query 不含 GBX2-KO；D62 与 D16/D28 不视为同一产品阶段 |
 | La Manno in-vitro (`GSE76381`) | hESC/iPSC；2D mDA 分化；VM progenitors/mDA neurons | scRNA-seq；hESC D0/D12/D17/D35，iPSC D42/D63 | 2,052 cells | 历史时间序列和平台 sanity check | `available`；样本量小，不支持 rare-state 正式比较 |
 | Jerber population-scale iPSC DA (`EGAS00001002885`; `EGAD00001006157`) | 215 条 iPSC lines；pooled 2D mDA 分化 | scRNA-seq；D11/D30/D52，D52 含 rotenone block | 765,851 cells | donor、batch、timepoint 和扰动鲁棒性 | `available`；需按 donor/batch/condition 去重 |
-| BrainSTEM Toh (`GSE281535`) | hPSC；3D midbrain organoid；midbrain/mDA lineage | scRNA-seq；D20/D25/D30/D40/D50/D60 | 34,702 cells | 2D/3D domain shift 和时间序列 | `available`；每个时间点独立建案 |
+| BrainSTEM Toh (`GSE281535`) | hPSC；3D midbrain organoid；midbrain/mDA lineage | scRNA-seq；D20/D25/D30/D40/D50/D60 | 34,702 cells；48 sequencing sublibraries，每个时间点 8 个 | 2D/3D domain shift 和时间点描述 | `available`；在 biological sample/organoid/replicate map 冻结前，48 个 sublibraries 不得称为 48 个生物学重复，只能作 timepoint-level descriptive analysis |
 | Fiorenzano VM organoid (`GSE168323`) | hPSC；3D VM organoid；VM/mDA neurons 及前体 | scRNA-seq；D15/D30/D60/D90/D120 | 91,034 cells | organoid trajectory 和区域比较 | `available`；organoid 不与 2D product 直接排名 |
 | SphereDiff | hPSC；3D sphere differentiation；mDA progenitors | scRNA-seq；D7/D14/D21/D28 | 33,134 profiles；D28 为 9,547 cells | 内部时间序列和 D28 product comparator | `available`；各时间点分开建案，metadata 和披露范围待冻结 |
 | MacroDiff | hPSC；内部两类 mDA differentiation protocol；mDA progenitors | scRNA-seq；Protocol A 为 D14/D21/D28，Protocol B 为 D28 | 57,464 cells；A 36,070，B 21,394 | 内部时间序列和跨 protocol 比较 | `sealed`；两类 protocol 不合并为同一时间序列，细胞系、权限和公开措辞待确认 |
@@ -236,7 +236,7 @@ graft 的分析单位为 `animal/graft x post-transplant timepoint`。只有在�
 | Xu/Chen / `GSE204796` | Xu et al., *JCI* (2022) | [10.1172/JCI156768](https://doi.org/10.1172/JCI156768) |
 | Boost/Boost+ / `E-MTAB-14729` | Kim et al., *JCI* (2026) | [10.1172/JCI190954](https://doi.org/10.1172/JCI190954) |
 | Storm/Parmar / `GSE200610` | Storm et al., *Science Advances* (2024) | [10.1126/sciadv.adn3057](https://doi.org/10.1126/sciadv.adn3057) |
-| LR-USC / `GSE227071` | Maimaitili et al., *Nature Communications* (2023) | [10.1038/s41467-023-43471-0](https://doi.org/10.1038/s41467-023-43471-0) |
+| LR-USC scRNA / `GSE227070`（parent SuperSeries `GSE227071`） | Maimaitili et al., *Nature Communications* (2023) | [10.1038/s41467-023-43471-0](https://doi.org/10.1038/s41467-023-43471-0) |
 | Jerber population-scale DA | Jerber et al., *Nature Genetics* (2021) | [10.1038/s41588-021-00801-6](https://doi.org/10.1038/s41588-021-00801-6) |
 | BrainSTEM Toh / `GSE281535` | Toh et al., *Science Advances* (2025) | [10.1126/sciadv.adu7944](https://doi.org/10.1126/sciadv.adu7944) |
 | Fiorenzano / `GSE168323` | Fiorenzano et al., *Nature Communications* (2021) | [10.1038/s41467-021-27464-5](https://doi.org/10.1038/s41467-021-27464-5) |
@@ -565,7 +565,9 @@ Agent 检查输入结构和样本层级，并从实验记录中提取 `Protocol 
 
 Agent 只追问会改变分析设计的问题，不根据文件名推断数据角色、样本关系或 graft linkage。缺失信息只影响相关任务，不自动解释为产品异常。
 
-Studer/Bocchi 2026 预印本及 CapybaraBrain 作为外部竞争基线管理。BRIDGE 设置两条隔离轨道：其一按原论文、代码、reference、marker 和参数进行版本化复现，仅用于外部比较；其二使用 BRIDGE 自有标签、reference、marker、独立实现和 source/donor holdout 校准，评测相同或相关的方法类型。
+Studer/Bocchi 2026 预印本相关资源必须拆成四个独立 artifact 管理：fetal atlas reference、使用 93 个 programs 的 CapybaraBrain method、汇集 19 项研究和 641,539 个体外细胞的 HDNA atlas，以及单独的 PCA/kNN mapping notebook。四者均 checksum-bound、competitor-isolated，不得合并为一个独立验证来源，也不得计入 BRIDGE 的 external-validation 分母。官方预印本为 [bioRxiv v1](https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1)，数据入口为 [dopamine development portal](https://developmental.cellatlas.io/dopamine)。
+
+BRIDGE 设置两条隔离轨道：其一按原论文、代码、reference、marker 和参数进行版本化复现，仅用于外部比较；其二使用 BRIDGE 自有标签、reference、marker、独立实现和 source/donor holdout 校准，评测相同或相关的方法类型。BRIDGE 的独立重点是 source-aware open-world 产品评估和 exact-to-parent-to-unknown 拒答，而不是再次构建同一 fetal-atlas mapping workflow。
 
 竞争轨中的代码、atlas、标签、marker、lineage hierarchy、阈值、模型输出及派生产物不得进入 BRIDGE 的 RAG、prior、训练、校准、调参或正式 Evidence Graph。只有在 BRIDGE 方法和评测合同冻结后，竞争轨结果才可作为明确标注的 baseline 展示，不得反向修改当次评分或建议。`E-MTAB-14729` 仅在同一冻结条件下作为 sealed competitor test 运行。
 

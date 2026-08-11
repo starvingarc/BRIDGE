@@ -21,6 +21,18 @@ methods:
   scVI/scANVI/scArches:
     official_url: https://github.com/scverse/scvi-tools | https://docs.scarches.org/en/stable/index.html
     note: The retired scvi-tools notebook URL was replaced by the maintained scArches documentation.
+  scConform:
+    official_url: https://arxiv.org/abs/2410.23786 | https://doi.org/10.1093/jrsssc/qlag037 | https://bioconductor.org/packages/scConform/
+    version: 1.0.0
+    note: scConform is a prediction-set and hierarchical-coverage calibration layer over a base classifier; it is not an independent standalone OOD detector and is distinct from the Lopez-De-Castro conformal annotator.
+  scConform wrapping a preregistered base classifier:
+    official_url: https://arxiv.org/abs/2410.23786 | https://doi.org/10.1093/jrsssc/qlag037 | https://bioconductor.org/packages/scConform/
+    version: 1.0.0
+    note: The BRIDGE wrapper must retain the preregistered base classifier, source-aware calibration split, marginal and classwise coverage, and set-size diagnostics; it adds no independent biological or OOD evidence family.
+  CapybaraBrain as-published:
+    official_url: https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1 | https://developmental.cellatlas.io/dopamine | https://github.com/VittoriaDBocchi/CapybaraBrain
+    version: 1.0.0
+    note: Competitor-isolated reproduction only. Keep the fetal atlas reference, 93-program CapybaraBrain method, 641,539-cell HDNA in-vitro atlas across 19 studies, and separate PCA/kNN mapping notebook as distinct checksum-bound artifacts; they are not independent external validation for BRIDGE.
   scClassify:
     official_url: https://doi.org/10.15252/msb.20199389 | https://github.com/SydneyBioX/scClassify
     note: The incorrect registry DOI was replaced by the primary Molecular Systems Biology publication DOI.

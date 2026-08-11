@@ -33,9 +33,10 @@ cells.
 | Can unrelated cells be rejected? | Cortical organoid, neural crest, motor-neuron and mesenchymal OOD data | Tested inductive methods can force these cells into known ventral-midbrain labels | Formal target, regional-fidelity and off-target conclusions are blocked |
 | Can markers provide an independent check? | Internal marker/program cards | Negative-marker coverage is incomplete and all seven L2 marker cards remain unfrozen | Marker evidence remains a shadow interpretation channel |
 
-The next scientific step is to review the 25 state definitions and their positive
-and negative marker evidence, then test the fixed definitions on the locked external
-source and OOD datasets.
+The next scientific step is the **P0-02 External-Source Freeze Candidate**: review
+the 25 state definitions and marker cards together with the ProductDefinitionCard
+and StateRoleMap, then sign the FreezeGate before any locked runner is implemented
+or run. Unresolved Nb boundaries remain provisional or unavailable.
 
 ## Repository status
 

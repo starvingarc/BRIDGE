@@ -391,6 +391,11 @@
     "status": "verified",
     "title": "decoupler - Ensemble of methods to infer enrichment scores — decoupler"
   },
+  "https://developmental.cellatlas.io/dopamine": {
+    "checked_at": "2026-08-12",
+    "status": "verified_primary_source",
+    "title": "Dopamine development data portal"
+  },
   "https://docs.falkordb.com/": {
     "checked_at": "2026-08-10",
     "http_status": 200,
@@ -698,6 +703,11 @@
     "resolved_url": "https://link.springer.com/article/10.15252/msb.20199389?error=cookies_not_supported&code=f04dbb8e-dd4a-4e95-9a90-ec7e0e0f8256",
     "status": "verified",
     "title": "scClassify: sample size estimation and multiscale classification of cells using single and multiple reference | Molecular Systems Biology | Springer Nature Link"
+  },
+  "https://doi.org/10.1093/jrsssc/qlag037": {
+    "checked_at": "2026-08-12",
+    "status": "verified_primary_source",
+    "title": "scConform primary publication"
   },
   "https://doi.org/10.64898/2026.06.19.733041": {
     "checked_at": "2026-08-10",
@@ -2350,6 +2360,11 @@
     "resolved_url": "https://www.bioconductor.org/books/release/SingleRBook/",
     "status": "verified",
     "title": "Assigning cell types with SingleR"
+  },
+  "https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1": {
+    "checked_at": "2026-08-12",
+    "status": "verified_primary_source",
+    "title": "A human developmental and adult brain atlas benchmarks dopaminergic stem cell models and cell therapy candidates"
   },
   "https://www.celltypist.org/": {
     "checked_at": "2026-08-10",

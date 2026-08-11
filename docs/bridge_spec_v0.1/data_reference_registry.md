@@ -78,14 +78,14 @@ flowchart TD
 | `REF-BRAUN-2023-v1` | whole-cell scRNA；论文另有 spatial | PCW5-14；第一孕期全脑多区域 | 1,548,209 cells | broad regional/off-axis background | `processed_ready` | 全脑 reference 不能替代 vMB 产品真值 |
 | `REF-ZENG-2023-v1` | scRNA；论文另有 PCW4 spatial | PCW3-12；全胚、全头、全脑 | 400,141 cells | early embryo、neural tube、brain 与 non-neural background | `processed_ready` | 本地 harmonization 的年龄和区域标签需冻结 |
 | `REF-LAMANNO-2016-v1` | human fetal VM scRNA | PCW6-11；腹侧中脑 | 1,977 fetal cells | 经典独立 VM 发育 reference | `ready_small` | 旧平台、样本量有限；需单独报告 platform shift |
-| `REF-BIRTELE-2022-v1` | fetal VM scRNA 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 待转换 | 原代胎儿 VM maturation reference | `downloaded_pending_conversion` | 尚未进入当前可运行 catalog |
+| `REF-BIRTELE-2022-v1` | fetal VM scRNA 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 13 个 GEO samples；processed CSV 可用 | 原代胎儿 VM maturation external-source 候选 | `processed_available_pending_conversion` | raw reads 因隐私不可用；`GSE192405_RAW.tar` 是 CSV 容器，不是 raw reads；当前对象尚未转换 |
 
 核心公开来源：
 
 - Braun et al., *Comprehensive cell atlas of the first-trimester developing human brain*, Science 2023, [DOI 10.1126/science.adf1226](https://doi.org/10.1126/science.adf1226), HCA project `cbd2911f-252b-4428-abde-69e270aefdfc`。
 - Zeng et al., *The single-cell and spatial transcriptional landscape of human gastrulation and early brain development*, Cell Stem Cell 2023, [DOI 10.1016/j.stem.2023.04.016](https://doi.org/10.1016/j.stem.2023.04.016), `GSE155121`。
 - La Manno et al., *Molecular Diversity of Midbrain Development in Mouse, Human, and Stem Cells*, Cell 2016, [DOI 10.1016/j.cell.2016.09.027](https://doi.org/10.1016/j.cell.2016.09.027), `GSE76381`。
-- Birtele et al., *Single-cell transcriptional and functional analysis of dopaminergic neurons in organoid-like cultures derived from human fetal midbrain*, Development 2022, [DOI 10.1242/dev.200504](https://doi.org/10.1242/dev.200504), `GSE192405`。
+- Birtele et al., *Single-cell transcriptional and functional analysis of dopaminergic neurons in organoid-like cultures derived from human fetal midbrain*, Development 2022, [DOI 10.1242/dev.200504](https://doi.org/10.1242/dev.200504), [GEO `GSE192405`](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE192405)；13 个 GEO samples，processed CSV 可用，raw reads 因隐私不可用。
 
 ## 五、Legacy 与派生 Reference
 
@@ -122,11 +122,11 @@ P0 中空间结果只称 `Spatial Reference Concordance`，不能称移植后宿
 | `Q-GSE204796-v1` | Chen/Xu mDA differentiation，scRNA | D8/D14/D21/D28/D35 | 37,397 | development anchor；time-course benchmark | 五个时间点分开；4 月 graft 另建对象 |
 | `Q-EMTAB14729-v1` | Boost/Boost+，scRNA | D16/D25/D40 | 26,303 | sealed competitor test | 仅在 BRIDGE 合同冻结后运行；不得进入 RAG、reference、prior、训练、校准或调参；6 个 group 不是 6 个独立 lot |
 | `Q-GSE200610-D16-v1` | RC17 VM preparation，scRNA | D16 | 8,166 | clinical-related single-timepoint comparator | 不等于患者 GMP lot；graft 与 multiome 分开 |
-| `Q-GSE227071-v1` | H9/4X LR-USC mDA，scRNA | D16/D28/D62 | 48,196 | cell-source、stage、protocol shift | D62 与 D16/D28 不共享产品阶段 |
+| `Q-GSE227070-v1` | H9/4X LR-USC mDA，scRNA；parent SuperSeries `GSE227071` | D16/D28/D62 | 48,196 | cell-source、stage、protocol shift | 本 scRNA query 不含 GBX2-KO；D62 与 D16/D28 不共享产品阶段 |
 | `Q-GSE76381-ES-v1` | hESC mDA，scRNA | D0/D12/D17/D35 | 1,715 | historical trajectory sanity | 低样本量；D0 不是产品 |
 | `Q-GSE76381-IPS-v1` | iPSC mDA，scRNA | D42/D63 | 337 | smoke/platform sanity | 不足以支持 rare-state 或正式比较 |
 | `Q-JERBER-v1` | population-scale iPSC DA，scRNA | D11/D30/D52；D52 含 rotenone block | >750,000 | donor/batch/timepoint robustness | 需按 donor、batch、condition 和 study family 去重 |
-| `Q-BRAINSTEM-TOH-v1` | midbrain organoid，scRNA | D20/D25/D30/D40/D50/D60 | 34,702 | 2D/3D domain shift | 每个时间点单独建 sample unit |
+| `Q-BRAINSTEM-TOH-v1` | midbrain organoid，scRNA | D20/D25/D30/D40/D50/D60 | 34,702；48 sequencing sublibraries（每个时间点 8 个） | 2D/3D domain shift 和时间点描述 | biological sample/organoid/replicate map 冻结前，不能把 48 sublibraries 当作 48 biological replicates；仅作 `descriptive_only` |
 | `Q-FIORENZANO-v1` | VM organoid，scRNA | D15/D30/D60/D90/D120 | 91,034 | organoid trajectory/region comparator | organoid 不与 2D product 直接总排名 |
 | `Q-SPHEREDIFF-v1` | 3D mDAP，scRNA | D28 | 9,547 | internal/published comparator | source metadata 和 disclosure scope 冻结后使用 |
 | `Q-MACRODIFF-v1` | internal mDA protocol，scRNA | D14/D21/D28 | 57,464 | sealed internal comparator | 权限和 disclosure 未冻结，不进入公开报告 |
@@ -137,7 +137,7 @@ P0 中空间结果只称 `Spatial Reference Concordance`，不能称移植后宿
 - Xu et al., *Human midbrain dopaminergic neuronal differentiation markers predict cell therapy outcomes in a Parkinson's disease model*, JCI 2022, [DOI 10.1172/JCI156768](https://doi.org/10.1172/JCI156768), `GSE204796`。
 - Kim et al., *Modulation of WNT and FGF18 enhances yield and subtype identity of hPSC-derived midbrain dopamine neurons*, JCI 2026, [DOI 10.1172/JCI190954](https://doi.org/10.1172/JCI190954), `E-MTAB-14729`。
 - Storm et al., *Lineage tracing of stem cell-derived dopamine grafts in a Parkinson's model reveals shared origin of all graft-derived cells*, Science Advances 2024, [DOI 10.1126/sciadv.adn3057](https://doi.org/10.1126/sciadv.adn3057), `GSE200610`。
-- Maimaitili et al., *Enhanced production of mesencephalic dopaminergic neurons from lineage-restricted human undifferentiated stem cells*, Nature Communications 2023, [DOI 10.1038/s41467-023-43471-0](https://doi.org/10.1038/s41467-023-43471-0), `GSE227071`。
+- Maimaitili et al., *Enhanced production of mesencephalic dopaminergic neurons from lineage-restricted human undifferentiated stem cells*, Nature Communications 2023, [DOI 10.1038/s41467-023-43471-0](https://doi.org/10.1038/s41467-023-43471-0), scRNA `GSE227070`；`GSE227071` 为 parent SuperSeries。
 - Jerber et al., *Population-scale single-cell RNA-seq profiling across dopaminergic neuron differentiation*, Nature Genetics 2021, [DOI 10.1038/s41588-021-00801-6](https://doi.org/10.1038/s41588-021-00801-6)。
 
 ## 八、移植后 graft 后验层
@@ -201,7 +201,8 @@ Negative/OOD 数据检验 specificity 和拒答能力，不代表“低质量 PD
 | GSE204796 | sample x D；D28/D35 可作为声明产品窗口候选 | 合并 D8-D35 为一个产品 |
 | E-MTAB-14729 | protocol x D；必要时再按 sample | 把 accession 或 6 groups 当独立 lots |
 | GSE200610 | D16 sample；graft 按 animal/timepoint | 合并 D16 scRNA 与 3/6 月 snRNA |
-| GSE227071 | cell source x D | 合并 H9/4X 和 D16/D28/D62 |
+| GSE227070（parent `GSE227071`） | cell source x D | 合并 H9/4X 和 D16/D28/D62，或把 GBX2-KO 加入本 scRNA query |
+| GSE281535 | 在 biological sample/organoid/replicate map 冻结后确定；当前只按 timepoint 描述 | 将 48 sequencing sublibraries 当作 48 biological replicates |
 | Jerber | donor x differentiation batch x D x condition | 以全部 cells 或论文名作为一个产品 |
 | OOD | publication x sample x timepoint | cell-level random train/test split |
 | Graft | animal/graft x post-transplant timepoint | 将 nuclei 当作移植前 whole cells |
@@ -211,7 +212,7 @@ Negative/OOD 数据检验 specificity 和拒答能力，不代表“低质量 PD
 | 分区 | 候选数据 | 用途 |
 | --- | --- | --- |
 | Development | Chen references、GSE204796、SISBAR、stress calibration、部分 OOD | Card、MeasurementSpec、阈值和 error curve |
-| Public locked | GSE200610、GSE227071、预注册 OOD | 算法冻结后评测 |
+| Public locked | GSE200610、GSE227070、预注册 OOD | 算法冻结后评测 |
 | Domain shift | Jerber、Toh、Fiorenzano、La Manno | cross-source/2D/3D robustness |
 | Sealed internal | MacroDiff、经批准的其他内部 preparations | 一次性最终检查 |
 | Graft context | GSE200610、E-MTAB-14729、GSE204796、Tiklová | 独立后验层，不训练或修改移植前分域评估分数；竞争来源仍遵守 sealed policy |

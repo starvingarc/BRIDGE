@@ -53,7 +53,7 @@ L3 包含：`RG_mFP`、`RG_mBMP`、`RG_mBIP`、`Nb_mFP`、`Nb_mBMP`、`Nb_mBIP`�
 | `REF-CHEN-NEUROGENESIS-v1` | combined 的 neurogenesis 派生子集 | 83,017 | 发育和轨迹背景 | 不代表 causal lineage truth |
 | `REF-CHEN-NEUROGENESIS-SUBSUB-v1-draft` | neurogenesis 的 vMB 派生子集 | 77,382 | L3 shadow evidence | 模型版本和命名依据待冻结 |
 | `REF-LAMANNO-2016-v1` | scRNA-seq；PCW6-11；人胎腹侧中脑 | 1,977 | scRNA 小型独立 VM primary source | 平台较旧、样本量有限 |
-| `REF-BIRTELE-v1` | 人胎腹侧中脑；assay 与对象待转换审计 | 待核实 | 新版本独立 VM reference 候选 | 当前不进入首版 snapshot |
+| `REF-BIRTELE-v1` | 人胎腹侧中脑 scRNA 与原代培养；6-11 周 post-conception | 13 个 GEO samples；processed CSV 可用 | external-source VM reference 候选 | raw reads 因隐私不可用；`GSE192405_RAW.tar` 是 CSV 容器而非 raw reads；当前对象尚未转换 |
 | `REF-BRAUN-2023-v1` | scRNA-seq；PCW5-14；第一孕期全脑 | 1,548,209 | 全脑区域与 off-axis 背景 | 不能替代腹侧中脑产品定义 |
 | `REF-ZENG-2023-v1` | scRNA-seq；PCW3-12；全胚、头和脑 | 400,141 | 早期发育和 OOD 背景 | 本地统一标签仍需冻结 |
 
@@ -92,18 +92,18 @@ flowchart LR
 | Reference mapping | Seurat MapQuery、Symphony、scANVI、scArches、scPoli、Scanpy ingest | scANVI 与 Symphony 进入首轮 |
 | 标签协调与共识 | CellHint、scHPL、scTriangulate、popV | popV 作为编排与共识 benchmark；共享证据先去重 |
 | 连续与混合身份 | NNLS/simplex、cNMF、topic model、ACTIONet、Capybara、BRIDGE independent engine | 透明 NNLS 与 BRIDGE independent engine 进入首轮，cNMF 作 sensitivity |
-| 开放集与不确定性 | OnClass、scConform、conformalized annotator、BRIDGE OOD rules | scConform 包装预注册分类器进入首轮 |
+| 开放集与不确定性 | OnClass、scConform、Lopez-De-Castro conformal annotator、BRIDGE OOD rules | energy score 为 OOD 主通道、kNN distance 为 sensitivity；scConform 只评测预注册 base classifier 的 prediction-set coverage |
 | 基础模型 | scGPT、Geneformer、UCE、TOSICA、SCimilarity、scFoundation、CellFM、CellPLM、scPRINT、Nicheformer | TOSICA、scGPT、SCimilarity 先作 `shadow` |
 | 整合敏感性 | no-integration、Harmony、Scanorama、scVI/scANVI、CellHint、LIGER、BBKNN、ComBat、STACAS、Seurat RPCA、fastMNN | no-integration、Harmony、scVI；scIB/scib-metrics 负责诊断 |
 
-首轮至少保留六类互补证据：透明 marker/program、透明 correlation、普通监督分类、独立相似度、reference mapping、开放集/连续身份。复杂模型必须与透明基线比较；Agent 不能在看到待评产品结果后临时选择最有利的方法。
+本次 External-Source Freeze Candidate 将 CellTypist 作为唯一 inductive base classifier，correlation/marker 作为 sensitivity，energy score 作为 primary OOD、kNN distance 作为 sensitivity，scANVI 仅作为 transductive benchmark，scConform 仅作为 coverage layer。scConform 不构成独立 standalone OOD detector，也不增加一个独立生物 evidence family。Lopez-De-Castro 等人的 conformal annotator 是另一项方法，不得与 scConform 合并引用。复杂模型必须与透明基线比较；Agent 不能在看到待评产品结果后临时选择最有利的方法。
 
-## 6. Studer/CapybaraBrain 双轨隔离
+## 6. Studer/CapybaraBrain/HDNA artifact 隔离
 
 ### Track A：as-published competitor reproduction
 
 - 固定 bioRxiv v1、官方仓库 commit、环境、输入和 checksum。
-- 原文、README 与 workflow 参数存在不一致，论文称 93 个 program、当前 marker 资源为 92 项；因此分别记录 `paper_literal`、`repo_recommended` 和 `workflow_sweep`，不替作者合并成一个“唯一参数集”。
+- 分别登记 fetal atlas reference、使用 93 个 programs 的 CapybaraBrain method、包含 19 项研究和 641,539 个体外细胞的 HDNA atlas，以及单独的 PCA/kNN mapping notebook；不得把这些 artifact 合并为一个来源或一个方法。
 - 原始 reference、marker、标签、lineage map、阈值和输出仅进入 `competitor_reproduction` namespace。
 - 缺失 CellTypist model、integration embedding 或完整配置时标记 `blocked_by_missing_artifact`。
 
@@ -114,7 +114,7 @@ flowchart LR
 - 连续身份输出增加 reconstruction residual、reference distance、prediction set、unknown reason 和 bootstrap interval。
 - Track A 的代码、atlas、marker、标签、lineage map、阈值和结果不得进入 BRIDGE 的 RAG、prior、训练、校准、调参或正式 Evidence Graph。
 
-BRIDGE 的方法和评测合同冻结后，Track A 才能作为署名的外部 baseline 展示；sealed competitor test 不能反向修改当轮算法。
+BRIDGE 的方法和评测合同冻结后，Track A 才能作为署名的外部 baseline 展示；sealed competitor test 不能反向修改当轮算法。fetal atlas、CapybaraBrain、HDNA 和 mapping notebook 互相存在方法与数据血缘，不计作 BRIDGE 的独立 external validation。BRIDGE 的独立方向是 source-aware open-world 产品评估及 exact-to-parent-to-unknown rejection。
 
 ## 7. 输入与输出合同
 
@@ -149,8 +149,8 @@ Cell-State 使用隔离的 Python 与 R 环境。环境间通过 checksummed spa
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-CELLSTATE-PY-v0.1` | Scanpy、CellTypist、scVI/scANVI、透明 Python 基线和结果交换 | `health_check_passed` |
-| `ENV-CELLSTATE-BIOC-R46-v0.1` | SingleR、scmap、Symphony、UCell 和 scConform | `health_check_passed` |
+| `ENV-CELLSTATE-PY-v0.1` | Scanpy、CellTypist、scVI/scANVI、透明 Python 基线和结果交换 | `health_check_passed`；Task 5 尚需 adapter check |
+| `ENV-CELLSTATE-BIOC-R46-v0.1` | SingleR、scmap、Symphony、UCell 和 scConform | `health_check_passed`；Task 5 尚需 adapter check |
 
 其他目录方法继续保持 `catalog_only`、`shadow` 或 `deferred`，需要时再建立独立环境合同。环境通过只表示依赖可重建和工具可加载，不表示方法已经通过科学验证。
 
@@ -190,8 +190,10 @@ Cell-State 使用隔离的 Python 与 R 环境。环境间通过 checksummed spa
 - [UCell](https://github.com/carmonalab/UCell)、[decoupler](https://github.com/scverse/decoupler)、[CellAssign](https://irrationone.github.io/cellassign/)
 - [SingleR](https://bioconductor.org/packages/SingleR/)、[scmap](https://bioconductor.org/packages/scmap/)、[CellTypist](https://github.com/Teichlab/celltypist)、[CHETAH](https://bioconductor.org/packages/CHETAH/)
 - [Seurat mapping](https://satijalab.org/seurat/articles/integration_mapping.html)、[Symphony](https://github.com/immunogenomics/symphony)、[scVI/scANVI](https://docs.scvi-tools.org/en/stable/api/reference/scvi.model.SCANVI.html)、[scArches](https://github.com/theislab/scarches)
-- [CellHint](https://cellhint.readthedocs.io/)、[popV](https://github.com/YosefLab/popV)、[OnClass](https://github.com/wangshenguiuc/OnClass)、[scConform](https://bioconductor.org/packages/scConform/)
+- [CellHint](https://cellhint.readthedocs.io/)、[popV](https://github.com/YosefLab/popV)、[OnClass](https://github.com/wangshenguiuc/OnClass)
+- scConform：[arXiv 2410.23786](https://arxiv.org/abs/2410.23786)、[JRSS C DOI 10.1093/jrsssc/qlag037](https://doi.org/10.1093/jrsssc/qlag037)、[Bioconductor](https://bioconductor.org/packages/scConform/)；仅作 prediction-set/hierarchical coverage calibration layer
+- Lopez-De-Castro conformal annotator：[Bioinformatics DOI 10.1093/bioinformatics/btaf521](https://doi.org/10.1093/bioinformatics/btaf521)、[PMC12506889](https://pmc.ncbi.nlm.nih.gov/articles/PMC12506889/)；与 scConform 分开登记
 - [Capybara](https://github.com/morris-lab/Capybara)、[cNMF](https://github.com/dylkot/cNMF)、[ACTIONet](https://github.com/shmohammadi86/ACTIONet)
 - [scGPT](https://github.com/bowang-lab/scGPT)、[Geneformer](https://huggingface.co/ctheodoris/Geneformer)、[TOSICA](https://github.com/JackieHanLab/TOSICA)、[SCimilarity](https://github.com/Genentech/scimilarity)
 - [scIB](https://github.com/theislab/scib)、[Scanpy ingest](https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.ingest.html)
-- [Studer/Bocchi bioRxiv v1](https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1.full)、[CapybaraBrain](https://github.com/VittoriaDBocchi/CapybaraBrain)
+- [Studer/Bocchi bioRxiv v1](https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1)、[dopamine development portal](https://developmental.cellatlas.io/dopamine)、[CapybaraBrain repository](https://github.com/VittoriaDBocchi/CapybaraBrain)
