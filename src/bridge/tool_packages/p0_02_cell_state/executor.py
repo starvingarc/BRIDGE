@@ -27,6 +27,7 @@ from bridge.tool_packages.p0_02_cell_state.metrics import (
 )
 from bridge.tool_packages.p0_02_cell_state.reference import (
     ReferenceError,
+    canonicalize_source_family_id,
     load_reference_profile,
     load_snapshot_resources,
     resolve_reference_snapshot,
@@ -136,11 +137,12 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     primary_source_ids: list[str] = []
     coverage_records: list[dict[str, Any]] = []
     warnings = ["open_set_calibration_not_frozen", "marker_programs_are_shadow_candidates"]
-    query_source_family = str(asset.metadata["source_family_id"]).strip().upper()
+    query_source_family = canonicalize_source_family_id(str(asset.metadata["source_family_id"]))
     held_out_sources = sorted(
         profile.source_id
         for profile in manifest.profiles
-        if profile.source_family_id.strip().upper() == query_source_family and profile.matrix_file
+        if canonicalize_source_family_id(profile.source_family_id) == query_source_family
+        and profile.matrix_file
     )
     if held_out_sources:
         warnings.append(f"reference_source_family_held_out:{query_source_family}")
@@ -152,7 +154,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         and profile.label_level == "L1"
         and profile.role == "primary"
         and profile.matrix_file
-        and profile.source_family_id.strip().upper() != query_source_family
+        and canonicalize_source_family_id(profile.source_family_id) != query_source_family
     ]
     for profile in primary_profiles:
         reference, metadata = load_reference_profile(snapshot_root, profile)
@@ -424,7 +426,7 @@ def _run_l2(
             and profile.label_level == "L2"
             and profile.role == "refinement"
             and profile.matrix_file
-            and profile.source_family_id.strip().upper() != query_source_family
+            and canonicalize_source_family_id(profile.source_family_id) != query_source_family
         ):
             continue
         reference, metadata = load_reference_profile(snapshot_root, profile)
@@ -499,7 +501,7 @@ def _run_sensitivity(
             profile.role == "sensitivity"
             and profile.label_level == "L1"
             and profile.matrix_file
-            and profile.source_family_id.strip().upper() != query_source_family
+            and canonicalize_source_family_id(profile.source_family_id) != query_source_family
         ):
             continue
         reference, metadata = load_reference_profile(snapshot_root, profile)

@@ -35,11 +35,9 @@ exclusion_rules:
   competitor_source_families:
     - STUDER
     - CAPYBARABRAIN
-    - STUDER_CAPYBARABRAIN
+    - STUDERCAPYBARABRAIN
     - HDNA
-    - STUDER_HDNA
-    - FETAL_ATLAS
-    - FETAL-ATLAS
-    - STUDER_FETAL_ATLAS
+    - STUDERHDNA
+    - FETALATLAS
+    - STUDERFETALATLAS
     - EMTAB14729
-    - E-MTAB-14729

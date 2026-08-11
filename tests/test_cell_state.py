@@ -17,6 +17,7 @@ from bridge.tool_packages.p0_02_cell_state.reference import (
     DENIED_SOURCE_FAMILIES,
     ReferenceError,
     build_reference_snapshot,
+    canonicalize_source_family_id,
     load_packaged_vocabulary,
     validate_reference_snapshot,
 )
@@ -316,13 +317,7 @@ def test_measurement_specs_share_complete_competitor_reference_denylist() -> Non
         / "p0_02_cell_state"
         / "measurement_specs"
     )
-    expected_aliases = {
-        "HDNA",
-        "STUDER_HDNA",
-        "FETAL_ATLAS",
-        "FETAL-ATLAS",
-        "STUDER_FETAL_ATLAS",
-    }
+    expected_aliases = {"HDNA", "STUDERHDNA", "FETALATLAS", "STUDERFETALATLAS"}
 
     assert expected_aliases <= DENIED_SOURCE_FAMILIES
     for filename in (
@@ -337,7 +332,16 @@ def test_measurement_specs_share_complete_competitor_reference_denylist() -> Non
 
 @pytest.mark.parametrize(
     "source_family_id",
-    ["HDNA", "STUDER_HDNA", "FETAL_ATLAS", "FETAL-ATLAS", "STUDER_FETAL_ATLAS"],
+    [
+        " hdna ",
+        "HdNa",
+        "CapybaraBrain ",
+        "capybara-brain",
+        "FETAL_ATLAS ",
+        "fetal-atlas",
+        "fetal atlas",
+        "Studer_Fetal-Atlas ",
+    ],
 )
 def test_competitor_atlas_aliases_are_rejected_from_reference_build(
     tmp_path: Path, monkeypatch, source_family_id: str
@@ -348,18 +352,46 @@ def test_competitor_atlas_aliases_are_rejected_from_reference_build(
     competitor = dict(catalog["sources"][0])
     competitor.update(
         {
-            "source_id": f"AAA-{source_family_id}",
+            "source_id": "AAA-COMPETITOR-ALIAS",
             "source_family_id": source_family_id,
             "evidence_family_id": "EF-COMPETITOR-ATLAS",
         }
     )
     catalog["sources"].append(competitor)
-    path = tmp_path / f"competitor-{source_family_id}.yaml"
+    path = tmp_path / "competitor-alias.yaml"
     path.write_text(yaml.safe_dump(catalog, sort_keys=False), encoding="utf-8")
 
     with pytest.raises(ReferenceError) as error:
-        build_reference_snapshot(path, tmp_path / f"snapshot-{source_family_id}")
+        build_reference_snapshot(path, tmp_path / "competitor-alias-snapshot")
     assert error.value.reason_code == "prohibited_reference_source_family"
+
+
+def test_source_family_canonicalization_does_not_reject_unrelated_prefixes() -> None:
+    assert canonicalize_source_family_id(" CapybaraBrain ") == "CAPYBARABRAIN"
+    assert canonicalize_source_family_id("capybara-brain") == "CAPYBARABRAIN"
+    assert canonicalize_source_family_id("FETAL_ATLAS") == "FETALATLAS"
+    assert canonicalize_source_family_id("fetal-atlas ") == "FETALATLAS"
+    assert canonicalize_source_family_id("HDNA-independent") == "HDNAINDEPENDENT"
+    assert canonicalize_source_family_id("HDNA-independent") not in DENIED_SOURCE_FAMILIES
+
+
+def test_manifest_prohibited_source_families_are_canonicalized(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _build_snapshot(tmp_path, monkeypatch)
+    catalog = yaml.safe_load((tmp_path / "catalog.yaml").read_text(encoding="utf-8"))
+    catalog["prohibited_source_families"] = [
+        " custom-family ",
+        "Studer_Capybara-Brain ",
+    ]
+    path = tmp_path / "canonical-prohibited-catalog.yaml"
+    path.write_text(yaml.safe_dump(catalog, sort_keys=False), encoding="utf-8")
+
+    manifest = build_reference_snapshot(path, tmp_path / "canonical-prohibited-snapshot")
+
+    assert set(manifest.prohibited_source_families) == DENIED_SOURCE_FAMILIES | {
+        "CUSTOMFAMILY"
+    }
 
 
 def test_reference_snapshot_is_immutable_after_manifest_creation(tmp_path: Path, monkeypatch) -> None:
@@ -436,7 +468,7 @@ def test_matching_query_source_family_is_held_out(tmp_path: Path, monkeypatch) -
     query = _write_query(tmp_path / "query.h5ad")
     _configure_qc_catalog(tmp_path, monkeypatch, query)
     request = _request(tmp_path, query)
-    request.assets[0].metadata["source_family_id"] = "LAMANNO"
+    request.assets[0].metadata["source_family_id"] = " la-manno "
 
     run = ToolRegistry.load_default().run(request)
 

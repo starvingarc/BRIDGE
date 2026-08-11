@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
@@ -27,15 +28,20 @@ class ReferenceError(ValueError):
         self.reason_code = reason_code
 
 
+def canonicalize_source_family_id(value: str) -> str:
+    """Return a stable comparison key without case, whitespace or punctuation drift."""
+    return re.sub(r"[^A-Z0-9]+", "", str(value).strip().upper())
+
+
 DENIED_SOURCE_FAMILIES = frozenset(
-    {
+    canonicalize_source_family_id(value)
+    for value in {
         "STUDER",
         "CAPYBARABRAIN",
         "STUDER_CAPYBARABRAIN",
         "HDNA",
         "STUDER_HDNA",
         "FETAL_ATLAS",
-        "FETAL-ATLAS",
         "STUDER_FETAL_ATLAS",
         "EMTAB14729",
         "E-MTAB-14729",
@@ -71,7 +77,14 @@ def build_reference_snapshot(catalog_path: Path, output_dir: Path) -> ReferenceM
 
     vocabulary = _load_vocabulary(catalog.get("vocabulary_path"))
     marker_header, marker_cards = _load_marker_programs(catalog.get("marker_program_path"))
-    prohibited = sorted(set(catalog.get("prohibited_source_families", [])) | DENIED_SOURCE_FAMILIES)
+    prohibited = sorted(
+        {
+            canonicalize_source_family_id(value)
+            for value in catalog.get("prohibited_source_families", [])
+            if canonicalize_source_family_id(value)
+        }
+        | DENIED_SOURCE_FAMILIES
+    )
     if output_dir.exists() and any(output_dir.iterdir()):
         raise ReferenceError("reference_snapshot_already_exists", catalog["snapshot_id"])
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -113,6 +126,9 @@ def validate_reference_snapshot(root: Path) -> ReferenceManifest:
     manifest = ReferenceManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
     _check_artifact(root, manifest.vocabulary_file, manifest.vocabulary_sha256)
     _check_artifact(root, manifest.marker_program_file, manifest.marker_program_sha256)
+    prohibited = {
+        canonicalize_source_family_id(value) for value in manifest.prohibited_source_families
+    }
     source_ids: set[str] = set()
     profile_ids: set[str] = set()
     evidence_slots: set[tuple[str, str, str, str]] = set()
@@ -128,7 +144,7 @@ def validate_reference_snapshot(root: Path) -> ReferenceManifest:
             if slot in evidence_slots:
                 raise ReferenceError("duplicate_active_evidence_family", ":".join(slot))
             evidence_slots.add(slot)
-        if profile.source_family_id in manifest.prohibited_source_families and profile.matrix_file:
+        if canonicalize_source_family_id(profile.source_family_id) in prohibited and profile.matrix_file:
             raise ReferenceError("prohibited_reference_source_family", profile.source_family_id)
         if bool(profile.matrix_file) != bool(profile.metadata_file):
             raise ReferenceError("incomplete_reference_profile_artifacts", profile.profile_id)
@@ -143,7 +159,10 @@ def validate_reference_snapshot(root: Path) -> ReferenceManifest:
 
 
 def validate_runtime_reference(manifest: ReferenceManifest) -> None:
-    if not DENIED_SOURCE_FAMILIES.issubset(set(manifest.prohibited_source_families)):
+    prohibited = {
+        canonicalize_source_family_id(value) for value in manifest.prohibited_source_families
+    }
+    if not DENIED_SOURCE_FAMILIES.issubset(prohibited):
         raise ReferenceError("reference_denylist_incomplete", manifest.snapshot_id)
     if manifest.status != "frozen" and os.environ.get("BRIDGE_ALLOW_CANDIDATE_REFERENCES") != "1":
         raise ReferenceError("reference_snapshot_not_frozen", manifest.snapshot_id)
@@ -187,8 +206,11 @@ def _build_source_profile(
     output_dir: Path,
     prohibited: list[str],
 ) -> ReferenceProfile:
-    family = source["source_family_id"]
-    if family in prohibited:
+    family = str(source["source_family_id"]).strip()
+    family_key = canonicalize_source_family_id(family)
+    if not family_key:
+        raise ReferenceError("reference_source_family_invalid", source["source_id"])
+    if family_key in prohibited:
         raise ReferenceError("prohibited_reference_source_family", family)
     common = {
         "profile_id": source.get("profile_id", f"PROFILE-{source['source_id']}"),

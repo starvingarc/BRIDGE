@@ -61,7 +61,28 @@ The preregistered report must include:
 - marginal and classwise coverage plus prediction-set size;
 - exact-to-parent-to-unknown rejection behavior.
 
+## Birtele asset preparation gate
+
+Before biological review begins—and before the FreezeGate can be signed or any
+locked runner can be implemented or run—the processed `GSE192405` asset must have:
+
+1. a processed-CSV conversion manifest that identifies every source file and the
+   deterministic conversion step;
+2. checksums for every original processed file and every converted output;
+3. a frozen 13-sample sample/unit map that distinguishes GEO sample, biological
+   unit and any technical subdivision;
+4. a source-family and transitive-leakage audit covering Birtele, La Manno and all
+   reference/development derivatives;
+5. converted-object schema validation and QC validation with explicit matrix,
+   feature, observation and sample-unit semantics.
+
+If any item is absent or fails review, biological review cannot approve this
+external-source candidate, the FreezeGate must remain unsigned, and the locked
+runner must not be implemented or run.
+
 ## Biological review and execution gate
+
+After the Birtele asset preparation gate passes:
 
 1. Review all 25 state cards, including definitions, parent-child relations,
    developmental context, positive markers, negative markers and confounders.
