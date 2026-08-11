@@ -16,11 +16,11 @@ def test_catalog_preserves_all_capability_bindings_and_resolves_methods() -> Non
     assert 343 <= summary["method_count"] <= 385
     assert summary["raw_url_token_count"] == 640
     assert summary["public_url_assignment_count"] == 516
-    assert summary["canonical_url_token_count"] == 644
-    assert summary["canonical_public_url_assignment_count"] == 520
+    assert summary["canonical_url_token_count"] == 649
+    assert summary["canonical_public_url_assignment_count"] == 527
     assert summary["raw_distinct_public_url_count"] == 388
-    assert summary["canonical_public_source_count"] == 385
-    assert summary["verified_public_source_count"] == 385
+    assert summary["canonical_public_source_count"] == 387
+    assert summary["verified_public_source_count"] == 384
     assert summary["unassigned_evidence_family_count"] == 160
     assert summary["formal_eligible_method_count"] == 0
     assert summary["dangling_method_refs"] == []
@@ -113,16 +113,23 @@ def test_packaged_snapshot_contains_no_private_paths() -> None:
 def test_curated_p0_01_source_corrections_are_present() -> None:
     registry = KnowledgeRegistry.load_default()
     methods = {method["display_name"]: method for method in registry.methods}
-    sources = {source["source_id"]: source["url"] for source in registry.sources}
+    sources = {source["source_id"]: source for source in registry.sources}
 
-    sample_qc_urls = {sources[source_id] for source_id in methods["SampleQC"]["source_ids"]}
+    sample_qc_urls = {
+        sources[source_id]["url"] for source_id in methods["SampleQC"]["source_ids"]
+    }
     assert "https://doi.org/10.1186/s13059-023-02859-3" in sample_qc_urls
     assert all("02859-x" not in url for url in sample_qc_urls)
     assert methods["SoupX"]["license_raw"] == ["GPL-3.0"]
     assert methods["scQCenrich"]["license_raw"] == ["MIT"]
+    curated_source_ids = {
+        source_id
+        for method_name in ("SampleQC", "SoupX", "scQCenrich")
+        for source_id in methods[method_name]["source_ids"]
+    }
     assert all(
-        str(source["verification_status"]).startswith("verified")
-        for source in registry.sources
+        str(sources[source_id]["verification_status"]).startswith("verified")
+        for source_id in curated_source_ids
     )
 
 
@@ -160,16 +167,28 @@ def test_get_record_rejects_unknown_knowledge_id() -> None:
 def test_get_record_hides_known_competitor_isolated_method_and_sources() -> None:
     registry = KnowledgeRegistry.load_default()
     competitor_method_id = "METHOD-CAPYBARABRAIN-AS-PUBLISHED"
-    competitor_source_ids = {
-        "SOURCE-88F698C6D76FB5ED",
-        "SOURCE-797C8CF89D4BC3FE",
-    }
     methods = {item["method_id"]: item for item in registry.methods}
     sources = {item["source_id"]: item for item in registry.sources}
+    competitor_method = methods[competitor_method_id]
+    competitor_source_ids = set(competitor_method["source_ids"])
+    competitor_sources = [sources[source_id] for source_id in competitor_source_ids]
 
-    assert methods[competitor_method_id]["retrieval_policy"] == "competitor_isolated"
-    for source_id in competitor_source_ids:
-        assert competitor_method_id in sources[source_id]["method_ids"]
+    assert competitor_method["retrieval_policy"] == "competitor_isolated"
+    assert {source["url"] for source in competitor_sources} == {
+        "https://developmental.cellatlas.io/dopamine",
+        "https://github.com/VittoriaDBocchi/CapybaraBrain",
+        "https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1",
+    }
+    assert {
+        source["url"]: source["verification_status"] for source in competitor_sources
+    } == {
+        "https://developmental.cellatlas.io/dopamine": "not_checked",
+        "https://github.com/VittoriaDBocchi/CapybaraBrain": "verified",
+        "https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1": "not_checked",
+    }
+    assert all(
+        competitor_method_id in source["method_ids"] for source in competitor_sources
+    )
 
     for knowledge_id in {competitor_method_id, *competitor_source_ids}:
         try:

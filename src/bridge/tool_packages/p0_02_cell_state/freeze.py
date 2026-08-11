@@ -1489,8 +1489,8 @@ def _label_universe_for_level(level: str) -> list[str]:
 
 def _write_sparse_h5(path: Path, matrix: sparse.csr_matrix) -> None:
     matrix = sparse.csr_matrix(matrix)
-    with h5py.File(path, "w", track_order=True) as handle:
-        group = handle.create_group("matrix", track_order=True)
+    with h5py.File(path, "w") as handle:
+        group = handle.create_group("matrix")
         group.attrs["format"] = "csr"
         group.create_dataset(
             "shape", data=np.asarray(matrix.shape, dtype=np.int64), track_times=False
