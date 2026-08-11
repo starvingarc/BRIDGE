@@ -1226,10 +1226,16 @@ def test_sparse_exchange_h5_is_deterministic_across_clock_ticks(tmp_path: Path) 
     matrix = sparse.csr_matrix(np.asarray([[0.0, 1.0], [2.0, 0.0]], dtype=np.float32))
     first = tmp_path / "first.h5"
     second = tmp_path / "second.h5"
+    h5py_config = cell_state_freeze.h5py.get_config()
+    original_track_order = h5py_config.track_order
 
-    cell_state_freeze._write_sparse_h5(first, matrix)
-    time.sleep(1.1)
-    cell_state_freeze._write_sparse_h5(second, matrix)
+    try:
+        h5py_config.track_order = True
+        cell_state_freeze._write_sparse_h5(first, matrix)
+        time.sleep(1.1)
+        cell_state_freeze._write_sparse_h5(second, matrix)
+    finally:
+        h5py_config.track_order = original_track_order
 
     assert _sha256(first) == _sha256(second)
 
