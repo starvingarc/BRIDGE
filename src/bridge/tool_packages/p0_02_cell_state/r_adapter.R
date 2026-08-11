@@ -389,6 +389,8 @@ method_metadata <- function(method, seed) {
         probability_semantics = semantics,
         conformal_eligible = FALSE,
         evidence_family = if (method %in% c("singler", "scmap")) "reference_similarity" else "latent_reference_mapping",
+        independent_evidence_vote = TRUE,
+        query_expression_used_as_unlabeled_during_training = FALSE,
         seed = seed
     )
 }

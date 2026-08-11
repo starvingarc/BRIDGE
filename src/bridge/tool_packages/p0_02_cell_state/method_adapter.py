@@ -20,7 +20,7 @@ from pydantic import ValidationError
 
 from bridge.toolkit.contracts import BenchmarkSplitManifest
 
-ADAPTER_IMPLEMENTATION_VERSION = "0.2.2"
+ADAPTER_IMPLEMENTATION_VERSION = "0.2.3"
 
 
 class MethodAdapterError(RuntimeError):
@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("--seed", type=int, default=0)
         command.add_argument("--query-asset", action="append", default=[])
     celltypist = methods.choices["celltypist"]
-    celltypist.add_argument("--max-iter", type=int, default=200)
+    celltypist.add_argument("--max-iter", type=int, default=100)
     celltypist.add_argument("--n-jobs", type=int, default=1)
     scanvi = methods.choices["scanvi"]
     scanvi.add_argument("--preset", choices=("small", "full"), default="small")
@@ -379,6 +379,8 @@ def adapter_metadata(method: str, *, seed: int = 0) -> dict[str, Any]:
             "conformal_eligible": False,
             "not_conformal_ready_reason": "independent_sigmoid_scores_are_not_categorical_simplex",
             "evidence_family": "supervised_classifier",
+            "independent_evidence_vote": True,
+            "query_expression_used_as_unlabeled_during_training": False,
             "seed": seed,
         }
     if method == "scanvi":
@@ -392,6 +394,7 @@ def adapter_metadata(method: str, *, seed: int = 0) -> dict[str, Any]:
             "calibration_partition_required": True,
             "query_expression_used_as_unlabeled_during_training": True,
             "evidence_family": "latent_reference_mapping",
+            "independent_evidence_vote": True,
             "seed": seed,
         }
     raise MethodAdapterError("adapter_not_supported", method)

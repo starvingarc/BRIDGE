@@ -4,7 +4,7 @@
 |---|---|
 | Branch | `codex/bridge-scientific-freeze` |
 | Mode | `auto` |
-| Status | `in_progress` |
+| Status | `awaiting_biological_review` |
 | Owner | BRIDGE core |
 
 ## Goal
@@ -34,19 +34,22 @@ states shadow-only.
 - [x] Implement split preparation, method adapters, benchmark metrics and summaries.
 - [x] Add Conda environment contracts and cross-language exchange validation.
 - [x] Run the local engineering gates.
-- [ ] Run a development-only bridge-amax pilot.
-- [ ] Produce an unsigned FreezeGateSpec proposal and review the full change.
+- [x] Run a development-only bridge-amax pilot.
+- [x] Produce an unsigned FreezeGateSpec proposal and review the full change.
 
 ## Current verification
 
-- Local Python 3.12 suite: `126 passed, 3 warnings`.
+- Local Python 3.12 suite: `171 passed, 3 warnings`.
+- Server Python 3.12 suite: `171 passed, 2 warnings`.
 - Registry: exactly 12 Tool Packages; P0-01 and P0-02 implemented, P0-03 through P0-12 scaffold-only.
 - Knowledge validation: 354 methods, 385 verified public Source Cards and no dangling references.
 - Repository policy scan and `git diff --check` pass after ignored runtime/deployment directories are excluded from the public-tree scan.
 - A clean wheel install exposes all 12 Tool Packages, keeps `bridge-benchmark --help` usable without optional scientific imports, and loads the packaged pilot spec when installed with the `freeze` extra.
 - The R adapter parses successfully in the pinned bridge-amax Bioconductor environment.
+- Development run `CELLSTATE-PILOT-e45ada3778e2` and Evidence run `CELLSTATE-EVIDENCE-3268ddfd0caf` are content-stable across repeated summaries.
+- Seven method or calibration channels completed. Full-cell SingleR exceeded the 3,600-second development budget without a complete L1 output and is excluded from pilot metrics.
 
-These checks validate the current engineering contracts. They do not replace the pending bridge-amax pilot, biological review, freeze-gate approval or locked test.
+These checks validate the engineering contracts and unsealed pilot. They do not replace biological review, freeze-gate approval or the locked test. No state is frozen, and P0-03 remains blocked.
 
 ## Acceptance
 

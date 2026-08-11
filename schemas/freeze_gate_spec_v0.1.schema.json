@@ -3,18 +3,6 @@
     "FreezeGateCriterion": {
       "additionalProperties": false,
       "properties": {
-        "method_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Method Id"
-        },
         "metric": {
           "title": "Metric",
           "type": "string"
@@ -46,18 +34,6 @@
         "scope": {
           "title": "Scope",
           "type": "string"
-        },
-        "state_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "State Id"
         },
         "threshold": {
           "anyOf": [
@@ -135,51 +111,12 @@
       "type": "object"
     }
   },
-  "$id": "bridge://schemas/freeze-gate-spec/v0.2",
+  "$id": "bridge://schemas/freeze-gate-spec/v0.1",
   "additionalProperties": false,
   "properties": {
-    "adapter_contract_sha256": {
-      "anyOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Adapter Contract Sha256"
-    },
-    "asset_catalog_sha256": {
-      "anyOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Asset Catalog Sha256"
-    },
     "benchmark_spec_ref": {
       "title": "Benchmark Spec Ref",
       "type": "string"
-    },
-    "benchmark_spec_sha256": {
-      "anyOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Benchmark Spec Sha256"
     },
     "criteria": {
       "items": {
@@ -188,74 +125,9 @@
       "title": "Criteria",
       "type": "array"
     },
-    "environment_health_record_sha256": {
-      "anyOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Environment Health Record Sha256"
-    },
-    "environment_spec_refs": {
-      "items": {
-        "type": "string"
-      },
-      "title": "Environment Spec Refs",
-      "type": "array"
-    },
-    "environment_spec_sha256": {
-      "additionalProperties": {
-        "type": "string"
-      },
-      "title": "Environment Spec Sha256",
-      "type": "object"
-    },
     "gate_spec_id": {
       "title": "Gate Spec Id",
       "type": "string"
-    },
-    "pilot_evidence_sha256": {
-      "anyOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Pilot Evidence Sha256"
-    },
-    "reference_snapshot_ref": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Reference Snapshot Ref"
-    },
-    "reference_snapshot_sha256": {
-      "anyOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Reference Snapshot Sha256"
     },
     "signatures": {
       "items": {

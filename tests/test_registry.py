@@ -92,7 +92,7 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 20
+    assert len(SCHEMA_REFS) == 23
     for schema_ref in SCHEMA_REFS:
         schema = load_schema(schema_ref)
         assert schema["$id"] == schema_ref

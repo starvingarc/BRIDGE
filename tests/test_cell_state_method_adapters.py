@@ -124,7 +124,8 @@ def _split_manifest(tmp_path: Path, asset_id: str) -> Path:
             )
     manifest = BenchmarkSplitManifest(
         split_manifest_id="CELLSTATE-SPLIT-pilot-fixture",
-        benchmark_spec_ref="CELLSTATE-BENCHMARK-scRNA-pilot-v0.1",
+        benchmark_spec_ref="CELLSTATE-BENCHMARK-scRNA-pilot-v0.2",
+        benchmark_spec_sha256="b" * 64,
         phase="pilot",
         random_seed=7,
         input_catalog_sha256="a" * 64,
@@ -153,6 +154,7 @@ def test_cli_parses_celltypist_and_scanvi_presets(tmp_path: Path) -> None:
     )
     assert celltypist.max_iter == 10
     assert celltypist.query_asset == ["OOD-1"]
+    assert parser.parse_args(["celltypist", *common]).max_iter == 100
     scanvi = parser.parse_args(["scanvi", *common, "--preset", "full"])
     assert scanvi.preset == "full"
     assert scanvi.accelerator == "auto"

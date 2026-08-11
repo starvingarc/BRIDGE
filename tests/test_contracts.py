@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
 from pydantic import ValidationError
 
 from bridge.toolkit.contracts import (
@@ -186,8 +187,11 @@ def test_input_level_and_matrix_semantics_must_agree(tmp_path: Path) -> None:
     [
         "bridge://schemas/biological-review-record/v0.1",
         "bridge://schemas/cell-state-benchmark-spec/v0.1",
+        "bridge://schemas/cell-state-benchmark-spec/v0.2",
         "bridge://schemas/benchmark-split-manifest/v0.1",
+        "bridge://schemas/benchmark-split-manifest/v0.2",
         "bridge://schemas/freeze-gate-spec/v0.1",
+        "bridge://schemas/freeze-gate-spec/v0.2",
         "bridge://schemas/cell-state-release-manifest/v0.1",
     ],
 )
@@ -195,3 +199,51 @@ def test_cell_state_freeze_contracts_are_exported(schema_ref: str) -> None:
     schema = load_schema(schema_ref)
 
     assert schema["$id"] == schema_ref
+
+
+def test_legacy_benchmark_schema_remains_loadable() -> None:
+    payload = {
+        "benchmark_spec_id": "CELLSTATE-BENCHMARK-scRNA-pilot-v0.1",
+        "version": "0.1.0",
+        "phase": "pilot",
+        "assay": "scRNA-seq",
+        "annotation_vocabulary_ref": "BRIDGE-PD-vMB-ANNOTATION-v0.1-draft",
+        "reference_snapshot_ref": "REF-PD-vMB-CELLSTATE-v0.2",
+        "methods": ["source_specific_correlation"],
+    }
+    Draft202012Validator(
+        load_schema("bridge://schemas/cell-state-benchmark-spec/v0.1")
+    ).validate(payload)
+    with pytest.raises(JSONSchemaValidationError):
+        Draft202012Validator(
+            load_schema("bridge://schemas/cell-state-benchmark-spec/v0.2")
+        ).validate(payload)
+
+
+def test_legacy_split_and_gate_payloads_remain_loadable() -> None:
+    split = {
+        "split_manifest_id": "CELLSTATE-SPLIT-pilot-v0.1-fixture",
+        "benchmark_spec_ref": "CELLSTATE-BENCHMARK-scRNA-pilot-v0.1",
+        "phase": "pilot",
+        "random_seed": 7,
+        "input_catalog_sha256": "a" * 64,
+        "records": [],
+    }
+    Draft202012Validator(
+        load_schema("bridge://schemas/benchmark-split-manifest/v0.1")
+    ).validate(split)
+    with pytest.raises(JSONSchemaValidationError):
+        Draft202012Validator(
+            load_schema("bridge://schemas/benchmark-split-manifest/v0.2")
+        ).validate(split)
+
+    gate = {
+        "gate_spec_id": "FREEZE-GATE-CELLSTATE-scRNA-v0.1-draft",
+        "version": "0.1.0",
+        "status": "proposed",
+        "benchmark_spec_ref": "CELLSTATE-BENCHMARK-scRNA-pilot-v0.1",
+        "criteria": [],
+    }
+    Draft202012Validator(
+        load_schema("bridge://schemas/freeze-gate-spec/v0.1")
+    ).validate(gate)

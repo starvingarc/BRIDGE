@@ -1,9 +1,13 @@
-benchmark_spec_id: CELLSTATE-BENCHMARK-scRNA-pilot-v0.1
-version: 0.1.0
+benchmark_spec_id: CELLSTATE-BENCHMARK-scRNA-pilot-v0.2
+version: 0.2.0
 phase: pilot
 assay: scRNA-seq
 annotation_vocabulary_ref: BRIDGE-PD-vMB-ANNOTATION-v0.1-draft
 reference_snapshot_ref: REF-PD-vMB-CELLSTATE-v0.2
+measurement_spec_ref: CELLSTATE-scRNA-shadow-v0.1
+environment_spec_refs:
+  - ENV-CELLSTATE-PY-v0.1
+  - ENV-CELLSTATE-BIOC-R46-v0.1
 split_unit: source_family_and_sample
 random_seed: 20260811
 methods:
@@ -30,5 +34,8 @@ locked_asset_ids:
   - GSE120046
   - GSE129519
   - GSE188516
+locked_method_exclusions:
+  LAMANNO-2016:
+    - marker_program_evidence
 sealed_asset_ids:
   - E-MTAB-14729

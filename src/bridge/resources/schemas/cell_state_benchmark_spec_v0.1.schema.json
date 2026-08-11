@@ -1,5 +1,5 @@
 {
-  "$id": "bridge://schemas/cell-state-benchmark-spec/v0.2",
+  "$id": "bridge://schemas/cell-state-benchmark-spec/v0.1",
   "additionalProperties": false,
   "properties": {
     "annotation_vocabulary_ref": {
@@ -36,34 +36,12 @@
       "title": "Development Ood Asset Ids",
       "type": "array"
     },
-    "environment_spec_refs": {
-      "items": {
-        "type": "string"
-      },
-      "minItems": 1,
-      "title": "Environment Spec Refs",
-      "type": "array"
-    },
     "locked_asset_ids": {
       "items": {
         "type": "string"
       },
       "title": "Locked Asset Ids",
       "type": "array"
-    },
-    "locked_method_exclusions": {
-      "additionalProperties": {
-        "items": {
-          "type": "string"
-        },
-        "type": "array"
-      },
-      "title": "Locked Method Exclusions",
-      "type": "object"
-    },
-    "measurement_spec_ref": {
-      "title": "Measurement Spec Ref",
-      "type": "string"
     },
     "methods": {
       "items": {
@@ -115,8 +93,6 @@
     "assay",
     "annotation_vocabulary_ref",
     "reference_snapshot_ref",
-    "measurement_spec_ref",
-    "environment_spec_refs",
     "methods"
   ],
   "title": "CellStateBenchmarkSpec",

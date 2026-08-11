@@ -5,7 +5,7 @@ assay: scRNA-seq
 annotation_vocabulary_ref: BRIDGE-PD-vMB-ANNOTATION-v1.0
 reference_snapshot_ref: REF-PD-vMB-CELLSTATE-v1.0
 measurement_spec_ref: CELLSTATE-scRNA-v1.0
-benchmark_spec_ref: CELLSTATE-BENCHMARK-scRNA-pilot-v0.1
+benchmark_spec_ref: CELLSTATE-BENCHMARK-scRNA-pilot-v0.2
 biological_review_ref: BIOREVIEW-PD-vMB-v1.0-draft
 freeze_gate_ref: FREEZE-GATE-CELLSTATE-scRNA-v1.0-draft
 locked_test_state: not_run

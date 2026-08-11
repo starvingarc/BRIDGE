@@ -33,5 +33,6 @@
 
 - [P0-01 server integration, 2026-08-10](validation/p0_01_server_integration_20260810.md)
 - [P0-02 server integration, 2026-08-11](validation/p0_02_server_integration_20260811.md)
+- [P0-02 scientific-freeze pilot, 2026-08-11](validation/p0_02_scientific_freeze_pilot_20260811.md)
 
 The PRD describes the intended product. Tool Cards, Method Cards and runtime output must additionally state their implementation and validation status. A future capability is not current behavior merely because it appears in a design document.

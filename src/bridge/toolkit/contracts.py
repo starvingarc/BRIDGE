@@ -384,6 +384,8 @@ class CellStateBenchmarkSpec(FrozenModel):
     assay: Literal["scRNA-seq"]
     annotation_vocabulary_ref: str
     reference_snapshot_ref: str
+    measurement_spec_ref: str
+    environment_spec_refs: list[str] = Field(min_length=1)
     split_unit: Literal["source_family_and_sample"] = "source_family_and_sample"
     random_seed: int = 0
     methods: list[str] = Field(min_length=1)
@@ -391,12 +393,15 @@ class CellStateBenchmarkSpec(FrozenModel):
     development_ood_asset_ids: list[str] = Field(default_factory=list)
     behavior_only_asset_ids: list[str] = Field(default_factory=list)
     locked_asset_ids: list[str] = Field(default_factory=list)
+    locked_method_exclusions: dict[str, list[str]] = Field(default_factory=dict)
     sealed_asset_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def benchmark_roles_are_disjoint(self) -> "CellStateBenchmarkSpec":
         if len(self.methods) != len(set(self.methods)):
             raise ValueError("benchmark methods must be unique")
+        if len(self.environment_spec_refs) != len(set(self.environment_spec_refs)):
+            raise ValueError("benchmark environment specs must be unique")
         groups = {
             "development": self.development_asset_ids,
             "development_ood": self.development_ood_asset_ids,
@@ -414,6 +419,19 @@ class CellStateBenchmarkSpec(FrozenModel):
                         f"benchmark asset role overlap: {asset_id} ({previous}, {role})"
                     )
                 owners[asset_id] = role
+        if unknown := set(self.locked_method_exclusions) - set(self.locked_asset_ids):
+            raise ValueError(
+                f"locked method exclusions reference non-locked assets: {sorted(unknown)}"
+            )
+        for asset_id, methods in self.locked_method_exclusions.items():
+            if (
+                not methods
+                or any(not method for method in methods)
+                or len(methods) != len(set(methods))
+            ):
+                raise ValueError(
+                    f"locked method exclusions must be non-empty and unique: {asset_id}"
+                )
         return self
 
 
@@ -437,6 +455,7 @@ class BenchmarkSplitRecord(FrozenModel):
 class BenchmarkSplitManifest(FrozenModel):
     split_manifest_id: str
     benchmark_spec_ref: str
+    benchmark_spec_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     phase: Literal["pilot", "locked"]
     random_seed: int
     input_catalog_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -463,10 +482,18 @@ class BenchmarkSplitManifest(FrozenModel):
 class FreezeGateCriterion(FrozenModel):
     metric: str
     scope: str
+    state_id: str | None = None
+    method_id: str | None = None
     operator: Literal[">=", "<="]
     threshold: float | None = None
     pilot_observation: float | None = None
     rationale: str
+
+    @model_validator(mode="after")
+    def state_and_method_are_paired(self) -> "FreezeGateCriterion":
+        if (self.state_id is None) != (self.method_id is None):
+            raise ValueError("state-specific criteria require both state_id and method_id")
+        return self
 
 
 class FreezeGateSpec(FrozenModel):
@@ -474,15 +501,54 @@ class FreezeGateSpec(FrozenModel):
     version: str
     status: Literal["proposed", "approved", "rejected"]
     benchmark_spec_ref: str
+    benchmark_spec_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    asset_catalog_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    reference_snapshot_ref: str | None = None
+    reference_snapshot_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    environment_spec_refs: list[str] = Field(default_factory=list)
+    environment_spec_sha256: dict[str, str] = Field(default_factory=dict)
+    environment_health_record_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    adapter_contract_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    pilot_evidence_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     criteria: list[FreezeGateCriterion]
     signatures: list[ReviewerSignature] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def approved_gate_requires_thresholds_and_signatures(self) -> "FreezeGateSpec":
-        identities = [(item.metric, item.scope) for item in self.criteria]
+        identities = [
+            (item.metric, item.scope, item.state_id, item.method_id)
+            for item in self.criteria
+        ]
         if len(identities) != len(set(identities)):
-            raise ValueError("freeze gate criteria must be unique by metric and scope")
+            raise ValueError("freeze gate criteria identities must be unique")
+        if self.environment_spec_sha256:
+            if set(self.environment_spec_sha256) != set(self.environment_spec_refs):
+                raise ValueError("environment hashes must match environment references")
+            if any(
+                len(value) != 64
+                or any(character not in "0123456789abcdef" for character in value)
+                for value in self.environment_spec_sha256.values()
+            ):
+                raise ValueError("environment hashes must be sha256 values")
         if self.status == "approved":
+            if not all(
+                [
+                    self.benchmark_spec_sha256,
+                    self.asset_catalog_sha256,
+                    self.reference_snapshot_ref,
+                    self.reference_snapshot_sha256,
+                    self.environment_spec_refs,
+                    self.environment_spec_sha256,
+                    self.environment_health_record_sha256,
+                    self.adapter_contract_sha256,
+                    self.pilot_evidence_sha256,
+                ]
+            ):
+                raise ValueError("approved freeze gate requires benchmark bindings")
             if not self.criteria or any(item.threshold is None for item in self.criteria):
                 raise ValueError("approved freeze gate requires numeric criteria")
             required_metrics = {
@@ -495,8 +561,32 @@ class FreezeGateSpec(FrozenModel):
                 "downsampling_drift",
                 "preprocessing_sensitivity",
             }
-            if not required_metrics.issubset({item.metric for item in self.criteria}):
+            global_metrics = {
+                item.metric for item in self.criteria if item.state_id is None
+            }
+            if not required_metrics.issubset(global_metrics):
                 raise ValueError("approved freeze gate is missing mandatory metrics")
+            state_groups: dict[tuple[str, str], list[FreezeGateCriterion]] = {}
+            for criterion in self.criteria:
+                if criterion.state_id is not None and criterion.method_id is not None:
+                    state_groups.setdefault(
+                        (criterion.state_id, criterion.method_id), []
+                    ).append(criterion)
+            for state_id, method_id in state_groups:
+                support = [
+                    item
+                    for item in state_groups[(state_id, method_id)]
+                    if item.metric == "n"
+                ]
+                if (
+                    len(support) != 1
+                    or support[0].operator != ">="
+                    or support[0].threshold is None
+                    or support[0].threshold < 1
+                ):
+                    raise ValueError(
+                        "approved per-state gate requires a positive support threshold"
+                    )
             roles = {signature.reviewer_role for signature in self.signatures}
             if len(self.signatures) != 2 or roles != {
                 "bridge_scientific_lead",

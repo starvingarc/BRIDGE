@@ -61,11 +61,16 @@
       "type": "object"
     }
   },
-  "$id": "bridge://schemas/benchmark-split-manifest/v0.1",
+  "$id": "bridge://schemas/benchmark-split-manifest/v0.2",
   "additionalProperties": false,
   "properties": {
     "benchmark_spec_ref": {
       "title": "Benchmark Spec Ref",
+      "type": "string"
+    },
+    "benchmark_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Benchmark Spec Sha256",
       "type": "string"
     },
     "input_catalog_sha256": {
@@ -110,6 +115,7 @@
   "required": [
     "split_manifest_id",
     "benchmark_spec_ref",
+    "benchmark_spec_sha256",
     "phase",
     "random_seed",
     "input_catalog_sha256",

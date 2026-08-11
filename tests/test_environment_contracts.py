@@ -4,6 +4,7 @@ from pathlib import Path
 
 import yaml
 
+from bridge.tool_packages.p0_02_cell_state.freeze import RUNTIME_ENVIRONMENT_SPEC
 from bridge.toolkit.registry import ToolRegistry
 
 
@@ -37,6 +38,16 @@ def test_every_tool_environment_reference_resolves_to_conda_yaml() -> None:
         assert conda_spec["name"].startswith("bridge-")
         assert "python=3.12" in conda_spec["dependencies"]
         assert "prefix" not in conda_spec
+
+
+def test_cell_state_release_runtime_matches_the_tool_runtime_environment() -> None:
+    spec = ToolRegistry.load_default().describe("P0-02")
+    assert RUNTIME_ENVIRONMENT_SPEC == spec.environment_spec_id
+
+
+def test_cell_state_runtime_environment_includes_signature_verification() -> None:
+    spec = _load_yaml("environments/bridge-p0-core.yml")
+    assert "cryptography=46.0" in _conda_dependencies(spec)
 
 
 def test_active_environment_contracts_do_not_name_machine_local_environments() -> None:

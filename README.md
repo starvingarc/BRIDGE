@@ -25,7 +25,7 @@ Given a pre-transplant cell product, which intended developmental and regional i
 | Package | Status | Current output |
 |---|---|---|
 | P0-01 Input Audit & QC | Executable candidate | Input structure, matrix semantics, QC readiness, and traceable artifacts |
-| P0-02 Cell-State Evidence | Executable shadow; freeze pilot active | Source-specific support, marker evidence, method benchmark outputs, abstention calibration, and source conflicts |
+| P0-02 Cell-State Evidence | Executable shadow; unsealed pilot complete, biological review and locked test pending | Source-specific support, marker evidence, method benchmark outputs, abstention calibration, and source conflicts |
 | P0-03 onward | Contracted | Scientific, input/output, environment, and validation contracts; executors pending |
 
 Candidate and shadow outputs remain subject to benchmark, biological review, and version freeze.

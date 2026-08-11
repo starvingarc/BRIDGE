@@ -8,9 +8,10 @@ Produce source-aware reference and marker-program evidence against the internal 
 
 | Field | Value |
 |---|---|
-| Package version | `0.4.0` |
+| Package version | `0.4.7` |
 | Runtime state | `implemented` |
 | Scientific state | `candidate` |
+| Freeze state | `awaiting_biological_review` |
 | Optional | `no` |
 | EnvironmentSpec | `ENV-P0-CORE-v0.1` |
 | Input schema | `bridge://schemas/tool-request/v0.1` |
@@ -39,6 +40,8 @@ Every formal chart must retain its data version, denominator, units, evidence re
 Source/lab/modality holdouts, leave-one-state-out, rare-state mixtures, calibration, OOD detection, and product-composition error.
 
 Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe P0-02`.
+
+The unsealed scRNA pilot is complete. No state or method is frozen; biological review, signed gates and locked testing remain required.
 
 ## Detailed Scientific Requirement
 

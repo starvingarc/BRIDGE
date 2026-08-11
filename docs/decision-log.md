@@ -24,6 +24,14 @@ P0-01 supports declared h5ad and 10x inputs at `analysis_ready`, `count_ready` a
 
 P0-02 biological review and release occur per state. Review cards, a signed pre-locked `FreezeGateSpec`, locked-test evidence and a signed `CellStateReleaseManifest` are all required before runtime promotion. L2 cannot exceed `provisional_frozen`; snRNA remains shadow in the first release. Locked and sealed competitor assets have zero data flow during pilot development.
 
+## 2026-08-11: Cell-State Freeze Is Content-Bound And Fail-Closed
+
+Benchmark, split, MeasurementSpec, reference, environment, adapter source and asset-catalog identities are checksum-bound. Source-family and transitive derivative overlap is rejected across development, OOD, locked and sealed roles. scConform remains a calibration layer whose base probabilities and prediction sets are independently recomputed. Pilot evidence can only propose unsigned gates; locked execution remains disabled until the biological review and gate are signed.
+
+## 2026-08-11: Full-Cell SingleR Is Not A Pilot Runtime
+
+The full-cell SingleR configuration produced no complete L1 output within the 3,600-second development budget. Its partial L2 output is excluded. Any future aggregated-reference configuration must be registered and benchmarked as a new method version.
+
 ## 2026-08-11: The Rebuilt BRIDGE Replaces The Legacy Mainline
 
 The rebuilt BRIDGE is the canonical product rather than a separately branded parallel line. It replaces the historical implementation through a topic-branch Pull Request targeting `main`; after integration, all new work branches from `main`. Opening or updating a PR never authorizes an automatic merge.

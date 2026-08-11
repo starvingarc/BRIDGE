@@ -19,5 +19,6 @@ dependencies:
   - pyarrow=21
   - pytest=8.4
   - jsonschema=4.25
+  - cryptography=46.0
   - pip:
       - scrublet==0.2.3
