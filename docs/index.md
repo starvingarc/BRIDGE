@@ -28,6 +28,7 @@
 
 ## Validation Records
 
+- [Server reproducibility validation, 2026-08-12](validation/server_reproducibility_20260812.md)
 - [P0-01 server integration, 2026-08-10](validation/p0_01_server_integration_20260810.md)
 - [P0-02 server integration, 2026-08-11](validation/p0_02_server_integration_20260811.md)
 - [P0-02 scientific-freeze pilot, 2026-08-11](validation/p0_02_scientific_freeze_pilot_20260811.md)

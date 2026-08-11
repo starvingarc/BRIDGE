@@ -51,7 +51,13 @@ def test_cell_state_runtime_environment_includes_signature_verification() -> Non
 
 
 def test_core_environment_pins_wheel_build_tooling() -> None:
-    spec = _load_yaml("environments/bridge-p0-core.yml")
+    index = _load_yaml("environments/index.yaml")["environment_specs"]
+    entry = index["ENV-P0-CORE-v0.1"]
+    spec = _load_yaml(entry["yaml_ref"])
+
+    assert entry["conda_name"] == spec["name"] == "bridge-p0-core"
+    assert entry["yaml_ref"] == "environments/bridge-p0-core.yml"
+    assert entry["state"] == "health_check_passed"
     assert {"setuptools=84.0.0", "wheel=0.47.0"} <= _conda_dependencies(spec)
 
 

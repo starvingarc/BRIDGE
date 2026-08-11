@@ -111,10 +111,11 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
 
 - Locked-runner implementation and execution are pending the biological review and
   signed FreezeGate.
-- Formal tests, deterministic projection regeneration and environment rebuild
-  validation are reserved for server Task 5.
-- `ENV-P0-CORE-v0.1` remains `rebuild_validation_required` until Task 5 records
-  server rebuild validation. The dedicated cell-state environments retain their
-  existing health-check status; Task 5 still owes adapter checks.
+- Task 5 server engineering validation is complete at implementation
+  `0029ff46841d5b92630ee4e5750ba2fe73961c03`; the formal suite, deterministic
+  projections, wheel installation and repository gates passed as recorded in the
+  [server reproducibility validation](../docs/validation/server_reproducibility_20260812.md).
+- Core, Python adapter and R adapter health checks are complete. The adapter
+  checks were data-free and do not promote a scientific method.
 - Historical local runs are diagnostic only and are not current formal evidence.
 - Runtime remains fail-closed without approved review, gate and release records.

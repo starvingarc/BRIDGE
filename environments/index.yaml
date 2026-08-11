@@ -2,7 +2,7 @@ schema_version: 0.1.0
 environment_specs:
   ENV-P0-CORE-v0.1:
     conda_name: bridge-p0-core
-    state: rebuild_validation_required
+    state: health_check_passed
     yaml_ref: environments/bridge-p0-core.yml
     runtime_class: cpu_default_gpu_optional
   ENV-EVIDENCE-v0.1:

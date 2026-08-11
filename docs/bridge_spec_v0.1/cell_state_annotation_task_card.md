@@ -149,10 +149,10 @@ Cell-State 使用隔离的 Python 与 R 环境。环境间通过 checksummed spa
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-CELLSTATE-PY-v0.1` | Scanpy、CellTypist、scVI/scANVI、透明 Python 基线和结果交换 | `health_check_passed`；Task 5 尚需 adapter check |
-| `ENV-CELLSTATE-BIOC-R46-v0.1` | SingleR、scmap、Symphony、UCell 和 scConform | `health_check_passed`；Task 5 尚需 adapter check |
+| `ENV-CELLSTATE-PY-v0.1` | Scanpy、CellTypist、scVI/scANVI、透明 Python 基线和结果交换 | `health_check_passed`；data-free adapter health 已记录 |
+| `ENV-CELLSTATE-BIOC-R46-v0.1` | SingleR、scmap、Symphony、UCell 和 scConform | `health_check_passed`；data-free adapter health 已记录 |
 
-其他目录方法继续保持 `catalog_only`、`shadow` 或 `deferred`，需要时再建立独立环境合同。环境通过只表示依赖可重建和工具可加载，不表示方法已经通过科学验证。
+完整工程验收见 [Server reproducibility validation, 2026-08-12](../validation/server_reproducibility_20260812.md)。其他目录方法继续保持 `catalog_only`、`shadow` 或 `deferred`，需要时再建立独立环境合同。环境通过只表示依赖可重建和工具可加载，不表示方法已经通过科学验证。
 
 ## 9. Web 必备可视化
 
