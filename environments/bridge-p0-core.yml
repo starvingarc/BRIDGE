@@ -6,6 +6,8 @@ channels:
 dependencies:
   - python=3.12
   - pip=25.1
+  - setuptools=84.0.0
+  - wheel=0.47.0
   - numpy=2.2
   - pandas=2.3
   - scipy=1.16

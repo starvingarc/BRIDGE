@@ -50,6 +50,11 @@ def test_cell_state_runtime_environment_includes_signature_verification() -> Non
     assert "cryptography=46.0" in _conda_dependencies(spec)
 
 
+def test_core_environment_pins_wheel_build_tooling() -> None:
+    spec = _load_yaml("environments/bridge-p0-core.yml")
+    assert {"setuptools=84.0.0", "wheel=0.47.0"} <= _conda_dependencies(spec)
+
+
 def test_active_environment_contracts_do_not_name_machine_local_environments() -> None:
     text = "\n".join(
         path.read_text(encoding="utf-8")
