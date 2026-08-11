@@ -269,6 +269,16 @@ def test_source_aware_run_emits_shadow_support_and_preserves_input(tmp_path: Pat
     assert run.result["source_support"]["primary_sources"] == ["REF-CHEN-SC", "REF-LAMANNO"]
     assert run.result["prediction_sets"]["state_counts"] == {"consensus_supported": 4}
     assert run.result["prediction_sets"]["open_set_state"] == "not_assessed"
+    assert run.result["method_outputs"] == {
+        "marker_program_evidence": {"release_state": "shadow"},
+        "source_specific_correlation": {"release_state": "shadow"},
+    }
+    assert run.result["assignment_state"]["state"] == "candidate_prediction_set"
+    assert run.result["calibration"]["state"] == "not_assessed"
+    assert run.result["method_disagreement"]["state_counts"] == {
+        "consensus_supported": 4
+    }
+    assert set(run.result["per_state_release"].values()) <= {"shadow", "unavailable"}
     assert {artifact.kind for artifact in run.artifacts} >= {
         "cell_state_evidence",
         "reference_support",

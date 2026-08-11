@@ -1,4 +1,4 @@
-# BRIDGE v2 数据与 Reference Registry
+# BRIDGE 数据与 Reference Registry
 
 ## 文档信息
 

@@ -9,7 +9,7 @@
 | 适用范围 | 移植前 scRNA-seq / snRNA-seq；PD hPSC-mDA 为首个实例 |
 | Annotation snapshot | `BRIDGE-PD-vMB-ANNOTATION-v0.1-draft` |
 | 主要输出 | `CellStateEvidenceProfile` |
-| 当前实现 | P0-02 v0.2 透明 shadow baseline；复杂方法待统一 benchmark |
+| 当前实现 | P0-02 v0.4 可执行 shadow baseline；科学冻结合同与 pilot harness 已建立 |
 
 ## 1. 任务目标
 
@@ -34,13 +34,13 @@ P0 不预设某一种注释方法更优。候选方法先按相同标签、refer
 | L2 RG/Nb-derived states | `REF-CHEN-RGNB-v1` | 15,095 cells；14 类 | P0 正式候选 | `freeze_required` |
 | L3 neurogenesis subsubtypes | `REF-CHEN-NEUROGENESIS-SUBSUB-v1-draft` | 77,382 cells；16 类 | 细粒度候选 | `shadow` |
 
-L1 包含：`Astrocyte`、`Endothelial_Cell`、`Fibroblast`、`Glioblast`、`Immune_Cell`、`Neuroblast`、`Neuron_Chat`、`Neuron_DA`、`Neuron_GABA`、`Neuron_Glut`、`Neuron_Glut_GABA`、`Neuron_OMTN`、`Neuron_Sero`、`OPC`、`Oligo`、`Pericyte`、`Radial_Glia`、`Smooth_Muscle`。
+L1 包含：`Astrocyte`、`Endothelial_Cell`、`Fibroblast`、`Glioblast`、`Immune_Cell`、`Neuroblast`、`Neuron_ChAT`、`Neuron_DA`、`Neuron_GABA`、`Neuron_Glut`、`Neuron_Glut_GABA`、`Neuron_OMTN`、`Neuron_Sero`、`OPC`、`Oligo`、`Pericyte`、`Radial_Glia`、`Smooth_Muscle`。
 
 L2 包含：`RG_mFP`、`RG_mBMP`、`RG_mBIP`、`RG_dHyp`、`RG_dTha`、`Nb_mFP`、`Nb_mBMP`、`Nb_mBIP`、`Nb_mAP`、`Nb_dHyp`、`Nb_dTha`、`IPC_m1`、`IPC_m2`、`Pericyte`。
 
 L3 包含：`RG_mFP`、`RG_mBMP`、`RG_mBIP`、`Nb_mFP`、`Nb_mBMP`、`Nb_mBIP`、`Neuron_DA`、`Neuron_Glut`、`Neuron_Glut_H`、`Neuron_Glut_L`、`Neuron_Glut_N`、`Neuron_Glut_P`、`Neuron_Glut_S`、`Neuron_Glut_GABA`、`Neuron_GABA`、`Neuron_GABA_O`。
 
-正式冻结前需处理：`Neuron_Chat` 与历史 `Neuron_ChAT` 拼写、L2 中 328 个 broad/refined 层级不一致细胞、25 个 `Radial_Glia -> Pericyte` 记录、L3 缩写语义、reviewer/date/rationale/checksum 缺失，以及 scRNA/snRNA 与胎龄耦合。
+`Neuron_Chat` 已统一为 `Neuron_ChAT`。首版 scRNA 中 `Neuron_ChAT` 和 `Neuron_Glut_GABA` 无观测，保持 `unavailable`；另有 303 个普通 broad/refined 层级冲突和 25 个独立的 `Radial_Glia -> Pericyte` 冲突（合计 328）被排除并保留审计。
 
 ## 3. Reference Inventory
 
@@ -145,20 +145,14 @@ BRIDGE 的方法和评测合同冻结后，Track A 才能作为署名的外部 b
 
 ## 8. 运行环境
 
-Cell-State 不适合塞进单一环境。环境间通过版本化 h5ad/Parquet/TSV 与 JSON manifest 交换结果。
+Cell-State 使用隔离的 Python 与 R 环境。环境间通过 checksummed sparse HDF5、Parquet/TSV 和 JSON manifest 交换结果。
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-CELLSTATE-PY-CORE-v0.1` | Scanpy、AnnData、scVI/scANVI、scIB、透明 Python 基线 | `proposed`；需建立 lock 与 health check |
-| `ENV-CELLSTATE-CELLTYPIST-v0.1` | CellTypist custom model | `proposed_isolated` |
-| `ENV-CELLSTATE-BIOC-v0.1` | UCell、SingleR、scmap、CHETAH、Symphony、Seurat 及相关 R 工具 | `proposed_isolated` |
-| `ENV-CELLSTATE-CELLASSIGN-v0.1` | CellAssign 的 R/TensorFlow 依赖 | `proposed`；独立隔离 |
-| `ENV-CELLSTATE-CONFORMAL-v0.1` | scConform 和 conformal calibration | `proposed`；独立隔离 |
-| `ENV-CELLSTATE-CAPY-COMP-v0.1` | CapybaraBrain competitor reproduction | `proposed`；官方 Python 3.12 CPU 环境，完全隔离 |
-| `ENV-CELLSTATE-CONTINUOUS-v0.1` | BRIDGE NNLS/NMF/archetypal 候选 | `proposed` |
-| `ENV-CELLSTATE-FM-SHADOW-v0.1` | 基础模型 | `shadow`；按模型分别建环境并记录 GPU、权重和许可 |
+| `ENV-CELLSTATE-PY-v0.1` | Scanpy、CellTypist、scVI/scANVI、透明 Python 基线和结果交换 | `health_check_passed` |
+| `ENV-CELLSTATE-BIOC-R46-v0.1` | SingleR、scmap、Symphony、UCell 和 scConform | `health_check_passed` |
 
-当前服务器可提供 112 CPU、1 TiB RAM 和 2 张 24 GB GPU。正式运行仍需保存 environment ID、版本锁、随机种子和资源记录；安装成功不表示方法已经通过科学验证。
+其他目录方法继续保持 `catalog_only`、`shadow` 或 `deferred`，需要时再建立独立环境合同。环境通过只表示依赖可重建和工具可加载，不表示方法已经通过科学验证。
 
 ## 9. Web 必备可视化
 
@@ -188,6 +182,8 @@ Cell-State 不适合塞进单一环境。环境间通过版本化 h5ad/Parquet/T
 | Competitor isolation | Track A 到内部 marker、calibration、RAG 和正式 Evidence Graph 的数据流必须为零 |
 
 每个状态轴单独决定是否冻结方法。若没有方法达到预注册标准，该轴返回 `unavailable`；其余轴仍可继续。正式晋升还需通过许可、环境 fixture、Evidence Graph 去重和 claim review。
+
+当前 Review Cards 和 Release Manifest 均未签字。七个重点 L2 仍待 Chen 团队审核；其中 `Nb_mFP`、`Nb_mBMP` 和 `Nb_mAP` 缺少独立 marker 与边界证据，当前不具备晋升条件。locked source/OOD 在签署 `FreezeGateSpec` 前不得打开。
 
 ## 11. 主要官方来源
 

@@ -1,4 +1,4 @@
-# BRIDGE v2 Knowledge Registry
+# BRIDGE Knowledge Registry
 
 ## 文档信息
 

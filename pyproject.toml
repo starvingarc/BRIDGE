@@ -31,10 +31,17 @@ test = [
   "jsonschema>=4.23,<5",
   "pytest>=8,<10",
 ]
+freeze = [
+  "anndata>=0.11,<0.13",
+  "cryptography>=46,<47",
+  "h5py>=3.11,<4",
+  "pyarrow>=18,<24",
+]
 
 [project.scripts]
 bridge-tool = "bridge.toolkit.cli:main"
 bridge-reference = "bridge.tool_packages.p0_02_cell_state.reference_cli:main"
+bridge-benchmark = "bridge.tool_packages.p0_02_cell_state.benchmark_cli:main"
 
 [project.urls]
 Repository = "https://github.com/starvingarc/BRIDGE"
@@ -50,6 +57,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 "bridge.tool_packages.specs" = ["*.yaml"]
 "bridge.tool_packages.cards" = ["*.md"]
+"bridge.tool_packages.p0_02_cell_state" = ["*.R"]
 "bridge.tool_packages.p0_01_input_qc.measurement_specs" = ["*.yaml"]
 "bridge.tool_packages.p0_02_cell_state.measurement_specs" = ["*.yaml"]
 "bridge.tool_packages.p0_02_cell_state.resources" = ["*.yaml"]

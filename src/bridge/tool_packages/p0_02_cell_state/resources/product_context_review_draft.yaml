@@ -1,0 +1,23 @@
+review_status: pending
+execution_allowed: false
+product_definition_card:
+  card_id: PDC-PD-mDA-transplantable-progenitor-review-draft
+  product_scope: PD hPSC-derived mDA cell therapy, first BRIDGE instance
+  specimen: pre-transplant cell preparation
+  primary_assay: scRNA-seq
+  intended_stage: transplantable ventral-midbrain floor-plate or mDA progenitor
+  interpretation: candidate definition for Cell-State review only
+state_role_map:
+  map_id: STATE-ROLE-PD-mDA-review-draft
+  interpretation: candidate state roles requiring wet-lab and developmental-biology review
+  entries:
+    - {state_id: 'L2:RG_mFP', proposed_role: review_required}
+    - {state_id: 'L2:RG_mBMP', proposed_role: review_required}
+    - {state_id: 'L2:RG_mBIP', proposed_role: review_required}
+    - {state_id: 'L2:Nb_mFP', proposed_role: review_required}
+    - {state_id: 'L2:Nb_mBMP', proposed_role: review_required}
+    - {state_id: 'L2:Nb_mBIP', proposed_role: review_required}
+    - {state_id: 'L2:Nb_mAP', proposed_role: review_required}
+prohibited_use:
+  - Target Identity or Regional Fidelity execution before review approval.
+  - Clinical efficacy, safety, potency, release or product-ranking claims.

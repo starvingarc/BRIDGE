@@ -1,4 +1,4 @@
-# BRIDGE v2 Tool Packages
+# BRIDGE Tool Packages
 
 > Completion snapshot for the initial runtime foundation. P0-02 execution is defined by the active Cell-State Evidence plan and current Tool Registry.
 

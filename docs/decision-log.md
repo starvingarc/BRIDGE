@@ -2,7 +2,7 @@
 
 ## 2026-08-10: Rebuild The Active Package
 
-The historical Step1-Step3 implementation moves to `legacy/v1`. BRIDGE v2 uses new high-level Tool Package contracts and has no compatibility requirement with historical score or report APIs.
+The historical Step1-Step3 implementation moves to `legacy/v1`. BRIDGE uses new high-level Tool Package contracts and has no compatibility requirement with historical score or report APIs.
 
 ## 2026-08-10: Separate Scientific Tools From Agent Infrastructure
 
@@ -19,3 +19,11 @@ Markdown and YAML are canonical. All catalogued methods receive source-verified 
 ## 2026-08-10: First Executable Package
 
 P0-01 supports declared h5ad and 10x inputs at `analysis_ready`, `count_ready` and contract-only `droplet_ready`. Droplet-specific cell calling and ambient correction remain conditional and are not executed in the first vertical slice.
+
+## 2026-08-11: Cell-State Promotion Is Per State
+
+P0-02 biological review and release occur per state. Review cards, a signed pre-locked `FreezeGateSpec`, locked-test evidence and a signed `CellStateReleaseManifest` are all required before runtime promotion. L2 cannot exceed `provisional_frozen`; snRNA remains shadow in the first release. Locked and sealed competitor assets have zero data flow during pilot development.
+
+## 2026-08-11: The Rebuilt BRIDGE Replaces The Legacy Mainline
+
+The rebuilt BRIDGE is the canonical product rather than a separately branded parallel line. It replaces the historical implementation through a topic-branch Pull Request targeting `main`; after integration, all new work branches from `main`. Opening or updating a PR never authorizes an automatic merge.

@@ -1,0 +1,53 @@
+review_record_id: BIOREVIEW-PD-vMB-v1.0-draft
+version: 0.1.0
+vocabulary_ref: BRIDGE-PD-vMB-ANNOTATION-v0.1-draft
+status: pending
+product_definition_card_ref: PDC-PD-mDA-transplantable-progenitor-review-draft
+state_role_map_ref: STATE-ROLE-PD-mDA-review-draft
+product_definition_review_status: pending
+state_role_map_review_status: pending
+alias_decisions:
+  Neuron_Chat: Neuron_ChAT
+conflict_exclusions:
+  historical_rg_to_pericyte: 25
+  historical_broad_refined_disagreement_excluding_rg_to_pericyte: 303
+signatures: []
+card_defaults:
+  anatomy_scope: human fetal ventral midbrain reference
+  developmental_scope: GW7-GW20 scRNA reference; time is contextual, not a product-stage conversion
+  source_ids: [BRIDGE-TEAM-ANNOTATION]
+  count_source_id: REF-CHEN-VMB-SC-v1
+  derivation_summary: Team-curated annotation; exact derivation and marker rationale require reviewer confirmation.
+  review_blockers:
+    - Biological definition, positive and negative markers, and confusion boundaries require reviewer confirmation.
+  allowed_interpretations:
+    - Transcriptomic support for this state within the reviewed reference context.
+  forbidden_interpretations:
+    - Clinical efficacy, safety, potency, release suitability or absolute product quality.
+  review_status: pending
+state_reviews:
+  - {state_id: 'L1:Astrocyte', display_name: Astrocyte, level: L1, definition: Astroglial transcriptional state, n_donors: 5, n_observations: 2184, confusion_states: [Glioblast, Radial_Glia]}
+  - {state_id: 'L1:Endothelial_Cell', display_name: Endothelial_Cell, level: L1, definition: Vascular endothelial transcriptional state, n_donors: 6, n_observations: 2647, confusion_states: [Pericyte, Smooth_Muscle]}
+  - {state_id: 'L1:Fibroblast', display_name: Fibroblast, level: L1, definition: Mesenchymal fibroblast-like transcriptional state, n_donors: 3, n_observations: 161, confusion_states: [Pericyte, Smooth_Muscle], review_blockers: [Low donor and cell support; formal marker and confusion review required.]}
+  - {state_id: 'L1:Glioblast', display_name: Glioblast, level: L1, definition: Neuroepithelial or gliogenic progenitor transcriptional state, n_donors: 6, n_observations: 13915, confusion_states: [Radial_Glia, Astrocyte], review_blockers: [Display name may be confused with malignant glioblastoma; Chen team naming review required.]}
+  - {state_id: 'L1:Immune_Cell', display_name: Immune_Cell, level: L1, definition: Immune-lineage transcriptional state, n_donors: 6, n_observations: 5345, confusion_states: [], review_blockers: [Broad label combines multiple historical immune or blood lineages; inclusion boundary requires review.]}
+  - {state_id: 'L1:Neuroblast', display_name: Neuroblast, level: L1, definition: Neuron-committed immature transcriptional state, n_donors: 6, n_observations: 4102, confusion_states: [Radial_Glia, immature neurons]}
+  - {state_id: 'L1:Neuron_ChAT', display_name: Neuron_ChAT, level: L1, definition: Cholinergic neuronal transcriptional state, n_donors: 0, n_observations: 0, confusion_states: [Neuron_OMTN], review_blockers: [No observations in the scRNA reference; scRNA release must remain unavailable.]}
+  - {state_id: 'L1:Neuron_DA', display_name: Neuron_DA, level: L1, definition: Dopaminergic neuronal transcriptional state, n_donors: 6, n_observations: 1557, confusion_states: [Neuron_Sero, Neuroblast]}
+  - {state_id: 'L1:Neuron_GABA', display_name: Neuron_GABA, level: L1, definition: GABAergic neuronal transcriptional state, n_donors: 6, n_observations: 6747, confusion_states: [Neuron_Glut_GABA]}
+  - {state_id: 'L1:Neuron_Glut', display_name: Neuron_Glut, level: L1, definition: Glutamatergic neuronal transcriptional state, n_donors: 6, n_observations: 4467, confusion_states: [Neuron_Glut_GABA]}
+  - {state_id: 'L1:Neuron_Glut_GABA', display_name: Neuron_Glut_GABA, level: L1, definition: Mixed glutamatergic and GABAergic signal requiring biological review, n_donors: 0, n_observations: 0, confusion_states: [Neuron_Glut, Neuron_GABA], review_blockers: [No observations in the scRNA reference; biological interpretation is unresolved.]}
+  - {state_id: 'L1:Neuron_OMTN', display_name: Neuron_OMTN, level: L1, definition: Oculomotor or trochlear motor-neuron-like transcriptional state, n_donors: 5, n_observations: 508, confusion_states: [Neuron_ChAT]}
+  - {state_id: 'L1:Neuron_Sero', display_name: Neuron_Sero, level: L1, definition: Serotonergic neuronal transcriptional state, n_donors: 5, n_observations: 501, confusion_states: [Neuron_DA]}
+  - {state_id: 'L1:Oligo', display_name: Oligo, level: L1, definition: Differentiated oligodendroglial transcriptional state, n_donors: 2, n_observations: 329, confusion_states: [OPC], review_blockers: [Only two donors; routine donor holdout is not estimable.]}
+  - {state_id: 'L1:OPC', display_name: OPC, level: L1, definition: Oligodendrocyte precursor transcriptional state, n_donors: 6, n_observations: 1197, confusion_states: [Oligo, Glioblast]}
+  - {state_id: 'L1:Pericyte', display_name: Pericyte, level: L1, definition: Perivascular mural-cell transcriptional state, n_donors: 6, n_observations: 5343, confusion_states: [Smooth_Muscle, Fibroblast, Radial_Glia]}
+  - {state_id: 'L1:Radial_Glia', display_name: Radial_Glia, level: L1, definition: Radial-glial progenitor transcriptional state, n_donors: 6, n_observations: 10488, confusion_states: [Glioblast, Neuroblast, Pericyte]}
+  - {state_id: 'L1:Smooth_Muscle', display_name: Smooth_Muscle, level: L1, definition: Smooth-muscle-like mural transcriptional state, n_donors: 6, n_observations: 1964, confusion_states: [Pericyte]}
+  - {state_id: 'L2:RG_mFP', display_name: RG_mFP, level: L2, parent_state_ids: ['L1:Radial_Glia'], definition: Midbrain floor-plate-associated radial-glial state, n_donors: 6, n_observations: 1989, exploratory_markers: [NKX2-1, LMX1A, PAX6], confusion_states: [RG_mBMP, RG_mBIP], source_ids: [BRIDGE-RGNB-HISTORICAL-TRANSFER, BRIDGE-RGNB-MARKER-REVIEW], derivation_summary: 'Historical label transfer followed by scVI representation, Leiden clustering and manual reconciliation.', review_blockers: [Exploratory markers were plotted but positive and negative marker rules were not frozen.]}
+  - {state_id: 'L2:RG_mBMP', display_name: RG_mBMP, level: L2, parent_state_ids: ['L1:Radial_Glia'], definition: Midbrain basal-plate-associated radial-glial state, n_donors: 6, n_observations: 2823, exploratory_markers: [NKX6-1, PAX6, SIM1], confusion_states: [RG_mFP, RG_mBIP], source_ids: [BRIDGE-RGNB-HISTORICAL-TRANSFER, BRIDGE-RGNB-MARKER-REVIEW], derivation_summary: 'Historical RGL_mBM transfer followed by scVI representation, Leiden clustering and manual reconciliation.', review_blockers: [mBM-to-mBMP terminology and anatomical boundary require Chen team review., Exploratory markers were not frozen as positive or negative rules.]}
+  - {state_id: 'L2:RG_mBIP', display_name: RG_mBIP, level: L2, parent_state_ids: ['L1:Radial_Glia'], definition: Midbrain basal-intermediate-associated radial-glial state, n_donors: 6, n_observations: 2772, exploratory_markers: [NKX6-2, PAX6, PAX2, FGF8, NKX6-1, SIM1], confusion_states: [RG_mFP, RG_mBMP], source_ids: [BRIDGE-RGNB-HISTORICAL-TRANSFER, BRIDGE-RGNB-MARKER-REVIEW], derivation_summary: 'Historical RGL_mBL and RGL_MHB transfer followed by scVI representation, Leiden clustering and manual reconciliation.', review_blockers: [mBIP boundary relative to mBL and MHB requires review., Exploratory markers were not frozen as positive or negative rules.]}
+  - {state_id: 'L2:Nb_mFP', display_name: Nb_mFP, level: L2, parent_state_ids: ['L1:Neuroblast'], definition: Midbrain floor-plate-associated neuroblast state, n_donors: 5, n_observations: 1075, confusion_states: [Nb_mBMP, Nb_mBIP], source_ids: [BRIDGE-RGNB-HISTORICAL-TRANSFER, BRIDGE-RGNB-MANUAL-CLUSTER-MAP], derivation_summary: Leiden cluster 3 manually mapped after historical label transfer and scVI representation., review_blockers: [No saved state-specific marker review., More than half of cells lacked a historical subtype label., No GW20 support.]}
+  - {state_id: 'L2:Nb_mBMP', display_name: Nb_mBMP, level: L2, parent_state_ids: ['L1:Neuroblast'], definition: Midbrain basal-plate-associated neuroblast state, n_donors: 4, n_observations: 1135, confusion_states: [Nb_mFP, Nb_mBIP], source_ids: [BRIDGE-RGNB-HISTORICAL-TRANSFER, BRIDGE-RGNB-MANUAL-CLUSTER-MAP], derivation_summary: Leiden clusters 13 and 17 manually merged after historical label transfer and scVI representation., review_blockers: [No saved state-specific marker review., Only four donors and GW7-GW12 support., Historical parent-label conflicts require review.]}
+  - {state_id: 'L2:Nb_mBIP', display_name: Nb_mBIP, level: L2, parent_state_ids: ['L1:Neuroblast'], definition: Midbrain basal-intermediate-associated neuroblast state, n_donors: 6, n_observations: 756, confusion_states: [Nb_mFP, Nb_mBMP], source_ids: [BRIDGE-RGNB-HISTORICAL-TRANSFER, BRIDGE-RGNB-MANUAL-CLUSTER-MAP], derivation_summary: Leiden clusters 16 and 19 reconciled with historical Nb_mBL and Nb_MHB labels., review_blockers: [No independent positive or negative marker card.]}
+  - {state_id: 'L2:Nb_mAP', display_name: Nb_mAP, level: L2, parent_state_ids: ['L1:Neuroblast'], definition: Midbrain alar-plate-associated neuroblast state, n_donors: 6, n_observations: 816, confusion_states: [Nb_mBMP, Nb_mBIP], source_ids: [BRIDGE-RGNB-HISTORICAL-TRANSFER, BRIDGE-RGNB-MANUAL-CLUSTER-MAP], derivation_summary: Leiden cluster 18 manually mapped after historical label transfer and scVI representation., review_blockers: [No saved state-specific marker review., Most cells lacked a historical subtype label., mAP definition and mAL-to-mAP relation require review.]}

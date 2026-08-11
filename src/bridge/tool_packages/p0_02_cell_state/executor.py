@@ -65,12 +65,53 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     measurement_spec = load_measurement_spec(request.measurement_spec_ref)
     if measurement_spec is None:
         return _failed_run(request, spec, input_hash, "measurement_spec_not_found")
+    release = None
+    if measurement_spec.release_manifest_ref:
+        try:
+            from bridge.tool_packages.p0_02_cell_state.freeze import resolve_release_bundle
+
+            release = resolve_release_bundle(measurement_spec.release_manifest_ref)
+            if release.measurement_spec_ref != measurement_spec.measurement_spec_id:
+                raise ReferenceError(
+                    "cell_state_release_measurement_spec_mismatch",
+                    release.release_manifest_id,
+                )
+            if release.reference_snapshot_ref != measurement_spec.reference_refs[0]:
+                raise ReferenceError(
+                    "cell_state_release_reference_mismatch",
+                    release.release_manifest_id,
+                )
+            if (
+                release.runtime_tool_version != spec.version
+                or release.environment_spec_ref != spec.environment_spec_id
+            ):
+                raise ReferenceError(
+                    "cell_state_release_runtime_mismatch", release.release_manifest_id
+                )
+        except ValueError as exc:
+            return _failed_run(
+                request,
+                spec,
+                input_hash,
+                getattr(exc, "reason_code", "cell_state_release_invalid"),
+                str(exc),
+            )
 
     try:
         snapshot_id = measurement_spec.reference_refs[0]
         snapshot_root = resolve_reference_snapshot(snapshot_id)
         manifest, vocabulary, marker_cards = load_snapshot_resources(snapshot_root)
         validate_runtime_reference(manifest)
+        reference_manifest_hash = sha256_path(snapshot_root / "reference_manifest.json")
+        if release and release.reference_manifest_sha256 != reference_manifest_hash:
+            raise ReferenceError(
+                "cell_state_release_reference_checksum_mismatch",
+                release.release_manifest_id,
+            )
+        if release and release.annotation_vocabulary_ref != vocabulary.vocabulary_id:
+            raise ReferenceError(
+                "cell_state_release_vocabulary_mismatch", release.release_manifest_id
+            )
         if measurement_spec.measurement_spec_id not in manifest.measurement_spec_ids:
             raise ReferenceError("measurement_spec_not_supported_by_reference", measurement_spec.measurement_spec_id)
         adata = read_expression_asset(asset)
@@ -242,6 +283,31 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         composition={"state": "shadow", "records": composition},
         gene_coverage={"records": coverage_records},
         modality_sensitivity=modality_sensitivity,
+        method_outputs=_runtime_method_outputs(release),
+        assignment_state={
+            "state": "released_per_state" if release else "candidate_prediction_set",
+            "interpretation": (
+                "Only states listed as frozen or provisional_frozen in the signed release are released."
+                if release
+                else "source support has not passed release calibration"
+            ),
+        },
+        unknown_reason={
+            "state": "not_assessed",
+            "reason": "open_set_calibration_not_frozen",
+        },
+        calibration={"state": "not_assessed"},
+        method_disagreement={
+            "state_counts": {str(key): int(value) for key, value in state_counts.items()}
+        },
+        per_state_release=(
+            release.per_state_release
+            if release
+            else {
+                label.state_id: "unavailable" if label.status == "unresolved" else "shadow"
+                for label in vocabulary.labels
+            }
+        ),
         unresolved_labels=unresolved,
         warnings=sorted(set(warnings)),
         evidence_ids=evidence_ids,
@@ -269,7 +335,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
             "environment_spec_id": spec.environment_spec_id,
             "input_hash": input_hash,
             "reference_snapshot_id": manifest.snapshot_id,
-            "reference_manifest_hash": sha256_path(snapshot_root / "reference_manifest.json"),
+            "reference_manifest_hash": reference_manifest_hash,
             "measurement_spec_ref": request.measurement_spec_ref,
             "artifacts": [item.model_dump(mode="json") for item in artifacts],
             "visualizations": [item.model_dump(mode="json") for item in visualizations],
@@ -298,6 +364,27 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         result=profile.model_dump(mode="json"),
         warnings=profile.warnings,
     )
+
+
+def _runtime_method_outputs(release) -> dict[str, dict[str, Any]]:
+    outputs = {
+        "marker_program_evidence": {"release_state": "shadow"},
+        "source_specific_correlation": {"release_state": "shadow"},
+    }
+    if release is None:
+        return outputs
+    for method in outputs:
+        states = sorted(
+            state_id
+            for state_id, methods in release.selected_methods.items()
+            if method in methods
+        )
+        if states:
+            outputs[method] = {
+                "release_state": "frozen",
+                "released_for_states": states,
+            }
+    return outputs
 
 
 def _run_l2(

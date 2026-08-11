@@ -146,6 +146,7 @@ class MeasurementSpec(FrozenModel):
     prior_refs: list[str] = Field(default_factory=list)
     validation_ref: str | None = None
     exclusion_rules: dict[str, Any] = Field(default_factory=dict)
+    release_manifest_ref: str | None = None
 
 
 class MeasurementResult(FrozenModel):
@@ -212,7 +213,7 @@ class AnnotationLabel(FrozenModel):
     level: Literal["L1", "L2", "L3"]
     parent_state_ids: list[str] = Field(default_factory=list)
     aliases: list[str] = Field(default_factory=list)
-    status: Literal["candidate", "shadow", "unresolved"]
+    status: Literal["candidate", "shadow", "unresolved", "provisional_frozen", "frozen"]
 
 
 class AnnotationVocabulary(FrozenModel):
@@ -288,6 +289,321 @@ class MarkerProgramCard(FrozenModel):
     allowed_use: list[str] = Field(default_factory=list)
 
 
+class ReviewerSignature(FrozenModel):
+    reviewer_id: str
+    reviewer_role: Literal["bridge_scientific_lead", "chen_team_reviewer"]
+    key_id: str
+    algorithm: Literal["ed25519"] = "ed25519"
+    signed_at: datetime
+    object_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    signature_base64: str = Field(min_length=80, max_length=96)
+
+
+class StateReviewCard(FrozenModel):
+    state_id: str
+    display_name: str
+    level: Literal["L1", "L2"]
+    parent_state_ids: list[str] = Field(default_factory=list)
+    definition: str
+    positive_markers: list[str] = Field(default_factory=list)
+    negative_markers: list[str] = Field(default_factory=list)
+    anatomy_scope: str
+    developmental_scope: str
+    source_ids: list[str] = Field(min_length=1)
+    count_source_id: str
+    derivation_summary: str
+    n_donors: int = Field(ge=0)
+    n_observations: int = Field(ge=0)
+    exploratory_markers: list[str] = Field(default_factory=list)
+    confusion_states: list[str] = Field(default_factory=list)
+    allowed_interpretations: list[str] = Field(min_length=1)
+    forbidden_interpretations: list[str] = Field(min_length=1)
+    review_blockers: list[str] = Field(default_factory=list)
+    review_status: Literal["pending", "approved", "rejected"] = "pending"
+
+    @model_validator(mode="after")
+    def approved_card_requires_reviewed_markers(self) -> "StateReviewCard":
+        if self.review_status == "approved":
+            if not self.positive_markers or not self.negative_markers:
+                raise ValueError("approved state review requires positive and negative markers")
+            if self.review_blockers:
+                raise ValueError("approved state review cannot retain review blockers")
+        return self
+
+
+class BiologicalReviewRecord(FrozenModel):
+    review_record_id: str
+    version: str
+    vocabulary_ref: str
+    status: Literal["pending", "partially_approved", "approved", "rejected"]
+    product_definition_card_ref: str
+    state_role_map_ref: str
+    product_definition_review_status: Literal["pending", "approved", "rejected"] = "pending"
+    state_role_map_review_status: Literal["pending", "approved", "rejected"] = "pending"
+    state_reviews: list[StateReviewCard] = Field(min_length=1)
+    alias_decisions: dict[str, str] = Field(default_factory=dict)
+    conflict_exclusions: dict[str, int] = Field(default_factory=dict)
+    signatures: list[ReviewerSignature] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def reviewed_record_requires_both_roles(self) -> "BiologicalReviewRecord":
+        state_ids = [card.state_id for card in self.state_reviews]
+        if len(state_ids) != len(set(state_ids)):
+            raise ValueError("biological review contains duplicate state ids")
+        if self.status in {"partially_approved", "approved"}:
+            if (
+                self.product_definition_review_status != "approved"
+                or self.state_role_map_review_status != "approved"
+            ):
+                raise ValueError("approved biological review requires product and role-map review")
+            roles = {signature.reviewer_role for signature in self.signatures}
+            required = {"bridge_scientific_lead", "chen_team_reviewer"}
+            missing = sorted(required - roles)
+            if missing:
+                raise ValueError(f"reviewed biological record missing roles: {', '.join(missing)}")
+            if len(self.signatures) != 2:
+                raise ValueError("reviewed biological record requires exactly two signatures")
+            if len({item.reviewer_id for item in self.signatures}) != 2:
+                raise ValueError("reviewed biological record requires distinct reviewers")
+            if len({item.key_id for item in self.signatures}) != 2:
+                raise ValueError("reviewed biological record requires distinct signing keys")
+        approved = [card for card in self.state_reviews if card.review_status == "approved"]
+        if self.status == "approved" and len(approved) != len(self.state_reviews):
+            raise ValueError("approved biological review contains an unapproved state card")
+        if self.status == "partially_approved" and (
+            not approved or len(approved) == len(self.state_reviews)
+        ):
+            raise ValueError("partially approved review requires mixed per-state decisions")
+        return self
+
+
+class CellStateBenchmarkSpec(FrozenModel):
+    benchmark_spec_id: str
+    version: str
+    phase: Literal["pilot", "locked"]
+    assay: Literal["scRNA-seq"]
+    annotation_vocabulary_ref: str
+    reference_snapshot_ref: str
+    split_unit: Literal["source_family_and_sample"] = "source_family_and_sample"
+    random_seed: int = 0
+    methods: list[str] = Field(min_length=1)
+    development_asset_ids: list[str] = Field(default_factory=list)
+    development_ood_asset_ids: list[str] = Field(default_factory=list)
+    behavior_only_asset_ids: list[str] = Field(default_factory=list)
+    locked_asset_ids: list[str] = Field(default_factory=list)
+    sealed_asset_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def benchmark_roles_are_disjoint(self) -> "CellStateBenchmarkSpec":
+        if len(self.methods) != len(set(self.methods)):
+            raise ValueError("benchmark methods must be unique")
+        groups = {
+            "development": self.development_asset_ids,
+            "development_ood": self.development_ood_asset_ids,
+            "behavior_only": self.behavior_only_asset_ids,
+            "locked": self.locked_asset_ids,
+            "sealed": self.sealed_asset_ids,
+        }
+        owners: dict[str, str] = {}
+        for role, asset_ids in groups.items():
+            if len(asset_ids) != len(set(asset_ids)):
+                raise ValueError(f"benchmark asset ids must be unique within {role}")
+            for asset_id in asset_ids:
+                if previous := owners.get(asset_id):
+                    raise ValueError(
+                        f"benchmark asset role overlap: {asset_id} ({previous}, {role})"
+                    )
+                owners[asset_id] = role
+        return self
+
+
+class BenchmarkSplitRecord(FrozenModel):
+    asset_id: str
+    source_family_id: str
+    sample_id: str
+    partition: Literal[
+        "train",
+        "calibration",
+        "test",
+        "development_ood",
+        "behavior_only",
+        "locked_test",
+    ]
+    data_role: str
+    fold_id: str | None = None
+    n_observations: int = Field(ge=0)
+
+
+class BenchmarkSplitManifest(FrozenModel):
+    split_manifest_id: str
+    benchmark_spec_ref: str
+    phase: Literal["pilot", "locked"]
+    random_seed: int
+    input_catalog_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    records: list[BenchmarkSplitRecord]
+    locked_assets_opened: bool = False
+    sealed_assets_opened: bool = False
+
+    @model_validator(mode="after")
+    def validate_isolation(self) -> "BenchmarkSplitManifest":
+        if self.phase == "pilot" and self.locked_assets_opened:
+            raise ValueError("pilot split cannot open locked assets")
+        if self.sealed_assets_opened:
+            raise ValueError("sealed competitor assets cannot enter a benchmark split")
+        by_fold: dict[tuple[str, str, str], set[str]] = {}
+        for record in self.records:
+            if record.fold_id and record.partition in {"train", "calibration", "test"}:
+                key = (record.fold_id, record.source_family_id, record.sample_id)
+                by_fold.setdefault(key, set()).add(record.partition)
+        if any(len(partitions) > 1 for partitions in by_fold.values()):
+            raise ValueError("source/sample group appears in multiple partitions within one fold")
+        return self
+
+
+class FreezeGateCriterion(FrozenModel):
+    metric: str
+    scope: str
+    operator: Literal[">=", "<="]
+    threshold: float | None = None
+    pilot_observation: float | None = None
+    rationale: str
+
+
+class FreezeGateSpec(FrozenModel):
+    gate_spec_id: str
+    version: str
+    status: Literal["proposed", "approved", "rejected"]
+    benchmark_spec_ref: str
+    criteria: list[FreezeGateCriterion]
+    signatures: list[ReviewerSignature] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def approved_gate_requires_thresholds_and_signatures(self) -> "FreezeGateSpec":
+        identities = [(item.metric, item.scope) for item in self.criteria]
+        if len(identities) != len(set(identities)):
+            raise ValueError("freeze gate criteria must be unique by metric and scope")
+        if self.status == "approved":
+            if not self.criteria or any(item.threshold is None for item in self.criteria):
+                raise ValueError("approved freeze gate requires numeric criteria")
+            required_metrics = {
+                "exact_accuracy",
+                "macro_f1",
+                "composition_mae",
+                "prediction_set_coverage",
+                "false_reassurance",
+                "ood_assessment_coverage",
+                "downsampling_drift",
+                "preprocessing_sensitivity",
+            }
+            if not required_metrics.issubset({item.metric for item in self.criteria}):
+                raise ValueError("approved freeze gate is missing mandatory metrics")
+            roles = {signature.reviewer_role for signature in self.signatures}
+            if len(self.signatures) != 2 or roles != {
+                "bridge_scientific_lead",
+                "chen_team_reviewer",
+            }:
+                raise ValueError("approved freeze gate requires both reviewer roles")
+            if len({item.reviewer_id for item in self.signatures}) != 2:
+                raise ValueError("approved freeze gate requires distinct reviewers")
+            if len({item.key_id for item in self.signatures}) != 2:
+                raise ValueError("approved freeze gate requires distinct signing keys")
+        return self
+
+
+class CellStateReleaseManifest(FrozenModel):
+    release_manifest_id: str
+    version: str
+    status: Literal["draft", "frozen", "superseded"]
+    assay: Literal["scRNA-seq", "snRNA-seq"]
+    annotation_vocabulary_ref: str
+    reference_snapshot_ref: str
+    measurement_spec_ref: str
+    benchmark_spec_ref: str
+    biological_review_ref: str
+    freeze_gate_ref: str
+    locked_test_state: Literal["not_run", "passed", "failed"]
+    per_state_release: dict[
+        str, Literal["shadow", "provisional_frozen", "frozen", "unavailable"]
+    ]
+    selected_methods: dict[str, list[str]] = Field(default_factory=dict)
+    biological_review_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    freeze_gate_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    locked_summary_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    locked_run_manifest_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    locked_split_manifest_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    reference_manifest_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    runtime_tool_version: str | None = None
+    environment_spec_ref: str | None = None
+    method_implementation_versions: dict[str, str] = Field(default_factory=dict)
+    signatures: list[ReviewerSignature] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_release_scope(self) -> "CellStateReleaseManifest":
+        unknown_method_states = sorted(
+            set(self.selected_methods) - set(self.per_state_release)
+        )
+        if unknown_method_states:
+            raise ValueError("selected methods reference unknown release states")
+        if any(
+            not methods or len(methods) != len(set(methods))
+            for methods in self.selected_methods.values()
+        ):
+            raise ValueError("selected method lists must be non-empty and unique")
+        if any(
+            state_id.startswith("L2:") and release_state == "frozen"
+            for state_id, release_state in self.per_state_release.items()
+        ):
+            raise ValueError("L2 states cannot exceed provisional_frozen")
+        if self.assay == "snRNA-seq" and any(
+            state in {"provisional_frozen", "frozen"}
+            for state in self.per_state_release.values()
+        ):
+            raise ValueError("snRNA states remain shadow in this release")
+        if self.status == "frozen":
+            released_states = {
+                state_id
+                for state_id, state in self.per_state_release.items()
+                if state in {"provisional_frozen", "frozen"}
+            }
+            if set(self.selected_methods) != released_states:
+                raise ValueError("every released state requires an explicit method combination")
+            roles = {signature.reviewer_role for signature in self.signatures}
+            if len(self.signatures) != 2 or roles != {
+                "bridge_scientific_lead",
+                "chen_team_reviewer",
+            }:
+                raise ValueError("frozen release requires both release signatures")
+            if len({item.reviewer_id for item in self.signatures}) != 2:
+                raise ValueError("frozen release requires distinct reviewers")
+            if len({item.key_id for item in self.signatures}) != 2:
+                raise ValueError("frozen release requires distinct signing keys")
+            if self.locked_test_state != "passed":
+                raise ValueError("frozen release requires a passed locked test")
+            if not self.selected_methods:
+                raise ValueError("frozen release requires selected methods")
+            if not all(
+                [
+                    self.biological_review_sha256,
+                    self.freeze_gate_sha256,
+                    self.locked_summary_sha256,
+                    self.locked_run_manifest_sha256,
+                    self.locked_split_manifest_sha256,
+                    self.reference_manifest_sha256,
+                    self.runtime_tool_version,
+                    self.environment_spec_ref,
+                ]
+            ):
+                raise ValueError("frozen release requires bundle checksums")
+            selected = {method for methods in self.selected_methods.values() for method in methods}
+            if set(self.method_implementation_versions) != selected:
+                raise ValueError("frozen release must version every selected method")
+        return self
+
+
 class CellStateEvidenceProfile(FrozenModel):
     profile_id: str
     assay: str
@@ -305,6 +621,12 @@ class CellStateEvidenceProfile(FrozenModel):
     composition: dict[str, Any]
     gene_coverage: dict[str, Any]
     modality_sensitivity: dict[str, Any]
+    method_outputs: dict[str, Any] = Field(default_factory=dict)
+    assignment_state: dict[str, Any] = Field(default_factory=dict)
+    unknown_reason: dict[str, Any] = Field(default_factory=dict)
+    calibration: dict[str, Any] = Field(default_factory=dict)
+    method_disagreement: dict[str, Any] = Field(default_factory=dict)
+    per_state_release: dict[str, str] = Field(default_factory=dict)
     unresolved_labels: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     evidence_ids: list[str] = Field(default_factory=list)

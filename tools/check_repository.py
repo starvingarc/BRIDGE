@@ -7,7 +7,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TEXT_SUFFIXES = {".css", ".html", ".json", ".jsonl", ".md", ".py", ".toml", ".tsv", ".txt", ".yaml", ".yml"}
-EXCLUDED_PARTS = {".git", ".pytest_cache", "__pycache__", "legacy"}
+EXCLUDED_PARTS = {
+    ".git",
+    ".pytest_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "legacy",
+    "private_assets",
+    "run_artifacts",
+    "tmp",
+    "venv",
+}
 FORBIDDEN_PRIVATE = (
     re.compile(r"/data[12]/[^/\s\"']+/"),
     re.compile(r"/Users/[^/\s\"']+/"),

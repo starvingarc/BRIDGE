@@ -10,3 +10,13 @@ environment_specs:
     state: proposed
     yaml_ref: environments/bridge-p0-evidence.yml
     runtime_class: cpu_only
+  ENV-CELLSTATE-PY-v0.1:
+    conda_name: bridge-cellstate-py
+    state: health_check_passed
+    yaml_ref: environments/bridge-cellstate-py.yml
+    runtime_class: cpu_default_gpu_optional
+  ENV-CELLSTATE-BIOC-R46-v0.1:
+    conda_name: bridge-cellstate-bioc-r46
+    state: health_check_passed
+    yaml_ref: environments/bridge-cellstate-bioc-r46.yml
+    runtime_class: cpu_only

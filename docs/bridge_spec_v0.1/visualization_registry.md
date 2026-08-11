@@ -1,8 +1,8 @@
-# BRIDGE v2 Visualization Registry
+# BRIDGE Visualization Registry
 
 | 项目 | 内容 |
 | --- | --- |
-| 受控主规范 | [BRIDGE v2 PRD](../BRIDGE_v2_PRD.md) |
+| 受控主规范 | [BRIDGE PRD](../BRIDGE_PRD.md) |
 | 状态 | `component_contract_draft` |
 | 正式入口 | BRIDGE Web 与版本化报告 |
 

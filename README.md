@@ -1,10 +1,10 @@
-# BRIDGE v2
+# BRIDGE
 
 **Development-aware transcriptomic evidence for cell-therapy products.**
 
 Parkinson's disease hPSC-derived midbrain dopaminergic (hPSC-mDA) products are the first biological instance.
 
-![BRIDGE v2 connects human fetal references and a pre-transplant cell product to five evidence domains and traceable outputs.](docs/assets/bridge-v2-biological-workflow.svg)
+![BRIDGE connects human fetal references and a pre-transplant cell product to five evidence domains and traceable outputs.](docs/assets/bridge-biological-workflow.svg)
 
 ## Biological question
 
@@ -25,7 +25,7 @@ Given a pre-transplant cell product, which intended developmental and regional i
 | Package | Status | Current output |
 |---|---|---|
 | P0-01 Input Audit & QC | Executable candidate | Input structure, matrix semantics, QC readiness, and traceable artifacts |
-| P0-02 Cell-State Evidence | Executable shadow | Source-specific reference support, marker/program evidence, prediction sets, and source conflicts |
+| P0-02 Cell-State Evidence | Executable shadow; freeze pilot active | Source-specific support, marker evidence, method benchmark outputs, abstention calibration, and source conflicts |
 | P0-03 onward | Contracted | Scientific, input/output, environment, and validation contracts; executors pending |
 
 Candidate and shadow outputs remain subject to benchmark, biological review, and version freeze.
@@ -53,7 +53,7 @@ Each run preserves the input and records the applicable measurement, reference, 
 ## Documentation
 
 - [Documentation index](docs/index.md)
-- [Product requirements](docs/BRIDGE_v2_PRD.md)
+- [Product requirements](docs/BRIDGE_PRD.md)
 - [Scientific principles](docs/product-principles.md)
 - [Tool Package cards](tool_packages/)
 - [Method and source knowledge](knowledge/README.md)

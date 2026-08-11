@@ -1,8 +1,8 @@
-# BRIDGE v2 Analysis Task Cards
+# BRIDGE Analysis Task Cards
 
 | 项目 | 内容 |
 | --- | --- |
-| 受控主规范 | [BRIDGE v2 PRD](../BRIDGE_v2_PRD.md) |
+| 受控主规范 | [BRIDGE PRD](../BRIDGE_PRD.md) |
 | 状态 | `contract_draft` |
 | 适用版本 | PRD v0.1，2026-08-04 revision |
 

@@ -1,0 +1,34 @@
+benchmark_spec_id: CELLSTATE-BENCHMARK-scRNA-pilot-v0.1
+version: 0.1.0
+phase: pilot
+assay: scRNA-seq
+annotation_vocabulary_ref: BRIDGE-PD-vMB-ANNOTATION-v0.1-draft
+reference_snapshot_ref: REF-PD-vMB-CELLSTATE-v0.2
+split_unit: source_family_and_sample
+random_seed: 20260811
+methods:
+  - source_specific_correlation
+  - marker_program_evidence
+  - celltypist_custom
+  - singler
+  - scmap
+  - scanvi
+  - symphony
+  - scconform_calibration
+development_asset_ids:
+  - CHEN-vMB-scRNA
+  - CHEN-RGNB-scRNA
+development_ood_asset_ids:
+  - GSE190729
+  - GSE221853
+  - GSE267791
+  - GSE224152
+behavior_only_asset_ids:
+  - GSE204796
+locked_asset_ids:
+  - LAMANNO-2016
+  - GSE120046
+  - GSE129519
+  - GSE188516
+sealed_asset_ids:
+  - E-MTAB-14729

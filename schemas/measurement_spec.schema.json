@@ -95,6 +95,18 @@
       "title": "Reference Refs",
       "type": "array"
     },
+    "release_manifest_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Release Manifest Ref"
+    },
     "scientific_question": {
       "title": "Scientific Question",
       "type": "string"

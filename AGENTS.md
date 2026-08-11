@@ -32,7 +32,7 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 
 1. 真实运行产物、冻结 Schema、自动测试和可复现验证记录。
 2. 已冻结的 `ProductDefinitionCard`、`MeasurementSpec`、reference、prior 与工具合同。
-3. `docs/BRIDGE_v2_PRD.md` 和本手册链接的稳定文档。
+3. `docs/BRIDGE_PRD.md` 和本手册链接的稳定文档。
 4. 任务卡、方法卡、Registry 和候选设计文档。
 5. 当前分支的临时计划。
 6. README、历史代码、Notebook、Fixture、Mock 和旧报告。
@@ -65,6 +65,23 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 - 数据、reference、prior、sealed test 与 competitor-isolated 边界。
 
 不同 Agent 不得同时改写同一高冲突文件。现有未提交改动视为用户或其他 Agent 的成果，不得覆盖、回退、暂存或顺手整理。整合者必须重新运行跨模块验证，不能把子 Agent 自报当作证据。
+
+### 分支、工作树与 PR
+
+- `main` 是 BRIDGE 的唯一集成分支。当前重构通过主题分支和 Pull Request 取代旧实现；合入后不再维护独立品牌或平行的长期集成分支。
+- 所有后续变更从最新 `origin/main` 创建职责单一的主题分支，并通过面向 `main` 的 Pull Request 合入。
+- 禁止直接向集成分支 push 或 force push。合并 PR 是独立动作，不能因为实现、push 或开 PR 已获授权而自动执行。
+- 开工前检查当前分支、HEAD、远端和 `git status --short --branch`。多人并行优先使用独立 worktree；不得让多个 Agent 在同一工作树并发改写文件。
+- 共享分支禁止未经协商的历史重写。同步集成分支时只能在主题分支解决冲突，不得覆盖、丢弃或静默改写其他人的成果。
+- PR 必须说明范围、稳定文档和计划影响、科学声明边界、验证命令与结果、未验证项和剩余风险。测试、科学评审或真实数据门禁未完成时使用 Draft PR。
+
+### 计划与交付循环
+
+- 跨多个合同或稳定文档、需要分阶段验收、涉及 Schema、隐私、评分、reference、locked/sealed data 或发布风险的工作必须先创建分支计划。
+- 计划身份由主题分支和任务 slug 决定；已有同名计划时恢复或移交，不得覆盖重建。`PLANS.md` 以计划路径为唯一键。
+- Draft PR 可以保留 `in_progress` 计划，但不得把未完成任务写成稳定能力。转为 Ready for Review 前，必须在计划中记录最终验证证据；未完成范围应继续保留为明确任务或拆入后续计划。
+- 稳定事实同步写入 `docs/`，施工状态只写入 `plans/`。计划不能推翻稳定合同；若需要改变合同或科学边界，必须在 `docs/decision-log.md` 追加决定。
+- 交付必须包含改动范围、关键决定、变更文件、验证证据、未验证项、风险和后续动作；“已实现”不能替代可复现证据。
 
 ## 科学与声明护栏
 
@@ -108,6 +125,7 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 python -m pytest -q
 python -m bridge.toolkit.cli list --json
 python -m bridge.toolkit.cli knowledge validate
+python tools/check_repository.py
 git diff --check
 ```
 

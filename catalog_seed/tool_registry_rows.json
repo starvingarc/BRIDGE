@@ -2484,7 +2484,7 @@
       "required_input": "expression h5ad + lineage table + stage-pair/replicate manifest",
       "role": "连接表达对象与 lineage barcode，并按实验/replicate 重建 observed transitions",
       "scientific_status": "candidate",
-      "source_ref": "docs/bridge_v2_spec_v0.1/developmental_compatibility_task_card.md#SISBAR",
+      "source_ref": "docs/bridge_spec_v0.1/developmental_compatibility_task_card.md#SISBAR",
       "source_status": "candidate/conditional",
       "tool_id": "BRIDGE-SISBAR-ADAPTER",
       "tool_or_method": "BRIDGE SISBAR adapter and transition calibrator"

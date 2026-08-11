@@ -1,0 +1,120 @@
+{
+  "$defs": {
+    "BenchmarkSplitRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "data_role": {
+          "title": "Data Role",
+          "type": "string"
+        },
+        "fold_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fold Id"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "partition": {
+          "enum": [
+            "train",
+            "calibration",
+            "test",
+            "development_ood",
+            "behavior_only",
+            "locked_test"
+          ],
+          "title": "Partition",
+          "type": "string"
+        },
+        "sample_id": {
+          "title": "Sample Id",
+          "type": "string"
+        },
+        "source_family_id": {
+          "title": "Source Family Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "source_family_id",
+        "sample_id",
+        "partition",
+        "data_role",
+        "n_observations"
+      ],
+      "title": "BenchmarkSplitRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/benchmark-split-manifest/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "benchmark_spec_ref": {
+      "title": "Benchmark Spec Ref",
+      "type": "string"
+    },
+    "input_catalog_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Input Catalog Sha256",
+      "type": "string"
+    },
+    "locked_assets_opened": {
+      "default": false,
+      "title": "Locked Assets Opened",
+      "type": "boolean"
+    },
+    "phase": {
+      "enum": [
+        "pilot",
+        "locked"
+      ],
+      "title": "Phase",
+      "type": "string"
+    },
+    "random_seed": {
+      "title": "Random Seed",
+      "type": "integer"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/BenchmarkSplitRecord"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "sealed_assets_opened": {
+      "default": false,
+      "title": "Sealed Assets Opened",
+      "type": "boolean"
+    },
+    "split_manifest_id": {
+      "title": "Split Manifest Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "split_manifest_id",
+    "benchmark_spec_ref",
+    "phase",
+    "random_seed",
+    "input_catalog_sha256",
+    "records"
+  ],
+  "title": "BenchmarkSplitManifest",
+  "type": "object"
+}

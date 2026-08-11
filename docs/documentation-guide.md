@@ -8,7 +8,7 @@ Every stable document must be linked from `docs/index.md` or another indexed doc
 
 ## Plans
 
-`plans/` contains branch-scoped implementation state: motivation, scope, non-goals, tasks, decisions, risks and acceptance evidence. Plans do not override stable contracts and do not serve as user documentation.
+`plans/` contains branch-scoped implementation state: motivation, scope, non-goals, tasks, decisions, risks and acceptance evidence. Plan paths are idempotent task identities and appear once in `PLANS.md`. Draft PRs may retain an active plan; ready-to-merge work records final evidence and resolves or explicitly carries forward every remaining item. Plans do not override stable contracts and do not serve as user documentation.
 
 ## Knowledge Cards
 
@@ -16,4 +16,4 @@ Method and Source Cards use machine-readable YAML plus concise Markdown. Facts c
 
 ## Historical Material
 
-Superseded implementation and documents live under `legacy/` or Git history. They are not linked as current contracts and cannot silently supply values to v2 tools.
+Superseded implementation and documents live under `legacy/` or Git history. They are not linked as current contracts and cannot silently supply values to current BRIDGE tools.

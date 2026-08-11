@@ -1,4 +1,4 @@
-# BRIDGE v2 Tool Registry
+# BRIDGE Tool Registry
 
 ## 文档信息
 

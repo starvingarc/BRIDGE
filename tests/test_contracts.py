@@ -179,3 +179,19 @@ def test_input_level_and_matrix_semantics_must_agree(tmp_path: Path) -> None:
             matrix_semantics="raw_counts",
             assay="scRNA-seq",
         )
+
+
+@pytest.mark.parametrize(
+    "schema_ref",
+    [
+        "bridge://schemas/biological-review-record/v0.1",
+        "bridge://schemas/cell-state-benchmark-spec/v0.1",
+        "bridge://schemas/benchmark-split-manifest/v0.1",
+        "bridge://schemas/freeze-gate-spec/v0.1",
+        "bridge://schemas/cell-state-release-manifest/v0.1",
+    ],
+)
+def test_cell_state_freeze_contracts_are_exported(schema_ref: str) -> None:
+    schema = load_schema(schema_ref)
+
+    assert schema["$id"] == schema_ref

@@ -1,0 +1,26 @@
+name: bridge-cellstate-py
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pip=25.1
+  - numpy=2.2.6
+  - pandas=2.3.3
+  - scipy=1.16.3
+  - pydantic=2.12.5
+  - pyyaml=6.0.3
+  - h5py=3.15.1
+  - anndata=0.12.6
+  - scanpy=1.11.5
+  - pyarrow=21.0.0
+  - scikit-learn=1.7.2
+  - pip:
+      - celltypist==1.7.1
+      - scvi-tools==1.4.0.post1
+      - decoupler==2.1.4
+      - torch==2.9.1
+      - cryptography==46.0.3
+      - cffi==2.0.0
+      - pycparser==2.23

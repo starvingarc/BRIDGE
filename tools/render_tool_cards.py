@@ -13,7 +13,7 @@ DETAILS = {
         "reject": "Unreadable or ambiguous matrix, duplicate identifiers, invalid count semantics, missing assay, missing required sample/capture information, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input.",
         "visualization": "Per-sample QC distributions and counts-versus-detected-genes diagnostics with explicit denominators.",
         "validation": "Format fixtures, scRNA/snRNA contracts, matrix-semantic failures, deterministic reruns, input immutability, and optional Scrublet eligibility.",
-        "details": "docs/bridge_v2_spec_v0.1/input_audit_qc_task_card.md",
+        "details": "docs/bridge_spec_v0.1/input_audit_qc_task_card.md",
     },
     "P0-02": {
         "input": "QC-qualified expression views, declared scRNA/snRNA modality, internal annotation vocabulary, frozen reference candidates, and provenance.",
@@ -21,7 +21,7 @@ DETAILS = {
         "reject": "Reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.",
         "visualization": "Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.",
         "validation": "Source/lab/modality holdouts, leave-one-state-out, rare-state mixtures, calibration, OOD detection, and product-composition error.",
-        "details": "docs/bridge_v2_spec_v0.1/cell_state_annotation_task_card.md",
+        "details": "docs/bridge_spec_v0.1/cell_state_annotation_task_card.md",
     },
     "P0-03": {
         "input": "Frozen Cell-State evidence, ProductDefinitionCard, internal ventral-midbrain vocabulary, and eligible reference/spatial evidence.",
@@ -29,7 +29,7 @@ DETAILS = {
         "reject": "Unconfirmed product target, insufficient reference coverage, unresolved regional vocabulary, or unstable evidence across registered channels.",
         "visualization": "Target and regional composition, reference support, spatial support, evidence conflicts, and method/reference sensitivity.",
         "validation": "Anatomical/source holdouts, OOD regions, marker masking, reference swaps, modality checks, and source-family de-duplication.",
-        "details": "docs/bridge_v2_spec_v0.1/target_regional_identity_task_card.md",
+        "details": "docs/bridge_spec_v0.1/target_regional_identity_task_card.md",
     },
     "P0-04": {
         "input": "Confirmed DevelopmentWindowSpec, Cell-State soft composition, fetal references, real in-vitro timepoints, and optional lineage calibration data.",
@@ -37,7 +37,7 @@ DETAILS = {
         "reject": "Unconfirmed window, single timepoint requested as a trajectory, insufficient replicates for inference, or unsupported fetal-age conversion.",
         "visualization": "Stage composition, real-D timeline, reference-stage support, program trends, sensitivity, and calibration-only lineage alluvial plots.",
         "validation": "Source/timepoint/state holdouts, mixtures, branch shifts, downsampling, modality swaps, and replicate-aware lineage-transition reconstruction.",
-        "details": "docs/bridge_v2_spec_v0.1/developmental_compatibility_task_card.md",
+        "details": "docs/bridge_spec_v0.1/developmental_compatibility_task_card.md",
     },
     "P0-05": {
         "input": "Frozen Cell-State prediction sets, ProductDefinitionCard role table, eligible-cell denominator, and rare-state/OOD calibration records.",
@@ -45,7 +45,7 @@ DETAILS = {
         "reject": "Missing full-product denominator, unresolved product role, uncalibrated OOD method, or a zero observation presented as biological absence.",
         "visualization": "Whole-product composition, off-axis drill-down, unknown reasons, OOD calibration, rare-state LOD/UCB, and method sensitivity.",
         "validation": "Real OOD panels, source-family holdouts, known mixtures, rare-state spike-ins, downsampling, and reference/preprocessing swaps.",
-        "details": "docs/bridge_v2_spec_v0.1/off_target_control_task_card.md",
+        "details": "docs/bridge_spec_v0.1/off_target_control_task_card.md",
     },
     "P0-06": {
         "input": "QC-qualified expression, Cell-State evidence, confirmed developmental context, ProtocolIR metadata, and versioned process-program knowledge.",
@@ -53,7 +53,7 @@ DETAILS = {
         "reject": "Missing stage context for stage-dependent interpretation, insufficient marker/program coverage, or process attribution without protocol metadata.",
         "visualization": "Program effect profiles, state-stratified distributions, rare-state LOD, process covariates, review flags, and sensitivity.",
         "validation": "Perturbation direction recovery, pluripotent-cell spike-ins, source/cell-line/modality holdouts, program overlap, and false-flag testing.",
-        "details": "docs/bridge_v2_spec_v0.1/process_integrity_task_card.md",
+        "details": "docs/bridge_spec_v0.1/process_integrity_task_card.md",
     },
     "P0-07": {
         "input": "Version-matched ProductEvidenceObjects, comparability contract, independent preparation map, domain raw evidence, and Evidence Sufficiency states.",
@@ -61,7 +61,7 @@ DETAILS = {
         "reject": "Contract mismatch, complete protocol/lab/batch confounding, absent independent preparation, or inferential claims from descriptive-only data.",
         "visualization": "Effect-size forest, composition differences, timelines, batch distances, program heatmaps, Pareto matrix, and integration sensitivity.",
         "validation": "Known shifts and nulls, paired/unpaired designs, insufficient replication, over-correction checks, and independent-versus-joint consistency.",
-        "details": "docs/bridge_v2_spec_v0.1/product_comparison_stability_task_card.md",
+        "details": "docs/bridge_spec_v0.1/product_comparison_stability_task_card.md",
     },
     "P0-08": {
         "input": "QCReadinessProfile, domain MeasurementResults, benchmark and sensitivity records, and frozen reference/prior/contract versions.",
@@ -69,7 +69,7 @@ DETAILS = {
         "reject": "Missing gate specification, absent required upstream record, non-applicable method/prior, or unstable evidence needed for interpretation.",
         "visualization": "Three-axis sufficiency matrix, blocking reasons, domain state summary, and upstream evidence trace.",
         "validation": "Independent domain gating, missing-state semantics, evidence-family de-duplication, legacy-score exclusion, and deterministic repeatability.",
-        "details": "docs/bridge_v2_spec_v0.1/evidence_sufficiency_task_card.md",
+        "details": "docs/bridge_spec_v0.1/evidence_sufficiency_task_card.md",
     },
     "P0-09": {
         "input": "MeasurementResults, ToolRuns, Evidence Sufficiency, versioned contracts, references, priors, and artifact manifests.",
@@ -77,7 +77,7 @@ DETAILS = {
         "reject": "Invalid schema, dangling provenance, duplicate logical evidence, forbidden lifecycle/tier, or LLM-authored numeric/reconciliation changes.",
         "visualization": "Claim neighborhood, provenance, evidence-family grouping, conflicts, missing requirements, and comparison subgraphs.",
         "validation": "Idempotence, append-only correction, family de-duplication, missing-versus-zero semantics, graph round trips, and read-only Agent access.",
-        "details": "docs/bridge_v2_spec_v0.1/evidence_compiler_task_card.md",
+        "details": "docs/bridge_spec_v0.1/evidence_compiler_task_card.md",
     },
     "P0-10": {
         "input": "Structured ReportDraft, ClaimBlocks, ValueBindings, evidence/knowledge/statement references, chart artifacts, and policy versions.",
@@ -85,7 +85,7 @@ DETAILS = {
         "reject": "Numeric mismatch, invalid evidence, state substitution, unsupported inference, prohibited claim, graft leakage, or unresolved semantic review.",
         "visualization": "Claim-to-evidence map, check results, blocked text spans, chart-binding status, and human-review queue.",
         "validation": "Exact value copying, bilingual fixtures, prohibited claims, chart bindings, LLM failure, immutable report hashes, and blocker non-override.",
-        "details": "docs/bridge_v2_spec_v0.1/claim_verifier_task_card.md",
+        "details": "docs/bridge_spec_v0.1/claim_verifier_task_card.md",
     },
     "P0-11": {
         "input": "VerifiedReport with eligible export state, field allowlist, public aliases, registered visualizations, and export policy version.",
@@ -93,7 +93,7 @@ DETAILS = {
         "reject": "Any non-allowlisted field, private path or identifier, unsafe embedded content, unregistered file, hash drift, or missing user confirmation.",
         "visualization": "Public-data payload only; figures are regenerated and checked for metadata, scripts, links, hidden text, and tooltip leakage.",
         "validation": "Leakage canaries, public accession preservation, CSV injection, MIME mismatch, archive traversal, media metadata, and deterministic packaging.",
-        "details": "docs/bridge_v2_spec_v0.1/public_safe_export_task_card.md",
+        "details": "docs/bridge_spec_v0.1/public_safe_export_task_card.md",
     },
     "P0-12": {
         "input": "Optional GraftCase with explicit host/model/animal/timepoint/species/preparation linkage plus modality-matched fetal references.",
@@ -101,7 +101,7 @@ DETAILS = {
         "reject": "No graft returns `not_provided`; missing animal IDs or confounded designs force descriptive mode; implicit preparation linkage is forbidden.",
         "visualization": "Whole-graft composition, mDA/reference support, maturation programs, animal/timepoint variation, sensitivity, and linkage Evidence Graph.",
         "validation": "Metadata contracts, source/lab/modality holdouts, mixtures, species contamination, downsampling, reference swaps, and no score backfill.",
-        "details": "docs/bridge_v2_spec_v0.1/graft_assessment_task_card.md",
+        "details": "docs/bridge_spec_v0.1/graft_assessment_task_card.md",
     },
 }
 

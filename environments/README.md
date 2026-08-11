@@ -4,7 +4,17 @@
 |---|---|---|---|
 | `ENV-P0-CORE-v0.1` | `bridge-p0-core` | rebuild validation required | Tool Runtime, P0-01 and future Python scientific executors |
 | `ENV-EVIDENCE-v0.1` | `bridge-p0-evidence` | proposed | P0-08 to P0-11 deterministic evidence and release services |
+| `ENV-CELLSTATE-PY-v0.1` | `bridge-cellstate-py` | health check passed | P0-02 Python benchmark methods |
+| `ENV-CELLSTATE-BIOC-R46-v0.1` | `bridge-cellstate-bioc-r46` | health_check_passed | P0-02 R/Bioconductor benchmark methods |
 
-The YAML files describe required runtime capabilities. Scientific method-specific R, JAX, GPU, mixed-species and competitor environments remain conditional and must receive separate versioned specifications before their executors can be implemented.
+Create these environments with strict channel priority. After creating the R environment, install Harmony and Symphony from the recorded commits without dependency upgrades:
+
+```bash
+CONDA_CHANNEL_PRIORITY=strict conda env create --file environments/bridge-cellstate-py.yml
+CONDA_CHANNEL_PRIORITY=strict conda env create --file environments/bridge-cellstate-bioc-r46.yml
+conda run --name bridge-cellstate-bioc-r46 Rscript environments/install-cellstate-bioc-r46.R
+```
+
+Keep Symphony in `bridge-cellstate-bioc-r46` unless a reproducible health check establishes a dependency conflict. Other scientific method-specific JAX, mixed-species and competitor environments remain conditional and require separate versioned specifications.
 
 No environment installation implies scientific validation or method promotion.

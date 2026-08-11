@@ -24,6 +24,10 @@ Every package supports:
 | `AnnotationVocabulary` | Versioned L1/L2/L3 state hierarchy, aliases and unresolved labels |
 | `ReferenceManifest` | Immutable source-aware reference snapshot and artifact checksums |
 | `CellStateEvidenceProfile` | Shadow reference support, marker evidence, prediction sets and conflicts |
+| `BiologicalReviewRecord` | Per-state biological definitions, marker review, exclusions and reviewer decisions |
+| `CellStateBenchmarkSpec` / `BenchmarkSplitManifest` | Source/sample-aware pilot or locked benchmark contract |
+| `FreezeGateSpec` | Human-signed thresholds fixed before locked assets are opened |
+| `CellStateReleaseManifest` | Approved per-state release state and runtime method selection |
 
 Expression assets declare one of `analysis_ready`, `count_ready` or `droplet_ready`. `analysis_ready` accepts declared normalized h5ad expression; `count_ready` requires raw counts; `droplet_ready` requires a 10x raw-droplet object and currently performs contract audit only. Gene-set metrics bind either `var_names` or an explicitly declared `var` column; absent marker coverage returns `unavailable`, never zero.
 
@@ -43,3 +47,5 @@ Original inputs are read-only. Each run creates a new bundle containing a manife
 The versioned JSON contracts in `schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` are the Python source used to generate those schemas.
 
 P0-02 requests carry `source_family_id` plus logical `qc_profile_ref` and `measurement_spec_ref` identifiers. Same-family reference profiles are held out at runtime. Private reference paths remain in deployment-owned catalogs. Only frozen reference snapshots are accepted in Agent runtime; reference construction is a science-team operation.
+
+Cell-State scientific commands are restricted to the BRIDGE science team: `bridge-benchmark cell-state prepare`, `run` and `summarize`. A pilot split cannot open locked assets; a locked split requires a signed `FreezeGateSpec`. Agent runtime cannot choose benchmark methods or thresholds.

@@ -42,4 +42,4 @@ Method documentation and accessible sources do not constitute benchmark completi
 
 ## Detailed Scientific Requirement
 
-Repository document: `docs/bridge_v2_spec_v0.1/target_regional_identity_task_card.md`.
+Repository document: `docs/bridge_spec_v0.1/target_regional_identity_task_card.md`.

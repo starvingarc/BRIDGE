@@ -1,6 +1,6 @@
-# BRIDGE v2 v0.1 桌面走查记录
+# BRIDGE v0.1 桌面走查记录
 
-> **记录状态：historical walkthrough。** 本记录保存 2026-08-03 的桌面走查，不构成 2026-08-04 PRD 修订后的真实用户验收；当前验收要求以 [BRIDGE v2 PRD](../BRIDGE_v2_PRD.md) 为准。
+> **记录状态：historical walkthrough。** 本记录保存 2026-08-03 的桌面走查，不构成 2026-08-04 PRD 修订后的真实用户验收；当前验收要求以 [BRIDGE PRD](../BRIDGE_PRD.md) 为准。
 
 ## 走查性质
 

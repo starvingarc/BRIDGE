@@ -1,8 +1,8 @@
-# BRIDGE v2 Object Schemas
+# BRIDGE Object Schemas
 
 | 项目 | 内容 |
 | --- | --- |
-| 受控主规范 | [BRIDGE v2 PRD](../BRIDGE_v2_PRD.md) |
+| 受控主规范 | [BRIDGE PRD](../BRIDGE_PRD.md) |
 | 状态 | `schema_contract_draft` |
 | 规则 | 所有对象追加式版本管理；正式记录不可静默覆盖 |
 
@@ -86,6 +86,10 @@ prohibited_interpretations / reviewer / validation_ref
 - `ReferenceManifest` / `ReferenceProfile`：source family、assay、解剖与发育上下文、evidence family、相对产物路径和 checksum。
 - `MarkerProgramCard`：候选 positive/negative marker、来源和审核状态。
 - `CellStateEvidenceProfile`：分来源支持、候选 prediction set、冲突、marker evidence、组成和敏感性；`domain_score` 固定为空。
+- `BiologicalReviewRecord`：逐状态 Review Card、标签血缘、冲突排除和双人签署；允许按状态独立晋升。
+- `CellStateBenchmarkSpec` / `BenchmarkSplitManifest`：固定开发、OOD、行为检查、locked 资产和 source/sample split。
+- `FreezeGateSpec`：locked test 打开前签署的硬门槛。
+- `CellStateReleaseManifest`：逐状态发布级别与运行期固定方法组合；L2 最高为 `provisional_frozen`。
 
 上述对象的当前机器可读合同以根目录 `schemas/` 为准。Agent 只读取冻结 reference snapshot；candidate snapshot 仅供科学团队验证。
 

@@ -1,8 +1,8 @@
-# BRIDGE v2 Documentation
+# BRIDGE Documentation
 
 ## Current Contracts
 
-- [Product requirements](BRIDGE_v2_PRD.md)
+- [Product requirements](BRIDGE_PRD.md)
 - [Product and scientific principles](product-principles.md)
 - [High-level tool contract](tool-contract.md)
 - [Agent team integration](agent-integration.md)
@@ -15,12 +15,12 @@
 
 ## P0 Scientific Specifications
 
-- [Specification index](bridge_v2_spec_v0.1/README.md)
-- [P0 toolkit overview](bridge_v2_spec_v0.1/bridge_p0_toolkit_master.md)
-- [Object schemas](bridge_v2_spec_v0.1/object_schemas.md)
-- [Data and reference registry](bridge_v2_spec_v0.1/data_reference_registry.md)
-- [Tool registry](bridge_v2_spec_v0.1/tool_registry.md)
-- [Knowledge registry](bridge_v2_spec_v0.1/knowledge_registry.md)
+- [Specification index](bridge_spec_v0.1/README.md)
+- [P0 toolkit overview](bridge_spec_v0.1/bridge_p0_toolkit_master.md)
+- [Object schemas](bridge_spec_v0.1/object_schemas.md)
+- [Data and reference registry](bridge_spec_v0.1/data_reference_registry.md)
+- [Tool registry](bridge_spec_v0.1/tool_registry.md)
+- [Knowledge registry](bridge_spec_v0.1/knowledge_registry.md)
 
 ## Governance
 

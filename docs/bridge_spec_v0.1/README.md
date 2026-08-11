@@ -1,17 +1,17 @@
-# BRIDGE v2 v0.1 文档包
+# BRIDGE v0.1 文档包
 
 **版本：** v0.1
 
 **审计日期：** 2026-08-03
 **用途：** 供 BRIDGE 生物学团队、算法团队和智能体合作团队共同评审。
 
-本目录是 [BRIDGE v2 PRD](../BRIDGE_v2_PRD.md) 的实施附件包。PRD 是当前唯一主规范；附件提供数据、工具、知识、对象、可视化和环境事实，不得改变 PRD 的科学边界或产品合同。
+本目录是 [BRIDGE PRD](../BRIDGE_PRD.md) 的实施附件包。PRD 是当前唯一主规范；附件提供数据、工具、知识、对象、可视化和环境事实，不得改变 PRD 的科学边界或产品合同。
 
 ## 文档地图
 
 | 文档 | 回答的问题 |
 | --- | --- |
-| [唯一主规范：BRIDGE v2 PRD](../BRIDGE_v2_PRD.md) | BRIDGE 评估什么、Agent 必须实现什么、系统边界在哪里 |
+| [唯一主规范：BRIDGE PRD](../BRIDGE_PRD.md) | BRIDGE 评估什么、Agent 必须实现什么、系统边界在哪里 |
 | [数据与 Reference Registry](data_reference_registry.md) | 当前有哪些数据和 reference、彼此是什么血缘、分别允许做什么 |
 | [Tool Registry](tool_registry.md) | 每类分析需求可调用什么工具、需要什么输入、何时拒答 |
 | [Knowledge Registry](knowledge_registry.md) | 外部知识如何版本化、可用于量化还是解释、许可边界是什么 |

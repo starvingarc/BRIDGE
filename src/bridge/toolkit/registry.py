@@ -175,6 +175,17 @@ class ToolRegistry:
                     reasons.append("measurement_spec_not_supported_by_reference")
             except ValueError as exc:
                 reasons.append(getattr(exc, "reason_code", "reference_snapshot_invalid"))
+            if measurement_spec.release_manifest_ref:
+                try:
+                    from bridge.tool_packages.p0_02_cell_state.freeze import resolve_release_bundle
+
+                    release = resolve_release_bundle(measurement_spec.release_manifest_ref)
+                    if release.measurement_spec_ref != measurement_spec.measurement_spec_id:
+                        reasons.append("cell_state_release_measurement_spec_mismatch")
+                    if release.reference_snapshot_ref != measurement_spec.reference_refs[0]:
+                        reasons.append("cell_state_release_reference_mismatch")
+                except ValueError as exc:
+                    reasons.append(getattr(exc, "reason_code", "cell_state_release_invalid"))
         if asset.path.is_dir() and request.output_dir.resolve().is_relative_to(asset.path.resolve()):
             reasons.append("output_dir_overlaps_input_asset")
         return EligibilityResult(tool_id=request.tool_id, eligible=not reasons, reason_codes=sorted(set(reasons)))
