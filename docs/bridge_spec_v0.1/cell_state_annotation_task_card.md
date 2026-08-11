@@ -183,7 +183,7 @@ Cell-State 使用隔离的 Python 与 R 环境。环境间通过 checksummed spa
 
 每个状态轴单独决定是否冻结方法。若没有方法达到预注册标准，该轴返回 `unavailable`；其余轴仍可继续。正式晋升还需通过许可、环境 fixture、Evidence Graph 去重和 claim review。
 
-当前 Review Cards 和 Release Manifest 均未签字。七个重点 L2 仍待 Chen 团队审核；其中 `Nb_mFP`、`Nb_mBMP` 和 `Nb_mAP` 缺少独立 marker 与边界证据，当前不具备晋升条件。locked source/OOD 在签署 `FreezeGateSpec` 前不得打开。
+当前 Review Cards 和 Release Manifest 均未签字。七个重点 L2 仍待生物学审核；其中 `Nb_mFP`、`Nb_mBMP` 和 `Nb_mAP` 缺少独立 marker 与边界证据，当前不具备晋升条件。locked source/OOD 在签署 `FreezeGateSpec` 前不得打开。
 
 ## 11. 主要官方来源
 

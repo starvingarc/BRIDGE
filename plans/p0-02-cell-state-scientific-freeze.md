@@ -3,59 +3,67 @@
 | Field | Value |
 |---|---|
 | Branch | `codex/bridge-scientific-freeze` |
-| Mode | `auto` |
 | Status | `awaiting_biological_review` |
 | Owner | BRIDGE core |
 
-## Goal
+## Biological question
 
-Promote the scRNA Cell-State Evidence baseline only after biological review,
-source-aware benchmarking and calibrated abstention. Keep snRNA and unvalidated
-states shadow-only.
+Can a pre-transplant hPSC-mDA product be assigned to biologically defined fetal
+ventral-midbrain states while unrelated neural and non-neural cells are left
+unassigned?
 
-## Scope
+This is the prerequisite for later Target Identity, Regional Fidelity,
+Developmental Compatibility and Off-target Control analyses.
 
-- Version biological review cards for all L1 states and seven priority L2 states.
-- Add deterministic pilot and locked split contracts with source-family isolation.
-- Benchmark registered method outputs through one science-team CLI.
-- Propose, review and sign freeze gates before locked data can be opened.
-- Make runtime release selection depend on an approved immutable release manifest.
+## Data and controls
 
-## Non-goals
+- Chen vMB scRNA-seq: 61,455 cells for broad L1 states.
+- Chen RG/Nb scRNA-seq: 11,366 cells for seven priority L2 states.
+- Development OOD: cortical organoid, neural crest, motor-neuron and mesenchymal datasets.
+- Behavior-only time course: GSE204796, used to check whether outputs behave consistently across real differentiation days.
+- Locked external-source and OOD datasets remain unopened.
+- snRNA-seq remains a cross-modality shadow analysis.
 
-- P0-03 execution, Target Identity or Regional Fidelity conclusions.
-- Clinical efficacy, safety, potency, release or product-ranking claims.
-- Automatic scientific approval, fabricated reviewer signatures or locked-test tuning.
-- Formal snRNA release or L2 external-validation claims.
+## Current biological findings
 
-## Tasks
+| Question | Finding | Consequence |
+|---|---|---|
+| Broad fetal VM identity | CellTypist and scANVI recover many L1 states in donor-held-out Chen data | Broad composition can be explored, but labels are not released |
+| Fine RG/Nb identity | scANVI separates the seven L2 states better than the transparent baselines, but it is transductive and lacks external OOD validation | L2 states remain provisional and cannot support formal regional claims |
+| Off-axis rejection | Tested inductive methods force the four OOD datasets into known fetal VM labels | A confident label cannot yet be interpreted as true product identity |
+| Marker support | Negative markers are missing for `Neuron_ChAT` and `Neuron_OMTN`; `Neuron_Glut_GABA` and all seven L2 states lack complete reviewed cards | Marker evidence cannot yet provide an independent biological check |
+| Uncertainty calibration | scConform reaches 90.2% coverage for L1 but 83.3% for L2 against a nominal 90% target | L2 abstention is not calibrated sufficiently |
 
-- [x] Freeze contracts, review-card drafts and release-policy invariants.
-- [x] Implement split preparation, method adapters, benchmark metrics and summaries.
-- [x] Add Conda environment contracts and cross-language exchange validation.
-- [x] Run the local engineering gates.
-- [x] Run a development-only bridge-amax pilot.
-- [x] Produce an unsigned FreezeGateSpec proposal and review the full change.
+No method or state is frozen. The pilot does not yet support formal target-cell,
+regional-fidelity or off-target composition conclusions.
 
-## Current verification
+## Biological work before release
 
-- Local Python 3.12 suite: `171 passed, 3 warnings`.
-- Server Python 3.12 suite: `171 passed, 2 warnings`.
-- Registry: exactly 12 Tool Packages; P0-01 and P0-02 implemented, P0-03 through P0-12 scaffold-only.
-- Knowledge validation: 354 methods, 385 verified public Source Cards and no dangling references.
-- Repository policy scan and `git diff --check` pass after ignored runtime/deployment directories are excluded from the public-tree scan.
-- A clean wheel install exposes all 12 Tool Packages, keeps `bridge-benchmark --help` usable without optional scientific imports, and loads the packaged pilot spec when installed with the `freeze` extra.
-- The R adapter parses successfully in the pinned bridge-amax Bioconductor environment.
-- Development run `CELLSTATE-PILOT-e45ada3778e2` and Evidence run `CELLSTATE-EVIDENCE-3268ddfd0caf` are content-stable across repeated summaries.
-- Seven method or calibration channels completed. Full-cell SingleR exceeded the 3,600-second development budget without a complete L1 output and is excluded from pilot metrics.
+- Review 18 L1 and seven priority L2 state definitions, parent-child relations,
+  developmental context, positive markers, negative markers and likely confounders.
+- Keep 328 historical label conflicts excluded, including 25 RG-to-Pericyte records.
+- Confirm the product definition and state-role mapping before translating a cell
+  state into target, adjacent or off-target product roles.
+- Set per-state acceptance and abstention rules before opening locked data.
+- Run the fixed rules on the La Manno source-family holdout and locked OOD families.
 
-These checks validate the engineering contracts and unsealed pilot. They do not replace biological review, freeze-gate approval or the locked test. No state is frozen, and P0-03 remains blocked.
+P0-03 starts only after the biological definitions, marker cards and locked-test
+rules are approved. Failure at that point leaves the affected state as `shadow` or
+`unavailable`.
 
-## Acceptance
+## Scientific boundaries
 
-- Pilot splits operate at source/donor level and never open locked or sealed assets.
-- scConform accepts only independent calibration rows and probability outputs.
-- Per-state release is explicit; L2 cannot exceed `provisional_frozen`.
-- Runtime refuses frozen execution without signed review, gate and release records.
-- Repeated runs with the same spec, environment and inputs are content-stable.
-- Locked-test execution remains blocked until human approval is recorded.
+- The pilot evaluates analytical reliability and rejection behavior, not product
+  efficacy, safety, potency, GMP release or absolute quality.
+- Differentiation day is not converted into fetal age.
+- Cells are not treated as biological replicates.
+- No locked or sealed competitor data may influence state definitions, markers or thresholds.
+
+## Engineering record
+
+- Local Python 3.12: 171 tests passed.
+- Server Python 3.12: 171 tests passed.
+- Pilot run: `CELLSTATE-PILOT-e45ada3778e2`.
+- Evidence run: `CELLSTATE-EVIDENCE-3268ddfd0caf`.
+- Repeated summaries were content-stable.
+- Runtime remains fail-closed without approved review, gate and release records.

@@ -1,6 +1,24 @@
 # P0-02 Cell-State Evidence
 
-## Purpose
+## Biological purpose
+
+Test whether a pre-transplant product supports reviewed fetal ventral-midbrain cell
+states while leaving unrelated neural and non-neural cells unresolved.
+
+## Current biological status
+
+- Broad fetal VM states can be explored in donor-held-out internal scRNA-seq data.
+- Fine RG/Nb-derived states remain provisional because marker and external-source
+  support are incomplete.
+- Current inductive methods force cortical, motor-neuron, neural-crest and
+  mesenchymal OOD cells into known fetal VM labels.
+- Formal target, regional-fidelity and off-target composition conclusions are
+  therefore unavailable.
+
+No state or method is frozen. The next scientific step is review of the 25 state
+definitions and marker cards, followed by locked external-source and OOD testing.
+
+## Tool purpose
 
 Produce source-aware reference and marker-program evidence against the internal hierarchical annotation vocabulary.
 

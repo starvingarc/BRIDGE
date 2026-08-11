@@ -20,15 +20,30 @@ Given a pre-transplant cell product, which intended developmental and regional i
 | Off-target control | What target, adjacent, off-axis, and unresolved states make up the whole product? |
 | Process integrity | Which proliferation, stress, and residual pluripotency-like transcriptomic signals require review? |
 
-## Current implementation status
+## Current biological progress
 
-| Package | Status | Current output |
-|---|---|---|
-| P0-01 Input Audit & QC | Executable candidate | Input structure, matrix semantics, QC readiness, and traceable artifacts |
-| P0-02 Cell-State Evidence | Executable shadow; unsealed pilot complete, biological review and locked test pending | Source-specific support, marker evidence, method benchmark outputs, abstention calibration, and source conflicts |
-| P0-03 onward | Contracted | Scientific, input/output, environment, and validation contracts; executors pending |
+The first pilot asked whether fetal ventral-midbrain references can identify intended
+states in a pre-transplant product while refusing unrelated neural and non-neural
+cells.
 
-Candidate and shadow outputs remain subject to benchmark, biological review, and version freeze.
+| Biological question | Data examined | Current finding | Meaning for product evaluation |
+|---|---|---|---|
+| Can broad fetal ventral-midbrain states be recognized? | Donor-aware Chen vMB scRNA-seq splits | Several methods recover broad states, with uneven performance across labels | Exploratory state composition is possible, but no state is released for formal reporting |
+| Can fine RG/Nb-derived states be separated? | Seven priority L2 states | Some methods separate these states internally, but external support and marker review are incomplete | Fine regional or developmental claims remain unavailable |
+| Can unrelated cells be rejected? | Cortical organoid, neural crest, motor-neuron and mesenchymal OOD data | Tested inductive methods can force these cells into known ventral-midbrain labels | Formal target, regional-fidelity and off-target conclusions are blocked |
+| Can markers provide an independent check? | Internal marker/program cards | Negative-marker coverage is incomplete and all seven L2 marker cards remain unfrozen | Marker evidence remains a shadow interpretation channel |
+
+The next scientific step is to review the 25 state definitions and their positive
+and negative marker evidence, then test the fixed definitions on the locked external
+source and OOD datasets.
+
+## Repository status
+
+| Package | Status |
+|---|---|
+| P0-01 Input Audit & QC | Executable candidate |
+| P0-02 Cell-State Evidence | Executable shadow; no state or method frozen |
+| P0-03 onward | Scientific contracts only; executors pending |
 
 ## Minimal usage
 
