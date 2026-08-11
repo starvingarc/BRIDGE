@@ -40,7 +40,7 @@ Every formal chart must retain its data version, denominator, units, evidence re
 
 Idempotence, append-only correction, family de-duplication, missing-versus-zero semantics, graph round trips, and read-only Agent access.
 
-Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe P0-09`.
+Method documentation and accessible sources do not constitute benchmark completion. No method is registered or selected until benchmark-bound execution exists.
 
 ## Detailed Scientific Requirement
 

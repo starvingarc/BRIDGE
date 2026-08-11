@@ -40,7 +40,7 @@ Every formal chart must retain its data version, denominator, units, evidence re
 
 Anatomical/source holdouts, OOD regions, marker masking, reference swaps, modality checks, and source-family de-duplication.
 
-Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe P0-03`.
+Method documentation and accessible sources do not constitute benchmark completion. No method is registered or selected until benchmark-bound execution exists.
 
 ## Detailed Scientific Requirement
 

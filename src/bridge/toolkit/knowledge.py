@@ -116,9 +116,19 @@ class KnowledgeRegistry:
 
     def get_record(self, knowledge_id: str) -> dict[str, Any]:
         """Return the complete Method or Source snapshot record for an exact ID."""
-        for record in [*self.methods, *self.sources]:
-            if record.get("method_id") == knowledge_id or record.get("source_id") == knowledge_id:
-                return record
+        retrievable_method_ids = {
+            method_id
+            for document in self.documents
+            for method_id in document["method_ids"]
+        }
+        for method in self.methods:
+            if method.get("method_id") == knowledge_id and knowledge_id in retrievable_method_ids:
+                return method
+        for source in self.sources:
+            if source.get("source_id") != knowledge_id:
+                continue
+            if set(source["method_ids"]).issubset(retrievable_method_ids):
+                return source
         raise KeyError(knowledge_id)
 
     def search(

@@ -171,6 +171,11 @@ definitions and marker cards, followed by locked external-source and OOD testing
         if is_cell_state
         else ""
     )
+    method_documentation = (
+        f"Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe {spec['tool_id']}`."
+        if spec["method_ids"]
+        else "Method documentation and accessible sources do not constitute benchmark completion. No method is registered or selected until benchmark-bound execution exists."
+    )
     return f"""# {spec['tool_id']} {spec['name']}
 
 {biology}{purpose_heading}
@@ -211,7 +216,7 @@ Every formal chart must retain its data version, denominator, units, evidence re
 
 {detail['validation']}
 
-Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe {spec['tool_id']}`.{validation_boundary}
+{method_documentation}{validation_boundary}
 
 ## Detailed Scientific Requirement
 

@@ -40,7 +40,7 @@ Every formal chart must retain its data version, denominator, units, evidence re
 
 Source/timepoint/state holdouts, mixtures, branch shifts, downsampling, modality swaps, and replicate-aware lineage-transition reconstruction.
 
-Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe P0-04`.
+Method documentation and accessible sources do not constitute benchmark completion. No method is registered or selected until benchmark-bound execution exists.
 
 ## Detailed Scientific Requirement
 

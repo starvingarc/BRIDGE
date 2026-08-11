@@ -50,3 +50,4 @@ def test_cards_preserve_cell_state_boundary_and_scaffold_method_selection() -> N
         card = (cards / f"{spec.tool_id}.md").read_text(encoding="utf-8")
         if spec.implementation_state.value == "scaffold":
             assert "No method is selected while this package remains a scaffold." in card
+            assert "No method is registered or selected until benchmark-bound execution exists." in card

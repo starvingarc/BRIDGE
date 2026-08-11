@@ -40,7 +40,7 @@ Every formal chart must retain its data version, denominator, units, evidence re
 
 Exact value copying, bilingual fixtures, prohibited claims, chart bindings, LLM failure, immutable report hashes, and blocker non-override.
 
-Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe P0-10`.
+Method documentation and accessible sources do not constitute benchmark completion. No method is registered or selected until benchmark-bound execution exists.
 
 ## Detailed Scientific Requirement
 

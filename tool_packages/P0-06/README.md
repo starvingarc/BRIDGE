@@ -40,7 +40,7 @@ Every formal chart must retain its data version, denominator, units, evidence re
 
 Perturbation direction recovery, pluripotent-cell spike-ins, source/cell-line/modality holdouts, program overlap, and false-flag testing.
 
-Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe P0-06`.
+Method documentation and accessible sources do not constitute benchmark completion. No method is registered or selected until benchmark-bound execution exists.
 
 ## Detailed Scientific Requirement
 

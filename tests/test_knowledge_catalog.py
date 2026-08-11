@@ -128,8 +128,19 @@ def test_curated_p0_01_source_corrections_are_present() -> None:
 
 def test_get_record_returns_complete_method_and_source_records() -> None:
     registry = KnowledgeRegistry.load_default()
-    method = registry.methods[0]
-    source = registry.sources[0]
+    retrievable_method_ids = {
+        method_id for document in registry.documents for method_id in document["method_ids"]
+    }
+    method = next(
+        item
+        for item in registry.methods
+        if item["method_id"] in retrievable_method_ids
+    )
+    source = next(
+        item
+        for item in registry.sources
+        if set(item["method_ids"]).issubset(retrievable_method_ids)
+    )
 
     assert registry.get_record(method["method_id"]) == method
     assert registry.get_record(source["source_id"]) == source
@@ -144,6 +155,29 @@ def test_get_record_rejects_unknown_knowledge_id() -> None:
         assert exc.args == ("METHOD-NOT-REGISTERED",)
     else:
         raise AssertionError("unknown knowledge ID must raise KeyError")
+
+
+def test_get_record_hides_known_competitor_isolated_method_and_sources() -> None:
+    registry = KnowledgeRegistry.load_default()
+    competitor_method_id = "METHOD-CAPYBARABRAIN-AS-PUBLISHED"
+    competitor_source_ids = {
+        "SOURCE-88F698C6D76FB5ED",
+        "SOURCE-797C8CF89D4BC3FE",
+    }
+    methods = {item["method_id"]: item for item in registry.methods}
+    sources = {item["source_id"]: item for item in registry.sources}
+
+    assert methods[competitor_method_id]["retrieval_policy"] == "competitor_isolated"
+    for source_id in competitor_source_ids:
+        assert competitor_method_id in sources[source_id]["method_ids"]
+
+    for knowledge_id in {competitor_method_id, *competitor_source_ids}:
+        try:
+            registry.get_record(knowledge_id)
+        except KeyError as exc:
+            assert exc.args == (knowledge_id,)
+        else:
+            raise AssertionError(f"competitor-isolated record was exposed: {knowledge_id}")
 
 
 def test_active_shortlist_matches_specs_and_packaged_snapshot() -> None:
