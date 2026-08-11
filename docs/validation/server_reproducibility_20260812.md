@@ -71,7 +71,7 @@ Symphony were installed from independently verified archives:
 | Package | Verified archive root | Archive SHA-256 | Installed-file manifest SHA-256 |
 |---|---|---|---|
 | Harmony 2.0.4 | `df19af23ae0639bd6ea2da63898f973f08c85862` | `6c0dc183288c547f82152f682b6d9563807af564f07d3af70b8079b9ba7277cf` | `a0efd8b744416a1b29ad288ff96965512f1cd10228b2823cec553a781b151038` |
-| Symphony 0.1.3 | `7c5905988734d9cfe6e1e97a658664717c4ba7b7` | `82b01602a63405e8615e124d2a0ebae9ad8c889e210207473fe6ba9e6959229b` | `23ab9c3c06066bfe2fbe78d61b1c3cae05f28466fb3d2fb23c5d6bfb2774f` |
+| Symphony 0.1.3 | `7c5905988734d9cfe6e1e97a658664717c4ba7b7` | `82b01602a63405e8615e124d2a0ebae9ad8c889e210207473fe6ba9e6959229b` | `23ab9c3c06066bfe2fbe78d61b1c3cae05f28466fb3d2fb23c5d6bfb2774f428` |
 
 The installed package descriptions did not contain `Remote*` commit fields.
 Provenance therefore rests on the verified archive root, archive hash and
