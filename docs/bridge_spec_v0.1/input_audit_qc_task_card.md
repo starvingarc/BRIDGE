@@ -176,7 +176,7 @@ QC 只绑定与数据解释直接相关的版本化资源：
 
 | 目标环境 | 可放在一起的工具 | 基本要求 | 是否与 core 同环境 | 原因与当前状态 |
 | --- | --- | --- | --- | --- |
-| `ENV-P0-CORE-v0.1` | Case Validator、AnnData、Scanpy-compatible IO、BRIDGE metrics/flags、Scrublet、artifact rendering | `bridge-p0-core`；Python 3.12；CPU；GPU 可选；冻结依赖、随机种子和 fixture | 是 | 当前 P0-01 与 Tool Runtime 的唯一执行合同；仍需独立重建验证 |
+| `ENV-P0-CORE-v0.1` | Case Validator、AnnData、Scanpy-compatible IO、BRIDGE metrics/flags、Scrublet、artifact rendering | `bridge-p0-core`；Python 3.12；CPU；GPU 可选；冻结依赖、随机种子和 fixture | 是 | 当前 P0-01 与 Tool Runtime 的唯一执行合同；`health_check_passed`，但不表示候选方法已完成科学验证 |
 | `ENV-QC-BIOC-v0.1` | scDblFinder、DropletUtils/emptyDrops、miQC、scuttle、SoupX | `bridge-qc-bioc`；冻结 R/Bioconductor release；CPU；保存 `sessionInfo()` | 否 | `proposed`；R/Bioconductor 有独立版本耦合 |
 | `ENV-CELLBENDER-v0.1` | CellBender `remove-background` | `bridge-cellbender`；独立 Python/PyTorch/CUDA lock；保存 report、posterior、log 和 known-issue 检查 | 否 | `proposed`；深度学习依赖和 GPU 调度与 core 不同 |
 | `ENV-QC-RESEARCH-v0.1` | scQCenrich、SampleQC 等 deferred 候选 | `bridge-qc-research`；按研究任务单独冻结；不得写入正式结果 | 否 | `proposed`；避免未验证依赖污染 P0 core |
