@@ -35,6 +35,8 @@ def build_parser() -> argparse.ArgumentParser:
     knowledge_parser = subparsers.add_parser("knowledge")
     knowledge_subparsers = knowledge_parser.add_subparsers(dest="knowledge_command", required=True)
     knowledge_subparsers.add_parser("validate")
+    show_parser = knowledge_subparsers.add_parser("show")
+    show_parser.add_argument("knowledge_id")
     search_parser = knowledge_subparsers.add_parser("search")
     search_parser.add_argument("query")
     search_parser.add_argument("--module")
@@ -90,6 +92,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             summary = knowledge.validation_summary()
             _emit(summary)
             return 0 if summary["valid"] else 3
+        if args.knowledge_command == "show":
+            try:
+                _emit(knowledge.get_record(args.knowledge_id))
+            except KeyError:
+                _emit({"error": "unknown_knowledge_id", "knowledge_id": args.knowledge_id})
+                return 2
+            return 0
         hits = knowledge.search(
             args.query,
             module_id=args.module,

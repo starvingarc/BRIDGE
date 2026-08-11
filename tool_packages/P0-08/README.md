@@ -22,6 +22,8 @@ Apply deterministic data, model and prior sufficiency gates.
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 Missing gate specification, absent required upstream record, non-applicable method/prior, or unstable evidence needed for interpretation.

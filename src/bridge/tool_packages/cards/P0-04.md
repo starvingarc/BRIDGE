@@ -22,6 +22,8 @@ Measure compatibility with a researcher-confirmed developmental window.
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 Unconfirmed window, single timepoint requested as a trajectory, insufficient replicates for inference, or unsupported fetal-age conversion.

@@ -114,6 +114,13 @@ class KnowledgeRegistry:
             "content_hash": self.snapshot["content_hash"],
         }
 
+    def get_record(self, knowledge_id: str) -> dict[str, Any]:
+        """Return the complete Method or Source snapshot record for an exact ID."""
+        for record in [*self.methods, *self.sources]:
+            if record.get("method_id") == knowledge_id or record.get("source_id") == knowledge_id:
+                return record
+        raise KeyError(knowledge_id)
+
     def search(
         self,
         query: str,

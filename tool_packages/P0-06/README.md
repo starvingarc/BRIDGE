@@ -22,6 +22,8 @@ Measure stage-conditioned process programs and transcriptomic review signals.
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 Missing stage context for stage-dependent interpretation, insufficient marker/program coverage, or process attribution without protocol metadata.

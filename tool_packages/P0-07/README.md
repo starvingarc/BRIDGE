@@ -22,6 +22,8 @@ Compare products, timepoints and preparations under an explicit comparability co
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 Contract mismatch, complete protocol/lab/batch confounding, absent independent preparation, or inferential claims from descriptive-only data.

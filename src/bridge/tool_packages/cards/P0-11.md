@@ -22,6 +22,8 @@ Generate allowlisted public artifacts from an eligible verified report.
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 Any non-allowlisted field, private path or identifier, unsafe embedded content, unregistered file, hash drift, or missing user confirmation.

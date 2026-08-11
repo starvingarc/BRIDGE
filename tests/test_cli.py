@@ -63,3 +63,37 @@ def test_cli_knowledge_validate_returns_nonzero_for_invalid_snapshot(monkeypatch
     assert exit_code == 3
     assert payload["valid"] is False
     assert payload["dangling_method_refs"] == ["METHOD-MISSING"]
+
+
+def test_cli_knowledge_show_returns_complete_method_record(capsys) -> None:
+    from bridge.toolkit.knowledge import KnowledgeRegistry
+
+    registry = KnowledgeRegistry.load_default()
+    method = registry.methods[0]
+
+    exit_code = main(["knowledge", "show", method["method_id"]])
+
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out) == method
+
+
+def test_cli_knowledge_show_returns_complete_source_record(capsys) -> None:
+    from bridge.toolkit.knowledge import KnowledgeRegistry
+
+    registry = KnowledgeRegistry.load_default()
+    source = registry.sources[0]
+
+    exit_code = main(["knowledge", "show", source["source_id"]])
+
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out) == source
+
+
+def test_cli_knowledge_show_rejects_unknown_id(capsys) -> None:
+    exit_code = main(["knowledge", "show", "SOURCE-NOT-REGISTERED"])
+
+    assert exit_code == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "error": "unknown_knowledge_id",
+        "knowledge_id": "SOURCE-NOT-REGISTERED",
+    }

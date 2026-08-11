@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -14,7 +15,6 @@ EXCLUDED_PARTS = {
     "__pycache__",
     "build",
     "dist",
-    "legacy",
     "private_assets",
     "run_artifacts",
     "tmp",
@@ -26,16 +26,29 @@ FORBIDDEN_PRIVATE = (
     re.compile(r"\\Users\\[^\\\s\"']+\\"),
 )
 LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+PRODUCT_LEVEL_V2_BRANDING = re.compile(r"\bbridge(?:\s+|[-_])v2\b", re.IGNORECASE)
+COMPLETED_PLAN_NAME = re.compile(r"(?:^|[-_])(?:complete(?:d)?|done)(?:[-_.]|$)", re.IGNORECASE)
+MAX_TRACKED_FILES = 300
 
 
 def main() -> int:
     problems: list[str] = []
-    for path in ROOT.rglob("*"):
+    tracked_files = _tracked_files()
+    if tracked_files is not None:
+        if len(tracked_files) > MAX_TRACKED_FILES:
+            problems.append(f"tracked file count exceeds {MAX_TRACKED_FILES}: {len(tracked_files)}")
+        _check_tracked_layout(tracked_files, problems)
+        paths = [ROOT / relative for relative in tracked_files]
+    else:
+        paths = ROOT.rglob("*")
+
+    for path in paths:
         if not path.is_file() or path.suffix.lower() not in TEXT_SUFFIXES:
             continue
+        relative_path = path.relative_to(ROOT)
         if path.resolve() == Path(__file__).resolve():
             continue
-        if any(part in EXCLUDED_PARTS for part in path.relative_to(ROOT).parts):
+        if any(part in EXCLUDED_PARTS for part in relative_path.parts):
             continue
         text = path.read_text(encoding="utf-8")
         for pattern in FORBIDDEN_PRIVATE:
@@ -43,6 +56,8 @@ def main() -> int:
                 problems.append(f"private path pattern {pattern.pattern!r}: {path.relative_to(ROOT)}")
         if path.suffix.lower() == ".md" and "knowledge" not in path.relative_to(ROOT).parts:
             problems.extend(_broken_links(path, text))
+        if PRODUCT_LEVEL_V2_BRANDING.search(text):
+            problems.append(f"product-level v2 branding in active text: {relative_path}")
 
     active_source = "\n".join(
         path.read_text(encoding="utf-8")
@@ -52,11 +67,73 @@ def main() -> int:
         if legacy_term in active_source:
             problems.append(f"legacy scoring term in active source: {legacy_term}")
 
+    _check_projection_parity(problems)
+
     if problems:
         print("\n".join(sorted(problems)))
         return 1
     print("Repository policy checks passed")
     return 0
+
+
+def _tracked_files() -> list[Path] | None:
+    try:
+        result = subprocess.run(
+            ["git", "ls-files"],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return [Path(line) for line in result.stdout.splitlines() if line]
+
+
+def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> None:
+    for relative_path in tracked_files:
+        if "legacy" in {part.casefold() for part in relative_path.parts}:
+            problems.append(f"active legacy directory: {relative_path}")
+        if (
+            relative_path.parts
+            and relative_path.parts[0] == "plans"
+            and relative_path.name != "README.md"
+            and COMPLETED_PLAN_NAME.search(relative_path.name)
+        ):
+            problems.append(f"completed plan file remains active: {relative_path}")
+
+
+def _check_projection_parity(problems: list[str]) -> None:
+    card_dir = ROOT / "src" / "bridge" / "tool_packages" / "cards"
+    packaged_card_dir = ROOT / "tool_packages"
+    public_cards = {path.stem: path for path in card_dir.glob("P0-*.md")}
+    packaged_cards = {
+        path.parent.name: path for path in packaged_card_dir.glob("P0-*/README.md")
+    }
+    _check_byte_projection_pair("Tool Card", public_cards, packaged_cards, problems)
+
+    public_schemas = {path.name: path for path in (ROOT / "schemas").glob("*.schema.json")}
+    packaged_schemas = {
+        path.name: path
+        for path in (ROOT / "src" / "bridge" / "resources" / "schemas").glob("*.schema.json")
+    }
+    _check_byte_projection_pair("schema", public_schemas, packaged_schemas, problems)
+
+
+def _check_byte_projection_pair(
+    label: str,
+    public: dict[str, Path],
+    packaged: dict[str, Path],
+    problems: list[str],
+) -> None:
+    if public.keys() != packaged.keys():
+        problems.append(f"{label} projection inventory mismatch")
+        return
+    for key in sorted(public):
+        if public[key].read_bytes() != packaged[key].read_bytes():
+            problems.append(f"{label} projection bytes differ: {key}")
 
 
 def _broken_links(path: Path, text: str) -> list[str]:

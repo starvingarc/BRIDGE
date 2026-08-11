@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
+from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.knowledge import KnowledgeRegistry
 
 
@@ -122,3 +124,43 @@ def test_curated_p0_01_source_corrections_are_present() -> None:
         str(source["verification_status"]).startswith("verified")
         for source in registry.sources
     )
+
+
+def test_get_record_returns_complete_method_and_source_records() -> None:
+    registry = KnowledgeRegistry.load_default()
+    method = registry.methods[0]
+    source = registry.sources[0]
+
+    assert registry.get_record(method["method_id"]) == method
+    assert registry.get_record(source["source_id"]) == source
+
+
+def test_get_record_rejects_unknown_knowledge_id() -> None:
+    registry = KnowledgeRegistry.load_default()
+
+    try:
+        registry.get_record("METHOD-NOT-REGISTERED")
+    except KeyError as exc:
+        assert exc.args == ("METHOD-NOT-REGISTERED",)
+    else:
+        raise AssertionError("unknown knowledge ID must raise KeyError")
+
+
+def test_active_shortlist_matches_specs_and_packaged_snapshot() -> None:
+    from tools.build_knowledge_catalog import _active_methods_markdown
+
+    repo = Path(__file__).resolve().parents[1]
+    knowledge = KnowledgeRegistry.load_default()
+    expected = _active_methods_markdown(repo, knowledge.methods)
+    actual = (repo / "knowledge" / "active-methods.md").read_text(encoding="utf-8")
+
+    assert actual == expected
+
+
+def test_example_tool_versions_match_registry() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    registry = ToolRegistry.load_default()
+
+    for request_path in sorted((repo / "examples" / "requests").glob("*.json")):
+        request = json.loads(request_path.read_text(encoding="utf-8"))
+        assert request["tool_version"] == registry.describe(request["tool_id"]).version

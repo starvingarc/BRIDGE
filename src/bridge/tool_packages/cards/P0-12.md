@@ -22,6 +22,8 @@ Characterize optional post-transplant graft evidence without backfilling product
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 No graft returns `not_provided`; missing animal IDs or confounded designs force descriptive mode; implicit preparation linkage is forbidden.

@@ -115,11 +115,21 @@ def main() -> int:
         tool_id = spec["tool_id"]
         detail = DETAILS[tool_id]
         text = render(spec, detail)
-        (card_dir / f"{tool_id}.md").write_text(text, encoding="utf-8")
         package_dir = repo / "tool_packages" / tool_id
         package_dir.mkdir(parents=True, exist_ok=True)
-        (package_dir / "README.md").write_text(text, encoding="utf-8")
+        _write_card_pair(
+            text,
+            card_dir / f"{tool_id}.md",
+            package_dir / "README.md",
+        )
     return 0
+
+
+def _write_card_pair(text: str, public_path: Path, packaged_path: Path) -> None:
+    """Write the one rendered projection as identical bytes in both locations."""
+    encoded = text.encode("utf-8")
+    public_path.write_bytes(encoded)
+    packaged_path.write_bytes(encoded)
 
 
 def render(spec: dict, detail: dict) -> str:
@@ -129,9 +139,41 @@ def render(spec: dict, detail: dict) -> str:
         else "Discoverable contract only; `run` returns `not_implemented` without scientific results."
     )
     optional = "yes" if spec.get("optional") else "no"
+    is_cell_state = spec["tool_id"] == "P0-02"
+    biology = """## Biological purpose
+
+Test whether a pre-transplant product supports reviewed fetal ventral-midbrain cell
+states while leaving unrelated neural and non-neural cells unresolved.
+
+## Current biological status
+
+- Broad fetal VM states can be explored in donor-held-out internal scRNA-seq data.
+- Fine RG/Nb-derived states remain provisional because marker and external-source
+  support are incomplete.
+- Current inductive methods force cortical, motor-neuron, neural-crest and
+  mesenchymal OOD cells into known fetal VM labels.
+- Formal target, regional-fidelity and off-target composition conclusions are
+  therefore unavailable.
+
+No state or method is frozen. The next scientific step is review of the 25 state
+definitions and marker cards, followed by locked external-source and OOD testing.
+
+""" if is_cell_state else ""
+    purpose_heading = "## Tool purpose" if is_cell_state else "## Purpose"
+    freeze_row = "| Freeze state | `awaiting_biological_review` |\n" if is_cell_state else ""
+    method_selection = (
+        "\n\n**Method selection:** No method is selected while this package remains a scaffold."
+        if spec["implementation_state"] == "scaffold"
+        else ""
+    )
+    validation_boundary = (
+        "\n\nThe unsealed scRNA pilot is complete. No state or method is frozen; biological review, signed gates and locked testing remain required."
+        if is_cell_state
+        else ""
+    )
     return f"""# {spec['tool_id']} {spec['name']}
 
-## Purpose
+{biology}{purpose_heading}
 
 {spec['summary']}
 
@@ -142,7 +184,7 @@ def render(spec: dict, detail: dict) -> str:
 | Package version | `{spec['version']}` |
 | Runtime state | `{spec['implementation_state']}` |
 | Scientific state | `{spec['scientific_status']}` |
-| Optional | `{optional}` |
+{freeze_row}| Optional | `{optional}` |
 | EnvironmentSpec | `{spec['environment_spec_id']}` |
 | Input schema | `{spec['input_schema_ref']}` |
 | Output schema | `{spec['output_schema_ref']}` |
@@ -151,7 +193,7 @@ def render(spec: dict, detail: dict) -> str:
 
 **Output:** {detail['output']}
 
-**Runtime behavior:** {runtime}
+**Runtime behavior:** {runtime}{method_selection}
 
 ## Refusal Conditions
 
@@ -169,7 +211,7 @@ Every formal chart must retain its data version, denominator, units, evidence re
 
 {detail['validation']}
 
-Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe {spec['tool_id']}`.
+Method documentation and accessible sources do not constitute benchmark completion. The registered method IDs are returned by `bridge-tool describe {spec['tool_id']}`.{validation_boundary}
 
 ## Detailed Scientific Requirement
 

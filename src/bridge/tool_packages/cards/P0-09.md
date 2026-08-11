@@ -22,6 +22,8 @@ Compile atomic evidence and reconcile conflicts by versioned rules.
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 Invalid schema, dangling provenance, duplicate logical evidence, forbidden lifecycle/tier, or LLM-authored numeric/reconciliation changes.

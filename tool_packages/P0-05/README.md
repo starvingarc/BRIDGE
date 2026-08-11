@@ -22,6 +22,8 @@ Describe whole-product non-target composition, OOD and rare-state detectability.
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 Missing full-product denominator, unresolved product role, uncalibrated OOD method, or a zero observation presented as biological absence.

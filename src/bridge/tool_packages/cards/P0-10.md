@@ -22,6 +22,8 @@ Verify that report claims, values and visualizations match evidence and policy.
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
+**Method selection:** No method is selected while this package remains a scaffold.
+
 ## Refusal Conditions
 
 Numeric mismatch, invalid evidence, state substitution, unsupported inference, prohibited claim, graft leakage, or unresolved semantic review.
