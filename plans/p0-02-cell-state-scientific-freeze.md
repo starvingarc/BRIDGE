@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Branch | `codex/p0-02-cell-state-freeze` |
-| Status | `external_asset_preparation` |
+| Status | `awaiting_external_asset_review` |
 | Owner | BRIDGE core |
 
 ## Biological question
@@ -72,6 +72,14 @@ cannot all be assigned to the three culture donors without inference. BRIDGE
 therefore preserves the published fields and the conflict itself; it does not
 treat GEO samples, culture conditions or cells as biological replicates.
 
+The engineering candidate is now reproducible: two independent conversions
+produced the same 77,804 x 25,032 sparse H5AD and the same manifests, and the
+declared Birtele/La Manno lineage audit found no development-role overlap. This
+does not pass the asset gate by itself. A biological reviewer must decide whether
+the frozen `unresolved_public_mapping` is acceptable for source-level holdout
+analysis without biological-replicate inference. The evidence is recorded in the
+[external-source asset validation](../docs/validation/p0_02_external_source_asset_20260812.md).
+
 Before biological review begins—and before the FreezeGate can be signed or any
 locked runner can be implemented or run—the processed `GSE192405` asset must have:
 
@@ -118,6 +126,8 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
 
 ## Engineering status
 
+- The Birtele conversion, checksum, QC and lineage-audit implementation is
+  complete; the sample/unit limitation remains under biological review.
 - Locked-runner implementation and execution are pending the biological review and
   signed FreezeGate.
 - Task 5 server engineering validation is complete at implementation

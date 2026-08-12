@@ -41,7 +41,7 @@ def test_cards_preserve_cell_state_boundary_and_scaffold_method_selection() -> N
     cell_state = (cards / "P0-02.md").read_text(encoding="utf-8")
 
     assert "| Package version | `0.4.7` |" in cell_state
-    assert "| Freeze state | `awaiting_biological_review` |" in cell_state
+    assert "| Freeze state | `awaiting_external_asset_review` |" in cell_state
     assert "No state or method is frozen." in cell_state
     assert "locked external-source and OOD testing" in cell_state
 
