@@ -28,6 +28,10 @@ def _parser() -> argparse.ArgumentParser:
     prepare_birtele.add_argument("--sample-map")
     prepare_birtele.add_argument("--output-dir", required=True)
 
+    audit_sources = actions.add_parser("audit-external-sources")
+    audit_sources.add_argument("--lineage-map")
+    audit_sources.add_argument("--output", required=True)
+
     run = actions.add_parser("run")
     run.add_argument("--spec")
     run.add_argument("--asset-catalog", required=True)
@@ -57,6 +61,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 result = prepare_birtele_asset(
                     Path(args.source_dir), sample_map, Path(args.output_dir)
                 )
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if args.action == "audit-external-sources":
+        from bridge.tool_packages.p0_02_cell_state.external_source import (
+            audit_external_source_lineage,
+        )
+
+        if args.lineage_map:
+            result = audit_external_source_lineage(Path(args.lineage_map), Path(args.output))
+        else:
+            resource = files("bridge.tool_packages.p0_02_cell_state.resources").joinpath(
+                "external_source_lineage.yaml"
+            )
+            with as_file(resource) as lineage_map:
+                result = audit_external_source_lineage(lineage_map, Path(args.output))
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     from bridge.tool_packages.p0_02_cell_state.freeze import (
