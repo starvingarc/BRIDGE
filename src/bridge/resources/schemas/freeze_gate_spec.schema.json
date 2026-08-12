@@ -1,0 +1,290 @@
+{
+  "$defs": {
+    "FreezeGateCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "method_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method Id"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "operator": {
+          "enum": [
+            ">=",
+            "<="
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "pilot_observation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pilot Observation"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "scope": {
+          "title": "Scope",
+          "type": "string"
+        },
+        "state_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State Id"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        }
+      },
+      "required": [
+        "metric",
+        "scope",
+        "operator",
+        "rationale"
+      ],
+      "title": "FreezeGateCriterion",
+      "type": "object"
+    },
+    "ReviewerSignature": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "ed25519",
+          "default": "ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "key_id": {
+          "title": "Key Id",
+          "type": "string"
+        },
+        "object_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Sha256",
+          "type": "string"
+        },
+        "reviewer_id": {
+          "title": "Reviewer Id",
+          "type": "string"
+        },
+        "reviewer_role": {
+          "enum": [
+            "bridge_scientific_lead",
+            "chen_team_reviewer"
+          ],
+          "title": "Reviewer Role",
+          "type": "string"
+        },
+        "signature_base64": {
+          "maxLength": 96,
+          "minLength": 80,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reviewer_id",
+        "reviewer_role",
+        "key_id",
+        "signed_at",
+        "object_sha256",
+        "signature_base64"
+      ],
+      "title": "ReviewerSignature",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/freeze-gate-spec/v0.2",
+  "additionalProperties": false,
+  "properties": {
+    "adapter_contract_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adapter Contract Sha256"
+    },
+    "asset_catalog_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Asset Catalog Sha256"
+    },
+    "benchmark_spec_ref": {
+      "title": "Benchmark Spec Ref",
+      "type": "string"
+    },
+    "benchmark_spec_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Benchmark Spec Sha256"
+    },
+    "criteria": {
+      "items": {
+        "$ref": "#/$defs/FreezeGateCriterion"
+      },
+      "title": "Criteria",
+      "type": "array"
+    },
+    "environment_health_record_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Environment Health Record Sha256"
+    },
+    "environment_spec_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Environment Spec Refs",
+      "type": "array"
+    },
+    "environment_spec_sha256": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Environment Spec Sha256",
+      "type": "object"
+    },
+    "gate_spec_id": {
+      "title": "Gate Spec Id",
+      "type": "string"
+    },
+    "pilot_evidence_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pilot Evidence Sha256"
+    },
+    "reference_snapshot_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reference Snapshot Ref"
+    },
+    "reference_snapshot_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reference Snapshot Sha256"
+    },
+    "signatures": {
+      "items": {
+        "$ref": "#/$defs/ReviewerSignature"
+      },
+      "title": "Signatures",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "approved",
+        "rejected"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "gate_spec_id",
+    "version",
+    "status",
+    "benchmark_spec_ref",
+    "criteria"
+  ],
+  "title": "FreezeGateSpec",
+  "type": "object"
+}

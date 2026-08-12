@@ -1,0 +1,161 @@
+{
+  "$defs": {
+    "InputAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "assay": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assay"
+        },
+        "asset_id": {
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "checksum": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checksum"
+        },
+        "format": {
+          "title": "Format",
+          "type": "string"
+        },
+        "input_level": {
+          "$ref": "#/$defs/InputLevel"
+        },
+        "matrix_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matrix Location"
+        },
+        "matrix_semantics": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matrix Semantics"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "path": {
+          "format": "path",
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "path",
+        "format",
+        "input_level"
+      ],
+      "title": "InputAsset",
+      "type": "object"
+    },
+    "InputLevel": {
+      "enum": [
+        "analysis_ready",
+        "count_ready",
+        "droplet_ready"
+      ],
+      "title": "InputLevel",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/tool-request/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/InputAsset"
+      },
+      "title": "Assets",
+      "type": "array"
+    },
+    "measurement_spec_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Measurement Spec Ref"
+    },
+    "output_dir": {
+      "format": "path",
+      "title": "Output Dir",
+      "type": "string"
+    },
+    "parameters": {
+      "additionalProperties": true,
+      "title": "Parameters",
+      "type": "object"
+    },
+    "random_seed": {
+      "default": 0,
+      "title": "Random Seed",
+      "type": "integer"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    },
+    "tool_id": {
+      "pattern": "^P0-(0[1-9]|1[0-2])$",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tool Version"
+    }
+  },
+  "required": [
+    "request_id",
+    "tool_id",
+    "output_dir"
+  ],
+  "title": "ToolRequest",
+  "type": "object"
+}

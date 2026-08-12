@@ -1,0 +1,26 @@
+name: bridge-p0-core
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pip=25.1
+  - setuptools=84.0.0
+  - wheel=0.47.0
+  - numpy=2.2
+  - pandas=2.3
+  - scipy=1.16
+  - scikit-learn=1.7
+  - pydantic=2.12
+  - pyyaml=6.0
+  - anndata=0.12
+  - scanpy=1.11
+  - h5py=3.14
+  - matplotlib=3.10
+  - pyarrow=21
+  - pytest=8.4
+  - jsonschema=4.25
+  - cryptography=46.0
+  - pip:
+      - scrublet==0.2.3

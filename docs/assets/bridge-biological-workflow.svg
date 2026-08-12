@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="390" viewBox="0 0 1000 390" role="img" aria-labelledby="title desc" preserveAspectRatio="xMidYMid meet">
+  <title id="title">BRIDGE biological evidence workflow</title>
+  <desc id="desc">Human fetal references and a pre-transplant cell product feed five evidence domains: identity, regional fidelity, development, composition, and process. The outputs are an evidence profile, product comparison, and validation priorities.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#66736F"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-15%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#20332E" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      text { font-family: Inter, Arial, sans-serif; letter-spacing: 0; fill: #172521; }
+      .section-label { font-size: 17px; font-weight: 700; }
+      .card-label { font-size: 16px; font-weight: 700; }
+      .compact-label { font-size: 15px; font-weight: 700; }
+      .output-label { font-size: 14px; font-weight: 700; }
+      .small-label { font-size: 13px; font-weight: 500; fill: #4D5C57; }
+      .connector { fill: none; stroke: #66736F; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="390" rx="18" fill="#F7FAF9"/>
+  <text x="500" y="39" text-anchor="middle" font-size="23" font-weight="700">From developmental reference to product evidence</text>
+  <text x="500" y="62" text-anchor="middle" class="small-label">Source-aware transcriptomic evidence for a defined cell-therapy product</text>
+
+  <!-- Connectors are drawn before the cards so they never cross labels. -->
+  <path class="connector" d="M 208 136 H 232 Q 246 136 246 151 V 194"/>
+  <path class="connector" d="M 208 272 H 232 Q 246 272 246 257 V 216"/>
+  <path class="connector" d="M 246 205 H 276" marker-end="url(#arrow)"/>
+  <path class="connector" d="M 742 205 H 782" marker-end="url(#arrow)"/>
+
+  <!-- Inputs -->
+  <g filter="url(#shadow)">
+    <rect x="22" y="91" width="186" height="90" rx="10" fill="#DDEFEA" stroke="#2E7B70" stroke-width="1.5"/>
+    <rect x="22" y="227" width="186" height="90" rx="10" fill="#FBE6DE" stroke="#B65D3D" stroke-width="1.5"/>
+  </g>
+
+  <g aria-label="Human fetal references">
+    <circle cx="48" cy="118" r="8" fill="#2E7B70" opacity="0.92"/>
+    <circle cx="67" cy="111" r="6" fill="#5A9E93"/>
+    <circle cx="66" cy="131" r="9" fill="#8FC4BA"/>
+    <circle cx="45" cy="140" r="5" fill="#5A9E93"/>
+    <path d="M 45 151 C 57 158, 73 157, 82 146" fill="none" stroke="#2E7B70" stroke-width="2" stroke-linecap="round"/>
+    <text x="94" y="123" class="card-label">Human fetal</text>
+    <text x="94" y="146" class="card-label">references</text>
+    <text x="94" y="166" class="small-label">source-aware</text>
+  </g>
+
+  <g aria-label="Pre-transplant cell product">
+    <rect x="43" y="248" width="34" height="43" rx="5" fill="#FFFFFF" stroke="#B65D3D" stroke-width="2"/>
+    <rect x="48" y="241" width="24" height="9" rx="3" fill="#B65D3D"/>
+    <path d="M 48 274 C 56 269, 64 280, 72 273 V 286 H 48 Z" fill="#F2A58A" opacity="0.9"/>
+    <circle cx="54" cy="279" r="2.5" fill="#B65D3D"/>
+    <circle cx="64" cy="282" r="2.5" fill="#B65D3D"/>
+    <text x="94" y="258" class="card-label">Pre-transplant</text>
+    <text x="94" y="281" class="card-label">cell product</text>
+    <text x="94" y="301" class="small-label">whole preparation</text>
+  </g>
+
+  <circle cx="246" cy="205" r="15" fill="#FFFFFF" stroke="#9AA6A2" stroke-width="1.5"/>
+  <text x="246" y="211" text-anchor="middle" font-size="21" font-weight="600" fill="#52605C">+</text>
+
+  <!-- Five evidence domains -->
+  <g filter="url(#shadow)">
+    <rect x="278" y="79" width="464" height="252" rx="12" fill="#FFFFFF" stroke="#B7C1BE" stroke-width="1.5"/>
+  </g>
+  <text x="510" y="108" text-anchor="middle" class="section-label">Five evidence domains</text>
+
+  <g aria-label="Identity">
+    <rect x="296" y="128" width="132" height="68" rx="8" fill="#E5EDF8" stroke="#6E8EB8"/>
+    <circle cx="362" cy="143" r="5" fill="#6E8EB8"/>
+    <text x="362" y="166" text-anchor="middle" class="card-label">Identity</text>
+    <text x="362" y="185" text-anchor="middle" class="small-label">target states</text>
+  </g>
+
+  <g aria-label="Regional fidelity">
+    <rect x="444" y="128" width="132" height="68" rx="8" fill="#E5F1E4" stroke="#6D9968"/>
+    <circle cx="510" cy="143" r="5" fill="#79A974"/>
+    <text x="510" y="165" text-anchor="middle" class="card-label">Regional</text>
+    <text x="510" y="184" text-anchor="middle" class="card-label">fidelity</text>
+  </g>
+
+  <g aria-label="Development">
+    <rect x="592" y="128" width="132" height="68" rx="8" fill="#FFF0C9" stroke="#B18A2E"/>
+    <circle cx="658" cy="143" r="5" fill="#B18A2E"/>
+    <text x="658" y="166" text-anchor="middle" class="compact-label">Development</text>
+    <text x="658" y="185" text-anchor="middle" class="small-label">target window</text>
+  </g>
+
+  <g aria-label="Composition">
+    <rect x="370" y="220" width="132" height="68" rx="8" fill="#F1E7F4" stroke="#9170A0"/>
+    <circle cx="436" cy="235" r="5" fill="#7F5D90"/>
+    <text x="436" y="258" text-anchor="middle" class="compact-label">Composition</text>
+    <text x="436" y="277" text-anchor="middle" class="small-label">whole product</text>
+  </g>
+
+  <g aria-label="Process">
+    <rect x="518" y="220" width="132" height="68" rx="8" fill="#F9E6EA" stroke="#AD6675"/>
+    <circle cx="584" cy="235" r="5" fill="#AD6675"/>
+    <text x="584" y="258" text-anchor="middle" class="card-label">Process</text>
+    <text x="584" y="277" text-anchor="middle" class="small-label">state signals</text>
+  </g>
+
+  <text x="510" y="314" text-anchor="middle" class="small-label">measured evidence · uncertainty · source disagreement</text>
+
+  <!-- Outputs -->
+  <g filter="url(#shadow)">
+    <rect x="784" y="98" width="194" height="220" rx="12" fill="#EEEAF8" stroke="#7867A6" stroke-width="1.5"/>
+  </g>
+  <text x="881" y="127" text-anchor="middle" class="section-label">Traceable outputs</text>
+
+  <g>
+    <rect x="803" y="147" width="156" height="42" rx="7" fill="#FFFFFF" stroke="#B1A7CD"/>
+    <rect x="812" y="156" width="4" height="24" rx="2" fill="#7867A6"/>
+    <text x="885" y="173" text-anchor="middle" class="output-label">Evidence profile</text>
+  </g>
+  <g>
+    <rect x="803" y="203" width="156" height="42" rx="7" fill="#FFFFFF" stroke="#B1A7CD"/>
+    <rect x="812" y="212" width="4" height="24" rx="2" fill="#7867A6"/>
+    <text x="885" y="229" text-anchor="middle" class="output-label">Product comparison</text>
+  </g>
+  <g>
+    <rect x="803" y="259" width="156" height="42" rx="7" fill="#FFFFFF" stroke="#B1A7CD"/>
+    <rect x="812" y="268" width="4" height="24" rx="2" fill="#7867A6"/>
+    <text x="885" y="285" text-anchor="middle" class="output-label">Validation priorities</text>
+  </g>
+
+  <text x="500" y="367" text-anchor="middle" class="small-label">PD hPSC-mDA is the first instance; the evidence contract is designed to extend to other cell-therapy products.</text>
+</svg>

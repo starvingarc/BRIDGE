@@ -1,0 +1,30 @@
+name: bridge-cellstate-bioc-r46
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - r-base=4.6
+  - git
+  - make
+  - c-compiler
+  - cxx-compiler
+  - cmake=4.4.2
+  - pkg-config
+  - libxml2=2.15.1
+  - libxml2-devel=2.15.1
+  - liblzma-devel=5.8.1
+  - xz=5.8.1
+  - zlib=1.3.2
+variables:
+  BRIDGE_BIOC_VERSION: "3.23"
+  BRIDGE_BIOCMANAGER_VERSION: "1.30.27"
+  BRIDGE_REMOTES_VERSION: "2.5.0"
+  BRIDGE_DIGEST_VERSION: "0.6.39"
+  BRIDGE_SINGLER_VERSION: "2.14.1"
+  BRIDGE_SCMAP_VERSION: "1.34.0"
+  BRIDGE_SCCONFORM_VERSION: "1.0.0"
+  BRIDGE_UCELL_VERSION: "2.16.0"
+  BRIDGE_IGRAPH_VERSION: "2.3.3"
+  BRIDGE_HARMONY_COMMIT: df19af23ae0639bd6ea2da63898f973f08c85862
+  BRIDGE_SYMPHONY_COMMIT: 7c5905988734d9cfe6e1e97a658664717c4ba7b7

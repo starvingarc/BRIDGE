@@ -1,0 +1,68 @@
+{
+  "$id": "bridge://schemas/marker-program-card/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "allowed_use": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Use",
+      "type": "array"
+    },
+    "card_id": {
+      "title": "Card Id",
+      "type": "string"
+    },
+    "level": {
+      "enum": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "title": "Level",
+      "type": "string"
+    },
+    "negative_markers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Negative Markers",
+      "type": "array"
+    },
+    "positive_markers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Positive Markers",
+      "type": "array"
+    },
+    "review_status": {
+      "title": "Review Status",
+      "type": "string"
+    },
+    "source_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Ids",
+      "type": "array"
+    },
+    "state_id": {
+      "title": "State Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "card_id",
+    "version",
+    "state_id",
+    "level",
+    "review_status"
+  ],
+  "title": "MarkerProgramCard",
+  "type": "object"
+}

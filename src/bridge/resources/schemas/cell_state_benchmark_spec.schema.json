@@ -1,0 +1,124 @@
+{
+  "$id": "bridge://schemas/cell-state-benchmark-spec/v0.2",
+  "additionalProperties": false,
+  "properties": {
+    "annotation_vocabulary_ref": {
+      "title": "Annotation Vocabulary Ref",
+      "type": "string"
+    },
+    "assay": {
+      "const": "scRNA-seq",
+      "title": "Assay",
+      "type": "string"
+    },
+    "behavior_only_asset_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Behavior Only Asset Ids",
+      "type": "array"
+    },
+    "benchmark_spec_id": {
+      "title": "Benchmark Spec Id",
+      "type": "string"
+    },
+    "development_asset_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Development Asset Ids",
+      "type": "array"
+    },
+    "development_ood_asset_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Development Ood Asset Ids",
+      "type": "array"
+    },
+    "environment_spec_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Environment Spec Refs",
+      "type": "array"
+    },
+    "locked_asset_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Locked Asset Ids",
+      "type": "array"
+    },
+    "locked_method_exclusions": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Locked Method Exclusions",
+      "type": "object"
+    },
+    "measurement_spec_ref": {
+      "title": "Measurement Spec Ref",
+      "type": "string"
+    },
+    "methods": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Methods",
+      "type": "array"
+    },
+    "phase": {
+      "enum": [
+        "pilot",
+        "locked"
+      ],
+      "title": "Phase",
+      "type": "string"
+    },
+    "random_seed": {
+      "default": 0,
+      "title": "Random Seed",
+      "type": "integer"
+    },
+    "reference_snapshot_ref": {
+      "title": "Reference Snapshot Ref",
+      "type": "string"
+    },
+    "sealed_asset_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sealed Asset Ids",
+      "type": "array"
+    },
+    "split_unit": {
+      "const": "source_family_and_sample",
+      "default": "source_family_and_sample",
+      "title": "Split Unit",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "benchmark_spec_id",
+    "version",
+    "phase",
+    "assay",
+    "annotation_vocabulary_ref",
+    "reference_snapshot_ref",
+    "measurement_spec_ref",
+    "environment_spec_refs",
+    "methods"
+  ],
+  "title": "CellStateBenchmarkSpec",
+  "type": "object"
+}

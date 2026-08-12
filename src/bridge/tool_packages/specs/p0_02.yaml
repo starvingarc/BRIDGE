@@ -1,0 +1,20 @@
+tool_id: P0-02
+name: Cell-State Evidence
+version: 0.4.7
+summary: Produce source-aware reference and marker-program evidence against the internal hierarchical annotation vocabulary.
+implementation_state: implemented
+scientific_status: candidate
+optional: false
+environment_spec_id: ENV-P0-CORE-v0.1
+input_schema_ref: bridge://schemas/tool-request/v0.1
+output_schema_ref: bridge://schemas/tool-run/v0.1
+method_ids:
+- METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-68029D
+- METHOD-BRIDGE-INTERNAL-MARKER-PROGRAM-EVIDENCE
+- METHOD-CELLTYPIST-CUSTOM-CLASSIFIER
+- METHOD-SINGLER-502879
+- METHOD-SCMAP-D22D14
+- METHOD-SCANVI
+- METHOD-SYMPHONY
+- METHOD-SCCONFORM-WRAPPING-A-PREREGISTERED-BASE-CLASSIFIER
+card_ref: bridge://tool-cards/P0-02

@@ -1,0 +1,32 @@
+measurement_spec_id: QC-snRNA-candidate-v0.1
+version: 0.1.0
+scientific_question: Is the declared snRNA-seq expression object structurally and technically usable for downstream BRIDGE analysis?
+assay: snRNA-seq
+status: candidate
+applicable_product_cards: []
+input_contract:
+  supported_levels: [analysis_ready, count_ready]
+  count_semantics: nonnegative integer UMI counts
+  feature_set_policy:
+    policy_id: QC-feature-set-snRNA-human-symbol-v0.1
+    mitochondrial_symbol_prefixes: [MT-]
+    ribosomal_symbol_prefixes: [RPS, RPL]
+    mitochondrial_interpretation: snRNA assay-sensitivity metric; not directly comparable with scRNA fractions
+analysis_unit: nucleus grouped by confirmed capture
+raw_metric_definition:
+  metrics: [total_counts, detected_genes, mitochondrial_fraction, ribosomal_fraction, top_20_gene_fraction]
+numerator: metric-specific
+denominator: eligible declared nuclei or total UMI counts
+direction: metric-specific
+uncertainty_method: descriptive distribution and sensitivity views
+minimum_data:
+  min_cells_for_scrublet: 100
+missing_behavior: Skip only affected modules and report not_assessed or limited.
+tool_refs: [BRIDGE-CASE-VALIDATOR, SCANPY-QC, SCRUBLET]
+reference_refs: []
+prior_refs: [GENCODE-HUMAN, HGNC-HUMAN]
+validation_ref: null
+exclusion_rules:
+  min_detected_genes: 100
+  max_detected_genes: 10000
+  max_mitochondrial_fraction: 0.05

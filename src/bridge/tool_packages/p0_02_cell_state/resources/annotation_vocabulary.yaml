@@ -1,0 +1,59 @@
+vocabulary_id: BRIDGE-PD-vMB-ANNOTATION-v0.1-draft
+version: 0.1.0
+product_scope: PD hPSC-mDA first instance
+status: freeze_required
+alias_map:
+  Neuron_Chat: Neuron_ChAT
+  Neuron_ChAT: Neuron_ChAT
+unresolved_conflicts:
+  - L2 contains 25 historical Radial_Glia-to-Pericyte records pending biological review.
+  - Historical broad and refined labels disagree for 328 RG/Nb-derived profiles.
+labels:
+  - {state_id: L1:Astrocyte, display_name: Astrocyte, level: L1, status: candidate}
+  - {state_id: L1:Endothelial_Cell, display_name: Endothelial_Cell, level: L1, status: candidate}
+  - {state_id: L1:Fibroblast, display_name: Fibroblast, level: L1, status: candidate}
+  - {state_id: L1:Glioblast, display_name: Glioblast, level: L1, status: candidate}
+  - {state_id: L1:Immune_Cell, display_name: Immune_Cell, level: L1, status: candidate}
+  - {state_id: L1:Neuroblast, display_name: Neuroblast, level: L1, status: candidate}
+  - {state_id: L1:Neuron_ChAT, display_name: Neuron_ChAT, level: L1, aliases: [Neuron_Chat], status: candidate}
+  - {state_id: L1:Neuron_DA, display_name: Neuron_DA, level: L1, status: candidate}
+  - {state_id: L1:Neuron_GABA, display_name: Neuron_GABA, level: L1, status: candidate}
+  - {state_id: L1:Neuron_Glut, display_name: Neuron_Glut, level: L1, status: candidate}
+  - {state_id: L1:Neuron_Glut_GABA, display_name: Neuron_Glut_GABA, level: L1, status: unresolved}
+  - {state_id: L1:Neuron_OMTN, display_name: Neuron_OMTN, level: L1, status: candidate}
+  - {state_id: L1:Neuron_Sero, display_name: Neuron_Sero, level: L1, status: candidate}
+  - {state_id: L1:Oligo, display_name: Oligo, level: L1, status: candidate}
+  - {state_id: L1:OPC, display_name: OPC, level: L1, status: candidate}
+  - {state_id: L1:Pericyte, display_name: Pericyte, level: L1, status: candidate}
+  - {state_id: L1:Radial_Glia, display_name: Radial_Glia, level: L1, status: candidate}
+  - {state_id: L1:Smooth_Muscle, display_name: Smooth_Muscle, level: L1, status: candidate}
+  - {state_id: L2:RG_mFP, display_name: RG_mFP, level: L2, parent_state_ids: [L1:Radial_Glia], status: candidate}
+  - {state_id: L2:RG_mBMP, display_name: RG_mBMP, level: L2, parent_state_ids: [L1:Radial_Glia], status: candidate}
+  - {state_id: L2:RG_mBIP, display_name: RG_mBIP, level: L2, parent_state_ids: [L1:Radial_Glia], status: candidate}
+  - {state_id: L2:RG_dHyp, display_name: RG_dHyp, level: L2, parent_state_ids: [L1:Radial_Glia], status: candidate}
+  - {state_id: L2:RG_dTha, display_name: RG_dTha, level: L2, parent_state_ids: [L1:Radial_Glia], status: candidate}
+  - {state_id: L2:Nb_mFP, display_name: Nb_mFP, level: L2, parent_state_ids: [L1:Neuroblast], status: candidate}
+  - {state_id: L2:Nb_mBMP, display_name: Nb_mBMP, level: L2, parent_state_ids: [L1:Neuroblast], status: candidate}
+  - {state_id: L2:Nb_mBIP, display_name: Nb_mBIP, level: L2, parent_state_ids: [L1:Neuroblast], status: candidate}
+  - {state_id: L2:Nb_mAP, display_name: Nb_mAP, level: L2, parent_state_ids: [L1:Neuroblast], status: candidate}
+  - {state_id: L2:Nb_dHyp, display_name: Nb_dHyp, level: L2, parent_state_ids: [L1:Neuroblast], status: candidate}
+  - {state_id: L2:Nb_dTha, display_name: Nb_dTha, level: L2, parent_state_ids: [L1:Neuroblast], status: candidate}
+  - {state_id: L2:IPC_m1, display_name: IPC_m1, level: L2, parent_state_ids: [L1:Neuroblast], status: candidate}
+  - {state_id: L2:IPC_m2, display_name: IPC_m2, level: L2, parent_state_ids: [L1:Neuroblast], status: candidate}
+  - {state_id: L2:Pericyte_conflict, display_name: Pericyte, level: L2, parent_state_ids: [L1:Pericyte], status: unresolved}
+  - {state_id: L3:RG_mFP, display_name: RG_mFP, level: L3, status: shadow}
+  - {state_id: L3:RG_mBMP, display_name: RG_mBMP, level: L3, status: shadow}
+  - {state_id: L3:RG_mBIP, display_name: RG_mBIP, level: L3, status: shadow}
+  - {state_id: L3:Nb_mFP, display_name: Nb_mFP, level: L3, status: shadow}
+  - {state_id: L3:Nb_mBMP, display_name: Nb_mBMP, level: L3, status: shadow}
+  - {state_id: L3:Nb_mBIP, display_name: Nb_mBIP, level: L3, status: shadow}
+  - {state_id: L3:Neuron_DA, display_name: Neuron_DA, level: L3, status: shadow}
+  - {state_id: L3:Neuron_Glut, display_name: Neuron_Glut, level: L3, status: shadow}
+  - {state_id: L3:Neuron_Glut_H, display_name: Neuron_Glut_H, level: L3, status: shadow}
+  - {state_id: L3:Neuron_Glut_L, display_name: Neuron_Glut_L, level: L3, status: shadow}
+  - {state_id: L3:Neuron_Glut_N, display_name: Neuron_Glut_N, level: L3, status: shadow}
+  - {state_id: L3:Neuron_Glut_P, display_name: Neuron_Glut_P, level: L3, status: shadow}
+  - {state_id: L3:Neuron_Glut_S, display_name: Neuron_Glut_S, level: L3, status: shadow}
+  - {state_id: L3:Neuron_Glut_GABA, display_name: Neuron_Glut_GABA, level: L3, status: shadow}
+  - {state_id: L3:Neuron_GABA, display_name: Neuron_GABA, level: L3, status: shadow}
+  - {state_id: L3:Neuron_GABA_O, display_name: Neuron_GABA_O, level: L3, status: shadow}

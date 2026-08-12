@@ -1,0 +1,549 @@
+{
+  "$defs": {
+    "ArtifactManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "media_type": {
+          "title": "Media Type",
+          "type": "string"
+        },
+        "path": {
+          "format": "path",
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "kind",
+        "path",
+        "media_type",
+        "sha256"
+      ],
+      "title": "ArtifactManifest",
+      "type": "object"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ExecutionState": {
+      "enum": [
+        "not_started",
+        "running",
+        "succeeded",
+        "partial",
+        "failed",
+        "skipped",
+        "not_implemented"
+      ],
+      "title": "ExecutionState",
+      "type": "string"
+    },
+    "ImplementationState": {
+      "enum": [
+        "scaffold",
+        "implemented",
+        "deprecated"
+      ],
+      "title": "ImplementationState",
+      "type": "string"
+    },
+    "InputAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "assay": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assay"
+        },
+        "asset_id": {
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "checksum": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checksum"
+        },
+        "format": {
+          "title": "Format",
+          "type": "string"
+        },
+        "input_level": {
+          "$ref": "#/$defs/InputLevel"
+        },
+        "matrix_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matrix Location"
+        },
+        "matrix_semantics": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matrix Semantics"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "path": {
+          "format": "path",
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "path",
+        "format",
+        "input_level"
+      ],
+      "title": "InputAsset",
+      "type": "object"
+    },
+    "InputLevel": {
+      "enum": [
+        "analysis_ready",
+        "count_ready",
+        "droplet_ready"
+      ],
+      "title": "InputLevel",
+      "type": "string"
+    },
+    "MeasurementResult": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "interval": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval"
+        },
+        "measurement_id": {
+          "title": "Measurement Id",
+          "type": "string"
+        },
+        "measurement_spec_id": {
+          "title": "Measurement Spec Id",
+          "type": "string"
+        },
+        "metric_name": {
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "provenance_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "raw_value": {
+          "title": "Raw Value"
+        },
+        "score_state": {
+          "enum": [
+            "shadow",
+            "unavailable"
+          ],
+          "title": "Score State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measurement_id",
+        "measurement_spec_id",
+        "metric_name",
+        "raw_value",
+        "score_state",
+        "evidence_state"
+      ],
+      "title": "MeasurementResult",
+      "type": "object"
+    },
+    "ToolRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "assets": {
+          "items": {
+            "$ref": "#/$defs/InputAsset"
+          },
+          "title": "Assets",
+          "type": "array"
+        },
+        "measurement_spec_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measurement Spec Ref"
+        },
+        "output_dir": {
+          "format": "path",
+          "title": "Output Dir",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "random_seed": {
+          "default": 0,
+          "title": "Random Seed",
+          "type": "integer"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "tool_id": {
+          "pattern": "^P0-(0[1-9]|1[0-2])$",
+          "title": "Tool Id",
+          "type": "string"
+        },
+        "tool_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Version"
+        }
+      },
+      "required": [
+        "request_id",
+        "tool_id",
+        "output_dir"
+      ],
+      "title": "ToolRequest",
+      "type": "object"
+    },
+    "VisualizationArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "component_id": {
+          "title": "Component Id",
+          "type": "string"
+        },
+        "data_artifact_id": {
+          "title": "Data Artifact Id",
+          "type": "string"
+        },
+        "denominator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "render_artifact_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Render Artifact Ids",
+          "type": "array"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "visualization_id": {
+          "title": "Visualization Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "visualization_id",
+        "component_id",
+        "data_artifact_id",
+        "evidence_ids",
+        "status"
+      ],
+      "title": "VisualizationArtifact",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/tool-run/v0.1",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "implementation_state": {
+            "const": "scaffold"
+          }
+        },
+        "required": [
+          "implementation_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "artifacts": {
+            "maxItems": 0
+          },
+          "execution_state": {
+            "enum": [
+              "not_implemented",
+              "failed"
+            ]
+          },
+          "measurements": {
+            "maxItems": 0
+          },
+          "result": {
+            "type": "null"
+          },
+          "visualizations": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactManifest"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "environment_spec_id": {
+      "title": "Environment Spec Id",
+      "type": "string"
+    },
+    "execution_state": {
+      "$ref": "#/$defs/ExecutionState"
+    },
+    "implementation_state": {
+      "$ref": "#/$defs/ImplementationState"
+    },
+    "input_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Input Hash"
+    },
+    "measurements": {
+      "items": {
+        "$ref": "#/$defs/MeasurementResult"
+      },
+      "title": "Measurements",
+      "type": "array"
+    },
+    "reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "request": {
+      "$ref": "#/$defs/ToolRequest"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "visualizations": {
+      "items": {
+        "$ref": "#/$defs/VisualizationArtifact"
+      },
+      "title": "Visualizations",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "run_id",
+    "request",
+    "implementation_state",
+    "execution_state",
+    "tool_version",
+    "environment_spec_id"
+  ],
+  "title": "ToolRun",
+  "type": "object"
+}

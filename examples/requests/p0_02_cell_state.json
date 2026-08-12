@@ -1,0 +1,27 @@
+{
+  "assets": [
+    {
+      "assay": "scRNA-seq",
+      "asset_id": "pre-transplant-product",
+      "format": "h5ad",
+      "input_level": "analysis_ready",
+      "matrix_location": "layers/logcounts",
+      "matrix_semantics": "normalized_expression",
+      "metadata": {
+        "qc_profile_ref": "qc-profile:replace-with-validated-profile",
+        "source_family_id": "replace-with-query-source-family"
+      },
+      "path": "/tmp/bridge-example/product-logcounts.h5ad"
+    }
+  ],
+  "measurement_spec_ref": "CELLSTATE-scRNA-shadow-v0.1",
+  "output_dir": "/tmp/bridge-example/cell-state-output",
+  "parameters": {
+    "chunk_size": 512,
+    "workers": 4
+  },
+  "random_seed": 0,
+  "request_id": "example-p0-02-cell-state",
+  "tool_id": "P0-02",
+  "tool_version": "0.4.7"
+}

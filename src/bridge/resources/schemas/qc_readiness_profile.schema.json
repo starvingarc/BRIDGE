@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "ReadinessState": {
+      "enum": [
+        "ready",
+        "limited",
+        "blocked",
+        "not_assessed",
+        "not_applicable"
+      ],
+      "title": "ReadinessState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/qc-readiness-profile/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "ambient_assessment": {
+      "additionalProperties": true,
+      "title": "Ambient Assessment",
+      "type": "object"
+    },
+    "assay": {
+      "title": "Assay",
+      "type": "string"
+    },
+    "assay_spec_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Assay Spec Id"
+    },
+    "blocking_issues": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocking Issues",
+      "type": "array"
+    },
+    "cell_calling_assessment": {
+      "additionalProperties": true,
+      "title": "Cell Calling Assessment",
+      "type": "object"
+    },
+    "cell_qc": {
+      "additionalProperties": true,
+      "title": "Cell Qc",
+      "type": "object"
+    },
+    "data_views": {
+      "additionalProperties": true,
+      "title": "Data Views",
+      "type": "object"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "doublet_assessment": {
+      "additionalProperties": true,
+      "title": "Doublet Assessment",
+      "type": "object"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "input_level": {
+      "title": "Input Level",
+      "type": "string"
+    },
+    "matrix_provenance": {
+      "additionalProperties": true,
+      "title": "Matrix Provenance",
+      "type": "object"
+    },
+    "measurement_spec_status": {
+      "default": "not_selected",
+      "title": "Measurement Spec Status",
+      "type": "string"
+    },
+    "metadata_completeness": {
+      "additionalProperties": true,
+      "title": "Metadata Completeness",
+      "type": "object"
+    },
+    "missing_inputs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Missing Inputs",
+      "type": "array"
+    },
+    "module_eligibility": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Module Eligibility",
+      "type": "object"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "readiness_state": {
+      "$ref": "#/$defs/ReadinessState"
+    },
+    "schema_integrity": {
+      "additionalProperties": true,
+      "title": "Schema Integrity",
+      "type": "object"
+    },
+    "score_state": {
+      "default": "unavailable",
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    },
+    "upstream_library_qc": {
+      "additionalProperties": true,
+      "title": "Upstream Library Qc",
+      "type": "object"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "profile_id",
+    "input_level",
+    "assay",
+    "readiness_state",
+    "schema_integrity",
+    "metadata_completeness",
+    "matrix_provenance",
+    "upstream_library_qc",
+    "cell_qc",
+    "doublet_assessment",
+    "cell_calling_assessment",
+    "ambient_assessment",
+    "data_views",
+    "module_eligibility"
+  ],
+  "title": "QCReadinessProfile",
+  "type": "object"
+}

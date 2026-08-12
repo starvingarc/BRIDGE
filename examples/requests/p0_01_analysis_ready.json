@@ -1,0 +1,23 @@
+{
+  "assets": [
+    {
+      "assay": "snRNA-seq",
+      "asset_id": "example-analysis",
+      "format": "h5ad",
+      "input_level": "analysis_ready",
+      "matrix_location": "X",
+      "matrix_semantics": "normalized_expression",
+      "metadata": {
+        "capture_id_column": "capture_id",
+        "sample_id_column": "sample_id"
+      },
+      "path": "/tmp/bridge-example/reference-normalized.h5ad"
+    }
+  ],
+  "output_dir": "/tmp/bridge-example/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-01-analysis-ready",
+  "tool_id": "P0-01",
+  "tool_version": "0.1.0"
+}

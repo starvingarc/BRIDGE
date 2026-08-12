@@ -1,0 +1,2697 @@
+{
+  "https://age.apache.org/overview/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://age.apache.org/overview/",
+    "status": "verified",
+    "title": "https://age.apache.org/overview/"
+  },
+  "https://anndata.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://anndata.scverse.org/en/stable/",
+    "status": "verified",
+    "title": "anndata - Annotated data — anndata 0.13.2 documentation"
+  },
+  "https://anndata.readthedocs.io/en/stable/generated/anndata.AnnData.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://anndata.readthedocs.io/en/stable/generated/anndata.AnnData.html",
+    "status": "verified",
+    "title": "anndata.AnnData — anndata 0.13.2 documentation"
+  },
+  "https://arrow.apache.org/docs/python/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://arrow.apache.org/docs/python/",
+    "status": "verified",
+    "title": "Python — Apache Arrow v25.0.0"
+  },
+  "https://arrow.apache.org/docs/python/parquet.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://arrow.apache.org/docs/python/parquet.html",
+    "status": "verified",
+    "title": "Reading and Writing the Apache Parquet Format — Apache Arrow v25.0.0"
+  },
+  "https://arxiv.org/abs/2010.03759": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://arxiv.org/abs/2010.03759",
+    "status": "verified",
+    "title": "[2010.03759] Energy-based Out-of-distribution Detection"
+  },
+  "https://arxiv.org/abs/2410.23786": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://arxiv.org/abs/2410.23786",
+    "status": "verified",
+    "title": "[2410.23786] Conformal inference for cell type annotation with graph-structured constraints"
+  },
+  "https://bbknn.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bbknn.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "BBKNN — BBKNN 1.6.0 documentation"
+  },
+  "https://bioconductor.org/packages/AUCell/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/AUCell.html",
+    "status": "verified",
+    "title": "Bioconductor - AUCell"
+  },
+  "https://bioconductor.org/packages/CHETAH/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/CHETAH.html",
+    "status": "verified",
+    "title": "Bioconductor - CHETAH"
+  },
+  "https://bioconductor.org/packages/SingleR/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/SingleR.html",
+    "status": "verified",
+    "title": "Bioconductor - SingleR"
+  },
+  "https://bioconductor.org/packages/UCell/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/UCell.html",
+    "status": "verified",
+    "title": "Bioconductor - UCell"
+  },
+  "https://bioconductor.org/packages/batchelor/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/batchelor.html",
+    "status": "verified",
+    "title": "Bioconductor - batchelor"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/AUCell.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/AUCell.html",
+    "status": "verified",
+    "title": "Bioconductor - AUCell"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/DESeq2.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/DESeq2.html",
+    "status": "verified",
+    "title": "Bioconductor - DESeq2"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/DropletUtils.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/DropletUtils.html",
+    "status": "verified",
+    "title": "Bioconductor - DropletUtils"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/GSVA.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/GSVA.html",
+    "status": "verified",
+    "title": "Bioconductor - GSVA"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/MAST.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/MAST.html",
+    "status": "verified",
+    "title": "Bioconductor - MAST"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/MetaNeighbor.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/MetaNeighbor.html",
+    "status": "verified",
+    "title": "Bioconductor - MetaNeighbor"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/SingleR.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/SingleR.html",
+    "status": "verified",
+    "title": "Bioconductor - SingleR"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/UCell.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/UCell.html",
+    "status": "verified",
+    "title": "Bioconductor - UCell"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/batchelor.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/batchelor.html",
+    "status": "verified",
+    "title": "Bioconductor - batchelor"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/dreamlet.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/dreamlet.html",
+    "status": "verified",
+    "title": "Bioconductor - dreamlet"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/edgeR.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/edgeR.html",
+    "status": "verified",
+    "title": "Bioconductor - edgeR"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/escape.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/escape.html",
+    "status": "verified",
+    "title": "Bioconductor - escape"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/limma.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/limma.html",
+    "status": "verified",
+    "title": "Bioconductor - limma"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/miQC.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/miQC.html",
+    "status": "verified",
+    "title": "Bioconductor - miQC"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/miloR.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/miloR.html",
+    "status": "verified",
+    "title": "Bioconductor - miloR"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/muscat.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/muscat.html",
+    "status": "verified",
+    "title": "Bioconductor - muscat"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/scDblFinder.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/scDblFinder.html",
+    "status": "verified",
+    "title": "Bioconductor - scDblFinder"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/sccomp.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/sccomp.html",
+    "status": "verified",
+    "title": "Bioconductor - sccomp"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/scmap.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/scmap.html",
+    "status": "verified",
+    "title": "Bioconductor - scmap"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/scuttle.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/scuttle.html",
+    "status": "verified",
+    "title": "Bioconductor - scuttle"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/singscore.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/singscore.html",
+    "status": "verified",
+    "title": "Bioconductor - singscore"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/speckle.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/speckle.html",
+    "status": "verified",
+    "title": "Bioconductor - speckle"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/tricycle.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/tricycle.html",
+    "status": "verified",
+    "title": "Bioconductor - tricycle"
+  },
+  "https://bioconductor.org/packages/release/bioc/html/variancePartition.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/variancePartition.html",
+    "status": "verified",
+    "title": "Bioconductor - variancePartition"
+  },
+  "https://bioconductor.org/packages/scConform/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/scConform.html",
+    "status": "verified",
+    "title": "Bioconductor - scConform"
+  },
+  "https://bioconductor.org/packages/sccomp/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/sccomp.html",
+    "status": "verified",
+    "title": "Bioconductor - sccomp"
+  },
+  "https://bioconductor.org/packages/scmap/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/scmap.html",
+    "status": "verified",
+    "title": "Bioconductor - scmap"
+  },
+  "https://bioconductor.org/packages/slingshot/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/slingshot.html",
+    "status": "verified",
+    "title": "Bioconductor - slingshot"
+  },
+  "https://bioconductor.org/packages/speckle/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/speckle.html",
+    "status": "verified",
+    "title": "Bioconductor - speckle"
+  },
+  "https://bioconductor.org/packages/sva/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/sva.html",
+    "status": "verified",
+    "title": "Bioconductor - sva"
+  },
+  "https://bioconductor.org/packages/tradeSeq/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://bioconductor.org/packages/release/bioc/html/tradeSeq.html",
+    "status": "verified",
+    "title": "Bioconductor - tradeSeq"
+  },
+  "https://cell2location.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cell2location.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "Welcome to cell2location’s documentation! — cell2location documentation"
+  },
+  "https://cellbender.readthedocs.io/en/latest/usage/index.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cellbender.readthedocs.io/en/latest/usage/index.html",
+    "status": "verified",
+    "title": "Usage — CellBender 0.3.2 documentation"
+  },
+  "https://cellhint.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cellhint.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "Welcome to CellHint’s documentation! — cellhint 1.0.0 documentation"
+  },
+  "https://cellphonedb.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cellphonedb.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "Welcome to CellphoneDB’s documentation. — cellphonedb documentation"
+  },
+  "https://cellrank.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cellrank.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "cellrank documentation"
+  },
+  "https://cellrank.readthedocs.io/en/stable/api/_autosummary/kernels/cellrank.kernels.RealTimeKernel.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cellrank.readthedocs.io/en/stable/api/_autosummary/kernels/cellrank.kernels.RealTimeKernel.html",
+    "status": "verified",
+    "title": "cellrank.kernels.RealTimeKernel - cellrank documentation"
+  },
+  "https://celltypist.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://celltypist.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "Welcome to CellTypist’s documentation! — celltypist 1.7.1 documentation"
+  },
+  "https://cospar.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cospar.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "CoSpar - dynamic inference by integrating state and lineage information — CoSpar 0.3.4 documentation"
+  },
+  "https://cran.r-project.org/package=mgcv": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cran.r-project.org/web/packages/mgcv/index.html",
+    "status": "verified",
+    "title": "CRAN: Package mgcv"
+  },
+  "https://cytospace.stanford.edu/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://cytospace.stanford.edu/",
+    "status": "verified",
+    "title": "CytoSPACE"
+  },
+  "https://decoupler.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://decoupler.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "decoupler - Ensemble of methods to infer enrichment scores — decoupler"
+  },
+  "https://decoupler.readthedocs.io/en/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://decoupler.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "decoupler - Ensemble of methods to infer enrichment scores — decoupler"
+  },
+  "https://docs.falkordb.com/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.falkordb.com/",
+    "status": "verified",
+    "title": "FalkorDB Docs | Graph Database for GraphRAG, Cypher & Knowledge Graphs"
+  },
+  "https://docs.ladybugdb.com/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.ladybugdb.com/",
+    "status": "verified",
+    "title": "Documentation | Ladybug"
+  },
+  "https://docs.pydantic.dev/latest/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pydantic.dev/docs/validation/latest/get-started/",
+    "status": "verified",
+    "title": "Welcome to Pydantic | Pydantic Docs"
+  },
+  "https://docs.pydantic.dev/latest/concepts/json_schema/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pydantic.dev/docs/validation/latest/concepts/json_schema/",
+    "status": "verified",
+    "title": "JSON Schema | Pydantic Docs"
+  },
+  "https://docs.python.org/3/library/csv.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.python.org/3/library/csv.html",
+    "status": "verified",
+    "title": "csv — CSV File Reading and Writing — Python 3.14.7 documentation"
+  },
+  "https://docs.python.org/3/library/decimal.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.python.org/3/library/decimal.html",
+    "status": "verified",
+    "title": "decimal — Decimal fixed-point and floating-point arithmetic — Python 3.14.7 documentation"
+  },
+  "https://docs.python.org/3/library/hashlib.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.python.org/3/library/hashlib.html",
+    "status": "verified",
+    "title": "hashlib — Secure hashes and message digests — Python 3.14.7 documentation"
+  },
+  "https://docs.python.org/3/library/zipfile.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.python.org/3/library/zipfile.html",
+    "status": "verified",
+    "title": "zipfile — Work with ZIP archives — Python 3.14.7 documentation"
+  },
+  "https://docs.scarches.org/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scarches.org/en/latest/",
+    "status": "verified",
+    "title": "scArches documentation"
+  },
+  "https://docs.scarches.org/en/latest/api/models.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scarches.org/en/latest/api/models.html",
+    "status": "verified",
+    "title": "Models - scArches documentation"
+  },
+  "https://docs.scarches.org/en/stable/index.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scarches.org/en/stable/index.html",
+    "status": "verified",
+    "title": "scArches documentation"
+  },
+  "https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.nnls.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.nnls.html",
+    "status": "verified",
+    "title": "nnls — SciPy v1.18.0 Manual"
+  },
+  "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.jensenshannon.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.jensenshannon.html",
+    "status": "verified",
+    "title": "jensenshannon — SciPy v1.18.0 Manual"
+  },
+  "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binomtest.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binomtest.html",
+    "status": "verified",
+    "title": "binomtest — SciPy v1.18.0 Manual"
+  },
+  "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html",
+    "status": "verified",
+    "title": "bootstrap — SciPy v1.18.0 Manual"
+  },
+  "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.permutation_test.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.permutation_test.html",
+    "status": "verified",
+    "title": "permutation_test — SciPy v1.18.0 Manual"
+  },
+  "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.wasserstein_distance.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.wasserstein_distance.html",
+    "status": "verified",
+    "title": "wasserstein_distance — SciPy v1.18.0 Manual"
+  },
+  "https://docs.scipy.org/doc/scipy/reference/stats.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scipy.org/doc/scipy/reference/stats.html",
+    "status": "verified",
+    "title": "Statistical functions (scipy.stats) — SciPy v1.18.0 Manual"
+  },
+  "https://docs.scvi-tools.org/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scvi-tools.org/en/stable/",
+    "status": "verified",
+    "title": "Documentation — scvi-tools"
+  },
+  "https://docs.scvi-tools.org/en/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scvi-tools.org/en/stable/",
+    "status": "verified",
+    "title": "Documentation — scvi-tools"
+  },
+  "https://docs.scvi-tools.org/en/stable/api/reference/scvi.model.SCANVI.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.scvi-tools.org/en/stable/api/reference/scvi.model.SCANVI.html",
+    "status": "verified",
+    "title": "scvi.model.SCANVI — scvi-tools"
+  },
+  "https://docs.seqera.io/multiqc/modules/cellranger": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://docs.seqera.io/multiqc/modules/cellranger",
+    "status": "verified",
+    "title": "Cell Ranger | Seqera Docs"
+  },
+  "https://doi.org/10.1016/j.cell.2021.04.048": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://linkinghub.elsevier.com/retrieve/pii/S0092867421005833",
+    "status": "verified",
+    "title": "Redirecting"
+  },
+  "https://doi.org/10.1016/j.cels.2018.11.005": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://linkinghub.elsevier.com/retrieve/pii/S2405471218304745",
+    "status": "verified",
+    "title": "Redirecting"
+  },
+  "https://doi.org/10.1016/j.csbj.2021.06.043": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://doi.org/10.1016/j.csbj.2021.06.043",
+    "status": "verified_via_crossref",
+    "title": "UCell: Robust and scalable single-cell gene signature scoring"
+  },
+  "https://doi.org/10.1016/j.stemcr.2022.03.001": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://linkinghub.elsevier.com/retrieve/pii/S2213671122001345",
+    "status": "verified",
+    "title": "Redirecting"
+  },
+  "https://doi.org/10.1038/nmeth.4463": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/nmeth.4463?error=cookies_not_supported&code=5bcc4102-7372-4eb5-a3e2-573c6dce1866",
+    "status": "verified",
+    "title": "SCENIC: single-cell regulatory network inference and clustering | Nature Methods"
+  },
+  "https://doi.org/10.1038/s41467-020-19894-4": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-020-19894-4?error=cookies_not_supported&code=3366f015-3469-4f8a-b69f-1215467eb094",
+    "status": "verified",
+    "title": "muscat detects subpopulation-specific state transitions from multi-sample multi-condition single-cell transcriptomics data | Nature Communications"
+  },
+  "https://doi.org/10.1038/s41467-021-27150-6": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-021-27150-6?error=cookies_not_supported&code=27e95236-58e7-45e7-b28f-79bd47cca23b",
+    "status": "verified",
+    "title": "scCODA is a Bayesian model for compositional single-cell data analysis | Nature Communications"
+  },
+  "https://doi.org/10.1038/s41592-021-01336-8": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-021-01336-8?error=cookies_not_supported&code=989e63c9-ee76-412c-a31f-39e53b618a07",
+    "status": "verified",
+    "title": "Benchmarking atlas-level data integration in single-cell genomics | Nature Methods"
+  },
+  "https://doi.org/10.1038/s41592-023-01943-7": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-023-01943-7?error=cookies_not_supported&code=ce9c0348-3e6f-4b79-8099-ff7c242c765a",
+    "status": "verified",
+    "title": "Unsupervised removal of systematic background noise from droplet-based single-cell experiments using CellBender | Nature Methods"
+  },
+  "https://doi.org/10.1093/bioadv/vbac016": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://doi.org/10.1093/bioadv/vbac016",
+    "status": "verified_via_crossref",
+    "title": "decoupleR: ensemble of computational methods to infer biological activities from omics data"
+  },
+  "https://doi.org/10.1093/bioinformatics/btac582": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://doi.org/10.1093/bioinformatics/btac582",
+    "status": "verified_via_crossref",
+    "title": "<i>propeller:</i> testing for differences in cell type proportions in single cell data"
+  },
+  "https://doi.org/10.1093/bioinformatics/btw354": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://doi.org/10.1093/bioinformatics/btw354",
+    "status": "verified_via_crossref",
+    "title": "MultiQC: summarize analysis results for multiple tools and samples in a single report"
+  },
+  "https://doi.org/10.1093/gigascience/giaa151": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://doi.org/10.1093/gigascience/giaa151",
+    "status": "verified_via_crossref",
+    "title": "SoupX removes ambient RNA contamination from droplet-based single-cell RNA sequencing data"
+  },
+  "https://doi.org/10.1186/s13059-017-1382-0": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://link.springer.com/article/10.1186/s13059-017-1382-0?error=cookies_not_supported&code=933b41a0-989f-47fc-ae3d-a15d4878cc14",
+    "status": "verified",
+    "title": "SCANPY: large-scale single-cell gene expression data analysis | Genome Biology | Springer Nature Link"
+  },
+  "https://doi.org/10.1186/s13059-019-1662-y": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://link.springer.com/article/10.1186/s13059-019-1662-y?error=cookies_not_supported&code=a2b4bd93-66f1-4877-ad71-64739c741d86",
+    "status": "verified",
+    "title": "EmptyDrops: distinguishing cells from empty droplets in droplet-based single-cell RNA sequencing data | Genome Biology | Springer Nature Link"
+  },
+  "https://doi.org/10.1186/s13059-019-1862-5": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://link.springer.com/article/10.1186/s13059-019-1862-5?error=cookies_not_supported&code=88b9e76d-576d-4fdd-8cd1-055e91f24472",
+    "status": "verified",
+    "title": "scPred: accurate supervised method for cell-type classification from single-cell RNA-seq data | Genome Biology | Springer Nature Link"
+  },
+  "https://doi.org/10.1186/s13059-021-02281-7": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://link.springer.com/article/10.1186/s13059-021-02281-7?error=cookies_not_supported&code=37a4fbee-e70b-45b1-95be-1d8bab9b9ecf",
+    "status": "verified",
+    "title": "scSorter: assigning cells to known cell types according to marker genes | Genome Biology | Springer Nature Link"
+  },
+  "https://doi.org/10.1186/s13059-023-02859-3": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://link.springer.com/article/10.1186/s13059-023-02859-3?error=cookies_not_supported&code=da289bbe-c182-4a74-ba6b-a819cca7d3e0",
+    "status": "verified",
+    "title": "SampleQC: robust multivariate, multi-cell type, multi-sample quality control for single-cell data | Genome Biology | Springer Nature Link"
+  },
+  "https://doi.org/10.1242/dev.201264": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://doi.org/10.1242/dev.201264",
+    "status": "verified_via_crossref",
+    "title": "CIARA: a cluster-independent algorithm for identifying markers of rare cell types from single-cell sequencing data"
+  },
+  "https://doi.org/10.12688/f1000research.73600.2": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://f1000research.com/articles/10-979/v2",
+    "status": "verified",
+    "title": "Doublet identification in single-cell sequencing... | F1000Research"
+  },
+  "https://doi.org/10.1371/journal.pcbi.1009290": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009290",
+    "status": "verified",
+    "title": "miQC: An adaptive probabilistic framework for quality control of single-cell RNA-sequencing data | PLOS Computational Biology"
+  },
+  "https://doi.org/10.15252/msb.20199389": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://link.springer.com/article/10.15252/msb.20199389?error=cookies_not_supported&code=f04dbb8e-dd4a-4e95-9a90-ec7e0e0f8256",
+    "status": "verified",
+    "title": "scClassify: sample size estimation and multiscale classification of cells using single and multiple reference | Molecular Systems Biology | Springer Nature Link"
+  },
+  "https://doi.org/10.64898/2026.06.19.733041": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://doi.org/10.64898/2026.06.19.733041",
+    "status": "verified_via_crossref",
+    "title": "A human developmental and adult brain atlas benchmarks dopaminergic stem cell models and cell therapy candidates"
+  },
+  "https://elifesciences.org/articles/43803": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://elifesciences.org/articles/43803",
+    "status": "verified",
+    "title": "Identifying gene expression programs of cell-type identity and cellular activity with single-cell RNA-Seq | eLife"
+  },
+  "https://exiftool.org/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://exiftool.org/",
+    "status": "verified",
+    "title": "ExifTool by Phil Harvey"
+  },
+  "https://gabrielhoffman.github.io/dreamlet/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://gabrielhoffman.github.io/dreamlet/",
+    "status": "verified",
+    "title": "Scalable differential expression analysis of single cell transcriptomics datasets with complex study designs • dreamlet"
+  },
+  "https://giniclust3.readthedocs.io/en/latest/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://giniclust3.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "GiniClust3"
+  },
+  "https://git.bioconductor.org/packages/AUCell": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/AUCell",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/AUCell"
+  },
+  "https://git.bioconductor.org/packages/DESeq2": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/DESeq2",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/DESeq2"
+  },
+  "https://git.bioconductor.org/packages/DropletUtils": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/DropletUtils",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/DropletUtils"
+  },
+  "https://git.bioconductor.org/packages/GSVA": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/GSVA",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/GSVA"
+  },
+  "https://git.bioconductor.org/packages/MAST": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/MAST",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/MAST"
+  },
+  "https://git.bioconductor.org/packages/MetaNeighbor": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/MetaNeighbor",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/MetaNeighbor"
+  },
+  "https://git.bioconductor.org/packages/UCell": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/UCell",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/UCell"
+  },
+  "https://git.bioconductor.org/packages/batchelor": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/batchelor",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/batchelor"
+  },
+  "https://git.bioconductor.org/packages/edgeR": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/edgeR",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/edgeR"
+  },
+  "https://git.bioconductor.org/packages/escape": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/escape",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/escape"
+  },
+  "https://git.bioconductor.org/packages/limma": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/limma",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/limma"
+  },
+  "https://git.bioconductor.org/packages/muscat": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/muscat",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/muscat"
+  },
+  "https://git.bioconductor.org/packages/sccomp": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/sccomp",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/sccomp"
+  },
+  "https://git.bioconductor.org/packages/scmap": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/scmap",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/scmap"
+  },
+  "https://git.bioconductor.org/packages/scuttle": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/scuttle",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/scuttle"
+  },
+  "https://git.bioconductor.org/packages/singscore": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/singscore",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/singscore"
+  },
+  "https://git.bioconductor.org/packages/speckle": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://git.bioconductor.org/packages/speckle",
+    "status": "verified",
+    "title": "https://git.bioconductor.org/packages/speckle"
+  },
+  "https://github.com/AllonKleinLab/cospar": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/AllonKleinLab/cospar",
+    "status": "verified",
+    "title": "GitHub - AllonKleinLab/cospar · GitHub"
+  },
+  "https://github.com/BayraktarLab/cell2location": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/BayraktarLab/cell2location",
+    "status": "verified",
+    "title": "GitHub - BayraktarLab/cell2location: Comprehensive mapping of tissue cell architecture via integrated single cell and spatial transcriptomics (cell2location model) · GitHub"
+  },
+  "https://github.com/DiseaseNeurogenomics/dreamlet": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/DiseaseNeurogenomics/dreamlet",
+    "status": "verified",
+    "title": "GitHub - DiseaseNeuroGenomics/dreamlet: Perform differential expression analysis on cohort-scale single cell datasets using linear mixed models · GitHub"
+  },
+  "https://github.com/DiseaseNeurogenomics/variancePartition": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/DiseaseNeurogenomics/variancePartition",
+    "status": "verified",
+    "title": "GitHub - DiseaseNeuroGenomics/variancePartition: Quantify and interpret divers of variation in multilevel gene expression experiments · GitHub"
+  },
+  "https://github.com/FalkorDB/FalkorDB": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/FalkorDB/FalkorDB",
+    "status": "verified",
+    "title": "GitHub - FalkorDB/FalkorDB: A super fast Graph Database uses GraphBLAS under the hood for its sparse adjacency matrix graph representation. Our goal is to provide the best Knowledge Graph for LLM (GraphRAG). · GitHub"
+  },
+  "https://github.com/GabrielHoffman/dreamlet": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/GabrielHoffman/dreamlet",
+    "status": "verified",
+    "title": "GitHub - GabrielHoffman/dreamlet: Perform differential expression analysis on multi-sample single cell datasets using linear mixed models · GitHub"
+  },
+  "https://github.com/Genentech/scimilarity": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/Genentech/scimilarity",
+    "status": "verified",
+    "title": "GitHub - Genentech/scimilarity: A unifying representation of single cell expression profiles that quantifies similarity between expression states and generalizes to represent new studies without additional training. · GitHub"
+  },
+  "https://github.com/INCATools/ontology-access-kit": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/INCATools/ontology-access-kit",
+    "status": "verified",
+    "title": "GitHub - INCATools/ontology-access-kit: Ontology Access Kit: A python library and command line application for working with ontologies · GitHub"
+  },
+  "https://github.com/IanevskiAleksandr/sc-type": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/IanevskiAleksandr/sc-type",
+    "status": "verified",
+    "title": "GitHub - IanevskiAleksandr/sc-type · GitHub"
+  },
+  "https://github.com/JackieHanLab/TOSICA": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/JackieHanLab/TOSICA",
+    "status": "verified",
+    "title": "GitHub - JackieHanLab/TOSICA: Transformer for One-Stop Interpretable Cell-type Annotation · GitHub"
+  },
+  "https://github.com/LBMC/RAPToR": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/LBMC/RAPToR",
+    "status": "verified",
+    "title": "GitHub - LBMC/RAPToR: RAPToR (Real Age Prediction from Transcriptome staging on Reference) is a tool to accurately predict individual samples' developmental age from their gene expression profiles. · GitHub"
+  },
+  "https://github.com/LadybugDB/ladybug": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/LadybugDB/ladybug",
+    "status": "verified",
+    "title": "GitHub - LadybugDB/ladybug: LadybugDB a graph database · GitHub"
+  },
+  "https://github.com/MangiolaLaboratory/sccomp": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/MangiolaLaboratory/sccomp",
+    "status": "verified",
+    "title": "GitHub - MangiolaLaboratory/sccomp: Bayesian mixed-effect model to test differences in cell type proportions from single-cell data, in R · GitHub"
+  },
+  "https://github.com/MarioniLab/miloR": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/MarioniLab/miloR",
+    "status": "verified",
+    "title": "GitHub - MarioniLab/miloR: R package implementation of Milo for testing for differential abundance in KNN graphs · GitHub"
+  },
+  "https://github.com/MultiQC/MultiQC": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/MultiQC/MultiQC",
+    "status": "verified",
+    "title": "GitHub - MultiQC/MultiQC: Aggregate results from bioinformatics analyses across many samples into a single report. · GitHub"
+  },
+  "https://github.com/NNoureen/JASMINE": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/NNoureen/JASMINE",
+    "status": "verified",
+    "title": "GitHub - NNoureen/JASMINE: Single cell RNAseq Signature scoring · GitHub"
+  },
+  "https://github.com/No2Ross/TrAGEDy": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/No2Ross/TrAGEDy",
+    "status": "verified",
+    "title": "GitHub - No2Ross/TrAGEDy: Trajectory Alignment of Gene Expression Dynamics · GitHub"
+  },
+  "https://github.com/Novartis/CellSIUS": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/Novartis/CellSIUS",
+    "status": "verified",
+    "title": "GitHub - Novartis/CellSIUS: CellSIUS: Cell Subtype Identification from Upregulated gene Sets · GitHub"
+  },
+  "https://github.com/OmicsML/CellPLM": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/OmicsML/CellPLM",
+    "status": "verified",
+    "title": "GitHub - OmicsML/CellPLM: Official repo for CellPLM: Pre-training of Cell Language Model Beyond Single Cells. · GitHub"
+  },
+  "https://github.com/Oshlack/speckle": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/Oshlack/speckle",
+    "status": "verified",
+    "title": "GitHub - Oshlack/speckle: R package for specialised analysis of single cell data · GitHub"
+  },
+  "https://github.com/PaulingLiu/scibet": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/PaulingLiu/scibet",
+    "status": "verified",
+    "title": "GitHub - PaulingLiu/scibet: A portable and fast single cell type identifier · GitHub"
+  },
+  "https://github.com/PythonOT/POT": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/PythonOT/POT",
+    "status": "verified",
+    "title": "GitHub - PythonOT/POT: POT : Python Optimal Transport · GitHub"
+  },
+  "https://github.com/ResearchObject/ro-crate": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/ResearchObject/ro-crate",
+    "status": "verified",
+    "title": "GitHub - ResearchObject/ro-crate: Research Object Crate · GitHub"
+  },
+  "https://github.com/ShobiStassen/VIA": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/ShobiStassen/VIA",
+    "status": "verified",
+    "title": "GitHub - ShobiStassen/VIA: trajectory inference · GitHub"
+  },
+  "https://github.com/SingleR-inc/SingleR": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/SingleR-inc/SingleR",
+    "status": "verified",
+    "title": "GitHub - SingleR-inc/SingleR: Clone of the Bioconductor repository for the SingleR package. · GitHub"
+  },
+  "https://github.com/SuoLab-GZLab/CMAP": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/SuoLab-GZLab/CMAP",
+    "status": "verified",
+    "title": "GitHub - SuoLab-GZLab/CMAP: Map large-scale single cells to the exact spatial locations · GitHub"
+  },
+  "https://github.com/SydneyBioX/scClassify": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/SydneyBioX/scClassify",
+    "status": "verified",
+    "title": "GitHub - SydneyBioX/scClassify: Hierarchical classification of cells · GitHub"
+  },
+  "https://github.com/SydneyBioX/scDC": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/SydneyBioX/scDC",
+    "status": "verified",
+    "title": "GitHub - SydneyBioX/scDC · GitHub"
+  },
+  "https://github.com/Teichlab/bbknn": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/Teichlab/bbknn",
+    "status": "verified",
+    "title": "GitHub - Teichlab/bbknn: Batch balanced KNN · GitHub"
+  },
+  "https://github.com/Teichlab/cellhint": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/Teichlab/cellhint",
+    "status": "verified",
+    "title": "GitHub - Teichlab/cellhint: A tool for semi-automatic cell type harmonization and integration · GitHub"
+  },
+  "https://github.com/Teichlab/celltypist": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/Teichlab/celltypist",
+    "status": "verified",
+    "title": "GitHub - Teichlab/celltypist: A tool for semi-automatic cell type classification · GitHub"
+  },
+  "https://github.com/VittoriaDBocchi/CapybaraBrain": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/VittoriaDBocchi/CapybaraBrain",
+    "status": "verified",
+    "title": "GitHub - VittoriaDBocchi/CapybaraBrain: Hybrid cell state detection in single-cell data using quadratic programming · GitHub"
+  },
+  "https://github.com/YosefLab/VISION": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/YosefLab/VISION",
+    "status": "verified",
+    "title": "GitHub - YosefLab/VISION: Signature Analysis and Visualization for Single-Cell RNA-seq · GitHub"
+  },
+  "https://github.com/YosefLab/popV": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/YosefLab/popV",
+    "status": "verified",
+    "title": "GitHub - YosefLab/popV · GitHub"
+  },
+  "https://github.com/ZJUFanLab/SIMO": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/ZJUFanLab/SIMO",
+    "status": "verified",
+    "title": "GitHub - ZJUFanLab/SIMO · GitHub"
+  },
+  "https://github.com/aertslab/AUCell": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/aertslab/AUCell",
+    "status": "verified",
+    "title": "GitHub - aertslab/AUCell: AUCell: score single cells with gene regulatory networks · GitHub"
+  },
+  "https://github.com/ahupp/python-magic": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/ahupp/python-magic",
+    "status": "verified",
+    "title": "GitHub - ahupp/python-magic: A python wrapper for libmagic · GitHub"
+  },
+  "https://github.com/allenai/scifact": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/allenai/scifact",
+    "status": "verified",
+    "title": "GitHub - allenai/scifact: Data and models for the SciFact verification task. · GitHub"
+  },
+  "https://github.com/amazon-science/RefChecker": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/amazon-science/RefChecker",
+    "status": "verified",
+    "title": "GitHub - amazon-science/RefChecker: RefChecker provides automatic checking pipeline and benchmark dataset for detecting fine-grained hallucinations generated by Large Language Models. · GitHub"
+  },
+  "https://github.com/apache/age": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/apache/age",
+    "status": "verified",
+    "title": "GitHub - apache/age: Graph database optimized for fast analysis and real-time data processing. It is provided as an extension to PostgreSQL. · GitHub"
+  },
+  "https://github.com/apache/arrow": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/apache/arrow",
+    "status": "verified",
+    "title": "GitHub - apache/arrow: Apache Arrow is the universal columnar format and multi-language toolbox for fast data interchange and in-memory analytics · GitHub"
+  },
+  "https://github.com/bioinfo-ibms-pumc/SCSA": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/bioinfo-ibms-pumc/SCSA",
+    "status": "verified",
+    "title": "GitHub - bioinfo-ibms-pumc/SCSA: SCSA: cell type annotation for single-cell RNA-seq data · GitHub"
+  },
+  "https://github.com/biomap-research/scFoundation": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/biomap-research/scFoundation",
+    "status": "verified",
+    "title": "GitHub - biomap-research/scFoundation · GitHub"
+  },
+  "https://github.com/biomed-AI/CellFM": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/biomed-AI/CellFM",
+    "status": "verified",
+    "title": "GitHub - biomed-AI/CellFM · GitHub"
+  },
+  "https://github.com/bowang-lab/scGPT": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/bowang-lab/scGPT",
+    "status": "verified",
+    "title": "GitHub - bowang-lab/scGPT · GitHub"
+  },
+  "https://github.com/brianhie/scanorama": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/brianhie/scanorama",
+    "status": "verified",
+    "title": "GitHub - brianhie/scanorama: Panoramic stitching of single cell data · GitHub"
+  },
+  "https://github.com/broadinstitute/CellBender": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/broadinstitute/CellBender",
+    "status": "verified",
+    "title": "GitHub - broadinstitute/CellBender: CellBender is a software package for eliminating technical artifacts from high-throughput single-cell RNA sequencing (scRNA-seq) data. · GitHub"
+  },
+  "https://github.com/broadinstitute/Tangram": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/broadinstitute/Tangram",
+    "status": "verified",
+    "title": "GitHub - broadinstitute/Tangram: Spatial alignment of single cell transcriptomic data. · GitHub"
+  },
+  "https://github.com/broadinstitute/infercnv": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/broadinstitute/infercnv",
+    "status": "verified",
+    "title": "GitHub - broadinstitute/infercnv: Inferring CNV from Single-Cell RNA-Seq · GitHub"
+  },
+  "https://github.com/broadinstitute/infercnv/wiki/Home": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/broadinstitute/infercnv/wiki",
+    "status": "verified",
+    "title": "Home · broadinstitute/infercnv Wiki · GitHub"
+  },
+  "https://github.com/broadinstitute/wot": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/broadinstitute/wot",
+    "status": "verified",
+    "title": "GitHub - broadinstitute/wot: A software package for analyzing snapshots of developmental processes · GitHub"
+  },
+  "https://github.com/calico/scnym": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/calico/scnym",
+    "status": "verified",
+    "title": "GitHub - calico/scnym: Semi-supervised adversarial neural networks for classification of single cell transcriptomics data · GitHub"
+  },
+  "https://github.com/cantinilab/scPRINT": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/cantinilab/scPRINT",
+    "status": "verified",
+    "title": "GitHub - cantinilab/scPRINT: 🏃 The go-to single-cell Foundation Model · GitHub"
+  },
+  "https://github.com/carmonalab/STACAS": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/carmonalab/STACAS",
+    "status": "verified",
+    "title": "GitHub - carmonalab/STACAS: R package for semi-supervised single-cell data integration · GitHub"
+  },
+  "https://github.com/carmonalab/UCell": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/carmonalab/UCell",
+    "status": "verified",
+    "title": "GitHub - carmonalab/UCell: Gene set scoring for single-cell data · GitHub"
+  },
+  "https://github.com/carmonalab/pyucell": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/carmonalab/pyucell",
+    "status": "verified",
+    "title": "GitHub - carmonalab/pyucell: Robust and scalable single-cell signature scoring · GitHub"
+  },
+  "https://github.com/carmonalab/scGate": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/carmonalab/scGate",
+    "status": "verified",
+    "title": "GitHub - carmonalab/scGate: marker-based purification of cell types from single-cell RNA-seq datasets · GitHub"
+  },
+  "https://github.com/ccb-hms/scConform": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/ccb-hms/scConform",
+    "status": "verified",
+    "title": "GitHub - ccb-hms/scConform: Uncertainty quantification for cell type annotation using conformal inference · GitHub"
+  },
+  "https://github.com/cole-trapnell-lab/garnett": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/cole-trapnell-lab/garnett",
+    "status": "verified",
+    "title": "GitHub - cole-trapnell-lab/garnett: Automated cell type classification · GitHub"
+  },
+  "https://github.com/constantAmateur/SoupX": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/constantAmateur/SoupX",
+    "status": "verified",
+    "title": "GitHub - constantAmateur/SoupX: R package to quantify and remove cell free mRNAs from droplet based scRNA-seq data · GitHub"
+  },
+  "https://github.com/coreutils/coreutils": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/coreutils/coreutils",
+    "status": "verified",
+    "title": "GitHub - coreutils/coreutils: Public mirror. Pull requests and Issues accepted · GitHub"
+  },
+  "https://github.com/cure53/DOMPurify": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/cure53/DOMPurify",
+    "status": "verified",
+    "title": "GitHub - cure53/DOMPurify: DOMPurify - a DOM-only, super-fast, uber-tolerant XSS sanitizer for HTML, MathML and SVG. DOMPurify works with a secure default, but offers a lot of configurability and hooks. Demo: · GitHub"
+  },
+  "https://github.com/cytoscape/cytoscape.js": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/cytoscape/cytoscape.js",
+    "status": "verified",
+    "title": "GitHub - cytoscape/cytoscape.js: Graph theory (network) library for visualisation and analysis · GitHub"
+  },
+  "https://github.com/dgrun/RaceID3_StemID2": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/dgrun/RaceID3_StemID2",
+    "status": "verified",
+    "title": "GitHub - dgrun/RaceID3_StemID2: Algorithm for the inference of cell types and lineage trees from single-cell RNA-seq data. Please download the R package from the RaceID3_StemID2_package repository, which contains the current version as an R package. This repository will not be updated anymore. · GitHub"
+  },
+  "https://github.com/digital-medicine-research-group-UNAV/conformalized_single_cell_annotator": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/digital-medicine-research-group-UNAV/conformalized_single_cell_annotator",
+    "status": "verified",
+    "title": "GitHub - digital-medicine-research-group-UNAV/conformalized_single_cell_annotator: Single cell annotator · GitHub"
+  },
+  "https://github.com/digitalcytometry/cytospace": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/digitalcytometry/cytospace",
+    "status": "verified",
+    "title": "GitHub - digitalcytometry/cytospace: CytoSPACE: Optimal mapping of scRNA-seq data to spatial transcriptomics data · GitHub"
+  },
+  "https://github.com/digitalcytometry/cytotrace2": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/digitalcytometry/cytotrace2",
+    "status": "verified",
+    "title": "GitHub - digitalcytometry/cytotrace2: CytoTRACE 2 is an interpretable AI method for predicting cellular potency and absolute developmental potential from scRNA-seq data. · GitHub"
+  },
+  "https://github.com/dmcable/spacexr": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/dmcable/spacexr",
+    "status": "verified",
+    "title": "GitHub - dmcable/spacexr: Spatial-eXpression-R: Cell type identification (including cell type mixtures) and cell type-specific differential expression for spatial transcriptomics · GitHub"
+  },
+  "https://github.com/dpeerlab/Palantir": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/dpeerlab/Palantir",
+    "status": "verified",
+    "title": "GitHub - dpeerlab/Palantir: Single cell trajectory detection · GitHub"
+  },
+  "https://github.com/dylkot/cNMF": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/dylkot/cNMF",
+    "status": "verified",
+    "title": "GitHub - dylkot/cNMF: Code and example data for running Consensus Non-negative Matrix Factorization on single-cell RNA-Seq data · GitHub"
+  },
+  "https://github.com/executablebooks/markdown-it-py": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/executablebooks/markdown-it-py",
+    "status": "verified",
+    "title": "GitHub - executablebooks/markdown-it-py: Markdown parser, done right. 100% CommonMark support, extensions, syntax plugins & high speed. Now in Python! · GitHub"
+  },
+  "https://github.com/exiftool/exiftool": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/exiftool/exiftool",
+    "status": "verified",
+    "title": "GitHub - exiftool/exiftool: ExifTool meta information reader/writer · GitHub"
+  },
+  "https://github.com/file/file": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/file/file",
+    "status": "verified",
+    "title": "GitHub - file/file: Read-only mirror of file CVS repository, updated every half hour. NOTE: do not make pull requests here, nor comment any commits, submit them usual way to bug tracker or to the mailing list. Maintainer(s) are not tracking this git mirror. · GitHub"
+  },
+  "https://github.com/gitleaks/gitleaks": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/gitleaks/gitleaks",
+    "status": "verified",
+    "title": "GitHub - gitleaks/gitleaks: Find secrets with Gitleaks 🔑 · GitHub"
+  },
+  "https://github.com/greenelab/miQC": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/greenelab/miQC",
+    "status": "verified",
+    "title": "GitHub - greenelab/miQC: Flexible, probablistic metrics for quality control of scRNA-seq data · GitHub"
+  },
+  "https://github.com/hemberg-lab/scmap": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/hemberg-lab/scmap",
+    "status": "verified",
+    "title": "GitHub - hemberg-lab/scmap: A tool for unsupervised projection of single cell RNA-seq data · GitHub"
+  },
+  "https://github.com/hgrecco/pint": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/hgrecco/pint",
+    "status": "verified",
+    "title": "GitHub - hgrecco/pint: Operate and manipulate physical quantities in Python · GitHub"
+  },
+  "https://github.com/hui2000ji/scETM": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/hui2000ji/scETM",
+    "status": "verified",
+    "title": "GitHub - hui2000ji/scETM: A generative topic model that facilitates integrative analysis of large-scale single-cell RNA sequencing data. · GitHub"
+  },
+  "https://github.com/icbi-lab/infercnvpy": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/icbi-lab/infercnvpy",
+    "status": "verified",
+    "title": "GitHub - icbi-lab/infercnvpy: Infer copy number variation (CNV) from scRNA-seq data. Plays nicely with Scanpy. · GitHub"
+  },
+  "https://github.com/immunogenomics/harmony": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/immunogenomics/harmony",
+    "status": "verified",
+    "title": "GitHub - immunogenomics/harmony: Fast, sensitive and accurate integration of single-cell data with Harmony · GitHub"
+  },
+  "https://github.com/immunogenomics/symphony": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/immunogenomics/symphony",
+    "status": "verified",
+    "title": "GitHub - immunogenomics/symphony: Efficient and precise single-cell reference atlas mapping with Symphony · GitHub"
+  },
+  "https://github.com/kuzudb/kuzu": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/kuzudb/kuzu",
+    "status": "verified",
+    "title": "GitHub - kuzudb/kuzu: Embedded property graph database built for speed. Vector search and full-text search built in. Implements Cypher. · GitHub"
+  },
+  "https://github.com/lepture/mistune": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/lepture/mistune",
+    "status": "verified",
+    "title": "GitHub - lepture/mistune: A fast yet powerful Python Markdown parser with renderers and plugins. · GitHub"
+  },
+  "https://github.com/lihuamei/Cell2Spatial": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/lihuamei/Cell2Spatial",
+    "status": "verified",
+    "title": "GitHub - lihuamei/Cell2Spatial: Precisely deciphering spatial transcriptomic spots at single-cell granularity. · GitHub"
+  },
+  "https://github.com/memgraph/memgraph": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/memgraph/memgraph",
+    "status": "verified",
+    "title": "GitHub - memgraph/memgraph: High-performance open-source in-memory graph database for GraphRAG, AI memory, agentic AI, and real-time graph analytics. Cypher-compatible, built in C++. · GitHub"
+  },
+  "https://github.com/microsoft/playwright": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/microsoft/playwright",
+    "status": "verified",
+    "title": "GitHub - microsoft/playwright: Playwright is a framework for Web Testing and Automation. It allows testing Chromium, Firefox and WebKit with a single API. · GitHub"
+  },
+  "https://github.com/microsoft/presidio": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/data-privacy-stack/presidio",
+    "status": "verified",
+    "title": "GitHub - data-privacy-stack/presidio: An open-source framework for detecting, redacting, masking, and anonymizing sensitive data (PII) across text, images, and structured data. Supports NLP, pattern matching, and customizable pipelines. · GitHub"
+  },
+  "https://github.com/morris-lab/Capybara": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/morris-lab/Capybara",
+    "status": "verified",
+    "title": "GitHub - morris-lab/Capybara: Capybara: A computational tool to measure cell identity and fate transitions · GitHub"
+  },
+  "https://github.com/mrabarnett/mrab-regex": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/mrabarnett/mrab-regex",
+    "status": "verified",
+    "title": "GitHub - mrabarnett/mrab-regex · GitHub"
+  },
+  "https://github.com/navinlabcode/CellTrek": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/navinlabcode/CellTrek",
+    "status": "verified",
+    "title": "GitHub - navinlabcode/CellTrek · GitHub"
+  },
+  "https://github.com/navinlabcode/copykat": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/navinlabcode/copykat",
+    "status": "verified",
+    "title": "GitHub - navinlabcode/copykat · GitHub"
+  },
+  "https://github.com/neo4j/neo4j": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/neo4j/neo4j",
+    "status": "verified",
+    "title": "GitHub - neo4j/neo4j: Graphs for Everyone · GitHub"
+  },
+  "https://github.com/neo4j/neo4j-python-driver": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/neo4j/neo4j-python-driver",
+    "status": "verified",
+    "title": "GitHub - neo4j/neo4j-python-driver: Neo4j Bolt driver for Python · GitHub"
+  },
+  "https://github.com/networkx/networkx": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/networkx/networkx",
+    "status": "verified",
+    "title": "GitHub - networkx/networkx: Network Analysis in Python · GitHub"
+  },
+  "https://github.com/neurorestore/Augur": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/neurorestore/Augur",
+    "status": "verified",
+    "title": "GitHub - neurorestore/Augur: Cell type prioritization in single-cell data · GitHub"
+  },
+  "https://github.com/open-policy-agent/opa": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/open-policy-agent/opa",
+    "status": "verified",
+    "title": "GitHub - open-policy-agent/opa: Open Policy Agent (OPA) is an open source, general-purpose policy engine. · GitHub"
+  },
+  "https://github.com/pallets/jinja": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/pallets/jinja",
+    "status": "verified",
+    "title": "GitHub - pallets/jinja: A very fast and expressive template engine. · GitHub"
+  },
+  "https://github.com/pandas-dev/pandas": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/pandas-dev/pandas",
+    "status": "verified",
+    "title": "GitHub - pandas-dev/pandas: Flexible and powerful data analysis / manipulation library for Python, providing labeled data structures similar to R data.frame objects, statistical functions, and much more · GitHub"
+  },
+  "https://github.com/phillipnicol/scDist": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/phillipnicol/scDist",
+    "status": "verified",
+    "title": "GitHub - phillipnicol/scDist: Robust identification of perturbed cell types in single-cell RNA-seq data · GitHub"
+  },
+  "https://github.com/plger/scDblFinder": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/plger/scDblFinder",
+    "status": "verified",
+    "title": "GitHub - plger/scDblFinder: Methods for detecting doublets in single-cell sequencing data · GitHub"
+  },
+  "https://github.com/powellgenomicslab/scPred": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/powellgenomicslab/scPred",
+    "status": "verified",
+    "title": "GitHub - powellgenomicslab/scPred: scPred package for cell type prediction from scRNA-seq data · GitHub"
+  },
+  "https://github.com/princethewinner/FiRE": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/princethewinner/FiRE",
+    "status": "verified",
+    "title": "GitHub - princethewinner/FiRE · GitHub"
+  },
+  "https://github.com/pydantic/pydantic": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/pydantic/pydantic",
+    "status": "verified",
+    "title": "GitHub - pydantic/pydantic: Data validation using Python type hints · GitHub"
+  },
+  "https://github.com/pymc-devs/pymc": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/pymc-devs/pymc",
+    "status": "verified",
+    "title": "GitHub - pymc-devs/pymc: Bayesian Modeling and Probabilistic Programming in Python · GitHub"
+  },
+  "https://github.com/python-jsonschema/jsonschema": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/python-jsonschema/jsonschema",
+    "status": "verified",
+    "title": "GitHub - python-jsonschema/jsonschema: An implementation of the JSON Schema specification for Python · GitHub"
+  },
+  "https://github.com/python-pillow/Pillow": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/python-pillow/Pillow",
+    "status": "verified",
+    "title": "GitHub - python-pillow/Pillow: Python Imaging Library (fork) · GitHub"
+  },
+  "https://github.com/python/cpython": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/python/cpython",
+    "status": "verified",
+    "title": "GitHub - python/cpython: The Python programming language · GitHub"
+  },
+  "https://github.com/rdong08/GiniClust3": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/rdong08/GiniClust3",
+    "status": "verified",
+    "title": "GitHub - rdong08/GiniClust3: Rare cell identification tool for single cell datasets · GitHub"
+  },
+  "https://github.com/saezlab/liana-py": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/saezlab/liana-py",
+    "status": "verified",
+    "title": "GitHub - saezlab/liana-py: LIANA+: an all-in-one framework for cell-cell communication · GitHub"
+  },
+  "https://github.com/satijalab/seurat": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/satijalab/seurat",
+    "status": "verified",
+    "title": "GitHub - satijalab/seurat: R toolkit for single cell genomics · GitHub"
+  },
+  "https://github.com/scikit-learn/scikit-learn": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/scikit-learn/scikit-learn",
+    "status": "verified",
+    "title": "GitHub - scikit-learn/scikit-learn: scikit-learn: machine learning in Python · GitHub"
+  },
+  "https://github.com/scipy/scipy": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/scipy/scipy",
+    "status": "verified",
+    "title": "GitHub - scipy/scipy: SciPy library main repository · GitHub"
+  },
+  "https://github.com/scverse/anndata": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/scverse/anndata",
+    "status": "verified",
+    "title": "GitHub - scverse/anndata: Annotated data. · GitHub"
+  },
+  "https://github.com/scverse/decoupler": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/scverse/decoupler",
+    "status": "verified",
+    "title": "GitHub - scverse/decoupler: Python package to perform enrichment analysis from omics data. · GitHub"
+  },
+  "https://github.com/scverse/pertpy": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/scverse/pertpy",
+    "status": "verified",
+    "title": "GitHub - scverse/pertpy: Single-cell perturbation analysis · GitHub"
+  },
+  "https://github.com/scverse/scanpy": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/scverse/scanpy",
+    "status": "verified",
+    "title": "GitHub - scverse/scanpy: Single-cell analysis in Python. Scales to >100M cells. · GitHub"
+  },
+  "https://github.com/scverse/scvi-tools": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/scverse/scvi-tools",
+    "status": "verified",
+    "title": "GitHub - scverse/scvi-tools: Deep probabilistic analysis of single-cell and spatial omics data · GitHub"
+  },
+  "https://github.com/shmohammadi86/ACTIONet": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/shmohammadi86/ACTIONet",
+    "status": "verified",
+    "title": "GitHub - shmohammadi86/ACTIONet: ACTIONet single-cell analysis framework · GitHub"
+  },
+  "https://github.com/shmsw25/FActScore": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/shmsw25/FActScore",
+    "status": "verified",
+    "title": "GitHub - shmsw25/FActScore: A package to evaluate factuality of long-form generation. Original implementation of our EMNLP 2023 paper \"FActScore: Fine-grained Atomic Evaluation of Factual Precision in Long Form Text Generation\" · GitHub"
+  },
+  "https://github.com/snap-stanford/UCE": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/snap-stanford/UCE",
+    "status": "verified",
+    "title": "GitHub - snap-stanford/UCE: UCE is a zero-shot foundation model for single-cell gene expression data · GitHub"
+  },
+  "https://github.com/statsmodels/statsmodels": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/statsmodels/statsmodels",
+    "status": "verified",
+    "title": "GitHub - statsmodels/statsmodels: Statsmodels: statistical modeling and econometrics in Python · GitHub"
+  },
+  "https://github.com/swolock/scrublet": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/swolock/scrublet",
+    "status": "verified",
+    "title": "GitHub - swolock/scrublet: Detect doublets in single-cell RNA-seq data · GitHub"
+  },
+  "https://github.com/theislab/cellrank": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/scverse/cellrank",
+    "status": "verified",
+    "title": "GitHub - scverse/cellrank: CellRank: dynamics from multi-view single-cell data · GitHub"
+  },
+  "https://github.com/theislab/nicheformer": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/theislab/nicheformer",
+    "status": "verified",
+    "title": "GitHub - theislab/nicheformer: Repository for Nicheformer: a foundation model for single-cell and spatial omics · GitHub"
+  },
+  "https://github.com/theislab/scCODA": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/theislab/scCODA",
+    "status": "verified",
+    "title": "GitHub - theislab/scCODA: A Bayesian model for compositional single-cell data analysis · GitHub"
+  },
+  "https://github.com/theislab/scarches": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/theislab/scarches",
+    "status": "verified",
+    "title": "GitHub - theislab/scarches: Reference mapping for single-cell genomics · GitHub"
+  },
+  "https://github.com/theislab/scib": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/theislab/scib",
+    "status": "verified",
+    "title": "GitHub - theislab/scib: Benchmarking analysis of data integration tools · GitHub"
+  },
+  "https://github.com/thelovelab/DESeq2": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/thelovelab/DESeq2",
+    "status": "verified",
+    "title": "GitHub - thelovelab/DESeq2: Differential expression of RNA-seq data using the Negative Binomial · GitHub"
+  },
+  "https://github.com/tiran/defusedxml": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/tiran/defusedxml",
+    "status": "verified",
+    "title": "GitHub - tiran/defusedxml · GitHub"
+  },
+  "https://github.com/unionai-oss/pandera": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/unionai-oss/pandera",
+    "status": "verified",
+    "title": "GitHub - unionai-oss/pandera: A light-weight, flexible, and expressive statistical data testing library · GitHub"
+  },
+  "https://github.com/ventolab/CellphoneDB": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/ventolab/CellphoneDB",
+    "status": "verified",
+    "title": "GitHub - ventolab/CellphoneDB: CellPhoneDB can be used to search for a particular ligand/receptor, or interrogate your own HUMAN single-cell transcriptomics data. · GitHub"
+  },
+  "https://github.com/wangshenguiuc/OnClass": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/wangshenguiuc/OnClass",
+    "status": "verified",
+    "title": "GitHub - wangshenguiuc/OnClass: Single cell typing based on cell ontology · GitHub"
+  },
+  "https://github.com/welch-lab/liger": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/welch-lab/liger",
+    "status": "verified",
+    "title": "GitHub - welch-lab/liger: R package for integrating and analyzing multiple single-cell datasets · GitHub"
+  },
+  "https://github.com/wwYinYin/Celloc": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/wwYinYin/Celloc",
+    "status": "verified",
+    "title": "GitHub - wwYinYin/Celloc · GitHub"
+  },
+  "https://github.com/xiaolab-xjtu/RareQ": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/xiaolab-xjtu/RareQ",
+    "status": "verified",
+    "title": "GitHub - xiaolab-xjtu/RareQ: Connectivity (Q)-based network propagation for rare cell identification · GitHub"
+  },
+  "https://github.com/yoseflab/scib-metrics": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/yoseflab/scib-metrics",
+    "status": "verified",
+    "title": "GitHub - YosefLab/scib-metrics: Accelerated, Python-only, single-cell integration benchmarking metrics · GitHub"
+  },
+  "https://github.com/yuh-zha/AlignScore": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/yuh-zha/AlignScore",
+    "status": "verified",
+    "title": "GitHub - yuh-zha/AlignScore: ACL2023 - AlignScore, a metric for factual consistency evaluation. · GitHub"
+  },
+  "https://github.com/zcang/SpaOTsc": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://github.com/zcang/SpaOTsc",
+    "status": "verified",
+    "title": "GitHub - zcang/SpaOTsc · GitHub"
+  },
+  "https://gitlab.com/XenoCell/XenoCell": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://gitlab.com/XenoCell/XenoCell",
+    "status": "verified",
+    "title": "XenoCell / XenoCell · GitLab"
+  },
+  "https://huggingface.co/ctheodoris/Geneformer": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://huggingface.co/ctheodoris/Geneformer",
+    "status": "verified",
+    "title": "ctheodoris/Geneformer · Hugging Face"
+  },
+  "https://incatools.github.io/ontology-access-kit/introduction.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://incatools.github.io/ontology-access-kit/introduction.html",
+    "status": "verified",
+    "title": "Introduction — oaklib documentation"
+  },
+  "https://infercnvpy.readthedocs.io/en/latest/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://infercnvpy.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "infercnvpy: Scanpy plugin to infer copy number variation (CNV) from single-cell transcriptomics data — infercnvpy"
+  },
+  "https://infozip.sourceforge.net/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://infozip.sourceforge.net/",
+    "status": "verified",
+    "title": "Info-ZIP Home Page"
+  },
+  "https://irrationone.github.io/cellassign/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://irrationone.github.io/cellassign/",
+    "status": "verified",
+    "title": "Automated, probabilistic assignment of scRNA-seq to cell types • cellassign"
+  },
+  "https://jinja.palletsprojects.com/en/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://jinja.palletsprojects.com/en/stable/",
+    "status": "verified",
+    "title": "Jinja — Jinja Documentation (3.1.x)"
+  },
+  "https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.3003477": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.3003477",
+    "status": "verified",
+    "title": "Cell2Spatial is a computational framework that maps single cells to spatial transcriptomic spots to reconstruct tissue architecture | PLOS Biology"
+  },
+  "https://js.cytoscape.org/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://js.cytoscape.org/",
+    "status": "verified",
+    "title": "Cytoscape.js"
+  },
+  "https://json-schema.org/specification": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://json-schema.org/specification",
+    "status": "verified",
+    "title": "JSON Schema - Specification [#section]"
+  },
+  "https://liana-py.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://liana-py.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "LIANA+: an all-in-one cell-cell communication framework — liana"
+  },
+  "https://markdown-it-py.readthedocs.io/en/latest/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://markdown-it-py.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "markdown-it-py — markdown-it-py"
+  },
+  "https://memgraph.com/docs/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://memgraph.com/docs",
+    "status": "verified",
+    "title": "Memgraph documentation"
+  },
+  "https://microsoft.github.io/presidio/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://microsoft.github.io/presidio/",
+    "status": "verified",
+    "title": "This page has moved"
+  },
+  "https://mistune.lepture.com/en/latest/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://mistune.lepture.com/en/latest/",
+    "status": "verified",
+    "title": "Mistune 3.2.1 documentation"
+  },
+  "https://moscot.readthedocs.io/en/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://moscot.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "moscot documentation"
+  },
+  "https://neo4j.com/docs/operations-manual/current/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://neo4j.com/docs/operations-manual/current/",
+    "status": "verified",
+    "title": "The Neo4j Operations Manual - Operations Manual"
+  },
+  "https://neo4j.com/docs/python-manual/current/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://neo4j.com/docs/python-manual/current/",
+    "status": "verified",
+    "title": "Build applications with Neo4j and Python - Neo4j Python Driver Manual"
+  },
+  "https://networkx.org/documentation/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://networkx.org/documentation/stable/",
+    "status": "verified",
+    "title": "Software for Complex Networks — NetworkX 3.6.1 documentation"
+  },
+  "https://obofoundry.org/ontology/uberon.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://obofoundry.org/ontology/uberon.html",
+    "status": "verified",
+    "title": "OBO Foundry"
+  },
+  "https://palantir.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://palantir.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "Palantir 1.4.4 documentation"
+  },
+  "https://pandas.pydata.org/docs/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pandas.pydata.org/docs/",
+    "status": "verified",
+    "title": "pandas documentation — pandas 3.0.5 documentation"
+  },
+  "https://pandera.readthedocs.io/en/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pandera.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "pandera documentation"
+  },
+  "https://papers.nips.cc/paper/2017/hash/9ef2ed4b7fd2c810847ffa5fa85bce38-Abstract.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://papers.nips.cc/paper/2017/hash/9ef2ed4b7fd2c810847ffa5fa85bce38-Abstract.html",
+    "status": "verified",
+    "title": "Simple and Scalable Predictive Uncertainty Estimation using Deep Ensembles"
+  },
+  "https://pertpy.readthedocs.io/en/latest/api/tools/pertpy.tools.Sccoda.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pertpy.readthedocs.io/en/latest/api/tools/pertpy.tools.Sccoda.html",
+    "status": "verified",
+    "title": "pertpy.tools.Sccoda — pertpy"
+  },
+  "https://pertpy.readthedocs.io/en/latest/tutorials/notebooks/sccoda.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pertpy.readthedocs.io/en/latest/tutorials/notebooks/sccoda.html",
+    "status": "verified",
+    "title": "scCODA - Compositional analysis of labeled single-cell data — pertpy"
+  },
+  "https://pillow.readthedocs.io/en/stable/handbook/security.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pillow.readthedocs.io/en/stable/handbook/security.html",
+    "status": "verified",
+    "title": "Security - Pillow (PIL Fork) 12.3.0 documentation"
+  },
+  "https://pint.readthedocs.io/en/latest/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pint.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "Pint: makes units easy — pint 0.1.dev50+g6fc05335e documentation"
+  },
+  "https://playwright.dev/docs/intro": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://playwright.dev/docs/intro",
+    "status": "verified",
+    "title": "Installation | Playwright"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC11588066/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11588066/",
+    "status": "verified",
+    "title": "TARGET-seq: Linking single-cell transcriptomics of human dopaminergic neurons with their target specificity - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC11934999/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11934999/",
+    "status": "verified",
+    "title": "Accurate and Flexible Single Cell to Spatial Transcriptome Mapping with Celloc - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC12092794/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12092794/",
+    "status": "verified",
+    "title": "CellFM: a large-scale foundation model pre-trained on transcriptomics of 100 million human cells - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC12121363/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12121363/",
+    "status": "verified",
+    "title": "Evaluation of out-of-distribution detection methods for data shifts in single-cell transcriptomics - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC12506889/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12506889/",
+    "status": "verified",
+    "title": "Conformal inference for reliable single cell RNA-seq annotation - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC6551256/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6551256/",
+    "status": "verified",
+    "title": "Efficient integration of heterogeneous single-cell transcriptomes using Scanorama - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC6637521/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6637521/",
+    "status": "verified",
+    "title": "CellSIUS provides sensitive and specific detection of rare cell populations from complex single-cell RNA-seq data - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC6852764/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6852764/",
+    "status": "verified",
+    "title": "SCOPIT: sample size calculations for single-cell sequencing experiments - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC6895264/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6895264/",
+    "status": "verified",
+    "title": "CHETAH: a selective, hierarchical cell type identification method for single-cell RNA sequencing - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC6929335/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6929335/",
+    "status": "verified",
+    "title": "scDC: single cell differential composition analysis - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC7847033/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7847033/",
+    "status": "verified",
+    "title": "XenoCell: classification of cellular barcodes in single cell experiments from xenograft samples - PMC"
+  },
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC7898451/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7898451/",
+    "status": "verified",
+    "title": "scSorter: assigning cells to known cell types according to marker genes - PMC"
+  },
+  "https://portals.broadinstitute.org/harmony/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://portals.broadinstitute.org/harmony/",
+    "status": "verified",
+    "title": "Fast, Sensitive, and Accurate Integration of Single Cell Data • harmony"
+  },
+  "https://proceedings.iclr.cc/paper_files/paper/2024/hash/173bcdbd820edbe43284e0941109ada9-Abstract-Conference.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://proceedings.iclr.cc/paper_files/paper/2024/hash/173bcdbd820edbe43284e0941109ada9-Abstract-Conference.html",
+    "status": "verified",
+    "title": "CellPLM: Pre-training of Cell Language Model Beyond Single Cells"
+  },
+  "https://proceedings.mlr.press/v48/gal16.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://proceedings.mlr.press/v48/gal16.html",
+    "status": "verified",
+    "title": "Dropout as a Bayesian Approximation: Representing Model Uncertainty in Deep Learning"
+  },
+  "https://pypi.org/project/regex/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pypi.org/project/regex/",
+    "status": "verified",
+    "title": "Client Challenge"
+  },
+  "https://python-jsonschema.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://python-jsonschema.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "jsonschema 4.26.0 documentation"
+  },
+  "https://pythonot.github.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://pythonot.github.io/",
+    "status": "verified",
+    "title": "POT: Python Optimal Transport — POT Python Optimal Transport 0.9.7 documentation"
+  },
+  "https://satijalab.org/seurat/articles/integration_mapping.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://satijalab.org/seurat/articles/integration_mapping.html",
+    "status": "verified",
+    "title": "Mapping and annotating query datasets • Seurat"
+  },
+  "https://satijalab.org/seurat/articles/integration_rpca.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://satijalab.org/seurat/articles/integration_rpca.html",
+    "status": "verified",
+    "title": "Fast integration using reciprocal PCA (RPCA) • Seurat"
+  },
+  "https://satijalab.org/seurat/reference/cellcyclescoring": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://satijalab.org/seurat/reference/cellcyclescoring",
+    "status": "verified",
+    "title": "Score cell cycle phases — CellCycleScoring • Seurat"
+  },
+  "https://satijalab.org/seurat/reference/findtransferanchors": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://satijalab.org/seurat/reference/findtransferanchors",
+    "status": "verified",
+    "title": "Find transfer anchors — FindTransferAnchors • Seurat"
+  },
+  "https://scanpy.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scanpy.scverse.org/en/stable/",
+    "status": "verified",
+    "title": "Scanpy – Single-Cell Analysis in Python — scanpy"
+  },
+  "https://scanpy.readthedocs.io/en/latest/api/generated/scanpy.pp.calculate_qc_metrics.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scanpy.readthedocs.io/en/latest/api/generated/scanpy.pp.calculate_qc_metrics.html",
+    "status": "verified",
+    "title": "scanpy.pp.calculate_qc_metrics — scanpy"
+  },
+  "https://scanpy.readthedocs.io/en/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scanpy.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "Scanpy – Single-Cell Analysis in Python — scanpy"
+  },
+  "https://scanpy.readthedocs.io/en/stable/api/scanpy.tl.score_genes_cell_cycle.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.score_genes_cell_cycle.html",
+    "status": "verified",
+    "title": "scanpy.tl.score_genes_cell_cycle — scanpy"
+  },
+  "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.dpt.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.dpt.html",
+    "status": "verified",
+    "title": "scanpy.tl.dpt — scanpy"
+  },
+  "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.ingest.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.ingest.html",
+    "status": "verified",
+    "title": "scanpy.tl.ingest — scanpy"
+  },
+  "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.paga.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.paga.html",
+    "status": "verified",
+    "title": "scanpy.tl.paga — scanpy"
+  },
+  "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.score_genes.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.score_genes.html",
+    "status": "verified",
+    "title": "scanpy.tl.score_genes — scanpy"
+  },
+  "https://sccoda.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://sccoda.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "Welcome to scCODA’s documentation! — scCODA 0.1.9 documentation"
+  },
+  "https://schpl.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://schpl.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "scHPL documentation"
+  },
+  "https://scib-metrics.readthedocs.io/en/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scib-metrics.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "scib-metrics — scib-metrics"
+  },
+  "https://scib-metrics.readthedocs.io/en/stable/api.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scib-metrics.readthedocs.io/en/stable/api.html",
+    "status": "verified",
+    "title": "API — scib-metrics"
+  },
+  "https://scib.readthedocs.io/en/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scib.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "Single-cell integration benchmark scib — scib 1.1.7 documentation"
+  },
+  "https://scikit-learn.org/stable/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scikit-learn.org/stable/",
+    "status": "verified",
+    "title": "scikit-learn: machine learning in Python — scikit-learn 1.9.0 documentation"
+  },
+  "https://scikit-learn.org/stable/modules/calibration.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scikit-learn.org/stable/modules/calibration.html",
+    "status": "verified",
+    "title": "1.16. Probability calibration — scikit-learn 1.9.0 documentation"
+  },
+  "https://scikit-learn.org/stable/modules/covariance.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scikit-learn.org/stable/modules/covariance.html",
+    "status": "verified",
+    "title": "2.6. Covariance estimation — scikit-learn 1.9.0 documentation"
+  },
+  "https://scikit-learn.org/stable/modules/neighbors.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scikit-learn.org/stable/modules/neighbors.html",
+    "status": "verified",
+    "title": "1.6. Nearest Neighbors — scikit-learn 1.9.0 documentation"
+  },
+  "https://sctriangulate.readthedocs.io/en/latest/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://sctriangulate.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "Get started — scTriangulate 0.13.0 documentation"
+  },
+  "https://scvelo.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://scvelo.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "scVelo - RNA velocity generalized through dynamical modeling — scVelo documentation"
+  },
+  "https://sourceforge.net/projects/infozip/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://sourceforge.net/projects/infozip/",
+    "status": "verified",
+    "title": "Info-ZIP project download | SourceForge.net"
+  },
+  "https://spatialdata.scverse.org/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://spatialdata.scverse.org/en/stable/",
+    "status": "verified",
+    "title": "An open and universal framework for processing spatial omics data. — spatialdata"
+  },
+  "https://squidpy.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://squidpy.readthedocs.io/en/stable/",
+    "status": "verified",
+    "title": "Squidpy - Spatial Single Cell Analysis in Python — Project name not set 1.8.3 documentation"
+  },
+  "https://tangram-sc.readthedocs.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://tangram-sc.readthedocs.io/en/latest/",
+    "status": "verified",
+    "title": "TANGRAM — Tangram 0.4.0 documentation"
+  },
+  "https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/inputs/cr-3p-references": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/inputs/cr-3p-references",
+    "status": "verified",
+    "title": "Building a Custom Reference for 3' Single Cell Gene Expression | Official 10x Genomics Support"
+  },
+  "https://www.bioconductor.org/books/release/SingleRBook/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.bioconductor.org/books/release/SingleRBook/",
+    "status": "verified",
+    "title": "Assigning cell types with SingleR"
+  },
+  "https://www.celltypist.org/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.celltypist.org/",
+    "status": "verified",
+    "title": "CellTypist | automated cell type annotation for scRNA-seq datasets"
+  },
+  "https://www.darwinsys.com/file/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.darwinsys.com/file/",
+    "status": "verified",
+    "title": "https://www.darwinsys.com/file/"
+  },
+  "https://www.ebi.ac.uk/ols4/ontologies/uberon": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.ebi.ac.uk/ols4/ontologies/uberon",
+    "status": "verified",
+    "title": "Ontology Lookup Service (OLS)"
+  },
+  "https://www.gnu.org/software/coreutils/manual/html_node/sha2-utilities.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.gnu.org/software/coreutils/manual/html_node/sha2-utilities.html",
+    "status": "verified",
+    "title": "sha2 utilities (GNU Coreutils 9.11)"
+  },
+  "https://www.nature.com/articles/nmeth.4628": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/nmeth.4628?error=cookies_not_supported&code=5d2bea06-ab5b-42d0-885b-ad7d24f554f4",
+    "status": "verified",
+    "title": "Alignment of single-cell trajectories to compare cellular expression dynamics | Nature Methods"
+  },
+  "https://www.nature.com/articles/nmeth.4644": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/nmeth.4644?error=cookies_not_supported&code=b22a9f76-55fa-4356-a61c-172a4085dc52",
+    "status": "verified",
+    "title": "scmap: projection of single-cell RNA-seq data across data sets | Nature Methods"
+  },
+  "https://www.nature.com/articles/s41467-018-07234-6": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-018-07234-6?error=cookies_not_supported&code=ee0a851a-ac53-4414-a2da-5276ae1af028",
+    "status": "verified",
+    "title": "Discovery of rare cells from voluminous single cell expression data | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-020-15296-8": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-020-15296-8?error=cookies_not_supported&code=c9e907bb-ca5d-4b40-8dd1-4d6c042286d9",
+    "status": "verified",
+    "title": "Olfactory specificity regulates lipid metabolism through neuroendocrine signaling in Caenorhabditis elegans | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-020-15523-2": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-020-15523-2?error=cookies_not_supported&code=b2843f8e-1b9d-4bc0-9e02-5959c3f1fc14",
+    "status": "verified",
+    "title": "SciBet as a portable and fast single cell type identifier | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-020-15968-5": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-020-15968-5?error=cookies_not_supported&code=041cfaba-e0d9-4ef8-abfc-421841c744fe",
+    "status": "verified",
+    "title": "Inferring spatial and signaling relationships between cells from single cell transcriptomic data | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-020-18416-6": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-020-18416-6?error=cookies_not_supported&code=56b0ca7d-98e7-4017-a304-e17c5da46662",
+    "status": "verified",
+    "title": "A multiresolution framework to characterize single-cell state landscapes | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-021-23196-8": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-021-23196-8?error=cookies_not_supported&code=b602fe1f-03d4-4c71-9c00-91fddf9d97c3",
+    "status": "verified",
+    "title": "Hierarchical progressive learning of cell identities in single-cell data | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-021-25725-x": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-021-25725-x?error=cookies_not_supported&code=7cf0526c-d142-4655-9cb2-24a6e7c01e9b",
+    "status": "verified",
+    "title": "Leveraging the Cell Ontology to classify unseen cell types | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-021-25957-x": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-021-25957-x?error=cookies_not_supported&code=7b7017d0-2d82-44d4-8fea-c526481cc5cf",
+    "status": "verified",
+    "title": "Efficient and precise single-cell reference atlas mapping with Symphony | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-022-28803-w": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-022-28803-w?error=cookies_not_supported&code=2426eb04-101c-44a3-aafc-ba52323c5427",
+    "status": "verified",
+    "title": "Fully-automated and ultra-fast cell-type identification using specific marker combinations from single-cell transcriptomic data | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-023-35923-4": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-023-35923-4?error=cookies_not_supported&code=493aee51-8fc2-41d0-9e7f-14c17cd18638",
+    "status": "verified",
+    "title": "Transformer for one stop interpretable cell type annotation | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-024-51649-3": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-024-51649-3?error=cookies_not_supported&code=74533923-b52c-4b40-9c62-ceab2a713716",
+    "status": "verified",
+    "title": "Robust identification of perturbed cell types in single-cell RNA-seq data | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-025-56523-4": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-025-56523-4?error=cookies_not_supported&code=4fd947d0-ac30-4d45-a5f7-db1f7cbc75a7",
+    "status": "verified",
+    "title": "Spatial integration of multi-omics single-cell data with SIMO | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-025-61667-4": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-025-61667-4?error=cookies_not_supported&code=7e0c5813-856d-4882-810b-7aa3b95e70e7",
+    "status": "verified",
+    "title": "High-resolution mapping of single cells in spatial context | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41467-026-71180-x": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41467-026-71180-x?error=cookies_not_supported&code=9d595907-44b9-46e6-b49b-84716ecc3302",
+    "status": "verified",
+    "title": "Cell neighborhood topology directs rare cell population identification | Nature Communications"
+  },
+  "https://www.nature.com/articles/s41586-023-06139-9": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41586-023-06139-9?error=cookies_not_supported&code=351a8f2f-986d-4c26-bd79-8d4ebc83de98",
+    "status": "verified",
+    "title": "Transfer learning enables predictions in network biology | Nature"
+  },
+  "https://www.nature.com/articles/s41586-024-08411-y": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41586-024-08411-y?error=cookies_not_supported&code=af82a2a3-3173-4359-8315-9e5c68faabcb",
+    "status": "verified",
+    "title": "A cell atlas foundation model for scalable search of similar human cells | Nature"
+  },
+  "https://www.nature.com/articles/s41586-026-10689-z": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41586-026-10689-z?error=cookies_not_supported&code=80bca959-190d-4afc-b9a8-c320752d51dd",
+    "status": "verified",
+    "title": "Universal cell embedding provides a foundation model for cell biology | Nature"
+  },
+  "https://www.nature.com/articles/s41587-021-00830-w": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41587-021-00830-w?error=cookies_not_supported&code=4cb2fca2-7e4c-46f8-9422-fe06a6ddd400",
+    "status": "verified",
+    "title": "Robust decomposition of cell type mixtures in spatial transcriptomics | Nature Biotechnology"
+  },
+  "https://www.nature.com/articles/s41587-021-01001-7": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41587-021-01001-7?error=cookies_not_supported&code=6ea319fb-c2db-4237-8a75-2dab5055704a",
+    "status": "verified",
+    "title": "Mapping single-cell data to reference atlases by transfer learning | Nature Biotechnology"
+  },
+  "https://www.nature.com/articles/s41587-021-01091-3": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41587-021-01091-3?error=cookies_not_supported&code=792347e6-a2db-4119-a4a5-9f83983772e1",
+    "status": "verified",
+    "title": "Identifying phenotype-associated subpopulations by integrating bulk and single-cell sequencing data | Nature Biotechnology"
+  },
+  "https://www.nature.com/articles/s41587-022-01233-1": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41587-022-01233-1?error=cookies_not_supported&code=0a41e065-7536-45b7-ac23-50aa5cf9bcfc",
+    "status": "verified",
+    "title": "Spatial charting of single-cell transcriptomes in tissues | Nature Biotechnology"
+  },
+  "https://www.nature.com/articles/s41588-024-01993-3": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41588-024-01993-3?error=cookies_not_supported&code=069adc58-0666-4245-856c-e74ba63cccc6",
+    "status": "verified",
+    "title": "Consensus prediction of cell type labels in single-cell data with popV | Nature Genetics"
+  },
+  "https://www.nature.com/articles/s41590-018-0276-y": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41590-018-0276-y?error=cookies_not_supported&code=8c7c50c3-9a5a-402b-98a1-b10f0e044285",
+    "status": "verified",
+    "title": "Reference-based analysis of lung single-cell sequencing reveals a transitional profibrotic macrophage | Nature Immunology"
+  },
+  "https://www.nature.com/articles/s41592-018-0229-2": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-018-0229-2?error=cookies_not_supported&code=6883f3ff-b213-4db9-996d-05617552a3a3",
+    "status": "verified",
+    "title": "Deep generative modeling for single-cell transcriptomics | Nature Methods"
+  },
+  "https://www.nature.com/articles/s41592-019-0529-1": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-019-0529-1?error=cookies_not_supported&code=3b20fed3-c232-41c6-83f0-c01986677926",
+    "status": "verified",
+    "title": "Probabilistic cell-type assignment of single-cell RNA-seq for tumor microenvironment profiling | Nature Methods"
+  },
+  "https://www.nature.com/articles/s41592-019-0535-3": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-019-0535-3?error=cookies_not_supported&code=4858551d-05bb-4d88-9223-ea18d86e472d",
+    "status": "verified",
+    "title": "Supervised classification enables rapid annotation of cell atlases | Nature Methods"
+  },
+  "https://www.nature.com/articles/s41592-019-0619-0": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-019-0619-0?error=cookies_not_supported&code=94fb46f1-aeaa-4cb6-beff-06d9e7f047c8",
+    "status": "verified",
+    "title": "Fast, sensitive and accurate integration of single-cell data with Harmony | Nature Methods"
+  },
+  "https://www.nature.com/articles/s41592-021-01336-8": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-021-01336-8?error=cookies_not_supported&code=38467b87-8aaa-4eb7-bf03-d13bf5c20700",
+    "status": "verified",
+    "title": "Benchmarking atlas-level data integration in single-cell genomics | Nature Methods"
+  },
+  "https://www.nature.com/articles/s41592-023-02035-2": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-023-02035-2?error=cookies_not_supported&code=6dfe2faf-7186-4c0e-ac60-3f25455a569e",
+    "status": "verified",
+    "title": "Population-level integration of single-cell datasets enables multi-scale analysis across samples | Nature Methods"
+  },
+  "https://www.nature.com/articles/s41592-024-02201-0": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-024-02201-0?error=cookies_not_supported&code=59290e8e-9eb0-4550-9b90-2ef2ddacdde9",
+    "status": "verified",
+    "title": "scGPT: toward building a foundation model for single-cell multi-omics using generative AI | Nature Methods"
+  },
+  "https://www.nature.com/articles/s41592-025-02814-z": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s41592-025-02814-z?error=cookies_not_supported&code=68d846ab-8a51-4077-bcf2-06c53187d355",
+    "status": "verified",
+    "title": "Nicheformer: a foundation model for single-cell and spatial omics | Nature Methods"
+  },
+  "https://www.nature.com/articles/s42003-026-10382-x": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.nature.com/articles/s42003-026-10382-x?error=cookies_not_supported&code=6499da72-bd72-4957-a442-378d2ea62312",
+    "status": "verified",
+    "title": "ScQCenrich enables multi-metric quality control for single-cell RNA sequencing | Communications Biology"
+  },
+  "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE221592": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE221592",
+    "status": "verified",
+    "title": "GEO Accession viewer"
+  },
+  "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE76381": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE76381",
+    "status": "verified",
+    "title": "GEO Accession viewer"
+  },
+  "https://www.openpolicyagent.org/docs": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.openpolicyagent.org/docs",
+    "status": "verified",
+    "title": "Open Policy Agent (OPA) | Open Policy Agent"
+  },
+  "https://www.pmda.go.jp/files/000277800.pdf": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.pmda.go.jp/files/000277800.pdf",
+    "status": "verified",
+    "title": "https://www.pmda.go.jp/files/000277800.pdf"
+  },
+  "https://www.pymc.io/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.pymc.io/",
+    "status": "verified",
+    "title": "https://www.pymc.io/"
+  },
+  "https://www.researchobject.org/ro-crate/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.researchobject.org/ro-crate/",
+    "status": "verified",
+    "title": "Research Object Crate (RO-Crate)"
+  },
+  "https://www.researchobject.org/ro-crate/specification/1.3/introduction.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.researchobject.org/ro-crate/specification/1.3/introduction.html",
+    "status": "verified",
+    "title": "Introduction | Research Object Crate (RO-Crate)"
+  },
+  "https://www.rfc-editor.org/rfc/rfc8785.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.rfc-editor.org/rfc/rfc8785.html",
+    "status": "verified",
+    "title": "RFC 8785: JSON Canonicalization Scheme (JCS)"
+  },
+  "https://www.statsmodels.org/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.statsmodels.org/",
+    "status": "verified",
+    "title": "https://www.statsmodels.org/"
+  },
+  "https://www.statsmodels.org/stable/stats.html": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.statsmodels.org/stable/stats.html",
+    "status": "verified",
+    "title": "Statistics stats - statsmodels 0.14.6"
+  },
+  "https://www.w3.org/TR/prov-o/": {
+    "checked_at": "2026-08-10",
+    "http_status": 200,
+    "resolved_url": "https://www.w3.org/TR/prov-o/",
+    "status": "verified",
+    "title": "PROV-O: The PROV Ontology"
+  }
+}

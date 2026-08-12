@@ -1,108 +1,76 @@
-<p align="center">
-  <img src="docs/assets/bridge-overview.png?raw=true&v=20260506" alt="BRIDGE workflow overview" width="100%">
-</p>
-
-<p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/status-research%20software-8fb8f7?style=flat-square">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-f2b8a8?style=flat-square">
-  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-2f6f68?style=flat-square">
-  <a href="docs/formal_workflows.md"><img alt="Docs" src="https://img.shields.io/badge/docs-workflows-5bbfb1?style=flat-square"></a>
-  <a href="docs/agent_demo.md"><img alt="Demo" src="https://img.shields.io/badge/demo-agent%20workflow-7f6bb2?style=flat-square"></a>
-</p>
-
 # BRIDGE
 
-**A developmental-reference evaluation platform for pre-transplant mDA progenitor cell products.**
+**Development-aware transcriptomic evidence for cell-therapy products.**
 
-<em>🌉 Candidate discovery, identity stability, and multidimensional developmental concordance.</em>
+Parkinson's disease hPSC-derived midbrain dopaminergic (hPSC-mDA) products are the first biological instance.
 
-## 🧭 Background
+![BRIDGE connects human fetal references and a pre-transplant cell product to five evidence domains and traceable outputs.](docs/assets/bridge-biological-workflow.svg)
 
-Stem-cell-based replacement therapy is an important regenerative strategy for Parkinsonian dopaminergic circuit repair. Pre-transplant mDA progenitor products are evaluated as developmentally staged cells with defined regional identity, fate stability, and subsequent differentiation potential.
+## Biological question
 
-BRIDGE uses human embryonic ventral midbrain references to guide candidate-cell discovery, target identity assessment, and multidimensional developmental concordance scoring. The workflow organizes single-cell evidence for quality control, process optimization, and cross-protocol comparison.
+Given a pre-transplant cell product, which intended developmental and regional identities are supported by its transcriptome, where does the full composition diverge, and which uncertainties should be tested next?
 
-| Evaluation layer | Biological focus |
-| --- | --- |
-| **Developmental reference** | Human embryonic ventral midbrain programs as the in vivo baseline. |
-| **Candidate identity** | Calibrated probability, prediction variability, and entropy. |
-| **Composite Likeness Score** | Identity, expression, transferability, neighborhood, trajectory, and regulon concordance. |
+## Five evidence domains
 
-## ✨ Workflow
+| Domain | Evidence question |
+|---|---|
+| Target identity | Are the intended lineage and cell states represented? |
+| Regional fidelity | Does the product support the intended anatomical identity rather than an off-axis fate? |
+| Developmental compatibility | How does the product align with a researcher-defined developmental window? |
+| Off-target control | What target, adjacent, off-axis, and unresolved states make up the whole product? |
+| Process integrity | Which proliferation, stress, and residual pluripotency-like transcriptomic signals require review? |
 
-| Step | Role | Output |
-| --- | --- | --- |
-| **Step0** | Prepare environment, config, model assets, and run directory. | Ready-to-run workspace |
-| **Step1** | Map one in vitro `.h5ad` against a whole-brain reference. | RG candidate annotations and Step1 report |
-| **Step2** | Refine mDA progenitor identity with probability and uncertainty. | Candidate-bearing data, thresholds, probability tables, Step2 report |
-| **Step3** | Quantify developmental concordance with CLS components A-F. | Component scores, weighted CLS, single-dataset and protocol-comparison reports |
+## Current biological progress
 
-## 🚀 Getting Started
+The first pilot asked whether fetal ventral-midbrain references can identify intended
+states in a pre-transplant product while refusing unrelated neural and non-neural
+cells.
 
-### Installation
+| Biological question | Data examined | Current finding | Meaning for product evaluation |
+|---|---|---|---|
+| Can broad fetal ventral-midbrain states be recognized? | Donor-aware Chen vMB scRNA-seq splits | Several methods recover broad states, with uneven performance across labels | Exploratory state composition is possible, but no state is released for formal reporting |
+| Can fine RG/Nb-derived states be separated? | Seven priority L2 states | Some methods separate these states internally, but external support and marker review are incomplete | Fine regional or developmental claims remain unavailable |
+| Can unrelated cells be rejected? | Cortical organoid, neural crest, motor-neuron and mesenchymal OOD data | Tested inductive methods can force these cells into known ventral-midbrain labels | Formal target, regional-fidelity and off-target conclusions are blocked |
+| Can markers provide an independent check? | Internal marker/program cards | Negative-marker coverage is incomplete and all seven L2 marker cards remain unfrozen | Marker evidence remains a shadow interpretation channel |
 
-```bash
-pip install git+https://github.com/starvingarc/BRIDGE.git
-# or, from a cloned source tree:
-pip install -e ".[workflow]"
-```
+The next scientific step is the **P0-02 External-Source Freeze Candidate**: review
+the 25 state definitions and marker cards together with the ProductDefinitionCard
+and StateRoleMap, then sign the FreezeGate before any locked runner is implemented
+or run. Unresolved Nb boundaries remain provisional or unavailable.
 
-For agent-assisted setup, send this prompt to your coding agent:
+## Repository status
 
-```text
-Help me install https://github.com/starvingarc/BRIDGE
-```
+| Package | Status |
+|---|---|
+| P0-01 Input Audit & QC | Executable candidate |
+| P0-02 Cell-State Evidence | Executable shadow; no state or method frozen |
+| P0-03 onward | Scientific contracts only; executors pending |
 
-### Agent-Guided Workflow
-
-BRIDGE includes repository-local skills that guide an agent through reproducible Step0-Step3 notebooks. Use the prefix supported by your agent, for example `/bridge-step1` or `@bridge-step1`.
-
-| Step | Skill | Output |
-| --- | --- | --- |
-| Step0 | `bridge-step0` | Environment, assets, config, and run directory |
-| Step1 | `bridge-step1` | Prescreened data, RG candidates, and notebook report |
-| Step2 | `bridge-step2` | Identity candidates, thresholds, probabilities, and notebook report |
-| Step3 | `bridge-step3` | CLS component scores and protocol comparison |
-
-Full copy-paste demo prompts are in [docs/agent_demo.md](docs/agent_demo.md). Model assets are declared in [models/assets.json](models/assets.json) and fetched separately from public object storage.
-
-### Python Usage
-
-```python
-from bridge.prescreen import prescreen
-from bridge.identity import identify
-from bridge.cls import CLSContext, component_A, component_B, component_C, component_D, component_E, component_F, score
-
-from bridge.prescreen.report import write_report as write_prescreen_report
-from bridge.identity.report import write_report as write_identity_report
-from bridge.cls.report import write_report as write_cls_report, compare_reports
-```
-
-Each step is a Python function that can be used in notebooks or scripts. Report modules provide displayable table/figure helpers and writers for reproducible artifacts under `report/`.
-
-## 🗺️ Explore
-
-- [Agent demo script](docs/agent_demo.md)
-- [Skills](docs/skills.md)
-- [Formal workflows](docs/formal_workflows.md)
-- [Thesis-to-code mapping](docs/thesis_to_code.md)
-- [Roadmap](docs/roadmap.md)
-
-## 🛠️ Development
+## Minimal usage
 
 ```bash
-PYTHONPATH=src pytest -q
+python -m pip install -e ".[qc]"
+bridge-tool list
+bridge-tool describe P0-02
+bridge-tool validate --request request.json
+bridge-tool run --request request.json
 ```
 
-```text
-src/bridge/        Python package
-configs/           public config templates
-models/            model metadata and asset entry point
-notebooks/         curated notebook examples; generated notebooks are run artifacts
-docs/              workflow documentation and roadmap
-.claude/skills/    repository-local Step0-Step3 skills
-```
+Each run preserves the input and records the applicable measurement, reference, method, artifact, and checksum provenance.
 
-## Citation
+## Scientific boundaries
 
-BRIDGE is research software under active development. If you use it in a study, please cite the repository and include the commit hash used for analysis.
+- BRIDGE reports research-use transcriptomic evidence, uncertainty, and evidence gaps.
+- Missing, unresolved, and out-of-reference evidence is not treated as a negative result.
+- Candidate or shadow evidence does not establish clinical efficacy, safety, potency, GMP release, or an absolute product ranking.
+- Post-transplant graft evidence is analyzed independently and is not back-propagated into the pre-transplant profile.
+- No frozen P0 domain score is currently published.
+
+## Documentation
+
+- [Documentation index](docs/index.md)
+- [Product requirements](docs/BRIDGE_PRD.md)
+- [Scientific principles](docs/product-principles.md)
+- [Tool Package cards](tool_packages/)
+- [Method and source knowledge](knowledge/README.md)
+- [Agent integration](docs/agent-integration.md)

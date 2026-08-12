@@ -1,0 +1,43 @@
+measurement_spec_id: CELLSTATE-snRNA-shadow-v0.1
+version: 0.1.0
+scientific_question: What cell-state identities are supported by source-aware fetal ventral-midbrain references for a declared snRNA-seq product or preparation?
+assay: snRNA-seq
+status: candidate_shadow
+applicable_product_cards:
+  - PD-hPSC-mDA-draft
+input_contract:
+  formats: [h5ad]
+  supported_levels: [analysis_ready, count_ready]
+  requires_qc_profile_ref: true
+  required_reference_roles: [primary]
+analysis_unit: nucleus
+raw_metric_definition:
+  primary: source-specific Spearman support to sample-by-label pseudobulk profiles
+  sensitivity: cosine similarity and marker-program expression evidence
+denominator: all nuclei in the declared post-QC input view
+direction: descriptive_support_only
+uncertainty_method: source disagreement and per-source margin; no probability calibration
+minimum_data:
+  minimum_shared_genes: 100
+  minimum_marker_genes: 2
+missing_behavior: unavailable; never impute a label or convert missing support to negative evidence
+tool_refs:
+  - P0-02
+  - METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-68029D
+  - METHOD-BRIDGE-INTERNAL-MARKER-PROGRAM-EVIDENCE
+reference_refs:
+  - REF-PD-vMB-CELLSTATE-v0.2
+prior_refs:
+  - BRIDGE-PD-vMB-ANNOTATION-v0.1-draft
+  - BRIDGE-PD-vMB-MARKERS-v0.1-draft
+validation_ref: VALIDATION-CELLSTATE-v0.1-draft
+exclusion_rules:
+  competitor_source_families:
+    - STUDER
+    - CAPYBARABRAIN
+    - STUDERCAPYBARABRAIN
+    - HDNA
+    - STUDERHDNA
+    - FETALATLAS
+    - STUDERFETALATLAS
+    - EMTAB14729

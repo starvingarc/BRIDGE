@@ -1,0 +1,27 @@
+{
+  "assets": [
+    {
+      "assay": "scRNA-seq",
+      "asset_id": "example-counts",
+      "format": "h5ad",
+      "input_level": "count_ready",
+      "matrix_location": "layers/counts",
+      "matrix_semantics": "raw_counts",
+      "metadata": {
+        "capture_id_column": "capture_id",
+        "gene_symbol_column": "gene_symbol",
+        "sample_id_column": "sample_id"
+      },
+      "path": "/tmp/bridge-example/product-counts.h5ad"
+    }
+  ],
+  "measurement_spec_ref": "QC-scRNA-candidate-v0.1",
+  "output_dir": "/tmp/bridge-example/output",
+  "parameters": {
+    "run_scrublet": false
+  },
+  "random_seed": 0,
+  "request_id": "example-p0-01-count-ready",
+  "tool_id": "P0-01",
+  "tool_version": "0.1.0"
+}
