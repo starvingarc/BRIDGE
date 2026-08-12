@@ -74,7 +74,7 @@ def audit_external_source_lineage(
     external_roots = set(lineage_map.external_holdout_roots)
     prohibited: list[dict[str, str]] = []
     for asset in lineage_map.assets:
-        overlap = sorted(roots(asset.asset_id) & external_roots)
+        overlap = sorted(roots(asset.asset_id, set()) & external_roots)
         if asset.candidate_decision in fitting_roles and overlap:
             prohibited.extend(
                 {
@@ -101,7 +101,8 @@ def audit_external_source_lineage(
         "lineage_map_sha256": _sha256(lineage_map_path),
         "prohibited_overlap_count": 0,
         "resolved_roots": {
-            asset.asset_id: sorted(roots(asset.asset_id)) for asset in lineage_map.assets
+            asset.asset_id: sorted(roots(asset.asset_id, set()))
+            for asset in lineage_map.assets
         },
         "status": "passed",
         "version": lineage_map.version,
