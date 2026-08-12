@@ -197,7 +197,8 @@ def test_prepare_birtele_asset_rejects_gene_order_mismatch(tmp_path: Path) -> No
     path = source_dir / file_name
     _write_matrix(path, accession, genes=["LMX1A", "TH"], values=[[2], [1]])
     payload = yaml.safe_load(sample_map.read_text())
-    payload["samples"][0]["sha256"] = _sha256(path)
+    sample = next(item for item in payload["samples"] if item["geo_accession"] == accession)
+    sample["sha256"] = _sha256(path)
     sample_map.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
     with pytest.raises(BirteleAssetError, match=f"gene_order_mismatch:{accession}"):
