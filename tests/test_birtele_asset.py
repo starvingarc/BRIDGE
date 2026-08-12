@@ -123,7 +123,7 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
         yaml.safe_dump(
             {
                 "dataset_id": "GSE192405",
-                "version": "1.0",
+                "version": "1.1",
                 "source_archive": {
                     "file_name": "GSE192405_RAW.tar",
                     "sha256": _sha256(source_root / "GSE192405_RAW.tar"),

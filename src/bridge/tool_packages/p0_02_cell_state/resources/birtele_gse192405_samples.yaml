@@ -1,5 +1,5 @@
 dataset_id: GSE192405
-version: "1.0"
+version: "1.1"
 source_archive:
   file_name: GSE192405_RAW.tar
   sha256: d86d167e39ea025ec3f8bce2b00c252e38a4bbc73dde2207d7d8321dd623836e
@@ -21,9 +21,25 @@ metadata_sources:
     kind: publication_table
     sha256: 6a08c039a135c211e03da44d8dc592a934bbecafaae78a9dbb2b2d08755d9a75
     source_url: https://www.biologists.com/DEV_Movies/DEV200504/TableS1.xlsx
+external_asset_review:
+  status: conditionally_approved
+  decision_date: "2026-08-12"
+  reviewer_role: project_scientific_lead
+  permitted_uses:
+    - source_level_external_holdout
+    - stage_level_descriptive_analysis
+    - provisional_group_sensitivity
+  prohibited_uses:
+    - biological_replicate_estimation
+    - donor_level_inference
+    - method_or_state_promotion_without_remaining_freeze_gates
+  conditions:
+    - GEO samples, cells and culture conditions remain ineligible as biological replicates.
+    - GSM5746439 and GSM5746445 remain ambiguous between the 7.3-week single-3D and 8-week four-condition culture groups.
+    - No method, state, threshold or product role is promoted by this decision.
 sample_unit_limitations:
-  - Four uncultured GEO matrices sum to the 23,483 cells reported by the publication from three fetuses; the public records do not identify which matrices share a fetus.
-  - Nine cultured GEO matrices cannot be assigned to the three culture donors described in Table S1 without inference from incomplete or conflicting public metadata.
+  - The primary matrices reconcile exactly to the publication's 6-week, 8-week and 11-week analysis totals, but the 11-week group consists of two GEO samples with distinct age labels and BioSample records.
+  - The cultured matrices reconcile to Table S1 only as provisional groups; GSM5746439 and GSM5746445 have two unresolved assignments because public metadata are incomplete or conflicting.
 expected_gene_order_sha256: 643be392404f6fc4c10ca6dce2abc3d10b07de0df9ed9e100826f26fe4939cd9
 samples:
   - geo_accession: GSM5746439
@@ -40,6 +56,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7P3W, BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: Table S1 contains one 7.3-week 3D day-15 group and one 8-week four-condition group; public metadata do not distinguish this matrix from GSM5746445.
     technical_subdivision_id: GSM5746439
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -57,6 +76,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The shared hVM2096 title stem and complementary culture condition reconcile this matrix with three of the four 8-week Table S1 conditions.
     technical_subdivision_id: GSM5746440
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -74,6 +96,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The shared hVM2096 title stem and complementary culture condition reconcile this matrix with three of the four 8-week Table S1 conditions.
     technical_subdivision_id: GSM5746441
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -91,6 +116,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The shared hVM2096 title stem and complementary culture condition reconcile this matrix with three of the four 8-week Table S1 conditions.
     technical_subdivision_id: GSM5746442
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -108,6 +136,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The seven-week title and complementary 2D/3D day-14/day-30 matrices reconcile this sample with the four-condition 7-week Table S1 row.
     technical_subdivision_id: GSM5746443
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -125,6 +156,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The seven-week title and complementary 2D/3D day-14/day-30 matrices reconcile this sample with the four-condition 7-week Table S1 row.
     technical_subdivision_id: GSM5746444
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -142,6 +176,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7P3W, BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: Table S1 contains one 7.3-week 3D day-15 group and one 8-week four-condition group; the conflicting GEO title, source and characteristics do not distinguish this matrix from GSM5746439.
     technical_subdivision_id: GSM5746445
     replicate_eligibility: not_estimable
     metadata_conflicts:
@@ -160,6 +197,9 @@ samples:
     specimen_class: primary_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-PRIMARY-11W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: This matrix and GSM5746447 sum to 8,736 cells, exactly matching the publication's 11-week analysis group after the 6-week and 8-week groups are reconciled.
     technical_subdivision_id: GSM5746446
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -177,6 +217,9 @@ samples:
     specimen_class: primary_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-PRIMARY-11W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: This matrix and GSM5746446 sum to 8,736 cells, exactly matching the publication's 11-week analysis group after the 6-week and 8-week groups are reconciled.
     technical_subdivision_id: GSM5746447
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -194,6 +237,9 @@ samples:
     specimen_class: primary_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-PRIMARY-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The GEO age label and 8,113 cells exactly match the publication's 8-week analysis group.
     technical_subdivision_id: GSM5746448
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -211,6 +257,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The seven-week title and complementary 2D/3D day-14/day-30 matrices reconcile this sample with the four-condition 7-week Table S1 row.
     technical_subdivision_id: GSM5746449
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -228,6 +277,9 @@ samples:
     specimen_class: cultured_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The seven-week title and complementary 2D/3D day-14/day-30 matrices reconcile this sample with the four-condition 7-week Table S1 row.
     technical_subdivision_id: GSM5746450
     replicate_eligibility: not_estimable
     metadata_conflicts: []
@@ -245,6 +297,9 @@ samples:
     specimen_class: primary_tissue
     biological_unit_id: null
     biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-PRIMARY-6W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The GEO age label and 6,634 cells exactly match the publication's 6-week analysis group.
     technical_subdivision_id: GSM5746451
     replicate_eligibility: not_estimable
     metadata_conflicts: []

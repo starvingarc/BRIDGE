@@ -30,7 +30,7 @@ BIRTELE_FILES: dict[str, str] = {
     "GSM5746451": "GSM5746451_MP06-hVM-6wks.csv.gz",
 }
 
-CONVERTER_VERSION = "0.1.0"
+CONVERTER_VERSION = "0.2.0"
 _CHUNK_SIZE = 256
 _TSV_FIELDS = (
     "geo_accession",
@@ -45,6 +45,9 @@ _TSV_FIELDS = (
     "published_age",
     "biological_unit_id",
     "biological_unit_status",
+    "provisional_group_ids",
+    "provisional_group_status",
+    "provisional_group_basis",
     "technical_subdivision_id",
     "replicate_eligibility",
     "metadata_conflicts",
@@ -81,6 +84,27 @@ class _PublishedCharacteristics(_StrictModel):
     age: str | None = None
 
 
+class _ExternalAssetReview(_StrictModel):
+    status: Literal["conditionally_approved"]
+    decision_date: str = Field(pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+    reviewer_role: Literal["project_scientific_lead"]
+    permitted_uses: list[
+        Literal[
+            "source_level_external_holdout",
+            "stage_level_descriptive_analysis",
+            "provisional_group_sensitivity",
+        ]
+    ] = Field(min_length=1)
+    prohibited_uses: list[
+        Literal[
+            "biological_replicate_estimation",
+            "donor_level_inference",
+            "method_or_state_promotion_without_remaining_freeze_gates",
+        ]
+    ] = Field(min_length=1)
+    conditions: list[str] = Field(min_length=1)
+
+
 class _SampleRecord(_StrictModel):
     geo_accession: str = Field(pattern=r"^GSM[0-9]+$")
     file_name: str
@@ -92,6 +116,9 @@ class _SampleRecord(_StrictModel):
     specimen_class: Literal["primary_tissue", "cultured_tissue"]
     biological_unit_id: str | None
     biological_unit_status: Literal["resolved", "unresolved_public_mapping"]
+    provisional_group_ids: list[str] = Field(min_length=1)
+    provisional_group_status: Literal["provisional_inferred"]
+    provisional_group_basis: str = Field(min_length=1)
     technical_subdivision_id: str
     replicate_eligibility: Literal["eligible", "descriptive_only", "not_estimable"]
     metadata_conflicts: list[str]
@@ -102,14 +129,19 @@ class _SampleRecord(_StrictModel):
             raise ValueError("resolved biological unit requires biological_unit_id")
         if self.biological_unit_status == "unresolved_public_mapping" and self.biological_unit_id:
             raise ValueError("unresolved biological unit cannot have biological_unit_id")
+        if self.provisional_group_status == "provisional_inferred" and (
+            self.biological_unit_id is not None or self.replicate_eligibility != "not_estimable"
+        ):
+            raise ValueError("provisional groups cannot establish biological replicates")
         return self
 
 
 class _SampleMap(_StrictModel):
     dataset_id: Literal["GSE192405"]
-    version: str
+    version: Literal["1.1"]
     source_archive: _SourceArchive
     metadata_sources: list[_MetadataSource] = Field(min_length=1)
+    external_asset_review: _ExternalAssetReview
     sample_unit_limitations: list[str] = Field(min_length=1)
     expected_gene_order_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     samples: list[_SampleRecord]
@@ -120,7 +152,7 @@ def prepare_birtele_asset(
     sample_map_path: Path,
     output_dir: Path,
 ) -> dict[str, object]:
-    """Convert the fixed GSE192405 processed matrices without inferring donors."""
+    """Convert GSE192405 while keeping inferred groups separate from biological units."""
     sample_map = _load_sample_map(sample_map_path)
     samples = _ordered_samples(sample_map)
     _validate_provenance_files(source_root, sample_map)
@@ -170,8 +202,10 @@ def prepare_birtele_asset(
         "matrix_semantics": "raw_counts",
         "raw_reads_public": False,
         "sample_map_version": sample_map.version,
+        "external_asset_review_status": sample_map.external_asset_review.status,
         "sample_unit_boundary": (
-            "GEO samples are technical subdivisions; unresolved biological units are not replicates"
+            "Provisional groups support sensitivity analysis only; GEO samples, cells and "
+            "culture conditions are not biological replicates"
         ),
     }
 
@@ -195,6 +229,7 @@ def prepare_birtele_asset(
         "input_sample_map_sha256": _sha256(sample_map_path),
         "matrix_location": "X",
         "matrix_semantics": "raw_counts",
+        "external_asset_review_status": sample_map.external_asset_review.status,
         "n_obs": int(combined.shape[0]),
         "n_samples": len(samples),
         "n_vars": int(combined.shape[1]),
@@ -327,6 +362,9 @@ def _observation_row(sample: _SampleRecord, cell_id: str) -> dict[str, str]:
         "published_age": characteristics.age or "",
         "biological_unit_id": sample.biological_unit_id or "",
         "biological_unit_status": sample.biological_unit_status,
+        "provisional_group_ids": " | ".join(sample.provisional_group_ids),
+        "provisional_group_status": sample.provisional_group_status,
+        "provisional_group_basis": sample.provisional_group_basis,
         "technical_subdivision_id": sample.technical_subdivision_id,
         "replicate_eligibility": sample.replicate_eligibility,
         "metadata_conflicts": " | ".join(sample.metadata_conflicts),
@@ -353,6 +391,9 @@ def _write_sample_map(path: Path, samples: list[_SampleRecord]) -> None:
                     "published_age": characteristics.age or "",
                     "biological_unit_id": sample.biological_unit_id or "",
                     "biological_unit_status": sample.biological_unit_status,
+                    "provisional_group_ids": " | ".join(sample.provisional_group_ids),
+                    "provisional_group_status": sample.provisional_group_status,
+                    "provisional_group_basis": sample.provisional_group_basis,
                     "technical_subdivision_id": sample.technical_subdivision_id,
                     "replicate_eligibility": sample.replicate_eligibility,
                     "metadata_conflicts": " | ".join(sample.metadata_conflicts),
@@ -364,6 +405,7 @@ def _source_manifest(sample_map: _SampleMap, samples: list[_SampleRecord]) -> di
     return {
         "dataset_id": "GSE192405",
         "raw_reads_public": False,
+        "external_asset_review": sample_map.external_asset_review.model_dump(mode="json"),
         "metadata_sources": [source.model_dump(mode="json") for source in sample_map.metadata_sources],
         "sample_unit_limitations": sample_map.sample_unit_limitations,
         "source_archive": sample_map.source_archive.model_dump(mode="json"),
@@ -387,10 +429,16 @@ def _qc_report(
 ) -> dict[str, object]:
     unresolved = sum(sample.biological_unit_id is None for sample in samples)
     resolved_units = {sample.biological_unit_id for sample in samples if sample.biological_unit_id}
+    provisional_groups = {
+        group_id for sample in samples for group_id in sample.provisional_group_ids
+    }
     return {
         "all_counts_finite": True,
         "all_counts_integer": True,
         "all_counts_nonnegative": True,
+        "ambiguous_provisional_sample_count": sum(
+            len(sample.provisional_group_ids) > 1 for sample in samples
+        ),
         "dataset_id": "GSE192405",
         "duplicate_cell_count": len(observation_ids) - len(set(observation_ids)),
         "duplicate_feature_count": len(genes) - len(set(genes)),
@@ -398,6 +446,10 @@ def _qc_report(
         "n_obs": int(matrix.shape[0]),
         "n_samples": len(samples),
         "n_vars": int(matrix.shape[1]),
+        "provisional_group_count": len(provisional_groups),
+        "replicate_eligible_sample_count": sum(
+            sample.replicate_eligibility == "eligible" for sample in samples
+        ),
         "resolved_biological_unit_count": len(resolved_units),
         "status": "passed_with_unresolved_sample_units" if unresolved else "passed",
         "unresolved_sample_count": unresolved,
