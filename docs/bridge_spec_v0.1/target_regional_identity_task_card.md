@@ -26,7 +26,7 @@
 - Regional Fidelity 的正式候选分母为 target-related cells；同时单列完整制剂中的区域支持比例。
 - 区域身份、细胞谱系和发育阶段分别判断。体外分化日不能自动换算为 GW/PCW。
 - 体外产品 scRNA 投射到人胚空间参考称为 **Spatial Reference Projection**，不表示产品具有真实组织空间结构。
-- 非目标细胞和异常状态传递给 Off-target Control 与 Process Integrity，不在本模块重复定义。
+- 非目标细胞和异常状态传递给 Off-target Control 与 Proliferation & Stress Response，不在本模块重复定义。
 - 输出仅表示转录组证据相容性，不表示临床疗效、安全性、potency、GMP 放行或绝对产品优劣。
 
 ## 3. 当前 Reference
@@ -53,7 +53,7 @@
 | `lineage_role` | `target` / `acceptable_adjacent` / `not_target` / `unresolved` |
 | `regional_role` | `target_region` / `acceptable_adjacent_region` / `regional_shift` / `not_applicable` / `unresolved` |
 | `stage_role` | 交给 Developmental Compatibility 单独判断 |
-| `process_role` | 交给 Process Integrity 单独判断 |
+| `process_role` | 交给 Proliferation & Stress Response 单独判断 |
 
 首张 Card 的候选逻辑为：`RG_mFP`、`Nb_mFP` 和早期/成熟 `Neuron_DA` 分别报告，不合并成一个目标比例；mFP progenitor 提供主要 target/region 支持，`Nb_mFP` 和早期 DA 状态是否属于 target 或 `acceptable_adjacent` 由研究者确认。`mBMP/mBIP`、AP、MHB、前脑、间脑和后脑先作为待核实的区域状态或偏移方向，不依据标签名称直接冻结角色。所有映射必须经生物学审核，文献 marker 不能单独决定角色。
 

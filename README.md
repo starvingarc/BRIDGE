@@ -18,7 +18,7 @@ Given a pre-transplant cell product, which intended developmental and regional i
 | Regional fidelity | Does the product support the intended anatomical identity rather than an off-axis fate? |
 | Developmental compatibility | How does the product align with a researcher-defined developmental window? |
 | Off-target control | What target, adjacent, off-axis, and unresolved states make up the whole product? |
-| Process integrity | Which proliferation, stress, and residual pluripotency-like transcriptomic signals require review? |
+| Proliferation & Stress Response | Without reassigning cell identity or composition, which stage-conditioned proliferation, stress-response, death-associated, or residual pluripotency-like transcriptomic signals require review? |
 
 ## Current biological progress
 

@@ -10,6 +10,11 @@ from bridge.toolkit.knowledge import KnowledgeRegistry
 def test_catalog_preserves_all_capability_bindings_and_resolves_methods() -> None:
     registry = KnowledgeRegistry.load_default()
     summary = registry.validation_summary()
+    repo = Path(__file__).resolve().parents[1]
+    seed = json.loads(
+        (repo / "catalog_seed" / "tool_registry_rows.json").read_text(encoding="utf-8")
+    )
+    p0_06_rows = [row for row in seed["rows"] if row["module_id"] == "P0-06"]
 
     assert summary["valid"] is True
     assert summary["binding_count"] == 396
@@ -25,6 +30,8 @@ def test_catalog_preserves_all_capability_bindings_and_resolves_methods() -> Non
     assert summary["formal_eligible_method_count"] == 0
     assert summary["dangling_method_refs"] == []
     assert summary["dangling_source_refs"] == []
+    assert len(p0_06_rows) == 39
+    assert {row["module"] for row in p0_06_rows} == {"Proliferation & Stress Response"}
 
 
 def test_every_method_has_logical_catalog_ref_and_source_or_explicit_reason() -> None:

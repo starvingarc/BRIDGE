@@ -1,27 +1,27 @@
-# BRIDGE P0 Process Integrity 任务卡
+# BRIDGE P0 Proliferation & Stress Response 任务卡
 
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.1` |
-| 日期 | 2026-08-06 |
+| 文档版本 | `0.1.1` |
+| 日期 | 2026-08-12 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
 | 上游输入 | `ProductCase`、`QCReadinessProfile`、`CellStateEvidenceProfile`、`DevelopmentWindowSpec`、`ProtocolIR` |
-| 主要输出 | `ProcessIntegrityProfile`、`TranscriptomicReviewFlag[]` |
+| 主要输出 | `ProliferationStressResponseProfile`、`TranscriptomicReviewFlag[]` |
 
 ## 1. 任务目标与边界
 
-本模块描述移植前产品中的阶段条件化过程状态，识别需要复核的转录组信号，并区分生物状态、样本处理影响和证据不足。当前阶段只整理并验证数据、方法、环境和输出合同，不制定 0-100 指数。
+本模块在已有 Cell-State 与组成证据基础上，描述移植前产品中阶段条件化的增殖、应激及相关转录程序，识别需要复核的信号，并区分生物状态、样本处理影响和证据不足。当前阶段只整理并验证数据、方法、环境和输出合同，不制定 0-100 指数。
 
-- Process Integrity 表示转录过程状态与当前 `ProductDefinitionCard`、目标阶段及参考范围的相容性。
+- Proliferation & Stress Response 表示这些增殖、应激及相关转录程序与当前 `ProductDefinitionCard`、目标阶段及参考范围的相容性；它不重新判定细胞身份或计算 off-target 比例。
 - cycling、stress 或其他程序升高必须结合细胞身份、发育阶段、样本处理和 assay 解释，不能自动标记为异常。
 - 本模块不判断临床安全性、致瘤性、potency、疗效、GMP 合规或产品放行。
 - PRD 中的 Critical Alerts 在本任务内暂实现为 `TranscriptomicReviewFlag`；当前全部保持 `shadow`，只表示需要正交复核。
 - Off-target Control 负责细胞组成；本模块只读取其状态证据，不重复计算非目标比例。
 - 缺少 process metadata 时可以描述信号，不能把信号归因于具体工艺步骤。
 
-## 2. 过程程序合同
+## 2. 增殖、应激及相关程序合同
 
 ### 2.1 程序分层
 
@@ -66,10 +66,10 @@
 | --- | --- | --- | --- |
 | `CAL-STRESS-249360-v1` | iPSC-mDA；sorting groups；basal/MPP+ 24 h；1,530 cells | sorting-stratified oxidative/acute stress 与部分 death-associated 方向校准 | 分化 D 待冻结；单条件样本结构不支持一般性推断 |
 | `CAL-JERBER-ROTENONE-D52-v1` | Jerber D52 rotenone block；父对象 >750,000 cells | donor/batch-matched oxidative-stress 鲁棒性 | 仅 D52；不能与 D11/D30 合并为扰动对照 |
-| `CAL-OPIOID-260711-v1` | midbrain organoid；D53 acute、D77 chronic、D79 withdrawal；本地已处理对象 20,322 cells（GEO 原研究报告 25,510） | 药物相关过程程序的外部方向检查 | 需冻结父对象、过滤规则和对象版本；不同时间点对照结构不同；药物暴露不是产品质量标签 |
+| `CAL-OPIOID-260711-v1` | midbrain organoid；D53 acute、D77 chronic、D79 withdrawal；本地已处理对象 20,322 cells（GEO 原研究报告 25,510） | 药物相关应激/反应程序的外部方向检查 | 需冻结父对象、过滤规则和对象版本；不同时间点对照结构不同；药物暴露不是产品质量标签 |
 | `CAL-PLURI-LAMANNO-ES-D0-v1` | hESC mDA 时间序列中的 D0；父对象 1,715 cells | pluripotency-like 分析阳性和同研究 spike-in | D0 不是产品、真实残留污染或致瘤性标签 |
-| `Q-GSE204796-v1` | hPSC-mDA D8/D14/D21/D28/D35；37,397 cells | stage-conditioned cycling 和过程状态基线 | 时间点、样本与 preparation 必须分开 |
-| SISBAR family | H9 hESC mDA；Stage I-IV；47,155 + 168,805 cells | 发育状态和 cycling 的过程背景 | 只支持实际观测转变，不提供异常或安全标签 |
+| `Q-GSE204796-v1` | hPSC-mDA D8/D14/D21/D28/D35；37,397 cells | stage-conditioned cycling 和相关程序基线 | 时间点、样本与 preparation 必须分开 |
+| SISBAR family | H9 hESC mDA；Stage I-IV；47,155 + 168,805 cells | 发育状态和 cycling 的程序背景 | 只支持实际观测转变，不提供异常或安全标签 |
 | `RES-CORTEX-STRESS-132672-v1` | cortical organoid stress | stress specificity reserve | `downloaded_pending_conversion`；非 PD-mDA 场景 |
 | 内部与公开产品队列 | 多时间点、多方案、2D/3D scRNA | 无标签稳定性和 false-review-flag 检查 | 无功能、安全性或工艺真值 |
 
@@ -83,14 +83,14 @@ flowchart LR
     B --> C["检查 ProgramSpec 覆盖和适用性"]
     C --> D["whole-product 与 state-specific 程序评分"]
     C --> E["cycling 与 residual pluripotency-like 检测"]
-    C --> F["process metadata 混杂审计"]
+    C --> F["ProtocolIR metadata 混杂审计"]
     D --> G["sample/state pseudobulk 与 reference envelope"]
     E --> H["LOD、区间和方法一致性"]
     F --> I["允许归因、无法归因或 metadata missing"]
     G --> J["TranscriptomicReviewFlag 规则"]
     H --> J
     I --> J
-    J --> K["ProcessIntegrityProfile"]
+    J --> K["ProliferationStressResponseProfile"]
 ```
 
 ## 5. 方法组合
@@ -122,7 +122,7 @@ flowchart LR
 - inferCNVpy、inferCNV 和 CopyKAT 分别登记，使用独立环境和明确 reference cells、基因坐标及样本边界。
 - 输出仅称 relative expression-derived CNV signal；不得称为测得的 DNA copy number。
 - inferCNV 官方实现已停止维护，CopyKAT 许可需要进一步审核；两者保持 `deferred`，inferCNVpy 保持 `shadow`。
-- 任何结果只生成核型、CMA、FISH 或 WGS 的复核建议，不进入 Process Integrity 指数或安全结论。
+- 任何结果只生成核型、CMA、FISH 或 WGS 的复核建议，不进入 Proliferation & Stress Response 分域分数或安全结论。
 
 ## 6. `TranscriptomicReviewFlag`
 
@@ -142,7 +142,7 @@ flowchart LR
 
 ## 7. 输出合同
 
-### `ProcessIntegrityProfile`
+### `ProliferationStressResponseProfile`
 
 | 字段 | 含义 |
 | --- | --- |

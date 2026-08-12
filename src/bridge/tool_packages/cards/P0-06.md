@@ -1,14 +1,14 @@
-# P0-06 Process Integrity
+# P0-06 Proliferation & Stress Response
 
 ## Purpose
 
-Measure stage-conditioned process programs and transcriptomic review signals.
+Measure stage-conditioned proliferation, stress-response, and related transcriptomic review signals.
 
 ## Contract
 
 | Field | Value |
 |---|---|
-| Package version | `0.1.0` |
+| Package version | `0.1.1` |
 | Runtime state | `scaffold` |
 | Scientific state | `candidate` |
 | Optional | `no` |
@@ -16,9 +16,9 @@ Measure stage-conditioned process programs and transcriptomic review signals.
 | Input schema | `bridge://schemas/tool-request/v0.1` |
 | Output schema | `bridge://schemas/tool-run/v0.1` |
 
-**Input:** QC-qualified expression, Cell-State evidence, confirmed developmental context, ProtocolIR metadata, and versioned process-program knowledge.
+**Input:** QC-qualified expression, Cell-State evidence, confirmed developmental context, ProtocolIR metadata, and versioned proliferation/stress-response program knowledge.
 
-**Output:** State-conditioned program evidence, residual-pluripotency LOD, cycling identity, confounding record, and transcriptomic review flags.
+**Output:** State-conditioned proliferation and stress-response evidence, residual-pluripotency LOD, cycling identity, confounding record, and transcriptomic review flags.
 
 **Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
 
@@ -44,4 +44,4 @@ Method documentation and accessible sources do not constitute benchmark completi
 
 ## Detailed Scientific Requirement
 
-Repository document: `docs/bridge_spec_v0.1/process_integrity_task_card.md`.
+Repository document: `docs/bridge_spec_v0.1/proliferation_stress_response_task_card.md`.

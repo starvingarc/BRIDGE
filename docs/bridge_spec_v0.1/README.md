@@ -18,7 +18,7 @@
 | [P0-03 目标与区域身份](target_regional_identity_task_card.md) | 目标谱系与区域支持合同 |
 | [P0-04 发育兼容性](developmental_compatibility_task_card.md) | 发育窗口与比较合同 |
 | [P0-05 Off-target Control](off_target_control_task_card.md) | 全制剂组成、OOD 与稀有状态边界 |
-| [P0-06 Process Integrity](process_integrity_task_card.md) | 过程程序和风险信号合同 |
+| [P0-06 Proliferation & Stress Response](proliferation_stress_response_task_card.md) | 增殖、应激反应程序和复核信号合同 |
 | [P0-07 产品比较与稳定性](product_comparison_stability_task_card.md) | 可比性、分析单位与敏感性合同 |
 | [P0-08 Evidence Sufficiency](evidence_sufficiency_task_card.md) | 数据、模型与 prior 充分性门禁 |
 | [P0-09 Evidence Compiler](evidence_compiler_task_card.md) | 原子证据、来源和冲突协调 |

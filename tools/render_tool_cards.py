@@ -48,12 +48,12 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/off_target_control_task_card.md",
     },
     "P0-06": {
-        "input": "QC-qualified expression, Cell-State evidence, confirmed developmental context, ProtocolIR metadata, and versioned process-program knowledge.",
-        "output": "State-conditioned program evidence, residual-pluripotency LOD, cycling identity, confounding record, and transcriptomic review flags.",
+        "input": "QC-qualified expression, Cell-State evidence, confirmed developmental context, ProtocolIR metadata, and versioned proliferation/stress-response program knowledge.",
+        "output": "State-conditioned proliferation and stress-response evidence, residual-pluripotency LOD, cycling identity, confounding record, and transcriptomic review flags.",
         "reject": "Missing stage context for stage-dependent interpretation, insufficient marker/program coverage, or process attribution without protocol metadata.",
         "visualization": "Program effect profiles, state-stratified distributions, rare-state LOD, process covariates, review flags, and sensitivity.",
         "validation": "Perturbation direction recovery, pluripotent-cell spike-ins, source/cell-line/modality holdouts, program overlap, and false-flag testing.",
-        "details": "docs/bridge_spec_v0.1/process_integrity_task_card.md",
+        "details": "docs/bridge_spec_v0.1/proliferation_stress_response_task_card.md",
     },
     "P0-07": {
         "input": "Version-matched ProductEvidenceObjects, comparability contract, independent preparation map, domain raw evidence, and Evidence Sufficiency states.",
