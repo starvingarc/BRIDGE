@@ -29,7 +29,7 @@ Produce source-aware reference and marker-program evidence against the internal 
 | Package version | `0.4.7` |
 | Runtime state | `implemented` |
 | Scientific state | `candidate` |
-| Freeze state | `awaiting_biological_review` |
+| Freeze state | `awaiting_external_asset_review` |
 | Optional | `no` |
 | EnvironmentSpec | `ENV-P0-CORE-v0.1` |
 | Input schema | `bridge://schemas/tool-request/v0.1` |
