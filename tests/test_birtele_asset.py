@@ -61,6 +61,21 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
     }
     for file_name, content in provenance_files.items():
         (source_root / file_name).write_bytes(content)
+    provisional_groups = {
+        "GSM5746439": ["BIRTELE-CULTURE-7P3W", "BIRTELE-CULTURE-8W"],
+        "GSM5746440": ["BIRTELE-CULTURE-8W"],
+        "GSM5746441": ["BIRTELE-CULTURE-8W"],
+        "GSM5746442": ["BIRTELE-CULTURE-8W"],
+        "GSM5746443": ["BIRTELE-CULTURE-7W"],
+        "GSM5746444": ["BIRTELE-CULTURE-7W"],
+        "GSM5746445": ["BIRTELE-CULTURE-7P3W", "BIRTELE-CULTURE-8W"],
+        "GSM5746446": ["BIRTELE-PRIMARY-11W"],
+        "GSM5746447": ["BIRTELE-PRIMARY-11W"],
+        "GSM5746448": ["BIRTELE-PRIMARY-8W"],
+        "GSM5746449": ["BIRTELE-CULTURE-7W"],
+        "GSM5746450": ["BIRTELE-CULTURE-7W"],
+        "GSM5746451": ["BIRTELE-PRIMARY-6W"],
+    }
     samples = []
     for accession, file_name in BIRTELE_FILES.items():
         path = source_dir / file_name
@@ -95,6 +110,9 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
                 "specimen_class": "cultured_tissue",
                 "biological_unit_id": None,
                 "biological_unit_status": "unresolved_public_mapping",
+                "provisional_group_ids": provisional_groups[accession],
+                "provisional_group_status": "provisional_inferred",
+                "provisional_group_basis": "publication and public GEO reconciliation",
                 "technical_subdivision_id": accession,
                 "replicate_eligibility": "not_estimable",
                 "metadata_conflicts": conflicts,
@@ -135,6 +153,24 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
                         "source_url": "https://www.biologists.com/DEV_Movies/DEV200504/TableS1.xlsx",
                     },
                 ],
+                "external_asset_review": {
+                    "status": "conditionally_approved",
+                    "decision_date": "2026-08-12",
+                    "reviewer_role": "project_scientific_lead",
+                    "permitted_uses": [
+                        "source_level_external_holdout",
+                        "stage_level_descriptive_analysis",
+                        "provisional_group_sensitivity",
+                    ],
+                    "prohibited_uses": [
+                        "biological_replicate_estimation",
+                        "donor_level_inference",
+                        "method_or_state_promotion_without_remaining_freeze_gates",
+                    ],
+                    "conditions": [
+                        "candidate groups remain provisional and non-replicate-bearing"
+                    ],
+                },
                 "sample_unit_limitations": [
                     "four uncultured GEO matrices correspond to a publication total reported from three fetuses",
                     "nine cultured GEO matrices cannot be assigned to the three culture donors without inference",
@@ -198,6 +234,19 @@ def test_prepare_birtele_asset_is_deterministic_and_public_safe(tmp_path: Path) 
     assert np.asarray(dataset.X.toarray()).tolist() == [[1, 2]] * 13
     assert set(dataset.obs["biological_unit_status"]) == {"unresolved_public_mapping"}
     assert set(dataset.obs["replicate_eligibility"]) == {"not_estimable"}
+    assert set(dataset.obs["provisional_group_status"]) == {"provisional_inferred"}
+    assert dataset.obs.loc[
+        "GSM5746446::GSM5746446_cell_1", "provisional_group_ids"
+    ] == "BIRTELE-PRIMARY-11W"
+    assert dataset.obs.loc[
+        "GSM5746447::GSM5746447_cell_1", "provisional_group_ids"
+    ] == "BIRTELE-PRIMARY-11W"
+    assert dataset.obs.loc[
+        "GSM5746439::GSM5746439_cell_1", "provisional_group_ids"
+    ] == "BIRTELE-CULTURE-7P3W | BIRTELE-CULTURE-8W"
+    assert dataset.obs.loc[
+        "GSM5746445::GSM5746445_cell_1", "provisional_group_ids"
+    ] == "BIRTELE-CULTURE-7P3W | BIRTELE-CULTURE-8W"
     conflict = dataset.obs.loc[
         "GSM5746445::GSM5746445_cell_1", "metadata_conflicts"
     ]
@@ -211,6 +260,7 @@ def test_prepare_birtele_asset_is_deterministic_and_public_safe(tmp_path: Path) 
         "all_counts_finite": True,
         "all_counts_integer": True,
         "all_counts_nonnegative": True,
+        "ambiguous_provisional_sample_count": 2,
         "dataset_id": "GSE192405",
         "duplicate_cell_count": 0,
         "duplicate_feature_count": 0,
@@ -218,6 +268,8 @@ def test_prepare_birtele_asset_is_deterministic_and_public_safe(tmp_path: Path) 
         "n_obs": 13,
         "n_samples": 13,
         "n_vars": 2,
+        "provisional_group_count": 6,
+        "replicate_eligible_sample_count": 0,
         "resolved_biological_unit_count": 0,
         "status": "passed_with_unresolved_sample_units",
         "unresolved_sample_count": 13,
@@ -226,11 +278,13 @@ def test_prepare_birtele_asset_is_deterministic_and_public_safe(tmp_path: Path) 
     assert manifest["dataset_id"] == "GSE192405"
     assert manifest["matrix_location"] == "X"
     assert manifest["matrix_semantics"] == "raw_counts"
+    assert manifest["external_asset_review_status"] == "conditionally_approved"
     assert manifest["output_files"]["GSE192405.h5ad"] == _sha256(
         tmp_path / "first" / "GSE192405.h5ad"
     )
     source_manifest = json.loads((tmp_path / "first" / "source_manifest.json").read_text())
     assert len(source_manifest["metadata_sources"]) == 3
+    assert source_manifest["external_asset_review"]["status"] == "conditionally_approved"
     assert source_manifest["sample_unit_limitations"][0].startswith(
         "four uncultured GEO matrices"
     )
@@ -247,6 +301,27 @@ def test_packaged_birtele_sample_map_is_complete_and_conservative() -> None:
     payload = yaml.safe_load(resource.read_text(encoding="utf-8"))
 
     assert payload["dataset_id"] == "GSE192405"
+    assert payload["version"] == "1.1"
+    assert payload["external_asset_review"] == {
+        "status": "conditionally_approved",
+        "decision_date": "2026-08-12",
+        "reviewer_role": "project_scientific_lead",
+        "permitted_uses": [
+            "source_level_external_holdout",
+            "stage_level_descriptive_analysis",
+            "provisional_group_sensitivity",
+        ],
+        "prohibited_uses": [
+            "biological_replicate_estimation",
+            "donor_level_inference",
+            "method_or_state_promotion_without_remaining_freeze_gates",
+        ],
+        "conditions": [
+            "GEO samples, cells and culture conditions remain ineligible as biological replicates.",
+            "GSM5746439 and GSM5746445 remain ambiguous between the 7.3-week single-3D and 8-week four-condition culture groups.",
+            "No method, state, threshold or product role is promoted by this decision.",
+        ],
+    }
     assert payload["source_archive"]["raw_reads_public"] is False
     assert payload["expected_gene_order_sha256"] == (
         "643be392404f6fc4c10ca6dce2abc3d10b07de0df9ed9e100826f26fe4939cd9"
@@ -258,6 +333,29 @@ def test_packaged_birtele_sample_map_is_complete_and_conservative() -> None:
         for sample in payload["samples"]
     )
     assert all(sample["replicate_eligibility"] == "not_estimable" for sample in payload["samples"])
+    groups = {
+        sample["geo_accession"]: sample["provisional_group_ids"]
+        for sample in payload["samples"]
+    }
+    assert groups == {
+        "GSM5746439": ["BIRTELE-CULTURE-7P3W", "BIRTELE-CULTURE-8W"],
+        "GSM5746440": ["BIRTELE-CULTURE-8W"],
+        "GSM5746441": ["BIRTELE-CULTURE-8W"],
+        "GSM5746442": ["BIRTELE-CULTURE-8W"],
+        "GSM5746443": ["BIRTELE-CULTURE-7W"],
+        "GSM5746444": ["BIRTELE-CULTURE-7W"],
+        "GSM5746445": ["BIRTELE-CULTURE-7P3W", "BIRTELE-CULTURE-8W"],
+        "GSM5746446": ["BIRTELE-PRIMARY-11W"],
+        "GSM5746447": ["BIRTELE-PRIMARY-11W"],
+        "GSM5746448": ["BIRTELE-PRIMARY-8W"],
+        "GSM5746449": ["BIRTELE-CULTURE-7W"],
+        "GSM5746450": ["BIRTELE-CULTURE-7W"],
+        "GSM5746451": ["BIRTELE-PRIMARY-6W"],
+    }
+    assert all(
+        sample["provisional_group_status"] == "provisional_inferred"
+        for sample in payload["samples"]
+    )
     conflict = next(
         sample for sample in payload["samples"] if sample["geo_accession"] == "GSM5746445"
     )
