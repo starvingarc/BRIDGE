@@ -193,7 +193,7 @@ def test_prepare_birtele_asset_requires_exact_sample_set(tmp_path: Path) -> None
 
 def test_prepare_birtele_asset_rejects_gene_order_mismatch(tmp_path: Path) -> None:
     source_dir, sample_map = _fixture_source_and_map(tmp_path)
-    accession, file_name = next(iter(BIRTELE_FILES.items()))
+    accession, file_name = list(BIRTELE_FILES.items())[1]
     path = source_dir / file_name
     _write_matrix(path, accession, genes=["LMX1A", "TH"], values=[[2], [1]])
     payload = yaml.safe_load(sample_map.read_text())
