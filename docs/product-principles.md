@@ -7,7 +7,7 @@ BRIDGE organizes reproducible transcriptomic evidence for cell-therapy product c
 ## Current Outputs
 
 - Input readiness and explicit evidence gaps.
-- Cell-state, identity, developmental, composition and process-state measurements as their modules become validated.
+- Cell-state, identity, developmental, composition, proliferation and stress-response measurements as their modules become validated.
 - Conditional comparison under matched product definitions and analysis contracts.
 - Traceable visualizations, claims and versioned evidence records.
 

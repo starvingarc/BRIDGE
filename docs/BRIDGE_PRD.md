@@ -301,7 +301,7 @@ BRIDGE 的核心评估架构包括：
 | P0 | Regional Fidelity | 目标相关细胞是否具有正确的解剖区域身份 |
 | P0 | Developmental Compatibility | 产品是否与研究者确认的目标发育窗口相容 |
 | P0 | Off-target Control | 已知离轴状态的组成和负担如何 |
-| P0 | Process Integrity | 是否存在明显的应激、异常增殖或过程偏移 |
+| P0 | Proliferation & Stress Response | 在不重新判定细胞身份或组成的前提下，是否出现偏离目标阶段背景、需要复核的增殖、应激、死亡相关程序或残余多能性样信号 |
 | P1 | Regulatory Coherence | 产品是否具有与目标身份和阶段相容的调控状态 |
 | P1 | Functional Program Readiness | 目标相关功能程序是否完整且方向一致 |
 | P1 | Metabolic Integrity | 代谢和线粒体状态是否与目标阶段相容 |
@@ -352,9 +352,9 @@ PD-mDA 首版默认预选“移植用 VM floor-plate/mDA progenitor”，并允�
 
 unknown 不自动计为 target 或已知 off-target。当 unknown 过高或 reference 覆盖不足时，Off-target Control 返回 `unavailable`，并由 Unknown/OOD gate 提示。
 
-### 3.6 过程状态与关键警报
+### 3.6 增殖、应激反应与关键警报
 
-Process Integrity 评估与目标阶段相联系的异常增殖、stress、hypoxia、UPR、apoptosis、EMT 和其他过程偏移。
+Proliferation & Stress Response 在已有 Cell-State 与组成证据基础上，评估与目标阶段相联系的增殖、stress、hypoxia、UPR、apoptosis、EMT 和其他转录程序偏移；它不重新判定细胞身份或计算 off-target 比例。
 
 残余多能性样信号、严重异常增殖、明显非神经污染及无法解释的样本冲突进入 Critical Alerts。
 
@@ -443,7 +443,7 @@ graft 的 scRNA-seq 和 snRNA-seq 需要分别处理。其结果不回填移植�
 | 目标与区域身份 | Cell-State evidence → ProductDefinitionCard → marker 与独立 reference 校验 | Target Identity、Regional Fidelity |
 | 发育状态 | 真实时间点组成与 pseudobulk → 发育 reference；[CellRank](https://cellrank.readthedocs.io/) 和 [scVelo](https://scvelo.readthedocs.io/) 条件运行 | 发育组成和 Developmental Compatibility |
 | 完整制剂组成 | 对全部细胞聚合 target、adjacent、off-target 和 unknown，并估计稀有状态检测能力 | 组成比例、置信区间和 Off-target Control |
-| 过程状态 | 阶段条件化的增殖、stress、hypoxia、UPR、apoptosis 等程序；CNV 工具保持 shadow | Process Integrity 和 Critical Alerts |
+| 增殖与应激反应 | 阶段条件化的增殖、stress、hypoxia、UPR、apoptosis 等程序；CNV 工具保持 shadow | Proliferation & Stress Response 和 Critical Alerts |
 | 产品比较 | sample/preparation 级 pseudobulk、组成比较、下采样及 reference/preprocessing swap | 差异驱动因素和稳定性 |
 
 Cell-State 各状态轴分别比较 marker/program、reference correlation、监督分类、reference mapping、ontology-aware 和开放集方法；基础模型暂作为 shadow 候选。完成 source holdout、OOD、校准和跨模态测试后再冻结正式方法。

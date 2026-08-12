@@ -12,6 +12,7 @@ EXPECTED_IDS = [f"P0-{index:02d}" for index in range(1, 13)]
 
 def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     registry = ToolRegistry.load_default()
+    proliferation_stress_response = registry.describe("P0-06")
 
     assert registry.ids() == EXPECTED_IDS
     assert registry.describe("P0-01").implementation_state is ImplementationState.IMPLEMENTED
@@ -20,6 +21,8 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
         registry.describe(tool_id).implementation_state is ImplementationState.SCAFFOLD
         for tool_id in EXPECTED_IDS[2:]
     )
+    assert proliferation_stress_response.name == "Proliferation & Stress Response"
+    assert proliferation_stress_response.version == "0.1.1"
 
 
 def test_scaffold_run_returns_not_implemented_without_measurements(tmp_path: Path) -> None:
