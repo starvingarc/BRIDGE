@@ -375,7 +375,7 @@ def _qc_report(
 
 
 def _gene_order_sha256(genes: list[str]) -> str:
-    return hashlib.sha256(("\n".join(genes) + "\n").encode()).hexdigest()
+    return hashlib.sha256("\n".join(genes).encode()).hexdigest()
 
 
 def _sha256(path: Path) -> str:

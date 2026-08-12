@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 import yaml
 
+from bridge.tool_packages.p0_02_cell_state import birtele
 from bridge.tool_packages.p0_02_cell_state.birtele import (
     BIRTELE_FILES,
     BirteleAssetError,
@@ -29,7 +30,7 @@ def _sha256(path: Path) -> str:
 
 
 def _gene_order_sha256(genes: list[str]) -> str:
-    return hashlib.sha256(("\n".join(genes) + "\n").encode()).hexdigest()
+    return hashlib.sha256("\n".join(genes).encode()).hexdigest()
 
 
 def _write_matrix(
@@ -128,6 +129,12 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
         encoding="utf-8",
     )
     return source_dir, sample_map
+
+
+def test_gene_order_hash_does_not_add_an_unpublished_terminal_newline() -> None:
+    assert birtele._gene_order_sha256(["TH", "LMX1A"]) == hashlib.sha256(
+        b"TH\nLMX1A"
+    ).hexdigest()
 
 
 def test_prepare_birtele_asset_is_deterministic_and_public_safe(tmp_path: Path) -> None:
