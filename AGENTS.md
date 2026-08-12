@@ -70,6 +70,7 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 
 - `main` 是 BRIDGE 的唯一集成分支。当前重构通过主题分支和 Pull Request 取代旧实现；合入后不再维护独立品牌或平行的长期集成分支。
 - 所有后续变更从最新 `origin/main` 创建职责单一的主题分支，并通过面向 `main` 的 Pull Request 合入。
+- 推送到 GitHub 的主题分支不得使用 `codex/` 前缀；使用无主体标识的任务名，例如 `p0-06-proliferation-stress-response`。
 - 禁止直接向集成分支 push 或 force push。合并 PR 是独立动作，不能因为实现、push 或开 PR 已获授权而自动执行。
 - 开工前检查当前分支、HEAD、远端和 `git status --short --branch`。多人并行优先使用独立 worktree；不得让多个 Agent 在同一工作树并发改写文件。
 - 共享分支禁止未经协商的历史重写。同步集成分支时只能在主题分支解决冲突，不得覆盖、丢弃或静默改写其他人的成果。
