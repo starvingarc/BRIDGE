@@ -4,6 +4,7 @@ import csv
 import gzip
 import hashlib
 import json
+from importlib.resources import files
 from pathlib import Path
 
 import anndata as ad
@@ -16,6 +17,7 @@ from bridge.tool_packages.p0_02_cell_state.birtele import (
     BirteleAssetError,
     prepare_birtele_asset,
 )
+from bridge.tool_packages.p0_02_cell_state.benchmark_cli import main as benchmark_main
 
 
 def _sha256(path: Path) -> str:
@@ -98,7 +100,26 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
                     "file_name": "GSE192405_RAW.tar",
                     "sha256": "a" * 64,
                     "raw_reads_public": False,
+                    "source_url": "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE192405",
                 },
+                "metadata_sources": [
+                    {
+                        "file_name": "GSE192405_family.xml.tgz",
+                        "kind": "geo_miniml",
+                        "sha256": "b" * 64,
+                        "source_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE192405",
+                    },
+                    {
+                        "file_name": "TableS1.xlsx",
+                        "kind": "publication_table",
+                        "sha256": "c" * 64,
+                        "source_url": "https://www.biologists.com/DEV_Movies/DEV200504/TableS1.xlsx",
+                    },
+                ],
+                "sample_unit_limitations": [
+                    "four uncultured GEO matrices correspond to a publication total reported from three fetuses",
+                    "nine cultured GEO matrices cannot be assigned to the three culture donors without inference",
+                ],
                 "expected_gene_order_sha256": _gene_order_sha256(["TH", "LMX1A"]),
                 "samples": samples,
             },
@@ -175,10 +196,64 @@ def test_prepare_birtele_asset_is_deterministic_and_public_safe(tmp_path: Path) 
     assert manifest["output_files"]["GSE192405.h5ad"] == _sha256(
         tmp_path / "first" / "GSE192405.h5ad"
     )
+    source_manifest = json.loads((tmp_path / "first" / "source_manifest.json").read_text())
+    assert len(source_manifest["metadata_sources"]) == 2
+    assert source_manifest["sample_unit_limitations"][0].startswith(
+        "four uncultured GEO matrices"
+    )
     for name in expected_outputs - {"GSE192405.h5ad"}:
         text = (tmp_path / "first" / name).read_text(encoding="utf-8")
         assert str(tmp_path) not in text
         assert "/data" not in text
+
+
+def test_packaged_birtele_sample_map_is_complete_and_conservative() -> None:
+    resource = files("bridge.tool_packages.p0_02_cell_state.resources").joinpath(
+        "birtele_gse192405_samples.yaml"
+    )
+    payload = yaml.safe_load(resource.read_text(encoding="utf-8"))
+
+    assert payload["dataset_id"] == "GSE192405"
+    assert payload["source_archive"]["raw_reads_public"] is False
+    assert payload["expected_gene_order_sha256"] == (
+        "643be392404f6fc4c10ca6dce2abc3d10b07de0df9ed9e100826f26fe4939cd9"
+    )
+    assert {sample["geo_accession"] for sample in payload["samples"]} == set(BIRTELE_FILES)
+    assert all(sample["biological_unit_id"] is None for sample in payload["samples"])
+    assert all(
+        sample["biological_unit_status"] == "unresolved_public_mapping"
+        for sample in payload["samples"]
+    )
+    assert all(sample["replicate_eligibility"] == "not_estimable" for sample in payload["samples"])
+    conflict = next(
+        sample for sample in payload["samples"] if sample["geo_accession"] == "GSM5746445"
+    )
+    assert len(conflict["metadata_conflicts"]) == 1
+    assert "title" in conflict["metadata_conflicts"][0]
+    assert len(payload["sample_unit_limitations"]) == 2
+
+
+def test_prepare_birtele_cli_writes_the_manifest(tmp_path: Path, capsys) -> None:
+    source_dir, sample_map = _fixture_source_and_map(tmp_path)
+    output_dir = tmp_path / "output"
+
+    exit_code = benchmark_main(
+        [
+            "cell-state",
+            "prepare-birtele",
+            "--source-dir",
+            str(source_dir),
+            "--sample-map",
+            str(sample_map),
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out) == json.loads(
+        (output_dir / "conversion_manifest.json").read_text()
+    )
 
 
 def test_prepare_birtele_asset_requires_exact_sample_set(tmp_path: Path) -> None:
