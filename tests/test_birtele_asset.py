@@ -50,8 +50,17 @@ def _write_matrix(
 
 
 def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
-    source_dir = tmp_path / "source"
-    source_dir.mkdir()
+    source_root = tmp_path / "source"
+    source_dir = source_root / "processed_csv"
+    source_dir.mkdir(parents=True)
+    provenance_files = {
+        "GSE192405_RAW.tar": b"processed archive fixture",
+        "GSE192405_family.xml.tgz": b"MINiML fixture",
+        "develop-149-200504-s1.pdf": b"supplement fixture",
+        "TableS1.xlsx": b"table fixture",
+    }
+    for file_name, content in provenance_files.items():
+        (source_root / file_name).write_bytes(content)
     samples = []
     for accession, file_name in BIRTELE_FILES.items():
         path = source_dir / file_name
@@ -99,7 +108,7 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
                 "version": "1.0",
                 "source_archive": {
                     "file_name": "GSE192405_RAW.tar",
-                    "sha256": "a" * 64,
+                    "sha256": _sha256(source_root / "GSE192405_RAW.tar"),
                     "raw_reads_public": False,
                     "source_url": "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE192405",
                 },
@@ -107,13 +116,19 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
                     {
                         "file_name": "GSE192405_family.xml.tgz",
                         "kind": "geo_miniml",
-                        "sha256": "b" * 64,
+                        "sha256": _sha256(source_root / "GSE192405_family.xml.tgz"),
                         "source_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE192405",
+                    },
+                    {
+                        "file_name": "develop-149-200504-s1.pdf",
+                        "kind": "publication_supplement",
+                        "sha256": _sha256(source_root / "develop-149-200504-s1.pdf"),
+                        "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10114107/supplementaryFiles",
                     },
                     {
                         "file_name": "TableS1.xlsx",
                         "kind": "publication_table",
-                        "sha256": "c" * 64,
+                        "sha256": _sha256(source_root / "TableS1.xlsx"),
                         "source_url": "https://www.biologists.com/DEV_Movies/DEV200504/TableS1.xlsx",
                     },
                 ],
@@ -128,7 +143,7 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
         ),
         encoding="utf-8",
     )
-    return source_dir, sample_map
+    return source_root, sample_map
 
 
 def test_gene_order_hash_does_not_add_an_unpublished_terminal_newline() -> None:
@@ -138,17 +153,25 @@ def test_gene_order_hash_does_not_add_an_unpublished_terminal_newline() -> None:
 
 
 def test_prepare_birtele_asset_is_deterministic_and_public_safe(tmp_path: Path) -> None:
-    source_dir, sample_map = _fixture_source_and_map(tmp_path)
-    before = {path.name: _sha256(path) for path in source_dir.iterdir()}
+    source_root, sample_map = _fixture_source_and_map(tmp_path)
+    before = {
+        path.relative_to(source_root).as_posix(): _sha256(path)
+        for path in source_root.rglob("*")
+        if path.is_file()
+    }
 
-    first = prepare_birtele_asset(source_dir, sample_map, tmp_path / "first")
-    second = prepare_birtele_asset(source_dir, sample_map, tmp_path / "second")
+    first = prepare_birtele_asset(source_root, sample_map, tmp_path / "first")
+    second = prepare_birtele_asset(source_root, sample_map, tmp_path / "second")
 
     assert first == second
     assert _sha256(tmp_path / "first" / "GSE192405.h5ad") == _sha256(
         tmp_path / "second" / "GSE192405.h5ad"
     )
-    assert before == {path.name: _sha256(path) for path in source_dir.iterdir()}
+    assert before == {
+        path.relative_to(source_root).as_posix(): _sha256(path)
+        for path in source_root.rglob("*")
+        if path.is_file()
+    }
 
     expected_outputs = {
         "GSE192405.h5ad",
@@ -204,7 +227,7 @@ def test_prepare_birtele_asset_is_deterministic_and_public_safe(tmp_path: Path) 
         tmp_path / "first" / "GSE192405.h5ad"
     )
     source_manifest = json.loads((tmp_path / "first" / "source_manifest.json").read_text())
-    assert len(source_manifest["metadata_sources"]) == 2
+    assert len(source_manifest["metadata_sources"]) == 3
     assert source_manifest["sample_unit_limitations"][0].startswith(
         "four uncultured GEO matrices"
     )
@@ -241,7 +264,7 @@ def test_packaged_birtele_sample_map_is_complete_and_conservative() -> None:
 
 
 def test_prepare_birtele_cli_writes_the_manifest(tmp_path: Path, capsys) -> None:
-    source_dir, sample_map = _fixture_source_and_map(tmp_path)
+    source_root, sample_map = _fixture_source_and_map(tmp_path)
     output_dir = tmp_path / "output"
 
     exit_code = benchmark_main(
@@ -249,7 +272,7 @@ def test_prepare_birtele_cli_writes_the_manifest(tmp_path: Path, capsys) -> None
             "cell-state",
             "prepare-birtele",
             "--source-dir",
-            str(source_dir),
+            str(source_root),
             "--sample-map",
             str(sample_map),
             "--output-dir",
@@ -264,19 +287,19 @@ def test_prepare_birtele_cli_writes_the_manifest(tmp_path: Path, capsys) -> None
 
 
 def test_prepare_birtele_asset_requires_exact_sample_set(tmp_path: Path) -> None:
-    source_dir, sample_map = _fixture_source_and_map(tmp_path)
+    source_root, sample_map = _fixture_source_and_map(tmp_path)
     payload = yaml.safe_load(sample_map.read_text())
     payload["samples"].pop()
     sample_map.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
     with pytest.raises(BirteleAssetError, match="sample_map_accessions_mismatch"):
-        prepare_birtele_asset(source_dir, sample_map, tmp_path / "output")
+        prepare_birtele_asset(source_root, sample_map, tmp_path / "output")
 
 
 def test_prepare_birtele_asset_rejects_gene_order_mismatch(tmp_path: Path) -> None:
-    source_dir, sample_map = _fixture_source_and_map(tmp_path)
+    source_root, sample_map = _fixture_source_and_map(tmp_path)
     accession, file_name = list(BIRTELE_FILES.items())[1]
-    path = source_dir / file_name
+    path = source_root / "processed_csv" / file_name
     _write_matrix(path, accession, genes=["LMX1A", "TH"], values=[[2], [1]])
     payload = yaml.safe_load(sample_map.read_text())
     sample = next(item for item in payload["samples"] if item["geo_accession"] == accession)
@@ -284,7 +307,7 @@ def test_prepare_birtele_asset_rejects_gene_order_mismatch(tmp_path: Path) -> No
     sample_map.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
     with pytest.raises(BirteleAssetError, match=f"gene_order_mismatch:{accession}"):
-        prepare_birtele_asset(source_dir, sample_map, tmp_path / "output")
+        prepare_birtele_asset(source_root, sample_map, tmp_path / "output")
 
 
 @pytest.mark.parametrize(
@@ -298,13 +321,32 @@ def test_prepare_birtele_asset_rejects_gene_order_mismatch(tmp_path: Path) -> No
 def test_prepare_birtele_asset_rejects_invalid_counts(
     tmp_path: Path, bad_value: object, reason: str
 ) -> None:
-    source_dir, sample_map = _fixture_source_and_map(tmp_path)
+    source_root, sample_map = _fixture_source_and_map(tmp_path)
     accession, file_name = next(iter(BIRTELE_FILES.items()))
-    path = source_dir / file_name
+    path = source_root / "processed_csv" / file_name
     _write_matrix(path, accession, values=[[bad_value], [2]])
     payload = yaml.safe_load(sample_map.read_text())
     payload["samples"][0]["sha256"] = _sha256(path)
     sample_map.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
     with pytest.raises(BirteleAssetError, match=f"{reason}:{accession}"):
-        prepare_birtele_asset(source_dir, sample_map, tmp_path / "output")
+        prepare_birtele_asset(source_root, sample_map, tmp_path / "output")
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "GSE192405_RAW.tar",
+        "GSE192405_family.xml.tgz",
+        "develop-149-200504-s1.pdf",
+        "TableS1.xlsx",
+    ],
+)
+def test_prepare_birtele_asset_rejects_provenance_checksum_mismatch(
+    tmp_path: Path, relative_path: str
+) -> None:
+    source_root, sample_map = _fixture_source_and_map(tmp_path)
+    (source_root / relative_path).write_bytes(b"altered")
+
+    with pytest.raises(BirteleAssetError, match="provenance_checksum_mismatch"):
+        prepare_birtele_asset(source_root, sample_map, tmp_path / "output")
