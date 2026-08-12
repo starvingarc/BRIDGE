@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Branch | `codex/bridge-scientific-freeze` |
-| Status | `awaiting_biological_review` |
+| Branch | `codex/p0-02-cell-state-freeze` |
+| Status | `external_asset_preparation` |
 | Owner | BRIDGE core |
 
 ## Biological question
@@ -62,6 +62,15 @@ The preregistered report must include:
 - exact-to-parent-to-unknown rejection behavior.
 
 ## Birtele asset preparation gate
+
+The official `GSE192405` processed archive contains 13 count-matrix CSV files
+with 77,804 unique cells and a shared ordered set of 25,032 genes. Raw reads are
+not public. The public GEO records and Table S1 do not provide an unambiguous
+matrix-to-biological-unit map: four uncultured GEO matrices sum to the 23,483
+cells that the paper reports from three fetuses, and the nine cultured matrices
+cannot all be assigned to the three culture donors without inference. BRIDGE
+therefore preserves the published fields and the conflict itself; it does not
+treat GEO samples, culture conditions or cells as biological replicates.
 
 Before biological review begins—and before the FreezeGate can be signed or any
 locked runner can be implemented or run—the processed `GSE192405` asset must have:
