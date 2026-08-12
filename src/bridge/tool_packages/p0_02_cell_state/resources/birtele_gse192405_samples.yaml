@@ -7,14 +7,17 @@ source_archive:
   source_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE192nnn/GSE192405/suppl/GSE192405_RAW.tar
 metadata_sources:
   - file_name: GSE192405_family.xml.tgz
+    relative_path: GSE192405_family.xml.tgz
     kind: geo_miniml
     sha256: a8a3a022a423f98a862b157bdb82758c91e53fe1c6e5fdb4131aad2bc2ef1e8d
     source_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE192nnn/GSE192405/miniml/GSE192405_family.xml.tgz
   - file_name: develop-149-200504-s1.pdf
+    relative_path: paper_supplement/develop-149-200504-s1.pdf
     kind: publication_supplement
     sha256: f538ca0b034d33a587a11027e4986d6a7c30255cd730f0ddbb8527d2b103d09b
     source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10114107/supplementaryFiles
   - file_name: TableS1.xlsx
+    relative_path: TableS1.xlsx
     kind: publication_table
     sha256: 6a08c039a135c211e03da44d8dc592a934bbecafaae78a9dbb2b2d08755d9a75
     source_url: https://www.biologists.com/DEV_Movies/DEV200504/TableS1.xlsx

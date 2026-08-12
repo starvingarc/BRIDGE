@@ -68,6 +68,7 @@ class _SourceArchive(_StrictModel):
 
 class _MetadataSource(_StrictModel):
     file_name: str
+    relative_path: str
     kind: Literal["geo_miniml", "publication_table", "publication_supplement"]
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_url: str
@@ -115,13 +116,15 @@ class _SampleMap(_StrictModel):
 
 
 def prepare_birtele_asset(
-    source_dir: Path,
+    source_root: Path,
     sample_map_path: Path,
     output_dir: Path,
 ) -> dict[str, object]:
     """Convert the fixed GSE192405 processed matrices without inferring donors."""
     sample_map = _load_sample_map(sample_map_path)
     samples = _ordered_samples(sample_map)
+    _validate_provenance_files(source_root, sample_map)
+    source_dir = source_root / "processed_csv"
     _validate_source_files(source_dir, samples)
     if output_dir.exists() and any(output_dir.iterdir()):
         raise BirteleAssetError("output_dir_not_empty")
@@ -235,6 +238,33 @@ def _validate_source_files(source_dir: Path, samples: list[_SampleRecord]) -> No
     for sample in samples:
         if _sha256(source_dir / sample.file_name) != sample.sha256:
             raise BirteleAssetError(f"source_checksum_mismatch:{sample.geo_accession}")
+
+
+def _validate_provenance_files(source_root: Path, sample_map: _SampleMap) -> None:
+    records = [
+        (
+            sample_map.source_archive.file_name,
+            sample_map.source_archive.file_name,
+            sample_map.source_archive.sha256,
+        ),
+        *[
+            (source.file_name, source.relative_path, source.sha256)
+            for source in sample_map.metadata_sources
+        ],
+    ]
+    for file_name, relative_path, expected_sha256 in records:
+        path = _safe_source_path(source_root, relative_path)
+        if not path.is_file():
+            raise BirteleAssetError(f"provenance_file_missing:{file_name}")
+        if _sha256(path) != expected_sha256:
+            raise BirteleAssetError(f"provenance_checksum_mismatch:{file_name}")
+
+
+def _safe_source_path(source_root: Path, relative_path: str) -> Path:
+    relative = Path(relative_path)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise BirteleAssetError("provenance_path_invalid")
+    return source_root / relative
 
 
 def _read_sample_matrix(

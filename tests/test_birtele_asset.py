@@ -115,18 +115,21 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
                 "metadata_sources": [
                     {
                         "file_name": "GSE192405_family.xml.tgz",
+                        "relative_path": "GSE192405_family.xml.tgz",
                         "kind": "geo_miniml",
                         "sha256": _sha256(source_root / "GSE192405_family.xml.tgz"),
                         "source_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE192405",
                     },
                     {
                         "file_name": "develop-149-200504-s1.pdf",
+                        "relative_path": "develop-149-200504-s1.pdf",
                         "kind": "publication_supplement",
                         "sha256": _sha256(source_root / "develop-149-200504-s1.pdf"),
                         "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10114107/supplementaryFiles",
                     },
                     {
                         "file_name": "TableS1.xlsx",
+                        "relative_path": "TableS1.xlsx",
                         "kind": "publication_table",
                         "sha256": _sha256(source_root / "TableS1.xlsx"),
                         "source_url": "https://www.biologists.com/DEV_Movies/DEV200504/TableS1.xlsx",
