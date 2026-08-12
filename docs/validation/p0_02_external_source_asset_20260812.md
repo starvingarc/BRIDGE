@@ -94,7 +94,11 @@ The audit output SHA-256 is
 `31f3b82a20c6c7aceab7438ff5ff7f60fcedc2a3fce19b3809df2c0d53d0f6a6`;
 the lineage map SHA-256 recorded inside it is
 `8180e7e2d107612ec599c161adac806ffbe22bd38b495bcef2cd2e397d6112b9`.
-Focused server tests passed: `17 passed in 2.17s`.
+Focused server tests passed: `17 passed in 2.17s`. At repository implementation
+`28199d1534e280ea4a4161091f0a632b17fcc815`, the complete server suite passed
+with `209 passed, 1 warning in 46.20s`; the warning is the existing AnnData
+duplicate-feature negative fixture. Deterministic generators, tool discovery,
+knowledge validation and repository policy checks also passed.
 
 ## Review status and scientific boundary
 
