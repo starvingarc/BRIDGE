@@ -20,6 +20,9 @@ leaking Birtele or La Manno source families into candidate development?
 - The packaged sample map records all 13 per-file checksums and the published
   GEO metadata without filling missing donor relationships by inference.
 
+The formal conversion command verified all four provenance-file hashes and all
+13 processed-matrix hashes before reading matrix contents.
+
 ## Observed data and sample-unit limitation
 
 All 13 matrices contain the same 25,032 genes in the same order. Their 77,804
@@ -55,10 +58,10 @@ byte-identical outputs:
 | Output | SHA-256 |
 |---|---|
 | `GSE192405.h5ad` | `4fe964964535e5d7f39fb46619c6ef791365c4d73e638b25b7a0c8372432f9ce` |
-| `conversion_manifest.json` | `6e8f41a7b63992e0da9d9d18c306a47cfdd815487006b9f482b0c92484eb6dae` |
+| `conversion_manifest.json` | `151f75adbe11ab0c049abea07e7bd87094689c29781f49e6944741887b577ed6` |
 | `qc_report.json` | `c7e4901ee54fe480d18ed6ada027f4b26660dd9ee672b849cc962da658075bec` |
 | `sample_unit_map.tsv` | `f22466b136eac5dbe371f0be8725dcf6efc060fff76aca5547db3a0632697151` |
-| `source_manifest.json` | `75a2611f69d1a2d7df839900f10ecea0343991dea305ae73a082ab2615739879` |
+| `source_manifest.json` | `240c8144fc66932cad947ab9946cbd370a228580bcac2dabd0380a876db16d66` |
 
 The H5AD is a `77,804 x 25,032` CSR `int32` matrix in `X` with
 `matrix_semantics=raw_counts`. It contains 120,095,908 nonzero values; observed
@@ -68,7 +71,7 @@ match their source matrices. Public manifests contain no server path or user
 identifier.
 
 Conversion was executed at implementation
-`a3eb8621a726e5f6e051a4888bc7b80ed475fbc6`. The corrected gene-order hash is
+`aab7814c28bd796ff51282ec5286b581d5158107`. The corrected gene-order hash is
 the SHA-256 of the newline-separated ordered gene names without an added
 terminal newline:
 `643be392404f6fc4c10ca6dce2abc3d10b07de0df9ed9e100826f26fe4939cd9`.
@@ -91,7 +94,7 @@ The audit output SHA-256 is
 `31f3b82a20c6c7aceab7438ff5ff7f60fcedc2a3fce19b3809df2c0d53d0f6a6`;
 the lineage map SHA-256 recorded inside it is
 `8180e7e2d107612ec599c161adac806ffbe22bd38b495bcef2cd2e397d6112b9`.
-Focused server tests passed: `13 passed in 1.79s`.
+Focused server tests passed: `17 passed in 2.17s`.
 
 ## Review status and scientific boundary
 
