@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Branch | `codex/p0-02-cell-state-freeze` |
-| Status | `awaiting_external_asset_review` |
+| Status | `biological_review_in_progress` |
 | Owner | BRIDGE core |
 
 ## Biological question
@@ -65,23 +65,23 @@ The preregistered report must include:
 
 The official `GSE192405` processed archive contains 13 count-matrix CSV files
 with 77,804 unique cells and a shared ordered set of 25,032 genes. Raw reads are
-not public. The public GEO records and Table S1 do not provide an unambiguous
-matrix-to-biological-unit map: four uncultured GEO matrices sum to the 23,483
-cells that the paper reports from three fetuses, and the nine cultured matrices
-cannot all be assigned to the three culture donors without inference. BRIDGE
-therefore preserves the published fields and the conflict itself; it does not
-treat GEO samples, culture conditions or cells as biological replicates.
+not public. Publication totals reconcile the four primary matrices into 6-week,
+8-week and 11-week analysis groups. Table S1 and the public filenames also
+constrain cultured samples into 7-week, 7.3-week and 8-week candidate groups,
+but `GSM5746439` and conflicting `GSM5746445` cannot be assigned uniquely
+between the latter two. These mappings are `provisional_inferred`, not verified
+donor identities.
 
-The engineering candidate is now reproducible: two independent conversions
-produced the same 77,804 x 25,032 sparse H5AD and the same manifests, and the
-declared Birtele/La Manno lineage audit found no development-role overlap. This
-does not pass the asset gate by itself. A biological reviewer must decide whether
-the frozen `unresolved_public_mapping` is acceptable for source-level holdout
-analysis without biological-replicate inference. The evidence is recorded in the
-[external-source asset validation](../docs/validation/p0_02_external_source_asset_20260812.md).
+The project scientific lead conditionally approved this mapping for source-level
+holdout, stage-level description and provisional-group sensitivity only. Every
+formal `biological_unit_id` remains null and every sample remains
+`replicate_eligibility=not_estimable`. The decision cannot support donor-level
+inference or promote a method, state, threshold or product role. The evidence is
+recorded in the [external-source asset validation](../docs/validation/p0_02_external_source_asset_20260812.md).
 
-Before biological review begins—and before the FreezeGate can be signed or any
-locked runner can be implemented or run—the processed `GSE192405` asset must have:
+Before state-card biological review begins—and before the FreezeGate can be
+signed or any locked runner can be implemented or run—the processed
+`GSE192405` asset must have:
 
 1. a processed-CSV conversion manifest that identifies every source file and the
    deterministic conversion step;
@@ -93,9 +93,10 @@ locked runner can be implemented or run—the processed `GSE192405` asset must h
 5. converted-object schema validation and QC validation with explicit matrix,
    feature, observation and sample-unit semantics.
 
-If any item is absent or fails review, biological review cannot approve this
-external-source candidate, the FreezeGate must remain unsigned, and the locked
-runner must not be implemented or run.
+All five preparation items passed engineering validation and the constrained
+biological review. The FreezeGate nevertheless remains unsigned, and the locked
+runner must not be implemented or run until state and product-context review is
+complete.
 
 ## Biological review and execution gate
 
@@ -127,7 +128,8 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
 ## Engineering status
 
 - The Birtele conversion, checksum, QC and lineage-audit implementation is
-  complete; the sample/unit limitation remains under biological review.
+  complete; its source/stage-only use is conditionally approved with
+  provisional groups and no biological-replicate inference.
 - Locked-runner implementation and execution are pending the biological review and
   signed FreezeGate.
 - Task 5 server engineering validation is complete at implementation
