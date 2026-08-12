@@ -12,6 +12,7 @@ from bridge.tool_packages.p0_02_cell_state.external_source import (
     ExternalSourceAuditError,
     audit_external_source_lineage,
 )
+from bridge.tool_packages.p0_02_cell_state.freeze import load_pilot_benchmark_spec
 
 
 def _packaged_lineage_map():
@@ -35,6 +36,29 @@ def test_packaged_external_source_lineage_audit_passes(tmp_path: Path) -> None:
     assert first["candidate_decisions"]["Q-GSE76381-IPS-v1"] == "excluded_from_candidate"
     assert (tmp_path / "first.json").read_bytes() == (tmp_path / "second.json").read_bytes()
     assert "/data" not in (tmp_path / "first.json").read_text()
+
+
+def test_external_source_lineage_covers_every_current_benchmark_role() -> None:
+    with as_file(_packaged_lineage_map()) as lineage_map:
+        payload = yaml.safe_load(lineage_map.read_text(encoding="utf-8"))
+    decisions = {asset["asset_id"]: asset["candidate_decision"] for asset in payload["assets"]}
+    spec = load_pilot_benchmark_spec()
+
+    assert {asset_id: decisions[asset_id] for asset_id in spec.development_asset_ids} == {
+        asset_id: "development_reference" for asset_id in spec.development_asset_ids
+    }
+    assert {asset_id: decisions[asset_id] for asset_id in spec.development_ood_asset_ids} == {
+        asset_id: "development_ood" for asset_id in spec.development_ood_asset_ids
+    }
+    assert {asset_id: decisions[asset_id] for asset_id in spec.behavior_only_asset_ids} == {
+        asset_id: "behavior_only" for asset_id in spec.behavior_only_asset_ids
+    }
+    assert {asset_id: decisions[asset_id] for asset_id in spec.locked_asset_ids} == {
+        asset_id: "external_holdout" for asset_id in spec.locked_asset_ids
+    }
+    assert {asset_id: decisions[asset_id] for asset_id in spec.sealed_asset_ids} == {
+        asset_id: "sealed_excluded" for asset_id in spec.sealed_asset_ids
+    }
 
 
 def test_external_source_lineage_audit_rejects_transitive_fit_overlap(tmp_path: Path) -> None:
