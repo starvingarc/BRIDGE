@@ -63,6 +63,14 @@ class _SourceArchive(_StrictModel):
     file_name: Literal["GSE192405_RAW.tar"]
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     raw_reads_public: Literal[False]
+    source_url: str
+
+
+class _MetadataSource(_StrictModel):
+    file_name: str
+    kind: Literal["geo_miniml", "publication_table", "publication_supplement"]
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_url: str
 
 
 class _PublishedCharacteristics(_StrictModel):
@@ -100,6 +108,8 @@ class _SampleMap(_StrictModel):
     dataset_id: Literal["GSE192405"]
     version: str
     source_archive: _SourceArchive
+    metadata_sources: list[_MetadataSource] = Field(min_length=1)
+    sample_unit_limitations: list[str] = Field(min_length=1)
     expected_gene_order_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     samples: list[_SampleRecord]
 
@@ -324,6 +334,8 @@ def _source_manifest(sample_map: _SampleMap, samples: list[_SampleRecord]) -> di
     return {
         "dataset_id": "GSE192405",
         "raw_reads_public": False,
+        "metadata_sources": [source.model_dump(mode="json") for source in sample_map.metadata_sources],
+        "sample_unit_limitations": sample_map.sample_unit_limitations,
         "source_archive": sample_map.source_archive.model_dump(mode="json"),
         "source_files": [
             {
