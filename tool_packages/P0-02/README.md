@@ -26,10 +26,10 @@ Produce source-aware reference and marker-program evidence against the internal 
 
 | Field | Value |
 |---|---|
-| Package version | `0.4.7` |
+| Package version | `0.4.8` |
 | Runtime state | `implemented` |
 | Scientific state | `candidate` |
-| Freeze state | `awaiting_biological_review` |
+| Freeze state | `biological_review_in_progress` |
 | Optional | `no` |
 | EnvironmentSpec | `ENV-P0-CORE-v0.1` |
 | Input schema | `bridge://schemas/tool-request/v0.1` |
