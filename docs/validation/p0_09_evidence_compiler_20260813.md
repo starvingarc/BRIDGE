@@ -43,7 +43,7 @@ Current source-tree observations:
 - repository policy passed, the full suite retained exactly 12 discoverable tools, and the packaged/public P0-09 Tool Card projections remain byte-identical; and
 - knowledge validation remained valid with no dangling method/source refs and zero formally eligible methods.
 
-Before this final fix set, a fresh Python 3.12.13 environment installed the wheel with the declared PyArrow 21.0.0 and NetworkX 3.5 dependencies and passed `836 passed, 3 warnings` plus dependency, discovery, Schema, Card, knowledge and policy checks. That result is retained only as a prior baseline: the exact 2026-08-14 tree still requires the integrator's clean-wheel rerun because generated Schema bytes and the Comparison manifest field set changed.
+The integrator then archived exact commit `d7614f7`, built and installed its wheel in a fresh Python 3.12.13 environment with the declared PyArrow 21.0.0 and NetworkX 3.5 dependencies, and observed `858 passed, 3 warnings`. Dependency consistency, 12-tool discovery, all 49 installed Schemas, the installed P0-09 adapter/Card, the strict external-input Schema boundary, the Comparison binding projection, knowledge validation and repository policy also passed.
 
 The synthetic executable cases observed:
 
@@ -72,7 +72,7 @@ These observations support the engineering claim that the candidate module can p
 
 This validation does not establish that any biological Claim is true, that any current ProductCase has sufficient evidence, that any domain score exists, that an EvidenceFamily assignment is scientifically correct, or that any output is suitable for public/scientific release. It does not validate LadybugDB, production-scale performance or the proposed evidence environment. The committed branch intentionally does not promote any method to `formal_eligible`.
 
-The focused and full development runs used PyArrow/NetworkX versions newer than the declared release environment. The exact final tree still needs a clean-wheel rerun with the declared PyArrow 21.0.0 and NetworkX 3.5 environment. Independent review resolution and Draft PR publication remain outstanding, and neither step authorizes scientific promotion or merge.
+The focused and full development runs used PyArrow/NetworkX versions newer than the declared release environment; the separate exact-commit wheel run verified the declared PyArrow 21.0.0 and NetworkX 3.5 environment. Independent review resolution and Draft PR publication remain outstanding, and neither step authorizes scientific promotion or merge.
 
 ## Engineering artifacts and reproducibility
 
