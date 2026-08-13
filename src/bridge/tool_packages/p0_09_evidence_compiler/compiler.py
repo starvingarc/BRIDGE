@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime
 import hashlib
 import json
+import re
 from typing import Any, Iterable, Mapping
 
 from pydantic import ValidationError
@@ -15,6 +16,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CANONICALIZATION_ID,
     COMPILER_VERSION,
+    EVIDENCE_REF_PATTERN,
     ClaimRegistry,
     ClaimSpec,
     CompilationDisposition,
@@ -45,6 +47,8 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     RejectedEvidenceRecordList,
     RevisionAction,
     VersionedObjectRef,
+    publication_ref,
+    publication_version,
     is_prohibited_conclusion_key,
     contains_unsafe_reference,
 )
@@ -185,29 +189,7 @@ def canonical_input_hash(
     spec: ToolPackageSpecV2,
     objects_by_input_id: Mapping[str, FrozenModel],
 ) -> str:
-    refs: list[dict[str, Any]] = []
-    objects: list[dict[str, Any]] = []
-    for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id)):
-        normalized_object = normalize_identity_payload(objects_by_input_id[ref.input_id])
-        ref_identity = {
-                "input_id": ref.input_id,
-                "role": ref.role,
-                "schema_ref": ref.schema_ref,
-                "object_version": ref.object_version,
-                "semantic_sha256": hashlib.sha256(
-                    canonical_json_bytes(normalized_object)
-                ).hexdigest(),
-                "media_type": ref.media_type,
-            }
-        if ref.role in CONTENT_ADDRESSED_GRAPH_ROLES:
-            ref_identity["content_addressed_sha256"] = ref.sha256
-        refs.append(ref_identity)
-        objects.append(
-            {
-                "input_id": ref.input_id,
-                "payload": normalized_object,
-            }
-        )
+    refs, objects = semantic_input_projection(request, objects_by_input_id)
     return canonical_hash(
         {
             "tool_id": spec.tool_id,
@@ -222,15 +204,104 @@ def canonical_input_hash(
     )
 
 
+REQUEST_BINDING_FIELDS = frozenset(
+    {
+        "manifest_input_id",
+        "record_set_input_id",
+        "requirement_set_input_id",
+        "sufficiency_profile_input_id",
+    }
+)
+
+
+def _replace_binding_ids(value: Any, semantic_tokens: Mapping[str, str]) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: (
+                semantic_tokens.get(item, item)
+                if key in REQUEST_BINDING_FIELDS and isinstance(item, str)
+                else _replace_binding_ids(item, semantic_tokens)
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_replace_binding_ids(item, semantic_tokens) for item in value]
+    return value
+
+
+def semantic_input_projection(
+    request: ToolRequestV2,
+    objects_by_input_id: Mapping[str, FrozenModel],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Project caller labels into content identities before hashing/publication."""
+
+    provisional: dict[str, tuple[dict[str, Any], Any]] = {}
+    for ref in request.object_inputs:
+        normalized = normalize_identity_payload(objects_by_input_id[ref.input_id])
+        identity = {
+            "role": ref.role,
+            "schema_ref": ref.schema_ref,
+            "object_version": ref.object_version,
+            "semantic_sha256": hashlib.sha256(canonical_json_bytes(normalized)).hexdigest(),
+            "media_type": ref.media_type,
+        }
+        if ref.role in CONTENT_ADDRESSED_GRAPH_ROLES:
+            identity["content_addressed_sha256"] = ref.sha256
+        provisional[ref.input_id] = (identity, normalized)
+    tokens = {
+        input_id: "semantic-input:"
+        + hashlib.sha256(canonical_json_bytes(identity)).hexdigest()[:24]
+        for input_id, (identity, _) in provisional.items()
+        if identity["role"] != "compilation_bundle"
+    }
+    finalized: list[tuple[dict[str, Any], Any]] = []
+    for ref in request.object_inputs:
+        identity, normalized = provisional[ref.input_id]
+        if ref.role == "compilation_bundle":
+            normalized = normalize_identity_payload(
+                _replace_binding_ids(
+                    objects_by_input_id[ref.input_id].model_dump(mode="json"), tokens
+                )
+            )
+            identity = {
+                **identity,
+                "semantic_sha256": hashlib.sha256(
+                    canonical_json_bytes(normalized)
+                ).hexdigest(),
+            }
+        finalized.append((identity, normalized))
+    finalized.sort(key=lambda item: canonical_json_bytes(item[0]))
+    occurrence: dict[bytes, int] = defaultdict(int)
+    refs: list[dict[str, Any]] = []
+    objects: list[dict[str, Any]] = []
+    for identity, normalized in finalized:
+        key = canonical_json_bytes(identity)
+        index = occurrence[key]
+        occurrence[key] += 1
+        refs.append({**identity, "occurrence": index})
+        objects.append(
+            {
+                "semantic_input_ref": "semantic-input:"
+                + hashlib.sha256(key).hexdigest()[:24],
+                "occurrence": index,
+                "payload": normalized,
+            }
+        )
+    return refs, objects
+
+
 def graph_identity(bundle: EvidenceCompilationBundle) -> str:
     if bundle.graph_kind is GraphKind.CASE:
         assert bundle.product_case_ref is not None
-        identity = f"case|{bundle.product_case_ref.ref}"
-        prefix = "case-evidence-graph"
+        return graph_identity_for_ref(GraphKind.CASE, bundle.product_case_ref)
     else:
         assert bundle.comparison_ref is not None
-        identity = f"comparison|{bundle.comparison_ref.ref}"
-        prefix = "comparison-evidence-graph"
+        return graph_identity_for_ref(GraphKind.COMPARISON, bundle.comparison_ref)
+
+
+def graph_identity_for_ref(kind: GraphKind, root_ref: VersionedObjectRef) -> str:
+    identity = f"{kind.value}|{root_ref.ref}"
+    prefix = f"{kind.value}-evidence-graph"
     return f"{prefix}:{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:24]}"
 
 
@@ -248,6 +319,28 @@ def evidence_logical_key(candidate: EvidenceCandidate) -> str:
             "measurement_spec_ref": candidate.measurement_spec_ref.model_dump(mode="json"),
         }
     ).decode("utf-8")
+
+
+def evidence_record_logical_key(record: EvidenceRecord) -> str:
+    """Rebuild the immutable logical key from a compiled record's identity fields."""
+
+    return canonical_json_bytes(
+        {
+            "product_case_ref": record.product_case_ref.model_dump(mode="json"),
+            "sample_or_preparation_ref": record.sample_or_preparation_ref.model_dump(
+                mode="json"
+            ),
+            "domain_id": record.domain_id.value,
+            "metric_id": record.metric_id,
+            "claim_ref": record.claim_ref.model_dump(mode="json"),
+            "biological_context": record.biological_context.model_dump(mode="json"),
+            "measurement_spec_ref": record.measurement_spec_ref.model_dump(mode="json"),
+        }
+    ).decode("utf-8")
+
+
+def evidence_identity(logical_key: str) -> str:
+    return f"evidence:{hashlib.sha256(logical_key.encode('utf-8')).hexdigest()[:24]}"
 
 
 def evidence_content_payload(
@@ -312,6 +405,17 @@ def requirement_identity(
         f"{graph_id}|{claim_ref.ref}|{requirement_key}".encode("utf-8")
     ).hexdigest()[:24]
     return f"requirement:{digest}"
+
+
+def reconciliation_identity(
+    graph_id: str,
+    claim_ref: VersionedObjectRef,
+    reconciliation_spec_ref: VersionedObjectRef,
+) -> str:
+    digest = hashlib.sha256(
+        f"{graph_id}|{claim_ref.ref}|{reconciliation_spec_ref.ref}".encode("utf-8")
+    ).hexdigest()[:24]
+    return f"reconciliation:{digest}"
 
 
 def requirement_content_hash(requirement: EvidenceRequirement) -> str:
@@ -684,6 +788,11 @@ def compile_evidence_graph(
         requirement_set=requirement_set,
         reconciliation_set=reconciliation_set,
         rejected_records=rejected_list,
+        external_case_evidence_refs=[
+            item
+            for item in comparison_bundle.external_case_evidence_refs
+            if isinstance(item, ExternalCaseEvidenceRef)
+        ],
         nodes=nodes,
         edges=edges,
     )
@@ -1255,9 +1364,12 @@ def _validate_comparison_bindings(
     rejected: list[RejectedEvidenceRecord] = []
     evidence_declarations: dict[str, set[str]] = defaultdict(set)
     for item in bundle.external_case_evidence_refs:
-        evidence_declarations[item.evidence_ref].add(
-            canonical_hash(item.model_dump(mode="json"))
-        )
+        raw = item.model_dump(mode="json") if isinstance(item, ExternalCaseEvidenceRef) else item
+        try:
+            modeled = ExternalCaseEvidenceRef.model_validate(raw)
+        except (ValidationError, ValueError):
+            continue
+        evidence_declarations[modeled.evidence_ref].add(canonical_hash(modeled.model_dump(mode="json")))
     for index, raw_external in enumerate(bundle.external_case_evidence_refs):
         raw = (
             raw_external.model_dump(mode="json")
@@ -1461,7 +1573,12 @@ def _source_id(raw: Any, field: str, index: int, prefix: str) -> str:
         and not contains_unsafe_reference(raw[field])
         and len(raw[field]) <= 256
     ):
-        return raw[field]
+        if re.fullmatch(EVIDENCE_REF_PATTERN, raw[field]):
+            return raw[field]
+        try:
+            return publication_ref(raw[field])
+        except ValueError:
+            pass
     return f"{prefix}-index-{index}"
 
 
@@ -1478,5 +1595,8 @@ def _raw_ref(value: Any) -> str | None:
         and len(object_id) <= 256
         and len(version) <= 128
     ):
-        return f"{object_id}@{version}"
+        try:
+            return f"{publication_ref(object_id)}@{publication_version(version)}"
+        except ValueError:
+            return None
     return None

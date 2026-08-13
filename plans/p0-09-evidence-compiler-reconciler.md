@@ -37,7 +37,8 @@ The output can make evidence lineage, gaps and conflicts inspectable without all
 - [x] Add detailed Tool Card, example request, scientific task card and reproducible validation record.
 - [x] Re-export the post-review public P0-09 Schemas and verify packaged byte parity.
 - [x] Recheck adapter/result-schema registration, explicit evidence dependencies, knowledge projection and repository-wide documentation against the frozen post-review contract.
-- [x] Rerun full-source, clean-wheel, CLI/SDK, knowledge, repository-policy and diff gates after central export and the five-finding hardening review; the focused suite passes 146 tests and both source and installed-wheel suites pass 836 tests.
+- [x] Rerun the 2026-08-14 focused/full-source, discovery, knowledge, repository-policy, Schema/Card parity and diff gates after the final hardening review; the focused suite passes 168 tests and the full source suite passes 858 tests with three known warnings.
+- [ ] Rebuild and install the wheel from the exact final tree, then repeat the installed-runtime gates with declared evidence dependencies.
 - [ ] Complete independent review with no unresolved Critical or Important findings.
 - [ ] Push one topic branch and open a Draft stacked PR; do not merge.
 

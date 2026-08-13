@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-import hashlib
 from typing import Iterable, Mapping
 
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
@@ -13,6 +12,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     canonical_hash,
     effective_records,
+    reconciliation_identity,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     ChannelResolution,
@@ -338,9 +338,11 @@ def _reconcile_claim(
         )
         reasons.append(state_reason)
 
-    reconciliation_id = "reconciliation:" + hashlib.sha256(
-        f"{graph_id}|{claim.ref}|{claim.reconciliation_spec_ref.ref}".encode("utf-8")
-    ).hexdigest()[:24]
+    reconciliation_id = reconciliation_identity(
+        graph_id,
+        VersionedObjectRef(object_id=claim.claim_id, object_version=claim.version),
+        claim.reconciliation_spec_ref,
+    )
     content_payload = {
         "graph_id": graph_id,
         "graph_version": graph_version,

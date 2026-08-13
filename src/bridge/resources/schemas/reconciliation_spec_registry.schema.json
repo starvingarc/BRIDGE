@@ -61,6 +61,7 @@
         },
         "minimum_independent_families_by_role": {
           "additionalProperties": {
+            "exclusiveMinimum": 0,
             "type": "integer"
           },
           "title": "Minimum Independent Families By Role",

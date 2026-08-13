@@ -32,6 +32,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceRecord,
     EvidenceRequirement,
     EvidenceRequirementState,
+    EvidenceTier,
     GraphEdgeRow,
     GraphEdgeType,
     GraphKind,
@@ -384,7 +385,7 @@ def build_graph_rows(
                 properties=profile.model_dump(mode="json"),
                 allow_upstream_no_score_fields=True,
             )
-            del profile_node
+            add_edge(GraphEdgeType.DEPENDS_ON, external_node_id, profile_node)
             add_edge(GraphEdgeType.APPLICABLE_TO, external_node_id, root_id)
             add_edge(GraphEdgeType.BELONGS_TO_EVIDENCE_FAMILY, external_node_id, family_node)
             add_edge(
@@ -494,6 +495,8 @@ def validate_graph_rows(
     *,
     root_id: str | None = None,
     root_type: GraphNodeType | None = None,
+    expected_graph_id: str | None = None,
+    expected_graph_version: int | None = None,
 ) -> nx.MultiDiGraph:
     if not nodes:
         raise ValueError("graph_invariant_failed: graph has no nodes")
@@ -501,6 +504,10 @@ def validate_graph_rows(
     versions = {item.graph_version for item in nodes} | {item.graph_version for item in edges}
     if len(graph_ids) != 1 or len(versions) != 1:
         raise ValueError("graph_invariant_failed: mixed graph identity")
+    if expected_graph_id is not None and graph_ids != {expected_graph_id}:
+        raise ValueError("graph_invariant_failed: graph ID does not match manifest")
+    if expected_graph_version is not None and versions != {expected_graph_version}:
+        raise ValueError("graph_invariant_failed: graph version does not match manifest")
     if len({item.node_id for item in nodes}) != len(nodes):
         raise ValueError("graph_invariant_failed: duplicate node")
     if len({item.edge_id for item in edges}) != len(edges):
@@ -510,6 +517,21 @@ def validate_graph_rows(
     for item in nodes:
         if item.node_id != node_id(item.object_id, item.object_version, item.node_type):
             raise ValueError("graph_invariant_failed: node ID mismatch")
+        if item.node_type is GraphNodeType.EVIDENCE_RECORD:
+            if item.evidence_tier is None or item.lifecycle_state is None:
+                raise ValueError("graph_invariant_failed: evidence metadata missing")
+            EvidenceTier(item.evidence_tier)
+            EvidenceLifecycleState(item.lifecycle_state)
+        elif item.node_type is GraphNodeType.EVIDENCE_REQUIREMENT:
+            if item.evidence_tier is not None or item.lifecycle_state not in {
+                EvidenceRequirementState.OPEN.value,
+                EvidenceRequirementState.SATISFIED.value,
+                EvidenceRequirementState.NOT_APPLICABLE.value,
+                EvidenceLifecycleState.SUPERSEDED.value,
+            }:
+                raise ValueError("graph_invariant_failed: requirement metadata mismatch")
+        elif item.evidence_tier is not None or item.lifecycle_state is not None:
+            raise ValueError("graph_invariant_failed: non-evidence metadata mismatch")
         if item.record_mode is GraphRecordMode.OWNED:
             if (
                 item.source_graph_id is not None
@@ -650,6 +672,22 @@ def read_parquet_rows(
 ) -> tuple[list[GraphNodeRow], list[GraphEdgeRow]]:
     node_table = pq.read_table(nodes_path)
     edge_table = pq.read_table(edges_path)
+    return _tables_to_rows(node_table, edge_table)
+
+
+def read_parquet_bytes(
+    nodes_payload: bytes, edges_payload: bytes
+) -> tuple[list[GraphNodeRow], list[GraphEdgeRow]]:
+    """Parse the exact immutable bytes whose checksums were already verified."""
+
+    node_table = pq.read_table(pa.BufferReader(nodes_payload))
+    edge_table = pq.read_table(pa.BufferReader(edges_payload))
+    return _tables_to_rows(node_table, edge_table)
+
+
+def _tables_to_rows(
+    node_table: pa.Table, edge_table: pa.Table
+) -> tuple[list[GraphNodeRow], list[GraphEdgeRow]]:
     if node_table.schema != NODE_SCHEMA or edge_table.schema != EDGE_SCHEMA:
         raise ValueError("manifest_integrity_failed: parquet schema mismatch")
     nodes = [GraphNodeRow.model_validate(item) for item in node_table.to_pylist()]

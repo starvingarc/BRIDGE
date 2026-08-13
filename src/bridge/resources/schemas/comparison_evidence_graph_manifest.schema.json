@@ -58,6 +58,133 @@
       "title": "CaseGraphRef",
       "type": "object"
     },
+    "EvidenceApplicability": {
+      "enum": [
+        "applicable",
+        "not_applicable",
+        "not_assessed"
+      ],
+      "title": "EvidenceApplicability",
+      "type": "string"
+    },
+    "EvidenceLifecycleState": {
+      "enum": [
+        "active",
+        "superseded",
+        "invalidated"
+      ],
+      "title": "EvidenceLifecycleState",
+      "type": "string"
+    },
+    "EvidenceRelation": {
+      "enum": [
+        "supports",
+        "contradicts"
+      ],
+      "title": "EvidenceRelation",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "EvidenceTier": {
+      "enum": [
+        "formal",
+        "shadow",
+        "exploratory"
+      ],
+      "title": "EvidenceTier",
+      "type": "string"
+    },
+    "ExternalCaseEvidenceBinding": {
+      "additionalProperties": false,
+      "description": "Public, content-addressed Comparison projection without caller input labels.",
+      "properties": {
+        "applicability": {
+          "$ref": "#/$defs/EvidenceApplicability"
+        },
+        "comparison_claim_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "evidence_content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Content Hash",
+          "type": "string"
+        },
+        "evidence_family_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "evidence_ref": {
+          "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
+          "title": "Evidence Ref",
+          "type": "string"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "evidence_tier": {
+          "$ref": "#/$defs/EvidenceTier"
+        },
+        "lifecycle_state": {
+          "$ref": "#/$defs/EvidenceLifecycleState"
+        },
+        "product_case_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "relation": {
+          "$ref": "#/$defs/EvidenceRelation"
+        },
+        "source_case_graph_ref": {
+          "$ref": "#/$defs/CaseGraphRef"
+        },
+        "source_claim_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "sufficiency_profile_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "tool_run_execution_state": {
+          "enum": [
+            "succeeded",
+            "partial",
+            "failed",
+            "skipped",
+            "not_implemented"
+          ],
+          "title": "Tool Run Execution State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_case_graph_ref",
+        "evidence_ref",
+        "evidence_content_hash",
+        "product_case_ref",
+        "source_claim_ref",
+        "comparison_claim_ref",
+        "evidence_family_ref",
+        "sufficiency_profile_ref",
+        "relation",
+        "evidence_state",
+        "evidence_tier",
+        "lifecycle_state",
+        "applicability",
+        "tool_run_execution_state"
+      ],
+      "title": "ExternalCaseEvidenceBinding",
+      "type": "object"
+    },
     "GraphArtifactRef": {
       "additionalProperties": false,
       "properties": {
@@ -191,6 +318,13 @@
     "evidence_requirements": {
       "$ref": "#/$defs/GraphArtifactRef"
     },
+    "external_evidence_bindings": {
+      "items": {
+        "$ref": "#/$defs/ExternalCaseEvidenceBinding"
+      },
+      "title": "External Evidence Bindings",
+      "type": "array"
+    },
     "graph_edges": {
       "$ref": "#/$defs/GraphArtifactRef"
     },
@@ -219,6 +353,7 @@
     },
     "object_counts": {
       "additionalProperties": {
+        "exclusiveMinimum": 0,
         "type": "integer"
       },
       "propertyNames": {
@@ -251,7 +386,8 @@
     "graph_edges",
     "created_at",
     "comparison_ref",
-    "case_graph_refs"
+    "case_graph_refs",
+    "external_evidence_bindings"
   ],
   "title": "ComparisonEvidenceGraphManifest",
   "type": "object"

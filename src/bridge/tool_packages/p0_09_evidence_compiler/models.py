@@ -6,14 +6,17 @@ import hashlib
 import json
 import math
 import re
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from urllib.parse import parse_qsl, urlsplit
 
 from pydantic import (
+    ConfigDict,
     Field,
+    PlainValidator,
     StrictBool,
     StrictFloat,
     StrictInt,
+    field_serializer,
     field_validator,
     model_validator,
 )
@@ -31,6 +34,10 @@ SHA256_PATTERN = r"^[0-9a-f]{64}$"
 EVIDENCE_REF_PATTERN = r"^evidence:[a-f0-9]{24}@[1-9][0-9]*$"
 REQUIREMENT_REF_PATTERN = r"^requirement:[a-f0-9]{24}@[1-9][0-9]*$"
 StrictNumber = StrictFloat | StrictInt
+PositiveStrictInt = Annotated[StrictInt, Field(gt=0)]
+PositiveStrictNumber = Annotated[StrictFloat, Field(gt=0)] | Annotated[
+    StrictInt, Field(gt=0)
+]
 
 
 class GraphKind(StrEnum):
@@ -559,7 +566,104 @@ class ExternalCaseEvidenceRef(FrozenModel):
     ]
 
 
+def _preserve_raw_external_evidence_ref(value: Any) -> Any:
+    """Keep object-shaped direct-adapter input raw for sanitized sibling rejection."""
+
+    return value
+
+
+RawExternalCaseEvidenceRef = Annotated[
+    ExternalCaseEvidenceRef,
+    PlainValidator(
+        _preserve_raw_external_evidence_ref,
+        json_schema_input_type=ExternalCaseEvidenceRef,
+    ),
+]
+
+
+class ExternalCaseEvidenceBinding(FrozenModel):
+    """Public, content-addressed Comparison projection without caller input labels."""
+
+    source_case_graph_ref: CaseGraphRef
+    evidence_ref: str = Field(pattern=EVIDENCE_REF_PATTERN)
+    evidence_content_hash: str = Field(pattern=SHA256_PATTERN)
+    product_case_ref: VersionedObjectRef
+    source_claim_ref: VersionedObjectRef
+    comparison_claim_ref: VersionedObjectRef
+    evidence_family_ref: VersionedObjectRef
+    sufficiency_profile_ref: VersionedObjectRef
+    relation: EvidenceRelation
+    evidence_state: EvidenceState
+    evidence_tier: EvidenceTier
+    lifecycle_state: EvidenceLifecycleState
+    applicability: EvidenceApplicability
+    tool_run_execution_state: Literal[
+        "succeeded", "partial", "failed", "skipped", "not_implemented"
+    ]
+
+
 class EvidenceRecord(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "not": {
+                        "properties": {"evidence_state": {"const": "missing"}},
+                        "required": ["evidence_state"],
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {"value": {"type": "null"}},
+                        "required": ["value"],
+                    },
+                    "then": {
+                        "properties": {
+                            "evidence_state": {
+                                "enum": ["unknown", "unavailable", "alert"]
+                            }
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"revision_action": {"const": "create"}},
+                        "required": ["revision_action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "predecessor_ref": {"type": "null"},
+                            "lifecycle_state": {"const": "active"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"revision_action": {"const": "supersede"}},
+                        "required": ["revision_action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "predecessor_ref": {"type": "string"},
+                            "lifecycle_state": {"const": "active"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"revision_action": {"const": "invalidate"}},
+                        "required": ["revision_action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "predecessor_ref": {"type": "string"},
+                            "lifecycle_state": {"const": "invalidated"},
+                        }
+                    },
+                },
+            ]
+        }
+    )
     evidence_id: str = Field(pattern=r"^evidence:[a-f0-9]{24}$")
     evidence_version: StrictInt = Field(ge=1)
     logical_key: str = Field(min_length=1)
@@ -574,7 +678,7 @@ class EvidenceRecord(FrozenModel):
     value: Any
     unit: str | None = None
     numerator: StrictNumber | None = None
-    denominator: StrictNumber | None = None
+    denominator: PositiveStrictNumber | None = None
     interval: EvidenceInterval | None = None
     claim_ref: VersionedObjectRef
     biological_context: BiologicalContext
@@ -651,6 +755,30 @@ class EvidenceRecord(FrozenModel):
 
 
 class EvidenceRequirement(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"state": {"const": "satisfied"}},
+                        "required": ["state"],
+                    },
+                    "then": {
+                        "properties": {"satisfying_evidence_refs": {"minItems": 1}}
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"state": {"const": "open"}},
+                        "required": ["state"],
+                    },
+                    "then": {
+                        "properties": {"satisfying_evidence_refs": {"maxItems": 0}}
+                    },
+                },
+            ]
+        }
+    )
     requirement_id: str = Field(pattern=r"^requirement:[a-f0-9]{24}$")
     requirement_version: StrictInt = Field(ge=1)
     claim_ref: VersionedObjectRef
@@ -705,7 +833,9 @@ class EvidenceCompilationBundle(FrozenModel):
     product_case_ref: VersionedObjectRef | None = None
     comparison_ref: VersionedObjectRef | None = None
     case_graph_refs: list[BoundCaseGraphRef] = Field(default_factory=list)
-    external_case_evidence_refs: list[ExternalCaseEvidenceRef] = Field(default_factory=list)
+    external_case_evidence_refs: list[RawExternalCaseEvidenceRef] = Field(
+        default_factory=list
+    )
     base_graph_ref: AppendGraphRef | None = None
     object_catalog: list[CompilationObjectRef] = Field(min_length=1)
     candidate_records: list[dict[str, Any]] = Field(default_factory=list)
@@ -724,18 +854,28 @@ class EvidenceCompilationBundle(FrozenModel):
     ) -> list[BoundCaseGraphRef]:
         return sorted(value, key=lambda item: (item.graph_id, item.graph_version))
 
+    @field_validator("external_case_evidence_refs", mode="before")
+    @classmethod
+    def external_evidence_items_are_objects(cls, value: Any) -> Any:
+        if isinstance(value, list) and any(
+            not isinstance(item, (dict, ExternalCaseEvidenceRef)) for item in value
+        ):
+            raise ValueError("external_case_evidence_refs items must be objects")
+        return value
+
     @field_validator("external_case_evidence_refs")
     @classmethod
     def sort_external_evidence(
-        cls, value: list[ExternalCaseEvidenceRef]
-    ) -> list[ExternalCaseEvidenceRef]:
+        cls, value: list[ExternalCaseEvidenceRef | dict[str, Any]]
+    ) -> list[ExternalCaseEvidenceRef | dict[str, Any]]:
         # This field has set semantics. Collapse only byte-equivalent modeled
         # declarations; conflicting declarations for one logical EvidenceRecord
         # remain distinct so the compiler can reject them explicitly.
-        unique: dict[str, ExternalCaseEvidenceRef] = {}
+        unique: dict[str, ExternalCaseEvidenceRef | dict[str, Any]] = {}
         for item in value:
+            payload = item.model_dump(mode="json") if isinstance(item, FrozenModel) else item
             identity = json.dumps(
-                item.model_dump(mode="json"),
+                payload,
                 ensure_ascii=False,
                 allow_nan=False,
                 sort_keys=True,
@@ -743,6 +883,17 @@ class EvidenceCompilationBundle(FrozenModel):
             )
             unique.setdefault(identity, item)
         return [unique[key] for key in sorted(unique)]
+
+    @field_serializer("external_case_evidence_refs")
+    def serialize_external_evidence(
+        self, value: list[ExternalCaseEvidenceRef | dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        return [
+            item.model_dump(mode="json")
+            if isinstance(item, ExternalCaseEvidenceRef)
+            else item
+            for item in value
+        ]
 
     @field_validator("object_catalog")
     @classmethod
@@ -813,6 +964,39 @@ class EvidenceCompilationBundle(FrozenModel):
 
 
 class EvidenceCandidate(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "not": {
+                        "properties": {"evidence_state": {"const": "missing"}},
+                        "required": ["evidence_state"],
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {"value": {"type": "null"}},
+                        "required": ["value"],
+                    },
+                    "then": {
+                        "properties": {
+                            "evidence_state": {
+                                "enum": ["unknown", "unavailable", "alert"]
+                            }
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"revision_action": {"const": "create"}},
+                        "required": ["revision_action"],
+                    },
+                    "then": {"properties": {"predecessor_ref": {"type": "null"}}},
+                    "else": {"properties": {"predecessor_ref": {"type": "string"}}},
+                },
+            ]
+        }
+    )
     candidate_id: str = Field(pattern=r"^evidence-candidate:[A-Za-z0-9._:-]+$")
     product_case_ref: VersionedObjectRef
     sample_or_preparation_ref: VersionedObjectRef
@@ -824,7 +1008,7 @@ class EvidenceCandidate(FrozenModel):
     value: Any
     unit: str | None = None
     numerator: StrictNumber | None = None
-    denominator: StrictNumber | None = None
+    denominator: PositiveStrictNumber | None = None
     interval: EvidenceInterval | None = None
     claim_ref: VersionedObjectRef
     biological_context: BiologicalContext
@@ -1051,7 +1235,7 @@ class ReconciliationSpec(FrozenModel):
     primary_channel_roles: list[str] = Field(min_length=1)
     confirmation_channel_roles: list[str] = Field(default_factory=list)
     integration_sensitive_channel_roles: list[str] = Field(default_factory=list)
-    minimum_independent_families_by_role: dict[str, StrictInt]
+    minimum_independent_families_by_role: dict[str, PositiveStrictInt]
     allowed_evidence_states: list[EvidenceState] = Field(min_length=1)
     required_sufficiency_states: tuple[Literal["sufficient"]] = ("sufficient",)
     conflict_rule: Literal["family_dedup_then_channel_resolution"]
@@ -1172,6 +1356,54 @@ class ChannelResolution(FrozenModel):
 
 
 class ReconciliationRecord(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"eligibility": {"const": "eligible"}},
+                        "required": ["eligibility"],
+                    },
+                    "then": {
+                        "required": ["state"],
+                        "properties": {
+                            "state": {
+                                "enum": [
+                                    "stable",
+                                    "consensus_supported",
+                                    "integration_sensitive",
+                                    "unstable",
+                                ]
+                            }
+                        },
+                        "allOf": [
+                            {
+                                "if": {
+                                    "properties": {"state": {"const": "unstable"}},
+                                    "required": ["state"],
+                                },
+                                "then": {"properties": {"direction": {"type": "null"}}},
+                                "else": {
+                                    "required": ["direction"],
+                                    "properties": {
+                                        "direction": {
+                                            "enum": ["supports", "contradicts"]
+                                        }
+                                    }
+                                },
+                            }
+                        ],
+                    },
+                    "else": {
+                        "properties": {
+                            "state": {"type": "null"},
+                            "direction": {"type": "null"},
+                        }
+                    },
+                }
+            ]
+        }
+    )
     reconciliation_id: str = Field(pattern=r"^reconciliation:[a-f0-9]{24}$")
     reconciliation_version: StrictInt = Field(ge=1)
     graph_id: str
@@ -1229,6 +1461,25 @@ class RejectedEvidenceRecord(FrozenModel):
     claim_ref: str | None = None
     logical_key_digest: str | None = Field(default=None, pattern=SHA256_PATTERN)
 
+    @field_validator("claim_ref")
+    @classmethod
+    def publishable_claim_ref(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            object_id, version = value.rsplit("@", 1)
+            VersionedObjectRef(object_id=object_id, object_version=version)
+        except (ValueError, ValidationError) as exc:
+            raise ValueError("claim_ref must be a versioned publication reference") from exc
+        return value
+
+    @field_validator("source_id")
+    @classmethod
+    def publishable_source_id(cls, value: str) -> str:
+        if re.fullmatch(EVIDENCE_REF_PATTERN, value):
+            return value
+        return publication_ref(value)
+
 
 class RejectedEvidenceRecordList(FrozenModel):
     rejected_list_id: str = Field(pattern=r"^rejected-evidence-records:[a-f0-9]{16}$")
@@ -1285,7 +1536,7 @@ class EvidenceGraphManifestBase(FrozenModel):
     canonicalization_id: Literal["bridge-canonical-json/v0.1"]
     node_count: StrictInt = Field(ge=0)
     edge_count: StrictInt = Field(ge=0)
-    object_counts: dict[GraphNodeType, StrictInt]
+    object_counts: dict[GraphNodeType, PositiveStrictInt]
     source_input_hash: str = Field(pattern=SHA256_PATTERN)
     base_graph_ref: BaseGraphRef | None = None
     evidence_records: GraphArtifactRef
@@ -1328,6 +1579,7 @@ class ComparisonEvidenceGraphManifest(EvidenceGraphManifestBase):
     graph_kind: Literal[GraphKind.COMPARISON] = GraphKind.COMPARISON
     comparison_ref: VersionedObjectRef
     case_graph_refs: list[CaseGraphRef] = Field(min_length=2, max_length=5)
+    external_evidence_bindings: list[ExternalCaseEvidenceBinding]
 
     @field_validator("case_graph_refs")
     @classmethod
@@ -1337,6 +1589,14 @@ class ComparisonEvidenceGraphManifest(EvidenceGraphManifestBase):
             "case_graph_refs",
         )
         return sorted(value, key=lambda item: (item.graph_id, item.graph_version))
+
+    @field_validator("external_evidence_bindings")
+    @classmethod
+    def unique_sorted_external_bindings(
+        cls, value: list[ExternalCaseEvidenceBinding]
+    ) -> list[ExternalCaseEvidenceBinding]:
+        _unique([item.evidence_ref for item in value], "external_evidence_bindings")
+        return sorted(value, key=lambda item: item.evidence_ref)
 
 
 class CytoscapeElements(FrozenModel):
@@ -1415,6 +1675,7 @@ class CompiledEvidenceGraph(FrozenModel):
     requirement_set: EvidenceRequirementSet
     reconciliation_set: ReconciliationRecordSet
     rejected_records: RejectedEvidenceRecordList
+    external_case_evidence_refs: list[ExternalCaseEvidenceRef]
     nodes: list[GraphNodeRow]
     edges: list[GraphEdgeRow]
 

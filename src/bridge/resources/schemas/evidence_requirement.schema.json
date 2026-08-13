@@ -33,6 +33,46 @@
   },
   "$id": "bridge://schemas/evidence-requirement/v0.1",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "satisfied"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "satisfying_evidence_refs": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "open"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "satisfying_evidence_refs": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "blocking_scope": {
       "minLength": 1,

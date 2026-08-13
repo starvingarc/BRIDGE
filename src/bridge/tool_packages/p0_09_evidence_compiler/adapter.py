@@ -22,6 +22,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     canonical_json_bytes,
     compile_evidence_graph,
     normalize_identity_payload,
+    semantic_input_projection,
     evidence_record_content_hash,
     logical_key_hash,
     validate_prior_history,
@@ -43,13 +44,17 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceCompilationBundle,
     EvidenceCompilerRunResult,
     EvidenceFamilyRegistry,
+    ExternalCaseEvidenceBinding,
     EvidenceRecordSet,
     EvidenceRequirementSet,
     EvidenceLifecycleState,
     ExternalCaseEvidenceRef,
     GraphArtifactRef,
     GraphKind,
+    GraphNodeType,
+    GraphRecordMode,
     ReconciliationSpecRegistry,
+    VersionedObjectRef,
     contains_unsafe_reference,
     is_prohibited_conclusion_key,
 )
@@ -149,7 +154,10 @@ class EvidenceCompilerAdapter:
         loaded, loading_reasons = _load_structured_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
         if loaded is not None:
-            reasons.extend(_binding_reasons(request, loaded))
+            try:
+                reasons.extend(_binding_reasons(request, loaded))
+            except (OSError, RuntimeError):
+                reasons.append("output_dir_preflight_failed")
         reason_codes = sorted(set(reasons))
         return EligibilityResult(
             tool_id=request.tool_id,
@@ -928,6 +936,40 @@ def _write_bundle(
                 )
                 for item in bundle.case_graph_refs
             ],
+            external_evidence_bindings=[
+                ExternalCaseEvidenceBinding(
+                    source_case_graph_ref=item.source_case_graph_ref,
+                    evidence_ref=item.evidence_ref,
+                    evidence_content_hash=item.evidence_content_hash,
+                    product_case_ref=item.product_case_ref,
+                    source_claim_ref=item.source_claim_ref,
+                    comparison_claim_ref=item.comparison_claim_ref,
+                    evidence_family_ref=item.evidence_family_ref,
+                    sufficiency_profile_ref=VersionedObjectRef(
+                        object_id=profile.profile_id,
+                        object_version=profile.profile_version,
+                    ),
+                    relation=item.relation,
+                    evidence_state=item.evidence_state,
+                    evidence_tier=item.evidence_tier,
+                    lifecycle_state=item.lifecycle_state,
+                    applicability=item.applicability,
+                    tool_run_execution_state=item.tool_run_execution_state,
+                )
+                for item in compiled.external_case_evidence_refs
+                if (
+                    (profile := objects_by_input_id.get(item.sufficiency_profile_input_id))
+                    is not None
+                    and any(
+                        node.node_type is GraphNodeType.EVIDENCE_RECORD
+                        and node.record_mode is GraphRecordMode.EXTERNAL_REF
+                        and f"{node.object_id}@{node.object_version}" == item.evidence_ref
+                        and node.source_graph_id == item.source_case_graph_ref.graph_id
+                        and node.content_hash == item.evidence_content_hash
+                        for node in compiled.nodes
+                    )
+                )
+            ],
         )
         manifest_name = "comparison_evidence_graph_manifest.json"
         manifest_schema = "bridge://schemas/comparison-evidence-graph-manifest/v0.1"
@@ -1009,10 +1051,9 @@ def _write_bundle(
         "environment_spec_id": spec.environment_spec_id,
         "result_schema_ref": spec.result_schema_ref,
         "input_hash": compiled.input_hash,
-        "structured_inputs": [
-            _structured_input_manifest_entry(ref, objects_by_input_id[ref.input_id])
-            for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id))
-        ],
+        "structured_inputs": semantic_input_projection(
+            request, objects_by_input_id
+        )[0],
         "artifacts": artifact_specs,
     }
     _write_json(staging / "artifact_manifest.json", artifact_manifest)

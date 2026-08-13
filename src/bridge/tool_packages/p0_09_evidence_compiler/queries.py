@@ -10,16 +10,28 @@ from typing import Any, Iterable, Sequence
 import networkx as nx
 
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import P0DomainId
+from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
+    canonical_json_bytes,
+    evidence_identity,
+    evidence_record_logical_key,
+    graph_identity_for_ref,
+    reconciliation_identity,
+    requirement_identity,
+)
 from bridge.tool_packages.p0_09_evidence_compiler.graph import (
     node_id,
     object_counts,
-    read_parquet_rows,
+    read_parquet_bytes,
     validate_graph_rows,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CaseEvidenceGraphManifest,
+    ClaimSpec,
     ComparisonEvidenceGraphManifest,
     EvidenceGraphQueryResult,
+    EvidenceApplicability,
+    EvidenceFamilySpec,
+    EvidenceFamilyStatus,
     EvidenceRecordSet,
     EvidenceRequirementSet,
     EvidenceLifecycleState,
@@ -33,6 +45,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     GraphRecordMode,
     ReconciliationRecordSet,
     RevisionAction,
+    VersionedObjectRef,
 )
 
 
@@ -76,6 +89,7 @@ def _validate_comparison_projection(
     manifest: ComparisonEvidenceGraphManifest,
     nodes: Sequence[GraphNodeRow],
     edges: Sequence[GraphEdgeRow],
+    reconciliation_set: ReconciliationRecordSet,
 ) -> None:
     refs = {
         (item.graph_id, item.graph_version): item for item in manifest.case_graph_refs
@@ -107,29 +121,318 @@ def _validate_comparison_projection(
     if set(case_nodes) != set(refs):
         raise ValueError("manifest_integrity_failed")
 
-    applicable_edges = {
-        (edge.source_node_id, edge.target_node_id)
-        for edge in edges
-        if edge.edge_type is GraphEdgeType.APPLICABLE_TO
-    }
+    root = _node_for_ref(nodes, manifest.comparison_ref, {GraphNodeType.COMPARISON_RECORD})
+    bindings = {item.evidence_ref: item for item in manifest.external_evidence_bindings}
+    if len(bindings) != len(manifest.external_evidence_bindings):
+        raise ValueError("manifest_integrity_failed")
+    expected: set[tuple[str, str, str, str]] = set()
+    for case_node in case_nodes.values():
+        expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, root.node_id, case_node.node_id))
+    seen_bindings: set[str] = set()
     for node in nodes:
         if node.node_type is not GraphNodeType.EVIDENCE_RECORD:
             continue
+        evidence_ref = f"{node.object_id}@{node.object_version}"
+        binding = bindings.get(evidence_ref)
         if (
+            binding is None
+            or
             node.record_mode is not GraphRecordMode.EXTERNAL_REF
             or node.source_graph_id is None
             or node.source_graph_version is None
             or node.properties_json is not None
+            or node.content_hash != binding.evidence_content_hash
+            or node.evidence_tier != binding.evidence_tier.value
+            or node.lifecycle_state != binding.lifecycle_state.value
         ):
             raise ValueError("manifest_integrity_failed")
         key = (node.source_graph_id, node.source_graph_version)
         case_node = case_nodes.get(key)
         if (
             case_node is None
-            or (node.node_id, case_node.node_id) not in applicable_edges
             or node_map.get(case_node.node_id) != case_node
+            or binding.source_case_graph_ref
+            != refs.get((node.source_graph_id, node.source_graph_version))
+            or binding.product_case_ref
+            != binding.source_case_graph_ref.product_case_ref
         ):
             raise ValueError("manifest_integrity_failed")
+        seen_bindings.add(evidence_ref)
+        expected.add(_semantic_edge_key(GraphEdgeType.APPLICABLE_TO, node.node_id, root.node_id))
+        expected.add(
+            _semantic_edge_key(
+                GraphEdgeType.APPLICABLE_TO,
+                node.node_id,
+                case_node.node_id,
+                {"source_case_projection": True},
+            )
+        )
+        profile = _node_for_ref(
+            nodes,
+            binding.sufficiency_profile_ref,
+            {GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE},
+        )
+        family = _node_for_ref(
+            nodes, binding.evidence_family_ref, {GraphNodeType.EVIDENCE_FAMILY}
+        )
+        claim = _node_for_ref(nodes, binding.comparison_claim_ref, {GraphNodeType.CLAIM})
+        expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, node.node_id, profile.node_id))
+        expected.add(
+            _semantic_edge_key(
+                GraphEdgeType.BELONGS_TO_EVIDENCE_FAMILY, node.node_id, family.node_id
+            )
+        )
+        if binding.lifecycle_state is EvidenceLifecycleState.ACTIVE:
+            expected.add(
+                _semantic_edge_key(
+                    GraphEdgeType(binding.relation.value), node.node_id, claim.node_id
+                )
+            )
+    if seen_bindings != set(bindings):
+        raise ValueError("manifest_integrity_failed")
+
+    for node in nodes:
+        if node.node_type is not GraphNodeType.CLAIM or node.record_mode is not GraphRecordMode.OWNED:
+            continue
+        if node.properties_json is None:
+            raise ValueError("manifest_integrity_failed")
+        claim = ClaimSpec.model_validate_json(node.properties_json)
+        spec = _node_for_ref(
+            nodes, claim.reconciliation_spec_ref, {GraphNodeType.RECONCILIATION_SPEC}
+        )
+        expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, node.node_id, spec.node_id))
+        expected.add(_semantic_edge_key(GraphEdgeType.APPLICABLE_TO, node.node_id, root.node_id))
+    evidence_nodes = {
+        f"{item.object_id}@{item.object_version}": item.node_id
+        for item in nodes
+        if item.node_type is GraphNodeType.EVIDENCE_RECORD
+    }
+    for reconciliation in reconciliation_set.records:
+        source = node_id(
+            reconciliation.reconciliation_id,
+            str(reconciliation.reconciliation_version),
+            GraphNodeType.RECONCILIATION_RECORD,
+        )
+        for ref, allowed in [
+            (reconciliation.claim_ref, {GraphNodeType.CLAIM}),
+            (reconciliation.reconciliation_spec_ref, {GraphNodeType.RECONCILIATION_SPEC}),
+            *((item, {GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE}) for item in reconciliation.sufficiency_profile_refs),
+        ]:
+            target = _node_for_ref(nodes, ref, allowed)
+            expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, source, target.node_id))
+        for evidence_ref in reconciliation.included_evidence_refs:
+            target = evidence_nodes.get(evidence_ref)
+            if target is None:
+                raise ValueError("manifest_integrity_failed")
+            expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, source, target))
+    actual = {
+        (item.edge_type.value, item.source_node_id, item.target_node_id, item.properties_json)
+        for item in edges
+    }
+    if actual != expected:
+        raise ValueError("manifest_integrity_failed")
+
+
+def _semantic_edge_key(
+    edge_type: GraphEdgeType,
+    source: str,
+    target: str,
+    properties: dict[str, Any] | None = None,
+) -> tuple[str, str, str, str]:
+    return (
+        edge_type.value,
+        source,
+        target,
+        canonical_json_bytes(properties or {}).decode("utf-8"),
+    )
+
+
+def _node_for_ref(
+    nodes: Sequence[GraphNodeRow],
+    ref: VersionedObjectRef,
+    allowed_types: set[GraphNodeType],
+) -> GraphNodeRow:
+    matches = [
+        item
+        for item in nodes
+        if item.object_id == ref.object_id
+        and item.object_version == ref.object_version
+        and item.node_type in allowed_types
+    ]
+    if len(matches) != 1:
+        raise ValueError("manifest_integrity_failed")
+    return matches[0]
+
+
+def _validate_case_semantic_edges(
+    manifest: CaseEvidenceGraphManifest,
+    nodes: Sequence[GraphNodeRow],
+    edges: Sequence[GraphEdgeRow],
+    record_set: EvidenceRecordSet,
+    requirement_set: EvidenceRequirementSet,
+    reconciliation_set: ReconciliationRecordSet,
+) -> None:
+    """Rebuild every Case edge from authoritative facts and registry projections."""
+
+    root = _node_for_ref(nodes, manifest.product_case_ref, {GraphNodeType.PRODUCT_CASE})
+    expected: set[tuple[str, str, str, str]] = set()
+    records_by_ref = {item.ref: item for item in record_set.records}
+    record_nodes = {
+        item.ref: node_id(
+            item.evidence_id,
+            str(item.evidence_version),
+            GraphNodeType.EVIDENCE_RECORD,
+        )
+        for item in record_set.records
+    }
+    by_id: dict[str, list[Any]] = {}
+    for record in record_set.records:
+        by_id.setdefault(record.evidence_id, []).append(record)
+    effective: dict[str, EvidenceLifecycleState] = {}
+    for versions in by_id.values():
+        versions.sort(key=lambda item: item.evidence_version)
+        for record in versions:
+            effective[record.ref] = record.lifecycle_state
+        for predecessor, successor in zip(versions, versions[1:], strict=False):
+            effective[predecessor.ref] = (
+                EvidenceLifecycleState.INVALIDATED
+                if successor.lifecycle_state is EvidenceLifecycleState.INVALIDATED
+                else EvidenceLifecycleState.SUPERSEDED
+            )
+
+    for record in record_set.records:
+        source = record_nodes[record.ref]
+        provenance_refs = (
+            (record.measurement_result_ref, {GraphNodeType.MEASUREMENT_RESULT}),
+            (
+                record.sample_or_preparation_ref,
+                {GraphNodeType.SAMPLE, GraphNodeType.PREPARATION},
+            ),
+            (record.tool_run_ref, {GraphNodeType.TOOL_RUN}),
+            *(
+                (item, {GraphNodeType.REFERENCE_SNAPSHOT})
+                for item in record.reference_refs
+            ),
+            *((item, {GraphNodeType.PRIOR_SNAPSHOT}) for item in record.prior_refs),
+            *((item, {GraphNodeType.ARTIFACT}) for item in record.artifact_refs),
+        )
+        for ref, allowed in provenance_refs:
+            target = _node_for_ref(nodes, ref, allowed)
+            expected.add(
+                _semantic_edge_key(GraphEdgeType.DERIVED_FROM, source, target.node_id)
+            )
+        dependencies = [
+            (
+                record.measurement_spec_ref,
+                {GraphNodeType.MEASUREMENT_SPEC},
+            ),
+            (
+                record.sufficiency_profile_ref,
+                {GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE},
+            ),
+        ]
+        if record.score_contract_ref is not None:
+            dependencies.append((record.score_contract_ref, {GraphNodeType.SCORE_CONTRACT}))
+        for ref, allowed in dependencies:
+            target = _node_for_ref(nodes, ref, allowed)
+            expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, source, target.node_id))
+        expected.add(_semantic_edge_key(GraphEdgeType.APPLICABLE_TO, source, root.node_id))
+        family = _node_for_ref(
+            nodes, record.evidence_family_ref, {GraphNodeType.EVIDENCE_FAMILY}
+        )
+        expected.add(
+            _semantic_edge_key(
+                GraphEdgeType.BELONGS_TO_EVIDENCE_FAMILY, source, family.node_id
+            )
+        )
+        claim = _node_for_ref(nodes, record.claim_ref, {GraphNodeType.CLAIM})
+        if effective[record.ref] is EvidenceLifecycleState.ACTIVE:
+            expected.add(
+                _semantic_edge_key(GraphEdgeType(record.relation.value), source, claim.node_id)
+            )
+        if record.predecessor_ref is not None:
+            predecessor = record_nodes.get(record.predecessor_ref)
+            if predecessor is None or record.predecessor_ref not in records_by_ref:
+                raise ValueError("manifest_integrity_failed")
+            expected.add(
+                _semantic_edge_key(
+                    GraphEdgeType.INVALIDATES
+                    if record.lifecycle_state is EvidenceLifecycleState.INVALIDATED
+                    else GraphEdgeType.SUPERSEDES,
+                    source,
+                    predecessor,
+                )
+            )
+
+    for node in nodes:
+        if node.node_type is not GraphNodeType.CLAIM or node.record_mode is not GraphRecordMode.OWNED:
+            continue
+        if node.properties_json is None:
+            raise ValueError("manifest_integrity_failed")
+        claim = ClaimSpec.model_validate_json(node.properties_json)
+        spec = _node_for_ref(
+            nodes, claim.reconciliation_spec_ref, {GraphNodeType.RECONCILIATION_SPEC}
+        )
+        expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, node.node_id, spec.node_id))
+        expected.add(_semantic_edge_key(GraphEdgeType.APPLICABLE_TO, node.node_id, root.node_id))
+
+    requirements_by_id: dict[str, list[Any]] = {}
+    for requirement in requirement_set.requirements:
+        requirements_by_id.setdefault(requirement.requirement_id, []).append(requirement)
+        source = node_id(
+            requirement.requirement_id,
+            str(requirement.requirement_version),
+            GraphNodeType.EVIDENCE_REQUIREMENT,
+        )
+        expected.add(_semantic_edge_key(GraphEdgeType.APPLICABLE_TO, source, root.node_id))
+    for versions in requirements_by_id.values():
+        latest = max(versions, key=lambda item: item.requirement_version)
+        if latest.state is EvidenceRequirementState.OPEN:
+            source = node_id(
+                latest.requirement_id,
+                str(latest.requirement_version),
+                GraphNodeType.EVIDENCE_REQUIREMENT,
+            )
+            claim = _node_for_ref(nodes, latest.claim_ref, {GraphNodeType.CLAIM})
+            expected.add(_semantic_edge_key(GraphEdgeType.MISSING_FOR, source, claim.node_id))
+
+    for reconciliation in reconciliation_set.records:
+        source = node_id(
+            reconciliation.reconciliation_id,
+            str(reconciliation.reconciliation_version),
+            GraphNodeType.RECONCILIATION_RECORD,
+        )
+        refs = [
+            (reconciliation.claim_ref, {GraphNodeType.CLAIM}),
+            (
+                reconciliation.reconciliation_spec_ref,
+                {GraphNodeType.RECONCILIATION_SPEC},
+            ),
+            *(
+                (item, {GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE})
+                for item in reconciliation.sufficiency_profile_refs
+            ),
+        ]
+        for ref, allowed in refs:
+            target = _node_for_ref(nodes, ref, allowed)
+            expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, source, target.node_id))
+        for evidence_ref in reconciliation.included_evidence_refs:
+            target = record_nodes.get(evidence_ref)
+            if target is None:
+                raise ValueError("manifest_integrity_failed")
+            expected.add(_semantic_edge_key(GraphEdgeType.DEPENDS_ON, source, target))
+
+    actual = {
+        (
+            item.edge_type.value,
+            item.source_node_id,
+            item.target_node_id,
+            item.properties_json,
+        )
+        for item in edges
+    }
+    if actual != expected:
+        raise ValueError("manifest_integrity_failed")
 
 
 def _validate_fact_projection(
@@ -138,6 +441,7 @@ def _validate_fact_projection(
     record_set: EvidenceRecordSet,
     requirement_set: EvidenceRequirementSet,
     reconciliation_set: ReconciliationRecordSet,
+    edges: Sequence[GraphEdgeRow],
 ) -> None:
     """Bind canonical JSON facts to the owned nodes in their Parquet graph."""
 
@@ -147,7 +451,22 @@ def _validate_fact_projection(
             or fact_set.graph_version != manifest.graph_version
         ):
             raise ValueError("manifest_integrity_failed")
+    digest = manifest.source_input_hash[:16]
+    if (
+        record_set.record_set_id != f"evidence-record-set:{digest}"
+        or requirement_set.requirement_set_id != f"evidence-requirement-set:{digest}"
+        or reconciliation_set.reconciliation_set_id
+        != f"reconciliation-record-set:{digest}"
+    ):
+        raise ValueError("manifest_integrity_failed")
     node_map = {item.node_id: item for item in nodes}
+    case_root = (
+        manifest.product_case_ref
+        if isinstance(manifest, CaseEvidenceGraphManifest)
+        else None
+    )
+    if case_root is None and (record_set.records or requirement_set.requirements):
+        raise ValueError("manifest_integrity_failed")
 
     expected_by_type: dict[GraphNodeType, set[str]] = {
         GraphNodeType.EVIDENCE_RECORD: set(),
@@ -184,6 +503,40 @@ def _validate_fact_projection(
         expected_by_type[node_type].add(identifier)
 
     for record in record_set.records:
+        rebuilt_key = evidence_record_logical_key(record)
+        expected_id = evidence_identity(rebuilt_key)
+        if (
+            case_root is None
+            or record.product_case_ref != case_root
+            or record.logical_key != rebuilt_key
+            or record.evidence_id != expected_id
+        ):
+            raise ValueError("manifest_integrity_failed")
+        claim_node = node_map.get(
+            node_id(
+                record.claim_ref.object_id,
+                record.claim_ref.object_version,
+                GraphNodeType.CLAIM,
+            )
+        )
+        if (
+            claim_node is None
+            or claim_node.record_mode is not GraphRecordMode.OWNED
+            or claim_node.properties_json is None
+        ):
+            raise ValueError("manifest_integrity_failed")
+        claim = ClaimSpec.model_validate_json(claim_node.properties_json)
+        if (
+            claim.ref != record.claim_ref.ref
+            or claim.domain_id is not record.domain_id
+            or claim.biological_context_ref
+            != VersionedObjectRef(
+                object_id=record.biological_context.context_id,
+                object_version=record.biological_context.context_version,
+            )
+            or record.relation not in claim.allowed_relations
+        ):
+            raise ValueError("manifest_integrity_failed")
         require_owned_fact(
             object_id=record.evidence_id,
             object_version=str(record.evidence_version),
@@ -193,6 +546,17 @@ def _validate_fact_projection(
             require_properties=isinstance(manifest, CaseEvidenceGraphManifest),
         )
     for requirement in requirement_set.requirements:
+        if (
+            case_root is None
+            or requirement.product_case_ref != case_root
+            or requirement.requirement_id
+            != requirement_identity(
+                manifest.graph_id,
+                requirement.claim_ref,
+                requirement.requirement_key,
+            )
+        ):
+            raise ValueError("manifest_integrity_failed")
         require_owned_fact(
             object_id=requirement.requirement_id,
             object_version=str(requirement.requirement_version),
@@ -201,6 +565,18 @@ def _validate_fact_projection(
             payload=requirement.model_dump(mode="json"),
         )
     for reconciliation in reconciliation_set.records:
+        if (
+            reconciliation.graph_id != manifest.graph_id
+            or reconciliation.graph_version != manifest.graph_version
+            or reconciliation.reconciliation_version != manifest.graph_version
+            or reconciliation.reconciliation_id
+            != reconciliation_identity(
+                manifest.graph_id,
+                reconciliation.claim_ref,
+                reconciliation.reconciliation_spec_ref,
+            )
+        ):
+            raise ValueError("manifest_integrity_failed")
         require_owned_fact(
             object_id=reconciliation.reconciliation_id,
             object_version=str(reconciliation.reconciliation_version),
@@ -237,6 +613,8 @@ def _validate_fact_projection(
                 str(record.evidence_version),
                 GraphNodeType.EVIDENCE_RECORD,
             )]
+            if node.evidence_tier != record.evidence_tier.value:
+                raise ValueError("manifest_integrity_failed")
             if node.lifecycle_state != expected_lifecycle.value:
                 raise ValueError("manifest_integrity_failed")
 
@@ -265,6 +643,37 @@ def _validate_fact_projection(
             )
             if node.lifecycle_state != expected_lifecycle:
                 raise ValueError("manifest_integrity_failed")
+    latest_records = {
+        versions[-1].evidence_id: versions[-1] for versions in records_by_id.values()
+    }
+    records_by_ref = {item.ref: item for item in record_set.records}
+    for versions in requirements_by_id.values():
+        latest_requirement = versions[-1]
+        if latest_requirement.state is not EvidenceRequirementState.SATISFIED:
+            continue
+        for evidence_ref in latest_requirement.satisfying_evidence_refs:
+            record = records_by_ref.get(evidence_ref)
+            if (
+                record is None
+                or latest_records.get(record.evidence_id) != record
+                or record.lifecycle_state is not EvidenceLifecycleState.ACTIVE
+                or record.evidence_tier is not EvidenceTier.FORMAL
+                or record.applicability is not EvidenceApplicability.APPLICABLE
+                or record.claim_ref != latest_requirement.claim_ref
+                or record.product_case_ref != latest_requirement.product_case_ref
+            ):
+                raise ValueError("manifest_integrity_failed")
+            family_node = _node_for_ref(
+                nodes, record.evidence_family_ref, {GraphNodeType.EVIDENCE_FAMILY}
+            )
+            if family_node.properties_json is None:
+                raise ValueError("manifest_integrity_failed")
+            family = EvidenceFamilySpec.model_validate_json(family_node.properties_json)
+            if (
+                family.status is not EvidenceFamilyStatus.REVIEWED
+                or family.channel_role != latest_requirement.channel_role
+            ):
+                raise ValueError("manifest_integrity_failed")
     for node_type, expected_ids in expected_by_type.items():
         actual_ids = {
             item.node_id
@@ -273,6 +682,15 @@ def _validate_fact_projection(
         }
         if actual_ids != expected_ids:
             raise ValueError("manifest_integrity_failed")
+    if isinstance(manifest, CaseEvidenceGraphManifest):
+        _validate_case_semantic_edges(
+            manifest,
+            nodes,
+            edges,
+            record_set,
+            requirement_set,
+            reconciliation_set,
+        )
 
 
 class EvidenceGraphQueries:
@@ -306,6 +724,16 @@ class EvidenceGraphQueries:
                 root_type = GraphNodeType.COMPARISON_RECORD
             else:
                 raise ValueError("unknown graph kind")
+            if manifest.graph_id != graph_identity_for_ref(manifest.graph_kind, root_ref):
+                raise ValueError("graph identity does not match root")
+            if manifest.base_graph_ref is None:
+                if manifest.graph_version != 1:
+                    raise ValueError("initial graph version must be one")
+            elif (
+                manifest.base_graph_ref.graph_id != manifest.graph_id
+                or manifest.graph_version != manifest.base_graph_ref.graph_version + 1
+            ):
+                raise ValueError("append graph version mismatch")
         except Exception as exc:
             raise ValueError("manifest_integrity_failed") from exc
         root = manifest_path.parent
@@ -331,9 +759,9 @@ class EvidenceGraphQueries:
                 raise ValueError("manifest_integrity_failed")
             artifact_payloads[artifact.filename] = raw
         try:
-            nodes, edges = read_parquet_rows(
-                root / manifest.graph_nodes.filename,
-                root / manifest.graph_edges.filename,
+            nodes, edges = read_parquet_bytes(
+                artifact_payloads[manifest.graph_nodes.filename],
+                artifact_payloads[manifest.graph_edges.filename],
             )
             root_node = next(
                 item.node_id
@@ -343,7 +771,12 @@ class EvidenceGraphQueries:
                 and item.object_version == root_ref.object_version
             )
             graph = validate_graph_rows(
-                nodes, edges, root_id=root_node, root_type=root_type
+                nodes,
+                edges,
+                root_id=root_node,
+                root_type=root_type,
+                expected_graph_id=manifest.graph_id,
+                expected_graph_version=manifest.graph_version,
             )
         except Exception as exc:
             raise ValueError("manifest_integrity_failed") from exc
@@ -371,11 +804,14 @@ class EvidenceGraphQueries:
                 record_set,
                 requirement_set,
                 reconciliation_set,
+                edges,
             )
         except Exception as exc:
             raise ValueError("manifest_integrity_failed") from exc
         if isinstance(manifest, ComparisonEvidenceGraphManifest):
-            _validate_comparison_projection(manifest, nodes, edges)
+            _validate_comparison_projection(
+                manifest, nodes, edges, reconciliation_set
+            )
         return cls(manifest=manifest, nodes=nodes, edges=edges, graph=graph)
 
     def get_claim_evidence(

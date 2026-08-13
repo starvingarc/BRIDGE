@@ -176,6 +176,7 @@
     },
     "object_counts": {
       "additionalProperties": {
+        "exclusiveMinimum": 0,
         "type": "integer"
       },
       "propertyNames": {

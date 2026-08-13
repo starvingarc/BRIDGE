@@ -105,6 +105,79 @@
   },
   "$id": "bridge://schemas/reconciliation-record/v0.1",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "direction": {
+            "type": "null"
+          },
+          "state": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "eligibility": {
+            "const": "eligible"
+          }
+        },
+        "required": [
+          "eligibility"
+        ]
+      },
+      "then": {
+        "allOf": [
+          {
+            "else": {
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "supports",
+                    "contradicts"
+                  ]
+                }
+              },
+              "required": [
+                "direction"
+              ]
+            },
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "unstable"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            "then": {
+              "properties": {
+                "direction": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "state": {
+            "enum": [
+              "stable",
+              "consensus_supported",
+              "integration_sensitive",
+              "unstable"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      }
+    }
+  ],
   "properties": {
     "channel_resolutions": {
       "items": {

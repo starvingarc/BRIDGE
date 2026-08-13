@@ -327,6 +327,109 @@
     },
     "EvidenceRecord": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "not": {
+            "properties": {
+              "evidence_state": {
+                "const": "missing"
+              }
+            },
+            "required": [
+              "evidence_state"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence_state": {
+                "enum": [
+                  "unknown",
+                  "unavailable",
+                  "alert"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "revision_action": {
+                "const": "create"
+              }
+            },
+            "required": [
+              "revision_action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "lifecycle_state": {
+                "const": "active"
+              },
+              "predecessor_ref": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "revision_action": {
+                "const": "supersede"
+              }
+            },
+            "required": [
+              "revision_action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "lifecycle_state": {
+                "const": "active"
+              },
+              "predecessor_ref": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "revision_action": {
+                "const": "invalidate"
+              }
+            },
+            "required": [
+              "revision_action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "lifecycle_state": {
+                "const": "invalidated"
+              },
+              "predecessor_ref": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
       "properties": {
         "applicability": {
           "$ref": "#/$defs/EvidenceApplicability"
@@ -362,9 +465,11 @@
         "denominator": {
           "anyOf": [
             {
+              "exclusiveMinimum": 0,
               "type": "number"
             },
             {
+              "exclusiveMinimum": 0,
               "type": "integer"
             },
             {
@@ -573,6 +678,46 @@
     },
     "EvidenceRequirement": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "satisfied"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "satisfying_evidence_refs": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "open"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "satisfying_evidence_refs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ],
       "properties": {
         "blocking_scope": {
           "minLength": 1,

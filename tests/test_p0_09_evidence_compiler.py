@@ -14,7 +14,10 @@ from bridge.tool_packages.p0_09_evidence_compiler.adapter import (
     _validate_source_record_set,
     adapter,
 )
-from bridge.tool_packages.p0_08_evidence_sufficiency.models import P0DomainId
+from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
+    EvidenceSufficiencyProfile,
+    P0DomainId,
+)
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     PUBLIC_SCHEMA_MODELS,
     BaseGraphRef,
@@ -27,18 +30,27 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     ReconciliationRecordSet,
     EvidenceCompilationBundle,
     EvidenceRecord,
+    EvidenceRequirement,
     CaseEvidenceGraphManifest,
     MissingEvidenceObservation,
     EvidenceFamilyRegistry,
     GraphArtifactRef,
     ReconciliationSpec,
+    ReconciliationRecord,
+    EvidenceCandidate,
+    ClaimRegistry,
+    ReconciliationSpecRegistry,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     canonical_json_bytes,
+    evidence_identity,
+    evidence_record_logical_key,
     evidence_record_content_hash,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.graph import (
+    build_graph_rows,
     node_id,
+    object_counts,
     read_parquet_rows,
     write_parquet,
 )
@@ -67,6 +79,7 @@ from bridge.toolkit.contracts import (
     ToolRequest,
     ToolRequestV2,
 )
+from bridge.toolkit.registry import ToolRegistry
 
 
 SHA = "a" * 64
@@ -439,11 +452,10 @@ def _source_record_for_external(
     external: dict[str, Any], profile: dict[str, Any]
 ) -> dict[str, Any]:
     suffix = external["product_case_ref"]["object_id"].split(":", 1)[1]
-    logical_key = f"source-logical-key:{suffix}"
     record = EvidenceRecord(
-        evidence_id="evidence:" + hashlib.sha256(logical_key.encode()).hexdigest()[:24],
+        evidence_id="evidence:" + "0" * 24,
         evidence_version=1,
-        logical_key=logical_key,
+        logical_key="pending",
         content_hash="0" * 64,
         product_case_ref=external["product_case_ref"],
         sample_or_preparation_ref={
@@ -494,9 +506,11 @@ def _source_record_for_external(
         created_at=CREATED_AT,
         compiler_version="0.2.0",
     )
-    return record.model_copy(
-        update={"content_hash": evidence_record_content_hash(record)}
-    ).model_dump(mode="json")
+    logical_key = evidence_record_logical_key(record)
+    record = record.model_copy(
+        update={"logical_key": logical_key, "evidence_id": evidence_identity(logical_key)}
+    )
+    return record.model_copy(update={"content_hash": evidence_record_content_hash(record)}).model_dump(mode="json")
 
 
 def _materialize_comparison_sources(
@@ -508,6 +522,8 @@ def _materialize_comparison_sources(
     profile_by_input = dict(profiles)
     paths: list[Path] = []
     for index, case_ref in enumerate(bundle["case_graph_refs"]):
+        source_input_hash = str(index + 1) * 64
+        source_digest = source_input_hash[:16]
         external = next(
             item
             for item in bundle["external_case_evidence_refs"]
@@ -519,7 +535,7 @@ def _materialize_comparison_sources(
         if external["evidence_ref"] == placeholder_ref:
             external["evidence_ref"] = f"{expected['evidence_id']}@1"
         record_set = {
-            "record_set_id": f"evidence-record-set:{index:016x}",
+            "record_set_id": f"evidence-record-set:{source_digest}",
             "record_set_version": "0.1.0",
             "graph_id": case_ref["graph_id"],
             "graph_version": case_ref["graph_version"],
@@ -530,7 +546,7 @@ def _materialize_comparison_sources(
         records_path = root / "evidence_records.json"
         records_sha = _write(records_path, record_set)
         requirement_set = {
-            "requirement_set_id": f"evidence-requirement-set:{index:016x}",
+            "requirement_set_id": f"evidence-requirement-set:{source_digest}",
             "requirement_set_version": "0.1.0",
             "graph_id": case_ref["graph_id"],
             "graph_version": case_ref["graph_version"],
@@ -538,7 +554,7 @@ def _materialize_comparison_sources(
         }
         requirements_sha = _write(root / "evidence_requirements.json", requirement_set)
         reconciliation_set = {
-            "reconciliation_set_id": f"reconciliation-record-set:{index:016x}",
+            "reconciliation_set_id": f"reconciliation-record-set:{source_digest}",
             "reconciliation_set_version": "0.1.0",
             "graph_id": case_ref["graph_id"],
             "graph_version": case_ref["graph_version"],
@@ -548,56 +564,58 @@ def _materialize_comparison_sources(
             root / "reconciliation_records.json", reconciliation_set
         )
         product = case_ref["product_case_ref"]
-        root_node_id = node_id(
-            product["object_id"], product["object_version"], GraphNodeType.PRODUCT_CASE
-        )
-        evidence_node_id = node_id(
-            expected["evidence_id"], str(expected["evidence_version"]), GraphNodeType.EVIDENCE_RECORD
-        )
-        nodes = [
-            GraphNodeRow(
-                graph_id=case_ref["graph_id"],
-                graph_version=case_ref["graph_version"],
-                node_id=root_node_id,
-                node_type=GraphNodeType.PRODUCT_CASE,
-                record_mode=GraphRecordMode.OWNED,
-                object_id=product["object_id"],
-                object_version=product["object_version"],
-                properties_json=canonical_json_bytes(
-                    {"schema_ref": "bridge://schemas/product-case/v0.1"}
-                ).decode(),
-                content_hash=hashlib.sha256(product["object_id"].encode()).hexdigest(),
-            ),
-            GraphNodeRow(
-                graph_id=case_ref["graph_id"],
-                graph_version=case_ref["graph_version"],
-                node_id=evidence_node_id,
-                node_type=GraphNodeType.EVIDENCE_RECORD,
-                record_mode=GraphRecordMode.OWNED,
-                object_id=expected["evidence_id"],
-                object_version=str(expected["evidence_version"]),
-                lifecycle_state="active",
-                evidence_tier=expected["evidence_tier"],
-                properties_json=canonical_json_bytes(expected).decode(),
-                content_hash=expected["content_hash"],
-            ),
+        suffix = product["object_id"].split(":", 1)[1]
+        catalog = [
+            {
+                "object_id": object_id,
+                "object_version": "1.0.0",
+                "node_type": node_type,
+                "schema_ref": f"bridge://schemas/{schema}/v0.1",
+                "content_hash": hashlib.sha256(object_id.encode()).hexdigest(),
+            }
+            for object_id, node_type, schema in [
+                (product["object_id"], "ProductCase", "product-case"),
+                (f"sample:{suffix}", "Sample", "sample"),
+                ("measurement-result:target", "MeasurementResult", "measurement-result"),
+                ("measurement-spec:target", "MeasurementSpec", "measurement-spec"),
+                (f"tool-run:{suffix}", "ToolRun", "tool-run"),
+            ]
         ]
-        edge_identity = (
-            f"{case_ref['graph_id']}|applicable_to|{evidence_node_id}|{root_node_id}|"
-            f"{hashlib.sha256(b'{}').hexdigest()}"
+        source_bundle = EvidenceCompilationBundle.model_validate(
+            {
+                "bundle_id": f"evidence-compilation-bundle:source-{index}",
+                "bundle_version": "0.1.0",
+                "graph_kind": "case",
+                "product_case_ref": product,
+                "comparison_ref": None,
+                "case_graph_refs": [],
+                "external_case_evidence_refs": [],
+                "base_graph_ref": None,
+                "object_catalog": catalog,
+                "candidate_records": [],
+                "missing_observations": [],
+                "prior_evidence_records": [],
+                "prior_requirements": [],
+                "created_at": CREATED_AT,
+                "provenance_refs": [f"provenance:source-{index}"],
+            }
         )
-        edges = [
-            GraphEdgeRow(
-                graph_id=case_ref["graph_id"],
-                graph_version=case_ref["graph_version"],
-                edge_id="edge:" + hashlib.sha256(edge_identity.encode()).hexdigest()[:24],
-                edge_type=GraphEdgeType.APPLICABLE_TO,
-                source_node_id=evidence_node_id,
-                target_node_id=root_node_id,
-                properties_json="{}",
-                content_hash=hashlib.sha256(edge_identity.encode()).hexdigest(),
-            )
-        ]
+        nodes, edges = build_graph_rows(
+            graph_id=case_ref["graph_id"],
+            graph_version=case_ref["graph_version"],
+            bundle=source_bundle,
+            records=[EvidenceRecord.model_validate(expected)],
+            requirements=[],
+            reconciliation_records=[],
+            profiles_by_input_id={
+                external["sufficiency_profile_input_id"]: EvidenceSufficiencyProfile.model_validate(profile)
+            },
+            family_registry=EvidenceFamilyRegistry.model_validate(_family_registry()),
+            claim_registry=ClaimRegistry.model_validate(_comparison_claim_registry()),
+            reconciliation_registry=ReconciliationSpecRegistry.model_validate(
+                _reconciliation_registry()
+            ),
+        )
         write_parquet(root / "graph_nodes.parquet", root / "graph_edges.parquet", nodes, edges)
         nodes_sha = hashlib.sha256((root / "graph_nodes.parquet").read_bytes()).hexdigest()
         edges_sha = hashlib.sha256((root / "graph_edges.parquet").read_bytes()).hexdigest()
@@ -605,10 +623,12 @@ def _materialize_comparison_sources(
             "graph_id": case_ref["graph_id"],
             "graph_version": case_ref["graph_version"],
             "canonicalization_id": "bridge-canonical-json/v0.1",
-            "node_count": 2,
-            "edge_count": 1,
-            "object_counts": {"ProductCase": 1, "EvidenceRecord": 1},
-            "source_input_hash": str(index + 1) * 64,
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "object_counts": {
+                key.value: value for key, value in object_counts(nodes).items()
+            },
+            "source_input_hash": source_input_hash,
             "base_graph_ref": None,
             "evidence_records": {
                 "filename": "evidence_records.json",
@@ -632,13 +652,13 @@ def _materialize_comparison_sources(
                 "filename": "graph_nodes.parquet",
                 "media_type": "application/vnd.apache.parquet",
                 "sha256": nodes_sha,
-                "row_count": 2,
+                "row_count": len(nodes),
             },
             "graph_edges": {
                 "filename": "graph_edges.parquet",
                 "media_type": "application/vnd.apache.parquet",
                 "sha256": edges_sha,
-                "row_count": 1,
+                "row_count": len(edges),
             },
             "created_at": CREATED_AT,
             "graph_kind": "case",
@@ -1829,10 +1849,11 @@ def test_unsafe_missing_and_external_entries_are_isolated_without_echo(
         profiles=_comparison_profiles(),
         claim_registry=_comparison_claim_registry(),
     )
-    assert comparison_run.execution_state is ExecutionState.FAILED
-    assert comparison_run.reason_codes == ["structured_input_schema_invalid"]
-    assert comparison_run.result is None and comparison_run.artifacts == []
-    assert not comparison_run.request.output_dir.exists()
+    assert comparison_run.execution_state is ExecutionState.PARTIAL
+    comparison_final = comparison_run.request.output_dir / comparison_run.run_id
+    external_rejected = (comparison_final / "rejected_records.json").read_text()
+    assert "individual_record_schema_invalid" in external_rejected
+    assert "credential-value" not in external_rejected
 
 
 def test_boolean_value_is_not_accepted_as_numeric_evidence(tmp_path: Path) -> None:
@@ -2651,6 +2672,11 @@ def test_non_object_public_record_arrays_fail_top_level_schema_without_echo(
 ) -> None:
     bundle = _comparison_bundle() if field == "external_case_evidence_refs" else _bundle()
     bundle[field] = value
+    assert list(
+        Draft202012Validator(
+            EvidenceCompilationBundle.model_json_schema()
+        ).iter_errors(bundle)
+    )
 
     request = _request(
         tmp_path,
@@ -2672,6 +2698,47 @@ def test_non_object_public_record_arrays_fail_top_level_schema_without_echo(
     assert run.artifacts == [] and not request.output_dir.exists()
     captured = capsys.readouterr()
     assert captured.out == "" and captured.err == ""
+
+
+def test_external_ref_public_schema_is_strict_while_direct_adapter_isolates_object(
+    tmp_path: Path,
+) -> None:
+    bundle = _comparison_bundle()
+    bundle["external_case_evidence_refs"][0]["unexpected_field"] = "synthetic-value"
+    schema = EvidenceCompilationBundle.model_json_schema()
+
+    assert schema["properties"]["external_case_evidence_refs"]["items"] == {
+        "$ref": "#/$defs/ExternalCaseEvidenceRef"
+    }
+    assert schema["$defs"]["ExternalCaseEvidenceRef"]["additionalProperties"] is False
+    assert list(Draft202012Validator(schema).iter_errors(bundle))
+
+    request_kwargs = {
+        "bundle": bundle,
+        "profiles": _comparison_profiles(),
+        "claim_registry": _comparison_claim_registry(),
+    }
+    direct_request = _request(tmp_path / "direct", **request_kwargs)
+    direct_run = adapter.run(direct_request, _spec())
+    assert direct_run.execution_state is ExecutionState.PARTIAL
+    rejected = (
+        direct_run.request.output_dir
+        / direct_run.run_id
+        / "rejected_records.json"
+    ).read_text()
+    assert "individual_record_schema_invalid" in rejected
+    assert "synthetic-value" not in rejected
+
+    public_request = _request(tmp_path / "public", **request_kwargs)
+    registry = ToolRegistry.load_default()
+    public_eligibility = registry.check_eligibility(public_request)
+    public_run = registry.run(public_request)
+    assert public_eligibility.reason_codes == [
+        "structured_input_schema_validation_failed"
+    ]
+    assert public_run.execution_state is ExecutionState.FAILED
+    assert public_run.reason_codes == ["structured_input_schema_validation_failed"]
+    assert not public_request.output_dir.exists()
 
 
 def _reconciliation_evidence(family_ref: str, evidence_ref: str) -> ReconciliationEvidence:
@@ -2780,7 +2847,7 @@ def test_direct_v1_run_returns_typed_v2_failure_without_exception(tmp_path: Path
     assert run.result is None and run.artifacts == []
 
 
-def test_missing_requirement_query_returns_only_latest_satisfied_version(
+def test_missing_requirement_query_rejects_shadow_evidence_as_satisfaction(
     tmp_path: Path,
 ) -> None:
     first = _run(tmp_path / "first")
@@ -2930,24 +2997,8 @@ def test_missing_requirement_query_returns_only_latest_satisfied_version(
     query_manifest_path = query_copy / "case_evidence_graph_manifest.json"
     _write(query_manifest_path, query_manifest)
 
-    query = EvidenceGraphQueries.open(query_manifest_path)
-    current_open = query.get_missing_requirements(
-        product_case_id="product-case:synthetic-001",
-        state=EvidenceRequirementState.OPEN,
-    )
-    current_satisfied = query.get_missing_requirements(
-        product_case_id="product-case:synthetic-001",
-        state=EvidenceRequirementState.SATISFIED,
-    )
-    assert not any(
-        node["node_type"] == "EvidenceRequirement" for node in current_open.nodes
-    )
-    latest_satisfied = next(
-        node
-        for node in current_satisfied.nodes
-        if node["node_type"] == "EvidenceRequirement"
-    )
-    assert latest_satisfied["object_version"] == "2"
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(query_manifest_path)
     return
 
     second = _run(
@@ -3066,3 +3117,362 @@ def test_no_score_guard_allows_scientific_neighbor_keys(
         (run.request.output_dir / run.run_id / "evidence_records.json").read_text()
     )["records"]
     assert records[0]["value"] == safe_payload
+
+
+@pytest.mark.parametrize("invalid", [0, -1, True, "1"])
+def test_positive_map_values_match_pydantic_and_public_schema(invalid: Any) -> None:
+    spec_payload = _reconciliation_registry()["specs"][0]
+    spec_payload["minimum_independent_families_by_role"]["transcriptomic"] = invalid
+    spec_schema = ReconciliationSpec.model_json_schema()
+    assert list(Draft202012Validator(spec_schema).iter_errors(spec_payload))
+    with pytest.raises(ValueError):
+        ReconciliationSpec.model_validate(spec_payload)
+
+    manifest_schema = CaseEvidenceGraphManifest.model_json_schema()
+    assert manifest_schema["properties"]["object_counts"]["additionalProperties"][
+        "exclusiveMinimum"
+    ] == 0
+
+
+def test_public_schema_encodes_scientific_state_conditionals(tmp_path: Path) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    record = json.loads((final / "evidence_records.json").read_text())["records"][0]
+    requirement = json.loads((final / "evidence_requirements.json").read_text())[
+        "requirements"
+    ][0]
+    reconciliation = json.loads((final / "reconciliation_records.json").read_text())[
+        "records"
+    ][0]
+    cases = [
+        (EvidenceRecord, record | {"evidence_state": "missing"}),
+        (EvidenceRecord, record | {"denominator": 0}),
+        (
+            EvidenceRecord,
+            record | {"revision_action": "create", "predecessor_ref": record["evidence_id"] + "@1"},
+        ),
+        (
+            EvidenceRequirement,
+            requirement | {"state": "satisfied", "satisfying_evidence_refs": []},
+        ),
+        (
+            ReconciliationRecord,
+            reconciliation | {"eligibility": "eligible", "state": None, "direction": None},
+        ),
+    ]
+    for model, payload in cases:
+        assert list(Draft202012Validator(model.model_json_schema()).iter_errors(payload))
+        with pytest.raises(ValueError):
+            model.model_validate(payload)
+
+
+@pytest.mark.parametrize("graph_kind", ["case", "comparison"])
+def test_caller_input_id_rename_preserves_run_bundle_and_public_manifest(
+    tmp_path: Path, graph_kind: str,
+) -> None:
+    request_kwargs: dict[str, Any] = {"output_name": "shared-output"}
+    if graph_kind == "comparison":
+        request_kwargs.update(
+            bundle=_comparison_bundle(),
+            profiles=_comparison_profiles(),
+            claim_registry=_comparison_claim_registry(),
+        )
+    request = _request(tmp_path, **request_kwargs)
+    first = adapter.run(request, _spec())
+    mapping = {item.input_id: f"caller-label-{index}" for index, item in enumerate(request.object_inputs)}
+    bundle_ref = next(item for item in request.object_inputs if item.role == "compilation_bundle")
+    bundle = json.loads(bundle_ref.path.read_text())
+
+    def rename(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {
+                key: mapping.get(item, item)
+                if key in {
+                    "manifest_input_id",
+                    "record_set_input_id",
+                    "requirement_set_input_id",
+                    "sufficiency_profile_input_id",
+                }
+                and isinstance(item, str)
+                else rename(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [rename(item) for item in value]
+        return value
+
+    renamed_bundle = rename(bundle)
+    renamed_sha = _write(bundle_ref.path, renamed_bundle)
+    renamed_request = request.model_copy(
+        update={
+            "request_id": "request-renamed-labels",
+            "object_inputs": [
+                item.model_copy(
+                    update={
+                        "input_id": mapping[item.input_id],
+                        "sha256": renamed_sha if item is bundle_ref else item.sha256,
+                    }
+                )
+                for item in request.object_inputs
+            ],
+        }
+    )
+    second = adapter.run(renamed_request, _spec())
+    assert second.execution_state is ExecutionState.SUCCEEDED
+    assert second.run_id == first.run_id and second.input_hash == first.input_hash
+    final = second.request.output_dir / second.run_id
+    manifest_text = (final / "artifact_manifest.json").read_text()
+    assert not any(label in manifest_text for label in mapping.values())
+
+
+def test_output_symlink_loop_returns_stable_typed_failure(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    loop = tmp_path / "loop"
+    loop.symlink_to(loop)
+    request = request.model_copy(update={"output_dir": loop})
+    eligibility = adapter.check_eligibility(request, _spec())
+    run = adapter.run(request, _spec())
+    assert eligibility.reason_codes == ["output_dir_preflight_failed"]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["output_dir_preflight_failed"]
+    public_registry = ToolRegistry.load_default()
+    public_eligibility = public_registry.check_eligibility(request)
+    public_run = public_registry.run(request)
+    assert public_eligibility.reason_codes == ["output_dir_preflight_failed"]
+    assert public_run.execution_state is ExecutionState.FAILED
+    assert public_run.reason_codes == ["output_dir_preflight_failed"]
+    assert loop.is_symlink()
+
+
+@pytest.mark.parametrize("kind", ["candidate", "missing", "external"])
+def test_rejected_parse_failure_never_echoes_unpublishable_refs(
+    tmp_path: Path, kind: str
+) -> None:
+    leaked = "human readable unreleasable sentence"
+    if kind == "candidate":
+        bundle = _bundle(candidates=[_candidate() | {"claim_ref": {"object_id": leaked, "object_version": "1.0.0"}}])
+        kwargs: dict[str, Any] = {"bundle": bundle}
+    elif kind == "missing":
+        bundle = _bundle(
+            candidates=[_candidate()],
+            missing=[_missing_observation() | {"claim_ref": {"object_id": leaked, "object_version": "1.0.0"}}],
+        )
+        kwargs = {"bundle": bundle}
+    else:
+        bundle = _comparison_bundle()
+        bundle["external_case_evidence_refs"][0]["comparison_claim_ref"] = {
+            "object_id": leaked,
+            "object_version": "1.0.0",
+        }
+        kwargs = {
+            "bundle": bundle,
+            "profiles": _comparison_profiles(),
+            "claim_registry": _comparison_claim_registry(),
+        }
+    run = _run(tmp_path, **kwargs)
+    assert run.execution_state is ExecutionState.PARTIAL
+    rejected = (
+        run.request.output_dir / run.run_id / "rejected_records.json"
+    ).read_text()
+    assert leaked not in rejected
+
+
+def test_query_parses_parquet_from_verified_bytes_without_path_reread(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run = _run(tmp_path)
+
+    def forbidden(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("unchecked path reread")
+
+    monkeypatch.setattr(
+        "bridge.tool_packages.p0_09_evidence_compiler.queries.read_parquet_rows",
+        forbidden,
+        raising=False,
+    )
+    EvidenceGraphQueries.open(
+        run.request.output_dir / run.run_id / "case_evidence_graph_manifest.json"
+    )
+
+
+def test_comparison_manifest_binds_external_profile_without_input_label(
+    tmp_path: Path,
+) -> None:
+    run = _run(
+        tmp_path,
+        bundle=_comparison_bundle(),
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    final = run.request.output_dir / run.run_id
+    manifest_path = final / "comparison_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    assert len(manifest["external_evidence_bindings"]) == 2
+    assert "sufficiency_profile_input_id" not in json.dumps(manifest)
+    manifest["external_evidence_bindings"][0]["sufficiency_profile_ref"] = {
+        "object_id": "evidence-sufficiency-profile:bbbbbbbbbbbbbbbb:target_identity",
+        "object_version": "0.1.0",
+    }
+    _write(manifest_path, manifest)
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
+
+
+def _rehash_graph_edge(edge: GraphEdgeRow) -> GraphEdgeRow:
+    properties_hash = hashlib.sha256(edge.properties_json.encode("utf-8")).hexdigest()
+    identity = (
+        f"{edge.graph_id}|{edge.edge_type.value}|{edge.source_node_id}|"
+        f"{edge.target_node_id}|{properties_hash}"
+    )
+    digest = hashlib.sha256(identity.encode()).hexdigest()
+    return edge.model_copy(
+        update={"edge_id": f"edge:{digest[:24]}", "content_hash": digest}
+    )
+
+
+def test_query_rejects_rows_whose_scope_differs_from_manifest(tmp_path: Path) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    manifest_path = final / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    nodes_path = final / "graph_nodes.parquet"
+    edges_path = final / "graph_edges.parquet"
+    nodes, edges = read_parquet_rows(nodes_path, edges_path)
+    forged = "case-evidence-graph:" + "f" * 24
+    nodes = [item.model_copy(update={"graph_id": forged}) for item in nodes]
+    edges = [
+        _rehash_graph_edge(item.model_copy(update={"graph_id": forged})) for item in edges
+    ]
+    write_parquet(nodes_path, edges_path, nodes, edges)
+    manifest["graph_nodes"]["sha256"] = hashlib.sha256(nodes_path.read_bytes()).hexdigest()
+    manifest["graph_edges"]["sha256"] = hashlib.sha256(edges_path.read_bytes()).hexdigest()
+    _write(manifest_path, manifest)
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
+
+
+def test_query_rejects_self_consistent_noncanonical_relation_edge(tmp_path: Path) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    manifest_path = final / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    nodes_path = final / "graph_nodes.parquet"
+    edges_path = final / "graph_edges.parquet"
+    nodes, edges = read_parquet_rows(nodes_path, edges_path)
+    index = next(
+        index for index, item in enumerate(edges) if item.edge_type is GraphEdgeType.SUPPORTS
+    )
+    edges[index] = _rehash_graph_edge(
+        edges[index].model_copy(update={"edge_type": GraphEdgeType.CONTRADICTS})
+    )
+    write_parquet(nodes_path, edges_path, nodes, edges)
+    manifest["graph_edges"]["sha256"] = hashlib.sha256(edges_path.read_bytes()).hexdigest()
+    _write(manifest_path, manifest)
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
+
+
+@pytest.mark.parametrize(
+    ("artifact", "id_field", "prefix"),
+    [
+        ("evidence_records", "record_set_id", "evidence-record-set:"),
+        ("evidence_requirements", "requirement_set_id", "evidence-requirement-set:"),
+        ("reconciliation_records", "reconciliation_set_id", "reconciliation-record-set:"),
+    ],
+)
+def test_query_rejects_authoritative_set_id_not_bound_to_input_hash(
+    tmp_path: Path, artifact: str, id_field: str, prefix: str
+) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    manifest_path = final / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    fact_path = final / manifest[artifact]["filename"]
+    payload = json.loads(fact_path.read_text())
+    payload[id_field] = prefix + "f" * 16
+    manifest[artifact]["sha256"] = _write(fact_path, payload)
+    _write(manifest_path, manifest)
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
+
+
+@pytest.mark.parametrize("fact_kind", ["evidence", "requirement", "reconciliation"])
+def test_query_rejects_forged_fact_identity_after_full_rehash(
+    tmp_path: Path, fact_kind: str
+) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    manifest_path = final / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    nodes_path = final / "graph_nodes.parquet"
+    edges_path = final / "graph_edges.parquet"
+    nodes, edges = read_parquet_rows(nodes_path, edges_path)
+    artifact_key, node_type = {
+        "evidence": ("evidence_records", GraphNodeType.EVIDENCE_RECORD),
+        "requirement": ("evidence_requirements", GraphNodeType.EVIDENCE_REQUIREMENT),
+        "reconciliation": ("reconciliation_records", GraphNodeType.RECONCILIATION_RECORD),
+    }[fact_kind]
+    fact_path = final / manifest[artifact_key]["filename"]
+    facts = json.loads(fact_path.read_text())
+    list_key = {
+        "evidence": "records",
+        "requirement": "requirements",
+        "reconciliation": "records",
+    }[fact_kind]
+    fact = facts[list_key][0]
+    id_field = {
+        "evidence": "evidence_id",
+        "requirement": "requirement_id",
+        "reconciliation": "reconciliation_id",
+    }[fact_kind]
+    old_id = fact[id_field]
+    fact[id_field] = old_id.rsplit(":", 1)[0] + ":" + "f" * 24
+    if fact_kind == "evidence":
+        modeled = EvidenceRecord.model_validate(fact)
+        fact["content_hash"] = evidence_record_content_hash(modeled)
+    elif fact_kind == "requirement":
+        from bridge.tool_packages.p0_09_evidence_compiler.compiler import requirement_content_hash
+
+        modeled = EvidenceRequirement.model_validate(fact)
+        fact["content_hash"] = requirement_content_hash(modeled)
+    else:
+        from bridge.tool_packages.p0_09_evidence_compiler.compiler import reconciliation_record_content_hash
+
+        modeled = ReconciliationRecord.model_validate(fact)
+        fact["content_hash"] = reconciliation_record_content_hash(modeled)
+    manifest[artifact_key]["sha256"] = _write(fact_path, facts)
+    old_node = next(
+        item
+        for item in nodes
+        if item.node_type is node_type and item.object_id == old_id
+    )
+    new_node = old_node.model_copy(
+        update={
+            "object_id": fact[id_field],
+            "node_id": node_id(fact[id_field], old_node.object_version, node_type),
+            "properties_json": canonical_json_bytes(fact).decode(),
+            "content_hash": fact["content_hash"],
+        }
+    )
+    nodes = [new_node if item == old_node else item for item in nodes]
+    edges = [
+        _rehash_graph_edge(
+            item.model_copy(
+                update={
+                    "source_node_id": new_node.node_id
+                    if item.source_node_id == old_node.node_id
+                    else item.source_node_id,
+                    "target_node_id": new_node.node_id
+                    if item.target_node_id == old_node.node_id
+                    else item.target_node_id,
+                }
+            )
+        )
+        for item in edges
+    ]
+    write_parquet(nodes_path, edges_path, nodes, edges)
+    manifest["graph_nodes"]["sha256"] = hashlib.sha256(nodes_path.read_bytes()).hexdigest()
+    manifest["graph_edges"]["sha256"] = hashlib.sha256(edges_path.read_bytes()).hexdigest()
+    _write(manifest_path, manifest)
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
