@@ -1,0 +1,305 @@
+dataset_id: GSE192405
+version: "1.1"
+source_archive:
+  file_name: GSE192405_RAW.tar
+  sha256: d86d167e39ea025ec3f8bce2b00c252e38a4bbc73dde2207d7d8321dd623836e
+  raw_reads_public: false
+  source_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE192nnn/GSE192405/suppl/GSE192405_RAW.tar
+metadata_sources:
+  - file_name: GSE192405_family.xml.tgz
+    relative_path: GSE192405_family.xml.tgz
+    kind: geo_miniml
+    sha256: a8a3a022a423f98a862b157bdb82758c91e53fe1c6e5fdb4131aad2bc2ef1e8d
+    source_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE192nnn/GSE192405/miniml/GSE192405_family.xml.tgz
+  - file_name: develop-149-200504-s1.pdf
+    relative_path: paper_supplement/develop-149-200504-s1.pdf
+    kind: publication_supplement
+    sha256: f538ca0b034d33a587a11027e4986d6a7c30255cd730f0ddbb8527d2b103d09b
+    source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10114107/supplementaryFiles
+  - file_name: TableS1.xlsx
+    relative_path: TableS1.xlsx
+    kind: publication_table
+    sha256: 6a08c039a135c211e03da44d8dc592a934bbecafaae78a9dbb2b2d08755d9a75
+    source_url: https://www.biologists.com/DEV_Movies/DEV200504/TableS1.xlsx
+external_asset_review:
+  status: conditionally_approved
+  decision_date: "2026-08-12"
+  reviewer_role: project_scientific_lead
+  permitted_uses:
+    - source_level_external_holdout
+    - stage_level_descriptive_analysis
+    - provisional_group_sensitivity
+  prohibited_uses:
+    - biological_replicate_estimation
+    - donor_level_inference
+    - method_or_state_promotion_without_remaining_freeze_gates
+  conditions:
+    - GEO samples, cells and culture conditions remain ineligible as biological replicates.
+    - GSM5746439 and GSM5746445 remain ambiguous between the 7.3-week single-3D and 8-week four-condition culture groups.
+    - No method, state, threshold or product role is promoted by this decision.
+sample_unit_limitations:
+  - The primary matrices reconcile exactly to the publication's 6-week, 8-week and 11-week analysis totals, but the 11-week group consists of two GEO samples with distinct age labels and BioSample records.
+  - The cultured matrices reconcile to Table S1 only as provisional groups; GSM5746439 and GSM5746445 have two unresolved assignments because public metadata are incomplete or conflicting.
+expected_gene_order_sha256: 643be392404f6fc4c10ca6dce2abc3d10b07de0df9ed9e100826f26fe4939cd9
+samples:
+  - geo_accession: GSM5746439
+    file_name: GSM5746439_hVM2015aggrd14.csv.gz
+    sha256: c6ad578743466845fbd420baf87469f9945ad3ce16ac30f1ad147026399a2e17
+    biosample: SAMN24291115
+    published_title: hVM2015aggrd14
+    published_source: human ventral midbrain, 14 days 3D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 3D
+      time: 14 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7P3W, BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: Table S1 contains one 7.3-week 3D day-15 group and one 8-week four-condition group; public metadata do not distinguish this matrix from GSM5746445.
+    technical_subdivision_id: GSM5746439
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746440
+    file_name: GSM5746440_hVM2096aggrd30.csv.gz
+    sha256: 698560aaf09971db834b4c0dc9585f210ce2341b45a4bb38e9e0abd3031d4d48
+    biosample: SAMN24291116
+    published_title: hVM2096aggrd30
+    published_source: human ventral midbrain, 30 days 3D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 3D
+      time: 30 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The shared hVM2096 title stem and complementary culture condition reconcile this matrix with three of the four 8-week Table S1 conditions.
+    technical_subdivision_id: GSM5746440
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746441
+    file_name: GSM5746441_hVM2096d14.csv.gz
+    sha256: 153015506dd3aeee66639184eb242889511ac41b9ea040f5a5fe048149fc4979
+    biosample: SAMN24291117
+    published_title: hVM2096d14
+    published_source: human ventral midbrain, 14 days 2D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 2D
+      time: 14 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The shared hVM2096 title stem and complementary culture condition reconcile this matrix with three of the four 8-week Table S1 conditions.
+    technical_subdivision_id: GSM5746441
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746442
+    file_name: GSM5746442_hVM2096d30.csv.gz
+    sha256: 34e6ce5674d3a7309b1cc8adbecb67ade9020efbeeb9d4b5f6123c2711499dd0
+    biosample: SAMN24291118
+    published_title: hVM2096d30
+    published_source: human ventral midbrain, 30 days 2D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 2D
+      time: 30 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The shared hVM2096 title stem and complementary culture condition reconcile this matrix with three of the four 8-week Table S1 conditions.
+    technical_subdivision_id: GSM5746442
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746443
+    file_name: GSM5746443_hVM2Dday147weeks.csv.gz
+    sha256: f7b4ce085e982e48ad6a2bda50a0b860457968e9e85cc102e260f70438960e59
+    biosample: SAMN24291119
+    published_title: hVM2Dday147weeks
+    published_source: human ventral midbrain, 14 days 2D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 2D
+      time: 14 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The seven-week title and complementary 2D/3D day-14/day-30 matrices reconcile this sample with the four-condition 7-week Table S1 row.
+    technical_subdivision_id: GSM5746443
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746444
+    file_name: GSM5746444_hVM2Dday307weeks.csv.gz
+    sha256: 8f9d89d6d4dcda4354caacafc61076c45fb31f5a8b0b40586b584faddc108440
+    biosample: SAMN24291120
+    published_title: hVM2Dday307weeks
+    published_source: human ventral midbrain, 30 days 2D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 2D
+      time: 30 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The seven-week title and complementary 2D/3D day-14/day-30 matrices reconcile this sample with the four-condition 7-week Table S1 row.
+    technical_subdivision_id: GSM5746444
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746445
+    file_name: GSM5746445_hVM3Dday147weeks.csv.gz
+    sha256: ee590068a2f4805228c3cbcd96621aacf7f56a22db0f8f04728a7025b5da7d76
+    biosample: SAMN24291121
+    published_title: hVM3Dday147weeks
+    published_source: human ventral midbrain, 30 days 3D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 2D
+      time: 30 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7P3W, BIRTELE-CULTURE-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: Table S1 contains one 7.3-week 3D day-15 group and one 8-week four-condition group; the conflicting GEO title, source and characteristics do not distinguish this matrix from GSM5746439.
+    technical_subdivision_id: GSM5746445
+    replicate_eligibility: not_estimable
+    metadata_conflicts:
+      - The title says 3D day 14, the GEO source says 3D day 30, and the GEO characteristics say 2D day 30.
+  - geo_accession: GSM5746446
+    file_name: GSM5746446_MP01-hVM-11-5wks.csv.gz
+    sha256: e2a38784a5184defce926b13888bc0bc5702830bee715ab3ec6de91ff541c727
+    biosample: SAMN24291087
+    published_title: MP01-hVM-11-5wks
+    published_source: human ventral midbrain, 11.5 weeks PC
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: null
+      time: null
+      age: 11.5wks
+    specimen_class: primary_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-PRIMARY-11W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: This matrix and GSM5746447 sum to 8,736 cells, exactly matching the publication's 11-week analysis group after the 6-week and 8-week groups are reconciled.
+    technical_subdivision_id: GSM5746446
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746447
+    file_name: GSM5746447_MP02-hVM-10-5wks.csv.gz
+    sha256: b45d2ab49345f7a66a91ddeccddb9d889a5655ef4dadaf45c8b67bf3a61a578f
+    biosample: SAMN24291088
+    published_title: MP02-hVM-10-5wks
+    published_source: human ventral midbrain, 10.5 weeks PC
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: null
+      time: null
+      age: 10.5wks
+    specimen_class: primary_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-PRIMARY-11W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: This matrix and GSM5746446 sum to 8,736 cells, exactly matching the publication's 11-week analysis group after the 6-week and 8-week groups are reconciled.
+    technical_subdivision_id: GSM5746447
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746448
+    file_name: GSM5746448_MP03-hVM-8wks.csv.gz
+    sha256: 5437fd00a39758ef7dd76c6bbd2a84e426a472c43aed6c75372f11025657fa40
+    biosample: SAMN24291089
+    published_title: MP03-hVM-8wks
+    published_source: human ventral midbrain, 8 weeks PC
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: null
+      time: null
+      age: 8wks
+    specimen_class: primary_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-PRIMARY-8W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The GEO age label and 8,113 cells exactly match the publication's 8-week analysis group.
+    technical_subdivision_id: GSM5746448
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746449
+    file_name: GSM5746449_MP04-hVM-7wks-aggr-d14.csv.gz
+    sha256: edf6f650ddb9aee52100d2bffff40f9657f17b7cf4dfb08a1a8060eb72cc440b
+    biosample: SAMN24291090
+    published_title: MP04-hVM-7wks-aggr-d14
+    published_source: human ventral midbrain, 14 days 3D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 3D
+      time: 14 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The seven-week title and complementary 2D/3D day-14/day-30 matrices reconcile this sample with the four-condition 7-week Table S1 row.
+    technical_subdivision_id: GSM5746449
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746450
+    file_name: GSM5746450_MP05-hVM-7wks-aggr-d30.csv.gz
+    sha256: d51ed59045199d4770e69f53c01e6c46e83d8efac2351f853d7310a86ef82e5e
+    biosample: SAMN24291091
+    published_title: MP05-hVM-7wks-aggr-d30
+    published_source: human ventral midbrain, 30 days 3D culture
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: 3D
+      time: 30 days in culture
+      age: null
+    specimen_class: cultured_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-CULTURE-7W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The seven-week title and complementary 2D/3D day-14/day-30 matrices reconcile this sample with the four-condition 7-week Table S1 row.
+    technical_subdivision_id: GSM5746450
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []
+  - geo_accession: GSM5746451
+    file_name: GSM5746451_MP06-hVM-6wks.csv.gz
+    sha256: 46373bec20c6699b342f12e94e5dc5c1beb77525bfb0dc2b306ca596fcfc3fc0
+    biosample: SAMN24291113
+    published_title: MP06-hVM-6wks
+    published_source: human ventral midbrain, 6 weeks PC
+    published_characteristics:
+      tissue: ventral midbrain
+      culture_condition: null
+      time: null
+      age: 6wks
+    specimen_class: primary_tissue
+    biological_unit_id: null
+    biological_unit_status: unresolved_public_mapping
+    provisional_group_ids: [BIRTELE-PRIMARY-6W]
+    provisional_group_status: provisional_inferred
+    provisional_group_basis: The GEO age label and 6,634 cells exactly match the publication's 6-week analysis group.
+    technical_subdivision_id: GSM5746451
+    replicate_eligibility: not_estimable
+    metadata_conflicts: []

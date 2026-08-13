@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Sequence
 
@@ -22,6 +23,15 @@ def _parser() -> argparse.ArgumentParser:
     prepare.add_argument("--freeze-gate")
     prepare.add_argument("--output", required=True)
 
+    prepare_birtele = actions.add_parser("prepare-birtele")
+    prepare_birtele.add_argument("--source-dir", required=True)
+    prepare_birtele.add_argument("--sample-map")
+    prepare_birtele.add_argument("--output-dir", required=True)
+
+    audit_sources = actions.add_parser("audit-external-sources")
+    audit_sources.add_argument("--lineage-map")
+    audit_sources.add_argument("--output", required=True)
+
     run = actions.add_parser("run")
     run.add_argument("--spec")
     run.add_argument("--asset-catalog", required=True)
@@ -36,6 +46,38 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.action == "prepare-birtele":
+        from bridge.tool_packages.p0_02_cell_state.birtele import prepare_birtele_asset
+
+        if args.sample_map:
+            result = prepare_birtele_asset(
+                Path(args.source_dir), Path(args.sample_map), Path(args.output_dir)
+            )
+        else:
+            resource = files("bridge.tool_packages.p0_02_cell_state.resources").joinpath(
+                "birtele_gse192405_samples.yaml"
+            )
+            with as_file(resource) as sample_map:
+                result = prepare_birtele_asset(
+                    Path(args.source_dir), sample_map, Path(args.output_dir)
+                )
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if args.action == "audit-external-sources":
+        from bridge.tool_packages.p0_02_cell_state.external_source import (
+            audit_external_source_lineage,
+        )
+
+        if args.lineage_map:
+            result = audit_external_source_lineage(Path(args.lineage_map), Path(args.output))
+        else:
+            resource = files("bridge.tool_packages.p0_02_cell_state.resources").joinpath(
+                "external_source_lineage.yaml"
+            )
+            with as_file(resource) as lineage_map:
+                result = audit_external_source_lineage(lineage_map, Path(args.output))
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
     from bridge.tool_packages.p0_02_cell_state.freeze import (
         prepare_benchmark_split,
         run_pilot_benchmark,

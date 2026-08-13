@@ -23,5 +23,5 @@
   "random_seed": 0,
   "request_id": "example-p0-02-cell-state",
   "tool_id": "P0-02",
-  "tool_version": "0.4.7"
+  "tool_version": "0.4.8"
 }
