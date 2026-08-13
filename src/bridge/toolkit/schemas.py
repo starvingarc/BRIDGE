@@ -21,9 +21,13 @@ SCHEMA_REFS = {
     "bridge://schemas/qc-readiness-profile/v0.1": "qc_readiness_profile.schema.json",
     "bridge://schemas/reference-manifest/v0.1": "reference_manifest.schema.json",
     "bridge://schemas/reference-profile/v0.1": "reference_profile.schema.json",
+    "bridge://schemas/structured-input-ref/v0.1": "structured_input_ref.schema.json",
     "bridge://schemas/tool-package-spec/v0.1": "tool_package_spec.schema.json",
+    "bridge://schemas/tool-package-spec/v0.2": "tool_package_spec_v2.schema.json",
     "bridge://schemas/tool-request/v0.1": "tool_request.schema.json",
+    "bridge://schemas/tool-request/v0.2": "tool_request_v2.schema.json",
     "bridge://schemas/tool-run/v0.1": "tool_run.schema.json",
+    "bridge://schemas/tool-run/v0.2": "tool_run_v2.schema.json",
     "bridge://schemas/visualization-artifact/v0.1": "visualization_artifact.schema.json",
 }
 

@@ -18,6 +18,17 @@
 
 <!-- Record unresolved states, missing evidence and the next scientific test. -->
 
+## Interface contract
+
+<!-- If an interface changes, record all applicable items below. Write not_applicable explicitly. -->
+
+- CLI and Python SDK entrypoint:
+- Inputs: field, type, required/optional state, unit, source and checksum:
+- Structured outputs and artifact manifests:
+- Eligibility, refusal behavior and stable reason codes:
+- Minimal valid and refused examples:
+- Contract and compatibility versioning:
+
 ## Engineering record
 
 <!-- Summarize changed files, reproducible checks and any unverified engineering risk. -->

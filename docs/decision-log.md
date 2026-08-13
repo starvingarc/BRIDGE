@@ -41,3 +41,9 @@ The rebuilt BRIDGE is the canonical product rather than a separately branded par
 P0-06 uses `Proliferation & Stress Response` as its working display name instead of `Process Integrity`. The new name identifies a stage-conditioned transcriptional-program assessment built on upstream cell-state and composition evidence, and avoids implying manufacturing-process, GMP or release integrity. P0-06 does not reassign cell identity or recompute off-target composition.
 
 This naming change does not alter the scientific scope or release state: `TranscriptomicReviewFlag` remains `shadow`, `domain_score` remains `null`, and no clinical safety, tumorigenicity, potency or product-release conclusion is introduced. Stable identifiers `P0-06` and `TASK-PROCESS-v0.1` remain unchanged. Historical `source_ref` paths retain their original filenames so provenance links are not rewritten.
+
+## 2026-08-13: Version Structured Tool Inputs Without Replacing V0.1
+
+Current P0-01 and P0-02 execution remains on the byte-compatible v0.1 request, run and package schemas. Structured cross-tool inputs use separate v0.2 request, run and package contracts plus `StructuredInputRef` v0.1. Structured objects are referenced by absolute local path, object version, schema and SHA-256; inline payloads are forbidden.
+
+The adapter seam is declared by each implemented v0.2 Tool Package and is restricted to packaged `bridge.tool_packages.*` modules. Successful and partial runs must bind the package's declared result schema. This avoids adding central tool-ID dispatch branches as future packages become executable. It is an engineering interface decision only: P0-08 and P0-09 remain scaffolds, and no new biological finding or product-evaluation claim follows from the runtime contract.

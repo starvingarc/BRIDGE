@@ -21,9 +21,13 @@ from bridge.toolkit.contracts import (
     QCReadinessProfile,
     ReferenceManifest,
     ReferenceProfile,
+    StructuredInputRef,
     ToolPackageSpec,
+    ToolPackageSpecV2,
     ToolRequest,
+    ToolRequestV2,
     ToolRun,
+    ToolRunV2,
     VisualizationArtifact,
 )
 
@@ -45,9 +49,13 @@ MODELS = {
     "qc_readiness_profile": ("bridge://schemas/qc-readiness-profile/v0.1", QCReadinessProfile),
     "reference_manifest": ("bridge://schemas/reference-manifest/v0.1", ReferenceManifest),
     "reference_profile": ("bridge://schemas/reference-profile/v0.1", ReferenceProfile),
+    "structured_input_ref": ("bridge://schemas/structured-input-ref/v0.1", StructuredInputRef),
     "tool_package_spec": ("bridge://schemas/tool-package-spec/v0.1", ToolPackageSpec),
+    "tool_package_spec_v2": ("bridge://schemas/tool-package-spec/v0.2", ToolPackageSpecV2),
     "tool_request": ("bridge://schemas/tool-request/v0.1", ToolRequest),
+    "tool_request_v2": ("bridge://schemas/tool-request/v0.2", ToolRequestV2),
     "tool_run": ("bridge://schemas/tool-run/v0.1", ToolRun),
+    "tool_run_v2": ("bridge://schemas/tool-run/v0.2", ToolRunV2),
     "visualization_artifact": ("bridge://schemas/visualization-artifact/v0.1", VisualizationArtifact),
 }
 
