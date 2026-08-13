@@ -160,7 +160,7 @@ definitions and marker cards, followed by locked external-source and OOD testing
 
 """ if is_cell_state else ""
     purpose_heading = "## Tool purpose" if is_cell_state else "## Purpose"
-    freeze_row = "| Freeze state | `awaiting_external_asset_review` |\n" if is_cell_state else ""
+    freeze_row = "| Freeze state | `biological_review_in_progress` |\n" if is_cell_state else ""
     method_selection = (
         "\n\n**Method selection:** No method is selected while this package remains a scaffold."
         if spec["implementation_state"] == "scaffold"

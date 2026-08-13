@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Branch | `codex/p0-02-cell-state-freeze` |
+| Branch | `p0-02-external-source-preparation` |
 | Status | `biological_review_in_progress` |
 | Owner | BRIDGE core |
 
@@ -128,8 +128,11 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
 ## Engineering status
 
 - The Birtele conversion, checksum, QC and lineage-audit implementation is
-  complete; its source/stage-only use is conditionally approved with
-  provisional groups and no biological-replicate inference.
+  complete and documented at [P0-02 external-source preparation](../docs/bridge_spec_v0.1/external_source_preparation.md); its source/stage-only use is conditionally approved with provisional groups and no biological-replicate inference.
+- P0-02 is now package version `0.4.8`. The rendered public and packaged cards
+  consistently report `scientific_status=candidate` and
+  `freeze_state=biological_review_in_progress`; they do not claim a scientific
+  freeze, score availability or a non-null domain score.
 - Locked-runner implementation and execution are pending the biological review and
   signed FreezeGate.
 - Task 5 server engineering validation is complete at implementation
@@ -140,3 +143,16 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
   checks were data-free and do not promote a scientific method.
 - Historical local runs are diagnostic only and are not current formal evidence.
 - Runtime remains fail-closed without approved review, gate and release records.
+
+## P0-02 external-source preparation closeout — 2026-08-13
+
+- Rebased the P0-02 history on `origin/main`, preserving the completed P0-06
+  naming plan row and its decision-log record.
+- Added the science-team command contract, required immutable inputs, outputs,
+  checksums, provenance, stable failure reasons, examples and scientific
+  boundaries to the indexed stable documentation.
+- Full validation evidence is recorded in
+  [P0-02 external-source preparation validation](../docs/validation/p0_02_external_source_preparation_20260813.md): `210 passed, 3 warnings in 14.72s`; 12-tool discovery with only P0-01/P0-02 implemented; knowledge validation `valid=True` with 354 methods and 396 bindings; repository policy and `git diff --check` passed.
+- The branch remains a Draft PR: merge is not authorized. Remaining biological
+  work is review of 25 state cards, then ProductDefinitionCard and StateRoleMap;
+  only a signed FreezeGate can authorize a single locked run.

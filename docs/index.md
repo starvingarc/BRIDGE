@@ -17,6 +17,7 @@
 
 - [Specification index](bridge_spec_v0.1/README.md)
 - [Data and reference registry](bridge_spec_v0.1/data_reference_registry.md)
+- [P0-02 external-source preparation](bridge_spec_v0.1/external_source_preparation.md)
 - [Active method shortlist](../knowledge/active-methods.md)
 
 ## Governance
@@ -28,6 +29,7 @@
 
 ## Validation Records
 
+- [P0-02 external-source preparation validation, 2026-08-13](validation/p0_02_external_source_preparation_20260813.md)
 - [P0-02 external-source asset validation, 2026-08-12](validation/p0_02_external_source_asset_20260812.md)
 - [Server reproducibility validation, 2026-08-12](validation/server_reproducibility_20260812.md)
 - [P0-01 server integration, 2026-08-10](validation/p0_01_server_integration_20260810.md)
