@@ -1,0 +1,1167 @@
+from __future__ import annotations
+
+import hashlib
+import importlib
+from importlib.resources import files
+import json
+from pathlib import Path
+from typing import Any
+
+from jsonschema import Draft202012Validator
+import pytest
+
+from bridge.tool_packages.p0_08_evidence_sufficiency.adapter import (
+    RESULT_SCHEMA_REF,
+    adapter,
+    gate_rule_sha256,
+    load_gate_rule,
+    load_reason_catalog,
+)
+from bridge.tool_packages.p0_08_evidence_sufficiency.executor import REASON_CODES
+from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
+    PUBLIC_SCHEMA_MODELS,
+    DomainGateInput,
+    EvidenceSufficiencyRunResult,
+)
+from bridge.toolkit.contracts import ExecutionState, ToolRequest, ToolRequestV2
+from bridge.toolkit.registry import ToolRegistry
+
+
+adapter_module = importlib.import_module(
+    "bridge.tool_packages.p0_08_evidence_sufficiency.adapter"
+)
+
+
+def _write(path: Path, payload: object) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, allow_nan=False, indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _measurement_spec(*, status: str = "frozen") -> dict[str, Any]:
+    return {
+        "measurement_spec_id": "MS-TARGET-v0.1",
+        "version": "0.1.0",
+        "scientific_question": "Are immutable upstream target-evidence records assessable?",
+        "assay": "scRNA-seq",
+        "status": status,
+        "applicable_product_cards": ["product-definition:pd-mda-progenitor"],
+        "input_contract": {"object_type": "versioned_upstream_evidence"},
+        "analysis_unit": "product case x domain",
+        "raw_metric_definition": {"owner": "upstream_tool"},
+        "numerator": None,
+        "denominator": None,
+        "direction": None,
+        "uncertainty_method": None,
+        "minimum_data": {},
+        "missing_behavior": "not_assessed",
+        "tool_refs": ["P0-03"],
+        "reference_refs": ["reference:test-v0.1"],
+        "prior_refs": ["prior:test-v0.1"],
+        "validation_ref": "validation-record:method-1",
+        "exclusion_rules": {},
+        "release_manifest_ref": None,
+    }
+
+
+def _qc(*, readiness_state: str = "ready") -> dict[str, Any]:
+    return {
+        "profile_id": "qc-profile:case-001",
+        "input_level": "analysis_ready",
+        "assay": "scRNA-seq",
+        "assay_spec_id": "assay:scRNA-seq",
+        "measurement_spec_status": "frozen",
+        "readiness_state": readiness_state,
+        "schema_integrity": {"state": "valid"},
+        "metadata_completeness": {"state": "complete"},
+        "matrix_provenance": {"state": "declared"},
+        "upstream_library_qc": {"state": "available"},
+        "cell_qc": {"state": "available"},
+        "doublet_assessment": {"state": "available"},
+        "cell_calling_assessment": {"state": "not_required"},
+        "ambient_assessment": {"state": "not_required"},
+        "data_views": {"state": "available"},
+        "module_eligibility": {"P0-03": "eligible"},
+        "missing_inputs": [],
+        "blocking_issues": [],
+        "warnings": [],
+        "evidence_ids": ["evidence:qc-1"],
+        "score_state": "unavailable",
+        "domain_score": None,
+    }
+
+
+def _measurement(*, evidence_state: str = "measured") -> dict[str, Any]:
+    return {
+        "measurement_id": "measurement:target-1",
+        "measurement_spec_id": "MS-TARGET-v0.1",
+        "metric_name": "upstream_target_evidence",
+        "raw_value": {"state": evidence_state},
+        "numerator": None,
+        "denominator": None,
+        "interval": None,
+        "domain_score": None,
+        "score_state": "unavailable",
+        "evidence_state": evidence_state,
+        "provenance_refs": ["evidence:measurement-1", "run:upstream-1"],
+    }
+
+
+def _validation(**overrides: Any) -> dict[str, Any]:
+    payload = {
+        "validation_record_id": "validation-record:method-1",
+        "object_version": "0.1.0",
+        "created_at": "2026-08-13T00:00:00Z",
+        "measurement_spec_ref": "MS-TARGET-v0.1",
+        "method_id": "METHOD-BRIDGE-ALGORITHM-A0908D",
+        "method_version": "0.1.0",
+        "tool_ref": "P0-03",
+        "environment_spec_ref": "ENV-EVIDENCE-v0.1",
+        "evidence_family_id": "family:validation-1",
+        "required_for_interpretation": True,
+        "method_kind": "deterministic",
+        "validation_state": "frozen",
+        "environment_state": "frozen",
+        "context_of_use_ref": "context:test-v0.1",
+        "context_of_use_state": "applicable",
+        "source_family_ref": "source-family:test",
+        "source_holdout_state": "covered",
+        "modality": "scRNA-seq",
+        "modality_holdout_state": "covered",
+        "calibration_state": "passed",
+        "ood_state": "passed",
+        "validation_refs": ["validation:test-v0.1"],
+        "evidence_refs": ["evidence:validation-1"],
+        "provenance_refs": ["run:validation-1"],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _prior(**overrides: Any) -> dict[str, Any]:
+    payload = {
+        "prior_record_id": "prior-record:prior-1",
+        "object_version": "0.1.0",
+        "created_at": "2026-08-13T00:00:00Z",
+        "measurement_spec_ref": "MS-TARGET-v0.1",
+        "product_definition_ref": "product-definition:pd-mda-progenitor",
+        "prior_ref": "prior:test-v0.1",
+        "snapshot_ref": "snapshot:test-v0.1",
+        "prior_kind": "reference",
+        "evidence_family_id": "family:prior-1",
+        "required_for_interpretation": True,
+        "species_match": "match",
+        "assay_match": "match",
+        "specimen_match": "match",
+        "anatomy_match": "match",
+        "developmental_stage_match": "match",
+        "product_definition_match": "match",
+        "gene_coverage_match": "match",
+        "version_match": "match",
+        "license_match": "match",
+        "crosswalk_ref": "crosswalk:test-v0.1",
+        "evidence_refs": ["evidence:prior-1"],
+        "provenance_refs": ["run:prior-1"],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _sensitivity(**overrides: Any) -> dict[str, Any]:
+    payload = {
+        "sensitivity_record_id": "sensitivity-record:reference-1",
+        "object_version": "0.1.0",
+        "created_at": "2026-08-13T00:00:00Z",
+        "measurement_spec_ref": "MS-TARGET-v0.1",
+        "sensitivity_kind": "reference",
+        "evidence_family_id": "family:sensitivity-1",
+        "required_for_interpretation": True,
+        "state": "stable",
+        "baseline_ref": "result:baseline",
+        "perturbation_ref": "result:reference-swap",
+        "conclusion_ref": "conclusion:reference-stable",
+        "evidence_refs": ["evidence:sensitivity-1"],
+        "provenance_refs": ["run:sensitivity-1"],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _domain(**overrides: Any) -> dict[str, Any]:
+    payload = {
+        "domain_gate_input_id": "domain-gate-input:case-001:target-identity",
+        "object_version": "0.1.0",
+        "created_at": "2026-08-13T00:00:00Z",
+        "product_case": {
+            "object_id": "product-case:case-001",
+            "object_version": "1.0.0",
+            "provenance_refs": ["provenance:case-001"],
+        },
+        "product_definition": {
+            "object_id": "product-definition:pd-mda-progenitor",
+            "object_version": "1.0.0",
+            "provenance_refs": ["provenance:product-definition"],
+        },
+        "domain_id": "target_identity",
+        "measurement_spec_input_id": "target-spec",
+        "qc_profile_input_id": "case-qc",
+        "measurement_result_input_ids": ["target-result"],
+        "validation_record_input_ids": ["target-validation"],
+        "prior_record_input_ids": ["target-prior"],
+        "sensitivity_record_input_ids": ["target-sensitivity"],
+        "method_requirement": "required",
+        "prior_requirement": "required",
+        "required_sensitivity_kinds": ["reference"],
+        "task_validation_state": "frozen",
+        "score_contract_ref": None,
+        "evidence_refs": ["evidence:target-raw"],
+        "provenance_refs": ["run:target-domain-upstream"],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _fixture_request(
+    tmp_path: Path,
+    *,
+    domain: dict[str, Any] | None = None,
+    measurement_spec: dict[str, Any] | None = None,
+    qc: dict[str, Any] | None = None,
+    measurement: dict[str, Any] | None = None,
+    validation: dict[str, Any] | None = None,
+    prior: dict[str, Any] | None = None,
+    sensitivity: dict[str, Any] | None = None,
+    extras: list[tuple[str, str, str, dict[str, Any], str]] | None = None,
+    request_id: str = "request-p0-08",
+    output_name: str = "output",
+) -> ToolRequestV2:
+    input_root = tmp_path / f"inputs-{request_id}"
+    input_root.mkdir(parents=True, exist_ok=True)
+    gate_path = input_root / "gate_rule_spec_v0.1.json"
+    gate_path.write_bytes(
+        files("bridge.tool_packages.p0_08_evidence_sufficiency.resources")
+        .joinpath("gate_rule_spec_v0.1.json")
+        .read_bytes()
+    )
+    refs: list[dict[str, Any]] = [
+        {
+            "input_id": "gate-rules",
+            "role": "gate_rule_spec",
+            "schema_ref": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+            "object_version": "0.1.0",
+            "path": gate_path,
+            "sha256": gate_rule_sha256(),
+            "media_type": "application/json",
+        }
+    ]
+    entries: list[tuple[str, str, str, dict[str, Any], str]] = [
+        (
+            "target-domain",
+            "domain_gate_input",
+            "bridge://schemas/domain-gate-input/v0.1",
+            domain if domain is not None else _domain(),
+            "0.1.0",
+        )
+    ]
+    candidates = [
+        (
+            "target-spec",
+            "measurement_spec",
+            "bridge://schemas/measurement-spec/v0.1",
+            measurement_spec if measurement_spec is not None else _measurement_spec(),
+            "0.1.0",
+        ),
+        (
+            "case-qc",
+            "qc_readiness_profile",
+            "bridge://schemas/qc-readiness-profile/v0.1",
+            qc if qc is not None else _qc(),
+            "0.1.0",
+        ),
+        (
+            "target-result",
+            "measurement_result",
+            "bridge://schemas/measurement-result/v0.1",
+            measurement if measurement is not None else _measurement(),
+            "0.1.0",
+        ),
+        (
+            "target-validation",
+            "validation_record",
+            "bridge://schemas/evidence-validation-record/v0.1",
+            validation if validation is not None else _validation(),
+            "0.1.0",
+        ),
+        (
+            "target-prior",
+            "prior_applicability_record",
+            "bridge://schemas/prior-applicability-record/v0.1",
+            prior if prior is not None else _prior(),
+            "0.1.0",
+        ),
+        (
+            "target-sensitivity",
+            "sensitivity_record",
+            "bridge://schemas/evidence-sensitivity-record/v0.1",
+            sensitivity if sensitivity is not None else _sensitivity(),
+            "0.1.0",
+        ),
+    ]
+    bound_ids = {
+        value
+        for key, value in (domain if domain is not None else _domain()).items()
+        if key in {"measurement_spec_input_id", "qc_profile_input_id"} and value is not None
+    }
+    for key in (
+        "measurement_result_input_ids",
+        "validation_record_input_ids",
+        "prior_record_input_ids",
+        "sensitivity_record_input_ids",
+    ):
+        bound_ids.update((domain if domain is not None else _domain()).get(key, []))
+    entries.extend(entry for entry in candidates if entry[0] in bound_ids)
+    entries.extend(extras or [])
+    for input_id, role, schema_ref, payload, version in entries:
+        path = input_root / f"{input_id}.json"
+        sha256 = _write(path, payload)
+        refs.append(
+            {
+                "input_id": input_id,
+                "role": role,
+                "schema_ref": schema_ref,
+                "object_version": version,
+                "path": path.resolve(),
+                "sha256": sha256,
+                "media_type": "application/json",
+            }
+        )
+    return ToolRequestV2(
+        request_id=request_id,
+        tool_id="P0-08",
+        tool_version="0.2.0",
+        output_dir=(tmp_path / output_name).resolve(),
+        assets=[],
+        measurement_spec_ref=None,
+        parameters={},
+        random_seed=0,
+        object_inputs=refs,
+    )
+
+
+def _run(tmp_path: Path, **kwargs: Any):
+    request = _fixture_request(tmp_path, **kwargs)
+    spec = ToolRegistry.load_default().describe("P0-08")
+    return adapter.run(request, spec)
+
+
+def _replace_ref(
+    request: ToolRequestV2, input_id: str, **changes: Any
+) -> ToolRequestV2:
+    refs = [
+        ref.model_copy(update=changes) if ref.input_id == input_id else ref
+        for ref in request.object_inputs
+    ]
+    return request.model_copy(update={"object_inputs": refs})
+
+
+def test_packaged_rule_and_reason_catalog_are_exact_candidate_resources() -> None:
+    gate = load_gate_rule()
+    catalog = load_reason_catalog()
+
+    assert gate.status.value == "candidate"
+    assert gate.precedence == ("not_assessed", "insufficient", "limited", "sufficient")
+    assert tuple(reason.code for reason in catalog.reasons) == REASON_CODES
+    assert len(catalog.reasons) == 45
+
+
+@pytest.mark.parametrize("schema_ref,model", PUBLIC_SCHEMA_MODELS.items())
+def test_module_models_round_trip_through_draft_2020_12(
+    schema_ref: str, model: type[Any]
+) -> None:
+    schema = model.model_json_schema()
+    Draft202012Validator.check_schema(schema)
+    assert schema["additionalProperties"] is False
+    assert schema_ref.startswith("bridge://schemas/")
+
+
+def test_sufficient_raw_evidence_never_enables_a_domain_score(tmp_path: Path) -> None:
+    run = _run(tmp_path)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert run.measurements == []
+    assert run.visualizations == []
+    assert run.result_schema_ref == RESULT_SCHEMA_REF
+    result = EvidenceSufficiencyRunResult.model_validate(run.result)
+    profile = result.profiles[0]
+    assert profile.evidence_sufficiency_state.value == "sufficient"
+    assert profile.domain_score is None
+    assert profile.score_state.value == "unavailable"
+    assert profile.score_reason_codes == ["p0_score_contract_unavailable"]
+
+
+def test_default_registry_dispatches_p0_08_through_declared_adapter(tmp_path: Path) -> None:
+    request = _fixture_request(tmp_path)
+    registry = ToolRegistry.load_default()
+
+    eligibility = registry.check_eligibility(request)
+    run = registry.run(request)
+
+    assert eligibility.eligible
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert run.result_schema_ref == RESULT_SCHEMA_REF
+    assert registry.describe("P0-08").adapter_ref.endswith(":adapter")
+
+
+def test_five_domains_are_gated_independently_and_counted_only(tmp_path: Path) -> None:
+    domains = [
+        _domain(),
+        _domain(
+            domain_gate_input_id="domain-gate-input:case-001:regional-fidelity",
+            domain_id="regional_fidelity",
+            qc_profile_input_id="qc-limited",
+        ),
+        _domain(
+            domain_gate_input_id="domain-gate-input:case-001:developmental-compatibility",
+            domain_id="developmental_compatibility",
+            qc_profile_input_id="qc-blocked",
+        ),
+        _domain(
+            domain_gate_input_id="domain-gate-input:case-001:off-target-control",
+            domain_id="off_target_control",
+            product_definition=None,
+            measurement_spec_input_id=None,
+            qc_profile_input_id=None,
+            measurement_result_input_ids=[],
+            validation_record_input_ids=[],
+            prior_record_input_ids=[],
+            sensitivity_record_input_ids=[],
+            method_requirement="not_assessed",
+            prior_requirement="not_assessed",
+            required_sensitivity_kinds=[],
+            task_validation_state="not_assessed",
+        ),
+        _domain(
+            domain_gate_input_id="domain-gate-input:case-001:proliferation-stress-response",
+            domain_id="proliferation_stress_response",
+            validation_record_input_ids=["validation-candidate"],
+        ),
+    ]
+    extras: list[tuple[str, str, str, dict[str, Any], str]] = [
+        (
+            f"domain-{index}",
+            "domain_gate_input",
+            "bridge://schemas/domain-gate-input/v0.1",
+            domain,
+            "0.1.0",
+        )
+        for index, domain in enumerate(domains[1:], start=2)
+    ]
+    extras.extend(
+        [
+            (
+                "qc-limited",
+                "qc_readiness_profile",
+                "bridge://schemas/qc-readiness-profile/v0.1",
+                _qc(readiness_state="limited") | {"profile_id": "qc-profile:limited"},
+                "0.1.0",
+            ),
+            (
+                "qc-blocked",
+                "qc_readiness_profile",
+                "bridge://schemas/qc-readiness-profile/v0.1",
+                _qc(readiness_state="blocked") | {"profile_id": "qc-profile:blocked"},
+                "0.1.0",
+            ),
+            (
+                "validation-candidate",
+                "validation_record",
+                "bridge://schemas/evidence-validation-record/v0.1",
+                _validation(
+                    validation_record_id="validation-record:candidate",
+                    validation_state="candidate",
+                ),
+                "0.1.0",
+            ),
+        ]
+    )
+    request = _fixture_request(tmp_path, domain=domains[0], extras=extras)
+    spec = ToolRegistry.load_default().describe("P0-08")
+    run = adapter.run(request, spec)
+    result = EvidenceSufficiencyRunResult.model_validate(run.result)
+
+    assert [profile.domain_id.value for profile in result.profiles] == [
+        "target_identity",
+        "regional_fidelity",
+        "developmental_compatibility",
+        "off_target_control",
+        "proliferation_stress_response",
+    ]
+    assert [profile.evidence_sufficiency_state.value for profile in result.profiles] == [
+        "sufficient",
+        "limited",
+        "insufficient",
+        "not_assessed",
+        "limited",
+    ]
+    assert result.case_summary.evidence_sufficiency_counts.model_dump() == {
+        "sufficient": 1,
+        "limited": 2,
+        "insufficient": 1,
+        "not_assessed": 1,
+    }
+    assert result.case_summary.score_state_counts.unavailable == 5
+    assert all(profile.domain_score is None for profile in result.profiles)
+
+
+@pytest.mark.parametrize(
+    ("changes", "axis", "axis_state", "gate_state", "reason"),
+    [
+        (
+            {"validation": _validation(validation_state="candidate")},
+            "model_robustness",
+            "candidate_applicable",
+            "limited",
+            "method_validation_candidate",
+        ),
+        (
+            {"prior": _prior(anatomy_match="partial_match")},
+            "prior_applicability",
+            "partially_applicable",
+            "limited",
+            "prior_partially_applicable",
+        ),
+        (
+            {"qc": _qc(readiness_state="blocked")},
+            "data_readiness",
+            "insufficient",
+            "insufficient",
+            "data_readiness_insufficient",
+        ),
+        (
+            {"validation": _validation(context_of_use_state="not_applicable")},
+            "model_robustness",
+            "not_applicable",
+            "insufficient",
+            "method_context_not_applicable",
+        ),
+        (
+            {"prior": _prior(species_match="mismatch")},
+            "prior_applicability",
+            "inapplicable",
+            "insufficient",
+            "required_prior_inapplicable",
+        ),
+        (
+            {"sensitivity": _sensitivity(state="unstable")},
+            "model_robustness",
+            "unstable",
+            "insufficient",
+            "sensitivity_unstable",
+        ),
+        (
+            {"validation": _validation(source_holdout_state="not_covered")},
+            "model_robustness",
+            "candidate_applicable",
+            "limited",
+            "source_holdout_not_covered",
+        ),
+    ],
+)
+def test_axis_folds_follow_fixed_precedence(
+    tmp_path: Path,
+    changes: dict[str, Any],
+    axis: str,
+    axis_state: str,
+    gate_state: str,
+    reason: str,
+) -> None:
+    run = _run(tmp_path, **changes)
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert getattr(profile, axis).value == axis_state
+    assert profile.evidence_sufficiency_state.value == gate_state
+    assert reason in {
+        *profile.data_reason_codes,
+        *profile.robustness_reason_codes,
+        *profile.prior_reason_codes,
+    }
+    assert profile.domain_score is None
+
+
+def test_sparse_valid_binding_is_not_assessed_not_execution_failure(tmp_path: Path) -> None:
+    sparse = _domain(
+        product_case=None,
+        product_definition=None,
+        domain_id=None,
+        measurement_spec_input_id=None,
+        qc_profile_input_id=None,
+        measurement_result_input_ids=[],
+        validation_record_input_ids=[],
+        prior_record_input_ids=[],
+        sensitivity_record_input_ids=[],
+        method_requirement="not_assessed",
+        prior_requirement="not_assessed",
+        required_sensitivity_kinds=[],
+        task_validation_state="not_assessed",
+    )
+    run = _run(tmp_path, domain=sparse)
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert profile.evidence_sufficiency_state.value == "not_assessed"
+    assert "product_case_not_declared" in profile.missing_requirements
+    assert profile.domain_score is None
+
+
+@pytest.mark.parametrize(
+    ("changes", "reason"),
+    [
+        ({"domain": _domain(task_validation_state="not_assessed")}, "task_validation_not_assessed"),
+        (
+            {"domain": _domain(method_requirement="not_assessed")},
+            "method_requirement_not_assessed",
+        ),
+        (
+            {"domain": _domain(validation_record_input_ids=[])},
+            "validation_record_not_provided",
+        ),
+        (
+            {"validation": _validation(calibration_state="not_assessed")},
+            "validation_check_not_assessed",
+        ),
+        (
+            {"domain": _domain(sensitivity_record_input_ids=[])},
+            "required_sensitivity_record_missing",
+        ),
+        (
+            {"sensitivity": _sensitivity(state="not_assessed")},
+            "sensitivity_not_assessed",
+        ),
+        (
+            {"domain": _domain(prior_requirement="not_assessed")},
+            "prior_requirement_not_assessed",
+        ),
+        (
+            {"domain": _domain(prior_record_input_ids=[])},
+            "required_prior_record_missing",
+        ),
+        (
+            {"prior": _prior(species_match="not_assessed")},
+            "prior_match_not_assessed",
+        ),
+    ],
+)
+def test_missing_scientific_records_are_successful_not_assessed_results(
+    tmp_path: Path, changes: dict[str, Any], reason: str
+) -> None:
+    run = _run(tmp_path, **changes)
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert profile.evidence_sufficiency_state.value == "not_assessed"
+    assert reason in profile.missing_requirements
+    assert profile.domain_score is None
+
+
+def test_deterministic_and_prior_not_required_paths_are_explicit(tmp_path: Path) -> None:
+    domain = _domain(
+        method_requirement="not_required",
+        prior_requirement="not_required",
+        prior_record_input_ids=[],
+    )
+    run = _run(tmp_path, domain=domain)
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert profile.model_robustness.value == "not_required"
+    assert profile.prior_applicability.value == "not_required"
+    assert "deterministic_method_path_validated" in profile.robustness_reason_codes
+    assert "prior_not_required" in profile.prior_reason_codes
+    assert profile.evidence_sufficiency_state.value == "sufficient"
+
+
+def test_learned_record_cannot_establish_no_model_required_path(tmp_path: Path) -> None:
+    domain = _domain(
+        method_requirement="not_required",
+        prior_requirement="not_required",
+        prior_record_input_ids=[],
+    )
+    run = _run(tmp_path, domain=domain, validation=_validation(method_kind="learned"))
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert profile.model_robustness.value == "not_assessed"
+    assert profile.evidence_sufficiency_state.value == "not_assessed"
+    assert "validation_check_not_assessed" in profile.missing_requirements
+
+
+def test_score_reference_is_provenance_only_and_never_enables_score(tmp_path: Path) -> None:
+    run = _run(tmp_path, domain=_domain(score_contract_ref="score-contract:candidate"))
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert profile.evidence_sufficiency_state.value == "sufficient"
+    assert profile.domain_score is None
+    assert profile.score_state.value == "unavailable"
+    assert profile.score_reason_codes == [
+        "p0_score_contract_unavailable",
+        "score_contract_ignored_current_release",
+    ]
+
+
+@pytest.mark.parametrize(
+    "evidence_state", ["negative", "alert", "unknown", "missing", "unavailable"]
+)
+def test_raw_measurement_state_is_not_reinterpreted(
+    tmp_path: Path, evidence_state: str
+) -> None:
+    run = _run(tmp_path, measurement=_measurement(evidence_state=evidence_state))
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert profile.evidence_sufficiency_state.value == "sufficient"
+    assert evidence_state not in {
+        *profile.data_reason_codes,
+        *profile.robustness_reason_codes,
+        *profile.prior_reason_codes,
+        *profile.blocking_reasons,
+        *profile.limiting_reasons,
+    }
+    assert profile.domain_score is None
+
+
+def test_same_family_identical_records_collapse_without_a_vote(tmp_path: Path) -> None:
+    duplicate = _validation()
+    domain = _domain(validation_record_input_ids=["target-validation", "validation-copy"])
+    extra = (
+        "validation-copy",
+        "validation_record",
+        "bridge://schemas/evidence-validation-record/v0.1",
+        duplicate,
+        "0.1.0",
+    )
+    run = _run(tmp_path, domain=domain, extras=[extra])
+    result = EvidenceSufficiencyRunResult.model_validate(run.result)
+
+    assert result.profiles[0].model_robustness.value == "validated_applicable"
+    assert "evidence_family_duplicate_collapsed" in result.profiles[0].robustness_reason_codes
+    assert result.gate_trace[0].ignored_duplicate_input_refs == ["validation-copy"]
+    assert result.profiles[0].deduplicated_evidence_family_ids.count("family:validation-1") == 1
+
+
+def test_same_family_nonidentical_records_require_review(tmp_path: Path) -> None:
+    conflicting = _validation(validation_record_id="validation-record:method-conflict")
+    domain = _domain(validation_record_input_ids=["target-validation", "validation-conflict"])
+    extra = (
+        "validation-conflict",
+        "validation_record",
+        "bridge://schemas/evidence-validation-record/v0.1",
+        conflicting,
+        "0.1.0",
+    )
+    run = _run(tmp_path, domain=domain, extras=[extra])
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert profile.model_robustness.value == "not_assessed"
+    assert profile.evidence_sufficiency_state.value == "not_assessed"
+    assert "evidence_family_conflict_requires_review" in profile.missing_requirements
+
+
+def test_nonidentical_optional_family_records_remain_provenance_only(tmp_path: Path) -> None:
+    optional_a = _validation(
+        validation_record_id="validation-record:optional-a",
+        evidence_family_id="family:optional",
+        required_for_interpretation=False,
+    )
+    optional_b = _validation(
+        validation_record_id="validation-record:optional-b",
+        evidence_family_id="family:optional",
+        required_for_interpretation=False,
+        evidence_refs=["evidence:optional-b"],
+    )
+    domain = _domain(
+        validation_record_input_ids=[
+            "target-validation",
+            "optional-validation-a",
+            "optional-validation-b",
+        ]
+    )
+    extras = [
+        (
+            "optional-validation-a",
+            "validation_record",
+            "bridge://schemas/evidence-validation-record/v0.1",
+            optional_a,
+            "0.1.0",
+        ),
+        (
+            "optional-validation-b",
+            "validation_record",
+            "bridge://schemas/evidence-validation-record/v0.1",
+            optional_b,
+            "0.1.0",
+        ),
+    ]
+    run = _run(tmp_path, domain=domain, extras=extras)
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert profile.evidence_sufficiency_state.value == "sufficient"
+    assert "evidence_family_conflict_requires_review" not in profile.missing_requirements
+    assert "evidence:optional-b" in profile.evidence_refs
+
+
+@pytest.mark.parametrize(
+    ("request_change", "reason"),
+    [
+        ({"tool_version": "0.1.0"}, "tool_version_mismatch"),
+        ({"parameters": {"threshold": 0.5}}, "p0_08_parameters_forbidden"),
+        ({"measurement_spec_ref": "MS-TARGET-v0.1"}, "p0_08_top_level_measurement_spec_forbidden"),
+    ],
+)
+def test_envelope_failures_do_not_emit_results_or_artifacts(
+    tmp_path: Path, request_change: dict[str, Any], reason: str
+) -> None:
+    request = _fixture_request(tmp_path)
+    request = request.model_copy(update=request_change)
+    spec = ToolRegistry.load_default().describe("P0-08")
+    run = adapter.run(request, spec)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert reason in run.reason_codes
+    assert run.result is None
+    assert run.artifacts == []
+    assert run.measurements == []
+
+
+def test_unbound_structured_input_and_legacy_contract_fail_closed(tmp_path: Path) -> None:
+    extra_payload = _measurement()
+    extra_payload["measurement_id"] = "measurement:competitor-canary"
+    unbound = (
+        "sealed-competitor-extra",
+        "measurement_result",
+        "bridge://schemas/measurement-result/v0.1",
+        extra_payload,
+        "0.1.0",
+    )
+    request = _fixture_request(tmp_path, extras=[unbound])
+    spec = ToolRegistry.load_default().describe("P0-08")
+    eligibility = adapter.check_eligibility(request, spec)
+    assert not eligibility.eligible
+    assert "unbound_structured_input" in eligibility.reason_codes
+
+    legacy = _measurement()
+    legacy["raw_value"] = {"product_pass": True}
+    request = _fixture_request(
+        tmp_path / "legacy", measurement=legacy, request_id="legacy"
+    )
+    eligibility = adapter.check_eligibility(request, spec)
+    assert not eligibility.eligible
+    assert "legacy_evidence_contract_rejected" in eligibility.reason_codes
+
+
+def test_v1_invocation_and_forbidden_expression_channel_fail_eligibility(
+    tmp_path: Path,
+) -> None:
+    spec = ToolRegistry.load_default().describe("P0-08")
+    v1 = ToolRequest(
+        request_id="v1",
+        tool_id="P0-08",
+        tool_version="0.2.0",
+        output_dir=(tmp_path / "out-v1").resolve(),
+    )
+    v1_eligibility = adapter.check_eligibility(v1, spec)  # type: ignore[arg-type]
+    assert v1_eligibility.reason_codes == ["p0_08_requires_v2_request"]
+
+    request = _fixture_request(tmp_path / "v2")
+    request = request.model_copy(update={"assets": [object()]})
+    eligibility = adapter.check_eligibility(request, spec)
+    assert "p0_08_expression_assets_forbidden" in eligibility.reason_codes
+
+
+def test_required_cardinality_and_object_identity_fail_closed(tmp_path: Path) -> None:
+    spec = ToolRegistry.load_default().describe("P0-08")
+    request = _fixture_request(tmp_path)
+    without_gate = request.model_copy(
+        update={
+            "object_inputs": [
+                ref for ref in request.object_inputs if ref.role != "gate_rule_spec"
+            ]
+        }
+    )
+    assert "exactly_one_gate_rule_spec_required" in adapter.check_eligibility(
+        without_gate, spec
+    ).reason_codes
+
+    without_domain = request.model_copy(
+        update={
+            "object_inputs": [
+                ref for ref in request.object_inputs if ref.role != "domain_gate_input"
+            ]
+        }
+    )
+    assert "one_to_five_domain_gate_inputs_required" in adapter.check_eligibility(
+        without_domain, spec
+    ).reason_codes
+
+    duplicate_ref = request.object_inputs[-1].model_copy(
+        update={"input_id": request.object_inputs[0].input_id}
+    )
+    duplicated = request.model_copy(
+        update={"object_inputs": [*request.object_inputs[:-1], duplicate_ref]}
+    )
+    assert "duplicate_object_input_id" in adapter.check_eligibility(
+        duplicated, spec
+    ).reason_codes
+
+
+def test_role_schema_and_unrecognized_role_fail_closed(tmp_path: Path) -> None:
+    spec = ToolRegistry.load_default().describe("P0-08")
+    request = _fixture_request(tmp_path)
+    mismatched = _replace_ref(
+        request,
+        "target-domain",
+        schema_ref="bridge://schemas/measurement-result/v0.1",
+    )
+    assert "object_input_schema_mismatch" in adapter.check_eligibility(
+        mismatched, spec
+    ).reason_codes
+
+    unsupported_ref = request.object_inputs[-1].model_copy(
+        update={"input_id": "unsupported-extra", "role": "arbitrary_payload"}
+    )
+    unsupported = request.model_copy(
+        update={"object_inputs": [*request.object_inputs, unsupported_ref]}
+    )
+    assert "unsupported_object_input_role" in adapter.check_eligibility(
+        unsupported, spec
+    ).reason_codes
+
+
+def test_filesystem_checksum_media_and_json_failures_are_distinct(tmp_path: Path) -> None:
+    spec = ToolRegistry.load_default().describe("P0-08")
+    request = _fixture_request(tmp_path)
+    missing = _replace_ref(
+        request, "target-domain", path=(tmp_path / "does-not-exist.json").resolve()
+    )
+    assert "structured_input_not_found" in adapter.check_eligibility(
+        missing, spec
+    ).reason_codes
+
+    directory = tmp_path / "directory-input"
+    directory.mkdir()
+    not_file = _replace_ref(request, "target-domain", path=directory.resolve())
+    assert "structured_input_not_regular_file" in adapter.check_eligibility(
+        not_file, spec
+    ).reason_codes
+
+    bad_hash = _replace_ref(request, "target-domain", sha256="0" * 64)
+    assert "structured_input_checksum_mismatch" in adapter.check_eligibility(
+        bad_hash, spec
+    ).reason_codes
+
+    unsupported_media = _replace_ref(
+        request, "target-domain", media_type="text/plain"
+    )
+    assert "structured_input_media_type_unsupported" in adapter.check_eligibility(
+        unsupported_media, spec
+    ).reason_codes
+
+    target_ref = next(ref for ref in request.object_inputs if ref.input_id == "target-domain")
+    target_ref.path.write_text('{"duplicate": 1, "duplicate": 2}\n', encoding="utf-8")
+    invalid_json = _replace_ref(
+        request,
+        "target-domain",
+        sha256=hashlib.sha256(target_ref.path.read_bytes()).hexdigest(),
+    )
+    assert "structured_input_json_invalid" in adapter.check_eligibility(
+        invalid_json, spec
+    ).reason_codes
+
+
+def test_object_schema_and_packaged_gate_bytes_are_immutable(tmp_path: Path) -> None:
+    spec = ToolRegistry.load_default().describe("P0-08")
+    request = _fixture_request(tmp_path)
+    domain_ref = next(ref for ref in request.object_inputs if ref.input_id == "target-domain")
+    domain_ref.path.write_text("{}\n", encoding="utf-8")
+    invalid_schema = _replace_ref(
+        request,
+        "target-domain",
+        sha256=hashlib.sha256(domain_ref.path.read_bytes()).hexdigest(),
+    )
+    assert "structured_input_schema_invalid" in adapter.check_eligibility(
+        invalid_schema, spec
+    ).reason_codes
+
+    gate_request = _fixture_request(tmp_path / "gate")
+    gate_ref = next(ref for ref in gate_request.object_inputs if ref.input_id == "gate-rules")
+    payload = json.loads(gate_ref.path.read_text(encoding="utf-8"))
+    payload["status"] = "frozen"
+    gate_sha = _write(gate_ref.path, payload)
+    alternate_gate = _replace_ref(gate_request, "gate-rules", sha256=gate_sha)
+    assert "unsupported_gate_rule_spec" in adapter.check_eligibility(
+        alternate_gate, spec
+    ).reason_codes
+
+
+def test_domain_bindings_measurement_and_product_definition_must_agree(
+    tmp_path: Path,
+) -> None:
+    spec = ToolRegistry.load_default().describe("P0-08")
+    dangling = _fixture_request(
+        tmp_path / "dangling",
+        domain=_domain(measurement_result_input_ids=["missing-result"]),
+    )
+    assert "domain_gate_input_binding_invalid" in adapter.check_eligibility(
+        dangling, spec
+    ).reason_codes
+
+    measurement = _measurement()
+    measurement["measurement_spec_id"] = "MS-OTHER-v0.1"
+    mismatch = _fixture_request(tmp_path / "measurement", measurement=measurement)
+    assert "domain_input_measurement_spec_mismatch" in adapter.check_eligibility(
+        mismatch, spec
+    ).reason_codes
+
+    prior = _prior(product_definition_ref="product-definition:other")
+    product_mismatch = _fixture_request(tmp_path / "product", prior=prior)
+    assert "domain_input_product_definition_mismatch" in adapter.check_eligibility(
+        product_mismatch, spec
+    ).reason_codes
+
+
+def test_duplicate_domain_multiple_cases_and_output_overlap_fail_closed(
+    tmp_path: Path,
+) -> None:
+    spec = ToolRegistry.load_default().describe("P0-08")
+    duplicate_domain = _domain(
+        domain_gate_input_id="domain-gate-input:case-001:target-copy"
+    )
+    duplicate_request = _fixture_request(
+        tmp_path / "duplicate",
+        extras=[
+            (
+                "domain-copy",
+                "domain_gate_input",
+                "bridge://schemas/domain-gate-input/v0.1",
+                duplicate_domain,
+                "0.1.0",
+            )
+        ],
+    )
+    assert "duplicate_domain_id" in adapter.check_eligibility(
+        duplicate_request, spec
+    ).reason_codes
+
+    different_case = _domain(
+        domain_gate_input_id="domain-gate-input:case-002:regional-fidelity",
+        domain_id="regional_fidelity",
+        product_case={
+            "object_id": "product-case:case-002",
+            "object_version": "1.0.0",
+            "provenance_refs": ["provenance:case-002"],
+        },
+    )
+    multiple_case_request = _fixture_request(
+        tmp_path / "cases",
+        extras=[
+            (
+                "domain-case-2",
+                "domain_gate_input",
+                "bridge://schemas/domain-gate-input/v0.1",
+                different_case,
+                "0.1.0",
+            )
+        ],
+    )
+    assert "multiple_product_cases_in_request" in adapter.check_eligibility(
+        multiple_case_request, spec
+    ).reason_codes
+
+    request = _fixture_request(tmp_path / "overlap")
+    input_parent = request.object_inputs[0].path.parent
+    overlap = request.model_copy(update={"output_dir": input_parent})
+    assert "output_dir_overlaps_structured_input" in adapter.check_eligibility(
+        overlap, spec
+    ).reason_codes
+
+
+def test_artifact_bundle_is_deterministic_reusable_and_path_free(tmp_path: Path) -> None:
+    first = _run(tmp_path, request_id="first", output_name="output-a")
+    second = _run(tmp_path, request_id="second", output_name="output-b")
+
+    assert first.input_hash == second.input_hash
+    assert first.run_id == second.run_id
+    first_dir = first.artifacts[0].path.parent
+    second_dir = second.artifacts[0].path.parent
+    scientific_names = {
+        "evidence_sufficiency_profiles.json",
+        "case_evidence_readiness_summary.json",
+        "gate_trace.json",
+        "evidence_sufficiency_run_result.json",
+    }
+    for name in scientific_names:
+        assert (first_dir / name).read_bytes() == (second_dir / name).read_bytes()
+        text = (first_dir / name).read_text(encoding="utf-8")
+        assert str(tmp_path) not in text
+        assert "NaN" not in text and "Infinity" not in text
+    manifest = json.loads((first_dir / "artifact_manifest.json").read_text())
+    assert all(item["filename"] != "artifact_manifest.json" for item in manifest["artifacts"])
+    for item in manifest["artifacts"]:
+        artifact_path = first_dir / item["filename"]
+        assert hashlib.sha256(artifact_path.read_bytes()).hexdigest() == item["sha256"]
+    assert len(first.artifacts) == 5
+
+    repeated_request = _fixture_request(tmp_path, request_id="first", output_name="output-a")
+    spec = ToolRegistry.load_default().describe("P0-08")
+    repeated = adapter.run(repeated_request, spec)
+    assert repeated.execution_state is ExecutionState.SUCCEEDED
+    assert repeated.run_id == first.run_id
+
+    reordered = repeated_request.model_copy(
+        update={"object_inputs": list(reversed(repeated_request.object_inputs))}
+    )
+    reordered_run = adapter.run(reordered, spec)
+    assert reordered_run.run_id == first.run_id
+    assert reordered_run.input_hash == first.input_hash
+
+
+def test_semantic_input_change_changes_run_identity(tmp_path: Path) -> None:
+    first = _run(tmp_path / "first", output_name="output")
+    second = _run(
+        tmp_path / "second",
+        output_name="output",
+        validation=_validation(validation_state="candidate"),
+    )
+
+    assert first.input_hash != second.input_hash
+    assert first.run_id != second.run_id
+
+
+def test_mutated_input_and_drifted_existing_bundle_never_publish_overwrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = _fixture_request(tmp_path, request_id="mutated", output_name="mutation-output")
+    spec = ToolRegistry.load_default().describe("P0-08")
+    monkeypatch.setattr(adapter_module, "_inputs_unchanged", lambda refs: False)
+    changed = adapter.run(request, spec)
+    assert changed.execution_state is ExecutionState.FAILED
+    assert changed.reason_codes == ["structured_input_modified_during_run"]
+    assert not (request.output_dir / changed.run_id).exists()
+
+    monkeypatch.undo()
+    clean_request = _fixture_request(tmp_path, request_id="clean", output_name="drift-output")
+    clean = adapter.run(clean_request, spec)
+    result_path = clean.artifacts[3].path
+    result_path.write_text("drift\n", encoding="utf-8")
+    drifted = adapter.run(clean_request, spec)
+    assert drifted.execution_state is ExecutionState.FAILED
+    assert drifted.reason_codes == ["existing_run_bundle_hash_mismatch"]
+    assert result_path.read_text(encoding="utf-8") == "drift\n"
+
+
+def test_domain_gate_input_rejects_duplicate_binding_ids() -> None:
+    payload = _domain(
+        measurement_result_input_ids=["target-result", "target-result"]
+    )
+    with pytest.raises(ValueError, match="duplicates"):
+        DomainGateInput.model_validate(payload)
