@@ -75,7 +75,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             _emit({"error": "invalid_request", "detail": str(exc)})
             return 2
         if args.command == "validate":
-            eligibility = registry.check_eligibility(request)
+            try:
+                eligibility = registry.check_eligibility(request)
+            except Exception as exc:
+                _emit(
+                    {
+                        "error": "tool_validation_error",
+                        "detail": str(exc),
+                        "tool_id": request.tool_id,
+                    }
+                )
+                return 4
             _emit(eligibility.model_dump(mode="json"))
             return 0 if eligibility.eligible else 3
         try:

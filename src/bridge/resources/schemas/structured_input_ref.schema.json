@@ -20,6 +20,7 @@
     },
     "path": {
       "format": "path",
+      "pattern": "^/",
       "title": "Path",
       "type": "string"
     },

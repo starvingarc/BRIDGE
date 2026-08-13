@@ -60,6 +60,9 @@
           "adapter_ref": {
             "type": "null"
           },
+          "method_ids": {
+            "maxItems": 0
+          },
           "result_schema_ref": {
             "type": "null"
           }

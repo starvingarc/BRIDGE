@@ -124,6 +124,7 @@ class ToolPackageSpecV2(FrozenModel):
                     },
                     "then": {
                         "properties": {
+                            "method_ids": {"maxItems": 0},
                             "adapter_ref": {"type": "null"},
                             "result_schema_ref": {"type": "null"},
                         }
@@ -164,6 +165,8 @@ class ToolPackageSpecV2(FrozenModel):
             if not self.result_schema_ref:
                 raise ValueError("implemented ToolPackageSpecV2 requires result_schema_ref")
         if self.implementation_state is ImplementationState.SCAFFOLD:
+            if self.method_ids:
+                raise ValueError("scaffold ToolPackageSpecV2 requires method_ids=[]")
             if self.adapter_ref is not None or self.result_schema_ref is not None:
                 raise ValueError(
                     "scaffold ToolPackageSpecV2 cannot claim an adapter or result schema"
@@ -206,7 +209,7 @@ class StructuredInputRef(FrozenModel):
     role: str = Field(min_length=1)
     schema_ref: str = Field(min_length=1)
     object_version: str = Field(min_length=1)
-    path: Path
+    path: Path = Field(json_schema_extra={"pattern": r"^/"})
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     media_type: str = Field(
         default="application/json",
@@ -980,9 +983,10 @@ class ToolRunV2(FrozenModel):
                     },
                     "then": {
                         "properties": {
-                            "result_schema_ref": {"type": "string", "minLength": 1}
+                            "result_schema_ref": {"type": "string", "minLength": 1},
+                            "result": {"type": "object"},
                         },
-                        "required": ["result_schema_ref"],
+                        "required": ["result_schema_ref", "result"],
                     },
                 },
             ]
@@ -1028,9 +1032,11 @@ class ToolRunV2(FrozenModel):
         if (
             self.implementation_state is ImplementationState.IMPLEMENTED
             and self.execution_state in {ExecutionState.SUCCEEDED, ExecutionState.PARTIAL}
-            and not self.result_schema_ref
         ):
-            raise ValueError("successful or partial ToolRunV2 requires result_schema_ref")
+            if not self.result_schema_ref or self.result is None:
+                raise ValueError(
+                    "successful or partial ToolRunV2 requires result_schema_ref and result"
+                )
         return self
 
 

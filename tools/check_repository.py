@@ -7,6 +7,9 @@ from pathlib import Path
 
 import yaml
 
+from bridge.toolkit.contracts import ImplementationState, ToolPackageSpecV2
+from bridge.toolkit.registry import ToolRegistry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TEXT_SUFFIXES = {".css", ".html", ".json", ".jsonl", ".md", ".py", ".toml", ".tsv", ".txt", ".yaml", ".yml"}
@@ -148,8 +151,35 @@ def _check_tool_package_specs(problems: list[str]) -> None:
                 problems.append(
                     f"implemented v0.2 Tool Package has no result_schema_ref: {relative}"
                 )
-        if state == "scaffold" and (adapter_ref is not None or result_schema_ref is not None):
-            problems.append(f"scaffold v0.2 Tool Package claims runtime bindings: {relative}")
+        if state == "scaffold":
+            if payload.get("method_ids"):
+                problems.append(f"scaffold v0.2 Tool Package claims methods: {relative}")
+            if adapter_ref is not None or result_schema_ref is not None:
+                problems.append(
+                    f"scaffold v0.2 Tool Package claims runtime bindings: {relative}"
+                )
+
+    try:
+        registry = ToolRegistry.load_default()
+    except Exception as exc:
+        problems.append(f"Tool Package specs do not load: {exc}")
+        return
+    for spec in registry.list():
+        if not isinstance(spec, ToolPackageSpecV2):
+            continue
+        if spec.implementation_state is not ImplementationState.IMPLEMENTED:
+            continue
+        try:
+            registry._resolve_result_schema(spec)
+        except Exception as exc:
+            problems.append(
+                f"implemented v0.2 result schema does not resolve: "
+                f"{spec.tool_id}: {exc}"
+            )
+        try:
+            registry._resolve_adapter(spec)
+        except Exception as exc:
+            problems.append(f"implemented v0.2 adapter does not resolve: {spec.tool_id}: {exc}")
 
 
 def _check_byte_projection_pair(

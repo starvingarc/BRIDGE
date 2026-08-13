@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 from importlib import import_module
 from importlib.resources import files
 from importlib.util import find_spec
+import json
 from pathlib import Path
 from typing import Any, Iterable
 from uuid import uuid4
 
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
 import yaml
 
 from bridge.toolkit.contracts import (
@@ -14,6 +18,7 @@ from bridge.toolkit.contracts import (
     EligibilityResult,
     InputAsset,
     ImplementationState,
+    StructuredInputRef,
     ToolPackageSpec,
     ToolPackageAdapter,
     ToolPackageSpecV2,
@@ -22,11 +27,14 @@ from bridge.toolkit.contracts import (
     ToolRun,
     ToolRunV2,
 )
+from bridge.toolkit.schemas import SCHEMA_REFS, load_schema
 
 
 ToolSpec = ToolPackageSpec | ToolPackageSpecV2
 ToolRequestModel = ToolRequest | ToolRequestV2
 ToolRunModel = ToolRun | ToolRunV2
+StructuredInputSnapshot = tuple[tuple[Path, str], ...]
+SUPPORTED_STRUCTURED_INPUT_MEDIA_TYPES = frozenset({"application/json"})
 
 
 class ToolRegistry:
@@ -81,8 +89,6 @@ class ToolRegistry:
         return resource.read_text(encoding="utf-8")
 
     def resolve_schema(self, schema_ref: str) -> dict:
-        from bridge.toolkit.schemas import load_schema
-
         return load_schema(schema_ref)
 
     def request_model(self, tool_id: str) -> type[ToolRequest] | type[ToolRequestV2]:
@@ -111,13 +117,12 @@ class ToolRegistry:
                 reason_codes=["tool_package_not_implemented"],
             )
         if isinstance(spec, ToolPackageSpecV2):
+            input_eligibility, snapshots = self._validate_structured_inputs(request)
+            if not input_eligibility.eligible:
+                return input_eligibility
+            self._resolve_result_schema(spec)
             adapter = self._resolve_adapter(spec)
-            eligibility = adapter.check_eligibility(request, spec)
-            if not isinstance(eligibility, EligibilityResult):
-                raise TypeError("Tool Package adapter returned an invalid eligibility result")
-            if eligibility.tool_id != request.tool_id:
-                raise ValueError("Tool Package adapter eligibility tool binding mismatch")
-            return eligibility
+            return self._call_adapter_eligibility(adapter, request, spec, snapshots)
         if request.tool_id == "P0-01":
             return self._check_input_qc_eligibility(request)
         if request.tool_id == "P0-02":
@@ -250,6 +255,8 @@ class ToolRegistry:
                 ExecutionState.NOT_IMPLEMENTED,
                 ["tool_package_not_implemented"],
             )
+        if isinstance(spec, ToolPackageSpecV2):
+            return self._run_v2(request, spec)
         eligibility = self.check_eligibility(request)
         if not eligibility.eligible:
             return self._empty_run(
@@ -259,9 +266,6 @@ class ToolRegistry:
                 eligibility.reason_codes,
                 warnings=eligibility.warnings,
             )
-        if isinstance(spec, ToolPackageSpecV2):
-            result = self._resolve_adapter(spec).run(request, spec)
-            return self._validate_adapter_result(result, request, spec)
         if request.tool_id == "P0-01":
             from bridge.tool_packages.p0_01_input_qc.executor import run_input_audit_qc
 
@@ -271,6 +275,42 @@ class ToolRegistry:
 
             return run_cell_state_evidence(request, spec)
         raise RuntimeError(f"No executor registered for implemented tool {request.tool_id}")
+
+    def _run_v2(
+        self, request: ToolRequestV2, spec: ToolPackageSpecV2
+    ) -> ToolRunV2:
+        input_eligibility, snapshots = self._validate_structured_inputs(request)
+        if not input_eligibility.eligible:
+            return self._empty_run(
+                request,
+                spec,
+                ExecutionState.FAILED,
+                input_eligibility.reason_codes,
+            )
+
+        result_schema = self._resolve_result_schema(spec)
+        adapter = self._resolve_adapter(spec)
+        eligibility = self._call_adapter_eligibility(
+            adapter, request, spec, snapshots
+        )
+        if not eligibility.eligible:
+            return self._empty_run(
+                request,
+                spec,
+                ExecutionState.FAILED,
+                eligibility.reason_codes,
+                warnings=eligibility.warnings,
+            )
+
+        result = adapter.run(request, spec)
+        if not self._structured_inputs_unchanged(snapshots):
+            return self._empty_run(
+                request,
+                spec,
+                ExecutionState.FAILED,
+                ["input_asset_modified_during_run"],
+            )
+        return self._validate_adapter_result(result, request, spec, result_schema)
 
     @staticmethod
     def _require_matching_request_model(request: ToolRequestModel, spec: ToolSpec) -> None:
@@ -326,10 +366,118 @@ class ToolRegistry:
         return adapter
 
     @staticmethod
+    def _call_adapter_eligibility(
+        adapter: ToolPackageAdapter,
+        request: ToolRequestV2,
+        spec: ToolPackageSpecV2,
+        snapshots: StructuredInputSnapshot,
+    ) -> EligibilityResult:
+        eligibility = adapter.check_eligibility(request, spec)
+        if not ToolRegistry._structured_inputs_unchanged(snapshots):
+            return EligibilityResult(
+                tool_id=request.tool_id,
+                eligible=False,
+                reason_codes=["input_asset_modified_during_run"],
+            )
+        if not isinstance(eligibility, EligibilityResult):
+            raise TypeError("Tool Package adapter returned an invalid eligibility result")
+        if eligibility.tool_id != request.tool_id:
+            raise ValueError("Tool Package adapter eligibility tool binding mismatch")
+        return eligibility
+
+    @staticmethod
+    def _resolve_result_schema(spec: ToolPackageSpecV2) -> dict[str, Any]:
+        schema_ref = spec.result_schema_ref
+        if schema_ref is None or schema_ref not in SCHEMA_REFS:
+            raise ValueError(
+                f"Tool Package result schema is not registered: {schema_ref}"
+            )
+        schema = load_schema(schema_ref)
+        try:
+            Draft202012Validator.check_schema(schema)
+        except SchemaError as exc:
+            raise ValueError(
+                f"Tool Package result schema is invalid: {schema_ref}"
+            ) from exc
+        return schema
+
+    @staticmethod
+    def _validate_structured_inputs(
+        request: ToolRequestV2,
+    ) -> tuple[EligibilityResult, StructuredInputSnapshot]:
+        reasons: list[str] = []
+        snapshots: list[tuple[Path, str]] = []
+        for input_ref in request.object_inputs:
+            reason, digest = ToolRegistry._validate_structured_input(input_ref)
+            if reason is not None:
+                reasons.append(reason)
+            elif digest is not None:
+                snapshots.append((input_ref.path, digest))
+        unique_reasons = sorted(set(reasons))
+        return (
+            EligibilityResult(
+                tool_id=request.tool_id,
+                eligible=not unique_reasons,
+                reason_codes=unique_reasons,
+            ),
+            tuple(snapshots),
+        )
+
+    @staticmethod
+    def _validate_structured_input(
+        input_ref: StructuredInputRef,
+    ) -> tuple[str | None, str | None]:
+        path = input_ref.path
+        try:
+            if not path.exists():
+                return "structured_input_not_found", None
+            if not path.is_file():
+                return "structured_input_not_regular_file", None
+        except OSError:
+            return "structured_input_unreadable", None
+        if input_ref.media_type not in SUPPORTED_STRUCTURED_INPUT_MEDIA_TYPES:
+            return "structured_input_media_type_unsupported", None
+        try:
+            encoded = path.read_bytes()
+        except OSError:
+            return "structured_input_unreadable", None
+        digest = hashlib.sha256(encoded).hexdigest()
+        if digest != input_ref.sha256:
+            return "structured_input_checksum_mismatch", None
+        try:
+            payload = json.loads(encoded)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return "structured_input_invalid_json", None
+        if input_ref.schema_ref not in SCHEMA_REFS:
+            return "structured_input_schema_not_registered", None
+        schema = load_schema(input_ref.schema_ref)
+        try:
+            Draft202012Validator.check_schema(schema)
+        except SchemaError:
+            return "structured_input_schema_invalid", None
+        if not Draft202012Validator(schema).is_valid(payload):
+            return "structured_input_schema_validation_failed", None
+        return None, digest
+
+    @staticmethod
+    def _structured_inputs_unchanged(snapshots: StructuredInputSnapshot) -> bool:
+        for path, expected_digest in snapshots:
+            try:
+                if not path.is_file():
+                    return False
+                current_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            except OSError:
+                return False
+            if current_digest != expected_digest:
+                return False
+        return True
+
+    @staticmethod
     def _validate_adapter_result(
         result: object,
         request: ToolRequestV2,
         spec: ToolPackageSpecV2,
+        result_schema: dict[str, Any],
     ) -> ToolRunV2:
         if not isinstance(result, ToolRunV2):
             raise TypeError("Tool Package adapter returned an invalid ToolRunV2")
@@ -339,6 +487,8 @@ class ToolRegistry:
             raise ValueError("Tool Package adapter returned a mismatched tool version")
         if result.implementation_state is not spec.implementation_state:
             raise ValueError("Tool Package adapter returned a mismatched implementation state")
+        if result.environment_spec_id != spec.environment_spec_id:
+            raise ValueError("Tool Package adapter returned a mismatched environment spec")
         if (
             result.result_schema_ref is not None
             and result.result_schema_ref != spec.result_schema_ref
@@ -349,4 +499,19 @@ class ToolRegistry:
             and result.result_schema_ref != spec.result_schema_ref
         ):
             raise ValueError("Tool Package adapter returned a mismatched result schema")
+        if (
+            result.execution_state in {ExecutionState.SUCCEEDED, ExecutionState.PARTIAL}
+            and result.result is None
+        ):
+            raise ValueError(
+                "Tool Package adapter returned a successful or partial run without "
+                "a bound result payload"
+            )
+        if result.result is not None:
+            if result.result_schema_ref != spec.result_schema_ref:
+                raise ValueError("Tool Package adapter returned an unbound result payload")
+            if not Draft202012Validator(result_schema).is_valid(result.result):
+                raise ValueError(
+                    "Tool Package adapter returned a result that violates its registered schema"
+                )
         return result

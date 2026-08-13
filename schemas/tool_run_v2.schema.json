@@ -295,6 +295,7 @@
         },
         "path": {
           "format": "path",
+          "pattern": "^/",
           "title": "Path",
           "type": "string"
         },
@@ -559,13 +560,17 @@
       },
       "then": {
         "properties": {
+          "result": {
+            "type": "object"
+          },
           "result_schema_ref": {
             "minLength": 1,
             "type": "string"
           }
         },
         "required": [
-          "result_schema_ref"
+          "result_schema_ref",
+          "result"
         ]
       }
     }

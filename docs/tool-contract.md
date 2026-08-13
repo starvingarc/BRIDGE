@@ -37,7 +37,21 @@ Implemented Tool Packages retain at least one selected `method_id`. Scaffold pac
 
 The existing v0.1 models and schemas remain the contract for current P0-01 and P0-02 behavior. A v0.2 package declares `bridge://schemas/tool-request/v0.2` and `bridge://schemas/tool-run/v0.2`. Implemented v0.2 packages additionally bind a non-empty method set, one adapter under `bridge.tool_packages.*`, and a result schema. Scaffold v0.2 packages bind neither adapter nor result schema. The registry selects the request model after reading `tool_id`; the CLI command and Python SDK entrypoints do not change.
 
-`StructuredInputRef` carries no inline payload. Its path must be absolute, its checksum is exactly 64 lowercase hexadecimal characters, and its media type is explicit (default `application/json`). The referenced object remains immutable and versioned outside the request envelope.
+`StructuredInputRef` carries no inline payload. The supported runtime uses POSIX absolute paths, enforced in Python and public JSON Schema; Windows path syntax is not part of this contract. The checksum is exactly 64 lowercase hexadecimal characters. `application/json` is the only supported media type in v0.2 and is the default. The referenced object remains immutable and versioned outside the request envelope.
+
+Before calling a v0.2 adapter, the registry requires every structured-input path to exist as a regular file, recomputes its SHA-256, parses JSON, resolves `schema_ref` only from packaged public schemas and validates the object with JSON Schema Draft 2020-12. Ordinary failures return an ineligible result with one or more of these stable reason codes:
+
+- `structured_input_not_found`
+- `structured_input_not_regular_file`
+- `structured_input_unreadable`
+- `structured_input_checksum_mismatch`
+- `structured_input_media_type_unsupported`
+- `structured_input_invalid_json`
+- `structured_input_schema_not_registered`
+- `structured_input_schema_invalid`
+- `structured_input_schema_validation_failed`
+
+The runtime snapshots every verified input hash before adapter eligibility and execution, then recomputes all hashes after each adapter call. A changed, removed or replaced input fails with `input_asset_modified_during_run`; its adapter result is discarded.
 
 Expression assets declare one of `analysis_ready`, `count_ready` or `droplet_ready`. `analysis_ready` accepts declared normalized h5ad expression; `count_ready` requires raw counts; `droplet_ready` requires a 10x raw-droplet object and currently performs contract audit only. Gene-set metrics bind either `var_names` or an explicitly declared `var` column; absent marker coverage returns `unavailable`, never zero.
 
@@ -56,7 +70,7 @@ Original inputs are read-only. Each run creates a new bundle containing a manife
 
 The versioned JSON contracts in `schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` are the Python source used to generate those schemas.
 
-For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned successful or partial runs must preserve the request/tool/version/implementation binding and use the exact result schema declared by the package. This adds shared runtime infrastructure only; it does not implement P0-08, P0-09 or any other scaffold package.
+For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. This adds shared runtime infrastructure only; it does not implement P0-08, P0-09 or any other scaffold package.
 
 P0-02 requests carry `source_family_id` plus logical `qc_profile_ref` and `measurement_spec_ref` identifiers. Same-family reference profiles are held out at runtime. Private reference paths remain in deployment-owned catalogs. Only frozen reference snapshots are accepted in Agent runtime; reference construction is a science-team operation.
 
