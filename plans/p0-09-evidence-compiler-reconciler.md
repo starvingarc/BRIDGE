@@ -43,7 +43,7 @@ The output can make evidence lineage, gaps and conflicts inspectable without all
 - [x] Rebuild and install the wheel from exact code commit `718109c`, then repeat all 867 tests and installed-runtime gates with Python 3.12.13, PyArrow 21.0.0 and NetworkX 3.5.
 - [x] Rebuild and install the wheel from exact code commit `ac18dd3`, then repeat all 868 tests and installed-runtime gates with Python 3.12.13, PyArrow 21.0.0 and NetworkX 3.5.
 - [x] Complete two independent reviews of fixed head `0ec1265`; both report zero unresolved Critical and zero unresolved Important findings.
-- [ ] Push one topic branch and open a Draft stacked PR; do not merge.
+- [x] Push `p0-09-evidence-compiler-reconciler` and open stacked Draft PR #14 against `p0-08-evidence-sufficiency`; do not merge.
 
 ## Remaining scientific work
 

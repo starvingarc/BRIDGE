@@ -76,7 +76,7 @@ These observations support the engineering claim that the candidate module can p
 
 This validation does not establish that any biological Claim is true, that any current ProductCase has sufficient evidence, that any domain score exists, that an EvidenceFamily assignment is scientifically correct, or that any output is suitable for public/scientific release. It does not validate LadybugDB, production-scale performance or the proposed evidence environment. The committed branch intentionally does not promote any method to `formal_eligible`.
 
-The focused and full development runs used PyArrow/NetworkX versions newer than the declared release environment; the exact `ac18dd3` wheel run independently verified the declared PyArrow 21.0.0 and NetworkX 3.5 environment, including the final Parquet byte-path correction. Independent review is complete; Draft PR publication remains outstanding. Neither engineering result authorizes scientific promotion or merge.
+The focused and full development runs used PyArrow/NetworkX versions newer than the declared release environment; the exact `ac18dd3` wheel run independently verified the declared PyArrow 21.0.0 and NetworkX 3.5 environment, including the final Parquet byte-path correction. Independent review is complete and the module is published for review as Draft PR #14, stacked on Draft PR #13. Neither engineering result nor Draft publication authorizes scientific promotion or merge.
 
 ## Engineering artifacts and reproducibility
 
