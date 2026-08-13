@@ -152,7 +152,7 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
   checksums, provenance, stable failure reasons, examples and scientific
   boundaries to the indexed stable documentation.
 - Full validation evidence is recorded in
-  [P0-02 external-source preparation validation](../docs/validation/p0_02_external_source_preparation_20260813.md): `210 passed, 3 warnings in 14.72s`; 12-tool discovery with only P0-01/P0-02 implemented; knowledge validation `valid=True` with 354 methods and 396 bindings; repository policy and `git diff --check` passed.
+  [P0-02 external-source preparation validation](../docs/validation/p0_02_external_source_preparation_20260813.md): focused contracts `39 passed in 2.56s`; full suite `214 passed, 3 warnings in 14.31s`; 12-tool discovery with only P0-01/P0-02 implemented; knowledge validation `valid=True` with 354 methods and 396 bindings; repository policy and `git diff --check` passed.
 - The branch remains a Draft PR: merge is not authorized. Remaining biological
   work is review of 25 state cards, then ProductDefinitionCard and StateRoleMap;
   only a signed FreezeGate can authorize a single locked run.

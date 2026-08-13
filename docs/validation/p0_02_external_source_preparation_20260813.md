@@ -25,8 +25,8 @@ than the older installed package.
 
 | Check | Exact command/result |
 |---|---|
-| Focused external-source contracts | `PYTHONPATH=src .venv/bin/python -m pytest -q tests/test_birtele_asset.py tests/test_external_source_lineage.py tests/test_projection_parity.py tests/test_knowledge_catalog.py` — `35 passed in 2.34s` |
-| Full suite | `PYTHONPATH=src .venv/bin/python -m pytest -q` — `210 passed, 3 warnings in 14.72s` |
+| Focused external-source contracts | `PYTHONPATH=src .venv/bin/python -m pytest -q tests/test_birtele_asset.py tests/test_external_source_lineage.py tests/test_projection_parity.py tests/test_knowledge_catalog.py` — `39 passed in 2.56s` |
+| Full suite | `PYTHONPATH=src .venv/bin/python -m pytest -q` — `214 passed, 3 warnings in 14.31s` |
 | Tool discovery | `PYTHONPATH=src .venv/bin/python -m bridge.toolkit.cli list --json` — 12 packages, implemented only `P0-01`, `P0-02` |
 | Knowledge snapshot | `PYTHONPATH=src .venv/bin/python -m bridge.toolkit.cli knowledge validate` — `valid=True`, 354 methods, 396 bindings |
 | Repository policy | `PYTHONPATH=src .venv/bin/python tools/check_repository.py` — passed after the indexed validation record was added |
@@ -37,10 +37,12 @@ warnings: one AnnData duplicate-feature warning and two `spmatrix` default-value
 deprecation warnings. They do not report a failed assertion.
 
 The tests cover checksummed immutable Birtele inputs, exact 13-file sample-map
-coverage, matrix and gene-order validation, output manifest/QC/provenance
-projections, stable failure reasons, transitive source-family exclusion, tool-card
-projection parity, package version `0.4.8`, review status and indexed
-human-facing documentation.
+coverage, raw duplicate/blank cell-header rejection, raw blank-feature rejection,
+matrix and gene-order validation, output manifest/QC/provenance projections,
+stable failure reasons, declared-holdout-root coverage, transitive source-family
+exclusion, tool-card projection parity, package version `0.4.8`, review status
+and indexed human-facing documentation. Raw identifier checks occur before
+Pandas can synthesize names such as `cell.1`, `Unnamed: 1` or string `nan`.
 
 ## Remaining boundary
 

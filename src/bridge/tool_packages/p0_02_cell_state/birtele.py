@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import hashlib
 import json
 from pathlib import Path
@@ -308,20 +309,26 @@ def _read_sample_matrix(
 ) -> tuple[sparse.csr_matrix, list[str], list[str]]:
     gene_blocks: list[str] = []
     matrix_blocks: list[sparse.csr_matrix] = []
-    cell_ids: list[str] | None = None
+    cell_ids = _read_raw_cell_ids(path, sample)
+    feature_column = "__bridge_feature_id__"
+    while feature_column in cell_ids:
+        feature_column += "_"
     try:
-        chunks = pd.read_csv(path, index_col=0, chunksize=_CHUNK_SIZE)
+        chunks = pd.read_csv(
+            path,
+            header=0,
+            names=[feature_column, *cell_ids],
+            dtype={feature_column: str},
+            keep_default_na=False,
+            chunksize=_CHUNK_SIZE,
+        )
         for chunk in chunks:
+            genes = [str(value) for value in chunk.pop(feature_column)]
             current_cells = [str(value) for value in chunk.columns]
-            if cell_ids is None:
-                cell_ids = current_cells
-                if not cell_ids or len(set(cell_ids)) != len(cell_ids):
-                    raise BirteleAssetError(f"invalid_cell_ids:{sample.geo_accession}")
-            elif current_cells != cell_ids:
+            if current_cells != cell_ids:
                 raise BirteleAssetError(f"cell_order_mismatch:{sample.geo_accession}")
-            genes = [str(value) for value in chunk.index]
-            if any(not gene for gene in genes):
-                raise BirteleAssetError(f"invalid_feature_id:{sample.geo_accession}")
+            if any(not gene.strip() for gene in genes):
+                raise BirteleAssetError(f"blank_feature_id:{sample.geo_accession}")
             gene_blocks.extend(genes)
             try:
                 values = chunk.to_numpy(dtype=np.float64)
@@ -340,11 +347,28 @@ def _read_sample_matrix(
         raise
     except (OSError, UnicodeError, pd.errors.ParserError) as exc:
         raise BirteleAssetError(f"matrix_read_failed:{sample.geo_accession}") from exc
-    if cell_ids is None or not matrix_blocks:
+    if not matrix_blocks:
         raise BirteleAssetError(f"empty_matrix:{sample.geo_accession}")
     if len(set(gene_blocks)) != len(gene_blocks):
         raise BirteleAssetError(f"duplicate_feature_id:{sample.geo_accession}")
     return sparse.hstack(matrix_blocks, format="csr", dtype=np.int32), gene_blocks, cell_ids
+
+
+def _read_raw_cell_ids(path: Path, sample: _SampleRecord) -> list[str]:
+    """Read and validate the original CSV header before pandas can rewrite it."""
+    try:
+        with gzip.open(path, "rt", encoding="utf-8", newline="") as handle:
+            header = next(csv.reader(handle), None)
+    except (OSError, UnicodeError, csv.Error) as exc:
+        raise BirteleAssetError(f"matrix_read_failed:{sample.geo_accession}") from exc
+    if header is None or len(header) < 2:
+        raise BirteleAssetError(f"invalid_cell_ids:{sample.geo_accession}")
+    cell_ids = header[1:]
+    if any(not cell_id.strip() for cell_id in cell_ids):
+        raise BirteleAssetError(f"blank_cell_id:{sample.geo_accession}")
+    if len(set(cell_ids)) != len(cell_ids):
+        raise BirteleAssetError(f"duplicate_cell_id:{sample.geo_accession}")
+    return cell_ids
 
 
 def _observation_row(sample: _SampleRecord, cell_id: str) -> dict[str, str]:

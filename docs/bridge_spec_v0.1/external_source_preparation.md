@@ -99,12 +99,14 @@ The lineage map requires an `audit_id`, `version`, nonempty
 behavior-only, external-holdout, excluded-from-candidate and sealed-excluded
 roles. Parent IDs must exist and the parent graph must be acyclic.
 
-The audit resolves each asset's transitive root families, rejects any external
-holdout root in a development-reference, development-OOD or behavior-only role,
-and writes one deterministic JSON report. The report contains the lineage-map
-SHA-256, all resolved roots, candidate decisions, external holdout roots,
-`prohibited_overlap_count=0`, and `status=passed`. It reads lineage metadata
-only: sealed `E-MTAB-14729` stays unopened and excluded.
+The audit resolves each asset's transitive root families, requires every declared
+external holdout root to be represented by an `external_holdout` asset's resolved
+root graph, rejects any external holdout root in a development-reference,
+development-OOD or behavior-only role, and writes one deterministic JSON report.
+The report contains the lineage-map SHA-256, all resolved roots, candidate
+decisions, external holdout roots, `prohibited_overlap_count=0`, and
+`status=passed`. It reads lineage metadata only: sealed `E-MTAB-14729` stays
+unopened and excluded.
 
 Minimal fixture command:
 
@@ -122,11 +124,14 @@ reason codes. `prepare-birtele` raises `BirteleAssetError` for, among others,
 `output_dir_not_empty`, `invalid_sample_map:*`,
 `sample_map_accessions_mismatch`, `source_file_set_mismatch`,
 `source_checksum_mismatch:<GSM>`, `provenance_checksum_mismatch:<file>`,
-`gene_order_mismatch:<GSM>`, `duplicate_feature_id:<GSM>`, and invalid count
-reasons such as `negative_count:<GSM>`. `audit-external-sources` raises
+`blank_cell_id:<GSM>`, `duplicate_cell_id:<GSM>`,
+`blank_feature_id:<GSM>`, `gene_order_mismatch:<GSM>`,
+`duplicate_feature_id:<GSM>`, and invalid count reasons such as
+`negative_count:<GSM>`. `audit-external-sources` raises
 `ExternalSourceAuditError` for `invalid_lineage_map:*`,
 `lineage_asset_ids_not_unique`, `lineage_parent_missing:<asset>:<parents>`,
-`lineage_cycle:<asset>`, or
+`lineage_cycle:<asset>`,
+`external_holdout_root_not_represented:<roots>`, or
 `external_source_lineage_overlap:<asset>:<external-root>`.
 
 These reason codes describe input or provenance eligibility, not biological

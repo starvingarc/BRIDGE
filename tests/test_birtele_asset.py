@@ -37,14 +37,16 @@ def _write_matrix(
     path: Path,
     accession: str,
     *,
+    cell_ids: list[str] | None = None,
     genes: list[str] | None = None,
     values: list[list[object]] | None = None,
 ) -> None:
-    genes = genes or ["TH", "LMX1A"]
-    values = values or [[1], [2]]
+    cell_ids = [f"{accession}_cell_1"] if cell_ids is None else cell_ids
+    genes = ["TH", "LMX1A"] if genes is None else genes
+    values = [[1] * len(cell_ids), [2] * len(cell_ids)] if values is None else values
     with gzip.open(path, "wt", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, lineterminator="\n")
-        writer.writerow(["", f"{accession}_cell_1"])
+        writer.writerow(["", *cell_ids])
         for gene, row in zip(genes, values, strict=True):
             writer.writerow([gene, *row])
 
@@ -183,6 +185,22 @@ def _fixture_source_and_map(tmp_path: Path) -> tuple[Path, Path]:
         encoding="utf-8",
     )
     return source_root, sample_map
+
+
+def _replace_first_matrix(
+    source_root: Path,
+    sample_map: Path,
+    *,
+    cell_ids: list[str] | None = None,
+    genes: list[str] | None = None,
+) -> str:
+    accession, file_name = next(iter(BIRTELE_FILES.items()))
+    path = source_root / "processed_csv" / file_name
+    _write_matrix(path, accession, cell_ids=cell_ids, genes=genes)
+    payload = yaml.safe_load(sample_map.read_text(encoding="utf-8"))
+    payload["samples"][0]["sha256"] = _sha256(path)
+    sample_map.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+    return accession
 
 
 def test_gene_order_hash_does_not_add_an_unpublished_terminal_newline() -> None:
@@ -395,6 +413,41 @@ def test_prepare_birtele_asset_requires_exact_sample_set(tmp_path: Path) -> None
 
     with pytest.raises(BirteleAssetError, match="sample_map_accessions_mismatch"):
         prepare_birtele_asset(source_root, sample_map, tmp_path / "output")
+
+
+@pytest.mark.parametrize(
+    ("cell_ids", "reason"),
+    [
+        (["duplicate", "duplicate"], "duplicate_cell_id"),
+        (["valid", ""], "blank_cell_id"),
+    ],
+)
+def test_prepare_birtele_asset_rejects_raw_invalid_cell_headers(
+    tmp_path: Path,
+    cell_ids: list[str],
+    reason: str,
+) -> None:
+    source_root, sample_map = _fixture_source_and_map(tmp_path)
+    accession = _replace_first_matrix(source_root, sample_map, cell_ids=cell_ids)
+    output = tmp_path / "output"
+
+    with pytest.raises(BirteleAssetError, match=rf"^{reason}:{accession}$"):
+        prepare_birtele_asset(source_root, sample_map, output)
+    assert not (output / "conversion_manifest.json").exists()
+
+
+def test_prepare_birtele_asset_rejects_raw_blank_feature_id(tmp_path: Path) -> None:
+    source_root, sample_map = _fixture_source_and_map(tmp_path)
+    accession = _replace_first_matrix(
+        source_root,
+        sample_map,
+        genes=["", "LMX1A"],
+    )
+    output = tmp_path / "output"
+
+    with pytest.raises(BirteleAssetError, match=rf"^blank_feature_id:{accession}$"):
+        prepare_birtele_asset(source_root, sample_map, output)
+    assert not (output / "conversion_manifest.json").exists()
 
 
 def test_prepare_birtele_asset_rejects_gene_order_mismatch(tmp_path: Path) -> None:

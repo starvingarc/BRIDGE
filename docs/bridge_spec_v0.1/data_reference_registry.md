@@ -78,7 +78,7 @@ flowchart TD
 | `REF-BRAUN-2023-v1` | whole-cell scRNA；论文另有 spatial | PCW5-14；第一孕期全脑多区域 | 1,548,209 cells | broad regional/off-axis background | `processed_ready` | 全脑 reference 不能替代 vMB 产品真值 |
 | `REF-ZENG-2023-v1` | scRNA；论文另有 PCW4 spatial | PCW3-12；全胚、全头、全脑 | 400,141 cells | early embryo、neural tube、brain 与 non-neural background | `processed_ready` | 本地 harmonization 的年龄和区域标签需冻结 |
 | `REF-LAMANNO-2016-v1` | human fetal VM scRNA | PCW6-11；腹侧中脑 | 1,977 fetal cells | 经典独立 VM 发育 reference | `ready_small` | 旧平台、样本量有限；需单独报告 platform shift |
-| `REF-BIRTELE-2022-v1` | fetal VM scRNA 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 77,804 cells；25,032 genes；13 个 GEO samples | 原代胎儿 VM maturation external-source 候选 | `converted_candidate_awaiting_sample_unit_review` | raw reads 因隐私不可用；确定性 H5AD 已生成，但公开记录不足以把 13 个矩阵无歧义映射到论文所述 biological units，当前均为 `not_estimable` replicates |
+| `REF-BIRTELE-2022-v1` | fetal VM scRNA 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 77,804 cells；25,032 genes；13 个 GEO samples | 原代胎儿 VM maturation external-source 候选 | `conditionally_approved_source_holdout`；P0-02 `biological_review_in_progress` | 仅允许 source-level holdout、stage-level description 与 provisional-group sensitivity；raw reads 因隐私不可用，公开记录仍不足以把 13 个矩阵无歧义映射到 biological units，当前均为 `not_estimable` replicates；不构成科学冻结 |
 
 核心公开来源：
 

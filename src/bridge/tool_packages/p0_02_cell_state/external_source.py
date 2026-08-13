@@ -72,9 +72,24 @@ def audit_external_source_lineage(
 
     fitting_roles = {"development_reference", "development_ood", "behavior_only"}
     external_roots = set(lineage_map.external_holdout_roots)
+    resolved_roots = {
+        asset.asset_id: sorted(roots(asset.asset_id, set())) for asset in lineage_map.assets
+    }
+    represented_external_roots = {
+        root
+        for asset in lineage_map.assets
+        if asset.candidate_decision == "external_holdout"
+        for root in resolved_roots[asset.asset_id]
+    }
+    missing_external_roots = sorted(external_roots - represented_external_roots)
+    if missing_external_roots:
+        raise ExternalSourceAuditError(
+            "external_holdout_root_not_represented:"
+            f"{','.join(missing_external_roots)}"
+        )
     prohibited: list[dict[str, str]] = []
     for asset in lineage_map.assets:
-        overlap = sorted(roots(asset.asset_id, set()) & external_roots)
+        overlap = sorted(set(resolved_roots[asset.asset_id]) & external_roots)
         if asset.candidate_decision in fitting_roles and overlap:
             prohibited.extend(
                 {
@@ -100,10 +115,7 @@ def audit_external_source_lineage(
         "external_holdout_roots": sorted(external_roots),
         "lineage_map_sha256": _sha256(lineage_map_path),
         "prohibited_overlap_count": 0,
-        "resolved_roots": {
-            asset.asset_id: sorted(roots(asset.asset_id, set()))
-            for asset in lineage_map.assets
-        },
+        "resolved_roots": resolved_roots,
         "status": "passed",
         "version": lineage_map.version,
     }

@@ -78,6 +78,24 @@ def test_external_source_lineage_audit_rejects_transitive_fit_overlap(tmp_path: 
         audit_external_source_lineage(altered, tmp_path / "audit.json")
 
 
+def test_external_source_lineage_audit_rejects_unrepresented_holdout_root(
+    tmp_path: Path,
+) -> None:
+    with as_file(_packaged_lineage_map()) as lineage_map:
+        payload = yaml.safe_load(lineage_map.read_text(encoding="utf-8"))
+    payload["external_holdout_roots"].append("GSE192405-TYPO")
+    altered = tmp_path / "altered.yaml"
+    altered.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+    output = tmp_path / "audit.json"
+
+    with pytest.raises(
+        ExternalSourceAuditError,
+        match=r"^external_holdout_root_not_represented:GSE192405-TYPO$",
+    ):
+        audit_external_source_lineage(altered, output)
+    assert not output.exists()
+
+
 def test_external_source_lineage_cli_writes_public_audit(tmp_path: Path, capsys) -> None:
     output = tmp_path / "audit.json"
     with as_file(_packaged_lineage_map()) as lineage_map:
