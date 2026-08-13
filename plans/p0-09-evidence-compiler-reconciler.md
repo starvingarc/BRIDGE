@@ -42,7 +42,7 @@ The output can make evidence lineage, gaps and conflicts inspectable without all
 - [x] Rebuild and install the wheel from exact commit `2fd1f9e`, then repeat all 863 tests and installed-runtime gates with the declared evidence dependencies.
 - [x] Rebuild and install the wheel from exact code commit `718109c`, then repeat all 867 tests and installed-runtime gates with Python 3.12.13, PyArrow 21.0.0 and NetworkX 3.5.
 - [x] Rebuild and install the wheel from exact code commit `ac18dd3`, then repeat all 868 tests and installed-runtime gates with Python 3.12.13, PyArrow 21.0.0 and NetworkX 3.5.
-- [ ] Complete independent review with no unresolved Critical or Important findings.
+- [x] Complete two independent reviews of fixed head `0ec1265`; both report zero unresolved Critical and zero unresolved Important findings.
 - [ ] Push one topic branch and open a Draft stacked PR; do not merge.
 
 ## Remaining scientific work

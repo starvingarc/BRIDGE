@@ -43,6 +43,8 @@ Current source-tree observations:
 - repository policy passed, the full suite retained exactly 12 discoverable tools, and the packaged/public P0-09 Tool Card projections remain byte-identical; and
 - knowledge validation remained valid with no dangling method/source refs and zero formally eligible methods.
 
+Two independent closure reviews used `git archive` snapshots of fixed head `0ec12655c0ecf83b97e066db9ac3fe16f2b7c6c1` and each reported `Critical=0`, `Important=0`. Both reproduced successful direct-adapter and public-registry runs under legal `key=value` parent directories, reopened the resulting bundles, and confirmed that production Parquet reads use stable bytes. They also rechecked the unified no-cause/no-canary `open` boundary, Comparison full bindings, graph/fact/root identities, checksum-verified-byte handling, Schema/runtime parity and request-local binding-ID semantics without finding a blocker.
+
 The integrator archived exact code commit `ac18dd3`, built wheel `bridge-0.2.0.dev0-py3-none-any.whl` (`sha256:0fd3741b484bc52a80d703ce04d1a746be8fbee4783f899875aa9520d49d27a8`), and installed it into a fresh Python 3.12.13 environment with the declared PyArrow 21.0.0 and NetworkX 3.5 dependencies. The installed-wheel suite passed `868 passed, 3 warnings`. Dependency consistency, 12-tool discovery, P0-09 `implemented` resolution, all 49 installed Schemas, the installed P0-09 Card, packaged knowledge validation and repository policy also passed. This exact wheel includes both the unified public `open` wrapper and the write-after-read Parquet byte-path correction.
 
 The synthetic executable cases observed:
@@ -74,7 +76,7 @@ These observations support the engineering claim that the candidate module can p
 
 This validation does not establish that any biological Claim is true, that any current ProductCase has sufficient evidence, that any domain score exists, that an EvidenceFamily assignment is scientifically correct, or that any output is suitable for public/scientific release. It does not validate LadybugDB, production-scale performance or the proposed evidence environment. The committed branch intentionally does not promote any method to `formal_eligible`.
 
-The focused and full development runs used PyArrow/NetworkX versions newer than the declared release environment; the exact `ac18dd3` wheel run independently verified the declared PyArrow 21.0.0 and NetworkX 3.5 environment, including the final Parquet byte-path correction. Independent review resolution and Draft PR publication remain outstanding, and neither step authorizes scientific promotion or merge.
+The focused and full development runs used PyArrow/NetworkX versions newer than the declared release environment; the exact `ac18dd3` wheel run independently verified the declared PyArrow 21.0.0 and NetworkX 3.5 environment, including the final Parquet byte-path correction. Independent review is complete; Draft PR publication remains outstanding. Neither engineering result authorizes scientific promotion or merge.
 
 ## Engineering artifacts and reproducibility
 
