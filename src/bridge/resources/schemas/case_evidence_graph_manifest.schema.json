@@ -1,0 +1,218 @@
+{
+  "$defs": {
+    "BaseGraphRef": {
+      "additionalProperties": false,
+      "properties": {
+        "graph_id": {
+          "minLength": 1,
+          "title": "Graph Id",
+          "type": "string"
+        },
+        "graph_version": {
+          "minimum": 1,
+          "title": "Graph Version",
+          "type": "integer"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "graph_id",
+        "graph_version",
+        "manifest_sha256"
+      ],
+      "title": "BaseGraphRef",
+      "type": "object"
+    },
+    "GraphArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "pattern": "^[a-z0-9_]+(?:\\.[a-z0-9]+)+$",
+          "title": "Filename",
+          "type": "string"
+        },
+        "media_type": {
+          "title": "Media Type",
+          "type": "string"
+        },
+        "row_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row Count"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename",
+        "media_type",
+        "sha256"
+      ],
+      "title": "GraphArtifactRef",
+      "type": "object"
+    },
+    "GraphNodeType": {
+      "enum": [
+        "ProductCase",
+        "ProductDefinitionCard",
+        "Sample",
+        "Preparation",
+        "MeasurementSpec",
+        "ScoreContract",
+        "ToolRun",
+        "MeasurementResult",
+        "EvidenceRecord",
+        "Claim",
+        "EvidenceFamily",
+        "EvidenceRequirement",
+        "EvidenceSufficiencyProfile",
+        "ReferenceSnapshot",
+        "PriorSnapshot",
+        "Artifact",
+        "ComparisonRecord",
+        "ReconciliationSpec",
+        "ReconciliationRecord"
+      ],
+      "title": "GraphNodeType",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "minLength": 1,
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/case-evidence-graph-manifest/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "base_graph_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BaseGraphRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "canonicalization_id": {
+      "const": "bridge-canonical-json/v0.1",
+      "title": "Canonicalization Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "edge_count": {
+      "minimum": 0,
+      "title": "Edge Count",
+      "type": "integer"
+    },
+    "evidence_records": {
+      "$ref": "#/$defs/GraphArtifactRef"
+    },
+    "evidence_requirements": {
+      "$ref": "#/$defs/GraphArtifactRef"
+    },
+    "graph_edges": {
+      "$ref": "#/$defs/GraphArtifactRef"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_kind": {
+      "const": "case",
+      "default": "case",
+      "title": "Graph Kind",
+      "type": "string"
+    },
+    "graph_nodes": {
+      "$ref": "#/$defs/GraphArtifactRef"
+    },
+    "graph_version": {
+      "minimum": 1,
+      "title": "Graph Version",
+      "type": "integer"
+    },
+    "node_count": {
+      "minimum": 0,
+      "title": "Node Count",
+      "type": "integer"
+    },
+    "object_counts": {
+      "additionalProperties": {
+        "exclusiveMinimum": 0,
+        "type": "integer"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/GraphNodeType"
+      },
+      "title": "Object Counts",
+      "type": "object"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reconciliation_records": {
+      "$ref": "#/$defs/GraphArtifactRef"
+    },
+    "source_input_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Input Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "graph_id",
+    "graph_version",
+    "canonicalization_id",
+    "node_count",
+    "edge_count",
+    "object_counts",
+    "source_input_hash",
+    "evidence_records",
+    "evidence_requirements",
+    "reconciliation_records",
+    "graph_nodes",
+    "graph_edges",
+    "created_at",
+    "product_case_ref"
+  ],
+  "title": "CaseEvidenceGraphManifest",
+  "type": "object"
+}

@@ -1,6 +1,6 @@
 # Active BRIDGE Methods
 
-This generated shortlist mirrors the methods selected by the active P0-01, P0-02 and P0-03 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
+This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-08, P0-09 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
 
 ## P0-01: Input Audit & QC
 
@@ -39,3 +39,10 @@ No methods are selected while this package remains a scaffold.
 - `METHOD-BRIDGE-ALGORITHM-A0908D` — BRIDGE algorithm ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ALGORITHM-A0908D))
 - `METHOD-BRIDGE-REGISTRY` — BRIDGE registry ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-REGISTRY))
 - `METHOD-BRIDGE-VALIDATOR` — BRIDGE validator ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-VALIDATOR))
+
+## P0-09: Evidence Compiler & Reconciler
+
+- `METHOD-INTERNAL-DETERMINISTIC-ENGINE-25908A` — internal deterministic engine ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-DETERMINISTIC-ENGINE-25908A))
+- `METHOD-INTERNAL-READ-ONLY-API` — internal read-only API ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-READ-ONLY-API))
+- `METHOD-COLUMNAR-STORAGE` — columnar storage ([catalog record](bridge://knowledge/methods/METHOD-COLUMNAR-STORAGE))
+- `METHOD-GRAPH-LIBRARY` — graph library ([catalog record](bridge://knowledge/methods/METHOD-GRAPH-LIBRARY))

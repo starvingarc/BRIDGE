@@ -10,6 +10,8 @@ Public accessions, DOI metadata and approved aliases are allowed. Internal asset
 
 Internal runtime manifests may contain controlled artifact locations, but every object must also include a stable asset ID, version and checksum. Public-safe output is generated from an allowlist and never by editing the internal report in place.
 
+P0-09 graph facts contain logical object IDs, versions, content hashes and approved evidence/provenance references, not local input paths or raw rejected payloads. Runtime `ToolRunV2` artifact paths remain deployment-local retrieval metadata; Case/Comparison JSON and Parquet facts use checksummed filenames and graph manifests. A rejected sibling record is represented only by source kind, source ID or index, digest and reason codes. P0-09 output is still internal evidence infrastructure and is not a public-safe export; P0-11 must regenerate any future public package from its own allowlist.
+
 ## Knowledge Sources
 
 - Official documentation, source repositories and primary papers are recorded separately.

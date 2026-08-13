@@ -29,6 +29,7 @@
 
 ## Validation Records
 
+- [P0-09 Evidence Compiler & Reconciler candidate validation, 2026-08-13](validation/p0_09_evidence_compiler_20260813.md)
 - [P0-08 Evidence Sufficiency candidate validation, 2026-08-13](validation/p0_08_evidence_sufficiency_20260813.md)
 - [Structured tool runtime contracts, 2026-08-13](validation/tool_runtime_structured_contracts_20260813.md)
 - [P0-02 external-source preparation validation, 2026-08-13](validation/p0_02_external_source_preparation_20260813.md)

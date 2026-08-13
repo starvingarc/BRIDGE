@@ -15,7 +15,7 @@ import yaml
 
 
 SNAPSHOT_ID = "BRIDGE-KNOWLEDGE-20260810-v0.1"
-ACTIVE_MODULE_IDS = ("P0-01", "P0-02", "P0-03", "P0-08")
+ACTIVE_MODULE_IDS = ("P0-01", "P0-02", "P0-03", "P0-08", "P0-09")
 PUBLIC_URL = re.compile(r"^https?://", re.IGNORECASE)
 SENTINELS = {"internal_no_public_url", "not_registered_in_source"}
 
@@ -312,10 +312,11 @@ def _write_catalog(
 
 def _active_methods_markdown(repo: Path, methods: list[dict]) -> str:
     method_lookup = {method["method_id"]: method for method in methods}
+    active_modules = ", ".join(ACTIVE_MODULE_IDS)
     sections: list[str] = [
         "# Active BRIDGE Methods",
         "",
-        "This generated shortlist mirrors the methods selected by the active P0-01, P0-02 and P0-03 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.",
+        f"This generated shortlist mirrors the methods selected by the active {active_modules} Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.",
     ]
     for module_id in ACTIVE_MODULE_IDS:
         spec_path = (

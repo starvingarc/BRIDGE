@@ -1,0 +1,21 @@
+{
+  "claim_ref": {
+    "object_id": "claim:fixture",
+    "object_version": "1.0.0"
+  },
+  "observation_id": "missing-evidence:fixture",
+  "observed_at": "2026-08-13T00:00:00Z",
+  "product_case_ref": {
+    "object_id": "product-case:fixture-case",
+    "object_version": "1.0.0"
+  },
+  "provenance_refs": [
+    "provenance:synthetic-fixture"
+  ],
+  "reason_code": "measurement_not_provided",
+  "requirement_key": "required_measurement",
+  "source_contract_ref": {
+    "object_id": "claim:fixture",
+    "object_version": "1.0.0"
+  }
+}

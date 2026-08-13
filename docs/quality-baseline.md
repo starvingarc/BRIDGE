@@ -18,6 +18,8 @@ P0-01 additionally checks matrix semantics, sample/capture hierarchy, declared g
 
 P0-08 additionally checks the fixed Data Readiness → Model Robustness → Prior Applicability → sufficiency order independently for each domain. Exact same-family evidence is de-duplicated without voting; non-identical required records in one family force review. Missing, unknown, unavailable, negative and alert states remain distinct, a contract-valid evidence gap produces `not_assessed`, and every profile must keep `domain_score=null` with `score_state=unavailable`. Input checksums are verified before and after adapter calls, repeat runs must reproduce content hashes, and a drifted existing bundle must never be overwritten.
 
+P0-09 additionally checks strict canonical JSON, schema/version/checksum bindings, stable logical keys, append-only create/supersede/invalidate chains, formal-tier non-promotion, explicit missing requirements, Evidence Family de-duplication and deterministic reconciliation. JSON and Parquet are the authoritative graph facts; a NetworkX round trip must preserve endpoints and graph invariants. Case and Comparison manifests bind graph version, source semantic hash, row counts and artifact checksums. Partial rejection never inserts an invalid record or raw rejected payload, and bounded query results must report exact returned, omitted and truncation counts without accepting arbitrary Cypher, predicates or writes.
+
 ## Visualization Gates
 
 Every registered chart binds its source artifact, denominator, units, uncertainty and missing state. Static SVG/PNG rendering and chart payload must agree. Exploratory plots cannot enter a verified report.

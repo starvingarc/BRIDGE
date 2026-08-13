@@ -1,0 +1,57 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "bundle",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/evidence_compilation_bundle.json",
+      "role": "compilation_bundle",
+      "schema_ref": "bridge://schemas/evidence-compilation-bundle/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "target-profile",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/evidence_sufficiency_profile.json",
+      "role": "evidence_sufficiency_profile",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-profile/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "families",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/evidence_family_registry.json",
+      "role": "evidence_family_registry",
+      "schema_ref": "bridge://schemas/evidence-family-registry/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "claims",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/claim_registry.json",
+      "role": "claim_registry",
+      "schema_ref": "bridge://schemas/claim-registry/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "input_id": "reconciliation",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/reconciliation_spec_registry.json",
+      "role": "reconciliation_spec_registry",
+      "schema_ref": "bridge://schemas/reconciliation-spec-registry/v0.1",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-09-documentation-only",
+  "tool_id": "P0-09",
+  "tool_version": "0.2.0"
+}

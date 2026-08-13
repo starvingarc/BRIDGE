@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "GraphKind": {
+      "enum": [
+        "case",
+        "comparison"
+      ],
+      "title": "GraphKind",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/evidence-compiler-run-result/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "accepted_record_count": {
+      "minimum": 0,
+      "title": "Accepted Record Count",
+      "type": "integer"
+    },
+    "cytoscape_export_ref": {
+      "title": "Cytoscape Export Ref",
+      "type": "string"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_kind": {
+      "$ref": "#/$defs/GraphKind"
+    },
+    "graph_manifest_ref": {
+      "title": "Graph Manifest Ref",
+      "type": "string"
+    },
+    "graph_manifest_schema_ref": {
+      "enum": [
+        "bridge://schemas/case-evidence-graph-manifest/v0.1",
+        "bridge://schemas/comparison-evidence-graph-manifest/v0.1"
+      ],
+      "title": "Graph Manifest Schema Ref",
+      "type": "string"
+    },
+    "graph_version": {
+      "minimum": 1,
+      "title": "Graph Version",
+      "type": "integer"
+    },
+    "reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "reconciliation_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reconciliation Refs",
+      "type": "array"
+    },
+    "record_set_ref": {
+      "title": "Record Set Ref",
+      "type": "string"
+    },
+    "rejected_record_count": {
+      "minimum": 0,
+      "title": "Rejected Record Count",
+      "type": "integer"
+    },
+    "requirement_set_ref": {
+      "title": "Requirement Set Ref",
+      "type": "string"
+    },
+    "result_id": {
+      "pattern": "^evidence-compiler-result:[a-f0-9]{16}$",
+      "title": "Result Id",
+      "type": "string"
+    },
+    "result_version": {
+      "const": "0.1.0",
+      "title": "Result Version",
+      "type": "string"
+    },
+    "unchanged_record_count": {
+      "minimum": 0,
+      "title": "Unchanged Record Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "result_id",
+    "result_version",
+    "graph_kind",
+    "graph_id",
+    "graph_version",
+    "record_set_ref",
+    "requirement_set_ref",
+    "reconciliation_refs",
+    "graph_manifest_schema_ref",
+    "graph_manifest_ref",
+    "cytoscape_export_ref",
+    "rejected_record_count",
+    "accepted_record_count",
+    "unchanged_record_count",
+    "reason_codes"
+  ],
+  "title": "EvidenceCompilerRunResult",
+  "type": "object"
+}
