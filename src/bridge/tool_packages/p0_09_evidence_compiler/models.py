@@ -9,7 +9,14 @@ import re
 from typing import Any, Literal, Self
 from urllib.parse import parse_qsl, urlsplit
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    StrictBool,
+    StrictFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
@@ -23,6 +30,7 @@ COMPILER_VERSION = "0.2.0"
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
 EVIDENCE_REF_PATTERN = r"^evidence:[a-f0-9]{24}@[1-9][0-9]*$"
 REQUIREMENT_REF_PATTERN = r"^requirement:[a-f0-9]{24}@[1-9][0-9]*$"
+StrictNumber = StrictFloat | StrictInt
 
 
 class GraphKind(StrEnum):
@@ -475,9 +483,9 @@ class BiologicalContext(FrozenModel):
 
 
 class EvidenceInterval(FrozenModel):
-    lower: float
-    upper: float
-    confidence_level: float | None = Field(default=None, gt=0, lt=1)
+    lower: StrictFloat
+    upper: StrictFloat
+    confidence_level: StrictFloat | None = Field(default=None, gt=0, lt=1)
     method_ref: str | None = None
 
     @field_validator("method_ref")
@@ -498,7 +506,7 @@ class EvidenceInterval(FrozenModel):
 
 class BaseGraphRef(FrozenModel):
     graph_id: str = Field(min_length=1)
-    graph_version: int = Field(ge=1)
+    graph_version: StrictInt = Field(ge=1)
     manifest_sha256: str = Field(pattern=SHA256_PATTERN)
 
     _publishable_graph_id = field_validator("graph_id")(publication_ref)
@@ -553,7 +561,7 @@ class ExternalCaseEvidenceRef(FrozenModel):
 
 class EvidenceRecord(FrozenModel):
     evidence_id: str = Field(pattern=r"^evidence:[a-f0-9]{24}$")
-    evidence_version: int = Field(ge=1)
+    evidence_version: StrictInt = Field(ge=1)
     logical_key: str = Field(min_length=1)
     content_hash: str = Field(pattern=SHA256_PATTERN)
     product_case_ref: VersionedObjectRef
@@ -565,8 +573,8 @@ class EvidenceRecord(FrozenModel):
     metric_id: str = Field(min_length=1)
     value: Any
     unit: str | None = None
-    numerator: float | int | None = None
-    denominator: float | int | None = None
+    numerator: StrictNumber | None = None
+    denominator: StrictNumber | None = None
     interval: EvidenceInterval | None = None
     claim_ref: VersionedObjectRef
     biological_context: BiologicalContext
@@ -644,7 +652,7 @@ class EvidenceRecord(FrozenModel):
 
 class EvidenceRequirement(FrozenModel):
     requirement_id: str = Field(pattern=r"^requirement:[a-f0-9]{24}$")
-    requirement_version: int = Field(ge=1)
+    requirement_version: StrictInt = Field(ge=1)
     claim_ref: VersionedObjectRef
     product_case_ref: VersionedObjectRef
     requirement_key: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
@@ -721,15 +729,20 @@ class EvidenceCompilationBundle(FrozenModel):
     def sort_external_evidence(
         cls, value: list[ExternalCaseEvidenceRef]
     ) -> list[ExternalCaseEvidenceRef]:
-        return sorted(
-            value,
-            key=lambda item: (
-                item.source_case_graph_ref.graph_id,
-                item.source_case_graph_ref.graph_version,
-                item.evidence_ref,
-                item.comparison_claim_ref.ref,
-            ),
-        )
+        # This field has set semantics. Collapse only byte-equivalent modeled
+        # declarations; conflicting declarations for one logical EvidenceRecord
+        # remain distinct so the compiler can reject them explicitly.
+        unique: dict[str, ExternalCaseEvidenceRef] = {}
+        for item in value:
+            identity = json.dumps(
+                item.model_dump(mode="json"),
+                ensure_ascii=False,
+                allow_nan=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            unique.setdefault(identity, item)
+        return [unique[key] for key in sorted(unique)]
 
     @field_validator("object_catalog")
     @classmethod
@@ -810,8 +823,8 @@ class EvidenceCandidate(FrozenModel):
     metric_id: str = Field(min_length=1)
     value: Any
     unit: str | None = None
-    numerator: float | int | None = None
-    denominator: float | int | None = None
+    numerator: StrictNumber | None = None
+    denominator: StrictNumber | None = None
     interval: EvidenceInterval | None = None
     claim_ref: VersionedObjectRef
     biological_context: BiologicalContext
@@ -965,7 +978,7 @@ class ClaimRequirementSpec(FrozenModel):
     required_modality: str | None = None
     required_experiment: str | None = None
     blocking_scope: str = Field(min_length=1)
-    required: bool = True
+    required: StrictBool = True
 
 
 class ClaimSpec(FrozenModel):
@@ -1038,7 +1051,7 @@ class ReconciliationSpec(FrozenModel):
     primary_channel_roles: list[str] = Field(min_length=1)
     confirmation_channel_roles: list[str] = Field(default_factory=list)
     integration_sensitive_channel_roles: list[str] = Field(default_factory=list)
-    minimum_independent_families_by_role: dict[str, int]
+    minimum_independent_families_by_role: dict[str, StrictInt]
     allowed_evidence_states: list[EvidenceState] = Field(min_length=1)
     required_sufficiency_states: tuple[Literal["sufficient"]] = ("sufficient",)
     conflict_rule: Literal["family_dedup_then_channel_resolution"]
@@ -1136,7 +1149,7 @@ class EvidenceRecordSet(FrozenModel):
     record_set_id: str = Field(pattern=r"^evidence-record-set:[a-f0-9]{16}$")
     record_set_version: Literal["0.1.0"]
     graph_id: str
-    graph_version: int = Field(ge=1)
+    graph_version: StrictInt = Field(ge=1)
     records: list[EvidenceRecord]
     dispositions: list[EvidenceRecordDisposition]
 
@@ -1145,7 +1158,7 @@ class EvidenceRequirementSet(FrozenModel):
     requirement_set_id: str = Field(pattern=r"^evidence-requirement-set:[a-f0-9]{16}$")
     requirement_set_version: Literal["0.1.0"]
     graph_id: str
-    graph_version: int = Field(ge=1)
+    graph_version: StrictInt = Field(ge=1)
     requirements: list[EvidenceRequirement]
 
 
@@ -1154,15 +1167,15 @@ class ChannelResolution(FrozenModel):
     evidence_refs: list[str]
     evidence_family_refs: list[str]
     direction: EvidenceRelation | None
-    eligible: bool
+    eligible: StrictBool
     reason_codes: list[str]
 
 
 class ReconciliationRecord(FrozenModel):
     reconciliation_id: str = Field(pattern=r"^reconciliation:[a-f0-9]{24}$")
-    reconciliation_version: int = Field(ge=1)
+    reconciliation_version: StrictInt = Field(ge=1)
     graph_id: str
-    graph_version: int = Field(ge=1)
+    graph_version: StrictInt = Field(ge=1)
     claim_ref: VersionedObjectRef
     reconciliation_spec_ref: VersionedObjectRef
     sufficiency_profile_refs: list[VersionedObjectRef]
@@ -1202,7 +1215,7 @@ class ReconciliationRecordSet(FrozenModel):
     reconciliation_set_id: str = Field(pattern=r"^reconciliation-record-set:[a-f0-9]{16}$")
     reconciliation_set_version: Literal["0.1.0"]
     graph_id: str
-    graph_version: int = Field(ge=1)
+    graph_version: StrictInt = Field(ge=1)
     records: list[ReconciliationRecord]
 
 
@@ -1211,7 +1224,7 @@ class RejectedEvidenceRecord(FrozenModel):
         "candidate_record", "missing_observation", "external_case_evidence_ref"
     ]
     source_id: str
-    source_index: int = Field(ge=0)
+    source_index: StrictInt = Field(ge=0)
     reason_codes: list[str] = Field(min_length=1)
     claim_ref: str | None = None
     logical_key_digest: str | None = Field(default=None, pattern=SHA256_PATTERN)
@@ -1228,7 +1241,7 @@ class EvidenceCompilerRunResult(FrozenModel):
     result_version: Literal["0.1.0"]
     graph_kind: GraphKind
     graph_id: str
-    graph_version: int = Field(ge=1)
+    graph_version: StrictInt = Field(ge=1)
     record_set_ref: str
     requirement_set_ref: str
     reconciliation_refs: list[str]
@@ -1238,9 +1251,9 @@ class EvidenceCompilerRunResult(FrozenModel):
     ]
     graph_manifest_ref: str
     cytoscape_export_ref: str
-    rejected_record_count: int = Field(ge=0)
-    accepted_record_count: int = Field(ge=0)
-    unchanged_record_count: int = Field(ge=0)
+    rejected_record_count: StrictInt = Field(ge=0)
+    accepted_record_count: StrictInt = Field(ge=0)
+    unchanged_record_count: StrictInt = Field(ge=0)
     reason_codes: list[str]
 
 
@@ -1248,7 +1261,7 @@ class GraphArtifactRef(FrozenModel):
     filename: str = Field(pattern=r"^[a-z0-9_]+(?:\.[a-z0-9]+)+$")
     media_type: str
     sha256: str = Field(pattern=SHA256_PATTERN)
-    row_count: int | None = Field(default=None, ge=0)
+    row_count: StrictInt | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def artifact_contract_matches_extension(self) -> Self:
@@ -1268,11 +1281,11 @@ class GraphArtifactRef(FrozenModel):
 
 class EvidenceGraphManifestBase(FrozenModel):
     graph_id: str
-    graph_version: int = Field(ge=1)
+    graph_version: StrictInt = Field(ge=1)
     canonicalization_id: Literal["bridge-canonical-json/v0.1"]
-    node_count: int = Field(ge=0)
-    edge_count: int = Field(ge=0)
-    object_counts: dict[GraphNodeType, int]
+    node_count: StrictInt = Field(ge=0)
+    edge_count: StrictInt = Field(ge=0)
+    object_counts: dict[GraphNodeType, StrictInt]
     source_input_hash: str = Field(pattern=SHA256_PATTERN)
     base_graph_ref: BaseGraphRef | None = None
     evidence_records: GraphArtifactRef
@@ -1300,6 +1313,7 @@ class EvidenceGraphManifestBase(FrozenModel):
             self.graph_nodes.row_count != self.node_count
             or self.graph_edges.row_count != self.edge_count
             or sum(self.object_counts.values()) != self.node_count
+            or any(count <= 0 for count in self.object_counts.values())
         ):
             raise ValueError("graph manifest counts do not agree")
         return self
@@ -1332,14 +1346,14 @@ class CytoscapeElements(FrozenModel):
 
 class CytoscapeEvidenceElements(FrozenModel):
     graph_id: str
-    graph_version: int = Field(ge=1)
+    graph_version: StrictInt = Field(ge=1)
     elements: CytoscapeElements
     filters: dict[str, Any]
-    truncated: bool
-    returned_node_count: int = Field(ge=0)
-    returned_edge_count: int = Field(ge=0)
-    omitted_node_count: int = Field(default=0, ge=0)
-    omitted_edge_count: int = Field(default=0, ge=0)
+    truncated: StrictBool
+    returned_node_count: StrictInt = Field(ge=0)
+    returned_edge_count: StrictInt = Field(ge=0)
+    omitted_node_count: StrictInt = Field(default=0, ge=0)
+    omitted_edge_count: StrictInt = Field(default=0, ge=0)
 
 
 class EvidenceGraphQueryResult(FrozenModel):
@@ -1353,27 +1367,27 @@ class EvidenceGraphQueryResult(FrozenModel):
         "compare_evidence_paths",
     ]
     graph_id: str
-    graph_version: int
+    graph_version: StrictInt
     nodes: list[dict[str, Any]]
     edges: list[dict[str, Any]]
-    returned_node_count: int = Field(ge=0)
-    returned_edge_count: int = Field(ge=0)
-    truncated: bool
-    omitted_node_count: int = Field(ge=0)
-    omitted_edge_count: int = Field(ge=0)
+    returned_node_count: StrictInt = Field(ge=0)
+    returned_edge_count: StrictInt = Field(ge=0)
+    truncated: StrictBool
+    omitted_node_count: StrictInt = Field(ge=0)
+    omitted_edge_count: StrictInt = Field(ge=0)
     reason_codes: list[str]
 
 
 class GraphNodeRow(FrozenModel):
     graph_id: str
-    graph_version: int
+    graph_version: StrictInt
     node_id: str
     node_type: GraphNodeType
     record_mode: GraphRecordMode
     object_id: str
     object_version: str
     source_graph_id: str | None = None
-    source_graph_version: int | None = None
+    source_graph_version: StrictInt | None = None
     lifecycle_state: str | None = None
     evidence_tier: str | None = None
     properties_json: str | None = None
@@ -1382,7 +1396,7 @@ class GraphNodeRow(FrozenModel):
 
 class GraphEdgeRow(FrozenModel):
     graph_id: str
-    graph_version: int
+    graph_version: StrictInt
     edge_id: str
     edge_type: GraphEdgeType
     source_node_id: str
@@ -1394,7 +1408,7 @@ class GraphEdgeRow(FrozenModel):
 class CompiledEvidenceGraph(FrozenModel):
     graph_kind: GraphKind
     graph_id: str
-    graph_version: int
+    graph_version: StrictInt
     input_hash: str = Field(pattern=SHA256_PATTERN)
     created_at: datetime
     record_set: EvidenceRecordSet

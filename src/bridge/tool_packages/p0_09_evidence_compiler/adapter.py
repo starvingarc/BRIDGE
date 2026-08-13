@@ -221,11 +221,15 @@ class EvidenceCompilerAdapter:
                 reason = "graph_invariant_failed"
             return _failed_run(request, spec, [reason], input_hash=input_hash)
 
-        output_root = request.output_dir.resolve()
-        output_root.mkdir(parents=True, exist_ok=True)
-        staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-        staging.mkdir(mode=0o700)
+        output_root: Path | None = None
+        staging: Path | None = None
+        staging_created = False
         try:
+            output_root = request.output_dir.resolve()
+            output_root.mkdir(parents=True, exist_ok=True)
+            staging = output_root / f".{run_id}.staging-{uuid4().hex}"
+            staging.mkdir(mode=0o700)
+            staging_created = True
             result, artifact_specs = _write_bundle(
                 staging=staging,
                 request=request,
@@ -237,6 +241,7 @@ class EvidenceCompilerAdapter:
             )
             if not _inputs_unchanged(request.object_inputs):
                 shutil.rmtree(staging)
+                staging_created = False
                 return _failed_run(
                     request,
                     spec,
@@ -247,6 +252,7 @@ class EvidenceCompilerAdapter:
             if final.exists():
                 if not _bundles_match(staging, final):
                     shutil.rmtree(staging)
+                    staging_created = False
                     return _failed_run(
                         request,
                         spec,
@@ -254,11 +260,13 @@ class EvidenceCompilerAdapter:
                         input_hash=input_hash,
                     )
                 shutil.rmtree(staging)
+                staging_created = False
             else:
                 os.replace(staging, final)
+                staging_created = False
         except Exception as exc:
-            if staging.exists():
-                shutil.rmtree(staging)
+            if staging_created and staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
             reason = (
                 str(exc).split(":", 1)[0]
                 if str(exc).split(":", 1)[0]
@@ -273,6 +281,7 @@ class EvidenceCompilerAdapter:
 
         rejected = len(compiled.rejected_records.records)
         execution_state = ExecutionState.PARTIAL if rejected else ExecutionState.SUCCEEDED
+        assert output_root is not None
         return ToolRunV2(
             run_id=run_id,
             request=request,

@@ -64,7 +64,7 @@ product case x sample/preparation x domain x metric x claim x context x Measurem
 - shadow/exploratory candidate 必须匹配 P0-08 profile 的 ProductCase ID、MeasurementSpec ID、MeasurementResult refs 和 retained family IDs。
 - P0-08 v0.1 未提供 ProductCase/MeasurementSpec 的版本化 ref，不能证明完整 formal binding；所以当前所有 formal candidate/external ref 均以 `sufficiency_profile_version_binding_unavailable` 保守拒绝，不静默降级，也不伪造用户自报版本。
 
-三个公开 record 数组都严格要求 object 元素；非 object、extra field 或其他公开 Schema 失败属于顶层失败。Schema 合法但 provenance、版本/上下文绑定、source fact 或语义非法的 sibling candidate/missing/external item 才进入 `rejected_records.json`，其余合法项可发布 `partial` graph；被拒输出仅含稳定 ID/index/digest/reason，不回显原值。顶层 bundle/registry/history/Schema/checksum 或 unsafe publication reference 错误则整次失败且不发布任何 artifact。publication guard 是路径、URI、环境变量、credential-like assignment/token、禁用结论 key 和 public-ref 形状的有界合同，不承诺通用 secret scanning。P0-08 合同内固定的 `domain_score=null` 仅作为上游 provenance 保存，不被 P0-09 填值或解释。
+三个公开 record 数组都严格要求 object 元素；非 object、extra field 或其他公开 Schema 失败属于顶层失败。Schema 合法但 provenance、版本/上下文绑定、source fact 或语义非法的 sibling candidate/missing/external item 才进入 `rejected_records.json`，其余合法项可发布 `partial` graph；被拒输出仅含稳定 ID/index/digest/reason，不回显原值。完全相同的同源 external declaration 按集合语义在身份计算前幂等去重；同一 Evidence ref 只要 content/source/Claim/profile/family/relation/lifecycle 等声明不同，就保留冲突证据并逐条 `duplicate_logical_key_conflict` 拒绝。候选的 numerator、denominator 与 interval 只接受有限 JSON number；numeric string 和 bool 不发生静默强转。顶层 bundle/registry/history/Schema/checksum 或 unsafe publication reference 错误则整次失败且不发布任何 artifact。publication guard 是路径、URI、环境变量、credential-like assignment/token、禁用结论 key 和 public-ref 形状的有界合同，不承诺通用 secret scanning。P0-08 合同内固定的 `domain_score=null` 仅作为上游 provenance 保存，不被 P0-09 填值或解释。
 
 ## 5. EvidenceFamily 去重与确定性协调
 
@@ -91,7 +91,7 @@ JSON 与 Parquet 是正式事实源：
 - `graph_edges.parquet`
 - Case 或 Comparison graph manifest
 
-节点/边 Parquet 使用固定列、稳定 ID、确定性排序、Zstandard 压缩和显式 content hash。NetworkX `MultiDiGraph` 只负责进程内约束、重建和查询验证，包括端点类型、悬空边、自环、重复边、revision cycle、root scope 和弱连通性。它不是持久化层。
+节点/边 Parquet 使用固定列、稳定 ID、确定性排序、Zstandard 压缩和显式 content hash。打开时必须重算每个 node ID、每条 edge 的 properties hash/content hash/edge ID，并对可重算的 owned properties 核 content hash；external ref 只核其确定性身份与 source binding，不要求复制源端 properties。NetworkX `MultiDiGraph` 只负责进程内约束、重建和查询验证，包括端点类型、悬空边、自环、重复边、revision cycle、root scope 和弱连通性。它不是持久化层。
 
 Cytoscape elements 是 bounded data projection，不是科学图表声明；完整导出最多 500 nodes/1,000 edges，并报告截断。科学 JSON、Parquet properties 和 rejected-record 输出都不携带本地路径、credential-like string 或原始被拒 payload。
 
@@ -109,13 +109,13 @@ LadybugDB 在 v0.1 中为 `shadow/deferred` adapter 候选：不安装、不参�
 - `get_case_evidence_subgraph`
 - `compare_evidence_paths`
 
-查询参数执行严格类型、enum 和 bool 校验；错误统一返回 typed `query_parameter_invalid`，不抛裸异常或扩大 inactive 范围。限制 `limit<=200`、`max_depth<=6`、`max_nodes<=500`，固定 traversal 和可见字段，按 node/edge ID 排序；只有确有 reachable node/edge 被省略时才返回 `truncated=true`。`get_missing_requirements` 每个 requirement ID 只把最高版本视为当前状态。manifest 只接受固定 basename，拒绝绝对/遍历路径和 symlink，并校验 checksum、Parquet row count、graph count、连通性以及三类 JSON fact 与 owned Parquet node 的一致性。调用者不能提供路径、predicate、edge type、Cypher、写命令或远端 backend。Comparison 的 external EvidenceRecord 必须在 content-addressed source record set 中唯一存在，匹配 content hash、source Claim、ProductCase、tier、applicability、ToolRun 和由完整 create/supersede/invalidate 链推导的 effective lifecycle；其 provenance 在 source Case 边界停止并返回 `source_case_graph_required`。
+查询参数执行严格类型、enum 和 bool 校验；错误统一返回 typed `query_parameter_invalid`，不抛裸异常或扩大 inactive 范围。限制 `limit<=200`、`max_depth<=6`、`max_nodes<=500`，固定 traversal 和可见字段，按 node/edge ID 排序；只有确有 reachable node/edge 被省略时才返回 `truncated=true`。`get_missing_requirements` 每个 requirement ID 只把最高版本视为当前状态。manifest 只接受固定 basename，拒绝绝对/遍历路径和 symlink，并校验 checksum、Parquet row count、graph count、连通性以及三类 JSON fact 与 owned Parquet node 的一致性；`object_counts` 省略零项且必须与实际 node-type Counter 精确相等，不能只核总数。调用者不能提供路径、predicate、edge type、Cypher、写命令或远端 backend。Comparison 的 external EvidenceRecord 必须在 content-addressed source record set 中唯一存在，匹配 content hash、source Claim、ProductCase、tier、applicability、ToolRun 和由完整 create/supersede/invalidate 链推导的 effective lifecycle；其 provenance 在 source Case 边界停止并返回 `source_case_graph_required`。
 
 ## 8. 不可变 artifact bundle
 
 每次成功/partial 运行写入 `<output_dir>/<run_id>/`，共十个文件：三类规范 JSON、两个 Parquet、一个 graph manifest、Cytoscape elements、rejected list、typed run result 和 artifact manifest。Graph manifest 校验五个 authoritative facts；artifact manifest 校验前九个文件而不自哈希。
 
-写入流程为新 staging 目录、写后校验、输入复核、原子 rename。artifact manifest 记录前九个文件的 checksum、media type 与可用 byte size；一般结构化输入记录 semantic SHA，base/source graph 身份另保留可复验 raw content-addressed SHA，raw SHA 同时仍在本次 ToolRun request。相同语义的集合顺序变体可复用 byte-identical run bundle；存在漂移时拒绝覆盖。输入侧 `manifest_input_id`/`record_set_input_id`/`requirement_set_input_id` 不进入公开 graph manifest。运行结果 `measurements=[]`、`visualizations=[]`。
+写入流程为新 staging 目录、写后校验、输入复核、原子 rename。output root/staging 的创建和权限错误统一映射为 typed failed；不会覆盖或删除已经占用 output path 的普通文件。artifact manifest 记录前九个文件的 checksum、media type 与可用 byte size；一般结构化输入记录 semantic SHA，base/source graph 身份另保留可复验 raw content-addressed SHA，raw SHA 同时仍在本次 ToolRun request。相同语义的集合顺序变体（包括完全相同的 external ref 重复项）可复用 byte-identical run bundle；存在漂移时拒绝覆盖。输入侧 `manifest_input_id`/`record_set_input_id`/`requirement_set_input_id` 不进入公开 graph manifest。运行结果 `measurements=[]`、`visualizations=[]`。
 
 ## 9. 方法与环境状态
 
@@ -130,6 +130,6 @@ LadybugDB 在 v0.1 中为 `shadow/deferred` adapter 候选：不安装、不参�
 
 ## 10. 验证要求与当前声明
 
-模块测试覆盖：公开模型与 Draft 2020-12 Schema、严格 JSON、checksum、model-aware 集合归一化、确定性 run/record/graph/artifact identity、append-only evidence/requirement 修正、missing-versus-zero、boolean numeric 拒绝、规范化 no-score key、四类 unsafe publication surface 与不回显、严格顶层 Schema 与 partial 边界、保守 formal profile gate、context/catalog role binding、family dependency/scope component 去重、Comparison source input 双射/完整 manifest preflight/source history/effective lifecycle/exact fact binding、公开 manifest 不泄漏 request input ID、图端点与 revision cycle、JSON→Parquet→NetworkX round trip、manifest filename/symlink/checksum/row-count/size、重复运行复用、七个只读查询严格参数及其精确 cap/注入 canary。
+模块测试覆盖：公开模型与 Draft 2020-12 Schema、严格 JSON/number/bool/int、checksum、model-aware 集合归一化与 external 精确重复幂等、确定性 run/record/graph/artifact identity、append-only evidence/requirement 修正、missing-versus-zero、boolean/numeric-string/nonfinite 拒绝、规范化 no-score key、四类 unsafe publication surface 与不回显、严格顶层 Schema 与 partial 边界、保守 formal profile gate、context/catalog role binding、family dependency/scope component 去重、Comparison source input 双射/完整 manifest preflight/source history/effective lifecycle/exact fact binding、公开 manifest 不泄漏 request input ID、图端点/revision cycle/node-edge self-hash、JSON→Parquet→NetworkX round trip、manifest filename/symlink/checksum/row-count/object-count/size、不可用 output path 受控失败、重复运行复用、七个只读查询严格参数及其精确 cap/注入 canary。
 
 当前 fixture 全部为合成数据，不代表真实产品、真实样本、临床结果或科学验证。P0-09 完成只表示候选编译与协调路径可执行；它不能证明任何 Claim 为真、任何域证据充分、任何 ScoreContract 已冻结、任何产品更优，或任何输出可公开/科学发布。

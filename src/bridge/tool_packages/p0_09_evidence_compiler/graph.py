@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 import hashlib
+import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -13,7 +14,10 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSuffi
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     canonical_hash,
     canonical_json_bytes,
+    evidence_record_content_hash,
     normalize_identity_payload,
+    reconciliation_record_content_hash,
+    requirement_content_hash,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     ClaimRegistry,
@@ -504,9 +508,76 @@ def validate_graph_rows(
     node_map = {item.node_id: item for item in nodes}
     graph = nx.MultiDiGraph()
     for item in nodes:
+        if item.node_id != node_id(item.object_id, item.object_version, item.node_type):
+            raise ValueError("graph_invariant_failed: node ID mismatch")
+        if item.record_mode is GraphRecordMode.OWNED:
+            if (
+                item.source_graph_id is not None
+                or item.source_graph_version is not None
+                or item.properties_json is None
+            ):
+                raise ValueError("graph_invariant_failed: owned node metadata mismatch")
+            try:
+                properties = json.loads(item.properties_json)
+            except (json.JSONDecodeError, TypeError) as exc:
+                raise ValueError(
+                    "graph_invariant_failed: invalid owned node properties"
+                ) from exc
+            if canonical_json_bytes(properties).decode("utf-8") != item.properties_json:
+                raise ValueError("graph_invariant_failed: non-canonical node properties")
+            if item.node_type is GraphNodeType.EVIDENCE_RECORD:
+                expected_content_hash = evidence_record_content_hash(
+                    EvidenceRecord.model_validate(properties)
+                )
+            elif item.node_type is GraphNodeType.EVIDENCE_REQUIREMENT:
+                expected_content_hash = requirement_content_hash(
+                    EvidenceRequirement.model_validate(properties)
+                )
+            elif item.node_type is GraphNodeType.RECONCILIATION_RECORD:
+                expected_content_hash = reconciliation_record_content_hash(
+                    ReconciliationRecord.model_validate(properties)
+                )
+            elif item.node_type in {
+                GraphNodeType.CLAIM,
+                GraphNodeType.EVIDENCE_FAMILY,
+                GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE,
+                GraphNodeType.RECONCILIATION_SPEC,
+            }:
+                expected_content_hash = canonical_hash(
+                    normalize_identity_payload(properties)
+                )
+            else:
+                # Catalog-backed owned nodes carry the content hash of the
+                # referenced object while exposing only its Schema binding.
+                expected_content_hash = item.content_hash
+            if expected_content_hash != item.content_hash:
+                raise ValueError("graph_invariant_failed: node content hash mismatch")
+        elif (
+            item.properties_json is not None
+            or item.source_graph_id is None
+            or item.source_graph_version is None
+        ):
+            raise ValueError("graph_invariant_failed: external node metadata mismatch")
         graph.add_node(item.node_id, **item.model_dump(mode="json"))
     seen_exact: set[tuple[str, str, str, str]] = set()
     for edge in edges:
+        try:
+            properties = json.loads(edge.properties_json)
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise ValueError("graph_invariant_failed: invalid edge properties") from exc
+        if canonical_json_bytes(properties).decode("utf-8") != edge.properties_json:
+            raise ValueError("graph_invariant_failed: non-canonical edge properties")
+        properties_hash = canonical_hash(properties)
+        identity = (
+            f"{edge.graph_id}|{edge.edge_type.value}|{edge.source_node_id}|"
+            f"{edge.target_node_id}|{properties_hash}"
+        )
+        expected_hash = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        if (
+            edge.content_hash != expected_hash
+            or edge.edge_id != f"edge:{expected_hash[:24]}"
+        ):
+            raise ValueError("graph_invariant_failed: edge identity mismatch")
         if edge.source_node_id == edge.target_node_id:
             raise ValueError("graph_invariant_failed: self loop")
         if edge.source_node_id not in node_map or edge.target_node_id not in node_map:

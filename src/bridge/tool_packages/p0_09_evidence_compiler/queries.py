@@ -12,6 +12,7 @@ import networkx as nx
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import P0DomainId
 from bridge.tool_packages.p0_09_evidence_compiler.graph import (
     node_id,
+    object_counts,
     read_parquet_rows,
     validate_graph_rows,
 )
@@ -351,6 +352,7 @@ class EvidenceGraphQueries:
             or len(edges) != manifest.edge_count
             or manifest.graph_nodes.row_count != len(nodes)
             or manifest.graph_edges.row_count != len(edges)
+            or manifest.object_counts != object_counts(nodes)
         ):
             raise ValueError("manifest_integrity_failed")
         try:

@@ -17,7 +17,11 @@ from bridge.tool_packages.p0_09_evidence_compiler.adapter import (
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import P0DomainId
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     PUBLIC_SCHEMA_MODELS,
+    BaseGraphRef,
+    ClaimRequirementSpec,
+    EvidenceCandidate,
     EvidenceCompilerRunResult,
+    EvidenceInterval,
     EvidenceRecordSet,
     EvidenceRequirementSet,
     ReconciliationRecordSet,
@@ -26,12 +30,18 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CaseEvidenceGraphManifest,
     MissingEvidenceObservation,
     EvidenceFamilyRegistry,
+    GraphArtifactRef,
+    ReconciliationSpec,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     canonical_json_bytes,
     evidence_record_content_hash,
 )
-from bridge.tool_packages.p0_09_evidence_compiler.graph import node_id, write_parquet
+from bridge.tool_packages.p0_09_evidence_compiler.graph import (
+    node_id,
+    read_parquet_rows,
+    write_parquet,
+)
 from bridge.tool_packages.p0_09_evidence_compiler.reconciler import (
     ReconciliationEvidence,
     _resolve_channel,
@@ -572,7 +582,10 @@ def _materialize_comparison_sources(
                 content_hash=expected["content_hash"],
             ),
         ]
-        edge_identity = f"{case_ref['graph_id']}|applicable_to|{evidence_node_id}|{root_node_id}"
+        edge_identity = (
+            f"{case_ref['graph_id']}|applicable_to|{evidence_node_id}|{root_node_id}|"
+            f"{hashlib.sha256(b'{}').hexdigest()}"
+        )
         edges = [
             GraphEdgeRow(
                 graph_id=case_ref["graph_id"],
@@ -1571,6 +1584,131 @@ def test_strict_json_duplicate_key_and_checksum_fail_without_publication(tmp_pat
     assert not request.output_dir.exists()
 
 
+def test_existing_file_at_output_dir_returns_typed_failure_without_overwrite(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    request.output_dir.write_text("preserve-me", encoding="utf-8")
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["artifact_checksum_verification_failed"]
+    assert run.result is None and run.artifacts == []
+    assert request.output_dir.read_text(encoding="utf-8") == "preserve-me"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("numerator", "75"),
+        ("denominator", "100"),
+        ("numerator", True),
+        ("denominator", True),
+        ("interval.lower", "0.65"),
+        ("interval.lower", True),
+        ("interval.confidence_level", "0.95"),
+        ("interval.confidence_level", True),
+    ],
+)
+def test_candidate_scientific_numbers_do_not_coerce_strings_or_booleans(
+    tmp_path: Path, field: str, value: Any
+) -> None:
+    candidate = _candidate()
+    target = candidate
+    parts = field.split(".")
+    for part in parts[:-1]:
+        target = target[part]
+    target[parts[-1]] = value
+
+    with pytest.raises(ValueError):
+        EvidenceCandidate.model_validate(candidate)
+
+    run = _run(tmp_path, bundle=_bundle(candidates=[candidate]))
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    assert json.loads((final / "evidence_records.json").read_text())["records"] == []
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert set(rejected[0]["reason_codes"]) <= {
+        "individual_record_schema_invalid",
+        "invalid_denominator",
+    }
+    assert rejected[0]["reason_codes"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"lower": float("nan"), "upper": 1.0},
+        {"lower": 0.0, "upper": float("inf")},
+        {"lower": 0.0, "upper": 1.0, "confidence_level": float("nan")},
+    ],
+)
+def test_interval_rejects_nonfinite_numbers_directly(payload: dict[str, Any]) -> None:
+    with pytest.raises(ValueError):
+        EvidenceInterval.model_validate(payload)
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity"])
+def test_public_json_rejects_nonfinite_candidate_numbers_without_publication(
+    tmp_path: Path, constant: str
+) -> None:
+    request = _request(tmp_path)
+    bundle_ref = next(
+        item for item in request.object_inputs if item.role == "compilation_bundle"
+    )
+    raw = bundle_ref.path.read_text()
+    raw = raw.replace('"numerator": 75', f'"numerator": {constant}', 1)
+    bundle_ref.path.write_text(raw, encoding="utf-8")
+    checksum = hashlib.sha256(bundle_ref.path.read_bytes()).hexdigest()
+    request = request.model_copy(
+        update={
+            "object_inputs": [
+                item.model_copy(update={"sha256": checksum})
+                if item.input_id == bundle_ref.input_id
+                else item
+                for item in request.object_inputs
+            ]
+        }
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_json_invalid"]
+    assert run.result is None and run.artifacts == []
+    assert not request.output_dir.exists()
+
+
+def test_public_integer_and_boolean_fields_are_strict() -> None:
+    with pytest.raises(ValueError):
+        BaseGraphRef.model_validate(
+            {"graph_id": "case-evidence-graph:test", "graph_version": "1", "manifest_sha256": SHA}
+        )
+    with pytest.raises(ValueError):
+        ClaimRequirementSpec.model_validate(
+            {
+                "requirement_key": "orthogonal",
+                "channel_role": "orthogonal",
+                "blocking_scope": "claim",
+                "required": "false",
+            }
+        )
+    with pytest.raises(ValueError):
+        GraphArtifactRef.model_validate(
+            {
+                "filename": "graph_nodes.parquet",
+                "media_type": "application/vnd.apache.parquet",
+                "sha256": SHA,
+                "row_count": 1.0,
+            }
+        )
+    spec = _reconciliation_registry()["specs"][0]
+    spec["minimum_independent_families_by_role"]["transcriptomic"] = "1"
+    with pytest.raises(ValueError):
+        ReconciliationSpec.model_validate(spec)
+
+
 def test_v1_adapter_invocation_has_one_stable_v2_reason(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="p0-09-v1",
@@ -1845,6 +1983,118 @@ def test_query_open_rejects_symlinked_artifact_even_with_matching_bytes(
 
     with pytest.raises(ValueError, match="manifest_integrity_failed"):
         EvidenceGraphQueries.open(final / "case_evidence_graph_manifest.json")
+
+
+@pytest.mark.parametrize("explicit_zero", [False, True])
+def test_query_open_rejects_object_count_type_substitution_with_same_total(
+    tmp_path: Path, explicit_zero: bool
+) -> None:
+    run = _run(tmp_path)
+    manifest_path = (
+        run.request.output_dir / run.run_id / "case_evidence_graph_manifest.json"
+    )
+    payload = json.loads(manifest_path.read_text())
+    if explicit_zero:
+        payload["object_counts"]["Claim"] = 0
+        payload["object_counts"]["Artifact"] = 1
+    else:
+        assert payload["object_counts"]["ReferenceSnapshot"] == 2
+        payload["object_counts"]["ReferenceSnapshot"] = 1
+        payload["object_counts"]["Artifact"] = 1
+    _write(manifest_path, payload)
+
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
+
+
+def test_query_open_rejects_rehashed_parquet_with_forged_edge_self_hash(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    manifest_path = final / "case_evidence_graph_manifest.json"
+    payload = json.loads(manifest_path.read_text())
+    nodes_path = final / payload["graph_nodes"]["filename"]
+    edges_path = final / payload["graph_edges"]["filename"]
+    nodes, edges = read_parquet_rows(nodes_path, edges_path)
+    edges[0] = edges[0].model_copy(update={"content_hash": "f" * 64})
+    write_parquet(nodes_path, edges_path, nodes, edges)
+    payload["graph_edges"]["sha256"] = hashlib.sha256(
+        edges_path.read_bytes()
+    ).hexdigest()
+    _write(manifest_path, payload)
+
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
+
+
+@pytest.mark.parametrize("tamper", ["node_id", "owned_properties_hash"])
+def test_query_open_rejects_forged_node_self_description(
+    tmp_path: Path, tamper: str
+) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    manifest_path = final / "case_evidence_graph_manifest.json"
+    payload = json.loads(manifest_path.read_text())
+    nodes_path = final / payload["graph_nodes"]["filename"]
+    edges_path = final / payload["graph_edges"]["filename"]
+    nodes, edges = read_parquet_rows(nodes_path, edges_path)
+    claim_index = next(
+        index
+        for index, node in enumerate(nodes)
+        if node.node_type is GraphNodeType.CLAIM
+    )
+    claim = nodes[claim_index]
+    if tamper == "owned_properties_hash":
+        nodes[claim_index] = claim.model_copy(update={"content_hash": "f" * 64})
+    else:
+        forged_id = "node:Claim:" + "f" * 24
+        nodes[claim_index] = claim.model_copy(update={"node_id": forged_id})
+        edges = [
+            edge.model_copy(
+                update={
+                    "source_node_id": (
+                        forged_id if edge.source_node_id == claim.node_id else edge.source_node_id
+                    ),
+                    "target_node_id": (
+                        forged_id if edge.target_node_id == claim.node_id else edge.target_node_id
+                    ),
+                }
+            )
+            for edge in edges
+        ]
+        # Keep every edge internally self-consistent so only the forged node identity
+        # distinguishes this graph from a valid projection.
+        repaired_edges = []
+        for edge in edges:
+            properties_hash = hashlib.sha256(
+                edge.properties_json.encode("utf-8")
+            ).hexdigest()
+            identity = (
+                f"{edge.graph_id}|{edge.edge_type.value}|{edge.source_node_id}|"
+                f"{edge.target_node_id}|{properties_hash}"
+            )
+            digest = hashlib.sha256(identity.encode()).hexdigest()
+            repaired_edges.append(
+                edge.model_copy(
+                    update={
+                        "edge_id": f"edge:{digest[:24]}",
+                        "content_hash": digest,
+                    }
+                )
+            )
+        edges = repaired_edges
+    write_parquet(nodes_path, edges_path, nodes, edges)
+    payload["graph_nodes"]["sha256"] = hashlib.sha256(
+        nodes_path.read_bytes()
+    ).hexdigest()
+    payload["graph_edges"]["sha256"] = hashlib.sha256(
+        edges_path.read_bytes()
+    ).hexdigest()
+    _write(manifest_path, payload)
+
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
 
 
 @pytest.mark.parametrize(
@@ -2151,6 +2401,98 @@ def test_duplicate_evidence_identity_across_source_graphs_rejects_both_without_e
     } for item in rejected)
 
 
+def test_identical_external_ref_duplicate_is_idempotent_and_byte_deterministic(
+    tmp_path: Path,
+) -> None:
+    first_request = _request(
+        tmp_path / "single",
+        bundle=_comparison_bundle(),
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    first = adapter.run(first_request, _spec())
+    assert first.execution_state is ExecutionState.SUCCEEDED
+    first_dir = first.request.output_dir / first.run_id
+    first_bytes = {item.name: item.read_bytes() for item in first_dir.iterdir()}
+
+    duplicate_request = _request(
+        tmp_path / "duplicate",
+        bundle=_comparison_bundle(),
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    bundle_ref = next(
+        item
+        for item in duplicate_request.object_inputs
+        if item.role == "compilation_bundle"
+    )
+    raw_bundle = json.loads(bundle_ref.path.read_text())
+    raw_bundle["external_case_evidence_refs"].append(
+        json.loads(json.dumps(raw_bundle["external_case_evidence_refs"][0]))
+    )
+    duplicate_sha = _write(bundle_ref.path, raw_bundle)
+    duplicate_request = duplicate_request.model_copy(
+        update={
+            "object_inputs": [
+                item.model_copy(update={"sha256": duplicate_sha})
+                if item.input_id == bundle_ref.input_id
+                else item
+                for item in duplicate_request.object_inputs
+            ]
+        }
+    )
+
+    duplicate = adapter.run(duplicate_request, _spec())
+
+    assert duplicate.execution_state is ExecutionState.SUCCEEDED
+    assert duplicate.run_id == first.run_id
+    assert duplicate.input_hash == first.input_hash
+    duplicate_dir = duplicate.request.output_dir / duplicate.run_id
+    assert {item.name: item.read_bytes() for item in duplicate_dir.iterdir()} == first_bytes
+
+
+def test_same_external_logical_ref_with_different_content_is_not_deduplicated(
+    tmp_path: Path,
+) -> None:
+    request = _request(
+        tmp_path,
+        bundle=_comparison_bundle(),
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    bundle_ref = next(
+        item for item in request.object_inputs if item.role == "compilation_bundle"
+    )
+    raw_bundle = json.loads(bundle_ref.path.read_text())
+    conflicting = json.loads(json.dumps(raw_bundle["external_case_evidence_refs"][0]))
+    conflicting["evidence_content_hash"] = "f" * 64
+    raw_bundle["external_case_evidence_refs"].append(conflicting)
+    checksum = _write(bundle_ref.path, raw_bundle)
+    request = request.model_copy(
+        update={
+            "object_inputs": [
+                item.model_copy(update={"sha256": checksum})
+                if item.input_id == bundle_ref.input_id
+                else item
+                for item in request.object_inputs
+            ]
+        }
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    conflict_rejections = [
+        item
+        for item in rejected
+        if "duplicate_logical_key_conflict" in item["reason_codes"]
+    ]
+    assert len(conflict_rejections) == 2
+    assert all("f" * 64 not in json.dumps(item) for item in rejected)
+
+
 def test_source_graph_input_bindings_are_a_strict_bijection(tmp_path: Path) -> None:
     request = _request(
         tmp_path,
@@ -2189,6 +2531,50 @@ def test_source_graph_preflight_rejects_corrupt_authoritative_artifact(
     (paths[0].parent / "reconciliation_records.json").write_text(
         '{"tampered":true}\n', encoding="utf-8"
     )
+
+    run = _run(
+        tmp_path / "run",
+        bundle=bundle,
+        profiles=profiles,
+        claim_registry=_comparison_claim_registry(),
+        source_case_manifest_paths=paths,
+    )
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["prior_history_invalid"]
+    assert run.artifacts == [] and not run.request.output_dir.exists()
+
+
+@pytest.mark.parametrize("tamper", ["object_counts", "edge_self_hash"])
+def test_source_graph_preflight_inherits_manifest_and_row_integrity_checks(
+    tmp_path: Path, tamper: str
+) -> None:
+    profiles = _comparison_profiles()
+    bundle, paths = _materialize_comparison_sources(
+        tmp_path / "sources", _comparison_bundle(), profiles
+    )
+    manifest_path = paths[0]
+    manifest = json.loads(manifest_path.read_text())
+    if tamper == "object_counts":
+        assert manifest["object_counts"].pop("ProductCase") == 1
+        manifest["object_counts"]["Artifact"] = 1
+    else:
+        nodes_path = manifest_path.parent / manifest["graph_nodes"]["filename"]
+        edges_path = manifest_path.parent / manifest["graph_edges"]["filename"]
+        nodes, edges = read_parquet_rows(nodes_path, edges_path)
+        edges[0] = edges[0].model_copy(update={"content_hash": "f" * 64})
+        write_parquet(nodes_path, edges_path, nodes, edges)
+        manifest["graph_edges"]["sha256"] = hashlib.sha256(
+            edges_path.read_bytes()
+        ).hexdigest()
+    manifest_sha = _write(manifest_path, manifest)
+    bundle["case_graph_refs"][0]["manifest_sha256"] = manifest_sha
+    for external in bundle["external_case_evidence_refs"]:
+        if (
+            external["source_case_graph_ref"]["graph_id"]
+            == bundle["case_graph_refs"][0]["graph_id"]
+        ):
+            external["source_case_graph_ref"]["manifest_sha256"] = manifest_sha
 
     run = _run(
         tmp_path / "run",

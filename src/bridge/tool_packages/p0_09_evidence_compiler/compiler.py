@@ -37,6 +37,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     GraphNodeType,
     GraphKind,
     MissingEvidenceObservation,
+    ReconciliationRecord,
     ReconciliationSpec,
     ReconciliationSpecRegistry,
     RegistryStatus,
@@ -327,6 +328,30 @@ def requirement_content_hash(requirement: EvidenceRequirement) -> str:
             "state": requirement.state.value,
             "reason_codes": requirement.reason_codes,
             "satisfying_evidence_refs": requirement.satisfying_evidence_refs,
+        }
+    )
+
+
+def reconciliation_record_content_hash(record: ReconciliationRecord) -> str:
+    return canonical_hash(
+        {
+            "graph_id": record.graph_id,
+            "graph_version": record.graph_version,
+            "claim_ref": record.claim_ref.ref,
+            "reconciliation_spec_ref": record.reconciliation_spec_ref.ref,
+            "sufficiency_profile_refs": [
+                item.ref for item in record.sufficiency_profile_refs
+            ],
+            "eligibility": record.eligibility.value,
+            "state": record.state.value if record.state else None,
+            "direction": record.direction.value if record.direction else None,
+            "channel_resolutions": [
+                item.model_dump(mode="json") for item in record.channel_resolutions
+            ],
+            "included_evidence_refs": record.included_evidence_refs,
+            "excluded_evidence_refs": record.excluded_evidence_refs,
+            "open_requirement_refs": record.open_requirement_refs,
+            "reason_codes": record.reason_codes,
         }
     )
 
@@ -1228,9 +1253,11 @@ def _validate_comparison_bindings(
     declared_inputs: set[str] = set()
     accepted: list[ExternalCaseEvidenceRef] = []
     rejected: list[RejectedEvidenceRecord] = []
-    evidence_sources: dict[str, set[str]] = defaultdict(set)
+    evidence_declarations: dict[str, set[str]] = defaultdict(set)
     for item in bundle.external_case_evidence_refs:
-        evidence_sources[item.evidence_ref].add(item.source_case_graph_ref.graph_id)
+        evidence_declarations[item.evidence_ref].add(
+            canonical_hash(item.model_dump(mode="json"))
+        )
     for index, raw_external in enumerate(bundle.external_case_evidence_refs):
         raw = (
             raw_external.model_dump(mode="json")
@@ -1313,7 +1340,7 @@ def _validate_comparison_bindings(
             != external.tool_run_execution_state
         ):
             reasons.append("external_evidence_claim_mapping_invalid")
-        if len(evidence_sources[external.evidence_ref]) > 1:
+        if len(evidence_declarations[external.evidence_ref]) > 1:
             reasons.append("duplicate_logical_key_conflict")
         source_claim = claims.get(
             (external.source_claim_ref.object_id, external.source_claim_ref.object_version)
