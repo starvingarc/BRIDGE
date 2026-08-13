@@ -1,0 +1,107 @@
+{
+  "$defs": {
+    "GateReasonSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "enum": [
+            "contract",
+            "data",
+            "model",
+            "prior",
+            "gate",
+            "score",
+            "provenance"
+          ],
+          "title": "Axis",
+          "type": "string"
+        },
+        "code": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "remediation": {
+          "minLength": 1,
+          "title": "Remediation",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/ReasonSeverity"
+        }
+      },
+      "required": [
+        "code",
+        "axis",
+        "severity",
+        "description",
+        "remediation"
+      ],
+      "title": "GateReasonSpec",
+      "type": "object"
+    },
+    "GateRuleStatus": {
+      "enum": [
+        "candidate",
+        "frozen"
+      ],
+      "title": "GateRuleStatus",
+      "type": "string"
+    },
+    "ReasonSeverity": {
+      "enum": [
+        "info",
+        "warning",
+        "limiting",
+        "blocking",
+        "missing"
+      ],
+      "title": "ReasonSeverity",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "catalog_id": {
+      "const": "BRIDGE-REASON-CODE-CATALOG-v0.1",
+      "title": "Catalog Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "reasons": {
+      "items": {
+        "$ref": "#/$defs/GateReasonSpec"
+      },
+      "minItems": 1,
+      "title": "Reasons",
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/GateRuleStatus"
+    }
+  },
+  "required": [
+    "catalog_id",
+    "object_version",
+    "status",
+    "created_at",
+    "reasons"
+  ],
+  "title": "ReasonCodeCatalog",
+  "type": "object"
+}

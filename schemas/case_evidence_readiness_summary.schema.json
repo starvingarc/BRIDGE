@@ -1,0 +1,107 @@
+{
+  "$defs": {
+    "ScoreStateCount": {
+      "additionalProperties": false,
+      "properties": {
+        "unavailable": {
+          "minimum": 0,
+          "title": "Unavailable",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "unavailable"
+      ],
+      "title": "ScoreStateCount",
+      "type": "object"
+    },
+    "StateCount": {
+      "additionalProperties": false,
+      "properties": {
+        "insufficient": {
+          "minimum": 0,
+          "title": "Insufficient",
+          "type": "integer"
+        },
+        "limited": {
+          "minimum": 0,
+          "title": "Limited",
+          "type": "integer"
+        },
+        "not_assessed": {
+          "minimum": 0,
+          "title": "Not Assessed",
+          "type": "integer"
+        },
+        "sufficient": {
+          "minimum": 0,
+          "title": "Sufficient",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sufficient",
+        "limited",
+        "insufficient",
+        "not_assessed"
+      ],
+      "title": "StateCount",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/case-evidence-readiness-summary/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "blocking_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocking Reasons",
+      "type": "array"
+    },
+    "evidence_sufficiency_counts": {
+      "$ref": "#/$defs/StateCount"
+    },
+    "product_case_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Product Case Ref"
+    },
+    "profile_count": {
+      "maximum": 5,
+      "minimum": 1,
+      "title": "Profile Count",
+      "type": "integer"
+    },
+    "score_state_counts": {
+      "$ref": "#/$defs/ScoreStateCount"
+    },
+    "summary_id": {
+      "pattern": "^case-evidence-readiness-summary:[a-f0-9]{16}$",
+      "title": "Summary Id",
+      "type": "string"
+    },
+    "summary_version": {
+      "const": "0.1.0",
+      "title": "Summary Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "summary_id",
+    "summary_version",
+    "profile_count",
+    "evidence_sufficiency_counts",
+    "score_state_counts",
+    "blocking_reasons"
+  ],
+  "title": "CaseEvidenceReadinessSummary",
+  "type": "object"
+}

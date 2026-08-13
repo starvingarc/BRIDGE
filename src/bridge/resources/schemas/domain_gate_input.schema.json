@@ -1,0 +1,233 @@
+{
+  "$defs": {
+    "ContractValidationState": {
+      "enum": [
+        "frozen",
+        "candidate",
+        "not_assessed"
+      ],
+      "title": "ContractValidationState",
+      "type": "string"
+    },
+    "P0DomainId": {
+      "enum": [
+        "target_identity",
+        "regional_fidelity",
+        "developmental_compatibility",
+        "off_target_control",
+        "proliferation_stress_response"
+      ],
+      "title": "P0DomainId",
+      "type": "string"
+    },
+    "RequirementState": {
+      "enum": [
+        "required",
+        "not_required",
+        "not_assessed"
+      ],
+      "title": "RequirementState",
+      "type": "string"
+    },
+    "SensitivityKind": {
+      "enum": [
+        "reference",
+        "preprocessing",
+        "annotation",
+        "assay",
+        "method",
+        "downsampling"
+      ],
+      "title": "SensitivityKind",
+      "type": "string"
+    },
+    "VersionedObjectPointer": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "minLength": 1,
+          "title": "Object Version",
+          "type": "string"
+        },
+        "provenance_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Provenance Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version",
+        "provenance_refs"
+      ],
+      "title": "VersionedObjectPointer",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/domain-gate-input/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "domain_gate_input_id": {
+      "pattern": "^domain-gate-input:[A-Za-z0-9._:-]+$",
+      "title": "Domain Gate Input Id",
+      "type": "string"
+    },
+    "domain_id": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/P0DomainId"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "measurement_result_input_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Measurement Result Input Ids",
+      "type": "array"
+    },
+    "measurement_spec_input_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Measurement Spec Input Id"
+    },
+    "method_requirement": {
+      "$ref": "#/$defs/RequirementState",
+      "default": "not_assessed"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "prior_record_input_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Prior Record Input Ids",
+      "type": "array"
+    },
+    "prior_requirement": {
+      "$ref": "#/$defs/RequirementState",
+      "default": "not_assessed"
+    },
+    "product_case": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectPointer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "product_definition": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectPointer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "provenance_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "qc_profile_input_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Qc Profile Input Id"
+    },
+    "required_sensitivity_kinds": {
+      "items": {
+        "$ref": "#/$defs/SensitivityKind"
+      },
+      "title": "Required Sensitivity Kinds",
+      "type": "array"
+    },
+    "score_contract_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Score Contract Ref"
+    },
+    "sensitivity_record_input_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sensitivity Record Input Ids",
+      "type": "array"
+    },
+    "task_validation_state": {
+      "$ref": "#/$defs/ContractValidationState",
+      "default": "not_assessed"
+    },
+    "validation_record_input_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Validation Record Input Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "domain_gate_input_id",
+    "object_version",
+    "created_at",
+    "provenance_refs"
+  ],
+  "title": "DomainGateInput",
+  "type": "object"
+}

@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "SensitivityKind": {
+      "enum": [
+        "reference",
+        "preprocessing",
+        "annotation",
+        "assay",
+        "method",
+        "downsampling"
+      ],
+      "title": "SensitivityKind",
+      "type": "string"
+    },
+    "SensitivityState": {
+      "enum": [
+        "stable",
+        "limited",
+        "unstable",
+        "not_assessed"
+      ],
+      "title": "SensitivityState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/evidence-sensitivity-record/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "baseline_ref": {
+      "minLength": 1,
+      "title": "Baseline Ref",
+      "type": "string"
+    },
+    "conclusion_ref": {
+      "minLength": 1,
+      "title": "Conclusion Ref",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "evidence_family_id": {
+      "minLength": 1,
+      "title": "Evidence Family Id",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "measurement_spec_ref": {
+      "minLength": 1,
+      "title": "Measurement Spec Ref",
+      "type": "string"
+    },
+    "object_version": {
+      "minLength": 1,
+      "title": "Object Version",
+      "type": "string"
+    },
+    "perturbation_ref": {
+      "minLength": 1,
+      "title": "Perturbation Ref",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "required_for_interpretation": {
+      "default": true,
+      "title": "Required For Interpretation",
+      "type": "boolean"
+    },
+    "sensitivity_kind": {
+      "$ref": "#/$defs/SensitivityKind"
+    },
+    "sensitivity_record_id": {
+      "pattern": "^sensitivity-record:[A-Za-z0-9._:-]+$",
+      "title": "Sensitivity Record Id",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/SensitivityState"
+    }
+  },
+  "required": [
+    "sensitivity_record_id",
+    "object_version",
+    "created_at",
+    "measurement_spec_ref",
+    "sensitivity_kind",
+    "evidence_family_id",
+    "state",
+    "baseline_ref",
+    "perturbation_ref",
+    "conclusion_ref",
+    "evidence_refs",
+    "provenance_refs"
+  ],
+  "title": "EvidenceSensitivityRecord",
+  "type": "object"
+}

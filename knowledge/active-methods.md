@@ -33,3 +33,9 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 ## P0-03: Target Identity & Regional Fidelity
 
 No methods are selected while this package remains a scaffold.
+
+## P0-08: Evidence Sufficiency
+
+- `METHOD-BRIDGE-ALGORITHM-A0908D` — BRIDGE algorithm ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ALGORITHM-A0908D))
+- `METHOD-BRIDGE-REGISTRY` — BRIDGE registry ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-REGISTRY))
+- `METHOD-BRIDGE-VALIDATOR` — BRIDGE validator ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-VALIDATOR))

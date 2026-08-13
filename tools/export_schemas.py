@@ -30,6 +30,17 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
     VisualizationArtifact,
 )
+from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
+    CaseEvidenceReadinessSummary,
+    DomainGateInput,
+    EvidenceSensitivityRecord,
+    EvidenceSufficiencyProfile,
+    EvidenceSufficiencyRunResult,
+    EvidenceValidationRecord,
+    GateRuleSpec,
+    PriorApplicabilityRecord,
+    ReasonCodeCatalog,
+)
 
 
 MODELS = {
@@ -40,13 +51,22 @@ MODELS = {
     "cell_state_benchmark_spec": ("bridge://schemas/cell-state-benchmark-spec/v0.2", CellStateBenchmarkSpec),
     "cell_state_evidence_profile": ("bridge://schemas/cell-state-evidence-profile/v0.1", CellStateEvidenceProfile),
     "cell_state_release_manifest": ("bridge://schemas/cell-state-release-manifest/v0.1", CellStateReleaseManifest),
+    "case_evidence_readiness_summary": ("bridge://schemas/case-evidence-readiness-summary/v0.1", CaseEvidenceReadinessSummary),
+    "domain_gate_input": ("bridge://schemas/domain-gate-input/v0.1", DomainGateInput),
     "eligibility_result": ("bridge://schemas/eligibility-result/v0.1", EligibilityResult),
+    "evidence_sensitivity_record": ("bridge://schemas/evidence-sensitivity-record/v0.1", EvidenceSensitivityRecord),
+    "evidence_sufficiency_gate_rule_spec": ("bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1", GateRuleSpec),
+    "evidence_sufficiency_profile": ("bridge://schemas/evidence-sufficiency-profile/v0.1", EvidenceSufficiencyProfile),
+    "evidence_sufficiency_reason_code_catalog": ("bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.1", ReasonCodeCatalog),
+    "evidence_sufficiency_run_result": ("bridge://schemas/evidence-sufficiency-run-result/v0.1", EvidenceSufficiencyRunResult),
+    "evidence_validation_record": ("bridge://schemas/evidence-validation-record/v0.1", EvidenceValidationRecord),
     "freeze_gate_spec": ("bridge://schemas/freeze-gate-spec/v0.2", FreezeGateSpec),
     "knowledge_hit": ("bridge://schemas/knowledge-hit/v0.1", KnowledgeHit),
     "marker_program_card": ("bridge://schemas/marker-program-card/v0.1", MarkerProgramCard),
     "measurement_result": ("bridge://schemas/measurement-result/v0.1", MeasurementResult),
     "measurement_spec": ("bridge://schemas/measurement-spec/v0.1", MeasurementSpec),
     "qc_readiness_profile": ("bridge://schemas/qc-readiness-profile/v0.1", QCReadinessProfile),
+    "prior_applicability_record": ("bridge://schemas/prior-applicability-record/v0.1", PriorApplicabilityRecord),
     "reference_manifest": ("bridge://schemas/reference-manifest/v0.1", ReferenceManifest),
     "reference_profile": ("bridge://schemas/reference-profile/v0.1", ReferenceProfile),
     "structured_input_ref": ("bridge://schemas/structured-input-ref/v0.1", StructuredInputRef),

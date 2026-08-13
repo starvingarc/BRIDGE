@@ -9,6 +9,14 @@
 | Primary output | `EvidenceSufficiencyProfile` |
 | Current state | `candidate` |
 
+## 0. 当前实现绑定（候选）
+
+P0-08 `v0.2.0` 已实现为确定性候选工具，使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同为 `bridge://schemas/evidence-sufficiency-run-result/v0.1`；候选 gate rule 与 reason-code catalog 均为 `object_version=0.1.0`。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析、不生成 `MeasurementResult` 或可视化。
+
+这是一项工程可执行性进展，不是科学冻结。`ENV-EVIDENCE-v0.1` 仍为 `proposed`，所有已选内部方法记录仍为 `formal_eligible=false`；真实 ProductCase 的三轴状态尚未由此实现得到验证。当前没有冻结的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
+
+完整输入角色、字段、eligibility、artifact、reason code、失败与幂等行为见 `tool_packages/P0-08/README.md`；合成对象的可复现工程验证见 `docs/validation/p0_08_evidence_sufficiency_20260813.md`。
+
 ## 1. 任务目标与边界
 
 Evidence Sufficiency 判断某个域的分析结果是否具有足够证据支持当前发布方式。它读取已经生成的 QC、域分析、benchmark、敏感性和知识适用性记录，不重新运行单细胞分析，也不评价产品本身好坏。
@@ -35,7 +43,7 @@ Evidence Sufficiency 判断某个域的分析结果是否具有足够证据支�
 - reference、prior、ontology 和 knowledge snapshot 的版本与适用范围。
 - reference、preprocessing、annotation、assay、方法和下采样敏感性结果。
 
-系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本和 provenance。
+系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本和 provenance。跨域复用的非空 ProductCase/ProductDefinition pointer 必须分别在对象 ID、对象版本和 provenance-reference 集合上完全一致；provenance 顺序不参与身份，但成员变化属于冲突。自身 Schema 无版本字段的 `QCReadinessProfile` 和 `MeasurementResult` 在本 adapter 中只接受 `StructuredInputRef.object_version=0.1.0`，不得由调用方伪造其他版本。
 
 ## 3. 三轴证据合同
 
@@ -79,7 +87,7 @@ Prior Applicability 判断 reference 和先验知识能否用于当前域，不�
 | `not_required` | MeasurementSpec 明确不依赖外部 prior |
 | `not_assessed` | prior snapshot、适用性声明或 crosswalk 尚未建立 |
 
-同一 evidence family 的重复数据库记录必须去重。实时联网证据只能进入策展候选，不能改变当次门控。
+同一 evidence family 的重复数据库记录必须去重。只有 `required_for_interpretation=true` 的不同规范记录可以形成科学冲突；supporting 记录只保留 provenance，不能改善或恶化任一轴，也不能与唯一 required 记录形成冲突。实时联网证据只能进入策展候选，不能改变当次门控。
 
 ## 4. 确定性门控
 
@@ -155,7 +163,7 @@ measurement_result_refs / evidence_refs / sensitivity_refs
 created_at / deterministic_run_ref
 ```
 
-案例级 `CaseEvidenceReadinessSummary` 只包含各域 `sufficient/limited/insufficient/not_assessed` 数量、`score_state` 数量和阻塞原因列表。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
+案例级 `CaseEvidenceReadinessSummary` 只包含各域 `sufficient/limited/insufficient/not_assessed` 数量、`score_state` 数量和阻塞原因列表。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
 
 ## 8. 运行环境
 
@@ -188,6 +196,11 @@ created_at / deterministic_run_ref
 - reference gap 或 OOD 使结果不可解释：Model Robustness=`not_applicable` 或 `unstable`。
 - required prior 不适用：Prior Applicability=`inapplicable`。
 - 同源数据库或相关方法数量增加：不得提高 sufficiency。
+- ProductDefinition 不在 MeasurementSpec 适用卡中、QC assay/MeasurementSpec 状态不一致，或 validation modality/tool 与 MeasurementSpec 不一致：技术资格失败，不生成科学 profile。
+- DomainGateInput、MeasurementSpec、QC profile、MeasurementResult 出现歧义逻辑 ID，或 validation/prior/sensitivity 的同一逻辑 ID 跨 evidence family：技术资格失败。
+- 结构化科学 JSON 的任意深度 key 或 value 中出现绝对路径，或使用 `~`/`~user`/HOME/USERPROFILE/HOMEPATH 的 home-relative 路径、任意位置的 `file:` scheme（含 opaque 与 slash 形式）、带凭据 URL、非空 credential-named JSON key/value、`<credential-name>[:=]<single-token>`、bearer credential 或常见访问令牌形式：返回 `unsafe_scientific_reference`，不回显原字符串且不发布输出 bundle。同一个语义 credential-name 规则用于 JSON key、URL query key、赋值左值和所有 scientific/source 字符串（包括通过 published-ref shape 的字符串）：去除大小写和 separator 差异后，名称若精确为 `auth`/`authorization`，以 `password`/`passphrase`/`passwd`/`pwd`/`secret`/`token`/`credential(s)`/`passcode`/`pincode` 结尾，或以 `key` 结尾且 stem 以 database/DB/webhook/master/service/account/signing/encryption/decryption/private/SSH/API/access/client/consumer/secret 敏感 qualifier 开头或结尾，则视为凭据；`pin` 仅在 stem 带 auth/authorization/account/access/security/login/user/credential/verification/device 明确上下文时拒绝。该规则覆盖 `databasePassphrase`、`servicePasswd`、`accountPwd`、`databaseKey`、`dbKey`、`webhookKey` 和 `accountPin`，同时保持 `pin`、`cellPin`、`publicKey`、`capillaryKey`、`monkey` 等已记录邻近词合法。这是一份有限、明确的 publication-safety vocabulary，不是任意秘密检测器，也不声称识别所有秘密；未声明的新别名本身不构成当前合同违约，新增别名必须显式修订 vocabulary、文档和回归测试。正常 `bridge://`/无凭据 HTTP(S) 引用和含空格的科学自然语言仍可使用。
+- 实际会复制到公开 profile 的 MeasurementSpec/QC/measurement/record/snapshot/Evidence Family/evidence 等引用必须在 eligibility 阶段通过 scheme-shaped 或 identifier-shaped 检查；不合法时统一返回 `structured_input_schema_invalid`，直接 adapter 与公共 SDK 都返回失败 `ToolRunV2` 且不落盘。request-local `*_input_ids` 不受此发布引用约束，未复制到公开结果的源字段继续只服从其源 Schema。
+- 公共 SDK/registry 或直接 adapter 收到 v0.1 请求：统一返回 `tool_request_v2_required`，不使用模块私有替代代码。
 - 工具执行失败：保留失败记录，不自动换用未注册方法。
 - 一个域不足：只阻塞该域，不修改其他域的 raw evidence 或状态。
 
@@ -203,7 +216,9 @@ created_at / deterministic_run_ref
 | 同 evidence family 多工具一致 | 去重后保留一致性，不进行多数投票 |
 | reference/preprocessing swap 反转结论 | `unstable`，阻塞定向结论 |
 | sealed competitor | 对规则、阈值、reason code 和工具选择的数据流为零 |
-| 重复运行同一版本输入 | 输出逐字段一致 |
+| set-like 字段重排并复用同一 output_dir | semantic input hash、run ID 与 bundle 字节一致；调用级原始 checksum 仍可追溯 |
+| 输入对象出现真实语义变化 | semantic input hash 与 run ID 改变，不与已有 bundle 碰撞 |
+| QC/MeasurementResult 声明非 `0.1.0` ref version | 技术资格失败且不发布输出 |
 | Agent/LLM 给出不同意见 | 数值、状态和 reason code 保持不变 |
 
 任务晋升为 `frozen` 前，需完成 schema、missing-input、source/modality holdout、OOD、下采样、reference/preprocessing swap、同源证据去重、版本迁移、隐私和 claim review。
