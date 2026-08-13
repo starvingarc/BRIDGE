@@ -715,6 +715,15 @@ class EvidenceGraphQueries:
 
     @classmethod
     def open(cls, manifest_path: Path) -> "EvidenceGraphQueries":
+        """Open an untrusted graph without exposing nested validation details."""
+
+        try:
+            return cls._open_untrusted(manifest_path)
+        except Exception:
+            raise ValueError("manifest_integrity_failed") from None
+
+    @classmethod
+    def _open_untrusted(cls, manifest_path: Path) -> "EvidenceGraphQueries":
         if manifest_path.is_symlink() or not manifest_path.is_file():
             raise ValueError("manifest_integrity_failed")
         try:

@@ -3401,6 +3401,68 @@ def test_comparison_projection_masks_nested_claim_validation_details(
     assert canary not in rendered
 
 
+@pytest.mark.parametrize(
+    "surface",
+    ["case_manifest", "comparison_manifest", "case_fact_json", "comparison_parquet"],
+)
+def test_query_open_masks_every_untrusted_artifact_boundary(
+    tmp_path: Path, surface: str
+) -> None:
+    canary = f"clientSecret=boundary-{surface}-do-not-echo"
+    comparison = surface.startswith("comparison")
+    run = _run(
+        tmp_path,
+        **(
+            {
+                "bundle": _comparison_bundle(),
+                "profiles": _comparison_profiles(),
+                "claim_registry": _comparison_claim_registry(),
+            }
+            if comparison
+            else {}
+        ),
+    )
+    final = run.request.output_dir / run.run_id
+    manifest_name = (
+        "comparison_evidence_graph_manifest.json"
+        if comparison
+        else "case_evidence_graph_manifest.json"
+    )
+    manifest_path = final / manifest_name
+    manifest = json.loads(manifest_path.read_text())
+    if surface == "case_manifest":
+        manifest["product_case_ref"]["object_id"] = canary
+    elif surface == "comparison_manifest":
+        manifest["external_evidence_bindings"][0]["source_claim_ref"][
+            "object_id"
+        ] = canary
+    elif surface == "case_fact_json":
+        fact_path = final / manifest["evidence_records"]["filename"]
+        fact = json.loads(fact_path.read_text())
+        fact["records"][0]["claim_ref"]["object_id"] = canary
+        manifest["evidence_records"]["sha256"] = _write(fact_path, fact)
+    else:
+        parquet_path = final / manifest["graph_nodes"]["filename"]
+        parquet_path.write_bytes(canary.encode("utf-8"))
+        manifest["graph_nodes"]["sha256"] = hashlib.sha256(
+            parquet_path.read_bytes()
+        ).hexdigest()
+    _write(manifest_path, manifest)
+
+    with pytest.raises(Exception) as caught:
+        EvidenceGraphQueries.open(manifest_path)
+    rendered = "".join(
+        traceback.format_exception(
+            type(caught.value), caught.value, caught.value.__traceback__
+        )
+    )
+    assert type(caught.value) is ValueError
+    assert str(caught.value) == "manifest_integrity_failed"
+    assert caught.value.__cause__ is None
+    assert canary not in rendered
+    assert str(manifest_path) not in rendered
+
+
 def _rehash_graph_edge(edge: GraphEdgeRow) -> GraphEdgeRow:
     properties_hash = hashlib.sha256(edge.properties_json.encode("utf-8")).hexdigest()
     identity = (
