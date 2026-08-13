@@ -4,6 +4,7 @@ import hashlib
 import inspect
 import json
 from pathlib import Path
+import traceback
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -3316,6 +3317,88 @@ def test_comparison_manifest_binds_external_profile_without_input_label(
     _write(manifest_path, manifest)
     with pytest.raises(ValueError, match="manifest_integrity_failed"):
         EvidenceGraphQueries.open(manifest_path)
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        (
+            "source_claim_ref",
+            {"object_id": "claim:case-b", "object_version": "1.0.0"},
+        ),
+        ("evidence_state", "negative"),
+        ("applicability", "not_assessed"),
+        ("tool_run_execution_state", "partial"),
+    ],
+)
+def test_comparison_manifest_binding_semantics_are_bound_to_graph_edge(
+    tmp_path: Path, field: str, replacement: Any
+) -> None:
+    run = _run(
+        tmp_path,
+        bundle=_comparison_bundle(),
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    manifest_path = (
+        run.request.output_dir / run.run_id / "comparison_evidence_graph_manifest.json"
+    )
+    manifest = json.loads(manifest_path.read_text())
+    manifest["external_evidence_bindings"][0][field] = replacement
+    _write(manifest_path, manifest)
+
+    with pytest.raises(ValueError, match="manifest_integrity_failed"):
+        EvidenceGraphQueries.open(manifest_path)
+
+
+def test_comparison_projection_masks_nested_claim_validation_details(
+    tmp_path: Path,
+) -> None:
+    canary = "clientSecret=do-not-echo-this-value"
+    run = _run(
+        tmp_path,
+        bundle=_comparison_bundle(),
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    final = run.request.output_dir / run.run_id
+    manifest_path = final / "comparison_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    nodes_path = final / manifest["graph_nodes"]["filename"]
+    edges_path = final / manifest["graph_edges"]["filename"]
+    nodes, edges = read_parquet_rows(nodes_path, edges_path)
+    claim_index = next(
+        index
+        for index, node in enumerate(nodes)
+        if node.node_type is GraphNodeType.CLAIM
+        and node.record_mode is GraphRecordMode.OWNED
+    )
+    claim = nodes[claim_index]
+    properties = json.loads(claim.properties_json or "{}")
+    properties["clientSecret"] = canary
+    properties_json = canonical_json_bytes(properties).decode("utf-8")
+    nodes[claim_index] = claim.model_copy(
+        update={
+            "properties_json": properties_json,
+            "content_hash": hashlib.sha256(properties_json.encode("utf-8")).hexdigest(),
+        }
+    )
+    write_parquet(nodes_path, edges_path, nodes, edges)
+    manifest["graph_nodes"]["sha256"] = hashlib.sha256(
+        nodes_path.read_bytes()
+    ).hexdigest()
+    _write(manifest_path, manifest)
+
+    with pytest.raises(Exception) as caught:
+        EvidenceGraphQueries.open(manifest_path)
+    rendered = "".join(
+        traceback.format_exception(
+            type(caught.value), caught.value, caught.value.__traceback__
+        )
+    )
+    assert type(caught.value) is ValueError
+    assert str(caught.value) == "manifest_integrity_failed"
+    assert canary not in rendered
 
 
 def _rehash_graph_edge(edge: GraphEdgeRow) -> GraphEdgeRow:

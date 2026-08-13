@@ -33,6 +33,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceRequirement,
     EvidenceRequirementState,
     EvidenceTier,
+    ExternalCaseEvidenceBinding,
     GraphEdgeRow,
     GraphEdgeType,
     GraphKind,
@@ -41,6 +42,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     GraphRecordMode,
     ReconciliationRecord,
     ReconciliationSpecRegistry,
+    VersionedObjectRef,
     validate_safe_json,
 )
 
@@ -385,6 +387,25 @@ def build_graph_rows(
                 properties=profile.model_dump(mode="json"),
                 allow_upstream_no_score_fields=True,
             )
+            binding = ExternalCaseEvidenceBinding(
+                source_case_graph_ref=external.source_case_graph_ref,
+                evidence_ref=external.evidence_ref,
+                evidence_content_hash=external.evidence_content_hash,
+                product_case_ref=external.product_case_ref,
+                source_claim_ref=external.source_claim_ref,
+                comparison_claim_ref=external.comparison_claim_ref,
+                evidence_family_ref=external.evidence_family_ref,
+                sufficiency_profile_ref=VersionedObjectRef(
+                    object_id=profile.profile_id,
+                    object_version=profile.profile_version,
+                ),
+                relation=external.relation,
+                evidence_state=external.evidence_state,
+                evidence_tier=external.evidence_tier,
+                lifecycle_state=external.lifecycle_state,
+                applicability=external.applicability,
+                tool_run_execution_state=external.tool_run_execution_state,
+            )
             add_edge(GraphEdgeType.DEPENDS_ON, external_node_id, profile_node)
             add_edge(GraphEdgeType.APPLICABLE_TO, external_node_id, root_id)
             add_edge(GraphEdgeType.BELONGS_TO_EVIDENCE_FAMILY, external_node_id, family_node)
@@ -392,7 +413,12 @@ def build_graph_rows(
                 GraphEdgeType.APPLICABLE_TO,
                 external_node_id,
                 external_case_nodes[external.source_case_graph_ref.graph_id],
-                {"source_case_projection": True},
+                {
+                    "source_case_projection": True,
+                    "external_binding_sha256": canonical_hash(
+                        binding.model_dump(mode="json")
+                    ),
+                },
             )
             if external.lifecycle_state is EvidenceLifecycleState.ACTIVE:
                 add_edge(GraphEdgeType(external.relation.value), external_node_id, claim_node)

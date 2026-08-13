@@ -11,6 +11,7 @@ import networkx as nx
 
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import P0DomainId
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
+    canonical_hash,
     canonical_json_bytes,
     evidence_identity,
     evidence_record_logical_key,
@@ -164,7 +165,12 @@ def _validate_comparison_projection(
                 GraphEdgeType.APPLICABLE_TO,
                 node.node_id,
                 case_node.node_id,
-                {"source_case_projection": True},
+                {
+                    "source_case_projection": True,
+                    "external_binding_sha256": canonical_hash(
+                        binding.model_dump(mode="json")
+                    ),
+                },
             )
         )
         profile = _node_for_ref(
@@ -809,9 +815,14 @@ class EvidenceGraphQueries:
         except Exception as exc:
             raise ValueError("manifest_integrity_failed") from exc
         if isinstance(manifest, ComparisonEvidenceGraphManifest):
-            _validate_comparison_projection(
-                manifest, nodes, edges, reconciliation_set
-            )
+            try:
+                _validate_comparison_projection(
+                    manifest, nodes, edges, reconciliation_set
+                )
+            except Exception:
+                # This is a public, untrusted-artifact boundary. Nested model
+                # validation details can contain attacker-controlled values.
+                raise ValueError("manifest_integrity_failed") from None
         return cls(manifest=manifest, nodes=nodes, edges=edges, graph=graph)
 
     def get_claim_evidence(
