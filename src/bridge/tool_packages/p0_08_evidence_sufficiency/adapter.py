@@ -86,31 +86,24 @@ EMBEDDED_POSIX_PATH = re.compile(
 )
 URI_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s<>\"']+")
 FILE_URI = re.compile(r"(?i)(?<![A-Za-z0-9+.-])file:")
-CREDENTIAL_ASSIGNMENT = re.compile(
-    r"(?i)(?<![A-Za-z0-9_])(?:password|api[_-]?(?:key|token)|secret|client[_-]?secret|"
-    r"access[_-]?token|refresh[_-]?token|auth[_-]?token|token|"
-    r"auth(?:orization)?|credentials?)\s*(?:=\s*\S+|"
-    r":\s*[A-Za-z0-9._~+/=-]+(?=$|[,;}\]]))"
-)
+ASSIGNMENT_SEPARATOR = re.compile(r"[:=]")
 BEARER_CREDENTIAL = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{8,}")
 COMMON_TOKEN = re.compile(
     r"(?:ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16})"
 )
-CREDENTIAL_QUERY_KEYS = frozenset(
+CREDENTIAL_EXACT_NAMES = frozenset({"auth", "authorization"})
+CREDENTIAL_NAME_SUFFIXES = ("password", "secret", "token", "credential", "credentials")
+SENSITIVE_KEY_QUALIFIERS = frozenset(
     {
-        "password",
-        "apikey",
-        "apitoken",
+        "api",
+        "private",
         "secret",
-        "token",
-        "accesstoken",
-        "auth",
-        "authorization",
-        "credential",
-        "credentials",
-        "clientsecret",
-        "refreshtoken",
-        "authtoken",
+        "access",
+        "signing",
+        "encryption",
+        "consumer",
+        "client",
+        "ssh",
     }
 )
 HOME_RELATIVE_PATH = re.compile(
@@ -615,7 +608,7 @@ def _contains_unsafe_scientific_reference(value: object) -> bool:
     if isinstance(value, dict):
         return any(
             _unsafe_string(str(key))
-            or (_is_credential_key(key) and _is_nonempty(item))
+            or (_is_credential_name(key) and _is_nonempty(item))
             or _contains_unsafe_scientific_reference(item)
             for key, item in value.items()
         )
@@ -624,9 +617,39 @@ def _contains_unsafe_scientific_reference(value: object) -> bool:
     return False
 
 
-def _is_credential_key(value: object) -> bool:
-    compact = re.sub(r"[^A-Za-z0-9]+", "", str(value)).casefold()
-    return compact in CREDENTIAL_QUERY_KEYS
+def _normalize_credential_name(value: object) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "", str(value)).casefold()
+
+
+def _is_credential_name(value: object) -> bool:
+    compact = _normalize_credential_name(value)
+    if compact in CREDENTIAL_EXACT_NAMES:
+        return True
+    if compact.endswith(CREDENTIAL_NAME_SUFFIXES):
+        return True
+    if not compact.endswith("key"):
+        return False
+    stem = compact[: -len("key")]
+    return any(
+        stem.startswith(qualifier) or stem.endswith(qualifier)
+        for qualifier in SENSITIVE_KEY_QUALIFIERS
+    )
+
+
+def _has_credential_assignment(value: str) -> bool:
+    for separator in ASSIGNMENT_SEPARATOR.finditer(value):
+        remainder = value[separator.end() :].lstrip()
+        token = re.match(r"[^\s,;}\]]+", remainder)
+        if token is None:
+            continue
+        trailing = remainder[token.end() :].strip()
+        if trailing and trailing[0] not in ",;}]":
+            continue
+        name_fragments = re.findall(r"[A-Za-z0-9]+", value[: separator.start()])
+        for width in range(1, min(3, len(name_fragments)) + 1):
+            if _is_credential_name("".join(name_fragments[-width:])):
+                return True
+    return False
 
 
 def _is_nonempty(value: object) -> bool:
@@ -653,7 +676,7 @@ def _unsafe_string(value: str) -> bool:
     ):
         return True
     if (
-        CREDENTIAL_ASSIGNMENT.search(stripped)
+        _has_credential_assignment(stripped)
         or BEARER_CREDENTIAL.search(stripped)
         or COMMON_TOKEN.search(stripped)
     ):
@@ -665,7 +688,7 @@ def _unsafe_string(value: str) -> bool:
         if parsed.username is not None or parsed.password is not None:
             return True
         if any(
-            _is_credential_key(key) and _is_nonempty(item)
+            _is_credential_name(key) and _is_nonempty(item)
             for key, item in parse_qsl(parsed.query, keep_blank_values=True)
         ):
             return True

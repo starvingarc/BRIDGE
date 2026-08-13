@@ -23,7 +23,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     DomainGateInput,
     EvidenceSufficiencyRunResult,
 )
-from bridge.toolkit.api import run_tool
+from bridge.toolkit.api import run_tool, validate_request
 from bridge.toolkit.contracts import ExecutionState, ToolRequest, ToolRequestV2
 from bridge.toolkit.registry import ToolRegistry
 
@@ -1088,9 +1088,36 @@ def test_unbound_structured_input_and_legacy_contract_fail_closed(tmp_path: Path
         "AKIA" + "A" * 16,
         "https://example.org/data?" + "token=placeholder",
         "https://example.org/data?accessToken=placeholder",
+        "https://example.org/data?sessionToken=placeholder",
+        "https://example.org/data?consumerSecret=placeholder",
+        "https://example.org/data?bearerToken=placeholder",
+        "https://example.org/data?personalAccessToken=placeholder",
+        "https://example.org/data?jwtToken=placeholder",
+        "https://example.org/data?csrfToken=placeholder",
+        "https://example.org/data?deviceToken=placeholder",
+        "https://example.org/data?webhookSecret=placeholder",
+        "https://example.org/data?databasePassword=placeholder",
+        "https://example.org/data?signingKey=placeholder",
         "clientSecret=placeholder-value",
         "refreshToken=placeholder-value",
         "authToken=placeholder-value",
+        "sessionToken=placeholder-value",
+        "id_token=placeholder-value",
+        "oauthToken=placeholder-value",
+        "privateKey=placeholder-value",
+        "consumerSecret=placeholder-value",
+        "bearerToken=placeholder-value",
+        "personalAccessToken=placeholder-value",
+        "jwtToken=placeholder-value",
+        "csrfToken=placeholder-value",
+        "deviceToken=placeholder-value",
+        "webhookSecret=placeholder-value",
+        "databasePassword=placeholder-value",
+        "signingKey=placeholder-value",
+        "encryptionKey=placeholder-value",
+        "sshKey=placeholder-value",
+        "apiResponseKey=placeholder-value",
+        "myApiKey=placeholder-value",
     ],
 )
 def test_unsafe_scientific_references_fail_without_publication(
@@ -1113,6 +1140,25 @@ def test_unsafe_scientific_references_fail_without_publication(
         "embedded file:/private.json",
         "embedded file:private.json",
         "citation [file:private.json]",
+        "sessionToken:credential123",
+        "session_token=credential123",
+        "idToken:credential123",
+        "id_token=credential123",
+        "oauthToken:credential123",
+        "privateKey:credential123",
+        "consumerSecret:credential123",
+        "bearerToken:credential123",
+        "personalAccessToken:credential123",
+        "jwtToken:credential123",
+        "csrfToken:credential123",
+        "deviceToken:credential123",
+        "webhookSecret:credential123",
+        "databasePassword:credential123",
+        "signingKey:credential123",
+        "encryptionKey:credential123",
+        "sshKey:credential123",
+        "apiResponseKey:credential123",
+        "myApiKey:credential123",
     ],
 )
 def test_direct_unsafe_string_contract_rejects_new_patterns(
@@ -1129,6 +1175,21 @@ def test_direct_unsafe_string_contract_rejects_new_patterns(
         "secret: secreted factor expression",
         "secreted factor expression: elevated",
         "bridge://auth/context/v0.1",
+        "monkey:biological-state",
+        "cell-state-tokenization:stable",
+        "secreted_factor:high",
+        "publicKey:reference123",
+        "bearerCellState:stable",
+        "personalAccessPattern:descriptive",
+        "jwtPathway:unavailable",
+        "csrfLikeTranscript:measured",
+        "deviceTokenization:stable",
+        "webhookSecretedFactor:measured",
+        "databasePasswordPolicy:documented",
+        "signalingKey:reference",
+        "cellStateKey:reference",
+        "key:reference",
+        "capillaryKey:vascular-state",
     ],
 )
 def test_direct_unsafe_string_contract_preserves_scientific_text(
@@ -1152,6 +1213,21 @@ def test_direct_unsafe_string_contract_preserves_scientific_text(
         "tokenization=biological-state",
         "profile:private-state",
         "CD4/CD8 ratio and neuron/glia comparison",
+        "monkey:biological-state",
+        "cell-state-tokenization:stable",
+        "secreted_factor:high",
+        "publicKey:reference123",
+        "bearerCellState:stable",
+        "personalAccessPattern:descriptive",
+        "jwtPathway:unavailable",
+        "csrfLikeTranscript:measured",
+        "deviceTokenization:stable",
+        "webhookSecretedFactor:measured",
+        "databasePasswordPolicy:documented",
+        "signalingKey:reference",
+        "cellStateKey:reference",
+        "key:reference",
+        "capillaryKey:vascular-state",
     ],
 )
 def test_safe_scientific_references_remain_eligible(
@@ -1181,6 +1257,25 @@ def test_safe_scientific_references_remain_eligible(
         ("authToken", "structural-secret-f"),
         ("APIToken", "structural-secret-g"),
         ("ACCESS_TOKEN", "structural-secret-h"),
+        ("sessionToken", "structural-secret-i"),
+        ("session_token", "structural-secret-j"),
+        ("idToken", "structural-secret-k"),
+        ("id_token", "structural-secret-l"),
+        ("oauthToken", "structural-secret-m"),
+        ("privateKey", "structural-secret-n"),
+        ("consumerSecret", "structural-secret-o"),
+        ("bearerToken", "structural-secret-p"),
+        ("personalAccessToken", "structural-secret-q"),
+        ("jwt_token", "structural-secret-r"),
+        ("csrfToken", "structural-secret-s"),
+        ("deviceToken", "structural-secret-t"),
+        ("webhookSecret", "structural-secret-u"),
+        ("databasePassword", "structural-secret-v"),
+        ("signingKey", "structural-secret-w"),
+        ("encryptionKey", "structural-secret-x"),
+        ("sshKey", "structural-secret-y"),
+        ("apiResponseKey", "structural-secret-z"),
+        ("myApiKey", "structural-secret-aa"),
         ("outer", "file:/private.json"),
         ("outer", "file:private.json"),
         ("~alice/private.json", "masked"),
@@ -1217,6 +1312,21 @@ def test_recursive_unsafe_keys_and_values_fail_without_echo_or_publication(
         "secretedFactor",
         "authentication_state",
         "APITokenization",
+        "sessionTokenization",
+        "secretedConsumerFactor",
+        "monkey",
+        "publicKey",
+        "bearerCellState",
+        "personalAccessPattern",
+        "jwtPathway",
+        "csrfLikeTranscript",
+        "deviceTokenization",
+        "webhookSecretedFactor",
+        "databasePasswordPolicy",
+        "signalingKey",
+        "cellStateKey",
+        "key",
+        "capillaryKey",
     ],
 )
 def test_scientific_keys_that_only_contain_credential_substrings_remain_legal(
@@ -1229,6 +1339,63 @@ def test_scientific_keys_that_only_contain_credential_substrings_remain_legal(
 
     assert adapter.check_eligibility(request, spec).eligible
     assert adapter.run(request, spec).execution_state is ExecutionState.SUCCEEDED
+
+
+@pytest.mark.parametrize(
+    "unsafe_ref",
+    [
+        "sessionToken:credential123",
+        "session_token:credential123",
+        "idToken:credential123",
+        "id_token:credential123",
+        "oauthToken:credential123",
+        "oauth_token:credential123",
+        "privateKey:credential123",
+        "private_key:credential123",
+        "consumerSecret:credential123",
+        "consumer_secret:credential123",
+        "clientSecret:credential123",
+        "accessToken:credential123",
+        "refreshToken:credential123",
+        "authToken:credential123",
+        "apiToken:credential123",
+        "bearerToken:credential123",
+        "personalAccessToken:credential123",
+        "jwtToken:credential123",
+        "csrfToken:credential123",
+        "deviceToken:credential123",
+        "webhookSecret:credential123",
+        "databasePassword:credential123",
+        "signingKey:credential123",
+        "encryptionKey:credential123",
+        "sshKey:credential123",
+        "apiResponseKey:credential123",
+        "myApiKey:credential123",
+    ],
+)
+def test_adjacent_credential_aliases_fail_direct_and_public_paths_without_echo(
+    tmp_path: Path, unsafe_ref: str
+) -> None:
+    request = _fixture_request(
+        tmp_path,
+        domain=_domain(evidence_refs=[unsafe_ref]),
+    )
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    direct_eligibility = adapter.check_eligibility(request, spec)
+    direct_run = adapter.run(request, spec)
+    public_eligibility = validate_request(request)
+    public_run = run_tool(request)
+
+    assert direct_eligibility.reason_codes == ["unsafe_scientific_reference"]
+    assert public_eligibility.reason_codes == ["unsafe_scientific_reference"]
+    for run in (direct_run, public_run):
+        assert run.execution_state is ExecutionState.FAILED
+        assert run.reason_codes == ["unsafe_scientific_reference"]
+        assert run.result is None
+        assert run.artifacts == []
+        assert unsafe_ref not in json.dumps(run.model_dump(mode="json"))
+    assert not request.output_dir.exists()
 
 
 @pytest.mark.parametrize(
