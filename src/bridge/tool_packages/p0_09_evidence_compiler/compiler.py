@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime
 import hashlib
-import json
 import re
 from typing import Any, Iterable, Mapping
 
 from pydantic import ValidationError
 
+from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
     EvidenceSufficiencyState,
@@ -102,21 +102,6 @@ class CompilationInvariantError(ValueError):
         super().__init__(detail or reason_code)
         self.reason_code = reason_code
         self.detail = detail
-
-
-def canonical_json_bytes(payload: object, *, indent: int | None = None) -> bytes:
-    separators = (",", ":") if indent is None else None
-    return (
-        json.dumps(
-            payload,
-            ensure_ascii=False,
-            allow_nan=False,
-            sort_keys=True,
-            separators=separators,
-            indent=indent,
-        )
-        + ("\n" if indent is not None else "")
-    ).encode("utf-8")
 
 
 def canonical_hash(payload: object) -> str:

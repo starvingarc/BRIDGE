@@ -1,27 +1,31 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 import hashlib
-import json
 import os
 from pathlib import Path
 import re
 import shutil
-import stat
 from typing import Any, Mapping
 from uuid import uuid4
 
-from pydantic import ValidationError
-
+from bridge.tool_packages._structured_runtime import (
+    LoadedInputs,
+    StructuredInputError,
+    failed_v2_run,
+    inputs_unchanged as _inputs_unchanged,
+    load_structured_inputs,
+    objects_for_role as _objects_for_role,
+    read_regular_bytes as _read_regular_bytes,
+    single_object as _single_object,
+    strict_json_loads as _loads_json,
+    write_json as _write_json,
+)
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSufficiencyProfile
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     CompilationInvariantError,
-    CONTENT_ADDRESSED_GRAPH_ROLES,
     canonical_input_hash,
-    canonical_json_bytes,
     compile_evidence_graph,
-    normalize_identity_payload,
     semantic_input_projection,
     evidence_record_content_hash,
     logical_key_hash,
@@ -113,19 +117,6 @@ EXPECTED_ARTIFACTS = {
     "artifact_manifest.json",
 }
 ARTIFACT_FILENAME = re.compile(r"^[a-z0-9_]+(?:\.[a-z0-9]+)+$")
-
-
-class StructuredInputError(ValueError):
-    def __init__(self, reason_code: str, detail: str = "") -> None:
-        super().__init__(detail or reason_code)
-        self.reason_code = reason_code
-        self.detail = detail
-
-
-@dataclass(frozen=True)
-class LoadedInputs:
-    objects_by_input_id: dict[str, FrozenModel]
-    bytes_by_input_id: dict[str, bytes]
 
 
 @dataclass(frozen=True)
@@ -238,7 +229,7 @@ class EvidenceCompilerAdapter:
             staging = output_root / f".{run_id}.staging-{uuid4().hex}"
             staging.mkdir(mode=0o700)
             staging_created = True
-            result, artifact_specs = _write_bundle(
+            result = _write_bundle(
                 staging=staging,
                 request=request,
                 spec=spec,
@@ -346,63 +337,12 @@ adapter = EvidenceCompilerAdapter()
 def _load_structured_inputs(
     refs: list[StructuredInputRef],
 ) -> tuple[LoadedInputs | None, list[str]]:
-    objects: dict[str, FrozenModel] = {}
-    bytes_by_input: dict[str, bytes] = {}
-    reasons: list[str] = []
-    seen: set[str] = set()
-    for ref in refs:
-        if ref.input_id in seen:
-            reasons.append("duplicate_object_input_id")
-            continue
-        seen.add(ref.input_id)
-        model = _role_model(ref)
-        if model is None:
-            continue
-        if ref.media_type != "application/json":
-            reasons.append("structured_input_media_type_unsupported")
-        try:
-            raw = _read_verified_bytes(ref)
-        except StructuredInputError as exc:
-            reasons.append(exc.reason_code)
-            continue
-        bytes_by_input[ref.input_id] = raw
-        try:
-            payload = _loads_json(raw)
-        except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
-            reasons.append("structured_input_json_invalid")
-            continue
-        # The compilation bundle owns the only intentionally open record-level
-        # JSON surfaces.  Check its top-level envelope here, while leaving
-        # candidate/missing entries to the compiler's sanitized sibling-reject
-        # path.  Other roles are closed Pydantic schemas; notably the frozen
-        # P0-08 profile legitimately contains ``domain_score=null``.
-        no_score_payload = (
-            _top_level_raw_payload(ref.role, payload)
-            if ref.role == "compilation_bundle"
-            else payload
-        )
-        if (
-            ref.role != "evidence_sufficiency_profile"
-            and _contains_legacy_contract(no_score_payload)
-        ):
-            reasons.append("legacy_evidence_contract_rejected")
-            continue
-        if contains_unsafe_reference(_top_level_raw_payload(ref.role, payload)):
-            reasons.append("unsafe_structured_input_reference")
-            continue
-        try:
-            value = model.model_validate(payload)
-            _validate_declared_version(ref, value)
-        except (ValidationError, ValueError):
-            reasons.append("structured_input_schema_invalid")
-            continue
-        if contains_unsafe_reference(_top_level_payload(ref.role, value)):
-            reasons.append("unsafe_structured_input_reference")
-            continue
-        objects[ref.input_id] = value
-    if reasons:
-        return None, sorted(set(reasons))
-    return LoadedInputs(objects_by_input_id=objects, bytes_by_input_id=bytes_by_input), []
+    return load_structured_inputs(
+        refs,
+        model_for=_role_model,
+        validate_payload=_validate_input_payload,
+        validate_model=_validate_input_model,
+    )
 
 
 def _role_model(ref: StructuredInputRef) -> type[FrozenModel] | None:
@@ -415,36 +355,28 @@ def _role_model(ref: StructuredInputRef) -> type[FrozenModel] | None:
     return ROLE_MODELS.get(ref.role)
 
 
-def _read_verified_bytes(ref: StructuredInputRef) -> bytes:
-    path = ref.path
-    try:
-        raw = _read_regular_bytes(path)
-    except FileNotFoundError as exc:
-        raise StructuredInputError("structured_input_not_found") from exc
-    except OSError as exc:
-        raise StructuredInputError("structured_input_not_regular_file") from exc
-    if hashlib.sha256(raw).hexdigest() != ref.sha256:
-        raise StructuredInputError("structured_input_checksum_mismatch")
-    return raw
-
-
-def _loads_json(raw: bytes) -> Any:
-    def reject_constant(value: str) -> None:
-        raise ValueError(f"non-finite JSON constant: {value}")
-
-    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for key, value in pairs:
-            if key in result:
-                raise ValueError(f"duplicate JSON key: {key}")
-            result[key] = value
-        return result
-
-    return json.loads(
-        raw.decode("utf-8"),
-        parse_constant=reject_constant,
-        object_pairs_hook=unique_object,
+def _validate_input_payload(ref: StructuredInputRef, payload: Any) -> None:
+    # The compilation bundle owns the only intentionally open record-level
+    # JSON surfaces. Leave those entries to the compiler's sanitized sibling
+    # rejection path while validating the surrounding envelope here.
+    no_score_payload = (
+        _top_level_raw_payload(ref.role, payload)
+        if ref.role == "compilation_bundle"
+        else payload
     )
+    if (
+        ref.role != "evidence_sufficiency_profile"
+        and _contains_legacy_contract(no_score_payload)
+    ):
+        raise StructuredInputError("legacy_evidence_contract_rejected")
+    if contains_unsafe_reference(_top_level_raw_payload(ref.role, payload)):
+        raise StructuredInputError("unsafe_structured_input_reference")
+
+
+def _validate_input_model(ref: StructuredInputRef, value: FrozenModel) -> None:
+    _validate_declared_version(ref, value)
+    if contains_unsafe_reference(_top_level_payload(ref.role, value)):
+        raise StructuredInputError("unsafe_structured_input_reference")
 
 
 def _validate_declared_version(ref: StructuredInputRef, value: FrozenModel) -> None:
@@ -797,34 +729,6 @@ def _contains_legacy_contract(value: object) -> bool:
     return False
 
 
-def _objects_for_role(
-    request: ToolRequestV2,
-    loaded: LoadedInputs,
-    role: str,
-    model: type[Any],
-) -> list[Any]:
-    values = [
-        loaded.objects_by_input_id[ref.input_id]
-        for ref in request.object_inputs
-        if ref.role == role and ref.input_id in loaded.objects_by_input_id
-    ]
-    if not all(isinstance(item, model) for item in values):
-        raise TypeError(f"loaded {role} object has wrong model")
-    return values
-
-
-def _single_object(
-    request: ToolRequestV2,
-    loaded: LoadedInputs,
-    role: str,
-    model: type[Any],
-) -> Any:
-    values = _objects_for_role(request, loaded, role, model)
-    if len(values) != 1:
-        raise ValueError(f"expected exactly one {role}")
-    return values[0]
-
-
 def _write_bundle(
     *,
     staging: Path,
@@ -834,7 +738,7 @@ def _write_bundle(
     compiled: Any,
     run_id: str,
     objects_by_input_id: Mapping[str, FrozenModel],
-) -> tuple[EvidenceCompilerRunResult, list[dict[str, Any]]]:
+) -> EvidenceCompilerRunResult:
     _write_json(staging / "evidence_records.json", compiled.record_set.model_dump(mode="json"))
     _write_json(
         staging / "evidence_requirements.json", compiled.requirement_set.model_dump(mode="json")
@@ -1059,24 +963,6 @@ def _write_bundle(
     }
     _write_json(staging / "artifact_manifest.json", artifact_manifest)
     _verify_artifacts(staging, artifact_specs)
-    return result, artifact_specs
-
-
-def _structured_input_manifest_entry(
-    ref: StructuredInputRef, value: FrozenModel
-) -> dict[str, Any]:
-    result = {
-        "input_id": ref.input_id,
-        "role": ref.role,
-        "schema_ref": ref.schema_ref,
-        "object_version": ref.object_version,
-        "semantic_sha256": hashlib.sha256(
-            canonical_json_bytes(normalize_identity_payload(value))
-        ).hexdigest(),
-        "media_type": ref.media_type,
-    }
-    if ref.role in CONTENT_ADDRESSED_GRAPH_ROLES:
-        result["content_addressed_sha256"] = ref.sha256
     return result
 
 
@@ -1106,16 +992,6 @@ def _verify_artifacts(root: Path, specs: list[dict[str, Any]]) -> None:
             or item.get("size_bytes") != len(raw)
         ):
             raise ValueError("artifact_checksum_verification_failed")
-
-
-def _inputs_unchanged(refs: list[StructuredInputRef]) -> bool:
-    for ref in refs:
-        try:
-            if hashlib.sha256(_read_regular_bytes(ref.path)).hexdigest() != ref.sha256:
-                return False
-        except OSError:
-            return False
-    return True
 
 
 def _bundles_match(staging: Path, final: Path) -> bool:
@@ -1159,24 +1035,6 @@ def _safe_artifact_filename(filename: str) -> bool:
     )
 
 
-def _read_regular_bytes(path: Path) -> bytes:
-    before = path.lstat()
-    if not stat.S_ISREG(before.st_mode) or path.is_symlink():
-        raise OSError("not a regular file")
-    raw = path.read_bytes()
-    after = path.lstat()
-    if (
-        not stat.S_ISREG(after.st_mode)
-        or before.st_dev != after.st_dev
-        or before.st_ino != after.st_ino
-        or before.st_size != after.st_size
-        or before.st_mtime_ns != after.st_mtime_ns
-        or len(raw) != after.st_size
-    ):
-        raise OSError("file changed while reading")
-    return raw
-
-
 def _runtime_artifacts(
     final: Path, run_id: str, records: list[Any]
 ) -> list[ArtifactManifest]:
@@ -1203,10 +1061,6 @@ def _runtime_artifacts(
     return sorted(items, key=lambda item: item.artifact_id)
 
 
-def _write_json(path: Path, payload: object) -> None:
-    path.write_bytes(canonical_json_bytes(payload, indent=2))
-
-
 def _failed_run(
     request: ToolRequestV2,
     spec: ToolPackageSpecV2,
@@ -1214,43 +1068,13 @@ def _failed_run(
     *,
     input_hash: str | None = None,
 ) -> ToolRunV2:
-    reasons = sorted(set(reason_codes))
-    failure_hash = hashlib.sha256(
-        canonical_json_bytes(
-            {
-                "tool_id": request.tool_id,
-                "tool_version": spec.version,
-                "reason_codes": reasons,
-                "object_inputs": [
-                    {
-                        "input_id": ref.input_id,
-                        "role": ref.role,
-                        "schema_ref": ref.schema_ref,
-                        "object_version": ref.object_version,
-                        "sha256": ref.sha256,
-                        "media_type": ref.media_type,
-                    }
-                    for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id))
-                ],
-            }
-        )
-    ).hexdigest()
-    return ToolRunV2(
-        run_id=f"run-{failure_hash[:16]}",
-        request=request,
-        implementation_state=spec.implementation_state,
-        execution_state=ExecutionState.FAILED,
-        tool_version=spec.version,
-        environment_spec_id=spec.environment_spec_id,
-        input_hash=input_hash,
-        created_at=datetime(1970, 1, 1, tzinfo=timezone.utc),
-        measurements=[],
-        artifacts=[],
-        visualizations=[],
+    return failed_v2_run(
+        request,
+        spec,
+        reason_codes,
         result_schema_ref=RESULT_SCHEMA_REF,
-        result=None,
-        reason_codes=reasons,
-        warnings=[],
+        fingerprint_input_key="object_inputs",
+        input_hash=input_hash,
     )
 
 

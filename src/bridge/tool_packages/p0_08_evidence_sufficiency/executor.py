@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 import hashlib
-import json
 from typing import Any, Mapping, Sequence, TypeVar
 
+from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     BLOCKING_REASON_CODES,
     CaseEvidenceReadinessSummary,
@@ -85,21 +85,6 @@ class ReconciledRecords:
 class DomainEvaluation:
     profile: EvidenceSufficiencyProfile
     trace: GateTraceEntry
-
-
-def canonical_json_bytes(payload: object, *, indent: int | None = None) -> bytes:
-    separators = (",", ":") if indent is None else None
-    return (
-        json.dumps(
-            payload,
-            ensure_ascii=False,
-            allow_nan=False,
-            sort_keys=True,
-            separators=separators,
-            indent=indent,
-        )
-        + ("\n" if indent is not None else "")
-    ).encode("utf-8")
 
 
 def _sort_set_like_field(payload: dict[str, Any], field: str) -> None:
