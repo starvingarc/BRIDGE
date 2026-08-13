@@ -41,6 +41,9 @@ The rebuilt BRIDGE is the canonical product rather than a separately branded par
 P0-06 uses `Proliferation & Stress Response` as its working display name instead of `Process Integrity`. The new name identifies a stage-conditioned transcriptional-program assessment built on upstream cell-state and composition evidence, and avoids implying manufacturing-process, GMP or release integrity. P0-06 does not reassign cell identity or recompute off-target composition.
 
 This naming change does not alter the scientific scope or release state: `TranscriptomicReviewFlag` remains `shadow`, `domain_score` remains `null`, and no clinical safety, tumorigenicity, potency or product-release conclusion is introduced. Stable identifiers `P0-06` and `TASK-PROCESS-v0.1` remain unchanged. Historical `source_ref` paths retain their original filenames so provenance links are not rewritten.
+## 2026-08-12: Birtele Is A Source-Level Holdout With Provisional Groups
+
+The project scientific lead conditionally approved processed `GSE192405` for source-level external holdout, stage-level description and provisional-group sensitivity. Publication totals reconstruct the primary 6-week, 8-week and 11-week analysis groups; Table S1 constrains cultured samples, but `GSM5746439` and conflicting `GSM5746445` remain ambiguous between the 7.3-week single-3D and 8-week four-condition groups. These groups do not establish verified donor identities: formal `biological_unit_id` values remain null, biological-replicate estimation remains prohibited, and this decision does not promote any method, state, threshold or product role.
 
 ## 2026-08-13: Version Structured Tool Inputs Without Replacing V0.1
 

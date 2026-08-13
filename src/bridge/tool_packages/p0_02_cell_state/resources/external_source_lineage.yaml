@@ -1,0 +1,116 @@
+audit_id: P0-02-EXTERNAL-SOURCE-LINEAGE-v1
+version: "1.0"
+external_holdout_roots:
+  - GSE192405
+  - GSE76381
+assets:
+  - asset_id: CHEN-vMB-scRNA
+    root_source_family_id: CHEN-vMB
+    parent_asset_ids: []
+    candidate_decision: development_reference
+    rationale: Candidate fetal ventral-midbrain L1 reference.
+  - asset_id: CHEN-RGNB-scRNA
+    root_source_family_id: CHEN-vMB
+    parent_asset_ids:
+      - CHEN-vMB-scRNA
+    candidate_decision: development_reference
+    rationale: Derived RG and Nb L2 reference; not an independent source.
+  - asset_id: GSE190729
+    root_source_family_id: GSE190729
+    parent_asset_ids: []
+    candidate_decision: development_ood
+    rationale: Cerebral organoid development OOD.
+  - asset_id: GSE221853
+    root_source_family_id: GSE221853
+    parent_asset_ids: []
+    candidate_decision: development_ood
+    rationale: Neural-crest and sympathoadrenal development OOD.
+  - asset_id: GSE267791
+    root_source_family_id: GSE267791
+    parent_asset_ids: []
+    candidate_decision: development_ood
+    rationale: Motor-neuron development OOD.
+  - asset_id: GSE224152
+    root_source_family_id: GSE224152
+    parent_asset_ids: []
+    candidate_decision: development_ood
+    rationale: Mesenchymal development OOD.
+  - asset_id: GSE204796
+    root_source_family_id: GSE204796
+    parent_asset_ids: []
+    candidate_decision: behavior_only
+    rationale: Developmental behavior time course; not validation truth.
+  - asset_id: BIRTELE-GSE192405-PROCESSED-v1
+    root_source_family_id: GSE192405
+    parent_asset_ids: []
+    candidate_decision: external_holdout
+    rationale: Processed fetal ventral-midbrain external-source candidate.
+  - asset_id: BIRTELE-GSE192405-CONVERTED-v1
+    root_source_family_id: GSE192405
+    parent_asset_ids:
+      - BIRTELE-GSE192405-PROCESSED-v1
+    candidate_decision: external_holdout
+    rationale: Deterministic H5AD derivative; not an independent source.
+  - asset_id: REF-LAMANNO-2016-v1
+    root_source_family_id: GSE76381
+    parent_asset_ids: []
+    candidate_decision: excluded_from_candidate
+    rationale: Same study family as the La Manno external holdout; excluded from fitting and calibration.
+  - asset_id: LAMANNO-2016
+    root_source_family_id: GSE76381
+    parent_asset_ids:
+      - REF-LAMANNO-2016-v1
+    candidate_decision: external_holdout
+    rationale: Fetal ventral-midbrain external-source asset.
+  - asset_id: Q-GSE76381-ES-v1
+    root_source_family_id: GSE76381
+    parent_asset_ids: []
+    candidate_decision: excluded_from_candidate
+    rationale: hESC material from the same study family; excluded from candidate fitting and calibration.
+  - asset_id: Q-GSE76381-IPS-v1
+    root_source_family_id: GSE76381
+    parent_asset_ids: []
+    candidate_decision: excluded_from_candidate
+    rationale: iPSC material from the same study family; excluded from candidate fitting and calibration.
+  - asset_id: GSE120046
+    root_source_family_id: GSE120046
+    parent_asset_ids: []
+    candidate_decision: external_holdout
+    rationale: Locked source holdout; remains unopened before FreezeGate approval.
+  - asset_id: GSE129519
+    root_source_family_id: GSE129519
+    parent_asset_ids: []
+    candidate_decision: external_holdout
+    rationale: Locked cortical OOD; remains unopened before FreezeGate approval.
+  - asset_id: GSE188516
+    root_source_family_id: GSE188516
+    parent_asset_ids: []
+    candidate_decision: external_holdout
+    rationale: Locked spinal-cord OOD; remains unopened before FreezeGate approval.
+  - asset_id: E-MTAB-14729
+    root_source_family_id: E-MTAB-14729
+    parent_asset_ids: []
+    candidate_decision: sealed_excluded
+    rationale: Competitor-sealed asset; excluded from all candidate development and this audit uses metadata only.
+  - asset_id: REF-CHEN-VMB-COMBINED-v1
+    root_source_family_id: CHEN-vMB
+    parent_asset_ids:
+      - CHEN-vMB-scRNA
+    candidate_decision: excluded_from_candidate
+    rationale: Same Chen family and modality-coupled derivative; not independent external validation.
+  - asset_id: REF-CHEN-NEUROGENESIS-v1
+    root_source_family_id: CHEN-vMB
+    parent_asset_ids:
+      - REF-CHEN-VMB-COMBINED-v1
+    candidate_decision: excluded_from_candidate
+    rationale: Chen-derived subset; not independent external validation.
+  - asset_id: REF-BRAUN-2023-v1
+    root_source_family_id: BRAUN-2023
+    parent_asset_ids: []
+    candidate_decision: excluded_from_candidate
+    rationale: Related developmental reference but not part of the fixed P0-02 candidate comparison.
+  - asset_id: REF-ZENG-2023-v1
+    root_source_family_id: ZENG-2023
+    parent_asset_ids: []
+    candidate_decision: excluded_from_candidate
+    rationale: Related developmental reference but not part of the fixed P0-02 candidate comparison.

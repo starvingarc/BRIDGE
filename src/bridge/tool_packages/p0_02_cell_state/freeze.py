@@ -43,10 +43,10 @@ class BenchmarkError(ValueError):
 RUNTIME_EXECUTABLE_METHODS = frozenset(
     {"source_specific_correlation", "marker_program_evidence"}
 )
-RUNTIME_METHOD_VERSIONS = {method: "0.4.7" for method in RUNTIME_EXECUTABLE_METHODS}
-RUNTIME_TOOL_VERSION = "0.4.7"
+RUNTIME_METHOD_VERSIONS = {method: "0.4.8" for method in RUNTIME_EXECUTABLE_METHODS}
+RUNTIME_TOOL_VERSION = "0.4.8"
 RUNTIME_ENVIRONMENT_SPEC = "ENV-P0-CORE-v0.1"
-BENCHMARK_IMPLEMENTATION_VERSION = "0.4.7"
+BENCHMARK_IMPLEMENTATION_VERSION = "0.4.8"
 LOCKED_RUNNER_IMPLEMENTATION_VERSION: str | None = None
 SIGNATURE_DOMAIN = b"BRIDGE-CELLSTATE-ED25519-v1\n"
 _DENIED_IDENTIFIERS = {
@@ -55,7 +55,7 @@ _DENIED_IDENTIFIERS = {
 }
 METHOD_ADAPTER_CONTRACTS: dict[str, dict[str, Any]] = {
     "source_specific_correlation": {
-        "adapter_implementation_version": "0.4.7",
+        "adapter_implementation_version": "0.4.8",
         "evidence_family": "reference_similarity",
         "independent_evidence_vote": True,
         "probability_semantics": "uncalibrated_score",
@@ -64,7 +64,7 @@ METHOD_ADAPTER_CONTRACTS: dict[str, dict[str, Any]] = {
         "include_auxiliary": True,
     },
     "marker_program_evidence": {
-        "adapter_implementation_version": "0.4.7",
+        "adapter_implementation_version": "0.4.8",
         "evidence_family": "marker_program",
         "independent_evidence_vote": True,
         "probability_semantics": "uncalibrated_score",

@@ -40,8 +40,8 @@ def test_cards_preserve_cell_state_boundary_and_scaffold_method_selection() -> N
     cards = repo / "src" / "bridge" / "tool_packages" / "cards"
     cell_state = (cards / "P0-02.md").read_text(encoding="utf-8")
 
-    assert "| Package version | `0.4.7` |" in cell_state
-    assert "| Freeze state | `awaiting_biological_review` |" in cell_state
+    assert "| Package version | `0.4.8` |" in cell_state
+    assert "| Freeze state | `biological_review_in_progress` |" in cell_state
     assert "No state or method is frozen." in cell_state
     assert "locked external-source and OOD testing" in cell_state
 
@@ -51,3 +51,27 @@ def test_cards_preserve_cell_state_boundary_and_scaffold_method_selection() -> N
         if spec.implementation_state.value == "scaffold":
             assert "No method is selected while this package remains a scaffold." in card
             assert "No method is registered or selected until benchmark-bound execution exists." in card
+
+
+def test_external_source_documentation_is_indexed_and_preserves_boundaries() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    index = (repo / "docs" / "index.md").read_text(encoding="utf-8")
+    documentation = (
+        repo / "docs" / "bridge_spec_v0.1" / "external_source_preparation.md"
+    ).read_text(encoding="utf-8")
+    reference_registry = (
+        repo / "docs" / "bridge_spec_v0.1" / "data_reference_registry.md"
+    ).read_text(encoding="utf-8")
+
+    assert "external_source_preparation.md" in index
+    assert "bridge-benchmark cell-state prepare-birtele" in documentation
+    assert "bridge-benchmark cell-state audit-external-sources" in documentation
+    assert "conversion_manifest.json" in documentation
+    assert "external_source_lineage_overlap:<asset>:<external-root>" in documentation
+    assert "biological_review_in_progress" in documentation
+    assert "`scientific_status` remains `candidate`" in documentation
+    assert "`domain_score` remains\n`null`" in documentation
+    assert "does not establish donor identity" in documentation
+    assert "converted_candidate_awaiting_sample_unit_review" not in reference_registry
+    assert "conditionally_approved_source_holdout" in reference_registry
+    assert "P0-02 `biological_review_in_progress`" in reference_registry
