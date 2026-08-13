@@ -34,6 +34,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceRequirementState,
     EvidenceTier,
     ExternalCaseEvidenceRef,
+    GraphNodeType,
     GraphKind,
     MissingEvidenceObservation,
     ReconciliationSpec,
@@ -43,6 +44,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     RejectedEvidenceRecordList,
     RevisionAction,
     VersionedObjectRef,
+    is_prohibited_conclusion_key,
     contains_unsafe_reference,
 )
 from bridge.toolkit.contracts import EvidenceState, FrozenModel, ToolPackageSpecV2, ToolRequestV2
@@ -62,6 +64,10 @@ INDIVIDUAL_REASON_CODES = (
     "sufficiency_profile_case_mismatch",
     "sufficiency_profile_domain_mismatch",
     "sufficiency_profile_measurement_spec_mismatch",
+    "sufficiency_profile_measurement_result_mismatch",
+    "sufficiency_profile_family_mismatch",
+    "sufficiency_profile_version_binding_unavailable",
+    "claim_context_mismatch",
     "failed_tool_run_not_compilable",
     "missing_state_requires_evidence_requirement",
     "nonfinite_numeric_value",
@@ -139,6 +145,13 @@ SET_LIKE_FIELDS = {
     "specs",
     "validation_refs",
 }
+CONTENT_ADDRESSED_GRAPH_ROLES = {
+    "base_graph_manifest",
+    "base_evidence_record_set",
+    "base_evidence_requirement_set",
+    "source_case_graph_manifest",
+    "source_case_evidence_record_set",
+}
 
 
 def normalize_identity_payload(value: Any, *, field_name: str | None = None) -> Any:
@@ -175,8 +188,7 @@ def canonical_input_hash(
     objects: list[dict[str, Any]] = []
     for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id)):
         normalized_object = normalize_identity_payload(objects_by_input_id[ref.input_id])
-        refs.append(
-            {
+        ref_identity = {
                 "input_id": ref.input_id,
                 "role": ref.role,
                 "schema_ref": ref.schema_ref,
@@ -186,7 +198,9 @@ def canonical_input_hash(
                 ).hexdigest(),
                 "media_type": ref.media_type,
             }
-        )
+        if ref.role in CONTENT_ADDRESSED_GRAPH_ROLES:
+            ref_identity["content_addressed_sha256"] = ref.sha256
+        refs.append(ref_identity)
         objects.append(
             {
                 "input_id": ref.input_id,
@@ -321,7 +335,55 @@ def logical_key_hash(logical_key: str) -> str:
     return hashlib.sha256(logical_key.encode("utf-8")).hexdigest()
 
 
-def validate_prior_history(bundle: EvidenceCompilationBundle) -> None:
+EXPECTED_CATALOG_SCHEMAS: dict[GraphNodeType, str] = {
+    GraphNodeType.PRODUCT_CASE: "bridge://schemas/product-case/v0.1",
+    GraphNodeType.PRODUCT_DEFINITION_CARD: "bridge://schemas/product-definition-card/v0.1",
+    GraphNodeType.SAMPLE: "bridge://schemas/sample/v0.1",
+    GraphNodeType.PREPARATION: "bridge://schemas/preparation/v0.1",
+    GraphNodeType.MEASUREMENT_SPEC: "bridge://schemas/measurement-spec/v0.1",
+    GraphNodeType.SCORE_CONTRACT: "bridge://schemas/score-contract/v0.1",
+    GraphNodeType.TOOL_RUN: "bridge://schemas/tool-run/v0.1",
+    GraphNodeType.MEASUREMENT_RESULT: "bridge://schemas/measurement-result/v0.1",
+    GraphNodeType.REFERENCE_SNAPSHOT: "bridge://schemas/reference-snapshot/v0.1",
+    GraphNodeType.PRIOR_SNAPSHOT: "bridge://schemas/prior-snapshot/v0.1",
+    GraphNodeType.ARTIFACT: "bridge://schemas/artifact/v0.1",
+    GraphNodeType.COMPARISON_RECORD: "bridge://schemas/comparison-record/v0.1",
+}
+
+
+def _catalog_binding_matches(
+    catalog: Mapping[tuple[str, str], Any],
+    ref: VersionedObjectRef,
+    allowed_types: set[GraphNodeType],
+) -> bool:
+    item = catalog.get((ref.object_id, ref.object_version))
+    return bool(
+        item is not None
+        and item.node_type in allowed_types
+        and item.schema_ref == EXPECTED_CATALOG_SCHEMAS.get(item.node_type)
+    )
+
+
+def _profile_matches_record(
+    profile: EvidenceSufficiencyProfile, record: EvidenceRecord
+) -> bool:
+    return (
+        profile.product_case_ref == record.product_case_ref.object_id
+        and profile.domain_id is record.domain_id
+        and profile.measurement_spec_ref == record.measurement_spec_ref.object_id
+        and record.measurement_result_ref.object_id in profile.measurement_result_refs
+        and record.evidence_family_ref.object_id
+        in profile.deduplicated_evidence_family_ids
+    )
+
+
+def validate_prior_history(
+    bundle: EvidenceCompilationBundle,
+    *,
+    profiles_by_input_id: Mapping[str, EvidenceSufficiencyProfile] | None = None,
+    claims: Mapping[tuple[str, str], ClaimSpec] | None = None,
+    families: Mapping[tuple[str, str], EvidenceFamilySpec] | None = None,
+) -> None:
     graph_id = graph_identity(bundle)
     if bundle.base_graph_ref is not None and bundle.base_graph_ref.graph_id != graph_id:
         raise CompilationInvariantError("prior_history_invalid", "base graph ID mismatch")
@@ -332,6 +394,42 @@ def validate_prior_history(bundle: EvidenceCompilationBundle) -> None:
             raise CompilationInvariantError("prior_history_invalid", "duplicate evidence version")
         refs.add(record.ref)
         by_id[record.evidence_id].append(record)
+        if bundle.graph_kind is not GraphKind.CASE or record.product_case_ref != bundle.product_case_ref:
+            raise CompilationInvariantError(
+                "prior_history_invalid", "evidence ProductCase mismatch"
+            )
+        if claims is not None and (
+            record.claim_ref.object_id,
+            record.claim_ref.object_version,
+        ) not in claims:
+            raise CompilationInvariantError(
+                "prior_history_invalid", "evidence Claim mismatch"
+            )
+        if families is not None and (
+            record.evidence_family_ref.object_id,
+            record.evidence_family_ref.object_version,
+        ) not in families:
+            raise CompilationInvariantError(
+                "prior_history_invalid", "evidence family mismatch"
+            )
+        if profiles_by_input_id is not None:
+            matching_profiles = [
+                profile
+                for profile in profiles_by_input_id.values()
+                if profile.profile_id == record.sufficiency_profile_ref.object_id
+                and profile.profile_version == record.sufficiency_profile_ref.object_version
+            ]
+            if len(matching_profiles) != 1 or not _profile_matches_record(
+                matching_profiles[0], record
+            ):
+                raise CompilationInvariantError(
+                    "prior_history_invalid", "evidence profile binding mismatch"
+                )
+            if record.evidence_tier is EvidenceTier.FORMAL:
+                raise CompilationInvariantError(
+                    "prior_history_invalid",
+                    "P0-08 v0.1 profile cannot prove formal object versions",
+                )
         if record.evidence_id != f"evidence:{logical_key_hash(record.logical_key)[:24]}":
             raise CompilationInvariantError("prior_history_invalid", "evidence ID mismatch")
         if record.content_hash != evidence_record_content_hash(record):
@@ -358,6 +456,21 @@ def validate_prior_history(bundle: EvidenceCompilationBundle) -> None:
             raise CompilationInvariantError("prior_history_invalid", "duplicate requirement version")
         seen_requirements.add(requirement.ref)
         requirement_groups[requirement.requirement_id].append(requirement)
+        if (
+            bundle.graph_kind is not GraphKind.CASE
+            or requirement.product_case_ref != bundle.product_case_ref
+            or (
+                claims is not None
+                and (
+                    requirement.claim_ref.object_id,
+                    requirement.claim_ref.object_version,
+                )
+                not in claims
+            )
+        ):
+            raise CompilationInvariantError(
+                "prior_history_invalid", "requirement graph binding mismatch"
+            )
         if requirement.requirement_id != requirement_identity(
             graph_id, requirement.claim_ref, requirement.requirement_key
         ):
@@ -394,27 +507,27 @@ def compile_evidence_graph(
     family_registry: EvidenceFamilyRegistry,
     claim_registry: ClaimRegistry,
     reconciliation_registry: ReconciliationSpecRegistry,
+    verified_graph_inputs: Any,
+    objects_by_input_id: Mapping[str, FrozenModel],
 ) -> CompiledEvidenceGraph:
-    validate_prior_history(bundle)
-    input_hash = canonical_input_hash(
-        request=request,
-        spec=spec,
-        objects_by_input_id=_input_objects(
-            request,
-            bundle,
-            profiles_by_input_id,
-            family_registry,
-            claim_registry,
-            reconciliation_registry,
-        ),
-    )
-    digest = input_hash[:16]
-    graph_id = graph_identity(bundle)
-    catalog = {(item.object_id, item.object_version): item for item in bundle.object_catalog}
     claims = {(item.claim_id, item.version): item for item in claim_registry.claims}
     families = {
         (item.evidence_family_id, item.version): item for item in family_registry.families
     }
+    validate_prior_history(
+        bundle,
+        profiles_by_input_id=profiles_by_input_id,
+        claims=claims,
+        families=families,
+    )
+    input_hash = canonical_input_hash(
+        request=request,
+        spec=spec,
+        objects_by_input_id=objects_by_input_id,
+    )
+    digest = input_hash[:16]
+    graph_id = graph_identity(bundle)
+    catalog = {(item.object_id, item.object_version): item for item in bundle.object_catalog}
     specs = {
         (item.reconciliation_spec_id, item.version): item
         for item in reconciliation_registry.specs
@@ -428,6 +541,8 @@ def compile_evidence_graph(
             profiles_by_input_id=profiles_by_input_id,
             claims=claims,
             families=families,
+            source_record_sets=verified_graph_inputs.source_record_sets,
+            source_effective_lifecycle=verified_graph_inputs.source_effective_lifecycle,
         )
         comparison_bundle = bundle.model_copy(
             update={"external_case_evidence_refs": accepted_external}
@@ -449,7 +564,7 @@ def compile_evidence_graph(
         catalog=catalog,
         claims=claims,
     )
-    requirements, requirements_changed = _compile_requirements(
+    requirements, _requirements_changed = _compile_requirements(
         graph_id=graph_id,
         bundle=comparison_bundle,
         records=records,
@@ -457,16 +572,14 @@ def compile_evidence_graph(
         claims=claims,
         families=families,
     )
-    evidence_changed = any(
-        item.disposition in {CompilationDisposition.CREATED, CompilationDisposition.APPENDED}
-        for item in dispositions
-    )
     if bundle.base_graph_ref is None:
         graph_version = 1
-    elif evidence_changed or requirements_changed or bundle.graph_kind is GraphKind.COMPARISON:
-        graph_version = bundle.base_graph_ref.graph_version + 1
     else:
-        graph_version = bundle.base_graph_ref.graph_version
+        # A base-bound request is a new immutable compilation bundle even when
+        # every candidate disposition is unchanged. Reusing the prior graph
+        # version with new run-level manifests would create two contents for one
+        # graph identity, so v0.1 always appends the next graph version.
+        graph_version = bundle.base_graph_ref.graph_version + 1
 
     record_set = EvidenceRecordSet(
         record_set_id=f"evidence-record-set:{digest}",
@@ -551,29 +664,6 @@ def compile_evidence_graph(
     )
 
 
-def _input_objects(
-    request: ToolRequestV2,
-    bundle: EvidenceCompilationBundle,
-    profiles_by_input_id: Mapping[str, EvidenceSufficiencyProfile],
-    family_registry: EvidenceFamilyRegistry,
-    claim_registry: ClaimRegistry,
-    reconciliation_registry: ReconciliationSpecRegistry,
-) -> dict[str, FrozenModel]:
-    objects: dict[str, FrozenModel] = {}
-    for ref in request.object_inputs:
-        if ref.role == "compilation_bundle":
-            objects[ref.input_id] = bundle
-        elif ref.role == "evidence_sufficiency_profile":
-            objects[ref.input_id] = profiles_by_input_id[ref.input_id]
-        elif ref.role == "evidence_family_registry":
-            objects[ref.input_id] = family_registry
-        elif ref.role == "claim_registry":
-            objects[ref.input_id] = claim_registry
-        elif ref.role == "reconciliation_spec_registry":
-            objects[ref.input_id] = reconciliation_registry
-    return objects
-
-
 def _compile_candidates(
     *,
     bundle: EvidenceCompilationBundle,
@@ -639,19 +729,30 @@ def _compile_candidates(
         else:
             seen_logical[logical_key] = candidate.candidate_id
 
-        required_refs = [
-            candidate.product_case_ref,
-            candidate.sample_or_preparation_ref,
-            candidate.measurement_result_ref,
-            candidate.measurement_spec_ref,
-            candidate.tool_run_ref,
-            *candidate.reference_refs,
-            *candidate.prior_refs,
-            *candidate.artifact_refs,
+        catalog_bindings = [
+            (candidate.product_case_ref, {GraphNodeType.PRODUCT_CASE}),
+            (
+                candidate.sample_or_preparation_ref,
+                {GraphNodeType.SAMPLE, GraphNodeType.PREPARATION},
+            ),
+            (candidate.measurement_result_ref, {GraphNodeType.MEASUREMENT_RESULT}),
+            (candidate.measurement_spec_ref, {GraphNodeType.MEASUREMENT_SPEC}),
+            (candidate.tool_run_ref, {GraphNodeType.TOOL_RUN}),
+            *(
+                (item, {GraphNodeType.REFERENCE_SNAPSHOT})
+                for item in candidate.reference_refs
+            ),
+            *((item, {GraphNodeType.PRIOR_SNAPSHOT}) for item in candidate.prior_refs),
+            *((item, {GraphNodeType.ARTIFACT}) for item in candidate.artifact_refs),
         ]
         if candidate.score_contract_ref is not None:
-            required_refs.append(candidate.score_contract_ref)
-        if any((item.object_id, item.object_version) not in catalog for item in required_refs):
+            catalog_bindings.append(
+                (candidate.score_contract_ref, {GraphNodeType.SCORE_CONTRACT})
+            )
+        if any(
+            not _catalog_binding_matches(catalog, item, allowed_types)
+            for item, allowed_types in catalog_bindings
+        ):
             reasons.append("declared_object_ref_not_found")
         if candidate.product_case_ref != bundle.product_case_ref:
             reasons.append("declared_object_ref_not_found")
@@ -667,6 +768,12 @@ def _compile_candidates(
                 reasons.append("claim_domain_mismatch")
             if candidate.relation not in claim.allowed_relations:
                 reasons.append("relation_not_allowed_by_claim")
+            candidate_context_ref = VersionedObjectRef(
+                object_id=candidate.biological_context.context_id,
+                object_version=candidate.biological_context.context_version,
+            )
+            if claim.biological_context_ref != candidate_context_ref:
+                reasons.append("claim_context_mismatch")
 
         family = families.get(
             (candidate.evidence_family_ref.object_id, candidate.evidence_family_ref.object_version)
@@ -690,6 +797,16 @@ def _compile_candidates(
                 reasons.append("sufficiency_profile_domain_mismatch")
             if profile.measurement_spec_ref != candidate.measurement_spec_ref.object_id:
                 reasons.append("sufficiency_profile_measurement_spec_mismatch")
+            if (
+                candidate.measurement_result_ref.object_id
+                not in profile.measurement_result_refs
+            ):
+                reasons.append("sufficiency_profile_measurement_result_mismatch")
+            if (
+                candidate.evidence_family_ref.object_id
+                not in profile.deduplicated_evidence_family_ids
+            ):
+                reasons.append("sufficiency_profile_family_mismatch")
         if candidate.tool_run_execution_state not in {"succeeded", "partial"}:
             reasons.append("failed_tool_run_not_compilable")
 
@@ -704,6 +821,8 @@ def _compile_candidates(
             else None
         )
         if candidate.evidence_tier is EvidenceTier.FORMAL:
+            if profile is not None:
+                reasons.append("sufficiency_profile_version_binding_unavailable")
             if profile is None or (
                 profile.evidence_sufficiency_state is not EvidenceSufficiencyState.SUFFICIENT
             ):
@@ -866,6 +985,8 @@ def _raw_candidate_reasons(raw: Any) -> list[str]:
     reasons: list[str] = []
     if contains_unsafe_reference(raw):
         reasons.append("individual_record_schema_invalid")
+    if _contains_prohibited_conclusion_key(raw):
+        reasons.append("individual_record_schema_invalid")
     if raw.get("evidence_state") == EvidenceState.MISSING.value:
         reasons.append("missing_state_requires_evidence_requirement")
     if _contains_nonfinite(raw.get("value")):
@@ -876,6 +997,16 @@ def _raw_candidate_reasons(raw: Any) -> list[str]:
     ):
         reasons.append("invalid_denominator")
     return reasons
+
+
+def _contains_prohibited_conclusion_key(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(is_prohibited_conclusion_key(key) for key in value) or any(
+            _contains_prohibited_conclusion_key(item) for item in value.values()
+        )
+    if isinstance(value, list):
+        return any(_contains_prohibited_conclusion_key(item) for item in value)
+    return False
 
 
 def _contains_nonfinite(value: Any) -> bool:
@@ -1087,12 +1218,19 @@ def _validate_comparison_bindings(
     profiles_by_input_id: Mapping[str, EvidenceSufficiencyProfile],
     claims: Mapping[tuple[str, str], ClaimSpec],
     families: Mapping[tuple[str, str], EvidenceFamilySpec],
+    source_record_sets: Mapping[str, EvidenceRecordSet],
+    source_effective_lifecycle: Mapping[
+        str, Mapping[str, EvidenceLifecycleState]
+    ],
 ) -> tuple[list[ExternalCaseEvidenceRef], list[RejectedEvidenceRecord]]:
     graph_refs = {item.graph_id: item for item in bundle.case_graph_refs}
     bound_inputs: set[str] = set()
     declared_inputs: set[str] = set()
     accepted: list[ExternalCaseEvidenceRef] = []
     rejected: list[RejectedEvidenceRecord] = []
+    evidence_sources: dict[str, set[str]] = defaultdict(set)
+    for item in bundle.external_case_evidence_refs:
+        evidence_sources[item.evidence_ref].add(item.source_case_graph_ref.graph_id)
     for index, raw_external in enumerate(bundle.external_case_evidence_refs):
         raw = (
             raw_external.model_dump(mode="json")
@@ -1137,10 +1275,46 @@ def _validate_comparison_bindings(
             )
             continue
         case_graph = graph_refs.get(external.source_case_graph_ref.graph_id)
-        if case_graph is None or case_graph != external.source_case_graph_ref:
+        if case_graph is None or (
+            case_graph.graph_id != external.source_case_graph_ref.graph_id
+            or case_graph.graph_version != external.source_case_graph_ref.graph_version
+            or case_graph.manifest_sha256
+            != external.source_case_graph_ref.manifest_sha256
+            or case_graph.product_case_ref
+            != external.source_case_graph_ref.product_case_ref
+        ):
             reasons.append("declared_object_ref_not_found")
         elif case_graph.product_case_ref != external.product_case_ref:
             reasons.append("external_evidence_claim_mapping_invalid")
+        source_set = source_record_sets.get(external.source_case_graph_ref.graph_id)
+        source_record = next(
+            (
+                record
+                for record in (source_set.records if source_set is not None else [])
+                if record.ref == external.evidence_ref
+            ),
+            None,
+        )
+        effective_state = source_effective_lifecycle.get(
+            external.source_case_graph_ref.graph_id, {}
+        ).get(external.evidence_ref)
+        if (
+            source_record is None
+            or source_record.content_hash != external.evidence_content_hash
+            or source_record.product_case_ref != external.product_case_ref
+            or source_record.claim_ref != external.source_claim_ref
+            or source_record.evidence_family_ref != external.evidence_family_ref
+            or source_record.relation is not external.relation
+            or source_record.evidence_state is not external.evidence_state
+            or source_record.evidence_tier is not external.evidence_tier
+            or effective_state is not external.lifecycle_state
+            or source_record.applicability is not external.applicability
+            or source_record.tool_run_execution_state
+            != external.tool_run_execution_state
+        ):
+            reasons.append("external_evidence_claim_mapping_invalid")
+        if len(evidence_sources[external.evidence_ref]) > 1:
+            reasons.append("duplicate_logical_key_conflict")
         source_claim = claims.get(
             (external.source_claim_ref.object_id, external.source_claim_ref.object_version)
         )
@@ -1168,6 +1342,17 @@ def _validate_comparison_bindings(
             )
         ):
             reasons.append("external_evidence_claim_mapping_invalid")
+        elif source_record is not None and (
+            source_record.measurement_result_ref.object_id
+            not in profile.measurement_result_refs
+            or source_record.evidence_family_ref.object_id
+            not in profile.deduplicated_evidence_family_ids
+            or profile.measurement_spec_ref
+            != source_record.measurement_spec_ref.object_id
+        ):
+            reasons.append("external_evidence_claim_mapping_invalid")
+        if external.evidence_tier is EvidenceTier.FORMAL and profile is not None:
+            reasons.append("sufficiency_profile_version_binding_unavailable")
         if reasons:
             rejected.append(
                 RejectedEvidenceRecord(

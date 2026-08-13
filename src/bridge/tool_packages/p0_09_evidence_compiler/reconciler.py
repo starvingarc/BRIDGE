@@ -55,6 +55,8 @@ RECONCILIATION_REASON_CODES = (
     "evidence_state_excluded",
     "same_family_records_deduplicated",
     "same_family_direction_conflict",
+    "non_independent_families_deduplicated",
+    "dependent_family_direction_conflict",
     "required_independent_channel_missing",
     "no_formal_eligible_evidence",
     "integration_channel_direction_conflict",
@@ -402,7 +404,23 @@ def _resolve_channel(
             family_directions[family_ref] = None
         else:
             family_directions[family_ref] = next(iter(directions))
-    contributing = [value for value in family_directions.values() if value is not None]
+    components = _family_independence_components(set(by_family), families)
+    by_component: dict[str, list[str]] = defaultdict(list)
+    for family_ref, component in components.items():
+        by_component[component].append(family_ref)
+    component_directions: list[EvidenceRelation] = []
+    for component_families in by_component.values():
+        if len(component_families) > 1:
+            reasons.append("non_independent_families_deduplicated")
+        values = [family_directions[item] for item in component_families]
+        directions = {item for item in values if item is not None}
+        if any(item is None for item in values) or len(directions) > 1:
+            if len(component_families) > 1 and directions:
+                reasons.append("dependent_family_direction_conflict")
+            continue
+        if len(directions) == 1:
+            component_directions.append(next(iter(directions)))
+    contributing = component_directions
     direction = contributing[0] if contributing and len(set(contributing)) == 1 else None
     eligible = len(contributing) >= minimum
     return (
@@ -547,20 +565,60 @@ def _confirmation_is_independent(
             ),
         ).evidence_family_refs
     }
-    if primary_families & confirmation_families:
-        return False
-    primary_scopes = {
-        families[tuple(item.rsplit("@", 1))].independence_scope
-        for item in primary_families
-        if tuple(item.rsplit("@", 1)) in families
-    }
-    confirmation_scopes = {
-        families[tuple(item.rsplit("@", 1))].independence_scope
-        for item in confirmation_families
-        if tuple(item.rsplit("@", 1)) in families
-    }
+    all_families = primary_families | confirmation_families
+    components = _family_independence_components(all_families, families)
     del evidence
-    return not (primary_scopes & confirmation_scopes)
+    return not any(
+        components.get(primary) == components.get(confirmation)
+        for primary in primary_families
+        for confirmation in confirmation_families
+    )
+
+
+def _family_independence_components(
+    family_refs: set[str],
+    families: Mapping[tuple[str, str], EvidenceFamilySpec],
+) -> dict[str, str]:
+    parent = {item: item for item in family_refs}
+
+    def find(item: str) -> str:
+        while parent[item] != item:
+            parent[item] = parent[parent[item]]
+            item = parent[item]
+        return item
+
+    def union(left: str, right: str) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parent[max(left_root, right_root)] = min(left_root, right_root)
+
+    resolved = {
+        ref: families.get(tuple(ref.rsplit("@", 1))) for ref in family_refs
+    }
+    tokens: dict[str, set[str]] = {}
+    for ref, family in resolved.items():
+        if family is None:
+            tokens[ref] = set()
+            continue
+        tokens[ref] = set(family.known_dependencies)
+    ordered = sorted(family_refs)
+    for index, left in enumerate(ordered):
+        left_family = resolved[left]
+        for right in ordered[index + 1 :]:
+            right_family = resolved[right]
+            if left_family is None or right_family is None:
+                continue
+            right_ids = {right, right_family.evidence_family_id}
+            left_ids = {left, left_family.evidence_family_id}
+            if (
+                left_family.independence_scope == right_family.independence_scope
+                or bool(tokens[left] & tokens[right])
+                or bool(tokens[left] & right_ids)
+                or bool(tokens[right] & left_ids)
+            ):
+                union(left, right)
+    return {item: find(item) for item in family_refs}
 
 
 def _latest_open_requirements(

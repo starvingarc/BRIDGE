@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import StrEnum
+import hashlib
 import json
 import math
 import re
 from typing import Any, Literal, Self
 from urllib.parse import parse_qsl, urlsplit
 
-from pydantic import Field, SkipValidation, field_serializer, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
@@ -193,15 +194,30 @@ def _sort_json_list(values: list[Any]) -> list[Any]:
     )
 
 
-PROHIBITED_VALUE_KEYS = {
-    "_".join(("integrated", "score")),
-    "_".join(("evidence", "confidence", "score")),
-    "_".join(("potency", "proxy")),
-    "_".join(("overall", "score")),
-    "_".join(("overall", "rank")),
-    "_".join(("product", "pass")),
-    "_".join(("negative", "pass")),
-}
+PROHIBITED_CONCLUSION_KEYS = frozenset(
+    {
+        "domainscore",
+        "overallscore",
+        "totalscore",
+        "integratedscore",
+        "evidenceconfidencescore",
+        "grade",
+        "passfail",
+        "productpass",
+        "negativepass",
+        "potency",
+        "potencyproxy",
+        "safety",
+        "efficacy",
+        "gmp",
+        "gmprelease",
+        "clinical",
+        "clinicalconclusion",
+        "rank",
+        "ranking",
+        "overallrank",
+    }
+)
 PRIVATE_PATH_KEYS = {
     "path",
     "file_path",
@@ -289,6 +305,10 @@ ASSIGNMENT = re.compile(
 
 def _normalized_name(value: object) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "", str(value)).casefold()
+
+
+def is_prohibited_conclusion_key(value: object) -> bool:
+    return _normalized_name(value) in PROHIBITED_CONCLUSION_KEYS
 
 
 def _is_credential_name(value: object) -> bool:
@@ -392,8 +412,8 @@ def validate_safe_json(value: Any, *, location: str = "value") -> Any:
     if isinstance(value, dict):
         for key, item in value.items():
             key_text = str(key)
-            if key_text in PROHIBITED_VALUE_KEYS:
-                raise ValueError(f"{location} contains prohibited legacy score field")
+            if is_prohibited_conclusion_key(key_text):
+                raise ValueError(f"{location} contains prohibited conclusion field")
             if key_text.lower() in PRIVATE_PATH_KEYS:
                 raise ValueError(f"{location} contains a private path field")
             validate_safe_json(item, location=f"{location}.{key_text}")
@@ -484,8 +504,32 @@ class BaseGraphRef(FrozenModel):
     _publishable_graph_id = field_validator("graph_id")(publication_ref)
 
 
+class AppendGraphRef(BaseGraphRef):
+    manifest_input_id: str = Field(min_length=1)
+    record_set_input_id: str = Field(min_length=1)
+    requirement_set_input_id: str = Field(min_length=1)
+
+
 class CaseGraphRef(BaseGraphRef):
     product_case_ref: VersionedObjectRef
+
+    @model_validator(mode="after")
+    def graph_id_is_product_case_derived(self) -> Self:
+        identity = f"case|{self.product_case_ref.ref}"
+        expected = (
+            "case-evidence-graph:"
+            + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
+        )
+        if self.graph_id != expected:
+            raise ValueError("case graph ID must be derived from ProductCase identity")
+        return self
+
+
+class BoundCaseGraphRef(CaseGraphRef):
+    """Request-local binding from a public CaseGraphRef to checksummed inputs."""
+
+    manifest_input_id: str = Field(min_length=1)
+    record_set_input_id: str = Field(min_length=1)
 
 
 class ExternalCaseEvidenceRef(FrozenModel):
@@ -652,11 +696,9 @@ class EvidenceCompilationBundle(FrozenModel):
     graph_kind: GraphKind
     product_case_ref: VersionedObjectRef | None = None
     comparison_ref: VersionedObjectRef | None = None
-    case_graph_refs: list[CaseGraphRef] = Field(default_factory=list)
-    external_case_evidence_refs: list[SkipValidation[ExternalCaseEvidenceRef]] = Field(
-        default_factory=list
-    )
-    base_graph_ref: BaseGraphRef | None = None
+    case_graph_refs: list[BoundCaseGraphRef] = Field(default_factory=list)
+    external_case_evidence_refs: list[ExternalCaseEvidenceRef] = Field(default_factory=list)
+    base_graph_ref: AppendGraphRef | None = None
     object_catalog: list[CompilationObjectRef] = Field(min_length=1)
     candidate_records: list[dict[str, Any]] = Field(default_factory=list)
     missing_observations: list[dict[str, Any]] = Field(default_factory=list)
@@ -669,35 +711,25 @@ class EvidenceCompilationBundle(FrozenModel):
 
     @field_validator("case_graph_refs")
     @classmethod
-    def sort_case_graphs(cls, value: list[CaseGraphRef]) -> list[CaseGraphRef]:
+    def sort_case_graphs(
+        cls, value: list[BoundCaseGraphRef]
+    ) -> list[BoundCaseGraphRef]:
         return sorted(value, key=lambda item: (item.graph_id, item.graph_version))
 
     @field_validator("external_case_evidence_refs")
     @classmethod
     def sort_external_evidence(
-        cls, value: list[ExternalCaseEvidenceRef | dict[str, Any]]
-    ) -> list[ExternalCaseEvidenceRef | dict[str, Any]]:
+        cls, value: list[ExternalCaseEvidenceRef]
+    ) -> list[ExternalCaseEvidenceRef]:
         return sorted(
             value,
-            key=lambda item: json.dumps(
-                item.model_dump(mode="json") if isinstance(item, FrozenModel) else item,
-                ensure_ascii=False,
-                allow_nan=False,
-                sort_keys=True,
-                separators=(",", ":"),
+            key=lambda item: (
+                item.source_case_graph_ref.graph_id,
+                item.source_case_graph_ref.graph_version,
+                item.evidence_ref,
+                item.comparison_claim_ref.ref,
             ),
         )
-
-    @field_serializer("external_case_evidence_refs")
-    def serialize_external_evidence(
-        self, value: list[ExternalCaseEvidenceRef | dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        return [
-            item.model_dump(mode="json")
-            if isinstance(item, ExternalCaseEvidenceRef)
-            else item
-            for item in value
-        ]
 
     @field_validator("object_catalog")
     @classmethod
@@ -735,15 +767,29 @@ class EvidenceCompilationBundle(FrozenModel):
                 raise ValueError("case bundle requires exactly one product_case_ref")
             if self.case_graph_refs or self.external_case_evidence_refs:
                 raise ValueError("case bundle cannot contain comparison references")
+            if self.base_graph_ref is None and (
+                self.prior_evidence_records or self.prior_requirements
+            ):
+                raise ValueError("prior history requires an explicit base graph")
         else:
             if self.comparison_ref is None or self.product_case_ref is not None:
                 raise ValueError("comparison bundle requires exactly one comparison_ref")
             if not 2 <= len(self.case_graph_refs) <= 5:
                 raise ValueError("comparison bundle requires two to five case graphs")
             _unique([item.graph_id for item in self.case_graph_refs], "case_graph_refs")
+            _unique(
+                [item.manifest_input_id for item in self.case_graph_refs],
+                "case graph manifest bindings",
+            )
+            _unique(
+                [item.record_set_input_id for item in self.case_graph_refs],
+                "case graph record-set bindings",
+            )
             if not self.external_case_evidence_refs:
                 raise ValueError("comparison bundle requires external case evidence")
             if (
+                self.base_graph_ref is not None
+                or
                 self.candidate_records
                 or self.missing_observations
                 or self.prior_evidence_records
@@ -928,7 +974,7 @@ class ClaimSpec(FrozenModel):
     claim_type: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
     domain_id: P0DomainId
     claim_target_ref: str = Field(min_length=1)
-    biological_context_ref: str = Field(min_length=1)
+    biological_context_ref: VersionedObjectRef
     allowed_relations: list[EvidenceRelation] = Field(min_length=1)
     reconciliation_spec_ref: VersionedObjectRef
     requirement_specs: list[ClaimRequirementSpec] = Field(default_factory=list)
@@ -936,9 +982,7 @@ class ClaimSpec(FrozenModel):
     reviewer_ref: str | None = None
 
     _publishable_version = field_validator("version")(publication_version)
-    _publishable_claim_refs = field_validator(
-        "claim_target_ref", "biological_context_ref"
-    )(publication_ref)
+    _publishable_claim_target_ref = field_validator("claim_target_ref")(publication_ref)
 
     @field_validator("reviewer_ref")
     @classmethod

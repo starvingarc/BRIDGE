@@ -17,10 +17,13 @@ from pydantic import ValidationError
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSufficiencyProfile
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     CompilationInvariantError,
+    CONTENT_ADDRESSED_GRAPH_ROLES,
     canonical_input_hash,
     canonical_json_bytes,
     compile_evidence_graph,
     normalize_identity_payload,
+    evidence_record_content_hash,
+    logical_key_hash,
     validate_prior_history,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.graph import (
@@ -31,18 +34,24 @@ from bridge.tool_packages.p0_09_evidence_compiler.graph import (
     write_parquet,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
+    BaseGraphRef,
     CANONICALIZATION_ID,
+    CaseGraphRef,
     CaseEvidenceGraphManifest,
     ClaimRegistry,
     ComparisonEvidenceGraphManifest,
     EvidenceCompilationBundle,
     EvidenceCompilerRunResult,
     EvidenceFamilyRegistry,
+    EvidenceRecordSet,
+    EvidenceRequirementSet,
+    EvidenceLifecycleState,
     ExternalCaseEvidenceRef,
     GraphArtifactRef,
     GraphKind,
     ReconciliationSpecRegistry,
     contains_unsafe_reference,
+    is_prohibited_conclusion_key,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -59,11 +68,23 @@ from bridge.toolkit.contracts import (
 
 RESULT_SCHEMA_REF = "bridge://schemas/evidence-compiler-run-result/v0.1"
 ROLE_SCHEMAS = {
-    "compilation_bundle": "bridge://schemas/evidence-compilation-bundle/v0.1",
-    "evidence_sufficiency_profile": "bridge://schemas/evidence-sufficiency-profile/v0.1",
-    "evidence_family_registry": "bridge://schemas/evidence-family-registry/v0.1",
-    "claim_registry": "bridge://schemas/claim-registry/v0.1",
-    "reconciliation_spec_registry": "bridge://schemas/reconciliation-spec-registry/v0.1",
+    "compilation_bundle": {"bridge://schemas/evidence-compilation-bundle/v0.1"},
+    "evidence_sufficiency_profile": {"bridge://schemas/evidence-sufficiency-profile/v0.1"},
+    "evidence_family_registry": {"bridge://schemas/evidence-family-registry/v0.1"},
+    "claim_registry": {"bridge://schemas/claim-registry/v0.1"},
+    "reconciliation_spec_registry": {"bridge://schemas/reconciliation-spec-registry/v0.1"},
+    "base_graph_manifest": {
+        "bridge://schemas/case-evidence-graph-manifest/v0.1",
+        "bridge://schemas/comparison-evidence-graph-manifest/v0.1",
+    },
+    "base_evidence_record_set": {"bridge://schemas/evidence-record-set/v0.1"},
+    "base_evidence_requirement_set": {"bridge://schemas/evidence-requirement-set/v0.1"},
+    "source_case_graph_manifest": {
+        "bridge://schemas/case-evidence-graph-manifest/v0.1"
+    },
+    "source_case_evidence_record_set": {
+        "bridge://schemas/evidence-record-set/v0.1"
+    },
 }
 ROLE_MODELS: dict[str, type[FrozenModel]] = {
     "compilation_bundle": EvidenceCompilationBundle,
@@ -71,15 +92,9 @@ ROLE_MODELS: dict[str, type[FrozenModel]] = {
     "evidence_family_registry": EvidenceFamilyRegistry,
     "claim_registry": ClaimRegistry,
     "reconciliation_spec_registry": ReconciliationSpecRegistry,
-}
-LEGACY_KEYS = {
-    "_".join(("integrated", "score")),
-    "_".join(("evidence", "confidence", "score")),
-    "_".join(("potency", "proxy")),
-    "_".join(("overall", "score")),
-    "_".join(("overall", "rank")),
-    "_".join(("product", "pass")),
-    "_".join(("negative", "pass")),
+    "base_evidence_record_set": EvidenceRecordSet,
+    "base_evidence_requirement_set": EvidenceRequirementSet,
+    "source_case_evidence_record_set": EvidenceRecordSet,
 }
 EXPECTED_ARTIFACTS = {
     "evidence_records.json",
@@ -109,6 +124,16 @@ class LoadedInputs:
 
 
 @dataclass(frozen=True)
+class VerifiedGraphInputs:
+    base_manifest: CaseEvidenceGraphManifest | ComparisonEvidenceGraphManifest | None
+    source_manifests: dict[str, CaseEvidenceGraphManifest]
+    source_record_sets: dict[str, EvidenceRecordSet]
+    source_effective_lifecycle: dict[
+        str, dict[str, EvidenceLifecycleState]
+    ]
+
+
+@dataclass(frozen=True)
 class EvidenceCompilerAdapter:
     def check_eligibility(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
@@ -133,6 +158,8 @@ class EvidenceCompilerAdapter:
         )
 
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
+        if not isinstance(request, ToolRequestV2):
+            return _failed_v1_request(request, spec)
         eligibility = self.check_eligibility(request, spec)
         if not eligibility.eligible:
             return _failed_run(request, spec, eligibility.reason_codes)
@@ -160,6 +187,10 @@ class EvidenceCompilerAdapter:
         typed_profiles: dict[str, EvidenceSufficiencyProfile] = {
             key: value for key, value in profiles.items() if isinstance(value, EvidenceSufficiencyProfile)
         }
+        try:
+            verified_graph_inputs = _verify_graph_inputs(request, loaded, bundle)
+        except CompilationInvariantError as exc:
+            return _failed_run(request, spec, [exc.reason_code])
         input_hash = canonical_input_hash(
             request=request,
             spec=spec,
@@ -175,6 +206,8 @@ class EvidenceCompilerAdapter:
                 family_registry=family_registry,
                 claim_registry=claim_registry,
                 reconciliation_registry=reconciliation_registry,
+                verified_graph_inputs=verified_graph_inputs,
+                objects_by_input_id=loaded.objects_by_input_id,
             )
         except CompilationInvariantError as exc:
             return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
@@ -283,7 +316,7 @@ class EvidenceCompilerAdapter:
         if any(role not in ROLE_SCHEMAS for role in roles):
             reasons.append("unsupported_object_input_role")
         for ref in request.object_inputs:
-            if ref.role in ROLE_SCHEMAS and ref.schema_ref != ROLE_SCHEMAS[ref.role]:
+            if ref.role in ROLE_SCHEMAS and ref.schema_ref not in ROLE_SCHEMAS[ref.role]:
                 reasons.append("object_input_schema_mismatch")
         if len({item.input_id for item in request.object_inputs}) != len(request.object_inputs):
             reasons.append("duplicate_object_input_id")
@@ -305,7 +338,7 @@ def _load_structured_inputs(
             reasons.append("duplicate_object_input_id")
             continue
         seen.add(ref.input_id)
-        model = ROLE_MODELS.get(ref.role)
+        model = _role_model(ref)
         if model is None:
             continue
         if ref.media_type != "application/json":
@@ -321,7 +354,20 @@ def _load_structured_inputs(
         except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
             reasons.append("structured_input_json_invalid")
             continue
-        if _contains_legacy_contract(payload):
+        # The compilation bundle owns the only intentionally open record-level
+        # JSON surfaces.  Check its top-level envelope here, while leaving
+        # candidate/missing entries to the compiler's sanitized sibling-reject
+        # path.  Other roles are closed Pydantic schemas; notably the frozen
+        # P0-08 profile legitimately contains ``domain_score=null``.
+        no_score_payload = (
+            _top_level_raw_payload(ref.role, payload)
+            if ref.role == "compilation_bundle"
+            else payload
+        )
+        if (
+            ref.role != "evidence_sufficiency_profile"
+            and _contains_legacy_contract(no_score_payload)
+        ):
             reasons.append("legacy_evidence_contract_rejected")
             continue
         if contains_unsafe_reference(_top_level_raw_payload(ref.role, payload)):
@@ -340,6 +386,16 @@ def _load_structured_inputs(
     if reasons:
         return None, sorted(set(reasons))
     return LoadedInputs(objects_by_input_id=objects, bytes_by_input_id=bytes_by_input), []
+
+
+def _role_model(ref: StructuredInputRef) -> type[FrozenModel] | None:
+    if ref.role in {"base_graph_manifest", "source_case_graph_manifest"}:
+        if ref.schema_ref == "bridge://schemas/case-evidence-graph-manifest/v0.1":
+            return CaseEvidenceGraphManifest
+        if ref.schema_ref == "bridge://schemas/comparison-evidence-graph-manifest/v0.1":
+            return ComparisonEvidenceGraphManifest
+        return None
+    return ROLE_MODELS.get(ref.role)
 
 
 def _read_verified_bytes(ref: StructuredInputRef) -> bytes:
@@ -375,7 +431,16 @@ def _loads_json(raw: bytes) -> Any:
 
 
 def _validate_declared_version(ref: StructuredInputRef, value: FrozenModel) -> None:
-    for field in ("object_version", "bundle_version", "profile_version", "registry_version", "version"):
+    for field in (
+        "object_version",
+        "bundle_version",
+        "profile_version",
+        "registry_version",
+        "record_set_version",
+        "requirement_set_version",
+        "graph_version",
+        "version",
+    ):
         actual = getattr(value, field, None)
         if actual is not None:
             if str(actual) != ref.object_version:
@@ -429,6 +494,16 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             if isinstance(item, dict)
             and isinstance(item.get("sufficiency_profile_input_id"), str)
         }
+        profile_input_by_ref = {
+            f"{profile.profile_id}@{profile.profile_version}": input_id
+            for input_id, profile in profiles.items()
+            if isinstance(profile, EvidenceSufficiencyProfile)
+        }
+        bound_ids.update(
+            profile_input_by_ref[record.sufficiency_profile_ref.ref]
+            for record in bundle.prior_evidence_records
+            if record.sufficiency_profile_ref.ref in profile_input_by_ref
+        )
     else:
         if not 2 <= profile_count <= 25:
             reasons.append("sufficiency_profile_cardinality_invalid")
@@ -447,7 +522,38 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     if len(profile_ids) != len(set(profile_ids)):
         reasons.append("duplicate_sufficiency_profile_id")
     try:
-        validate_prior_history(bundle)
+        claims = _objects_for_role(request, loaded, "claim_registry", ClaimRegistry)
+        family_registries = _objects_for_role(
+            request, loaded, "evidence_family_registry", EvidenceFamilyRegistry
+        )
+        validate_prior_history(
+            bundle,
+            profiles_by_input_id={
+                key: value
+                for key, value in profiles.items()
+                if isinstance(value, EvidenceSufficiencyProfile)
+            },
+            claims=(
+                {
+                    (item.claim_id, item.version): item
+                    for item in claims[0].claims
+                }
+                if len(claims) == 1
+                else None
+            ),
+            families=(
+                {
+                    (item.evidence_family_id, item.version): item
+                    for item in family_registries[0].families
+                }
+                if len(family_registries) == 1
+                else None
+            ),
+        )
+    except CompilationInvariantError as exc:
+        reasons.append(exc.reason_code)
+    try:
+        _verify_graph_inputs(request, loaded, bundle)
     except CompilationInvariantError as exc:
         reasons.append(exc.reason_code)
     resolved_output = request.output_dir.resolve()
@@ -456,6 +562,203 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         if resolved_input == resolved_output or resolved_input.is_relative_to(resolved_output):
             reasons.append("output_dir_overlaps_structured_input")
     return sorted(set(reasons))
+
+
+def _verify_graph_inputs(
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    bundle: EvidenceCompilationBundle,
+) -> VerifiedGraphInputs:
+    refs_by_role: dict[str, list[StructuredInputRef]] = {}
+    for ref in request.object_inputs:
+        refs_by_role.setdefault(ref.role, []).append(ref)
+
+    base_manifests = refs_by_role.get("base_graph_manifest", [])
+    base_record_sets = refs_by_role.get("base_evidence_record_set", [])
+    base_requirement_sets = refs_by_role.get("base_evidence_requirement_set", [])
+    if bundle.base_graph_ref is None:
+        if base_manifests or base_record_sets or base_requirement_sets:
+            raise CompilationInvariantError("prior_history_invalid", "unexpected base inputs")
+        base_manifest = None
+    else:
+        if not (
+            len(base_manifests) == len(base_record_sets) == len(base_requirement_sets) == 1
+        ):
+            raise CompilationInvariantError("prior_history_invalid", "base inputs required")
+        manifest_ref = base_manifests[0]
+        manifest = loaded.objects_by_input_id.get(manifest_ref.input_id)
+        record_ref = base_record_sets[0]
+        record_set = loaded.objects_by_input_id.get(record_ref.input_id)
+        requirement_ref = base_requirement_sets[0]
+        requirement_set = loaded.objects_by_input_id.get(requirement_ref.input_id)
+        if not isinstance(manifest, (CaseEvidenceGraphManifest, ComparisonEvidenceGraphManifest)):
+            raise CompilationInvariantError("prior_history_invalid", "base manifest invalid")
+        if not isinstance(record_set, EvidenceRecordSet) or not isinstance(
+            requirement_set, EvidenceRequirementSet
+        ):
+            raise CompilationInvariantError("prior_history_invalid", "base fact sets invalid")
+        base = bundle.base_graph_ref
+        if (
+            manifest_ref.input_id != base.manifest_input_id
+            or record_ref.input_id != base.record_set_input_id
+            or requirement_ref.input_id != base.requirement_set_input_id
+        ):
+            raise CompilationInvariantError("prior_history_invalid", "base input binding mismatch")
+        manifest_sha = hashlib.sha256(loaded.bytes_by_input_id[manifest_ref.input_id]).hexdigest()
+        expected_kind = GraphKind.CASE if isinstance(manifest, CaseEvidenceGraphManifest) else GraphKind.COMPARISON
+        root_matches = (
+            isinstance(manifest, CaseEvidenceGraphManifest)
+            and bundle.product_case_ref == manifest.product_case_ref
+        ) or (
+            isinstance(manifest, ComparisonEvidenceGraphManifest)
+            and bundle.comparison_ref == manifest.comparison_ref
+        )
+        if (
+            expected_kind is not bundle.graph_kind
+            or not root_matches
+            or base.graph_id != manifest.graph_id
+            or base.graph_version != manifest.graph_version
+            or base.manifest_sha256 != manifest_sha
+            or record_ref.sha256 != manifest.evidence_records.sha256
+            or requirement_ref.sha256 != manifest.evidence_requirements.sha256
+            or record_set.graph_id != manifest.graph_id
+            or record_set.graph_version != manifest.graph_version
+            or requirement_set.graph_id != manifest.graph_id
+            or requirement_set.graph_version != manifest.graph_version
+            or record_set.records != bundle.prior_evidence_records
+            or requirement_set.requirements != bundle.prior_requirements
+        ):
+            raise CompilationInvariantError("prior_history_invalid", "base graph mismatch")
+        _preflight_graph_manifest(manifest_ref.path)
+        base_manifest = manifest
+
+    source_manifests: dict[str, CaseEvidenceGraphManifest] = {}
+    source_record_sets: dict[str, EvidenceRecordSet] = {}
+    source_effective_lifecycle: dict[
+        str, dict[str, EvidenceLifecycleState]
+    ] = {}
+    source_manifest_refs = refs_by_role.get("source_case_graph_manifest", [])
+    source_record_refs = refs_by_role.get("source_case_evidence_record_set", [])
+    if bundle.graph_kind is GraphKind.CASE:
+        if source_manifest_refs or source_record_refs:
+            raise CompilationInvariantError("prior_history_invalid", "unexpected source graph inputs")
+    else:
+        declared_manifest_ids = [item.manifest_input_id for item in bundle.case_graph_refs]
+        declared_record_ids = [item.record_set_input_id for item in bundle.case_graph_refs]
+        actual_manifest_ids = [item.input_id for item in source_manifest_refs]
+        actual_record_ids = [item.input_id for item in source_record_refs]
+        if (
+            len(set(declared_manifest_ids)) != len(declared_manifest_ids)
+            or len(set(declared_record_ids)) != len(declared_record_ids)
+            or set(actual_manifest_ids) != set(declared_manifest_ids)
+            or set(actual_record_ids) != set(declared_record_ids)
+        ):
+            raise CompilationInvariantError("prior_history_invalid", "source graph inputs required")
+        manifest_refs_by_id = {item.input_id: item for item in source_manifest_refs}
+        record_refs_by_id = {item.input_id: item for item in source_record_refs}
+        for declared_ref in bundle.case_graph_refs:
+            ref = manifest_refs_by_id[declared_ref.manifest_input_id]
+            record_ref = record_refs_by_id[declared_ref.record_set_input_id]
+            manifest = loaded.objects_by_input_id.get(declared_ref.manifest_input_id)
+            if not isinstance(manifest, CaseEvidenceGraphManifest):
+                raise CompilationInvariantError("prior_history_invalid", "source manifest invalid")
+            record_set = loaded.objects_by_input_id.get(declared_ref.record_set_input_id)
+            if (
+                not isinstance(record_set, EvidenceRecordSet)
+                or declared_ref.graph_id != graph_identity_for_product_case(
+                    declared_ref.product_case_ref
+                )
+                or declared_ref.graph_id != manifest.graph_id
+                or declared_ref.graph_version != manifest.graph_version
+                or declared_ref.product_case_ref != manifest.product_case_ref
+                or declared_ref.manifest_sha256
+                != hashlib.sha256(loaded.bytes_by_input_id[ref.input_id]).hexdigest()
+                or record_ref.sha256 != manifest.evidence_records.sha256
+                or record_set.graph_id != manifest.graph_id
+                or record_set.graph_version != manifest.graph_version
+            ):
+                raise CompilationInvariantError("prior_history_invalid", "source graph mismatch")
+            _preflight_graph_manifest(ref.path)
+            effective = _validate_source_record_set(record_set, manifest)
+            source_manifests[manifest.graph_id] = manifest
+            source_record_sets[manifest.graph_id] = record_set
+            source_effective_lifecycle[manifest.graph_id] = effective
+        if len(source_manifests) != len(bundle.case_graph_refs):
+            raise CompilationInvariantError("prior_history_invalid", "source graph set mismatch")
+    return VerifiedGraphInputs(
+        base_manifest=base_manifest,
+        source_manifests=source_manifests,
+        source_record_sets=source_record_sets,
+        source_effective_lifecycle=source_effective_lifecycle,
+    )
+
+
+def _validate_source_record_set(
+    record_set: EvidenceRecordSet, manifest: CaseEvidenceGraphManifest
+) -> dict[str, EvidenceLifecycleState]:
+    seen: set[str] = set()
+    by_id: dict[str, list[Any]] = {}
+    for record in record_set.records:
+        if (
+            record.ref in seen
+            or record.product_case_ref != manifest.product_case_ref
+            or record.evidence_id
+            != f"evidence:{logical_key_hash(record.logical_key)[:24]}"
+            or record.content_hash != evidence_record_content_hash(record)
+        ):
+            raise CompilationInvariantError(
+                "prior_history_invalid", "source evidence facts invalid"
+            )
+        seen.add(record.ref)
+        by_id.setdefault(record.evidence_id, []).append(record)
+    effective: dict[str, EvidenceLifecycleState] = {}
+    for versions in by_id.values():
+        versions.sort(key=lambda item: item.evidence_version)
+        if [item.evidence_version for item in versions] != list(
+            range(1, len(versions) + 1)
+        ) or len({item.logical_key for item in versions}) != 1:
+            raise CompilationInvariantError(
+                "prior_history_invalid", "source evidence history invalid"
+            )
+        for index, record in enumerate(versions):
+            if index == 0:
+                if record.revision_action.value != "create" or record.predecessor_ref is not None:
+                    raise CompilationInvariantError(
+                        "prior_history_invalid", "source evidence history invalid"
+                    )
+            elif record.predecessor_ref != versions[index - 1].ref:
+                raise CompilationInvariantError(
+                    "prior_history_invalid", "source evidence history invalid"
+                )
+            effective[record.ref] = record.lifecycle_state
+        for predecessor, successor in zip(versions, versions[1:], strict=False):
+            effective[predecessor.ref] = (
+                EvidenceLifecycleState.INVALIDATED
+                if successor.lifecycle_state is EvidenceLifecycleState.INVALIDATED
+                else EvidenceLifecycleState.SUPERSEDED
+            )
+    return effective
+
+
+def graph_identity_for_product_case(product_case_ref: Any) -> str:
+    identity = f"case|{product_case_ref.ref}"
+    return (
+        "case-evidence-graph:"
+        + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
+    )
+
+
+def _preflight_graph_manifest(path: Path) -> None:
+    try:
+        from bridge.tool_packages.p0_09_evidence_compiler.queries import (
+            EvidenceGraphQueries,
+        )
+
+        EvidenceGraphQueries.open(path)
+    except (OSError, ValueError) as exc:
+        raise CompilationInvariantError(
+            "prior_history_invalid", "graph manifest preflight failed"
+        ) from exc
 
 
 def _external_profile_input_id(
@@ -469,7 +772,7 @@ def _external_profile_input_id(
 
 def _contains_legacy_contract(value: object) -> bool:
     if isinstance(value, dict):
-        if set(map(str, value)) & LEGACY_KEYS:
+        if any(is_prohibited_conclusion_key(key) for key in value):
             return True
         return any(_contains_legacy_contract(item) for item in value.values())
     if isinstance(value, list):
@@ -583,7 +886,15 @@ def _write_bundle(
         edge_count=len(compiled.edges),
         object_counts=object_counts(compiled.nodes),
         source_input_hash=compiled.input_hash,
-        base_graph_ref=bundle.base_graph_ref,
+        base_graph_ref=(
+            BaseGraphRef(
+                graph_id=bundle.base_graph_ref.graph_id,
+                graph_version=bundle.base_graph_ref.graph_version,
+                manifest_sha256=bundle.base_graph_ref.manifest_sha256,
+            )
+            if bundle.base_graph_ref is not None
+            else None
+        ),
         created_at=compiled.created_at,
         **first_five,
     )
@@ -599,7 +910,15 @@ def _write_bundle(
         manifest = ComparisonEvidenceGraphManifest(
             **manifest_common,
             comparison_ref=bundle.comparison_ref,
-            case_graph_refs=bundle.case_graph_refs,
+            case_graph_refs=[
+                CaseGraphRef(
+                    graph_id=item.graph_id,
+                    graph_version=item.graph_version,
+                    manifest_sha256=item.manifest_sha256,
+                    product_case_ref=item.product_case_ref,
+                )
+                for item in bundle.case_graph_refs
+            ],
         )
         manifest_name = "comparison_evidence_graph_manifest.json"
         manifest_schema = "bridge://schemas/comparison-evidence-graph-manifest/v0.1"
@@ -682,18 +1001,7 @@ def _write_bundle(
         "result_schema_ref": spec.result_schema_ref,
         "input_hash": compiled.input_hash,
         "structured_inputs": [
-            {
-                "input_id": ref.input_id,
-                "role": ref.role,
-                "schema_ref": ref.schema_ref,
-                "object_version": ref.object_version,
-                "semantic_sha256": hashlib.sha256(
-                    canonical_json_bytes(
-                        normalize_identity_payload(objects_by_input_id[ref.input_id])
-                    )
-                ).hexdigest(),
-                "media_type": ref.media_type,
-            }
+            _structured_input_manifest_entry(ref, objects_by_input_id[ref.input_id])
             for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id))
         ],
         "artifacts": artifact_specs,
@@ -701,6 +1009,24 @@ def _write_bundle(
     _write_json(staging / "artifact_manifest.json", artifact_manifest)
     _verify_artifacts(staging, artifact_specs)
     return result, artifact_specs
+
+
+def _structured_input_manifest_entry(
+    ref: StructuredInputRef, value: FrozenModel
+) -> dict[str, Any]:
+    result = {
+        "input_id": ref.input_id,
+        "role": ref.role,
+        "schema_ref": ref.schema_ref,
+        "object_version": ref.object_version,
+        "semantic_sha256": hashlib.sha256(
+            canonical_json_bytes(normalize_identity_payload(value))
+        ).hexdigest(),
+        "media_type": ref.media_type,
+    }
+    if ref.role in CONTENT_ADDRESSED_GRAPH_ROLES:
+        result["content_addressed_sha256"] = ref.sha256
+    return result
 
 
 def _artifact_ref(path: Path, media_type: str, row_count: int | None = None) -> GraphArtifactRef:
@@ -875,3 +1201,20 @@ def _failed_run(
         reason_codes=reasons,
         warnings=[],
     )
+
+
+def _failed_v1_request(
+    request: ToolRequest, spec: ToolPackageSpecV2
+) -> ToolRunV2:
+    request_v2 = ToolRequestV2(
+        request_id=request.request_id,
+        tool_id=request.tool_id,
+        output_dir=request.output_dir,
+        tool_version=request.tool_version,
+        assets=request.assets,
+        measurement_spec_ref=request.measurement_spec_ref,
+        parameters=request.parameters,
+        random_seed=request.random_seed,
+        object_inputs=[],
+    )
+    return _failed_run(request_v2, spec, ["tool_request_v2_required"])

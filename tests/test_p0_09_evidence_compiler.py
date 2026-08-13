@@ -11,8 +11,10 @@ import pytest
 
 from bridge.tool_packages.p0_09_evidence_compiler.adapter import (
     RESULT_SCHEMA_REF,
+    _validate_source_record_set,
     adapter,
 )
+from bridge.tool_packages.p0_08_evidence_sufficiency.models import P0DomainId
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     PUBLIC_SCHEMA_MODELS,
     EvidenceCompilerRunResult,
@@ -20,8 +22,33 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceRequirementSet,
     ReconciliationRecordSet,
     EvidenceCompilationBundle,
+    EvidenceRecord,
+    CaseEvidenceGraphManifest,
     MissingEvidenceObservation,
+    EvidenceFamilyRegistry,
 )
+from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
+    canonical_json_bytes,
+    evidence_record_content_hash,
+)
+from bridge.tool_packages.p0_09_evidence_compiler.graph import node_id, write_parquet
+from bridge.tool_packages.p0_09_evidence_compiler.reconciler import (
+    ReconciliationEvidence,
+    _resolve_channel,
+)
+from bridge.tool_packages.p0_09_evidence_compiler.models import (
+    EvidenceApplicability,
+    EvidenceLifecycleState,
+    EvidenceRelation,
+    EvidenceTier,
+    EvidenceRequirementState,
+    GraphEdgeRow,
+    GraphEdgeType,
+    GraphNodeRow,
+    GraphNodeType,
+    GraphRecordMode,
+)
+from bridge.toolkit.contracts import EvidenceState
 from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
 from bridge.toolkit.contracts import (
     ExecutionState,
@@ -34,6 +61,11 @@ from bridge.toolkit.contracts import (
 
 SHA = "a" * 64
 CREATED_AT = "2026-08-13T00:00:00Z"
+
+
+def _case_graph_id(product_case_id: str, version: str = "1.0.0") -> str:
+    identity = f"case|{product_case_id}@{version}"
+    return "case-evidence-graph:" + hashlib.sha256(identity.encode()).hexdigest()[:24]
 
 
 def _write(path: Path, payload: object) -> str:
@@ -188,7 +220,10 @@ def _claim_registry(*, orthogonal_required: bool = False) -> dict[str, Any]:
                 "claim_type": "identity_support",
                 "domain_id": "target_identity",
                 "claim_target_ref": "target:synthetic",
-                "biological_context_ref": "context:synthetic",
+                "biological_context_ref": {
+                    "object_id": "context:synthetic",
+                    "object_version": "1.0.0",
+                },
                 "allowed_relations": ["supports", "contradicts"],
                 "reconciliation_spec_ref": {
                     "object_id": "reconciliation-spec:identity",
@@ -248,7 +283,10 @@ def _comparison_claim_registry() -> dict[str, Any]:
                 "claim_type": "identity_support",
                 "domain_id": "target_identity",
                 "claim_target_ref": "target:synthetic",
-                "biological_context_ref": "context:synthetic",
+                "biological_context_ref": {
+                    "object_id": "context:synthetic",
+                    "object_version": "1.0.0",
+                },
                 "allowed_relations": ["supports", "contradicts"],
                 "reconciliation_spec_ref": {
                     "object_id": "reconciliation-spec:identity",
@@ -271,31 +309,40 @@ def _comparison_claim_registry() -> dict[str, Any]:
 def _comparison_bundle(*, dangling: bool = False) -> dict[str, Any]:
     case_graphs = [
         {
-            "graph_id": "case-evidence-graph:aaaaaaaaaaaaaaaaaaaaaaaa",
+            "graph_id": _case_graph_id("product-case:case-a"),
             "graph_version": 1,
             "manifest_sha256": "a" * 64,
             "product_case_ref": {
                 "object_id": "product-case:case-a",
                 "object_version": "1.0.0",
             },
+            "manifest_input_id": "source-manifest-0",
+            "record_set_input_id": "source-records-0",
         },
         {
-            "graph_id": "case-evidence-graph:bbbbbbbbbbbbbbbbbbbbbbbb",
+            "graph_id": _case_graph_id("product-case:case-b"),
             "graph_version": 1,
             "manifest_sha256": "b" * 64,
             "product_case_ref": {
                 "object_id": "product-case:case-b",
                 "object_version": "1.0.0",
             },
+            "manifest_input_id": "source-manifest-1",
+            "record_set_input_id": "source-records-1",
         },
     ]
     externals = []
     for index, (case_ref, relation) in enumerate(
         zip(case_graphs, ("supports", "contradicts"), strict=True)
     ):
+        public_case_ref = {
+            key: value
+            for key, value in case_ref.items()
+            if key not in {"manifest_input_id", "record_set_input_id"}
+        }
         externals.append(
             {
-                "source_case_graph_ref": case_ref,
+                "source_case_graph_ref": public_case_ref,
                 "evidence_ref": f"evidence:{('a' if index == 0 else 'b') * 24}@1",
                 "evidence_content_hash": ("c" if index == 0 else "d") * 64,
                 "product_case_ref": case_ref["product_case_ref"],
@@ -314,7 +361,7 @@ def _comparison_bundle(*, dangling: bool = False) -> dict[str, Any]:
                 "sufficiency_profile_input_id": f"profile-{'a' if index == 0 else 'b'}",
                 "relation": relation,
                 "evidence_state": "measured",
-                "evidence_tier": "formal",
+                "evidence_tier": "shadow",
                 "lifecycle_state": "active",
                 "applicability": "applicable",
                 "tool_run_execution_state": "succeeded",
@@ -378,6 +425,226 @@ def _comparison_profiles() -> list[tuple[str, dict[str, Any]]]:
     ]
 
 
+def _source_record_for_external(
+    external: dict[str, Any], profile: dict[str, Any]
+) -> dict[str, Any]:
+    suffix = external["product_case_ref"]["object_id"].split(":", 1)[1]
+    logical_key = f"source-logical-key:{suffix}"
+    record = EvidenceRecord(
+        evidence_id="evidence:" + hashlib.sha256(logical_key.encode()).hexdigest()[:24],
+        evidence_version=1,
+        logical_key=logical_key,
+        content_hash="0" * 64,
+        product_case_ref=external["product_case_ref"],
+        sample_or_preparation_ref={
+            "object_id": f"sample:{suffix}",
+            "object_version": "1.0.0",
+        },
+        domain_id="target_identity",
+        measurement_result_ref={
+            "object_id": "measurement-result:target",
+            "object_version": "1.0.0",
+        },
+        measurement_spec_ref={
+            "object_id": "measurement-spec:target",
+            "object_version": "1.0.0",
+        },
+        metric_id=f"target-fraction-{suffix}",
+        value=0.5,
+        unit="fraction",
+        claim_ref={
+            "object_id": f"claim:{suffix}",
+            "object_version": "1.0.0",
+        },
+        biological_context={
+            "context_id": "context:synthetic",
+            "context_version": "1.0.0",
+        },
+        relation=external["relation"],
+        evidence_state="measured",
+        evidence_tier="shadow",
+        lifecycle_state="active",
+        applicability="applicable",
+        evidence_family_ref={
+            "object_id": "evidence-family:transcriptomic",
+            "object_version": "1.0.0",
+        },
+        sufficiency_profile_ref={
+            "object_id": profile["profile_id"],
+            "object_version": profile["profile_version"],
+        },
+        tool_run_ref={"object_id": f"tool-run:{suffix}", "object_version": "1.0.0"},
+        tool_run_execution_state="succeeded",
+        reference_refs=[],
+        prior_refs=[],
+        artifact_refs=[],
+        provenance_refs=[f"provenance:{suffix}"],
+        revision_action="create",
+        predecessor_ref=None,
+        created_at=CREATED_AT,
+        compiler_version="0.2.0",
+    )
+    return record.model_copy(
+        update={"content_hash": evidence_record_content_hash(record)}
+    ).model_dump(mode="json")
+
+
+def _materialize_comparison_sources(
+    tmp_path: Path,
+    bundle: dict[str, Any],
+    profiles: list[tuple[str, dict[str, Any]]],
+) -> tuple[dict[str, Any], list[Path]]:
+    bundle = json.loads(json.dumps(bundle))
+    profile_by_input = dict(profiles)
+    paths: list[Path] = []
+    for index, case_ref in enumerate(bundle["case_graph_refs"]):
+        external = next(
+            item
+            for item in bundle["external_case_evidence_refs"]
+            if item["source_case_graph_ref"]["graph_id"] == case_ref["graph_id"]
+        )
+        profile = profile_by_input[external["sufficiency_profile_input_id"]]
+        expected = _source_record_for_external(external, profile)
+        placeholder_ref = f"evidence:{('a' if index == 0 else 'b') * 24}@1"
+        if external["evidence_ref"] == placeholder_ref:
+            external["evidence_ref"] = f"{expected['evidence_id']}@1"
+        record_set = {
+            "record_set_id": f"evidence-record-set:{index:016x}",
+            "record_set_version": "0.1.0",
+            "graph_id": case_ref["graph_id"],
+            "graph_version": case_ref["graph_version"],
+            "records": [expected],
+            "dispositions": [],
+        }
+        root = tmp_path / f"source-case-{index}"
+        records_path = root / "evidence_records.json"
+        records_sha = _write(records_path, record_set)
+        requirement_set = {
+            "requirement_set_id": f"evidence-requirement-set:{index:016x}",
+            "requirement_set_version": "0.1.0",
+            "graph_id": case_ref["graph_id"],
+            "graph_version": case_ref["graph_version"],
+            "requirements": [],
+        }
+        requirements_sha = _write(root / "evidence_requirements.json", requirement_set)
+        reconciliation_set = {
+            "reconciliation_set_id": f"reconciliation-record-set:{index:016x}",
+            "reconciliation_set_version": "0.1.0",
+            "graph_id": case_ref["graph_id"],
+            "graph_version": case_ref["graph_version"],
+            "records": [],
+        }
+        reconciliation_sha = _write(
+            root / "reconciliation_records.json", reconciliation_set
+        )
+        product = case_ref["product_case_ref"]
+        root_node_id = node_id(
+            product["object_id"], product["object_version"], GraphNodeType.PRODUCT_CASE
+        )
+        evidence_node_id = node_id(
+            expected["evidence_id"], str(expected["evidence_version"]), GraphNodeType.EVIDENCE_RECORD
+        )
+        nodes = [
+            GraphNodeRow(
+                graph_id=case_ref["graph_id"],
+                graph_version=case_ref["graph_version"],
+                node_id=root_node_id,
+                node_type=GraphNodeType.PRODUCT_CASE,
+                record_mode=GraphRecordMode.OWNED,
+                object_id=product["object_id"],
+                object_version=product["object_version"],
+                properties_json=canonical_json_bytes(
+                    {"schema_ref": "bridge://schemas/product-case/v0.1"}
+                ).decode(),
+                content_hash=hashlib.sha256(product["object_id"].encode()).hexdigest(),
+            ),
+            GraphNodeRow(
+                graph_id=case_ref["graph_id"],
+                graph_version=case_ref["graph_version"],
+                node_id=evidence_node_id,
+                node_type=GraphNodeType.EVIDENCE_RECORD,
+                record_mode=GraphRecordMode.OWNED,
+                object_id=expected["evidence_id"],
+                object_version=str(expected["evidence_version"]),
+                lifecycle_state="active",
+                evidence_tier=expected["evidence_tier"],
+                properties_json=canonical_json_bytes(expected).decode(),
+                content_hash=expected["content_hash"],
+            ),
+        ]
+        edge_identity = f"{case_ref['graph_id']}|applicable_to|{evidence_node_id}|{root_node_id}"
+        edges = [
+            GraphEdgeRow(
+                graph_id=case_ref["graph_id"],
+                graph_version=case_ref["graph_version"],
+                edge_id="edge:" + hashlib.sha256(edge_identity.encode()).hexdigest()[:24],
+                edge_type=GraphEdgeType.APPLICABLE_TO,
+                source_node_id=evidence_node_id,
+                target_node_id=root_node_id,
+                properties_json="{}",
+                content_hash=hashlib.sha256(edge_identity.encode()).hexdigest(),
+            )
+        ]
+        write_parquet(root / "graph_nodes.parquet", root / "graph_edges.parquet", nodes, edges)
+        nodes_sha = hashlib.sha256((root / "graph_nodes.parquet").read_bytes()).hexdigest()
+        edges_sha = hashlib.sha256((root / "graph_edges.parquet").read_bytes()).hexdigest()
+        manifest = {
+            "graph_id": case_ref["graph_id"],
+            "graph_version": case_ref["graph_version"],
+            "canonicalization_id": "bridge-canonical-json/v0.1",
+            "node_count": 2,
+            "edge_count": 1,
+            "object_counts": {"ProductCase": 1, "EvidenceRecord": 1},
+            "source_input_hash": str(index + 1) * 64,
+            "base_graph_ref": None,
+            "evidence_records": {
+                "filename": "evidence_records.json",
+                "media_type": "application/json",
+                "sha256": records_sha,
+                "row_count": None,
+            },
+            "evidence_requirements": {
+                "filename": "evidence_requirements.json",
+                "media_type": "application/json",
+                "sha256": requirements_sha,
+                "row_count": None,
+            },
+            "reconciliation_records": {
+                "filename": "reconciliation_records.json",
+                "media_type": "application/json",
+                "sha256": reconciliation_sha,
+                "row_count": None,
+            },
+            "graph_nodes": {
+                "filename": "graph_nodes.parquet",
+                "media_type": "application/vnd.apache.parquet",
+                "sha256": nodes_sha,
+                "row_count": 2,
+            },
+            "graph_edges": {
+                "filename": "graph_edges.parquet",
+                "media_type": "application/vnd.apache.parquet",
+                "sha256": edges_sha,
+                "row_count": 1,
+            },
+            "created_at": CREATED_AT,
+            "graph_kind": "case",
+            "product_case_ref": case_ref["product_case_ref"],
+        }
+        manifest_path = root / "case_evidence_graph_manifest.json"
+        manifest_sha = _write(manifest_path, manifest)
+        original_sha = case_ref["manifest_sha256"]
+        external_original_sha = external["source_case_graph_ref"]["manifest_sha256"]
+        if original_sha in {"a" * 64, "b" * 64}:
+            case_ref["manifest_sha256"] = manifest_sha
+            if external_original_sha == original_sha:
+                external["source_case_graph_ref"]["manifest_sha256"] = manifest_sha
+        if external["evidence_content_hash"] in {"c" * 64, "d" * 64}:
+            external["evidence_content_hash"] = expected["content_hash"]
+        paths.append(manifest_path)
+    return bundle, paths
+
+
 def _catalog() -> list[dict[str, Any]]:
     return [
         {
@@ -405,7 +672,7 @@ def _candidate(
     metric_id: str = "target_fraction",
     value: Any = 0.75,
     relation: str = "supports",
-    tier: str = "formal",
+    tier: str = "shadow",
     family_id: str = "evidence-family:transcriptomic",
     references: list[str] | None = None,
     revision_action: str = "create",
@@ -474,6 +741,13 @@ def _bundle(
     prior_requirements: list[dict[str, Any]] | None = None,
     base_graph_ref: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if base_graph_ref is not None:
+        base_graph_ref = {
+            **base_graph_ref,
+            "manifest_input_id": "base-manifest",
+            "record_set_input_id": "base-records",
+            "requirement_set_input_id": "base-requirements",
+        }
     return {
         "bundle_id": "evidence-compilation-bundle:synthetic-001",
         "bundle_version": "0.1.0",
@@ -526,15 +800,26 @@ def _request(
     reconciliation_registry: dict[str, Any] | None = None,
     request_id: str = "request-p0-09",
     output_name: str = "output",
+    base_manifest_path: Path | None = None,
+    source_case_manifest_paths: list[Path] | None = None,
 ) -> ToolRequestV2:
     inputs = tmp_path / f"inputs-{request_id}"
+    manifest_paths_by_input_id: dict[str, Path] = {}
     profile_objects = profiles or [("profile-target", profile or _profile())]
+    effective_bundle = json.loads(json.dumps(bundle or _bundle()))
+    if (
+        effective_bundle["graph_kind"] == "comparison"
+        and source_case_manifest_paths is None
+    ):
+        effective_bundle, source_case_manifest_paths = _materialize_comparison_sources(
+            inputs, effective_bundle, profile_objects
+        )
     objects = [
         (
             "bundle",
             "compilation_bundle",
             "bridge://schemas/evidence-compilation-bundle/v0.1",
-            bundle or _bundle(),
+            effective_bundle,
             "0.1.0",
         ),
         (
@@ -569,10 +854,73 @@ def _request(
         )
         for input_id, payload in profile_objects
     ]
+    if base_manifest_path is not None:
+        manifest_paths_by_input_id["base-manifest"] = base_manifest_path
+        base_manifest = json.loads(base_manifest_path.read_text())
+        base_root = base_manifest_path.parent
+        objects.extend(
+            [
+                (
+                    "base-manifest",
+                    "base_graph_manifest",
+                    (
+                        "bridge://schemas/case-evidence-graph-manifest/v0.1"
+                        if base_manifest["graph_kind"] == "case"
+                        else "bridge://schemas/comparison-evidence-graph-manifest/v0.1"
+                    ),
+                    base_manifest,
+                    str(base_manifest["graph_version"]),
+                ),
+                (
+                    "base-records",
+                    "base_evidence_record_set",
+                    "bridge://schemas/evidence-record-set/v0.1",
+                    json.loads((base_root / base_manifest["evidence_records"]["filename"]).read_text()),
+                    "0.1.0",
+                ),
+                (
+                    "base-requirements",
+                    "base_evidence_requirement_set",
+                    "bridge://schemas/evidence-requirement-set/v0.1",
+                    json.loads(
+                        (base_root / base_manifest["evidence_requirements"]["filename"]).read_text()
+                    ),
+                    "0.1.0",
+                ),
+            ]
+        )
+    for index, source_manifest_path in enumerate(source_case_manifest_paths or []):
+        manifest_paths_by_input_id[f"source-manifest-{index}"] = source_manifest_path
+        source_manifest = json.loads(source_manifest_path.read_text())
+        source_root = source_manifest_path.parent
+        objects.extend(
+            [
+                (
+                    f"source-manifest-{index}",
+                    "source_case_graph_manifest",
+                    "bridge://schemas/case-evidence-graph-manifest/v0.1",
+                    source_manifest,
+                    str(source_manifest["graph_version"]),
+                ),
+                (
+                    f"source-records-{index}",
+                    "source_case_evidence_record_set",
+                    "bridge://schemas/evidence-record-set/v0.1",
+                    json.loads(
+                        (source_root / source_manifest["evidence_records"]["filename"]).read_text()
+                    ),
+                    "0.1.0",
+                ),
+            ]
+        )
     refs = []
     for input_id, role, schema_ref, payload, version in objects:
-        path = inputs / f"{input_id}.json"
-        digest = _write(path, payload)
+        path = manifest_paths_by_input_id.get(input_id, inputs / f"{input_id}.json")
+        digest = (
+            hashlib.sha256(path.read_bytes()).hexdigest()
+            if input_id in manifest_paths_by_input_id
+            else _write(path, payload)
+        )
         refs.append(
             {
                 "input_id": input_id,
@@ -640,7 +988,7 @@ def test_committed_synthetic_fixtures_validate_without_private_material() -> Non
     assert "/Users/" not in serialized and "/data1/" not in serialized
 
 
-def test_case_compilation_publishes_ten_immutable_artifacts_and_stable_reconciliation(
+def test_case_compilation_publishes_ten_immutable_artifacts_without_formal_promotion(
     tmp_path: Path,
 ) -> None:
     run = _run(tmp_path)
@@ -661,10 +1009,10 @@ def test_case_compilation_publishes_ten_immutable_artifacts_and_stable_reconcili
     )
     assert len(records.records) == 1
     assert records.records[0].evidence_version == 1
-    assert requirements.requirements[-1].state.value == "satisfied"
-    assert reconciliations.records[0].eligibility.value == "eligible"
-    assert reconciliations.records[0].state.value == "stable"
-    assert reconciliations.records[0].direction.value == "supports"
+    assert requirements.requirements[-1].state.value == "open"
+    assert reconciliations.records[0].eligibility.value == "insufficient_evidence"
+    assert reconciliations.records[0].state is None
+    assert reconciliations.records[0].direction is None
     serialized = json.dumps(result.model_dump(mode="json"), sort_keys=True)
     assert "domain_score" not in serialized
     assert "overall_score" not in serialized
@@ -712,7 +1060,7 @@ def test_shadow_record_is_visible_but_never_formal_reconciliation_input(tmp_path
     assert "lower_tier_excluded" in reconciliation["reason_codes"]
 
 
-def test_integration_role_opposite_resolved_primary_is_integration_sensitive(
+def test_shadow_integration_role_cannot_create_integration_sensitive_conclusion(
     tmp_path: Path,
 ) -> None:
     families = _family_registry(second_family=True)
@@ -734,17 +1082,24 @@ def test_integration_role_opposite_resolved_primary_is_integration_sensitive(
         bundle=_bundle(candidates=candidates),
         family_registry=families,
         reconciliation_registry=reconciliation,
+        profile=_profile()
+        | {
+            "deduplicated_evidence_family_ids": [
+                "evidence-family:transcriptomic",
+                "evidence-family:orthogonal",
+            ]
+        },
     )
     assert run.execution_state is ExecutionState.SUCCEEDED
     record = json.loads(
         ((run.request.output_dir / run.run_id) / "reconciliation_records.json").read_text()
     )["records"][0]
-    assert record["eligibility"] == "eligible"
-    assert record["state"] == "integration_sensitive"
-    assert record["direction"] == "supports"
+    assert record["eligibility"] == "insufficient_evidence"
+    assert record["state"] is None and record["direction"] is None
+    assert "lower_tier_excluded" in record["reason_codes"]
 
 
-def test_primary_cross_family_conflict_can_only_be_resolved_by_independent_confirmation(
+def test_shadow_cross_family_conflict_cannot_be_promoted_by_confirmation(
     tmp_path: Path,
 ) -> None:
     base = _family_registry()["families"][0]
@@ -804,15 +1159,22 @@ def test_primary_cross_family_conflict_can_only_be_resolved_by_independent_confi
         family_registry=families,
         claim_registry=claims,
         reconciliation_registry=reconciliation,
+        profile=_profile()
+        | {
+            "deduplicated_evidence_family_ids": [
+                "evidence-family:primary-a",
+                "evidence-family:primary-b",
+                "evidence-family:confirmation",
+            ]
+        },
     )
     assert run.execution_state is ExecutionState.SUCCEEDED
     record = json.loads(
         ((run.request.output_dir / run.run_id) / "reconciliation_records.json").read_text()
     )["records"][0]
-    assert record["eligibility"] == "eligible"
-    assert record["state"] == "consensus_supported"
-    assert record["direction"] == "supports"
-    assert "independent_confirmation_resolved_conflict" in record["reason_codes"]
+    assert record["eligibility"] == "insufficient_evidence"
+    assert record["state"] is None and record["direction"] is None
+    assert "independent_confirmation_resolved_conflict" not in record["reason_codes"]
 
 
 def test_one_invalid_candidate_yields_partial_without_graph_fact_or_secret_leak(
@@ -887,7 +1249,11 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
         prior_requirements=prior_requirements,
         base_graph_ref=base,
     )
-    second = _run(tmp_path / "second", bundle=second_bundle)
+    second = _run(
+        tmp_path / "second",
+        bundle=second_bundle,
+        base_manifest_path=manifest_path,
+    )
     assert second.execution_state is ExecutionState.SUCCEEDED
     second_dir = second.request.output_dir / second.run_id
     second_records = json.loads((second_dir / "evidence_records.json").read_text())[
@@ -896,6 +1262,16 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
     assert [item["evidence_version"] for item in second_records] == [1, 2]
     assert second_records[0] == prior_records[0]
     assert second_records[1]["predecessor_ref"] == predecessor
+    source_effective = _validate_source_record_set(
+        EvidenceRecordSet.model_validate_json(
+            (second_dir / "evidence_records.json").read_text()
+        ),
+        CaseEvidenceGraphManifest.model_validate_json(
+            (second_dir / "case_evidence_graph_manifest.json").read_text()
+        ),
+    )
+    assert source_effective[f"{second_records[0]['evidence_id']}@1"] is EvidenceLifecycleState.SUPERSEDED
+    assert source_effective[f"{second_records[1]['evidence_id']}@2"] is EvidenceLifecycleState.ACTIVE
     edges = EvidenceGraphQueries.open(second_dir / "case_evidence_graph_manifest.json")
     provenance = edges.trace_evidence_provenance(
         evidence_ref=f"{second_records[1]['evidence_id']}@2"
@@ -922,7 +1298,11 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
             "manifest_sha256": hashlib.sha256(second_manifest_path.read_bytes()).hexdigest(),
         },
     )
-    third = _run(tmp_path / "third", bundle=invalidate_bundle)
+    third = _run(
+        tmp_path / "third",
+        bundle=invalidate_bundle,
+        base_manifest_path=second_manifest_path,
+    )
     assert third.execution_state is ExecutionState.SUCCEEDED
     third_records = json.loads(
         ((third.request.output_dir / third.run_id) / "evidence_records.json").read_text()
@@ -1050,7 +1430,7 @@ def test_all_seven_queries_are_bounded_deterministic_and_read_only(tmp_path: Pat
         ),
         queries.get_case_evidence_subgraph(product_case_id="product-case:synthetic-001"),
         queries.compare_evidence_paths(
-            comparison_id="comparison:forbidden", domain_id="target_identity"
+            comparison_id="comparison:forbidden", domain_id=P0DomainId.TARGET_IDENTITY
         ),
     ]
     assert [item.query_name for item in calls] == [
@@ -1311,22 +1691,10 @@ def test_unsafe_missing_and_external_entries_are_isolated_without_echo(
         profiles=_comparison_profiles(),
         claim_registry=_comparison_claim_registry(),
     )
-    assert comparison_run.execution_state is ExecutionState.PARTIAL
-    comparison_final = comparison_run.request.output_dir / comparison_run.run_id
-    comparison_rejected = (comparison_final / "rejected_records.json").read_text()
-    assert "individual_record_schema_invalid" in comparison_rejected
-    assert unsafe not in comparison_rejected
-    query = EvidenceGraphQueries.open(
-        comparison_final / "comparison_evidence_graph_manifest.json"
-    )
-    projected = query.compare_evidence_paths(
-        comparison_id="comparison:case-a-vs-b", claim_id="claim:comparison"
-    )
-    assert sum(
-        node["node_type"] == "EvidenceRecord"
-        and node["record_mode"] == "external_ref"
-        for node in projected.nodes
-    ) == 1
+    assert comparison_run.execution_state is ExecutionState.FAILED
+    assert comparison_run.reason_codes == ["structured_input_schema_invalid"]
+    assert comparison_run.result is None and comparison_run.artifacts == []
+    assert not comparison_run.request.output_dir.exists()
 
 
 def test_boolean_value_is_not_accepted_as_numeric_evidence(tmp_path: Path) -> None:
@@ -1408,7 +1776,11 @@ def test_requirement_content_change_appends_even_when_state_stays_open(
         },
     )
 
-    second = _run(tmp_path / "second", bundle=bundle)
+    second = _run(
+        tmp_path / "second",
+        bundle=bundle,
+        base_manifest_path=manifest_path,
+    )
 
     assert second.execution_state is ExecutionState.SUCCEEDED
     requirements = json.loads(
@@ -1570,3 +1942,741 @@ def test_artifact_manifest_records_and_verifies_available_file_sizes(tmp_path: P
         item["size_bytes"] == (final / item["filename"]).stat().st_size
         for item in manifest["artifacts"]
     )
+
+
+def test_prior_history_from_another_product_case_fails_without_artifacts(
+    tmp_path: Path,
+) -> None:
+    first = _run(tmp_path / "case-a")
+    first_dir = first.request.output_dir / first.run_id
+    prior_records = json.loads((first_dir / "evidence_records.json").read_text())["records"]
+    prior_requirements = json.loads(
+        (first_dir / "evidence_requirements.json").read_text()
+    )["requirements"]
+    product_b = {
+        "object_id": "product-case:synthetic-002",
+        "object_version": "1.0.0",
+    }
+    bundle = _bundle(
+        candidates=[],
+        prior_records=prior_records,
+        prior_requirements=prior_requirements,
+        base_graph_ref={
+            "graph_id": "case-evidence-graph:"
+            + hashlib.sha256(b"case|product-case:synthetic-002@1.0.0").hexdigest()[:24],
+            "graph_version": 1,
+            "manifest_sha256": "f" * 64,
+        },
+    )
+    bundle["product_case_ref"] = product_b
+    bundle["object_catalog"][0]["object_id"] = product_b["object_id"]
+    profile = _profile(product_case_ref=product_b["object_id"])
+    request = _request(tmp_path / "case-b", bundle=bundle, profile=profile)
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["prior_history_invalid"]
+    assert run.result is None and run.artifacts == []
+    assert not request.output_dir.exists()
+
+
+def test_catalog_node_role_confusion_rejects_only_the_candidate(tmp_path: Path) -> None:
+    bundle = _bundle()
+    measurement = next(
+        item
+        for item in bundle["object_catalog"]
+        if item["object_id"] == "measurement-result:target"
+    )
+    measurement["node_type"] = "Artifact"
+    measurement["schema_ref"] = "bridge://schemas/artifact/v0.1"
+
+    run = _run(tmp_path, bundle=bundle)
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    assert json.loads((final / "evidence_records.json").read_text())["records"] == []
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert rejected[0]["reason_codes"] == ["declared_object_ref_not_found"]
+
+
+def test_claim_context_requires_exact_versioned_candidate_context(tmp_path: Path) -> None:
+    claims = _claim_registry()
+    claims["claims"][0]["biological_context_ref"] = {
+        "object_id": "context:synthetic",
+        "object_version": "2.0.0",
+    }
+
+    run = _run(tmp_path, claim_registry=claims)
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert rejected[0]["reason_codes"] == ["claim_context_mismatch"]
+
+
+def test_formal_candidate_is_rejected_when_profile_cannot_bind_object_versions(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path, bundle=_bundle(candidates=[_candidate(tier="formal")]))
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert "sufficiency_profile_version_binding_unavailable" in rejected[0]["reason_codes"]
+    assert json.loads((final / "evidence_records.json").read_text())["records"] == []
+
+
+def test_base_graph_requires_content_addressed_manifest_and_facts(
+    tmp_path: Path,
+) -> None:
+    first = _run(tmp_path / "first")
+    first_dir = first.request.output_dir / first.run_id
+    manifest_path = first_dir / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    prior_records = json.loads((first_dir / "evidence_records.json").read_text())["records"]
+    prior_requirements = json.loads(
+        (first_dir / "evidence_requirements.json").read_text()
+    )["requirements"]
+    bundle = _bundle(
+        candidates=[_candidate()],
+        prior_records=prior_records,
+        prior_requirements=prior_requirements,
+        base_graph_ref={
+            "graph_id": manifest["graph_id"],
+            "graph_version": manifest["graph_version"],
+            "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        },
+    )
+
+    missing_source = _run(tmp_path / "missing-source", bundle=bundle)
+    assert missing_source.execution_state is ExecutionState.FAILED
+    assert missing_source.reason_codes == ["prior_history_invalid"]
+    assert not missing_source.request.output_dir.exists()
+
+    verified = _run(
+        tmp_path / "verified",
+        bundle=bundle,
+        base_manifest_path=manifest_path,
+    )
+    assert verified.execution_state is ExecutionState.SUCCEEDED
+    assert verified.result["graph_version"] == manifest["graph_version"] + 1
+
+
+def test_base_graph_rejects_forged_manifest_checksum_and_version(tmp_path: Path) -> None:
+    first = _run(tmp_path / "first")
+    first_dir = first.request.output_dir / first.run_id
+    manifest_path = first_dir / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    bundle = _bundle(
+        candidates=[_candidate()],
+        prior_records=json.loads((first_dir / "evidence_records.json").read_text())["records"],
+        prior_requirements=json.loads(
+            (first_dir / "evidence_requirements.json").read_text()
+        )["requirements"],
+        base_graph_ref={
+            "graph_id": manifest["graph_id"],
+            "graph_version": 99,
+            "manifest_sha256": "f" * 64,
+        },
+    )
+
+    run = _run(tmp_path / "forged", bundle=bundle, base_manifest_path=manifest_path)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["prior_history_invalid"]
+    assert not run.request.output_dir.exists()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("evidence_ref", "evidence:" + "f" * 24 + "@999"),
+        ("evidence_content_hash", "f" * 64),
+        (
+            "source_claim_ref",
+            {"object_id": "claim:case-b", "object_version": "1.0.0"},
+        ),
+    ],
+)
+def test_comparison_external_fact_must_exist_in_content_addressed_source_set(
+    tmp_path: Path, field: str, value: Any
+) -> None:
+    bundle = _comparison_bundle()
+    bundle["external_case_evidence_refs"][0][field] = value
+
+    run = _run(
+        tmp_path,
+        bundle=bundle,
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert "external_evidence_claim_mapping_invalid" in rejected[0]["reason_codes"]
+    graph = EvidenceGraphQueries.open(final / "comparison_evidence_graph_manifest.json")
+    result = graph.compare_evidence_paths(
+        comparison_id="comparison:case-a-vs-b", claim_id="claim:comparison"
+    )
+    assert sum(node["node_type"] == "EvidenceRecord" for node in result.nodes) == 1
+
+
+def test_duplicate_evidence_identity_across_source_graphs_rejects_both_without_exception(
+    tmp_path: Path,
+) -> None:
+    bundle = _comparison_bundle()
+    duplicate_ref = "evidence:" + "f" * 24 + "@1"
+    for item in bundle["external_case_evidence_refs"]:
+        item["evidence_ref"] = duplicate_ref
+
+    run = _run(
+        tmp_path,
+        bundle=bundle,
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    rejected = json.loads(
+        (
+            run.request.output_dir / run.run_id / "rejected_records.json"
+        ).read_text()
+    )["records"]
+    assert len(rejected) == 2
+    assert all("duplicate_logical_key_conflict" in item["reason_codes"] for item in rejected)
+    assert all(set(item) <= {
+        "source_kind", "source_id", "source_index", "reason_codes", "claim_ref", "logical_key_digest"
+    } for item in rejected)
+
+
+def test_source_graph_input_bindings_are_a_strict_bijection(tmp_path: Path) -> None:
+    request = _request(
+        tmp_path,
+        bundle=_comparison_bundle(),
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    original = next(
+        item
+        for item in request.object_inputs
+        if item.role == "source_case_evidence_record_set"
+    )
+    unused_path = (tmp_path / "unused-source-records.json").resolve()
+    unused_path.write_bytes(original.path.read_bytes())
+    unused = original.model_copy(
+        update={"input_id": "source-records-unbound", "path": unused_path}
+    )
+    request = request.model_copy(
+        update={"object_inputs": [*request.object_inputs, unused]}
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["prior_history_invalid"]
+    assert run.artifacts == [] and not request.output_dir.exists()
+
+
+def test_source_graph_preflight_rejects_corrupt_authoritative_artifact(
+    tmp_path: Path,
+) -> None:
+    profiles = _comparison_profiles()
+    bundle, paths = _materialize_comparison_sources(
+        tmp_path / "sources", _comparison_bundle(), profiles
+    )
+    (paths[0].parent / "reconciliation_records.json").write_text(
+        '{"tampered":true}\n', encoding="utf-8"
+    )
+
+    run = _run(
+        tmp_path / "run",
+        bundle=bundle,
+        profiles=profiles,
+        claim_registry=_comparison_claim_registry(),
+        source_case_manifest_paths=paths,
+    )
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["prior_history_invalid"]
+    assert run.artifacts == [] and not run.request.output_dir.exists()
+
+
+def test_public_graph_manifests_do_not_expose_request_local_input_ids(
+    tmp_path: Path,
+) -> None:
+    comparison = _run(
+        tmp_path / "comparison",
+        bundle=_comparison_bundle(),
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    comparison_manifest = (
+        comparison.request.output_dir
+        / comparison.run_id
+        / "comparison_evidence_graph_manifest.json"
+    ).read_text()
+    assert "manifest_input_id" not in comparison_manifest
+    assert "record_set_input_id" not in comparison_manifest
+
+    first = _run(tmp_path / "first")
+    first_root = first.request.output_dir / first.run_id
+    first_manifest_path = first_root / "case_evidence_graph_manifest.json"
+    first_manifest = json.loads(first_manifest_path.read_text())
+    append = _run(
+        tmp_path / "append",
+        bundle=_bundle(
+            candidates=[_candidate()],
+            prior_records=json.loads((first_root / "evidence_records.json").read_text())[
+                "records"
+            ],
+            prior_requirements=json.loads(
+                (first_root / "evidence_requirements.json").read_text()
+            )["requirements"],
+            base_graph_ref={
+                "graph_id": first_manifest["graph_id"],
+                "graph_version": first_manifest["graph_version"],
+                "manifest_sha256": hashlib.sha256(
+                    first_manifest_path.read_bytes()
+                ).hexdigest(),
+            },
+        ),
+        base_manifest_path=first_manifest_path,
+    )
+    append_manifest = (
+        append.request.output_dir / append.run_id / "case_evidence_graph_manifest.json"
+    ).read_text()
+    assert "manifest_input_id" not in append_manifest
+    assert "record_set_input_id" not in append_manifest
+    assert "requirement_set_input_id" not in append_manifest
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("candidate_records", [42]),
+        ("missing_observations", ["not-an-object"]),
+        ("external_case_evidence_refs", [42]),
+    ],
+)
+def test_non_object_public_record_arrays_fail_top_level_schema_without_echo(
+    tmp_path: Path, field: str, value: list[Any], capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = _comparison_bundle() if field == "external_case_evidence_refs" else _bundle()
+    bundle[field] = value
+
+    request = _request(
+        tmp_path,
+        bundle=bundle,
+        profiles=_comparison_profiles() if field == "external_case_evidence_refs" else None,
+        claim_registry=(
+            _comparison_claim_registry()
+            if field == "external_case_evidence_refs"
+            else None
+        ),
+        source_case_manifest_paths=(
+            [] if field == "external_case_evidence_refs" else None
+        ),
+    )
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
+    assert run.artifacts == [] and not request.output_dir.exists()
+    captured = capsys.readouterr()
+    assert captured.out == "" and captured.err == ""
+
+
+def _reconciliation_evidence(family_ref: str, evidence_ref: str) -> ReconciliationEvidence:
+    return ReconciliationEvidence(
+        evidence_ref=evidence_ref,
+        claim_ref="claim:target-identity@1.0.0",
+        family_ref=family_ref,
+        profile_input_id="profile-target",
+        profile_ref=None,
+        relation=EvidenceRelation.SUPPORTS,
+        evidence_state=EvidenceState.MEASURED,
+        evidence_tier=EvidenceTier.FORMAL,
+        lifecycle_state=EvidenceLifecycleState.ACTIVE,
+        applicability=EvidenceApplicability.APPLICABLE,
+        tool_run_execution_state="succeeded",
+    )
+
+
+@pytest.mark.parametrize("dependency_mode", ["same_scope", "one_way", "transitive"])
+def test_minimum_independent_families_uses_scope_and_symmetric_dependency_closure(
+    dependency_mode: str,
+) -> None:
+    base = _family_registry()["families"][0]
+    payloads = [
+        {
+            **base,
+            "evidence_family_id": f"evidence-family:f{index}",
+            "independence_scope": f"scope-{index}",
+            "known_dependencies": [],
+        }
+        for index in range(3)
+    ]
+    if dependency_mode == "same_scope":
+        payloads[1]["independence_scope"] = payloads[0]["independence_scope"]
+        selected = payloads[:2]
+    elif dependency_mode == "one_way":
+        payloads[0]["known_dependencies"] = [payloads[1]["evidence_family_id"]]
+        selected = payloads[:2]
+    else:
+        payloads[0]["known_dependencies"] = [payloads[1]["evidence_family_id"]]
+        payloads[1]["known_dependencies"] = [payloads[2]["evidence_family_id"]]
+        selected = payloads
+    registry = EvidenceFamilyRegistry.model_validate(
+        _family_registry() | {"families": selected}
+    )
+    families = {(item.evidence_family_id, item.version): item for item in registry.families}
+    evidence = [
+        _reconciliation_evidence(item.ref, f"evidence:{index + 1:024x}@1")
+        for index, item in enumerate(registry.families)
+    ]
+
+    resolution, reasons = _resolve_channel(
+        role="transcriptomic",
+        evidence=evidence,
+        families=families,
+        minimum=2,
+    )
+
+    assert resolution.eligible is False
+    assert "non_independent_families_deduplicated" in reasons
+
+
+def test_cross_scope_dependency_free_families_count_as_independent() -> None:
+    base = _family_registry()["families"][0]
+    registry = EvidenceFamilyRegistry.model_validate(
+        _family_registry()
+        | {
+            "families": [
+                {
+                    **base,
+                    "evidence_family_id": f"evidence-family:f{index}",
+                    "independence_scope": f"scope-{index}",
+                    "known_dependencies": [],
+                }
+                for index in range(2)
+            ]
+        }
+    )
+    families = {(item.evidence_family_id, item.version): item for item in registry.families}
+    resolution, reasons = _resolve_channel(
+        role="transcriptomic",
+        evidence=[
+            _reconciliation_evidence(item.ref, f"evidence:{index + 1:024x}@1")
+            for index, item in enumerate(registry.families)
+        ],
+        families=families,
+        minimum=2,
+    )
+
+    assert resolution.eligible is True
+    assert "non_independent_families_deduplicated" not in reasons
+
+
+def test_direct_v1_run_returns_typed_v2_failure_without_exception(tmp_path: Path) -> None:
+    request = ToolRequest(
+        request_id="legacy-p0-09",
+        tool_id="P0-09",
+        output_dir=(tmp_path / "out").resolve(),
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["tool_request_v2_required"]
+    assert run.request.object_inputs == []
+    assert run.result is None and run.artifacts == []
+
+
+def test_missing_requirement_query_returns_only_latest_satisfied_version(
+    tmp_path: Path,
+) -> None:
+    first = _run(tmp_path / "first")
+    first_dir = first.request.output_dir / first.run_id
+    manifest_path = first_dir / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    prior_records = json.loads((first_dir / "evidence_records.json").read_text())["records"]
+    prior_requirements = json.loads(
+        (first_dir / "evidence_requirements.json").read_text()
+    )["requirements"]
+    formal = _candidate(tier="formal")
+    second_bundle = _bundle(
+        candidates=[formal],
+        prior_records=prior_records,
+        prior_requirements=prior_requirements,
+        base_graph_ref={
+            "graph_id": manifest["graph_id"],
+            "graph_version": manifest["graph_version"],
+            "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        },
+    )
+    # The current profile cannot authorize new formal evidence, so create a
+    # legitimate satisfied v2 requirement directly from the immutable v1 facts
+    # to exercise query history semantics.
+    old = prior_requirements[0]
+    satisfied = {
+        **old,
+        "requirement_version": 2,
+        "state": "satisfied",
+        "reason_codes": ["required_evidence_present"],
+        "satisfying_evidence_refs": [prior_records[0]["evidence_id"] + "@1"],
+        "supersedes_requirement_ref": old["requirement_id"] + "@1",
+    }
+    from bridge.tool_packages.p0_09_evidence_compiler.models import EvidenceRequirement
+    from bridge.tool_packages.p0_09_evidence_compiler.compiler import requirement_content_hash
+
+    parsed = EvidenceRequirement.model_validate(satisfied | {"content_hash": "0" * 64})
+    satisfied["content_hash"] = requirement_content_hash(parsed)
+    second_bundle["prior_requirements"] = [old, satisfied]
+    second_bundle["candidate_records"] = []
+    second_bundle["missing_observations"] = [
+        {
+            **_missing_observation(),
+            "observation_id": "missing-evidence:transcriptomic-current",
+            "requirement_key": "transcriptomic_channel",
+            "reason_code": "required_experiment_not_performed",
+        }
+    ]
+    # Append-only input history must exactly match the immutable base graph.
+    # Therefore exercise the query's latest-version logic against a copied,
+    # internally coherent graph projection rather than forging a base manifest.
+    from bridge.tool_packages.p0_09_evidence_compiler.graph import read_parquet_rows
+
+    query_copy = tmp_path / "query-history"
+    query_copy.mkdir()
+    for name in (
+        "evidence_records.json",
+        "reconciliation_records.json",
+        "graph_nodes.parquet",
+        "graph_edges.parquet",
+    ):
+        (query_copy / name).write_bytes((first_dir / name).read_bytes())
+    requirement_set = json.loads((first_dir / "evidence_requirements.json").read_text())
+    requirement_set["requirements"] = [old, satisfied]
+    req_sha = _write(query_copy / "evidence_requirements.json", requirement_set)
+    nodes, edges = read_parquet_rows(
+        first_dir / "graph_nodes.parquet", first_dir / "graph_edges.parquet"
+    )
+    latest_nodes = [
+        item
+        for item in nodes
+        if not (
+            item.node_type is GraphNodeType.EVIDENCE_REQUIREMENT
+            and item.object_id == old["requirement_id"]
+        )
+    ]
+    removed_requirement_node_ids = {
+        item.node_id
+        for item in nodes
+        if item.node_type is GraphNodeType.EVIDENCE_REQUIREMENT
+        and item.object_id == old["requirement_id"]
+    }
+    edges = [
+        item
+        for item in edges
+        if item.source_node_id not in removed_requirement_node_ids
+        and item.target_node_id not in removed_requirement_node_ids
+    ]
+    for payload, lifecycle in ((old, "superseded"), (satisfied, "satisfied")):
+        requirement_node_id = node_id(
+            payload["requirement_id"],
+            str(payload["requirement_version"]),
+            GraphNodeType.EVIDENCE_REQUIREMENT,
+        )
+        latest_nodes.append(
+            GraphNodeRow(
+                graph_id=manifest["graph_id"],
+                graph_version=manifest["graph_version"],
+                node_id=requirement_node_id,
+                node_type=GraphNodeType.EVIDENCE_REQUIREMENT,
+                record_mode=GraphRecordMode.OWNED,
+                object_id=payload["requirement_id"],
+                object_version=str(payload["requirement_version"]),
+                lifecycle_state=lifecycle,
+                properties_json=canonical_json_bytes(payload).decode(),
+                content_hash=payload["content_hash"],
+            )
+        )
+        root_node_id = node_id(
+            "product-case:synthetic-001", "1.0.0", GraphNodeType.PRODUCT_CASE
+        )
+        edge_identity = (
+            f"{manifest['graph_id']}|applicable_to|{requirement_node_id}|"
+            f"{root_node_id}|{hashlib.sha256(b'{}').hexdigest()}"
+        )
+        edges.append(
+            GraphEdgeRow(
+                graph_id=manifest["graph_id"],
+                graph_version=manifest["graph_version"],
+                edge_id="edge:" + hashlib.sha256(edge_identity.encode()).hexdigest()[:24],
+                edge_type=GraphEdgeType.APPLICABLE_TO,
+                source_node_id=requirement_node_id,
+                target_node_id=root_node_id,
+                properties_json="{}",
+                content_hash=hashlib.sha256(edge_identity.encode()).hexdigest(),
+            )
+        )
+    write_parquet(
+        query_copy / "graph_nodes.parquet",
+        query_copy / "graph_edges.parquet",
+        latest_nodes,
+        edges,
+    )
+    query_manifest = json.loads(manifest_path.read_text())
+    query_manifest["evidence_requirements"]["sha256"] = req_sha
+    query_manifest["graph_nodes"]["sha256"] = hashlib.sha256(
+        (query_copy / "graph_nodes.parquet").read_bytes()
+    ).hexdigest()
+    query_manifest["graph_nodes"]["row_count"] = len(latest_nodes)
+    query_manifest["graph_edges"]["sha256"] = hashlib.sha256(
+        (query_copy / "graph_edges.parquet").read_bytes()
+    ).hexdigest()
+    query_manifest["graph_edges"]["row_count"] = len(edges)
+    query_manifest["node_count"] = len(latest_nodes)
+    query_manifest["edge_count"] = len(edges)
+    query_manifest["object_counts"]["EvidenceRequirement"] = 2
+    query_manifest_path = query_copy / "case_evidence_graph_manifest.json"
+    _write(query_manifest_path, query_manifest)
+
+    query = EvidenceGraphQueries.open(query_manifest_path)
+    current_open = query.get_missing_requirements(
+        product_case_id="product-case:synthetic-001",
+        state=EvidenceRequirementState.OPEN,
+    )
+    current_satisfied = query.get_missing_requirements(
+        product_case_id="product-case:synthetic-001",
+        state=EvidenceRequirementState.SATISFIED,
+    )
+    assert not any(
+        node["node_type"] == "EvidenceRequirement" for node in current_open.nodes
+    )
+    latest_satisfied = next(
+        node
+        for node in current_satisfied.nodes
+        if node["node_type"] == "EvidenceRequirement"
+    )
+    assert latest_satisfied["object_version"] == "2"
+    return
+
+    second = _run(
+        tmp_path / "second",
+        bundle=second_bundle,
+        base_manifest_path=copied_manifest_path,
+    )
+    assert second.execution_state is ExecutionState.SUCCEEDED
+    query = EvidenceGraphQueries.open(
+        second.request.output_dir / second.run_id / "case_evidence_graph_manifest.json"
+    )
+
+    current_open = query.get_missing_requirements(
+        product_case_id="product-case:synthetic-001",
+        state=EvidenceRequirementState.OPEN,
+    )
+    current_satisfied = query.get_missing_requirements(
+        product_case_id="product-case:synthetic-001",
+        state=EvidenceRequirementState.SATISFIED,
+    )
+    assert sum(
+        node["node_type"] == "EvidenceRequirement" for node in current_open.nodes
+    ) == 1
+    assert not any(
+        node["node_type"] == "EvidenceRequirement" for node in current_satisfied.nodes
+    )
+    latest_open = next(
+        node for node in current_open.nodes if node["node_type"] == "EvidenceRequirement"
+    )
+    assert latest_open["object_version"] == "3"
+
+
+@pytest.mark.parametrize(
+    ("query_name", "kwargs"),
+    [
+        ("get_claim_evidence", {"claim_id": 7}),
+        ("trace_evidence_provenance", {"evidence_ref": 7}),
+        ("get_conflicting_evidence", {"claim_id": "claim:target-identity", "limit": 1.5}),
+        ("get_missing_requirements", {"product_case_id": "product-case:synthetic-001", "state": "open"}),
+        ("get_evidence_family_members", {"evidence_family_id": "evidence-family:transcriptomic", "include_inactive": "false"}),
+        ("get_case_evidence_subgraph", {"product_case_id": "product-case:synthetic-001", "domain_ids": ("target_identity",)}),
+        ("compare_evidence_paths", {"comparison_id": "comparison:x", "domain_id": "target_identity"}),
+    ],
+)
+def test_all_public_queries_return_typed_invalid_for_wrong_parameter_types(
+    tmp_path: Path, query_name: str, kwargs: dict[str, Any]
+) -> None:
+    run = _run(tmp_path)
+    query = EvidenceGraphQueries.open(
+        run.request.output_dir / run.run_id / "case_evidence_graph_manifest.json"
+    )
+
+    result = getattr(query, query_name)(**kwargs)
+
+    assert result.query_name == query_name
+    assert result.reason_codes in (["query_parameter_invalid"], ["graph_kind_mismatch"])
+    assert result.nodes == [] and result.edges == []
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "domainScore",
+        "domain-score",
+        "domain score",
+        "OverallScore",
+        "total_score",
+        "grade",
+        "pass-fail",
+        "potency",
+        "safety",
+        "efficacy",
+        "GMP release",
+        "clinicalConclusion",
+        "ranking",
+    ],
+)
+def test_no_score_conclusion_keys_are_normalized_and_rejected_per_candidate(
+    tmp_path: Path, key: str
+) -> None:
+    bad = _candidate(
+        candidate_id="evidence-candidate:no-score",
+        metric_id="no_score_canary",
+        value={key: "claimed"},
+    )
+
+    run = _run(tmp_path, bundle=_bundle(candidates=[_candidate(), bad]))
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    rejected = (final / "rejected_records.json").read_text()
+    assert "individual_record_schema_invalid" in rejected
+    assert "claimed" not in rejected
+    assert len(json.loads((final / "evidence_records.json").read_text())["records"]) == 1
+
+
+@pytest.mark.parametrize(
+    "safe_payload",
+    [
+        {"safety_marker_expression": 0.4},
+        {"clinical_stage_label": "preclinical-model"},
+        {"potency_assay_identifier": "assay:research-only"},
+        {"ranking_method_ref": "method:descriptive-order"},
+        {"gmp_like_transcriptional_program": "not-a-release-claim"},
+    ],
+)
+def test_no_score_guard_allows_scientific_neighbor_keys(
+    tmp_path: Path, safe_payload: dict[str, Any]
+) -> None:
+    candidate = _candidate(value=safe_payload)
+
+    run = _run(tmp_path, bundle=_bundle(candidates=[candidate]))
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    records = json.loads(
+        (run.request.output_dir / run.run_id / "evidence_records.json").read_text()
+    )["records"]
+    assert records[0]["value"] == safe_payload

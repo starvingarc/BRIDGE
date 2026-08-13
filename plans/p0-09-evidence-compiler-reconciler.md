@@ -10,13 +10,13 @@ Can BRIDGE preserve accepted domain evidence, explicit missing requirements, con
 - Request/run envelopes: `bridge://schemas/tool-request/v0.2` and `bridge://schemas/tool-run/v0.2`.
 - Result: `bridge://schemas/evidence-compiler-run-result/v0.1`.
 - Adapter: `bridge.tool_packages.p0_09_evidence_compiler.adapter:adapter`.
-- Required inputs are one compilation bundle, one Evidence Family registry, one Claim registry, one reconciliation registry and the referenced P0-08 sufficiency profiles.
+- Required inputs are one compilation bundle, one Evidence Family registry, one Claim registry, one reconciliation registry and the referenced P0-08 sufficiency profiles. Case append additionally requires the content-addressed base manifest/record/requirement sets; Comparison requires one content-addressed Case manifest/record set pair per bound source graph.
 - Every input is a local immutable JSON object bound by role, public Schema, object version and SHA-256.
 - Fixtures are synthetic. No private, locked, sealed, competitor or real ProductCase data are opened.
 
 ## Current observation
 
-The candidate deterministically emits normalized evidence, requirement and reconciliation JSON; fixed-column Parquet nodes and edges; a Case or Comparison manifest; a Cytoscape projection; a rejected-record list; a typed result and an artifact manifest. NetworkX reconstructs the Parquet graph and verifies graph/query invariants. Missing observations become `EvidenceRequirement` objects, never zero-valued records. Invalid sibling records are excluded from a partial graph; malformed top-level inputs publish nothing.
+The candidate deterministically emits normalized evidence, requirement and reconciliation JSON; fixed-column Parquet nodes and edges; a Case or Comparison manifest; a Cytoscape projection; a rejected-record list; a typed result and an artifact manifest. NetworkX reconstructs every current/base/source graph and verifies graph/query/fact-set invariants. Missing observations become `EvidenceRequirement` objects, never zero-valued records. Schema-valid semantic sibling failures are excluded from a partial graph; malformed top-level inputs publish nothing. P0-08 v0.1 cannot prove ProductCase/MeasurementSpec versions, so formal evidence is conservatively refused rather than promoted.
 
 ## Meaning for product evaluation
 
@@ -35,9 +35,9 @@ The output can make evidence lineage, gaps and conflicts inspectable without all
 
 - [x] Implement module-local models, compiler, reconciler, graph projection, adapter and bounded queries.
 - [x] Add detailed Tool Card, example request, scientific task card and reproducible validation record.
-- [x] Register and export all 16 public P0-09 Schemas and verify packaged byte parity.
-- [x] Register the adapter/result schema, explicit evidence dependencies, knowledge projection and repository-wide documentation.
-- [x] Pass focused, full-source, wheel-install, CLI/SDK, knowledge, repository-policy and diff gates.
+- [x] Re-export the post-review public P0-09 Schemas and verify packaged byte parity.
+- [x] Recheck adapter/result-schema registration, explicit evidence dependencies, knowledge projection and repository-wide documentation against the frozen post-review contract.
+- [x] Rerun full-source, clean-wheel, CLI/SDK, knowledge, repository-policy and diff gates after central export; the post-review focused suite passes 122 tests and both source and wheel suites pass 812 tests.
 - [ ] Complete independent review with no unresolved Critical or Important findings.
 - [ ] Push one topic branch and open a Draft stacked PR; do not merge.
 

@@ -31,6 +31,11 @@ Every object is an immutable local `application/json` file referenced by `Struct
 | `evidence_family_registry` | exactly 1 | `evidence-family-registry/v0.1` | Family version, channel role, independence scope, review state |
 | `claim_registry` | exactly 1 | `claim-registry/v0.1` | Claim version, domain, allowed relations and requirement templates |
 | `reconciliation_spec_registry` | exactly 1 | `reconciliation-spec-registry/v0.1` | Frozen channel/minimum/conflict rules; no weights or generic expressions |
+| `base_graph_manifest` | exactly 1 iff Case `base_graph_ref` exists | Case graph manifest | Exact prior graph manifest; forbidden otherwise |
+| `base_evidence_record_set` | exactly 1 iff Case `base_graph_ref` exists | `evidence-record-set/v0.1` | Complete prior EvidenceRecord history named by the base manifest |
+| `base_evidence_requirement_set` | exactly 1 iff Case `base_graph_ref` exists | `evidence-requirement-set/v0.1` | Complete prior EvidenceRequirement history named by the base manifest |
+| `source_case_graph_manifest` | exactly 1 per Comparison case ref | Case graph manifest | Content-addressed source Case graph; forbidden for Case compilation |
+| `source_case_evidence_record_set` | exactly 1 per Comparison case ref | `evidence-record-set/v0.1` | Exact source facts named by its paired manifest |
 
 The shared envelope requires `assets=[]`, `measurement_spec_ref=null`, and `parameters={}`. `random_seed` is accepted for envelope parity but unused. Input paths, request ID, output path, and wall-clock time do not enter logical object IDs.
 
@@ -50,7 +55,7 @@ Successful or partial execution writes one immutable `<output_dir>/run-<digest>/
 | `evidence_compiler_run_result.json` | Typed result returned in `ToolRunV2.result` |
 | `artifact_manifest.json` | Checksums of the preceding nine files; no circular self-hash |
 
-`measurements=[]` and `visualizations=[]`. P0-09 emits no `domain_score`, total score, grade, pass/fail, potency, safety, efficacy, GMP-release or ranking field. JSON and Parquet are the facts; NetworkX validates and serves bounded in-process queries only. LadybugDB is deferred shadow work and is not required.
+`measurements=[]` and `visualizations=[]`. P0-09 computes or populates no `domain_score`, total score, grade, pass/fail, potency, safety, efficacy, GMP-release or ranking field. A bound P0-08 profile's required `domain_score=null` is preserved only as upstream provenance and never becomes a P0-09 conclusion. JSON and Parquet are the facts; NetworkX validates and serves bounded in-process queries only. LadybugDB is deferred shadow work and is not required.
 
 ## Versioning and reconciliation
 
@@ -59,12 +64,12 @@ Successful or partial execution writes one immutable `<output_dir>/run-<digest>/
 - `negative`, `missing`, `unknown`, `unavailable`, and `alert` remain distinct. Missing creates an `EvidenceRequirement`, not a numeric record.
 - `shadow` and `exploratory` records remain visible for audit but never enter formal reconciliation.
 - Failed, skipped, or not-implemented upstream runs cannot become evidence.
-- Records sharing an EvidenceFamily retain provenance but contribute one family direction. Opposite directions in one family remain unresolved; tools and records are never majority votes.
-- Formal reconciliation requires frozen Claim/Reconciliation registries, reviewed families, applicable active formal evidence, and a `sufficient` P0-08 profile.
+- Records sharing an EvidenceFamily retain provenance but contribute one family direction. Families in the same `independence_scope`, or joined by the symmetric/transitive closure of `known_dependencies`, count as one independent component. Opposite directions within a component remain unresolved; tools and records are never majority votes.
+- P0-08 v0.1 exposes bare ProductCase and MeasurementSpec IDs rather than versioned refs. P0-09 therefore validates shadow/exploratory ID, MeasurementResult and retained-family bindings but conservatively rejects every formal candidate/external ref with `sufficiency_profile_version_binding_unavailable`; v0.1 cannot emit an eligible formal reconciliation.
 
 ## Refusal and degradation
 
-Top-level role, Schema, media type, checksum, graph scope, prior-chain, overlapping-output, legacy-score, unsafe publication reference, or input-mutation failures return `failed`, `result=null`, and no artifacts. Invalid sibling candidate/missing/external-reference items produce a `partial` bundle and `individual_records_rejected`; rejected payloads do not enter the graph or get echoed. The bounded publication contract rejects local/server paths, `file:` URIs, home-variable paths, credential-like assignments/tokens, and non-identifier public refs; it is not a promise of general secret detection. Contract-complete absence is a scientific `EvidenceRequirement`/`insufficient_evidence`, not a technical failure or zero.
+Top-level role, Schema, media type, checksum, graph scope, prior-chain, overlapping-output, legacy-score, unsafe publication reference, or input-mutation failures return `failed`, `result=null`, and no artifacts. Public `candidate_records`, `missing_observations`, and `external_case_evidence_refs` are strict object arrays: a non-object or other top-level Schema violation fails the run. A Schema-valid candidate/missing item or Comparison external mapping that fails record-level provenance/binding semantics is sanitized into `partial` metadata only; rejected payloads do not enter the graph or get echoed. The bounded publication contract rejects local/server paths, `file:` URIs, home-variable paths, credential-like assignments/tokens, and non-identifier public refs; it is not a promise of general secret detection. Contract-complete absence is a scientific `EvidenceRequirement`/`insufficient_evidence`, not a technical failure or zero.
 
 The query projection exposes exactly seven read-only helpers: `get_claim_evidence`, `trace_evidence_provenance`, `get_conflicting_evidence`, `get_missing_requirements`, `get_evidence_family_members`, `get_case_evidence_subgraph`, and `compare_evidence_paths`. Callers cannot supply Cypher, predicates, paths, writes, or unbounded limits.
 
@@ -103,9 +108,9 @@ Each `StructuredInputRef` requires `input_id:string`, exact `role:string`, regis
 | `graph_kind` | `case \| comparison` | yes | Selects mutually exclusive graph scope |
 | `product_case_ref` | `VersionedObjectRef \| null` | case | Exactly one for Case; null for Comparison |
 | `comparison_ref` | `VersionedObjectRef \| null` | comparison | Exactly one for Comparison; null for Case |
-| `case_graph_refs` | `CaseGraphRef[]` | comparison | 2–5 distinct source graph ID/version/manifest hash/ProductCase refs |
+| `case_graph_refs` | `BoundCaseGraphRef[]` | comparison | 2–5 distinct source graph ID/version/manifest hash/ProductCase refs plus unique `manifest_input_id`/`record_set_input_id` bindings |
 | `external_case_evidence_refs` | `ExternalCaseEvidenceRef[]` | comparison | At least one explicit source EvidenceRecord-to-Comparison Claim mapping |
-| `base_graph_ref` | `BaseGraphRef \| null` | no | Prior graph ID/version/manifest checksum for append-only revision |
+| `base_graph_ref` | `AppendGraphRef \| null` | case append | Prior graph ID/version/manifest checksum plus unique base manifest/record/requirement input IDs |
 | `object_catalog` | `CompilationObjectRef[]` | yes | Unique object ID/version, node type, Schema URI and declared content hash |
 | `candidate_records` | raw object array | case | Individually parsed `EvidenceCandidate`; siblings can fail independently |
 | `missing_observations` | raw object array | case | Individually parsed absence observations; never numeric placeholders |
@@ -114,7 +119,7 @@ Each `StructuredInputRef` requires `input_id:string`, exact `role:string`, regis
 | `created_at` | timezone-aware datetime | yes | Normalized to UTC; contributes to deterministic output time |
 | `provenance_refs` | unique string array | yes | Set semantics; path/credential strings forbidden |
 
-`VersionedObjectRef` contains `object_id` and `object_version`. A Case bundle forbids comparison fields. A Comparison bundle forbids owned candidate/missing/history arrays and never copies source-case scientific properties.
+`VersionedObjectRef` contains `object_id` and `object_version`. `CaseGraphRef` is the pure public source identity: graph ID/version, raw manifest checksum and ProductCase ref. `BoundCaseGraphRef` adds request-local source input IDs; `AppendGraphRef` adds request-local base input IDs. Those binding IDs are never projected into a public Case/Comparison manifest. A Case bundle forbids comparison fields. A Comparison bundle forbids base/owned candidate/missing/history arrays and never copies source-case scientific properties.
 
 ### EvidenceCandidate and missing observation
 
@@ -153,11 +158,11 @@ Each `StructuredInputRef` requires `input_id:string`, exact `role:string`, regis
 | `EvidenceFamilyRegistry` | registry ID/version/status/time; families | Formal evidence requires frozen registry and reviewed family |
 | `EvidenceFamilySpec` | ID/version/type/channel role/shared refs/independence scope/dependencies/rationale/reviewer/status | Reviewed family requires reviewer; family is the unit of independent influence |
 | `ClaimRegistry` | registry ID/version/status/time; claims | Formal evidence requires frozen registry and frozen Claim |
-| `ClaimSpec` | ID/version/type/domain/target/context/allowed relations/ReconciliationSpec ref/requirements/status/reviewer | Frozen Claim requires reviewer; requirement keys unique |
+| `ClaimSpec` | ID/version/type/domain/target/versioned biological-context ref/allowed relations/ReconciliationSpec ref/requirements/status/reviewer | Context ID and version must exactly match the candidate context; frozen Claim requires reviewer; requirement keys unique |
 | `ClaimRequirementSpec` | key/channel role/modality/experiment/blocking scope/required | Missing required role materializes Requirement |
 | `ReconciliationSpecRegistry` | registry ID/version/status/time; specs | Formal evidence requires frozen registry and frozen spec |
 | `ReconciliationSpec` | ID/version/claim type, required/optional/primary/confirmation/integration roles, minimum family map, allowed states, fixed rules, review/validation/status | No weights, score thresholds, fallback method or expression language |
-| P0-08 `EvidenceSufficiencyProfile` | profile ID/version, ProductCase, domain, MeasurementSpec ID, sufficiency state, reasons, UTC time | Candidate binds by request input ID; case/domain/spec must match; only `sufficient` enables formal reconciliation |
+| P0-08 `EvidenceSufficiencyProfile` | profile ID/version, bare ProductCase/MeasurementSpec IDs, MeasurementResult refs, retained family IDs, sufficiency state, reasons, UTC time | Shadow/exploratory evidence must match every available ID/family binding. Missing versioned ProductCase/MeasurementSpec refs make formal authorization unavailable in v0.1 |
 
 Reason-code lists with scientific precedence preserve their declared order. Object catalogs, refs, registry entries and other explicitly set-like lists are normalized deterministically. Reordering an interpretive/temporal list changes content identity; reordering a set-like list does not.
 
@@ -200,11 +205,11 @@ Every required Claim requirement without qualifying evidence remains/open-append
 | included/excluded/open refs | Exact audit trace; shadow/exploratory remains excluded |
 | reason codes/time/content hash | Deterministic gate explanation and identity |
 
-Resolution order is integration sensitivity, independent confirmation, unresolved instability, then stable unanimous family direction. An optional/integration channel cannot satisfy a missing required channel.
+Resolution order is integration sensitivity, independent confirmation, unresolved instability, then stable unanimous independent-component direction. Same-scope and dependency-connected families never satisfy an independent-family minimum twice. An optional/integration channel cannot satisfy a missing required channel.
 
 ### Graph manifests, artifacts and query result
 
-Case manifest adds `product_case_ref`; Comparison manifest adds `comparison_ref` and sorted `case_graph_refs`. Both contain graph/version, canonicalization ID, node/edge/object counts, source semantic input hash, optional base graph, fixed allowlisted basenames, exact checksums for three JSON fact sets and two Parquet tables, exact Parquet row counts, and deterministic UTC time. Query open rejects absolute/traversal names, symlinks, checksum drift, row-count drift, or graph/count inconsistency. Comparison external nodes must match the declared source manifest SHA, graph ID/version and ProductCase; they have `properties_json=null` and stop provenance traversal at the case boundary.
+Case manifest adds `product_case_ref`; Comparison manifest adds `comparison_ref` and sorted pure `CaseGraphRef` objects. Both contain graph/version, canonicalization ID, node/edge/object counts, source semantic input hash, optional pure base graph ref, fixed allowlisted basenames, exact checksums for three JSON fact sets and two Parquet tables, exact Parquet row counts, and deterministic UTC time. Query open rejects absolute/traversal names, symlinks, checksum drift, row/count/graph drift, disconnected projections, or JSON-fact-to-Parquet disagreement. Before compilation, every supplied base/source manifest is opened against its real directory and all five authoritative artifacts. Source roles and bundle input IDs form an exact bijection; graph IDs are derived from versioned ProductCase identity; source histories require create-first, continuous versions and exact predecessor chains. Comparison external nodes must uniquely match an actual source EvidenceRecord ref/content hash/Claim/ProductCase/tier/applicability/ToolRun and its derived effective lifecycle; they have `properties_json=null` and stop provenance traversal at the case boundary.
 
 `artifact_manifest.json` records run/tool/environment/result schema, semantic checksums of structured objects, and exact checksums/media types/available byte sizes of nine preceding files. It deliberately does not hash itself. Raw input SHA remains only in the current `ToolRunV2.request`; semantically equivalent set-order variants reuse the same byte-identical bundle. `ToolRunV2.artifacts` adds absolute deployment paths for local retrieval; those paths never enter scientific JSON/Parquet facts.
 
@@ -215,7 +220,7 @@ Every `EvidenceGraphQueryResult` contains query name, graph ID/version, sorted n
 | `get_claim_evidence` | claim ID; optional version/tier/include inactive | `1<=limit<=200`; exactly one claim version |
 | `trace_evidence_provenance` | Evidence ref | depth 1–6, nodes 1–500; external ref stops at source case |
 | `get_conflicting_evidence` | claim ID; optional claim/reconciliation version | `limit<=200`; returns support and contradiction only when both exist |
-| `get_missing_requirements` | exactly one of Claim or ProductCase; optional state | `limit<=200` |
+| `get_missing_requirements` | exactly one of Claim or ProductCase; optional state enum | `limit<=200`; only the highest version of each requirement ID is current |
 | `get_evidence_family_members` | family ID; optional include inactive | `limit<=200` |
 | `get_case_evidence_subgraph` | ProductCase; optional domain/tier filters | Case graph only; depth<=6/nodes<=500 |
 | `compare_evidence_paths` | Comparison plus exactly one Claim or domain | Comparison graph only; depth<=6/nodes<=500 |
@@ -224,7 +229,7 @@ Every `EvidenceGraphQueryResult` contains query name, graph ID/version, sorted n
 
 Top-level failures include: `tool_request_v2_required`, `tool_version_mismatch`, `p0_09_expression_assets_forbidden`, `p0_09_top_level_measurement_spec_forbidden`, `p0_09_parameters_forbidden`, exact-role/cardinality failures, `unsupported_object_input_role`, `object_input_schema_mismatch`, duplicate input/profile IDs, structured input not found/not regular/media/checksum/JSON/Schema/version failures, `unsafe_structured_input_reference`, unbound profile, `graph_scope_invalid`, `prior_history_invalid`, `output_dir_overlaps_structured_input`, `legacy_evidence_contract_rejected`, input mutation, existing-bundle mismatch, graph invariant, Parquet projection and artifact checksum failure. They return failed execution, null result and no artifacts.
 
-Record-level rejection codes are emitted in stable contract order: schema invalid, duplicate source ID, undeclared object, Claim not found/version/domain/relation mismatch, family not found/version mismatch, profile binding/case/domain/spec mismatch, failed ToolRun, missing-state misuse, non-finite/invalid denominator, formal-tier gate failures, create/revision/predecessor/logical-key conflicts, duplicate logical-key conflict and invalid external mapping. Any such sibling rejection publishes valid facts as `partial` with `individual_records_rejected`; raw rejected content is never returned.
+Record-level rejection codes are emitted in stable contract order: schema invalid, duplicate source ID, undeclared/wrong-type object, Claim not found/version/domain/relation/context mismatch, family not found/version mismatch, profile binding/case/domain/spec/MeasurementResult/family mismatch, `sufficiency_profile_version_binding_unavailable`, failed ToolRun, missing-state misuse, non-finite/invalid denominator, formal-tier gate failures, create/revision/predecessor/logical-key conflicts, duplicate logical-key conflict and invalid external mapping. Any such Schema-valid sibling rejection publishes valid facts as `partial` with `individual_records_rejected`; raw rejected content is never returned.
 
 Reconciliation reasons include contract/spec not frozen or mismatched, sufficiency not sufficient, tier/lifecycle/applicability/ToolRun/family/state exclusions, same-family de-duplication/conflict, missing independent channel, no formal evidence, integration conflict, independent-confirmation resolution, unresolved conflict and stable family-deduplicated direction. These are scientific gate states, not runtime exceptions or product failures.
 

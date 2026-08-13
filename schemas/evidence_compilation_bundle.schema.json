@@ -1,6 +1,6 @@
 {
   "$defs": {
-    "BaseGraphRef": {
+    "AppendGraphRef": {
       "additionalProperties": false,
       "properties": {
         "graph_id": {
@@ -13,18 +13,36 @@
           "title": "Graph Version",
           "type": "integer"
         },
+        "manifest_input_id": {
+          "minLength": 1,
+          "title": "Manifest Input Id",
+          "type": "string"
+        },
         "manifest_sha256": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "record_set_input_id": {
+          "minLength": 1,
+          "title": "Record Set Input Id",
+          "type": "string"
+        },
+        "requirement_set_input_id": {
+          "minLength": 1,
+          "title": "Requirement Set Input Id",
           "type": "string"
         }
       },
       "required": [
         "graph_id",
         "graph_version",
-        "manifest_sha256"
+        "manifest_sha256",
+        "manifest_input_id",
+        "record_set_input_id",
+        "requirement_set_input_id"
       ],
-      "title": "BaseGraphRef",
+      "title": "AppendGraphRef",
       "type": "object"
     },
     "BiologicalContext": {
@@ -130,6 +148,50 @@
         "context_version"
       ],
       "title": "BiologicalContext",
+      "type": "object"
+    },
+    "BoundCaseGraphRef": {
+      "additionalProperties": false,
+      "description": "Request-local binding from a public CaseGraphRef to checksummed inputs.",
+      "properties": {
+        "graph_id": {
+          "minLength": 1,
+          "title": "Graph Id",
+          "type": "string"
+        },
+        "graph_version": {
+          "minimum": 1,
+          "title": "Graph Version",
+          "type": "integer"
+        },
+        "manifest_input_id": {
+          "minLength": 1,
+          "title": "Manifest Input Id",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "product_case_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "record_set_input_id": {
+          "minLength": 1,
+          "title": "Record Set Input Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "graph_id",
+        "graph_version",
+        "manifest_sha256",
+        "product_case_ref",
+        "manifest_input_id",
+        "record_set_input_id"
+      ],
+      "title": "BoundCaseGraphRef",
       "type": "object"
     },
     "CaseGraphRef": {
@@ -661,6 +723,85 @@
       "title": "EvidenceTier",
       "type": "string"
     },
+    "ExternalCaseEvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "$ref": "#/$defs/EvidenceApplicability"
+        },
+        "comparison_claim_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "evidence_content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Content Hash",
+          "type": "string"
+        },
+        "evidence_family_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "evidence_ref": {
+          "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
+          "title": "Evidence Ref",
+          "type": "string"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "evidence_tier": {
+          "$ref": "#/$defs/EvidenceTier"
+        },
+        "lifecycle_state": {
+          "$ref": "#/$defs/EvidenceLifecycleState"
+        },
+        "product_case_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "relation": {
+          "$ref": "#/$defs/EvidenceRelation"
+        },
+        "source_case_graph_ref": {
+          "$ref": "#/$defs/CaseGraphRef"
+        },
+        "source_claim_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "sufficiency_profile_input_id": {
+          "minLength": 1,
+          "title": "Sufficiency Profile Input Id",
+          "type": "string"
+        },
+        "tool_run_execution_state": {
+          "enum": [
+            "succeeded",
+            "partial",
+            "failed",
+            "skipped",
+            "not_implemented"
+          ],
+          "title": "Tool Run Execution State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_case_graph_ref",
+        "evidence_ref",
+        "evidence_content_hash",
+        "product_case_ref",
+        "source_claim_ref",
+        "comparison_claim_ref",
+        "evidence_family_ref",
+        "sufficiency_profile_input_id",
+        "relation",
+        "evidence_state",
+        "evidence_tier",
+        "lifecycle_state",
+        "applicability",
+        "tool_run_execution_state"
+      ],
+      "title": "ExternalCaseEvidenceRef",
+      "type": "object"
+    },
     "GraphKind": {
       "enum": [
         "case",
@@ -742,7 +883,7 @@
     "base_graph_ref": {
       "anyOf": [
         {
-          "$ref": "#/$defs/BaseGraphRef"
+          "$ref": "#/$defs/AppendGraphRef"
         },
         {
           "type": "null"
@@ -770,7 +911,7 @@
     },
     "case_graph_refs": {
       "items": {
-        "$ref": "#/$defs/CaseGraphRef"
+        "$ref": "#/$defs/BoundCaseGraphRef"
       },
       "title": "Case Graph Refs",
       "type": "array"
@@ -793,83 +934,7 @@
     },
     "external_case_evidence_refs": {
       "items": {
-        "additionalProperties": false,
-        "properties": {
-          "applicability": {
-            "$ref": "#/$defs/EvidenceApplicability"
-          },
-          "comparison_claim_ref": {
-            "$ref": "#/$defs/VersionedObjectRef"
-          },
-          "evidence_content_hash": {
-            "pattern": "^[0-9a-f]{64}$",
-            "title": "Evidence Content Hash",
-            "type": "string"
-          },
-          "evidence_family_ref": {
-            "$ref": "#/$defs/VersionedObjectRef"
-          },
-          "evidence_ref": {
-            "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
-            "title": "Evidence Ref",
-            "type": "string"
-          },
-          "evidence_state": {
-            "$ref": "#/$defs/EvidenceState"
-          },
-          "evidence_tier": {
-            "$ref": "#/$defs/EvidenceTier"
-          },
-          "lifecycle_state": {
-            "$ref": "#/$defs/EvidenceLifecycleState"
-          },
-          "product_case_ref": {
-            "$ref": "#/$defs/VersionedObjectRef"
-          },
-          "relation": {
-            "$ref": "#/$defs/EvidenceRelation"
-          },
-          "source_case_graph_ref": {
-            "$ref": "#/$defs/CaseGraphRef"
-          },
-          "source_claim_ref": {
-            "$ref": "#/$defs/VersionedObjectRef"
-          },
-          "sufficiency_profile_input_id": {
-            "minLength": 1,
-            "title": "Sufficiency Profile Input Id",
-            "type": "string"
-          },
-          "tool_run_execution_state": {
-            "enum": [
-              "succeeded",
-              "partial",
-              "failed",
-              "skipped",
-              "not_implemented"
-            ],
-            "title": "Tool Run Execution State",
-            "type": "string"
-          }
-        },
-        "required": [
-          "source_case_graph_ref",
-          "evidence_ref",
-          "evidence_content_hash",
-          "product_case_ref",
-          "source_claim_ref",
-          "comparison_claim_ref",
-          "evidence_family_ref",
-          "sufficiency_profile_input_id",
-          "relation",
-          "evidence_state",
-          "evidence_tier",
-          "lifecycle_state",
-          "applicability",
-          "tool_run_execution_state"
-        ],
-        "title": "ExternalCaseEvidenceRef",
-        "type": "object"
+        "$ref": "#/$defs/ExternalCaseEvidenceRef"
       },
       "title": "External Case Evidence Refs",
       "type": "array"

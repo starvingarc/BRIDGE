@@ -11,6 +11,7 @@ import networkx as nx
 
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import P0DomainId
 from bridge.tool_packages.p0_09_evidence_compiler.graph import (
+    node_id,
     read_parquet_rows,
     validate_graph_rows,
 )
@@ -18,6 +19,8 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CaseEvidenceGraphManifest,
     ComparisonEvidenceGraphManifest,
     EvidenceGraphQueryResult,
+    EvidenceRecordSet,
+    EvidenceRequirementSet,
     EvidenceLifecycleState,
     EvidenceRequirementState,
     EvidenceTier,
@@ -27,6 +30,8 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     GraphNodeRow,
     GraphNodeType,
     GraphRecordMode,
+    ReconciliationRecordSet,
+    RevisionAction,
 )
 
 
@@ -126,6 +131,149 @@ def _validate_comparison_projection(
             raise ValueError("manifest_integrity_failed")
 
 
+def _validate_fact_projection(
+    manifest: CaseEvidenceGraphManifest | ComparisonEvidenceGraphManifest,
+    nodes: Sequence[GraphNodeRow],
+    record_set: EvidenceRecordSet,
+    requirement_set: EvidenceRequirementSet,
+    reconciliation_set: ReconciliationRecordSet,
+) -> None:
+    """Bind canonical JSON facts to the owned nodes in their Parquet graph."""
+
+    for fact_set in (record_set, requirement_set, reconciliation_set):
+        if (
+            fact_set.graph_id != manifest.graph_id
+            or fact_set.graph_version != manifest.graph_version
+        ):
+            raise ValueError("manifest_integrity_failed")
+    node_map = {item.node_id: item for item in nodes}
+
+    expected_by_type: dict[GraphNodeType, set[str]] = {
+        GraphNodeType.EVIDENCE_RECORD: set(),
+        GraphNodeType.EVIDENCE_REQUIREMENT: set(),
+        GraphNodeType.RECONCILIATION_RECORD: set(),
+    }
+
+    def require_owned_fact(
+        *,
+        object_id: str,
+        object_version: str,
+        node_type: GraphNodeType,
+        content_hash: str,
+        payload: dict[str, Any],
+        require_properties: bool = True,
+    ) -> None:
+        identifier = node_id(object_id, object_version, node_type)
+        node = node_map.get(identifier)
+        if (
+            node is None
+            or node.record_mode is not GraphRecordMode.OWNED
+            or node.object_id != object_id
+            or node.object_version != object_version
+            or node.content_hash != content_hash
+            or (
+                require_properties
+                and (
+                    node.properties_json is None
+                    or json.loads(node.properties_json) != payload
+                )
+            )
+        ):
+            raise ValueError("manifest_integrity_failed")
+        expected_by_type[node_type].add(identifier)
+
+    for record in record_set.records:
+        require_owned_fact(
+            object_id=record.evidence_id,
+            object_version=str(record.evidence_version),
+            node_type=GraphNodeType.EVIDENCE_RECORD,
+            content_hash=record.content_hash,
+            payload=record.model_dump(mode="json"),
+            require_properties=isinstance(manifest, CaseEvidenceGraphManifest),
+        )
+    for requirement in requirement_set.requirements:
+        require_owned_fact(
+            object_id=requirement.requirement_id,
+            object_version=str(requirement.requirement_version),
+            node_type=GraphNodeType.EVIDENCE_REQUIREMENT,
+            content_hash=requirement.content_hash,
+            payload=requirement.model_dump(mode="json"),
+        )
+    for reconciliation in reconciliation_set.records:
+        require_owned_fact(
+            object_id=reconciliation.reconciliation_id,
+            object_version=str(reconciliation.reconciliation_version),
+            node_type=GraphNodeType.RECONCILIATION_RECORD,
+            content_hash=reconciliation.content_hash,
+            payload=reconciliation.model_dump(mode="json"),
+        )
+    records_by_id: dict[str, list[Any]] = {}
+    for record in record_set.records:
+        records_by_id.setdefault(record.evidence_id, []).append(record)
+    for versions in records_by_id.values():
+        versions.sort(key=lambda item: item.evidence_version)
+        if [item.evidence_version for item in versions] != list(
+            range(1, len(versions) + 1)
+        ) or len({item.logical_key for item in versions}) != 1:
+            raise ValueError("manifest_integrity_failed")
+        for index, record in enumerate(versions):
+            expected_predecessor = None if index == 0 else versions[index - 1].ref
+            expected_action = RevisionAction.CREATE if index == 0 else None
+            if record.predecessor_ref != expected_predecessor or (
+                expected_action is not None and record.revision_action is not expected_action
+            ):
+                raise ValueError("manifest_integrity_failed")
+            expected_lifecycle = record.lifecycle_state
+            if index + 1 < len(versions):
+                successor = versions[index + 1]
+                expected_lifecycle = (
+                    EvidenceLifecycleState.INVALIDATED
+                    if successor.lifecycle_state is EvidenceLifecycleState.INVALIDATED
+                    else EvidenceLifecycleState.SUPERSEDED
+                )
+            node = node_map[node_id(
+                record.evidence_id,
+                str(record.evidence_version),
+                GraphNodeType.EVIDENCE_RECORD,
+            )]
+            if node.lifecycle_state != expected_lifecycle.value:
+                raise ValueError("manifest_integrity_failed")
+
+    requirements_by_id: dict[str, list[Any]] = {}
+    for requirement in requirement_set.requirements:
+        requirements_by_id.setdefault(requirement.requirement_id, []).append(requirement)
+    for versions in requirements_by_id.values():
+        versions.sort(key=lambda item: item.requirement_version)
+        if [item.requirement_version for item in versions] != list(
+            range(1, len(versions) + 1)
+        ):
+            raise ValueError("manifest_integrity_failed")
+        for index, requirement in enumerate(versions):
+            expected_predecessor = None if index == 0 else versions[index - 1].ref
+            if requirement.supersedes_requirement_ref != expected_predecessor:
+                raise ValueError("manifest_integrity_failed")
+            node = node_map[node_id(
+                requirement.requirement_id,
+                str(requirement.requirement_version),
+                GraphNodeType.EVIDENCE_REQUIREMENT,
+            )]
+            expected_lifecycle = (
+                requirement.state.value
+                if index + 1 == len(versions)
+                else EvidenceLifecycleState.SUPERSEDED.value
+            )
+            if node.lifecycle_state != expected_lifecycle:
+                raise ValueError("manifest_integrity_failed")
+    for node_type, expected_ids in expected_by_type.items():
+        actual_ids = {
+            item.node_id
+            for item in nodes
+            if item.node_type is node_type and item.record_mode is GraphRecordMode.OWNED
+        }
+        if actual_ids != expected_ids:
+            raise ValueError("manifest_integrity_failed")
+
+
 class EvidenceGraphQueries:
     def __init__(
         self,
@@ -169,6 +317,7 @@ class EvidenceGraphQueries:
         )
         if len({item.filename for item in artifacts}) != len(artifacts):
             raise ValueError("manifest_integrity_failed")
+        artifact_payloads: dict[str, bytes] = {}
         for artifact in artifacts:
             if not _safe_artifact_filename(artifact.filename):
                 raise ValueError("manifest_integrity_failed")
@@ -179,6 +328,7 @@ class EvidenceGraphQueries:
                 raise ValueError("manifest_integrity_failed") from exc
             if hashlib.sha256(raw).hexdigest() != artifact.sha256:
                 raise ValueError("manifest_integrity_failed")
+            artifact_payloads[artifact.filename] = raw
         try:
             nodes, edges = read_parquet_rows(
                 root / manifest.graph_nodes.filename,
@@ -203,6 +353,25 @@ class EvidenceGraphQueries:
             or manifest.graph_edges.row_count != len(edges)
         ):
             raise ValueError("manifest_integrity_failed")
+        try:
+            record_set = EvidenceRecordSet.model_validate_json(
+                artifact_payloads[manifest.evidence_records.filename]
+            )
+            requirement_set = EvidenceRequirementSet.model_validate_json(
+                artifact_payloads[manifest.evidence_requirements.filename]
+            )
+            reconciliation_set = ReconciliationRecordSet.model_validate_json(
+                artifact_payloads[manifest.reconciliation_records.filename]
+            )
+            _validate_fact_projection(
+                manifest,
+                nodes,
+                record_set,
+                requirement_set,
+                reconciliation_set,
+            )
+        except Exception as exc:
+            raise ValueError("manifest_integrity_failed") from exc
         if isinstance(manifest, ComparisonEvidenceGraphManifest):
             _validate_comparison_projection(manifest, nodes, edges)
         return cls(manifest=manifest, nodes=nodes, edges=edges, graph=graph)
@@ -216,10 +385,15 @@ class EvidenceGraphQueries:
         include_inactive: bool = False,
         limit: int = 100,
     ) -> EvidenceGraphQueryResult:
-        invalid = self._validate_limit(limit) or self._validate_text(claim_id)
+        invalid = (
+            self._validate_limit(limit)
+            or self._validate_text(claim_id)
+            or not self._enum_tuple(evidence_tiers, EvidenceTier)
+            or not isinstance(include_inactive, bool)
+        )
         if claim_version is not None:
             invalid = invalid or self._validate_text(claim_version)
-        claim = self._resolve_claim(claim_id, claim_version)
+        claim = None if invalid else self._resolve_claim(claim_id, claim_version)
         if invalid or claim is None:
             return self._empty("get_claim_evidence", "query_parameter_invalid" if invalid else "not_found")
         evidence_ids: set[str] = set()
@@ -256,7 +430,7 @@ class EvidenceGraphQueries:
         invalid = self._validate_depth_nodes(max_depth, max_nodes) or self._validate_text(
             evidence_ref
         )
-        evidence = self._resolve_evidence(evidence_ref)
+        evidence = None if invalid else self._resolve_evidence(evidence_ref)
         if invalid or evidence is None:
             return self._empty(
                 "trace_evidence_provenance", "query_parameter_invalid" if invalid else "not_found"
@@ -302,9 +476,13 @@ class EvidenceGraphQueries:
         invalid = self._validate_limit(limit) or self._validate_text(claim_id)
         if claim_version is not None:
             invalid = invalid or self._validate_text(claim_version)
-        if reconciliation_version is not None and reconciliation_version < 1:
+        if reconciliation_version is not None and (
+            isinstance(reconciliation_version, bool)
+            or not isinstance(reconciliation_version, int)
+            or reconciliation_version < 1
+        ):
             invalid = True
-        claim = self._resolve_claim(claim_id, claim_version)
+        claim = None if invalid else self._resolve_claim(claim_id, claim_version)
         if invalid or claim is None:
             return self._empty(
                 "get_conflicting_evidence", "query_parameter_invalid" if invalid else "not_found"
@@ -340,7 +518,11 @@ class EvidenceGraphQueries:
         limit: int = 100,
     ) -> EvidenceGraphQueryResult:
         exactly_one = (claim_id is not None) ^ (product_case_id is not None)
-        invalid = not exactly_one or self._validate_limit(limit)
+        invalid = (
+            not exactly_one
+            or self._validate_limit(limit)
+            or not isinstance(state, EvidenceRequirementState)
+        )
         if claim_version is not None and claim_id is None:
             invalid = True
         for value in (claim_id, claim_version, product_case_id):
@@ -348,10 +530,20 @@ class EvidenceGraphQueries:
                 invalid = invalid or self._validate_text(value)
         if invalid:
             return self._empty("get_missing_requirements", "query_parameter_invalid")
-        matching: list[GraphNodeRow] = []
+        latest: dict[str, GraphNodeRow] = {}
         for node in self._nodes.values():
             if node.node_type is not GraphNodeType.EVIDENCE_REQUIREMENT:
                 continue
+            previous = latest.get(node.object_id)
+            try:
+                version = int(node.object_version)
+                previous_version = int(previous.object_version) if previous is not None else 0
+            except (TypeError, ValueError):
+                return self._empty("get_missing_requirements", "manifest_integrity_failed")
+            if previous is None or version > previous_version:
+                latest[node.object_id] = node
+        matching: list[GraphNodeRow] = []
+        for node in latest.values():
             properties = self._properties(node)
             if properties.get("state") != state.value:
                 continue
@@ -389,7 +581,11 @@ class EvidenceGraphQueries:
         include_inactive: bool = False,
         limit: int = 100,
     ) -> EvidenceGraphQueryResult:
-        invalid = self._validate_limit(limit) or self._validate_text(evidence_family_id)
+        invalid = (
+            self._validate_limit(limit)
+            or self._validate_text(evidence_family_id)
+            or not isinstance(include_inactive, bool)
+        )
         families = [
             item
             for item in self._nodes.values()
@@ -432,11 +628,16 @@ class EvidenceGraphQueries:
         max_depth: int = 4,
         max_nodes: int = 300,
     ) -> EvidenceGraphQueryResult:
+        invalid = (
+            self._validate_depth_nodes(max_depth, max_nodes)
+            or self._validate_text(product_case_id)
+            or not self._enum_tuple(domain_ids, P0DomainId)
+            or not self._enum_tuple(evidence_tiers, EvidenceTier)
+        )
+        if invalid:
+            return self._empty("get_case_evidence_subgraph", "query_parameter_invalid")
         if self._manifest.graph_kind is not GraphKind.CASE:
             return self._empty("get_case_evidence_subgraph", "graph_kind_mismatch")
-        invalid = self._validate_depth_nodes(max_depth, max_nodes) or self._validate_text(
-            product_case_id
-        )
         roots = [
             item
             for item in self._nodes.values()
@@ -494,10 +695,12 @@ class EvidenceGraphQueries:
         max_depth: int = 4,
         max_nodes: int = 300,
     ) -> EvidenceGraphQueryResult:
-        if self._manifest.graph_kind is not GraphKind.COMPARISON:
-            return self._empty("compare_evidence_paths", "graph_kind_mismatch")
         exactly_one = (claim_id is not None) ^ (domain_id is not None)
-        invalid = not exactly_one or self._validate_depth_nodes(max_depth, max_nodes)
+        invalid = (
+            not exactly_one
+            or self._validate_depth_nodes(max_depth, max_nodes)
+            or (domain_id is not None and not isinstance(domain_id, P0DomainId))
+        )
         invalid = invalid or self._validate_text(comparison_id)
         if claim_version is not None and claim_id is None:
             invalid = True
@@ -505,6 +708,10 @@ class EvidenceGraphQueries:
             invalid = invalid or self._validate_text(claim_id)
         if claim_version is not None:
             invalid = invalid or self._validate_text(claim_version)
+        if invalid:
+            return self._empty("compare_evidence_paths", "query_parameter_invalid")
+        if self._manifest.graph_kind is not GraphKind.COMPARISON:
+            return self._empty("compare_evidence_paths", "graph_kind_mismatch")
         roots = [
             item
             for item in self._nodes.values()
@@ -684,19 +891,29 @@ class EvidenceGraphQueries:
 
     @staticmethod
     def _validate_text(value: str) -> bool:
-        return not value or bool(_DANGEROUS_PARAMETER.search(value))
+        return not isinstance(value, str) or not value or bool(_DANGEROUS_PARAMETER.search(value))
 
     @staticmethod
     def _validate_limit(limit: int) -> bool:
-        return isinstance(limit, bool) or not 1 <= limit <= 200
+        return isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200
 
     @staticmethod
     def _validate_depth_nodes(max_depth: int, max_nodes: int) -> bool:
         return (
             isinstance(max_depth, bool)
             or isinstance(max_nodes, bool)
+            or not isinstance(max_depth, int)
+            or not isinstance(max_nodes, int)
             or not 1 <= max_depth <= 6
             or not 1 <= max_nodes <= 500
+        )
+
+    @staticmethod
+    def _enum_tuple(value: object, enum_type: type[Any]) -> bool:
+        return (
+            isinstance(value, tuple)
+            and all(isinstance(item, enum_type) for item in value)
+            and len(value) == len(set(value))
         )
 
     @staticmethod

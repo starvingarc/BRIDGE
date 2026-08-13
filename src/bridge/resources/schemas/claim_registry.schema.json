@@ -68,9 +68,7 @@
           "type": "array"
         },
         "biological_context_ref": {
-          "minLength": 1,
-          "title": "Biological Context Ref",
-          "type": "string"
+          "$ref": "#/$defs/VersionedObjectRef"
         },
         "claim_id": {
           "pattern": "^claim:[A-Za-z0-9._:-]+$",

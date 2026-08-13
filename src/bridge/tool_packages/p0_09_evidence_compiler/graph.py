@@ -161,9 +161,11 @@ def build_graph_rows(
         content_hash: str | None = None,
         lifecycle_state: str | None = None,
         evidence_tier: str | None = None,
+        allow_upstream_no_score_fields: bool = False,
     ) -> str:
         normalized_properties = normalize_identity_payload(properties)
-        validate_safe_json(normalized_properties, location="graph properties")
+        if not allow_upstream_no_score_fields:
+            validate_safe_json(normalized_properties, location="graph properties")
         properties_json = canonical_json_bytes(normalized_properties).decode("utf-8")
         row = GraphNodeRow(
             graph_id=graph_id,
@@ -297,6 +299,7 @@ def build_graph_rows(
                 object_version=profile.profile_version,
                 node_type=GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE,
                 properties=profile.model_dump(mode="json"),
+                allow_upstream_no_score_fields=True,
             )
             measurement_result = add_catalog(record.measurement_result_ref)
             measurement_spec = add_catalog(record.measurement_spec_ref)
@@ -375,6 +378,7 @@ def build_graph_rows(
                 object_version=profile.profile_version,
                 node_type=GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE,
                 properties=profile.model_dump(mode="json"),
+                allow_upstream_no_score_fields=True,
             )
             del profile_node
             add_edge(GraphEdgeType.APPLICABLE_TO, external_node_id, root_id)

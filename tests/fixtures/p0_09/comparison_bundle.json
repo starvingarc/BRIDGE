@@ -5,18 +5,22 @@
   "candidate_records": [],
   "case_graph_refs": [
     {
-      "graph_id": "case-evidence-graph:aaaaaaaaaaaaaaaaaaaaaaaa",
+      "graph_id": "case-evidence-graph:d925ae5f1b203619b55b9e38",
       "graph_version": 1,
       "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "manifest_input_id": "source-manifest-a",
+      "record_set_input_id": "source-records-a",
       "product_case_ref": {
         "object_id": "product-case:fixture-a",
         "object_version": "1.0.0"
       }
     },
     {
-      "graph_id": "case-evidence-graph:bbbbbbbbbbbbbbbbbbbbbbbb",
+      "graph_id": "case-evidence-graph:f563511ce32bfef34515b8fa",
       "graph_version": 1,
       "manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "manifest_input_id": "source-manifest-b",
+      "record_set_input_id": "source-records-b",
       "product_case_ref": {
         "object_id": "product-case:fixture-b",
         "object_version": "1.0.0"
@@ -38,7 +42,7 @@
       },
       "evidence_ref": "evidence:aaaaaaaaaaaaaaaaaaaaaaaa@1",
       "evidence_state": "measured",
-      "evidence_tier": "formal",
+      "evidence_tier": "shadow",
       "lifecycle_state": "active",
       "product_case_ref": {
         "object_id": "product-case:fixture-a",
@@ -46,7 +50,7 @@
       },
       "relation": "supports",
       "source_case_graph_ref": {
-        "graph_id": "case-evidence-graph:aaaaaaaaaaaaaaaaaaaaaaaa",
+        "graph_id": "case-evidence-graph:d925ae5f1b203619b55b9e38",
         "graph_version": 1,
         "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "product_case_ref": {
@@ -74,7 +78,7 @@
       },
       "evidence_ref": "evidence:bbbbbbbbbbbbbbbbbbbbbbbb@1",
       "evidence_state": "measured",
-      "evidence_tier": "formal",
+      "evidence_tier": "shadow",
       "lifecycle_state": "active",
       "product_case_ref": {
         "object_id": "product-case:fixture-b",
@@ -82,7 +86,7 @@
       },
       "relation": "contradicts",
       "source_case_graph_ref": {
-        "graph_id": "case-evidence-graph:bbbbbbbbbbbbbbbbbbbbbbbb",
+        "graph_id": "case-evidence-graph:f563511ce32bfef34515b8fa",
         "graph_version": 1,
         "manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "product_case_ref": {

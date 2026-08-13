@@ -27,10 +27,12 @@ P0-09 读取已经完成且版本化的产品证据，回答：哪些原子记�
 | `evidence_family_registry` | 1 | `evidence-family-registry/v0.1` | family 类型、channel role、独立性范围和审核状态 |
 | `claim_registry` | 1 | `claim-registry/v0.1` | Claim、允许方向和 requirement template |
 | `reconciliation_spec_registry` | 1 | `reconciliation-spec-registry/v0.1` | required/optional channel、独立 family 数和冲突规则 |
+| `base_graph_manifest` / `base_evidence_record_set` / `base_evidence_requirement_set` | Case 有 base 时各 1，否则 0 | Case manifest / 两类 fact set | 三者与 `AppendGraphRef` 的 input ID 逐一绑定；Comparison 禁止 |
+| `source_case_graph_manifest` / `source_case_evidence_record_set` | Comparison 每个 Case 各 1 | Case manifest / EvidenceRecordSet | 与每个 `BoundCaseGraphRef` input ID 严格双射；Case 禁止 |
 
 `assets=[]`、顶层 `measurement_spec_ref=null`、`parameters={}`。`random_seed` 仅为共享 envelope 兼容而保留，算法不使用随机数。输入期间发生任何字节变化都使整次运行失败。
 
-Case bundle 只拥有一个 ProductCase 及其记录历史；Comparison bundle 只引用至少两个 Case graph，不复制案例值、区间或私有属性。所有 Claim 映射、ProductCase、MeasurementSpec、EvidenceFamily 和 P0-08 profile 绑定必须显式声明，不能由 Agent 推断。
+Case bundle 只拥有一个 ProductCase 及其记录历史；有历史时必须同时提供内容寻址的 base manifest、record set 和 requirement set，且三类事实与 bundle 历史完全一致。Comparison bundle 只引用至少两个 Case graph，不允许 base/prior/owned records，不复制案例值、区间或私有属性。每个 source manifest 会在原始目录中通过七查询层的 `open()` 完整验证五个 authoritative artifacts，再核对 raw manifest SHA、record-set SHA、确定性 graph ID、graph version 和 ProductCase。所有 Claim 映射、ProductCase、MeasurementSpec、EvidenceFamily 和 P0-08 profile 绑定必须显式声明，不能由 Agent 推断。
 
 ## 3. 原子 EvidenceRecord 与追加式修正
 
@@ -59,20 +61,21 @@ product case x sample/preparation x domain x metric x claim x context x Measurem
 - `negative`、`missing`、`unknown`、`unavailable`、`alert` 不互换。
 - `shadow`、`exploratory`、not-applicable 和 inactive 记录保留审计可见性，但不进入 formal reconciliation。
 - 上游 ToolRun 为 `failed`、`skipped` 或 `not_implemented` 时拒绝编译；`partial` 中已经验证的单条记录可以进入。
-- formal candidate 必须绑定 sufficient P0-08 profile、冻结 Claim/Reconciliation 合同、冻结 registry 和 reviewed EvidenceFamily；不满足时拒绝，不静默降级。
+- shadow/exploratory candidate 必须匹配 P0-08 profile 的 ProductCase ID、MeasurementSpec ID、MeasurementResult refs 和 retained family IDs。
+- P0-08 v0.1 未提供 ProductCase/MeasurementSpec 的版本化 ref，不能证明完整 formal binding；所以当前所有 formal candidate/external ref 均以 `sufficiency_profile_version_binding_unavailable` 保守拒绝，不静默降级，也不伪造用户自报版本。
 
-一个格式、绑定或发布引用错误的 sibling candidate/missing/external item 只进入 `rejected_records.json`，其余合法项可发布 `partial` graph；被拒原始值不会回显。顶层 bundle/registry/history/Schema/checksum 或 unsafe publication reference 错误则整次失败且不发布任何 artifact。publication guard 是路径、URI、环境变量、credential-like assignment/token 和 public-ref 形状的有界合同，不承诺通用 secret scanning。
+三个公开 record 数组都严格要求 object 元素；非 object、extra field 或其他公开 Schema 失败属于顶层失败。Schema 合法但 provenance、版本/上下文绑定、source fact 或语义非法的 sibling candidate/missing/external item 才进入 `rejected_records.json`，其余合法项可发布 `partial` graph；被拒输出仅含稳定 ID/index/digest/reason，不回显原值。顶层 bundle/registry/history/Schema/checksum 或 unsafe publication reference 错误则整次失败且不发布任何 artifact。publication guard 是路径、URI、环境变量、credential-like assignment/token、禁用结论 key 和 public-ref 形状的有界合同，不承诺通用 secret scanning。P0-08 合同内固定的 `domain_score=null` 仅作为上游 provenance 保存，不被 P0-09 填值或解释。
 
 ## 5. EvidenceFamily 去重与确定性协调
 
-EvidenceFamily 由版本化 registry 预注册，不由 Agent 按当前结果临时聚类。共享数据、算法、reference、prior、knowledge 或 aggregation 的多条记录保留全部 provenance，但在一个 channel 中只贡献一个 family direction。family 内支持/反对不一致时，该 family unresolved，不投票。
+EvidenceFamily 由版本化 registry 预注册，不由 Agent 按当前结果临时聚类。共享数据、算法、reference、prior、knowledge 或 aggregation 的多条记录保留全部 provenance，但在一个 channel 中只贡献一个 family direction。同一 `independence_scope`，或被 `known_dependencies` 单向/双向/传递连接的 families，归为一个对称闭包 component，只能计一次独立证据；component 内支持/反对不一致时 unresolved，不投票。confirmation 同样受此约束。
 
 协调顺序：
 
 1. 确认 Claim 与 ReconciliationSpec 已冻结且类型一致。
 2. 确认绑定的 P0-08 profile 为 `sufficient`。
 3. 排除非 formal、inactive、not-applicable、非法 ToolRun、unreviewed family 和不允许的 EvidenceState。
-4. 先按 family 去重，再检查每个 required role 的最少独立 family 数。
+4. 先按 family 去重和 dependency/scope component 合并，再检查每个 required role 的最少独立 component 数。
 5. 按冻结规则输出 `stable`、`consensus_supported`、`integration_sensitive` 或 `unstable`。
 
 若合同未冻结则 eligibility 为 `not_assessed`；若 sufficiency、required role 或 formal evidence 不足则为 `insufficient_evidence`。这两种情况的 state/direction 均为 null。只有 `eligible` 才能生成协调状态。数值大小、工具数和 record 数不会改变方向。
@@ -106,13 +109,13 @@ LadybugDB 在 v0.1 中为 `shadow/deferred` adapter 候选：不安装、不参�
 - `get_case_evidence_subgraph`
 - `compare_evidence_paths`
 
-查询限制 `limit<=200`、`max_depth<=6`、`max_nodes<=500`，固定 traversal 和可见字段，按 node/edge ID 排序；只有确有 reachable node/edge 被省略时才返回 `truncated=true`。manifest 只接受固定 basename，拒绝绝对/遍历路径和 symlink，并校验 checksum、Parquet row count、graph count。调用者不能提供路径、predicate、edge type、Cypher、写命令或远端 backend。Comparison 的 external EvidenceRecord 必须与 source manifest SHA/graph/version/ProductCase 一致，其 provenance 在 source Case 边界停止并返回 `source_case_graph_required`。
+查询参数执行严格类型、enum 和 bool 校验；错误统一返回 typed `query_parameter_invalid`，不抛裸异常或扩大 inactive 范围。限制 `limit<=200`、`max_depth<=6`、`max_nodes<=500`，固定 traversal 和可见字段，按 node/edge ID 排序；只有确有 reachable node/edge 被省略时才返回 `truncated=true`。`get_missing_requirements` 每个 requirement ID 只把最高版本视为当前状态。manifest 只接受固定 basename，拒绝绝对/遍历路径和 symlink，并校验 checksum、Parquet row count、graph count、连通性以及三类 JSON fact 与 owned Parquet node 的一致性。调用者不能提供路径、predicate、edge type、Cypher、写命令或远端 backend。Comparison 的 external EvidenceRecord 必须在 content-addressed source record set 中唯一存在，匹配 content hash、source Claim、ProductCase、tier、applicability、ToolRun 和由完整 create/supersede/invalidate 链推导的 effective lifecycle；其 provenance 在 source Case 边界停止并返回 `source_case_graph_required`。
 
 ## 8. 不可变 artifact bundle
 
 每次成功/partial 运行写入 `<output_dir>/<run_id>/`，共十个文件：三类规范 JSON、两个 Parquet、一个 graph manifest、Cytoscape elements、rejected list、typed run result 和 artifact manifest。Graph manifest 校验五个 authoritative facts；artifact manifest 校验前九个文件而不自哈希。
 
-写入流程为新 staging 目录、写后校验、输入复核、原子 rename。artifact manifest 记录前九个文件的 checksum、media type 与可用 byte size；结构化输入则记录 semantic SHA，raw SHA 只保留在本次 ToolRun request。相同语义的集合顺序变体可复用 byte-identical run bundle；存在漂移时拒绝覆盖。运行结果 `measurements=[]`、`visualizations=[]`。
+写入流程为新 staging 目录、写后校验、输入复核、原子 rename。artifact manifest 记录前九个文件的 checksum、media type 与可用 byte size；一般结构化输入记录 semantic SHA，base/source graph 身份另保留可复验 raw content-addressed SHA，raw SHA 同时仍在本次 ToolRun request。相同语义的集合顺序变体可复用 byte-identical run bundle；存在漂移时拒绝覆盖。输入侧 `manifest_input_id`/`record_set_input_id`/`requirement_set_input_id` 不进入公开 graph manifest。运行结果 `measurements=[]`、`visualizations=[]`。
 
 ## 9. 方法与环境状态
 
@@ -127,6 +130,6 @@ LadybugDB 在 v0.1 中为 `shadow/deferred` adapter 候选：不安装、不参�
 
 ## 10. 验证要求与当前声明
 
-模块测试覆盖：公开模型与 Draft 2020-12 Schema、严格 JSON、checksum、model-aware 集合归一化、确定性 run/record/graph/artifact identity、append-only evidence/requirement 修正、missing-versus-zero、boolean numeric 拒绝、四类 unsafe publication surface 与不回显、partial rejection、formal gate、family 去重、Comparison source-manifest binding、图端点与 revision cycle、JSON→Parquet→NetworkX round trip、manifest filename/symlink/checksum/row-count/size、重复运行复用、七个只读查询及其精确 cap/注入 canary。
+模块测试覆盖：公开模型与 Draft 2020-12 Schema、严格 JSON、checksum、model-aware 集合归一化、确定性 run/record/graph/artifact identity、append-only evidence/requirement 修正、missing-versus-zero、boolean numeric 拒绝、规范化 no-score key、四类 unsafe publication surface 与不回显、严格顶层 Schema 与 partial 边界、保守 formal profile gate、context/catalog role binding、family dependency/scope component 去重、Comparison source input 双射/完整 manifest preflight/source history/effective lifecycle/exact fact binding、公开 manifest 不泄漏 request input ID、图端点与 revision cycle、JSON→Parquet→NetworkX round trip、manifest filename/symlink/checksum/row-count/size、重复运行复用、七个只读查询严格参数及其精确 cap/注入 canary。
 
 当前 fixture 全部为合成数据，不代表真实产品、真实样本、临床结果或科学验证。P0-09 完成只表示候选编译与协调路径可执行；它不能证明任何 Claim 为真、任何域证据充分、任何 ScoreContract 已冻结、任何产品更优，或任何输出可公开/科学发布。
