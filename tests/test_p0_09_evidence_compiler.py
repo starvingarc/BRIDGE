@@ -1619,6 +1619,17 @@ def test_existing_file_at_output_dir_returns_typed_failure_without_overwrite(
     assert request.output_dir.read_text(encoding="utf-8") == "preserve-me"
 
 
+def test_output_parent_with_hive_partition_basename_is_valid(tmp_path: Path) -> None:
+    run = _run(tmp_path / "batch=one")
+
+    assert run.request.output_dir.parent.name == "batch=one"
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    manifest_path = (
+        run.request.output_dir / run.run_id / "case_evidence_graph_manifest.json"
+    )
+    EvidenceGraphQueries.open(manifest_path)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

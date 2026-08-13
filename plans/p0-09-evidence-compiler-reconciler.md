@@ -37,10 +37,11 @@ The output can make evidence lineage, gaps and conflicts inspectable without all
 - [x] Add detailed Tool Card, example request, scientific task card and reproducible validation record.
 - [x] Re-export the post-review public P0-09 Schemas and verify packaged byte parity.
 - [x] Recheck adapter/result-schema registration, explicit evidence dependencies, knowledge projection and repository-wide documentation against the frozen post-review contract.
-- [x] Rerun the 2026-08-14 focused/full-source, discovery, knowledge, repository-policy, Schema/Card parity and diff gates after the unified public-open boundary hardening; the focused suite passes 177 tests and the full source suite passes 867 tests with three known warnings.
+- [x] Rerun the 2026-08-14 focused/full-source, discovery, knowledge, repository-policy, Schema/Card parity and diff gates after the Parquet byte-path hardening; the focused suite passes 178 tests and the full source suite passes 868 tests with three known warnings.
 - [x] Rebuild and install the wheel from exact commit `d7614f7`, then repeat all 858 tests and installed-runtime gates with the declared evidence dependencies.
 - [x] Rebuild and install the wheel from exact commit `2fd1f9e`, then repeat all 863 tests and installed-runtime gates with the declared evidence dependencies.
 - [x] Rebuild and install the wheel from exact code commit `718109c`, then repeat all 867 tests and installed-runtime gates with Python 3.12.13, PyArrow 21.0.0 and NetworkX 3.5.
+- [ ] Rebuild and install the wheel from the exact final Parquet byte-path tree, then repeat installed-runtime gates with the declared evidence dependencies.
 - [ ] Complete independent review with no unresolved Critical or Important findings.
 - [ ] Push one topic branch and open a Draft stacked PR; do not merge.
 

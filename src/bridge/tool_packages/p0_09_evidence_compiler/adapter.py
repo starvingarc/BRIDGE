@@ -30,7 +30,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
 from bridge.tool_packages.p0_09_evidence_compiler.graph import (
     cytoscape_projection,
     object_counts,
-    read_parquet_rows,
+    read_parquet_bytes,
     validate_graph_rows,
     write_parquet,
 )
@@ -850,8 +850,9 @@ def _write_bundle(
             compiled.nodes,
             compiled.edges,
         )
-        roundtrip_nodes, roundtrip_edges = read_parquet_rows(
-            staging / "graph_nodes.parquet", staging / "graph_edges.parquet"
+        roundtrip_nodes, roundtrip_edges = read_parquet_bytes(
+            _read_regular_bytes(staging / "graph_nodes.parquet"),
+            _read_regular_bytes(staging / "graph_edges.parquet"),
         )
         if roundtrip_nodes != compiled.nodes or roundtrip_edges != compiled.edges:
             raise ValueError("parquet row mismatch")
