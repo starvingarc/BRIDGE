@@ -45,12 +45,13 @@ or run. Unresolved Nb boundaries remain provisional or unavailable.
 | P0-01 Input Audit & QC | Executable candidate |
 | P0-02 Cell-State Evidence | Executable shadow; no state or method frozen |
 | P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
-| P0-03–P0-07, P0-09–P0-12 | Scientific contracts only; executors pending |
+| P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
+| P0-03–P0-07, P0-10–P0-12 | Scientific contracts only; executors pending |
 
 ## Minimal usage
 
 ```bash
-python -m pip install -e ".[qc]"
+python -m pip install -e ".[qc,evidence]"
 bridge-tool list
 bridge-tool describe P0-02
 bridge-tool validate --request request.json

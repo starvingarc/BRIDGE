@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "RejectedEvidenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Ref"
+        },
+        "logical_key_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Logical Key Digest"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_index": {
+          "minimum": 0,
+          "title": "Source Index",
+          "type": "integer"
+        },
+        "source_kind": {
+          "enum": [
+            "candidate_record",
+            "missing_observation",
+            "external_case_evidence_ref"
+          ],
+          "title": "Source Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_kind",
+        "source_id",
+        "source_index",
+        "reason_codes"
+      ],
+      "title": "RejectedEvidenceRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/evidence-rejected-record-list/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "records": {
+      "items": {
+        "$ref": "#/$defs/RejectedEvidenceRecord"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "rejected_list_id": {
+      "pattern": "^rejected-evidence-records:[a-f0-9]{16}$",
+      "title": "Rejected List Id",
+      "type": "string"
+    },
+    "rejected_list_version": {
+      "const": "0.1.0",
+      "title": "Rejected List Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "rejected_list_id",
+    "rejected_list_version",
+    "records"
+  ],
+  "title": "RejectedEvidenceRecordList",
+  "type": "object"
+}

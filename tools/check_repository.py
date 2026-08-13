@@ -151,6 +151,33 @@ def _check_tool_package_specs(problems: list[str]) -> None:
                 problems.append(
                     f"implemented v0.2 Tool Package has no result_schema_ref: {relative}"
                 )
+            prefix = str(payload.get("tool_id", "")).casefold().replace("-", "_")
+            if not list((ROOT / "examples" / "requests").glob(f"{prefix}_*.json")):
+                problems.append(
+                    f"implemented v0.2 Tool Package has no example request: {relative}"
+                )
+            if not list((ROOT / "docs" / "validation").glob(f"{prefix}_*.md")):
+                problems.append(
+                    f"implemented v0.2 Tool Package has no validation record: {relative}"
+                )
+            card_path = ROOT / "src" / "bridge" / "tool_packages" / "cards" / f"{payload.get('tool_id')}.md"
+            if not card_path.is_file():
+                problems.append(f"implemented v0.2 Tool Package has no Tool Card: {relative}")
+            else:
+                card = card_path.read_text(encoding="utf-8")
+                required_card_fragments = (
+                    "bridge-tool validate --request",
+                    "bridge-tool run --request",
+                    "ToolRequestV2",
+                    "checksum",
+                    "reason",
+                    "example",
+                )
+                missing = [item for item in required_card_fragments if item not in card]
+                if missing:
+                    problems.append(
+                        f"implemented v0.2 Tool Card is incomplete: {relative}: {missing}"
+                    )
         if state == "scaffold":
             if payload.get("method_ids"):
                 problems.append(f"scaffold v0.2 Tool Package claims methods: {relative}")

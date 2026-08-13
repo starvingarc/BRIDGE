@@ -1,0 +1,153 @@
+{
+  "$defs": {
+    "EvidenceRequirementState": {
+      "enum": [
+        "open",
+        "satisfied",
+        "not_applicable"
+      ],
+      "title": "EvidenceRequirementState",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "minLength": 1,
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/evidence-requirement/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "blocking_scope": {
+      "minLength": 1,
+      "title": "Blocking Scope",
+      "type": "string"
+    },
+    "channel_role": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Channel Role",
+      "type": "string"
+    },
+    "claim_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "content_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "required_experiment": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Required Experiment"
+    },
+    "required_modality": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Required Modality"
+    },
+    "requirement_id": {
+      "pattern": "^requirement:[a-f0-9]{24}$",
+      "title": "Requirement Id",
+      "type": "string"
+    },
+    "requirement_key": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Requirement Key",
+      "type": "string"
+    },
+    "requirement_version": {
+      "minimum": 1,
+      "title": "Requirement Version",
+      "type": "integer"
+    },
+    "satisfying_evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Satisfying Evidence Refs",
+      "type": "array"
+    },
+    "source_contract_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "state": {
+      "$ref": "#/$defs/EvidenceRequirementState"
+    },
+    "supersedes_requirement_ref": {
+      "anyOf": [
+        {
+          "pattern": "^requirement:[a-f0-9]{24}@[1-9][0-9]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Requirement Ref"
+    }
+  },
+  "required": [
+    "requirement_id",
+    "requirement_version",
+    "claim_ref",
+    "product_case_ref",
+    "requirement_key",
+    "source_contract_ref",
+    "channel_role",
+    "blocking_scope",
+    "state",
+    "reason_codes",
+    "created_at",
+    "content_hash"
+  ],
+  "title": "EvidenceRequirement",
+  "type": "object"
+}

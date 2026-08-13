@@ -1,0 +1,89 @@
+{
+  "$defs": {
+    "CytoscapeElements": {
+      "additionalProperties": false,
+      "properties": {
+        "edges": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Edges",
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Nodes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes",
+        "edges"
+      ],
+      "title": "CytoscapeElements",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/cytoscape-evidence-elements/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "elements": {
+      "$ref": "#/$defs/CytoscapeElements"
+    },
+    "filters": {
+      "additionalProperties": true,
+      "title": "Filters",
+      "type": "object"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_version": {
+      "minimum": 1,
+      "title": "Graph Version",
+      "type": "integer"
+    },
+    "omitted_edge_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Omitted Edge Count",
+      "type": "integer"
+    },
+    "omitted_node_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Omitted Node Count",
+      "type": "integer"
+    },
+    "returned_edge_count": {
+      "minimum": 0,
+      "title": "Returned Edge Count",
+      "type": "integer"
+    },
+    "returned_node_count": {
+      "minimum": 0,
+      "title": "Returned Node Count",
+      "type": "integer"
+    },
+    "truncated": {
+      "title": "Truncated",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "graph_id",
+    "graph_version",
+    "elements",
+    "filters",
+    "truncated",
+    "returned_node_count",
+    "returned_edge_count"
+  ],
+  "title": "CytoscapeEvidenceElements",
+  "type": "object"
+}

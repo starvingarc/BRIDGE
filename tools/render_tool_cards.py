@@ -6,11 +6,11 @@ from pathlib import Path
 import yaml
 
 
-# P0-08's field-level interface card is the maintained source for both public
-# projections. The generic renderer is intentionally too small for its
-# structured-object contract, so regeneration validates and mirrors that source
-# instead of replacing it with a scaffold-era summary.
-DETAILED_CARD_IDS = {"P0-08"}
+# P0-08 and P0-09 keep field-level interface cards as the maintained source for
+# both public projections. The generic renderer is intentionally too small for
+# their structured-object contracts, so regeneration validates and mirrors each
+# source instead of replacing it with a scaffold-era summary.
+DETAILED_CARD_IDS = {"P0-08", "P0-09"}
 
 
 DETAILS = {

@@ -27,7 +27,7 @@
 | [P0-12 Graft Assessment](graft_assessment_task_card.md) | 独立后验 graft 证据边界 |
 | [公开 JSON Schema](../../schemas/) | Agent、证据、比较、可视化和运行对象合同 |
 | [Tool Package Cards](../../tool_packages/) | 当前可调用工具、输入输出和实现状态 |
-| [Active Methods](../../knowledge/active-methods.md) | P0-01、P0-02、P0-03 与 P0-08 当前选定方法 |
+| [Active Methods](../../knowledge/active-methods.md) | P0-01、P0-02、P0-03、P0-08 与 P0-09 当前选定方法 |
 | [Conda 环境合同](../../environments/README.md) | 当前运行能力所需的最小环境与待建环境 |
 
 ## 状态词

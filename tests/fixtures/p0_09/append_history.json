@@ -1,0 +1,20 @@
+{
+  "fixture_kind": "append_only_revision_scenario",
+  "steps": [
+    {
+      "expected_evidence_version": 1,
+      "predecessor_ref": null,
+      "revision_action": "create"
+    },
+    {
+      "expected_evidence_version": 2,
+      "predecessor_ref": "evidence:<stable-logical-id>@1",
+      "revision_action": "supersede"
+    },
+    {
+      "expected_evidence_version": 3,
+      "predecessor_ref": "evidence:<stable-logical-id>@2",
+      "revision_action": "invalidate"
+    }
+  ]
+}

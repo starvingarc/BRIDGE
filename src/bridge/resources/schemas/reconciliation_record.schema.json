@@ -1,0 +1,231 @@
+{
+  "$defs": {
+    "ChannelResolution": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_role": {
+          "title": "Channel Role",
+          "type": "string"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceRelation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "eligible": {
+          "title": "Eligible",
+          "type": "boolean"
+        },
+        "evidence_family_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Family Refs",
+          "type": "array"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "channel_role",
+        "evidence_refs",
+        "evidence_family_refs",
+        "direction",
+        "eligible",
+        "reason_codes"
+      ],
+      "title": "ChannelResolution",
+      "type": "object"
+    },
+    "EvidenceRelation": {
+      "enum": [
+        "supports",
+        "contradicts"
+      ],
+      "title": "EvidenceRelation",
+      "type": "string"
+    },
+    "ReconciliationEligibility": {
+      "enum": [
+        "eligible",
+        "insufficient_evidence",
+        "not_assessed"
+      ],
+      "title": "ReconciliationEligibility",
+      "type": "string"
+    },
+    "ReconciliationState": {
+      "enum": [
+        "stable",
+        "consensus_supported",
+        "integration_sensitive",
+        "unstable"
+      ],
+      "title": "ReconciliationState",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "minLength": 1,
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/reconciliation-record/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "channel_resolutions": {
+      "items": {
+        "$ref": "#/$defs/ChannelResolution"
+      },
+      "title": "Channel Resolutions",
+      "type": "array"
+    },
+    "claim_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "content_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "direction": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvidenceRelation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "eligibility": {
+      "$ref": "#/$defs/ReconciliationEligibility"
+    },
+    "excluded_evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Excluded Evidence Refs",
+      "type": "array"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_version": {
+      "minimum": 1,
+      "title": "Graph Version",
+      "type": "integer"
+    },
+    "included_evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Included Evidence Refs",
+      "type": "array"
+    },
+    "open_requirement_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Open Requirement Refs",
+      "type": "array"
+    },
+    "reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "reconciliation_id": {
+      "pattern": "^reconciliation:[a-f0-9]{24}$",
+      "title": "Reconciliation Id",
+      "type": "string"
+    },
+    "reconciliation_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reconciliation_version": {
+      "minimum": 1,
+      "title": "Reconciliation Version",
+      "type": "integer"
+    },
+    "state": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReconciliationState"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "sufficiency_profile_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "title": "Sufficiency Profile Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "reconciliation_id",
+    "reconciliation_version",
+    "graph_id",
+    "graph_version",
+    "claim_ref",
+    "reconciliation_spec_ref",
+    "sufficiency_profile_refs",
+    "eligibility",
+    "channel_resolutions",
+    "included_evidence_refs",
+    "excluded_evidence_refs",
+    "open_requirement_refs",
+    "reason_codes",
+    "created_at",
+    "content_hash"
+  ],
+  "title": "ReconciliationRecord",
+  "type": "object"
+}

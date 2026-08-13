@@ -1,0 +1,215 @@
+{
+  "$defs": {
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ReconciliationSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_evidence_states": {
+          "items": {
+            "$ref": "#/$defs/EvidenceState"
+          },
+          "minItems": 1,
+          "title": "Allowed Evidence States",
+          "type": "array"
+        },
+        "claim_type": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Claim Type",
+          "type": "string"
+        },
+        "confirmation_channel_roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Confirmation Channel Roles",
+          "type": "array"
+        },
+        "conflict_rule": {
+          "const": "family_dedup_then_channel_resolution",
+          "title": "Conflict Rule",
+          "type": "string"
+        },
+        "consensus_rule": {
+          "const": "unanimous_independent_confirmation",
+          "title": "Consensus Rule",
+          "type": "string"
+        },
+        "integration_sensitive_channel_roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Integration Sensitive Channel Roles",
+          "type": "array"
+        },
+        "integration_sensitivity_rule": {
+          "const": "integration_role_disagrees_with_resolved_direction",
+          "title": "Integration Sensitivity Rule",
+          "type": "string"
+        },
+        "minimum_independent_families_by_role": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Minimum Independent Families By Role",
+          "type": "object"
+        },
+        "missing_behavior": {
+          "const": "insufficient_evidence",
+          "title": "Missing Behavior",
+          "type": "string"
+        },
+        "optional_channel_roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Optional Channel Roles",
+          "type": "array"
+        },
+        "primary_channel_roles": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Primary Channel Roles",
+          "type": "array"
+        },
+        "reconciliation_spec_id": {
+          "pattern": "^reconciliation-spec:[A-Za-z0-9._:-]+$",
+          "title": "Reconciliation Spec Id",
+          "type": "string"
+        },
+        "required_channel_roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Channel Roles",
+          "type": "array"
+        },
+        "required_sufficiency_states": {
+          "default": [
+            "sufficient"
+          ],
+          "maxItems": 1,
+          "minItems": 1,
+          "prefixItems": [
+            {
+              "const": "sufficient",
+              "type": "string"
+            }
+          ],
+          "title": "Required Sufficiency States",
+          "type": "array"
+        },
+        "reviewer_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewer Ref"
+        },
+        "status": {
+          "$ref": "#/$defs/RegistryStatus"
+        },
+        "validation_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validation Ref"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reconciliation_spec_id",
+        "version",
+        "claim_type",
+        "required_channel_roles",
+        "primary_channel_roles",
+        "minimum_independent_families_by_role",
+        "allowed_evidence_states",
+        "conflict_rule",
+        "consensus_rule",
+        "integration_sensitivity_rule",
+        "missing_behavior",
+        "status"
+      ],
+      "title": "ReconciliationSpec",
+      "type": "object"
+    },
+    "RegistryStatus": {
+      "enum": [
+        "candidate",
+        "frozen",
+        "retired"
+      ],
+      "title": "RegistryStatus",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/reconciliation-spec-registry/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "registry_id": {
+      "const": "BRIDGE-RECONCILIATION-SPEC-REGISTRY-v0.1",
+      "title": "Registry Id",
+      "type": "string"
+    },
+    "registry_version": {
+      "const": "0.1.0",
+      "title": "Registry Version",
+      "type": "string"
+    },
+    "specs": {
+      "items": {
+        "$ref": "#/$defs/ReconciliationSpec"
+      },
+      "minItems": 1,
+      "title": "Specs",
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/RegistryStatus"
+    }
+  },
+  "required": [
+    "registry_id",
+    "registry_version",
+    "status",
+    "created_at",
+    "specs"
+  ],
+  "title": "ReconciliationSpecRegistry",
+  "type": "object"
+}

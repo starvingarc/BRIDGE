@@ -1,0 +1,30 @@
+{
+  "base_graph_ref": null,
+  "bundle_id": "evidence-compilation-bundle:fixture-case",
+  "bundle_version": "0.1.0",
+  "candidate_records": [],
+  "case_graph_refs": [],
+  "comparison_ref": null,
+  "created_at": "2026-08-13T00:00:00Z",
+  "external_case_evidence_refs": [],
+  "graph_kind": "case",
+  "missing_observations": [],
+  "object_catalog": [
+    {
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "node_type": "ProductCase",
+      "object_id": "product-case:fixture-case",
+      "object_version": "1.0.0",
+      "schema_ref": "bridge://schemas/product-case/v0.1"
+    }
+  ],
+  "prior_evidence_records": [],
+  "prior_requirements": [],
+  "product_case_ref": {
+    "object_id": "product-case:fixture-case",
+    "object_version": "1.0.0"
+  },
+  "provenance_refs": [
+    "provenance:synthetic-fixture"
+  ]
+}

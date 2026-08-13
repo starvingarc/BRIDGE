@@ -37,6 +37,10 @@ freeze = [
   "h5py>=3.11,<4",
   "pyarrow>=18,<24",
 ]
+evidence = [
+  "networkx>=3.5,<3.6",
+  "pyarrow>=21,<22",
+]
 
 [project.scripts]
 bridge-tool = "bridge.toolkit.cli:main"

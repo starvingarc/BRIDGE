@@ -1,0 +1,122 @@
+{
+  "base_graph_ref": null,
+  "bundle_id": "evidence-compilation-bundle:fixture-comparison",
+  "bundle_version": "0.1.0",
+  "candidate_records": [],
+  "case_graph_refs": [
+    {
+      "graph_id": "case-evidence-graph:aaaaaaaaaaaaaaaaaaaaaaaa",
+      "graph_version": 1,
+      "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "product_case_ref": {
+        "object_id": "product-case:fixture-a",
+        "object_version": "1.0.0"
+      }
+    },
+    {
+      "graph_id": "case-evidence-graph:bbbbbbbbbbbbbbbbbbbbbbbb",
+      "graph_version": 1,
+      "manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "product_case_ref": {
+        "object_id": "product-case:fixture-b",
+        "object_version": "1.0.0"
+      }
+    }
+  ],
+  "comparison_ref": {
+    "object_id": "comparison:fixture-a-vs-b",
+    "object_version": "1.0.0"
+  },
+  "created_at": "2026-08-13T00:00:00Z",
+  "external_case_evidence_refs": [
+    {
+      "applicability": "applicable",
+      "evidence_content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "evidence_family_ref": {
+        "object_id": "evidence-family:fixture",
+        "object_version": "1.0.0"
+      },
+      "evidence_ref": "evidence:aaaaaaaaaaaaaaaaaaaaaaaa@1",
+      "evidence_state": "measured",
+      "evidence_tier": "formal",
+      "lifecycle_state": "active",
+      "product_case_ref": {
+        "object_id": "product-case:fixture-a",
+        "object_version": "1.0.0"
+      },
+      "relation": "supports",
+      "source_case_graph_ref": {
+        "graph_id": "case-evidence-graph:aaaaaaaaaaaaaaaaaaaaaaaa",
+        "graph_version": 1,
+        "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "product_case_ref": {
+          "object_id": "product-case:fixture-a",
+          "object_version": "1.0.0"
+        }
+      },
+      "source_claim_ref": {
+        "object_id": "claim:fixture-a",
+        "object_version": "1.0.0"
+      },
+      "comparison_claim_ref": {
+        "object_id": "claim:fixture-comparison",
+        "object_version": "1.0.0"
+      },
+      "sufficiency_profile_input_id": "profile-a",
+      "tool_run_execution_state": "succeeded"
+    },
+    {
+      "applicability": "applicable",
+      "evidence_content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "evidence_family_ref": {
+        "object_id": "evidence-family:fixture",
+        "object_version": "1.0.0"
+      },
+      "evidence_ref": "evidence:bbbbbbbbbbbbbbbbbbbbbbbb@1",
+      "evidence_state": "measured",
+      "evidence_tier": "formal",
+      "lifecycle_state": "active",
+      "product_case_ref": {
+        "object_id": "product-case:fixture-b",
+        "object_version": "1.0.0"
+      },
+      "relation": "contradicts",
+      "source_case_graph_ref": {
+        "graph_id": "case-evidence-graph:bbbbbbbbbbbbbbbbbbbbbbbb",
+        "graph_version": 1,
+        "manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "product_case_ref": {
+          "object_id": "product-case:fixture-b",
+          "object_version": "1.0.0"
+        }
+      },
+      "source_claim_ref": {
+        "object_id": "claim:fixture-b",
+        "object_version": "1.0.0"
+      },
+      "comparison_claim_ref": {
+        "object_id": "claim:fixture-comparison",
+        "object_version": "1.0.0"
+      },
+      "sufficiency_profile_input_id": "profile-b",
+      "tool_run_execution_state": "partial"
+    }
+  ],
+  "graph_kind": "comparison",
+  "missing_observations": [],
+  "object_catalog": [
+    {
+      "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "node_type": "ComparisonRecord",
+      "object_id": "comparison:fixture-a-vs-b",
+      "object_version": "1.0.0",
+      "schema_ref": "bridge://schemas/comparison-record/v0.1"
+    }
+  ],
+  "prior_evidence_records": [],
+  "prior_requirements": [],
+  "product_case_ref": null,
+  "provenance_refs": [
+    "provenance:synthetic-comparison-fixture"
+  ]
+}
