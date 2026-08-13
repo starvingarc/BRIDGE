@@ -44,7 +44,8 @@ or run. Unresolved Nb boundaries remain provisional or unavailable.
 |---|---|
 | P0-01 Input Audit & QC | Executable candidate |
 | P0-02 Cell-State Evidence | Executable shadow; no state or method frozen |
-| P0-03 onward | Scientific contracts only; executors pending |
+| P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
+| P0-03–P0-07, P0-09–P0-12 | Scientific contracts only; executors pending |
 
 ## Minimal usage
 

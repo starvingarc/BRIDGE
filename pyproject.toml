@@ -61,6 +61,7 @@ where = ["src"]
 "bridge.tool_packages.p0_01_input_qc.measurement_specs" = ["*.yaml"]
 "bridge.tool_packages.p0_02_cell_state.measurement_specs" = ["*.yaml"]
 "bridge.tool_packages.p0_02_cell_state.resources" = ["*.yaml"]
+"bridge.tool_packages.p0_08_evidence_sufficiency.resources" = ["*.json"]
 "bridge.resources" = ["*.json.gz"]
 "bridge.resources.schemas" = ["*.json"]
 

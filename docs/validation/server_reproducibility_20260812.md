@@ -44,7 +44,7 @@ The following engineering gates passed:
   knowledge counts, curated P0-01 source verification and competitor isolation;
 - the full installed-wheel suite: 192 passed, with one expected synthetic AnnData
   duplicate-variable-name warning;
-- discovery of exactly 12 Tool Packages, with only P0-01 and P0-02 implemented;
+- discovery of exactly 12 Tool Packages, with only P0-01 and P0-02 implemented at the 2026-08-12 validation snapshot;
   P0-03 remained a scaffold;
 - knowledge validation: 354 methods, 387 canonical public sources, 396 bindings,
   zero dangling references and zero formal-eligible methods;

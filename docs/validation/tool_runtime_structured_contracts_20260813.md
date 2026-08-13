@@ -12,7 +12,7 @@ Tests use synthetic paths, checksums, package specs, requests, adapter responses
 
 The source suite passed with v0.1 behavior and schema bytes stable while the v0.2 path rejected inline objects, relative paths, duplicate IDs/path aliases, nonexistent paths, directories, invalid checksums/media types, non-standard or duplicate-key JSON, version mismatches, unknown or violated input schemas, non-packaged adapters and mismatched result bindings. Registered legacy objects without a schema-defined version field remained eligible with external `object_version` metadata. Mixed v0.1/v0.2 registries selected the request model from `tool_id`; manually constructed SDK requests using the opposite envelope generation returned structured `tool_request_v1_required` or `tool_request_v2_required` refusals without resolving an adapter or executor. Synthetic successful v0.2 runs retained request, tool version, environment and registered result-schema bindings, carried a non-null schema-valid result, and were discarded if an input changed during execution—even when the adapter raised or returned an invalid type. Deprecated packages did not execute.
 
-This evidence cannot establish scientific validity, package eligibility on real data, or any product claim. P0-08 and P0-09 remain unimplemented scaffolds.
+This evidence cannot establish scientific validity, package eligibility on real data, or any product claim. At the shared-runtime commit validated here, P0-08 and P0-09 were still unimplemented scaffolds; P0-08's later candidate implementation has its own validation record and does not retroactively change this infrastructure-only evidence.
 
 ## Engineering evidence
 

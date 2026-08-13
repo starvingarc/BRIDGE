@@ -1,0 +1,194 @@
+{
+  "$defs": {
+    "ContextOfUseState": {
+      "enum": [
+        "applicable",
+        "not_applicable",
+        "not_assessed"
+      ],
+      "title": "ContextOfUseState",
+      "type": "string"
+    },
+    "ContractValidationState": {
+      "enum": [
+        "frozen",
+        "candidate",
+        "not_assessed"
+      ],
+      "title": "ContractValidationState",
+      "type": "string"
+    },
+    "CoverageState": {
+      "enum": [
+        "covered",
+        "not_covered",
+        "not_required",
+        "not_assessed"
+      ],
+      "title": "CoverageState",
+      "type": "string"
+    },
+    "MethodKind": {
+      "enum": [
+        "learned",
+        "deterministic"
+      ],
+      "title": "MethodKind",
+      "type": "string"
+    },
+    "ValidationCheckState": {
+      "enum": [
+        "passed",
+        "failed",
+        "not_required",
+        "not_assessed"
+      ],
+      "title": "ValidationCheckState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/evidence-validation-record/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "calibration_state": {
+      "$ref": "#/$defs/ValidationCheckState"
+    },
+    "context_of_use_ref": {
+      "minLength": 1,
+      "title": "Context Of Use Ref",
+      "type": "string"
+    },
+    "context_of_use_state": {
+      "$ref": "#/$defs/ContextOfUseState"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "environment_spec_ref": {
+      "minLength": 1,
+      "title": "Environment Spec Ref",
+      "type": "string"
+    },
+    "environment_state": {
+      "$ref": "#/$defs/ContractValidationState"
+    },
+    "evidence_family_id": {
+      "minLength": 1,
+      "title": "Evidence Family Id",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "measurement_spec_ref": {
+      "minLength": 1,
+      "title": "Measurement Spec Ref",
+      "type": "string"
+    },
+    "method_id": {
+      "pattern": "^METHOD-[A-Z0-9-]+$",
+      "title": "Method Id",
+      "type": "string"
+    },
+    "method_kind": {
+      "$ref": "#/$defs/MethodKind"
+    },
+    "method_version": {
+      "minLength": 1,
+      "title": "Method Version",
+      "type": "string"
+    },
+    "modality": {
+      "minLength": 1,
+      "title": "Modality",
+      "type": "string"
+    },
+    "modality_holdout_state": {
+      "$ref": "#/$defs/CoverageState"
+    },
+    "object_version": {
+      "minLength": 1,
+      "title": "Object Version",
+      "type": "string"
+    },
+    "ood_state": {
+      "$ref": "#/$defs/ValidationCheckState"
+    },
+    "provenance_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "required_for_interpretation": {
+      "default": true,
+      "title": "Required For Interpretation",
+      "type": "boolean"
+    },
+    "source_family_ref": {
+      "minLength": 1,
+      "title": "Source Family Ref",
+      "type": "string"
+    },
+    "source_holdout_state": {
+      "$ref": "#/$defs/CoverageState"
+    },
+    "tool_ref": {
+      "minLength": 1,
+      "title": "Tool Ref",
+      "type": "string"
+    },
+    "validation_record_id": {
+      "pattern": "^validation-record:[A-Za-z0-9._:-]+$",
+      "title": "Validation Record Id",
+      "type": "string"
+    },
+    "validation_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Validation Refs",
+      "type": "array"
+    },
+    "validation_state": {
+      "$ref": "#/$defs/ContractValidationState"
+    }
+  },
+  "required": [
+    "validation_record_id",
+    "object_version",
+    "created_at",
+    "measurement_spec_ref",
+    "method_id",
+    "method_version",
+    "tool_ref",
+    "environment_spec_ref",
+    "evidence_family_id",
+    "method_kind",
+    "validation_state",
+    "environment_state",
+    "context_of_use_ref",
+    "context_of_use_state",
+    "source_family_ref",
+    "source_holdout_state",
+    "modality",
+    "modality_holdout_state",
+    "calibration_state",
+    "ood_state",
+    "validation_refs",
+    "evidence_refs",
+    "provenance_refs"
+  ],
+  "title": "EvidenceValidationRecord",
+  "type": "object"
+}

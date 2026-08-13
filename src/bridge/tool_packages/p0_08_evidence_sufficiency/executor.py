@@ -4,9 +4,10 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 import hashlib
 import json
-from typing import Mapping, Sequence, TypeVar
+from typing import Any, Mapping, Sequence, TypeVar
 
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
+    BLOCKING_REASON_CODES,
     CaseEvidenceReadinessSummary,
     ContractValidationState,
     ContextMatchState,
@@ -21,7 +22,9 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceValidationRecord,
     GateRuleSpec,
     GateTraceEntry,
+    LIMITING_REASON_CODES,
     MethodKind,
+    MISSING_REASON_CODES,
     ModelRobustnessState,
     P0DomainId,
     PriorApplicabilityRecord,
@@ -47,11 +50,9 @@ from bridge.toolkit.contracts import (
 
 REASON_CODES = SCIENTIFIC_REASON_CODES
 REASON_ORDER = {code: position for position, code in enumerate(REASON_CODES)}
-MISSING_REASONS = set(REASON_CODES[:17])
-BLOCKING_REASONS = set(REASON_CODES[17:24]) | {"raw_evidence_gate_insufficient"}
-LIMITING_REASONS = set(REASON_CODES[24:33]) | {
-    "raw_evidence_gate_limited",
-}
+MISSING_REASONS = set(MISSING_REASON_CODES)
+BLOCKING_REASONS = set(BLOCKING_REASON_CODES)
+LIMITING_REASONS = set(LIMITING_REASON_CODES)
 
 PRIOR_DIMENSIONS = (
     "species_match",
@@ -101,6 +102,56 @@ def canonical_json_bytes(payload: object, *, indent: int | None = None) -> bytes
     ).encode("utf-8")
 
 
+def _sort_set_like_field(payload: dict[str, Any], field: str) -> None:
+    value = payload.get(field)
+    if isinstance(value, list):
+        payload[field] = sorted(value)
+
+
+def _canonical_model_payload(model: FrozenModel) -> dict[str, Any]:
+    """Normalize only contract-declared set-like lists for run identity."""
+    payload = model.model_dump(mode="json")
+    if isinstance(model, DomainGateInput):
+        for field in (
+            "measurement_result_input_ids",
+            "validation_record_input_ids",
+            "prior_record_input_ids",
+            "sensitivity_record_input_ids",
+            "required_sensitivity_kinds",
+            "evidence_refs",
+            "provenance_refs",
+        ):
+            _sort_set_like_field(payload, field)
+        for pointer_field in ("product_case", "product_definition"):
+            pointer = payload.get(pointer_field)
+            if isinstance(pointer, dict):
+                _sort_set_like_field(pointer, "provenance_refs")
+    elif isinstance(model, EvidenceValidationRecord):
+        for field in ("validation_refs", "evidence_refs", "provenance_refs"):
+            _sort_set_like_field(payload, field)
+    elif isinstance(model, (PriorApplicabilityRecord, EvidenceSensitivityRecord)):
+        for field in ("evidence_refs", "provenance_refs"):
+            _sort_set_like_field(payload, field)
+    elif isinstance(model, MeasurementSpec):
+        for field in (
+            "applicable_product_cards",
+            "tool_refs",
+            "reference_refs",
+            "prior_refs",
+        ):
+            _sort_set_like_field(payload, field)
+    elif isinstance(model, MeasurementResult):
+        _sort_set_like_field(payload, "provenance_refs")
+    elif isinstance(model, QCReadinessProfile):
+        for field in ("missing_inputs", "blocking_issues", "warnings", "evidence_ids"):
+            _sort_set_like_field(payload, field)
+    return payload
+
+
+def canonical_object_sha256(model: FrozenModel) -> str:
+    return hashlib.sha256(canonical_json_bytes(_canonical_model_payload(model))).hexdigest()
+
+
 def canonical_input_hash(
     *,
     request: ToolRequestV2,
@@ -110,20 +161,22 @@ def canonical_input_hash(
     input_refs = []
     objects = []
     for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id)):
+        normalized_payload = _canonical_model_payload(objects_by_input_id[ref.input_id])
+        semantic_sha256 = canonical_object_sha256(objects_by_input_id[ref.input_id])
         input_refs.append(
             {
                 "input_id": ref.input_id,
                 "role": ref.role,
                 "schema_ref": ref.schema_ref,
                 "object_version": ref.object_version,
-                "sha256": ref.sha256,
+                "semantic_sha256": semantic_sha256,
                 "media_type": ref.media_type,
             }
         )
         objects.append(
             {
                 "input_id": ref.input_id,
-                "payload": objects_by_input_id[ref.input_id].model_dump(mode="json"),
+                "payload": normalized_payload,
             }
         )
     payload = {
@@ -348,15 +401,15 @@ def _evaluate_domain(
         qc_profile_ref=qc_profile.profile_id if qc_profile else None,
         model_robustness=model_state,
         robustness_reason_codes=model_reasons,
-        validation_refs=sorted(record.validation_record_id for record in validation_records),
+        validation_refs=sorted(
+            {record.validation_record_id for record in validation_records}
+        ),
         prior_applicability=prior_state,
         prior_reason_codes=prior_reasons,
         snapshot_refs=sorted({record.snapshot_ref for record in prior_records}),
         evidence_sufficiency_state=state,
         blocking_reasons=_ordered_reasons(
-            code
-            for code in selected_reasons
-            if code in MISSING_REASONS or code in BLOCKING_REASONS
+            code for code in selected_reasons if code in BLOCKING_REASONS
         ),
         limiting_reasons=_ordered_reasons(
             code for code in selected_reasons if code in LIMITING_REASONS
@@ -370,7 +423,7 @@ def _evaluate_domain(
         measurement_result_refs=sorted(result.measurement_id for result in measurement_results),
         evidence_refs=evidence_refs,
         sensitivity_refs=sorted(
-            record.sensitivity_record_id for record in sensitivity_records
+            {record.sensitivity_record_id for record in sensitivity_records}
         ),
         deduplicated_evidence_family_ids=all_family_ids,
         created_at=domain_input.created_at,
@@ -640,15 +693,20 @@ def _reconcile(records: Sequence[tuple[str, RecordT]]) -> ReconciledRecords:
     for family_id in sorted(grouped):
         family_ids.append(family_id)
         members = sorted(grouped[family_id], key=lambda item: item[0])
-        canonical = [canonical_json_bytes(record.model_dump(mode="json")) for _, record in members]
-        if len(set(canonical)) == 1:
-            selected.append(members[0])
-            ignored.extend(input_id for input_id, _ in members[1:])
-            continue
-        if any(record.required_for_interpretation for _, record in members):
+        content_groups: dict[bytes, list[tuple[str, RecordT]]] = defaultdict(list)
+        for input_id, record in members:
+            canonical = canonical_json_bytes(_canonical_model_payload(record))
+            content_groups[canonical].append((input_id, record))
+        required_content_groups = sum(
+            any(record.required_for_interpretation for _, record in content_group)
+            for content_group in content_groups.values()
+        )
+        if required_content_groups > 1:
             conflict = True
-        else:
-            selected.extend(members)
+        for canonical in sorted(content_groups):
+            content_group = sorted(content_groups[canonical], key=lambda item: item[0])
+            selected.append(content_group[0])
+            ignored.extend(input_id for input_id, _ in content_group[1:])
     return ReconciledRecords(
         records=tuple(selected),
         ignored_input_ids=tuple(sorted(ignored)),

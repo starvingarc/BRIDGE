@@ -53,14 +53,14 @@ CLI and SDK use the same models, adapter, eligibility rules and result envelope.
 | `random_seed` | integer | Accepted for envelope parity, recorded in identity, and never used by the gate. |
 | `object_inputs` | list of `StructuredInputRef` | One gate rule plus one to five domain bindings and their immutable upstream records. |
 
-Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`, `object_version`, an absolute `path`, a lowercase 64-character `sha256`, and `media_type=application/json`. Inline payloads, symlinks, non-files, checksum drift, invalid JSON and alternate caller-authored gate rules are rejected.
+Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`, `object_version`, an absolute `path`, a lowercase 64-character `sha256`, and `media_type=application/json`. Inline payloads, symlinks, non-files, checksum drift, invalid JSON and alternate caller-authored gate rules are rejected. After checksum verification, every string in every structured JSON payload is recursively screened before model validation. Absolute POSIX, Windows drive-letter and UNC references; home-relative references using tilde, HOME, USERPROFILE or HOMEPATH variables; any embedded `file://` URI; credential-bearing URLs; password, API-key, secret, token, access-token, auth, authorization or credential assignments; bearer credentials; and common GitHub/OpenAI/AWS token forms fail eligibility as `unsafe_scientific_reference`. Ordinary `bridge://` identifiers, credential-free `http://`/`https://` URLs and scientific slash text remain legal.
 
 | `StructuredInputRef` field | Type | Meaning |
 |---|---|---|
 | `input_id` | non-empty string | Request-local identifier used by domain bindings; unique across the request. |
 | `role` | exact role string | Selects the expected object model and cardinality. |
 | `schema_ref` | exact URI | Public schema governing the referenced JSON object. |
-| `object_version` | non-empty string | Must agree with the payload's declared object/legacy version contract. |
+| `object_version` | non-empty string | Must agree with the payload's declared object/legacy version. The versionless QCReadinessProfile and MeasurementResult schemas accept only the adapter-owned `0.1.0` contract version. |
 | `path` | absolute local path | Read-only JSON file; no inline or network payload. |
 | `sha256` | lowercase 64-hex string | Hash of the exact immutable source bytes, checked before and after execution. |
 | `media_type` | `application/json` | Other media types fail eligibility. |
@@ -76,7 +76,7 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 | `prior_applicability_record` | 0..N | `bridge://schemas/prior-applicability-record/v0.1` | IDs occur in `prior_record_input_ids`. |
 | `sensitivity_record` | 0..N | `bridge://schemas/evidence-sensitivity-record/v0.1` | IDs occur in `sensitivity_record_input_ids`. |
 
-`DomainGateInput` binds a versioned ProductCase, ProductDefinition, P0 domain, MeasurementSpec, QC profile, upstream MeasurementResults, validation/prior/sensitivity records, method and prior requirements, required sensitivity kinds, task validation state, evidence/provenance references, and the optional provenance-only `score_contract_ref`. Null scientific bindings are legal and produce `not_assessed`; dangling or wrong-role IDs are malformed.
+`DomainGateInput` binds a versioned ProductCase, ProductDefinition, P0 domain, MeasurementSpec, QC profile, upstream MeasurementResults, validation/prior/sensitivity records, method and prior requirements, required sensitivity kinds, task validation state, evidence/provenance references, and the optional provenance-only `score_contract_ref`. Null scientific bindings are legal and produce `not_assessed`; dangling or wrong-role IDs are malformed. Every non-null ProductCase pointer across the request must be identical in object ID, version and provenance-reference set; the same full-pointer rule applies independently to ProductDefinition. Each `domain_gate_input_id` is unique. MeasurementSpec, QC profile and MeasurementResult logical IDs are unique across distinct request objects; callers reuse one input reference when multiple domains share an object. Validation, prior and sensitivity logical IDs may repeat only inside one Evidence Family, where exact content duplicates collapse and non-identical required content becomes a scientific conflict. Reusing one such logical ID across Evidence Families is an eligibility failure.
 
 ### Gate rule fields
 
@@ -100,10 +100,10 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 | `object_version` | literal `0.1.0` | yes | Binding object version. |
 | `created_at` | UTC datetime | yes | Copied to the resulting profile; no wall-clock substitution. |
 | `product_case` | `VersionedObjectPointer` or null | yes | Upstream ProductCase ID/version/provenance; null is valid `not_assessed`. |
-| `product_definition` | `VersionedObjectPointer` or null | yes | Reviewed product definition; null is valid `not_assessed`. |
+| `product_definition` | `VersionedObjectPointer` or null | yes | Reviewed product definition; when non-null its ID must occur in the bound MeasurementSpec's applicable product cards. Null is valid `not_assessed`. |
 | `domain_id` | P0 domain enum or null | yes | One of the five P0 domains; null is valid `not_assessed`. |
 | `measurement_spec_input_id` | string or null | yes | Selects one role-correct MeasurementSpec object. |
-| `qc_profile_input_id` | string or null | yes | Selects one role-correct QCReadinessProfile. |
+| `qc_profile_input_id` | string or null | yes | Selects one role-correct QCReadinessProfile whose assay and MeasurementSpec status agree with the bound MeasurementSpec. |
 | four `*_input_ids` lists | unique string arrays | yes | Select MeasurementResult, validation, prior and sensitivity records by request-local ID. |
 | `method_requirement` | required/not_required/not_assessed | yes | Copied from the reviewed MeasurementSpec-side requirement. |
 | `prior_requirement` | required/not_required/not_assessed | yes | Copied from the reviewed MeasurementSpec-side requirement. |
@@ -113,7 +113,7 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 | `evidence_refs` | unique string array | yes | Upstream Evidence IDs copied to traceable outputs. |
 | `provenance_refs` | non-empty unique string array | yes | Internal lineage; it does not alter a gate. |
 
-`VersionedObjectPointer` contains non-empty `object_id`, `object_version` and `provenance_refs`. All identifier/reference strings are stripped and all declared lists reject duplicates.
+`VersionedObjectPointer` contains non-empty `object_id`, `object_version` and `provenance_refs`. All identifier/reference strings are stripped and all declared lists reject duplicates. Pointer provenance order is set-like for identity, but changing its membership creates a different pointer and fails cross-domain eligibility.
 
 ### Validation record fields
 
@@ -121,13 +121,13 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 |---|---|---|
 | `validation_record_id`, `object_version`, `created_at` | ID/version/UTC datetime | Immutable upstream record identity. |
 | `measurement_spec_ref` | string | Must equal the bound MeasurementSpec ID. |
-| `method_id`, `method_version`, `tool_ref`, `environment_spec_ref` | strings | Exact executed method/tool/environment lineage. |
+| `method_id`, `method_version`, `tool_ref`, `environment_spec_ref` | strings | Exact executed method/tool/environment lineage; `tool_ref` must occur in the non-empty bound MeasurementSpec tool list. |
 | `evidence_family_id`, `required_for_interpretation` | string, boolean | Family de-duplication and gate participation. |
 | `method_kind` | learned/deterministic | Only a frozen deterministic record can establish `method_requirement=not_required`. |
 | `validation_state`, `environment_state` | frozen/candidate/not_assessed | Upstream review conclusions, not recomputed. |
 | `context_of_use_ref`, `context_of_use_state` | string, enum | Required applicability conclusion. |
 | `source_family_ref`, `source_holdout_state` | string, coverage enum | Source-family holdout conclusion. |
-| `modality`, `modality_holdout_state` | string, coverage enum | Modality holdout conclusion. |
+| `modality`, `modality_holdout_state` | string, coverage enum | Modality must equal the bound MeasurementSpec assay; the enum records its holdout conclusion. |
 | `calibration_state`, `ood_state` | passed/failed/not_required/not_assessed | Upstream validation checks; P0-08 has no numeric calibration field. |
 | `validation_refs`, `evidence_refs`, `provenance_refs` | non-empty unique arrays | Reviewed records, biological Evidence IDs and lineage. |
 
@@ -168,7 +168,9 @@ P0-08 reads upstream conclusions but does not recompute QC, calibration, OOD, ho
 3. Prior Applicability: `applicable`, `partially_applicable`, `inapplicable`, `not_required`, or `not_assessed` from required context matches.
 4. Final precedence: `not_assessed` → `insufficient` → `limited` → `sufficient`.
 
-Byte-identical records in one Evidence Family collapse to one deterministic representative. Non-identical required records in one family produce `not_assessed` and `evidence_family_conflict_requires_review`; record or tool count never acts as a vote.
+Canonical-content-identical records in one Evidence Family collapse to one deterministic representative while every duplicate input reference remains in the trace. A family conflicts only when it contains more than one distinct canonical record marked `required_for_interpretation=true`. All distinct required representatives remain in output provenance while the axis is `not_assessed`. Supporting records (`required_for_interpretation=false`) remain provenance only: they can neither improve nor worsen an axis, and one required record plus any number of different supporting records is not a conflict. Record or tool count never acts as a vote.
+
+The deterministic scientific input hash sorts `object_inputs` and normalizes only contract-declared set-like lists: DomainGateInput bindings, required sensitivity kinds and references; record validation/evidence/provenance references; MeasurementSpec applicability/tool/reference/prior references; MeasurementResult provenance; and QC missing/blocking/warning/evidence lists. Caller ordering of these sets therefore cannot change run identity, result bytes or the reusable bundle. Semantically ordered gate-rule fields, including `applicable_domains` and `precedence`, retain their declared order. Exact source-byte checksums remain unchanged in the invocation's `ToolRunV2.request.object_inputs`; the reusable bundle records a canonical semantic checksum for each object.
 
 ## Result and artifacts
 
@@ -190,7 +192,7 @@ Byte-identical records in one Evidence Family collapse to one deterministic repr
 | `model_robustness`, `robustness_reason_codes`, `validation_refs` | enum/list/list | Method axis and validation records. |
 | `prior_applicability`, `prior_reason_codes`, `snapshot_refs` | enum/list/list | Prior axis and snapshot lineage. |
 | `evidence_sufficiency_state` | four-state enum | First matching state under the fixed precedence. |
-| `blocking_reasons`, `limiting_reasons`, `missing_requirements` | catalog-ordered unique arrays | Actionable gate trace, never free-form product interpretation. |
+| `blocking_reasons`, `limiting_reasons`, `missing_requirements` | catalog-ordered unique arrays | Severity-separated trace: only catalog `blocking`, `limiting` and `missing` codes respectively. A missing code is never duplicated into `blocking_reasons`. |
 | `domain_score`, `score_state`, `score_reason_codes` | null/unavailable/list | Forced no-score release contract. |
 | measurement, evidence, sensitivity and family refs | unique arrays | Upstream record identifiers and de-duplicated Evidence Families. |
 
@@ -206,20 +208,22 @@ Successful runs emit no `MeasurementResult` and no visualization. They publish e
 - `evidence_sufficiency_run_result.json`
 - `artifact_manifest.json`
 
-Scientific JSON contains no local path. The internal manifest binds tool/environment versions, the full input hash, structured-input checksums and the first four artifact checksums; it has no circular self-hash. Repeated identical content reuses an identical bundle. Mutated inputs or a drifted existing bundle fail without overwrite.
+Scientific JSON contains no local path. The internal manifest binds tool/environment versions, the full input hash, per-object canonical semantic checksums and the first four artifact checksums; it has no circular self-hash. Raw source-byte checksums are invocation provenance in `ToolRunV2.request.object_inputs`, are checked before and after execution, and deliberately do not alter reusable bundle bytes. Reordering a declared set and running into the same output directory therefore reuses the byte-identical bundle, while any semantic object change produces a different full input hash and run directory. Mutated inputs or a drifted existing bundle fail without overwrite. Every returned `ArtifactManifest.sha256`, including the bundle manifest itself, verifies the bytes at its returned path.
 
 ## Eligibility, refusal and degradation
 
 Technical eligibility failures return `execution_state=failed`, no result and no artifacts. Stable reason codes are:
 
-- envelope and roles: `tool_version_mismatch`, `p0_08_requires_v2_request`, `p0_08_expression_assets_forbidden`, `p0_08_top_level_measurement_spec_forbidden`, `p0_08_parameters_forbidden`, `exactly_one_gate_rule_spec_required`, `one_to_five_domain_gate_inputs_required`, `unsupported_object_input_role`, `object_input_schema_mismatch`, `duplicate_object_input_id`;
+- envelope and roles: `tool_version_mismatch`, `tool_request_v2_required`, `p0_08_expression_assets_forbidden`, `p0_08_top_level_measurement_spec_forbidden`, `p0_08_parameters_forbidden`, `exactly_one_gate_rule_spec_required`, `one_to_five_domain_gate_inputs_required`, `unsupported_object_input_role`, `object_input_schema_mismatch`, `duplicate_object_input_id`;
 - immutable files: `structured_input_not_found`, `structured_input_not_regular_file`, `structured_input_checksum_mismatch`, `structured_input_media_type_unsupported`, `structured_input_json_invalid`, `structured_input_schema_invalid`, `structured_input_modified_during_run`;
-- binding and policy: `unsupported_gate_rule_spec`, `domain_gate_input_binding_invalid`, `domain_input_measurement_spec_mismatch`, `domain_input_product_definition_mismatch`, `duplicate_domain_id`, `multiple_product_cases_in_request`, `unbound_structured_input`, `output_dir_overlaps_structured_input`, `legacy_evidence_contract_rejected`;
+- binding and policy: `unsupported_gate_rule_spec`, `domain_gate_input_binding_invalid`, `domain_input_measurement_spec_mismatch`, `domain_input_product_definition_mismatch`, `duplicate_logical_object_id`, `duplicate_domain_id`, `multiple_product_cases_in_request`, `unbound_structured_input`, `output_dir_overlaps_structured_input`, `legacy_evidence_contract_rejected`, `unsafe_scientific_reference`;
 - publication: `existing_run_bundle_hash_mismatch`.
 
 Eligibility reason codes are de-duplicated and lexicographically sorted. Scientific profile reason codes instead follow the fixed 45-code catalog order; they include missing-contract, data, model, prior, final-gate, score and Evidence-Family provenance reasons. Descriptions and remediations live in the packaged `reason_code_catalog_v0.1.json` and never describe a product failure.
 
-A contract-complete request with absent or unassessed scientific evidence is different: it is eligible, executes successfully and emits a `not_assessed` profile. Missing, unknown, unavailable, negative and alert upstream states remain distinct and are never converted to zero, product failure or a safety statement.
+The public SDK/registry rejects a v0.1 request for P0-08 with `tool_request_v2_required`; the module adapter returns the same stable code when called directly.
+
+A contract-complete request with absent or unassessed scientific evidence is different: it is eligible, executes successfully and emits a `not_assessed` profile. Its catalog `missing` codes appear only in `missing_requirements`; case-summary blocking reasons are derived only from profile `blocking_reasons`. Missing, unknown, unavailable, negative and alert upstream states remain distinct and are never converted to zero, product failure or a safety statement.
 
 ## Minimum request example
 

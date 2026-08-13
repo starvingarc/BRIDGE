@@ -6,6 +6,13 @@ from pathlib import Path
 import yaml
 
 
+# P0-08's field-level interface card is the maintained source for both public
+# projections. The generic renderer is intentionally too small for its
+# structured-object contract, so regeneration validates and mirrors that source
+# instead of replacing it with a scaffold-era summary.
+DETAILED_CARD_IDS = {"P0-08"}
+
+
 DETAILS = {
     "P0-01": {
         "input": "A declared h5ad, 10x H5, or 10x MTX asset; input level, assay, matrix semantics, sample/capture metadata, gene-identifier source, and output location.",
@@ -114,12 +121,17 @@ def main() -> int:
         spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
         tool_id = spec["tool_id"]
         detail = DETAILS[tool_id]
-        text = render(spec, detail)
+        card_path = card_dir / f"{tool_id}.md"
+        if tool_id in DETAILED_CARD_IDS:
+            text = card_path.read_text(encoding="utf-8")
+            _validate_detailed_card(text, spec)
+        else:
+            text = render(spec, detail)
         package_dir = repo / "tool_packages" / tool_id
         package_dir.mkdir(parents=True, exist_ok=True)
         _write_card_pair(
             text,
-            card_dir / f"{tool_id}.md",
+            card_path,
             package_dir / "README.md",
         )
     return 0
@@ -132,12 +144,32 @@ def _write_card_pair(text: str, public_path: Path, packaged_path: Path) -> None:
     packaged_path.write_bytes(encoded)
 
 
-def render(spec: dict, detail: dict) -> str:
-    runtime = (
-        "Executable candidate; it emits raw measurements and never emits a domain score."
-        if spec["implementation_state"] == "implemented"
-        else "Discoverable contract only; `run` returns `not_implemented` without scientific results."
+def _validate_detailed_card(text: str, spec: dict) -> None:
+    required_fragments = (
+        f"# {spec['tool_id']} {spec['name']}",
+        f"| Package version | `{spec['version']}` |",
+        f"| Runtime state | `{spec['implementation_state']}` |",
+        f"| Scientific state | `{spec['scientific_status']}` |",
+        f"| EnvironmentSpec | `{spec['environment_spec_id']}` (`proposed`) |",
+        f"| Input envelope | `{spec['input_schema_ref']}` |",
+        f"| Output envelope | `{spec['output_schema_ref']}` |",
+        f"| Result schema | `{spec['result_schema_ref']}` |",
+        f"| Adapter | `{spec['adapter_ref']}` |",
     )
+    missing = [fragment for fragment in required_fragments if fragment not in text]
+    if missing:
+        raise ValueError(
+            f"detailed Tool Card for {spec['tool_id']} is stale: {missing}"
+        )
+
+
+def render(spec: dict, detail: dict) -> str:
+    if spec["implementation_state"] != "implemented":
+        runtime = "Discoverable contract only; `run` returns `not_implemented` without scientific results."
+    elif spec["tool_id"] == "P0-08":
+        runtime = "Executable candidate; reads versioned upstream evidence objects and emits no measurements or domain score."
+    else:
+        runtime = "Executable candidate; it emits raw measurements and never emits a domain score."
     optional = "yes" if spec.get("optional") else "no"
     is_cell_state = spec["tool_id"] == "P0-02"
     biology = """## Biological purpose

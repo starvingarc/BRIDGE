@@ -7,8 +7,10 @@ from importlib.resources import files
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 from typing import Any
+from urllib.parse import parse_qsl, urlsplit
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -17,6 +19,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.executor import (
     REASON_CODES,
     canonical_input_hash,
     canonical_json_bytes,
+    canonical_object_sha256,
     evaluate_evidence_sufficiency,
 )
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
@@ -27,6 +30,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     GateRuleSpec,
     PriorApplicabilityRecord,
     ReasonCodeCatalog,
+    VersionedObjectPointer,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -73,6 +77,43 @@ LEGACY_KEYS = {
     "_".join(("negative", "pass")),
 }
 LEGACY_SCORE_MAP_KEYS = {"complete", "partial", "minimal"}
+WINDOWS_ABSOLUTE_PATH = re.compile(
+    r"(?:^|[\s=:'\"(])(?:[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+)"
+)
+EMBEDDED_POSIX_PATH = re.compile(
+    r"(?:^|[\s=:'\"(])/(?!/)(?:[A-Za-z0-9._~-]+/)+[^\s<>\"']*"
+)
+URI_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s<>\"']+")
+CREDENTIAL_ASSIGNMENT = re.compile(
+    r"(?i)(?:password|api[_-]?key|secret|access[_-]?token|token|"
+    r"auth(?:orization)?|credentials?)\s*=\s*\S+"
+)
+BEARER_CREDENTIAL = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{8,}")
+COMMON_TOKEN = re.compile(
+    r"(?:ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16})"
+)
+CREDENTIAL_QUERY_KEYS = frozenset(
+    {
+        "password",
+        "api_key",
+        "apikey",
+        "secret",
+        "token",
+        "access_token",
+        "auth",
+        "authorization",
+        "credential",
+        "credentials",
+    }
+)
+HOME_RELATIVE_PATH = re.compile(
+    r"(?:^|[\s=:'\"(])(?:~|\$HOME|\$\{HOME\}|%USERPROFILE%|%HOMEPATH%)[\\/]",
+    re.IGNORECASE,
+)
+VERSIONLESS_ROLE_OBJECT_VERSIONS = {
+    "qc_readiness_profile": "0.1.0",
+    "measurement_result": "0.1.0",
+}
 
 
 class StructuredInputError(ValueError):
@@ -100,7 +141,7 @@ class EvidenceSufficiencyAdapter:
             return EligibilityResult(
                 tool_id=tool_id,
                 eligible=False,
-                reason_codes=["p0_08_requires_v2_request"],
+                reason_codes=["tool_request_v2_required"],
             )
         reasons = self._envelope_reasons(request, spec)
         loaded, loading_reasons = _load_structured_inputs(request.object_inputs)
@@ -159,6 +200,7 @@ class EvidenceSufficiencyAdapter:
                 spec=spec,
                 run_id=run_id,
                 input_hash=input_hash,
+                objects_by_input_id=loaded.objects_by_input_id,
                 artifact_specs=artifact_specs,
             )
             _write_json(staging_dir / "artifact_manifest.json", manifest)
@@ -298,6 +340,9 @@ def _load_structured_inputs(
         if _contains_legacy_contract(payload):
             reasons.append("legacy_evidence_contract_rejected")
             continue
+        if _contains_unsafe_scientific_reference(payload):
+            reasons.append("unsafe_scientific_reference")
+            continue
         try:
             value = ROLE_MODELS[ref.role].model_validate(payload)
             _validate_declared_object_version(ref, value)
@@ -355,6 +400,19 @@ def _validate_declared_object_version(
             if str(actual) != ref.object_version:
                 raise ValueError("declared object_version does not match payload")
             return
+    expected = VERSIONLESS_ROLE_OBJECT_VERSIONS.get(ref.role)
+    if expected is None or ref.object_version != expected:
+        raise ValueError("versionless schema object_version is not supported")
+
+
+def _pointer_identity(
+    pointer: VersionedObjectPointer,
+) -> tuple[str, str, tuple[str, ...]]:
+    return (
+        pointer.object_id,
+        pointer.object_version,
+        tuple(sorted(pointer.provenance_refs)),
+    )
 
 
 def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
@@ -370,29 +428,27 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         ):
             reasons.append("unsupported_gate_rule_spec")
     domains = _objects_for_role(request, loaded, "domain_gate_input", DomainGateInput)
+    domain_gate_input_ids = [item.domain_gate_input_id for item in domains]
+    if len(domain_gate_input_ids) != len(set(domain_gate_input_ids)):
+        reasons.append("duplicate_logical_object_id")
     domain_ids = [item.domain_id for item in domains if item.domain_id is not None]
     if len(domain_ids) != len(set(domain_ids)):
         reasons.append("duplicate_domain_id")
     product_cases = {
-        (
-            item.product_case.object_id,
-            item.product_case.object_version,
-        )
+        _pointer_identity(item.product_case)
         for item in domains
         if item.product_case is not None
     }
     if len(product_cases) > 1:
         reasons.append("multiple_product_cases_in_request")
     product_definitions = {
-        (
-            item.product_definition.object_id,
-            item.product_definition.object_version,
-        )
+        _pointer_identity(item.product_definition)
         for item in domains
         if item.product_definition is not None
     }
     if len(product_definitions) > 1:
         reasons.append("domain_input_product_definition_mismatch")
+    reasons.extend(_logical_id_reasons(request, loaded))
 
     bound_ids: set[str] = set()
     for domain in domains:
@@ -409,11 +465,32 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             if isinstance(candidate, MeasurementSpec):
                 measurement_spec = candidate
         if measurement_spec is not None:
+            if (
+                domain.product_definition is not None
+                and domain.product_definition.object_id
+                not in measurement_spec.applicable_product_cards
+            ):
+                reasons.append("domain_input_product_definition_mismatch")
+            if domain.qc_profile_input_id is not None:
+                qc_profile = loaded.objects_by_input_id.get(domain.qc_profile_input_id)
+                if isinstance(qc_profile, QCReadinessProfile) and (
+                    qc_profile.assay != measurement_spec.assay
+                    or qc_profile.measurement_spec_status != measurement_spec.status
+                ):
+                    reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in domain.measurement_result_input_ids:
                 value = loaded.objects_by_input_id.get(input_id)
                 if (
                     isinstance(value, MeasurementResult)
                     and value.measurement_spec_id != measurement_spec.measurement_spec_id
+                ):
+                    reasons.append("domain_input_measurement_spec_mismatch")
+            for input_id in domain.validation_record_input_ids:
+                value = loaded.objects_by_input_id.get(input_id)
+                if isinstance(value, EvidenceValidationRecord) and (
+                    value.modality != measurement_spec.assay
+                    or not measurement_spec.tool_refs
+                    or value.tool_ref not in measurement_spec.tool_refs
                 ):
                     reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in [
@@ -481,6 +558,87 @@ def _contains_legacy_contract(value: object) -> bool:
     if isinstance(value, list):
         return any(_contains_legacy_contract(item) for item in value)
     return False
+
+
+def _contains_unsafe_scientific_reference(value: object) -> bool:
+    if isinstance(value, str):
+        return _unsafe_string(value)
+    if isinstance(value, dict):
+        return any(_contains_unsafe_scientific_reference(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_contains_unsafe_scientific_reference(item) for item in value)
+    return False
+
+
+def _unsafe_string(value: str) -> bool:
+    stripped = value.strip()
+    if not stripped:
+        return False
+    if (
+        stripped.startswith("/")
+        or stripped.startswith("\\\\")
+        or WINDOWS_ABSOLUTE_PATH.search(stripped)
+        or EMBEDDED_POSIX_PATH.search(stripped)
+        or HOME_RELATIVE_PATH.search(stripped)
+        or stripped.lower().startswith("file://")
+    ):
+        return True
+    if (
+        CREDENTIAL_ASSIGNMENT.search(stripped)
+        or BEARER_CREDENTIAL.search(stripped)
+        or COMMON_TOKEN.search(stripped)
+    ):
+        return True
+    for url in URI_URL.findall(stripped):
+        parsed = urlsplit(url.rstrip(".,);]"))
+        if parsed.scheme.lower() == "file":
+            return True
+        if parsed.username is not None or parsed.password is not None:
+            return True
+        if any(
+            key.lower() in CREDENTIAL_QUERY_KEYS and bool(item)
+            for key, item in parse_qsl(parsed.query, keep_blank_values=True)
+        ):
+            return True
+    return False
+
+
+def _logical_id_reasons(
+    request: ToolRequestV2, loaded: LoadedInputs
+) -> list[str]:
+    duplicate = False
+    simple_roles = {
+        "measurement_spec": "measurement_spec_id",
+        "qc_readiness_profile": "profile_id",
+        "measurement_result": "measurement_id",
+    }
+    for role, field in simple_roles.items():
+        logical_ids = [
+            str(getattr(loaded.objects_by_input_id[ref.input_id], field))
+            for ref in request.object_inputs
+            if ref.role == role and ref.input_id in loaded.objects_by_input_id
+        ]
+        if len(logical_ids) != len(set(logical_ids)):
+            duplicate = True
+
+    family_roles = {
+        "validation_record": "validation_record_id",
+        "prior_applicability_record": "prior_record_id",
+        "sensitivity_record": "sensitivity_record_id",
+    }
+    for role, field in family_roles.items():
+        families_by_id: dict[str, set[str]] = {}
+        for ref in request.object_inputs:
+            if ref.role != role or ref.input_id not in loaded.objects_by_input_id:
+                continue
+            record = loaded.objects_by_input_id[ref.input_id]
+            logical_id = str(getattr(record, field))
+            families_by_id.setdefault(logical_id, set()).add(
+                str(getattr(record, "evidence_family_id"))
+            )
+        if any(len(families) > 1 for families in families_by_id.values()):
+            duplicate = True
+    return ["duplicate_logical_object_id"] if duplicate else []
 
 
 def _objects_for_role(
@@ -567,6 +725,7 @@ def _manifest_payload(
     spec: ToolPackageSpecV2,
     run_id: str,
     input_hash: str,
+    objects_by_input_id: dict[str, FrozenModel],
     artifact_specs: list[dict[str, Any]],
 ) -> dict[str, Any]:
     return {
@@ -576,13 +735,19 @@ def _manifest_payload(
         "environment_spec_id": spec.environment_spec_id,
         "result_schema_ref": spec.result_schema_ref,
         "input_hash": input_hash,
+        "structured_input_provenance_policy": {
+            "bundle_identity": "canonical_semantic_sha256",
+            "invocation_source_checksum": "ToolRunV2.request.object_inputs[].sha256",
+        },
         "structured_inputs": [
             {
                 "input_id": ref.input_id,
                 "role": ref.role,
                 "schema_ref": ref.schema_ref,
                 "object_version": ref.object_version,
-                "sha256": ref.sha256,
+                "semantic_sha256": canonical_object_sha256(
+                    objects_by_input_id[ref.input_id]
+                ),
                 "media_type": ref.media_type,
             }
             for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id))

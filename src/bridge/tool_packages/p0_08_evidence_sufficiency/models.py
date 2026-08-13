@@ -179,6 +179,15 @@ SCIENTIFIC_REASON_CODES = (
 SCIENTIFIC_REASON_ORDER = {
     code: position for position, code in enumerate(SCIENTIFIC_REASON_CODES)
 }
+MISSING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[:17]) | {
+    "raw_evidence_gate_not_assessed"
+}
+BLOCKING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[17:24]) | {
+    "raw_evidence_gate_insufficient"
+}
+LIMITING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[24:33]) | {
+    "raw_evidence_gate_limited"
+}
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -545,6 +554,12 @@ class EvidenceSufficiencyProfile(FrozenModel):
 
     @model_validator(mode="after")
     def score_is_always_unavailable(self) -> Self:
+        if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
+            raise ValueError("blocking_reasons may contain only blocking catalog codes")
+        if not set(self.limiting_reasons) <= LIMITING_REASON_CODES:
+            raise ValueError("limiting_reasons may contain only limiting catalog codes")
+        if not set(self.missing_requirements) <= MISSING_REASON_CODES:
+            raise ValueError("missing_requirements may contain only missing catalog codes")
         if self.domain_score is not None or self.score_state is not ScoreState.UNAVAILABLE:
             raise ValueError("P0-08 cannot emit a domain score in the current release")
         expected_score_reasons = ["p0_score_contract_unavailable"]
@@ -589,6 +604,8 @@ class CaseEvidenceReadinessSummary(FrozenModel):
 
     @model_validator(mode="after")
     def count_totals_match(self) -> Self:
+        if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
+            raise ValueError("case blocking_reasons may contain only blocking catalog codes")
         counts = self.evidence_sufficiency_counts
         total = counts.sufficient + counts.limited + counts.insufficient + counts.not_assessed
         if total != self.profile_count:

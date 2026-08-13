@@ -28,6 +28,7 @@
 
 ## Validation Records
 
+- [P0-08 Evidence Sufficiency candidate validation, 2026-08-13](validation/p0_08_evidence_sufficiency_20260813.md)
 - [Structured tool runtime contracts, 2026-08-13](validation/tool_runtime_structured_contracts_20260813.md)
 - [Server reproducibility validation, 2026-08-12](validation/server_reproducibility_20260812.md)
 - [P0-01 server integration, 2026-08-10](validation/p0_01_server_integration_20260810.md)

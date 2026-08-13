@@ -16,6 +16,8 @@ Installation is not scientific validation. Method promotion requires validation 
 
 P0-01 additionally checks matrix semantics, sample/capture hierarchy, declared gene-identifier coverage, scRNA/snRNA separation, per-capture metrics, missing-input degradation and candidate MeasurementSpec behavior. An absent QC gene set must become `unavailable`, not a zero fraction.
 
+P0-08 additionally checks the fixed Data Readiness → Model Robustness → Prior Applicability → sufficiency order independently for each domain. Exact same-family evidence is de-duplicated without voting; non-identical required records in one family force review. Missing, unknown, unavailable, negative and alert states remain distinct, a contract-valid evidence gap produces `not_assessed`, and every profile must keep `domain_score=null` with `score_state=unavailable`. Input checksums are verified before and after adapter calls, repeat runs must reproduce content hashes, and a drifted existing bundle must never be overwritten.
+
 ## Visualization Gates
 
 Every registered chart binds its source artifact, denominator, units, uncertainty and missing state. Static SVG/PNG rendering and chart payload must agree. Exploratory plots cannot enter a verified report.
