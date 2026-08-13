@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Branch | `codex/bridge-scientific-freeze` |
-| Status | `awaiting_biological_review` |
+| Branch | `p0-02-external-source-preparation` |
+| Status | `biological_review_in_progress` |
 | Owner | BRIDGE core |
 
 ## Biological question
@@ -63,8 +63,25 @@ The preregistered report must include:
 
 ## Birtele asset preparation gate
 
-Before biological review begins—and before the FreezeGate can be signed or any
-locked runner can be implemented or run—the processed `GSE192405` asset must have:
+The official `GSE192405` processed archive contains 13 count-matrix CSV files
+with 77,804 unique cells and a shared ordered set of 25,032 genes. Raw reads are
+not public. Publication totals reconcile the four primary matrices into 6-week,
+8-week and 11-week analysis groups. Table S1 and the public filenames also
+constrain cultured samples into 7-week, 7.3-week and 8-week candidate groups,
+but `GSM5746439` and conflicting `GSM5746445` cannot be assigned uniquely
+between the latter two. These mappings are `provisional_inferred`, not verified
+donor identities.
+
+The project scientific lead conditionally approved this mapping for source-level
+holdout, stage-level description and provisional-group sensitivity only. Every
+formal `biological_unit_id` remains null and every sample remains
+`replicate_eligibility=not_estimable`. The decision cannot support donor-level
+inference or promote a method, state, threshold or product role. The evidence is
+recorded in the [external-source asset validation](../docs/validation/p0_02_external_source_asset_20260812.md).
+
+Before state-card biological review begins—and before the FreezeGate can be
+signed or any locked runner can be implemented or run—the processed
+`GSE192405` asset must have:
 
 1. a processed-CSV conversion manifest that identifies every source file and the
    deterministic conversion step;
@@ -76,9 +93,10 @@ locked runner can be implemented or run—the processed `GSE192405` asset must h
 5. converted-object schema validation and QC validation with explicit matrix,
    feature, observation and sample-unit semantics.
 
-If any item is absent or fails review, biological review cannot approve this
-external-source candidate, the FreezeGate must remain unsigned, and the locked
-runner must not be implemented or run.
+All five preparation items passed engineering validation and the constrained
+biological review. The FreezeGate nevertheless remains unsigned, and the locked
+runner must not be implemented or run until state and product-context review is
+complete.
 
 ## Biological review and execution gate
 
@@ -109,6 +127,12 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
 
 ## Engineering status
 
+- The Birtele conversion, checksum, QC and lineage-audit implementation is
+  complete and documented at [P0-02 external-source preparation](../docs/bridge_spec_v0.1/external_source_preparation.md); its source/stage-only use is conditionally approved with provisional groups and no biological-replicate inference.
+- P0-02 is now package version `0.4.8`. The rendered public and packaged cards
+  consistently report `scientific_status=candidate` and
+  `freeze_state=biological_review_in_progress`; they do not claim a scientific
+  freeze, score availability or a non-null domain score.
 - Locked-runner implementation and execution are pending the biological review and
   signed FreezeGate.
 - Task 5 server engineering validation is complete at implementation
@@ -119,3 +143,16 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
   checks were data-free and do not promote a scientific method.
 - Historical local runs are diagnostic only and are not current formal evidence.
 - Runtime remains fail-closed without approved review, gate and release records.
+
+## P0-02 external-source preparation closeout — 2026-08-13
+
+- Rebased the P0-02 history on `origin/main`, preserving the completed P0-06
+  naming plan row and its decision-log record.
+- Added the science-team command contract, required immutable inputs, outputs,
+  checksums, provenance, stable failure reasons, examples and scientific
+  boundaries to the indexed stable documentation.
+- Full validation evidence is recorded in
+  [P0-02 external-source preparation validation](../docs/validation/p0_02_external_source_preparation_20260813.md): focused contracts `39 passed in 2.56s`; full suite `214 passed, 3 warnings in 14.31s`; 12-tool discovery with only P0-01/P0-02 implemented; knowledge validation `valid=True` with 354 methods and 396 bindings; repository policy and `git diff --check` passed.
+- The branch remains a Draft PR: merge is not authorized. Remaining biological
+  work is review of 25 state cards, then ProductDefinitionCard and StateRoleMap;
+  only a signed FreezeGate can authorize a single locked run.
