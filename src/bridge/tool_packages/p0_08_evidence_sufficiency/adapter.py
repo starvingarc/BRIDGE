@@ -31,6 +31,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PriorApplicabilityRecord,
     ReasonCodeCatalog,
     VersionedObjectPointer,
+    published_ref,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -86,7 +87,8 @@ EMBEDDED_POSIX_PATH = re.compile(
 URI_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s<>\"']+")
 FILE_URI = re.compile(r"(?i)(?<![A-Za-z0-9+.-])file:")
 CREDENTIAL_ASSIGNMENT = re.compile(
-    r"(?i)(?<![A-Za-z0-9_])(?:password|api[_-]?key|secret|access[_-]?token|token|"
+    r"(?i)(?<![A-Za-z0-9_])(?:password|api[_-]?(?:key|token)|secret|client[_-]?secret|"
+    r"access[_-]?token|refresh[_-]?token|auth[_-]?token|token|"
     r"auth(?:orization)?|credentials?)\s*(?:=\s*\S+|"
     r":\s*[A-Za-z0-9._~+/=-]+(?=$|[,;}\]]))"
 )
@@ -97,15 +99,18 @@ COMMON_TOKEN = re.compile(
 CREDENTIAL_QUERY_KEYS = frozenset(
     {
         "password",
-        "api_key",
         "apikey",
+        "apitoken",
         "secret",
         "token",
-        "access_token",
+        "accesstoken",
         "auth",
         "authorization",
         "credential",
         "credentials",
+        "clientsecret",
+        "refreshtoken",
+        "authtoken",
     }
 )
 HOME_RELATIVE_PATH = re.compile(
@@ -349,6 +354,7 @@ def _load_structured_inputs(
         try:
             value = ROLE_MODELS[ref.role].model_validate(payload)
             _validate_declared_object_version(ref, value)
+            _validate_publishable_source_refs(ref.role, value)
         except (ValidationError, ValueError):
             reasons.append("structured_input_schema_invalid")
             continue
@@ -406,6 +412,46 @@ def _validate_declared_object_version(
     expected = VERSIONLESS_ROLE_OBJECT_VERSIONS.get(ref.role)
     if expected is None or ref.object_version != expected:
         raise ValueError("versionless schema object_version is not supported")
+
+
+def _validate_publishable_source_refs(role: str, value: FrozenModel) -> None:
+    refs: list[str] = []
+    if role == "measurement_spec" and isinstance(value, MeasurementSpec):
+        refs.append(value.measurement_spec_id)
+    elif role == "qc_readiness_profile" and isinstance(value, QCReadinessProfile):
+        refs.append(value.profile_id)
+    elif role == "measurement_result" and isinstance(value, MeasurementResult):
+        refs.append(value.measurement_id)
+        refs.extend(
+            ref for ref in value.provenance_refs if ref.startswith("evidence:")
+        )
+    elif role == "validation_record" and isinstance(value, EvidenceValidationRecord):
+        refs.extend(
+            [value.validation_record_id, value.evidence_family_id, *value.evidence_refs]
+        )
+    elif role == "prior_applicability_record" and isinstance(
+        value, PriorApplicabilityRecord
+    ):
+        refs.extend(
+            [
+                value.prior_record_id,
+                value.snapshot_ref,
+                value.evidence_family_id,
+                *value.evidence_refs,
+            ]
+        )
+    elif role == "sensitivity_record" and isinstance(
+        value, EvidenceSensitivityRecord
+    ):
+        refs.extend(
+            [
+                value.sensitivity_record_id,
+                value.evidence_family_id,
+                *value.evidence_refs,
+            ]
+        )
+    for ref in refs:
+        published_ref(ref)
 
 
 def _pointer_identity(
@@ -579,8 +625,8 @@ def _contains_unsafe_scientific_reference(value: object) -> bool:
 
 
 def _is_credential_key(value: object) -> bool:
-    normalized = re.sub(r"[-\s]+", "_", str(value).strip().lower())
-    return normalized in CREDENTIAL_QUERY_KEYS
+    compact = re.sub(r"[^A-Za-z0-9]+", "", str(value)).casefold()
+    return compact in CREDENTIAL_QUERY_KEYS
 
 
 def _is_nonempty(value: object) -> bool:
@@ -619,7 +665,7 @@ def _unsafe_string(value: str) -> bool:
         if parsed.username is not None or parsed.password is not None:
             return True
         if any(
-            key.lower() in CREDENTIAL_QUERY_KEYS and bool(item)
+            _is_credential_key(key) and _is_nonempty(item)
             for key, item in parse_qsl(parsed.query, keep_blank_values=True)
         ):
             return True

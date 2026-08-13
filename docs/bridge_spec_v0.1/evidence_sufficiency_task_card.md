@@ -198,8 +198,8 @@ created_at / deterministic_run_ref
 - 同源数据库或相关方法数量增加：不得提高 sufficiency。
 - ProductDefinition 不在 MeasurementSpec 适用卡中、QC assay/MeasurementSpec 状态不一致，或 validation modality/tool 与 MeasurementSpec 不一致：技术资格失败，不生成科学 profile。
 - DomainGateInput、MeasurementSpec、QC profile、MeasurementResult 出现歧义逻辑 ID，或 validation/prior/sensitivity 的同一逻辑 ID 跨 evidence family：技术资格失败。
-- 结构化科学 JSON 的任意深度 key 或 value 中出现绝对路径，或使用 `~`/`~user`/HOME/USERPROFILE/HOMEPATH 的 home-relative 路径、任意位置的 `file:` scheme（含 opaque 与 slash 形式）、带凭据 URL、非空 credential-named JSON key/value、使用 `=` 的 credential 赋值，或使用 `:` 后接无最短长度限制的单个 credential-shaped token、bearer credential 或常见访问令牌形式：返回 `unsafe_scientific_reference`，不回显原字符串且不发布输出 bundle。该规则是明确列举并有回归测试的有限发布安全合同，不表示能够识别所有形式的秘密；正常 `bridge://`/无凭据 HTTP(S) 引用和含空格的科学自然语言仍可使用。
-- 会复制到公开 profile 的 evidence/provenance/validation/snapshot/sensitivity 等引用必须保持 scheme-shaped 或 identifier-shaped；request-local `*_input_ids` 不受此发布引用约束。
+- 结构化科学 JSON 的任意深度 key 或 value 中出现绝对路径，或使用 `~`/`~user`/HOME/USERPROFILE/HOMEPATH 的 home-relative 路径、任意位置的 `file:` scheme（含 opaque 与 slash 形式）、带凭据 URL、非空 credential-named JSON key/value、使用 `=` 的 credential 赋值，或使用 `:` 后接无最短长度限制的单个 credential-shaped token、bearer credential 或常见访问令牌形式：返回 `unsafe_scientific_reference`，不回显原字符串且不发布输出 bundle。credential key 去除大小写和 separator 差异后精确匹配，阻断 camelCase/acronym/snake/kebab/space aliases，但不把 `tokenization`、`secreted_factor` 等科学 key 当作凭据。该规则是明确列举并有回归测试的有限发布安全合同，不表示能够识别所有形式的秘密；正常 `bridge://`/无凭据 HTTP(S) 引用和含空格的科学自然语言仍可使用。
+- 实际会复制到公开 profile 的 MeasurementSpec/QC/measurement/record/snapshot/Evidence Family/evidence 等引用必须在 eligibility 阶段通过 scheme-shaped 或 identifier-shaped 检查；不合法时统一返回 `structured_input_schema_invalid`，直接 adapter 与公共 SDK 都返回失败 `ToolRunV2` 且不落盘。request-local `*_input_ids` 不受此发布引用约束，未复制到公开结果的源字段继续只服从其源 Schema。
 - 公共 SDK/registry 或直接 adapter 收到 v0.1 请求：统一返回 `tool_request_v2_required`，不使用模块私有替代代码。
 - 工具执行失败：保留失败记录，不自动换用未注册方法。
 - 一个域不足：只阻塞该域，不修改其他域的 raw evidence 或状态。

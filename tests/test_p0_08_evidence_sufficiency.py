@@ -23,6 +23,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     DomainGateInput,
     EvidenceSufficiencyRunResult,
 )
+from bridge.toolkit.api import run_tool
 from bridge.toolkit.contracts import ExecutionState, ToolRequest, ToolRequestV2
 from bridge.toolkit.registry import ToolRegistry
 
@@ -1069,6 +1070,7 @@ def test_unbound_structured_input_and_legacy_contract_fail_closed(tmp_path: Path
         "ftp://user:pass@example.org/data",
         "pass" + "word=hunter2",
         "api_" + "key=placeholder-value",
+        "APIToken=placeholder-value",
         "sec" + "ret=placeholder-value",
         "token=placeholder-value",
         "token: secret-123",
@@ -1085,6 +1087,10 @@ def test_unbound_structured_input_and_legacy_contract_fail_closed(tmp_path: Path
         "sk-" + "A" * 24,
         "AKIA" + "A" * 16,
         "https://example.org/data?" + "token=placeholder",
+        "https://example.org/data?accessToken=placeholder",
+        "clientSecret=placeholder-value",
+        "refreshToken=placeholder-value",
+        "authToken=placeholder-value",
     ],
 )
 def test_unsafe_scientific_references_fail_without_publication(
@@ -1169,6 +1175,12 @@ def test_safe_scientific_references_remain_eligible(
         ("password", "hunter2"),
         ("api-key", "structural-secret-a"),
         ("access token", "structural-secret-b"),
+        ("accessToken", "structural-secret-c"),
+        ("clientSecret", "structural-secret-d"),
+        ("refreshToken", "structural-secret-e"),
+        ("authToken", "structural-secret-f"),
+        ("APIToken", "structural-secret-g"),
+        ("ACCESS_TOKEN", "structural-secret-h"),
         ("outer", "file:/private.json"),
         ("outer", "file:private.json"),
         ("~alice/private.json", "masked"),
@@ -1194,6 +1206,171 @@ def test_recursive_unsafe_keys_and_values_fail_without_echo_or_publication(
     assert run.result is None
     assert run.artifacts == []
     assert not request.output_dir.exists()
+
+
+@pytest.mark.parametrize(
+    "safe_key",
+    [
+        "tokenization",
+        "tokenizationState",
+        "secreted_factor",
+        "secretedFactor",
+        "authentication_state",
+        "APITokenization",
+    ],
+)
+def test_scientific_keys_that_only_contain_credential_substrings_remain_legal(
+    tmp_path: Path, safe_key: str
+) -> None:
+    measurement = _measurement()
+    measurement["raw_value"] = {safe_key: "biological-state"}
+    request = _fixture_request(tmp_path, measurement=measurement)
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    assert adapter.check_eligibility(request, spec).eligible
+    assert adapter.run(request, spec).execution_state is ExecutionState.SUCCEEDED
+
+
+@pytest.mark.parametrize(
+    ("fixture_overrides", "payload"),
+    [
+        ({"measurement_spec": _measurement_spec()}, ("measurement_spec_id", "bad spec")),
+        ({"qc": _qc()}, ("profile_id", "bad qc profile")),
+        ({"measurement": _measurement()}, ("measurement_id", "bad measurement")),
+        ({"measurement": _measurement()}, ("provenance_refs", ["evidence:bad ref"])),
+        ({"validation": _validation()}, ("validation_record_id", "validation bad")),
+        ({"validation": _validation()}, ("evidence_family_id", "family bad")),
+        ({"validation": _validation()}, ("evidence_refs", ["evidence:bad ref"])),
+        ({"prior": _prior()}, ("prior_record_id", "prior bad")),
+        ({"prior": _prior()}, ("snapshot_ref", "snapshot bad")),
+        ({"prior": _prior()}, ("evidence_family_id", "family bad")),
+        ({"prior": _prior()}, ("evidence_refs", ["evidence:bad ref"])),
+        ({"sensitivity": _sensitivity()}, ("sensitivity_record_id", "sensitivity bad")),
+        ({"sensitivity": _sensitivity()}, ("evidence_family_id", "family bad")),
+        ({"sensitivity": _sensitivity()}, ("evidence_refs", ["evidence:bad ref"])),
+    ],
+)
+def test_every_source_ref_copied_to_public_result_fails_during_preflight(
+    tmp_path: Path,
+    fixture_overrides: dict[str, dict[str, Any]],
+    payload: tuple[str, Any],
+) -> None:
+    fixture_name, fixture = next(iter(fixture_overrides.items()))
+    field, invalid_value = payload
+    fixture[field] = invalid_value
+    request = _fixture_request(tmp_path, **{fixture_name: fixture})
+
+    _assert_failed_without_publication(request, "structured_input_schema_invalid")
+
+
+def test_public_run_tool_returns_failed_v2_for_invalid_published_source_ref(
+    tmp_path: Path,
+) -> None:
+    prior = _prior(snapshot_ref="snapshot with spaces")
+    request = _fixture_request(tmp_path, prior=prior)
+
+    run = run_tool(request)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
+    assert run.result is None
+    assert run.artifacts == []
+    assert not request.output_dir.exists()
+
+
+def test_request_local_binding_ids_may_contain_spaces(tmp_path: Path) -> None:
+    domain = _domain(
+        measurement_spec_input_id="target spec",
+        qc_profile_input_id="case qc",
+        measurement_result_input_ids=["target result"],
+        validation_record_input_ids=["target validation"],
+        prior_record_input_ids=["target prior"],
+        sensitivity_record_input_ids=["target sensitivity"],
+    )
+    request = _fixture_request(
+        tmp_path,
+        domain=domain,
+        extras=[
+            (
+                "target spec",
+                "measurement_spec",
+                "bridge://schemas/measurement-spec/v0.1",
+                _measurement_spec(),
+                "0.1.0",
+            ),
+            (
+                "case qc",
+                "qc_readiness_profile",
+                "bridge://schemas/qc-readiness-profile/v0.1",
+                _qc(),
+                "0.1.0",
+            ),
+            (
+                "target result",
+                "measurement_result",
+                "bridge://schemas/measurement-result/v0.1",
+                _measurement(),
+                "0.1.0",
+            ),
+            (
+                "target validation",
+                "validation_record",
+                "bridge://schemas/evidence-validation-record/v0.1",
+                _validation(),
+                "0.1.0",
+            ),
+            (
+                "target prior",
+                "prior_applicability_record",
+                "bridge://schemas/prior-applicability-record/v0.1",
+                _prior(),
+                "0.1.0",
+            ),
+            (
+                "target sensitivity",
+                "sensitivity_record",
+                "bridge://schemas/evidence-sensitivity-record/v0.1",
+                _sensitivity(),
+                "0.1.0",
+            ),
+        ],
+    )
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    assert adapter.check_eligibility(request, spec).eligible
+    assert adapter.run(request, spec).execution_state is ExecutionState.SUCCEEDED
+
+
+def test_nonpublished_source_text_is_not_subject_to_output_ref_shape(
+    tmp_path: Path,
+) -> None:
+    qc = _qc()
+    qc["evidence_ids"] = ["QC annotation with spaces"]
+    measurement = _measurement()
+    measurement["provenance_refs"] = [
+        "upstream provenance narrative",
+        "evidence:measurement-1",
+    ]
+    validation = _validation(
+        validation_refs=["validation narrative with spaces"],
+        provenance_refs=["validation provenance narrative"],
+    )
+    prior = _prior(provenance_refs=["prior provenance narrative"])
+    sensitivity = _sensitivity(
+        provenance_refs=["sensitivity provenance narrative"]
+    )
+    request = _fixture_request(
+        tmp_path,
+        qc=qc,
+        measurement=measurement,
+        validation=validation,
+        prior=prior,
+        sensitivity=sensitivity,
+    )
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    assert adapter.check_eligibility(request, spec).eligible
+    assert adapter.run(request, spec).execution_state is ExecutionState.SUCCEEDED
 
 
 @pytest.mark.parametrize(
