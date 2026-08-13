@@ -92,18 +92,50 @@ COMMON_TOKEN = re.compile(
     r"(?:ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16})"
 )
 CREDENTIAL_EXACT_NAMES = frozenset({"auth", "authorization"})
-CREDENTIAL_NAME_SUFFIXES = ("password", "secret", "token", "credential", "credentials")
+CREDENTIAL_NAME_SUFFIXES = (
+    "password",
+    "passphrase",
+    "passwd",
+    "pwd",
+    "secret",
+    "token",
+    "credential",
+    "credentials",
+    "passcode",
+    "pincode",
+)
 SENSITIVE_KEY_QUALIFIERS = frozenset(
     {
-        "api",
-        "private",
-        "secret",
-        "access",
+        "database",
+        "db",
+        "webhook",
+        "master",
+        "service",
+        "account",
         "signing",
         "encryption",
-        "consumer",
-        "client",
+        "decryption",
+        "private",
         "ssh",
+        "api",
+        "access",
+        "client",
+        "consumer",
+        "secret",
+    }
+)
+PIN_CONTEXT_QUALIFIERS = frozenset(
+    {
+        "auth",
+        "authorization",
+        "account",
+        "access",
+        "security",
+        "login",
+        "user",
+        "credential",
+        "verification",
+        "device",
     }
 )
 HOME_RELATIVE_PATH = re.compile(
@@ -627,6 +659,12 @@ def _is_credential_name(value: object) -> bool:
         return True
     if compact.endswith(CREDENTIAL_NAME_SUFFIXES):
         return True
+    if compact.endswith("pin"):
+        stem = compact[: -len("pin")]
+        return any(
+            stem.startswith(qualifier) or stem.endswith(qualifier)
+            for qualifier in PIN_CONTEXT_QUALIFIERS
+        )
     if not compact.endswith("key"):
         return False
     stem = compact[: -len("key")]
