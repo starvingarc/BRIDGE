@@ -43,7 +43,7 @@ Current source-tree observations:
 - repository policy passed, the full suite retained exactly 12 discoverable tools, and the packaged/public P0-09 Tool Card projections remain byte-identical; and
 - knowledge validation remained valid with no dangling method/source refs and zero formally eligible methods.
 
-As an earlier closure baseline, the integrator archived commit `d7614f7`, built and installed its wheel in a fresh Python 3.12.13 environment with the declared PyArrow 21.0.0 and NetworkX 3.5 dependencies, and observed `858 passed, 3 warnings`. Dependency consistency, 12-tool discovery, all 49 installed Schemas, the installed P0-09 adapter/Card, the strict external-input Schema boundary, the Comparison binding projection, knowledge validation and repository policy also passed. That historical wheel predates the final external-binding edge digest and does not validate the exact current tree.
+The integrator archived exact commit `2fd1f9e`, built and installed its wheel in a fresh Python 3.12.13 environment with the declared PyArrow 21.0.0 and NetworkX 3.5 dependencies, and observed `863 passed, 3 warnings`. Dependency consistency, 12-tool discovery, all 49 installed Schemas, the installed P0-09 adapter/Card, knowledge validation and repository policy also passed.
 
 The synthetic executable cases observed:
 
@@ -72,7 +72,7 @@ These observations support the engineering claim that the candidate module can p
 
 This validation does not establish that any biological Claim is true, that any current ProductCase has sufficient evidence, that any domain score exists, that an EvidenceFamily assignment is scientifically correct, or that any output is suitable for public/scientific release. It does not validate LadybugDB, production-scale performance or the proposed evidence environment. The committed branch intentionally does not promote any method to `formal_eligible`.
 
-The focused and full development runs used PyArrow/NetworkX versions newer than the declared release environment; the historical exact-commit wheel run verified the declared PyArrow 21.0.0 and NetworkX 3.5 environment before the final binding-digest change. The exact current tree still requires a clean-wheel rerun. Independent review resolution and Draft PR publication remain outstanding, and neither step authorizes scientific promotion or merge.
+The focused and full development runs used PyArrow/NetworkX versions newer than the declared release environment; the separate exact-commit wheel run verified the declared PyArrow 21.0.0 and NetworkX 3.5 environment after the final binding-digest/error-boundary changes. Independent review resolution and Draft PR publication remain outstanding, and neither step authorizes scientific promotion or merge.
 
 ## Engineering artifacts and reproducibility
 
@@ -84,4 +84,4 @@ Module implementation:
 - `tests/test_p0_09_evidence_compiler.py` and synthetic fixtures under `tests/fixtures/p0_09/`
 - documentation-only request `examples/requests/p0_09_evidence_compiler.json`
 
-The focused suite verifies fixed Parquet columns, canonical JSON, strict scientific numeric parsing, semantic object hashes, stable IDs, immutable staging/publication, content-addressed source/base graph reconstruction, authoritative artifact checksums, canonical fact-to-graph projection and deterministic query ordering. Public and packaged Schema copies are byte-identical; the exact final wheel remains an integrator gate.
+The focused suite verifies fixed Parquet columns, canonical JSON, strict scientific numeric parsing, semantic object hashes, stable IDs, immutable staging/publication, content-addressed source/base graph reconstruction, authoritative artifact checksums, canonical fact-to-graph projection and deterministic query ordering. Public and packaged Schema copies are byte-identical; the exact final wheel passed the installed-runtime gates.
