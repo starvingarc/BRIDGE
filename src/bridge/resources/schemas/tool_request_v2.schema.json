@@ -171,7 +171,8 @@
         "$ref": "#/$defs/StructuredInputRef"
       },
       "title": "Object Inputs",
-      "type": "array"
+      "type": "array",
+      "uniqueItems": true
     },
     "output_dir": {
       "format": "path",

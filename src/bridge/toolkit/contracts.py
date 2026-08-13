@@ -251,7 +251,10 @@ class ToolRequestV2(FrozenModel):
     measurement_spec_ref: str | None = None
     parameters: dict[str, Any] = Field(default_factory=dict)
     random_seed: int = 0
-    object_inputs: list[StructuredInputRef] = Field(default_factory=list)
+    object_inputs: list[StructuredInputRef] = Field(
+        default_factory=list,
+        json_schema_extra={"uniqueItems": True},
+    )
 
     @field_validator("output_dir")
     @classmethod
@@ -259,6 +262,21 @@ class ToolRequestV2(FrozenModel):
         if not value.is_absolute():
             raise ValueError("output_dir must be absolute")
         return value
+
+    @model_validator(mode="after")
+    def structured_input_references_are_unique(self) -> "ToolRequestV2":
+        input_ids = [item.input_id for item in self.object_inputs]
+        if len(input_ids) != len(set(input_ids)):
+            raise ValueError("ToolRequestV2 object_inputs require unique input_id values")
+
+        resolved_paths = [
+            item.path.resolve(strict=False) for item in self.object_inputs
+        ]
+        if len(resolved_paths) != len(set(resolved_paths)):
+            raise ValueError(
+                "ToolRequestV2 object_inputs cannot repeat or alias the same resolved path"
+            )
+        return self
 
 
 class MeasurementSpec(FrozenModel):

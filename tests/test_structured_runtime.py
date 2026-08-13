@@ -20,6 +20,7 @@ from bridge.toolkit.contracts import (
     ExecutionState,
     ImplementationState,
     StructuredInputRef,
+    ToolPackageSpec,
     ToolPackageSpecV2,
     ToolRequest,
     ToolRequestV2,
@@ -56,23 +57,32 @@ class SyntheticAdapter:
         self.mutate_path: Path | None = None
         self.mutate_during_eligibility: Path | None = None
         self.eligibility_error: Exception | None = None
+        self.return_invalid_eligibility = False
+        self.run_error: Exception | None = None
+        self.return_invalid_result = False
 
     def check_eligibility(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
     ) -> EligibilityResult:
         self.eligibility_calls += 1
-        if self.eligibility_error is not None:
-            raise self.eligibility_error
         if self.mutate_during_eligibility is not None:
             self.mutate_during_eligibility.write_text(
                 '{"mutated":true}', encoding="utf-8"
             )
+        if self.eligibility_error is not None:
+            raise self.eligibility_error
+        if self.return_invalid_eligibility:
+            return object()  # type: ignore[return-value]
         return EligibilityResult(tool_id=request.tool_id, eligible=True)
 
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         self.run_calls += 1
         if self.mutate_path is not None:
             self.mutate_path.write_text('{"mutated":true}', encoding="utf-8")
+        if self.run_error is not None:
+            raise self.run_error
+        if self.return_invalid_result:
+            return object()  # type: ignore[return-value]
         return ToolRunV2(
             run_id="run-synthetic",
             request=request,
@@ -105,6 +115,8 @@ def _write_structured_input(
     schema_ref: str = RESULT_SCHEMA_REF,
     media_type: str = "application/json",
     filename: str = "input.json",
+    input_id: str = "input-1",
+    object_version: str = "0.1.0",
 ) -> StructuredInputRef:
     object_payload = payload
     if object_payload is None:
@@ -124,6 +136,31 @@ def _write_structured_input(
             sha256=hashlib.sha256(encoded).hexdigest(),
             schema_ref=schema_ref,
             media_type=media_type,
+            input_id=input_id,
+            object_version=object_version,
+        )
+    )
+
+
+def _write_raw_structured_input(
+    tmp_path: Path,
+    encoded: bytes,
+    *,
+    filename: str = "input.json",
+    input_id: str = "input-1",
+    schema_ref: str = RESULT_SCHEMA_REF,
+    object_version: str = "0.1.0",
+) -> StructuredInputRef:
+    path = tmp_path / filename
+    path.write_bytes(encoded)
+    return StructuredInputRef.model_validate(
+        _structured_input(
+            tmp_path,
+            path=path.resolve(),
+            sha256=hashlib.sha256(encoded).hexdigest(),
+            input_id=input_id,
+            schema_ref=schema_ref,
+            object_version=object_version,
         )
     )
 
@@ -232,6 +269,47 @@ def test_v2_request_preserves_v1_asset_and_output_invariants(tmp_path: Path) -> 
         )
 
 
+def test_v2_request_rejects_duplicate_structured_input_ids(tmp_path: Path) -> None:
+    first = _write_structured_input(
+        tmp_path, filename="first.json", input_id="duplicate-id"
+    )
+    second = _write_structured_input(
+        tmp_path, filename="second.json", input_id="duplicate-id"
+    )
+
+    with pytest.raises(ValidationError, match="unique input_id"):
+        ToolRequestV2(
+            request_id="request-duplicate-id",
+            tool_id="P0-03",
+            output_dir=tmp_path / "output",
+            object_inputs=[first, second],
+        )
+
+
+def test_v2_request_rejects_resolved_path_aliases(tmp_path: Path) -> None:
+    first = _write_structured_input(
+        tmp_path, filename="source.json", input_id="source"
+    )
+    alias_path = tmp_path / "alias.json"
+    alias_path.symlink_to(first.path)
+    alias = StructuredInputRef.model_validate(
+        first.model_dump()
+        | {
+            "input_id": "alias",
+            "role": "conflicting_role",
+            "path": alias_path,
+        }
+    )
+
+    with pytest.raises(ValidationError, match="resolved path"):
+        ToolRequestV2(
+            request_id="request-alias",
+            tool_id="P0-03",
+            output_dir=tmp_path / "output",
+            object_inputs=[first, alias],
+        )
+
+
 @pytest.mark.parametrize(
     ("case", "reason_code"),
     [
@@ -301,11 +379,272 @@ def test_v2_structured_input_failures_are_deterministic_and_block_adapter(
     assert adapter.run_calls == 0
 
 
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        b'{"eligible":NaN}',
+        b'{"eligible":Infinity}',
+        b'{"eligible":-Infinity}',
+        b'{"tool_id":"P0-01","tool_id":"P0-02","eligible":true}',
+    ],
+    ids=["nan", "infinity", "negative-infinity", "duplicate-key"],
+)
+def test_v2_preflight_rejects_nonstandard_or_ambiguous_json(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    encoded: bytes,
+) -> None:
+    input_ref = _write_raw_structured_input(tmp_path, encoded)
+    adapter = SyntheticAdapter()
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id="request-strict-json",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    eligibility = registry.check_eligibility(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["structured_input_invalid_json"]
+    assert adapter.eligibility_calls == 0
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        b'{"eligible":NaN}',
+        b'{"tool_id":"P0-01","tool_id":"P0-02","eligible":true}',
+    ],
+    ids=["nan", "duplicate-key"],
+)
+def test_cli_validate_reports_strict_json_failure_without_adapter_execution(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    encoded: bytes,
+) -> None:
+    input_ref = _write_raw_structured_input(tmp_path, encoded)
+    adapter = SyntheticAdapter()
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    monkeypatch.setattr(ToolRegistry, "load_default", classmethod(lambda cls: registry))
+    request_path = tmp_path / "request.json"
+    request_path.write_text(
+        json.dumps(
+            {
+                "request_id": "request-strict-json",
+                "tool_id": "P0-03",
+                "output_dir": str(tmp_path / "output"),
+                "object_inputs": [input_ref.model_dump(mode="json")],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = cli_main(["validate", "--request", str(request_path)])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 3
+    assert payload["reason_codes"] == ["structured_input_invalid_json"]
+    assert adapter.eligibility_calls == 0
+
+
+def _versioned_structured_payload(tmp_path: Path, version: str) -> dict[str, object]:
+    return {
+        "input_id": "nested-input",
+        "role": "synthetic_versioned_object",
+        "schema_ref": RESULT_SCHEMA_REF,
+        "object_version": version,
+        "path": str((tmp_path / "nested.json").resolve()),
+        "sha256": "b" * 64,
+        "media_type": "application/json",
+    }
+
+
+@pytest.mark.parametrize(
+    ("case", "reason_code"),
+    [
+        ("missing", "structured_input_object_version_missing"),
+        ("mismatch", "structured_input_object_version_mismatch"),
+    ],
+)
+def test_versioned_schema_requires_object_version_binding(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+    reason_code: str,
+) -> None:
+    payload = _versioned_structured_payload(tmp_path, "0.1.0")
+    if case == "missing":
+        payload.pop("object_version")
+        ref_version = "0.1.0"
+    else:
+        ref_version = "9.9.9"
+    input_ref = _write_structured_input(
+        tmp_path,
+        payload=payload,
+        schema_ref="bridge://schemas/structured-input-ref/v0.1",
+        object_version=ref_version,
+    )
+    adapter = SyntheticAdapter()
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id=f"request-version-{case}",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    eligibility = registry.check_eligibility(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == [reason_code]
+    assert adapter.eligibility_calls == 0
+
+
+def test_established_top_level_version_binds_to_reference(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package_payload = ToolRegistry.load_default().describe("P0-03").model_dump(
+        mode="json"
+    )
+    input_ref = _write_structured_input(
+        tmp_path,
+        payload=package_payload,
+        schema_ref="bridge://schemas/tool-package-spec/v0.1",
+        object_version=package_payload["version"],
+    )
+    adapter = SyntheticAdapter()
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id="request-established-version",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    eligibility = registry.check_eligibility(request)
+
+    assert eligibility.eligible is True
+    assert adapter.eligibility_calls == 1
+
+
+@pytest.mark.parametrize(
+    ("case", "reason_code"),
+    [
+        ("missing", "structured_input_object_version_missing"),
+        ("mismatch", "structured_input_object_version_mismatch"),
+    ],
+)
+def test_established_top_level_version_rejects_missing_or_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+    reason_code: str,
+) -> None:
+    package_payload = ToolRegistry.load_default().describe("P0-03").model_dump(
+        mode="json"
+    )
+    if case == "missing":
+        package_payload.pop("version")
+        ref_version = "0.1.0"
+    else:
+        ref_version = "9.9.9"
+    input_ref = _write_structured_input(
+        tmp_path,
+        payload=package_payload,
+        schema_ref="bridge://schemas/tool-package-spec/v0.1",
+        object_version=ref_version,
+    )
+    adapter = SyntheticAdapter()
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id=f"request-established-version-{case}",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    eligibility = registry.check_eligibility(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == [reason_code]
+    assert adapter.eligibility_calls == 0
+
+
+@pytest.mark.parametrize(
+    ("schema_ref", "legacy_payload"),
+    [
+        (
+            "bridge://schemas/measurement-result/v0.1",
+            {
+                "measurement_id": "measurement-1",
+                "measurement_spec_id": "spec-1",
+                "metric_name": "synthetic_metric",
+                "raw_value": 1,
+                "score_state": "unavailable",
+                "evidence_state": "measured",
+            },
+        ),
+        (
+            "bridge://schemas/qc-readiness-profile/v0.1",
+            {
+                "profile_id": "profile-1",
+                "input_level": "analysis_ready",
+                "assay": "scRNA-seq",
+                "readiness_state": "ready",
+                "schema_integrity": {},
+                "metadata_completeness": {},
+                "matrix_provenance": {},
+                "upstream_library_qc": {},
+                "cell_qc": {},
+                "doublet_assessment": {},
+                "cell_calling_assessment": {},
+                "ambient_assessment": {},
+                "data_views": {},
+                "module_eligibility": {},
+            },
+        ),
+    ],
+    ids=["measurement-result", "qc-readiness-profile"],
+)
+def test_legacy_schema_without_version_uses_external_object_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    schema_ref: str,
+    legacy_payload: dict[str, object],
+) -> None:
+    input_ref = _write_structured_input(
+        tmp_path,
+        payload=legacy_payload,
+        schema_ref=schema_ref,
+        object_version="0.1",
+    )
+    adapter = SyntheticAdapter()
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id="request-legacy-version",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    eligibility = registry.check_eligibility(request)
+
+    assert eligibility.eligible is True
+    assert adapter.eligibility_calls == 1
+
+
 def test_v2_run_rejects_structured_input_mutation_after_adapter_returns(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    first = _write_structured_input(tmp_path, filename="first.json")
-    second = _write_structured_input(tmp_path, filename="second.json")
+    first = _write_structured_input(
+        tmp_path, filename="first.json", input_id="first"
+    )
+    second = _write_structured_input(
+        tmp_path, filename="second.json", input_id="second"
+    )
     adapter = SyntheticAdapter()
     adapter.mutate_path = second.path
     registry = _registry_with_adapter(monkeypatch, adapter)
@@ -346,6 +685,114 @@ def test_v2_eligibility_rejects_structured_input_mutation_after_adapter_returns(
     assert eligibility.reason_codes == ["input_asset_modified_during_run"]
     assert adapter.eligibility_calls == 1
     assert adapter.run_calls == 0
+
+
+@pytest.mark.parametrize("invalid_result", [False, True], ids=["exception", "invalid-type"])
+def test_eligibility_mutation_overrides_adapter_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    invalid_result: bool,
+) -> None:
+    input_ref = _write_structured_input(tmp_path)
+    adapter = SyntheticAdapter()
+    adapter.mutate_during_eligibility = input_ref.path
+    adapter.return_invalid_eligibility = invalid_result
+    if not invalid_result:
+        adapter.eligibility_error = RuntimeError("adapter eligibility failed")
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id="request-eligibility-mutation-error",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    eligibility = registry.check_eligibility(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["input_asset_modified_during_run"]
+
+
+@pytest.mark.parametrize("invalid_result", [False, True], ids=["exception", "invalid-type"])
+def test_run_mutation_overrides_adapter_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    invalid_result: bool,
+) -> None:
+    input_ref = _write_structured_input(tmp_path)
+    adapter = SyntheticAdapter()
+    adapter.mutate_path = input_ref.path
+    adapter.return_invalid_result = invalid_result
+    if not invalid_result:
+        adapter.run_error = RuntimeError("adapter run failed")
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id="request-run-mutation-failure",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    run = registry.run(request)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["input_asset_modified_during_run"]
+
+
+@pytest.mark.parametrize("phase", ["eligibility", "run"])
+def test_adapter_exception_is_preserved_when_inputs_are_unchanged(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+) -> None:
+    input_ref = _write_structured_input(tmp_path)
+    adapter = SyntheticAdapter()
+    adapter.eligibility_error = (
+        RuntimeError("unchanged adapter eligibility failure")
+        if phase == "eligibility"
+        else None
+    )
+    adapter.run_error = (
+        RuntimeError("unchanged adapter run failure") if phase == "run" else None
+    )
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id=f"request-unchanged-{phase}-error",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    with pytest.raises(RuntimeError, match=f"unchanged adapter {phase} failure"):
+        if phase == "eligibility":
+            registry.check_eligibility(request)
+        else:
+            registry.run(request)
+
+
+@pytest.mark.parametrize("phase", ["eligibility", "run"])
+def test_invalid_adapter_return_is_preserved_when_inputs_are_unchanged(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+) -> None:
+    input_ref = _write_structured_input(tmp_path)
+    adapter = SyntheticAdapter()
+    adapter.return_invalid_eligibility = phase == "eligibility"
+    adapter.return_invalid_result = phase == "run"
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    request = ToolRequestV2(
+        request_id=f"request-invalid-{phase}",
+        tool_id="P0-03",
+        output_dir=tmp_path / "output",
+        object_inputs=[input_ref],
+    )
+
+    with pytest.raises(TypeError, match="invalid"):
+        if phase == "eligibility":
+            registry.check_eligibility(request)
+        else:
+            registry.run(request)
 
 
 def test_v2_package_state_bindings_are_enforced() -> None:
@@ -485,6 +932,55 @@ def test_registry_loads_mixed_contract_versions_and_selects_request_model(
         ),
         ToolPackageSpecV2,
     )
+
+
+def test_deprecated_v1_package_is_ineligible_and_non_executable(tmp_path: Path) -> None:
+    specs = ToolRegistry.load_default().list()
+    deprecated = ToolPackageSpec.model_validate(
+        specs[2].model_dump(mode="json")
+        | {"implementation_state": ImplementationState.DEPRECATED}
+    )
+    specs[2] = deprecated
+    registry = ToolRegistry(specs)
+    request = ToolRequest(
+        request_id="request-deprecated-v1",
+        tool_id="P0-03",
+        output_dir=tmp_path,
+    )
+
+    eligibility = registry.check_eligibility(request)
+    run = registry.run(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["tool_package_deprecated"]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["tool_package_deprecated"]
+
+
+def test_deprecated_v2_package_never_resolves_or_executes_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    adapter = SyntheticAdapter()
+    registry = _registry_with_adapter(
+        monkeypatch,
+        adapter,
+        spec=_v2_spec(state=ImplementationState.DEPRECATED),
+    )
+    request = ToolRequestV2(
+        request_id="request-deprecated-v2",
+        tool_id="P0-03",
+        output_dir=tmp_path,
+    )
+
+    eligibility = registry.check_eligibility(request)
+    run = registry.run(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["tool_package_deprecated"]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["tool_package_deprecated"]
+    assert adapter.eligibility_calls == 0
+    assert adapter.run_calls == 0
 
 
 def test_v2_adapter_resolution_and_sdk_result_binding(
@@ -718,6 +1214,77 @@ def test_cli_validate_converts_adapter_exception_to_structured_exit_four(
     }
 
 
+@pytest.mark.parametrize("invalid_result", [False, True], ids=["exception", "invalid-type"])
+def test_cli_validate_prioritizes_input_mutation_over_adapter_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    invalid_result: bool,
+) -> None:
+    input_ref = _write_structured_input(tmp_path)
+    adapter = SyntheticAdapter()
+    adapter.mutate_during_eligibility = input_ref.path
+    adapter.return_invalid_eligibility = invalid_result
+    if not invalid_result:
+        adapter.eligibility_error = RuntimeError("adapter eligibility failed")
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    monkeypatch.setattr(ToolRegistry, "load_default", classmethod(lambda cls: registry))
+    request_path = tmp_path / "request.json"
+    request_path.write_text(
+        json.dumps(
+            {
+                "request_id": "request-cli-eligibility-mutation",
+                "tool_id": "P0-03",
+                "output_dir": str(tmp_path / "output"),
+                "object_inputs": [input_ref.model_dump(mode="json")],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = cli_main(["validate", "--request", str(request_path)])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 3
+    assert payload["reason_codes"] == ["input_asset_modified_during_run"]
+
+
+@pytest.mark.parametrize("invalid_result", [False, True], ids=["exception", "invalid-type"])
+def test_cli_run_prioritizes_input_mutation_over_adapter_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    invalid_result: bool,
+) -> None:
+    input_ref = _write_structured_input(tmp_path)
+    adapter = SyntheticAdapter()
+    adapter.mutate_path = input_ref.path
+    adapter.return_invalid_result = invalid_result
+    if not invalid_result:
+        adapter.run_error = RuntimeError("adapter run failed")
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    monkeypatch.setattr(ToolRegistry, "load_default", classmethod(lambda cls: registry))
+    request_path = tmp_path / "request.json"
+    request_path.write_text(
+        json.dumps(
+            {
+                "request_id": "request-cli-run-mutation",
+                "tool_id": "P0-03",
+                "output_dir": str(tmp_path / "output"),
+                "object_inputs": [input_ref.model_dump(mode="json")],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = cli_main(["run", "--request", str(request_path)])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 3
+    assert payload["execution_state"] == "failed"
+    assert payload["reason_codes"] == ["input_asset_modified_during_run"]
+
+
 def test_v2_public_schemas_are_packaged_and_enforce_model_rules(
     tmp_path: Path,
 ) -> None:
@@ -734,7 +1301,17 @@ def test_v2_public_schemas_are_packaged_and_enforce_model_rules(
 
     request_schema = load_schema("bridge://schemas/tool-request/v0.2")
     assert "object_inputs" in request_schema["properties"]
+    assert request_schema["properties"]["object_inputs"]["uniqueItems"] is True
     assert "payload" not in json.dumps(request_schema)
+
+    duplicate_ref = _structured_input(tmp_path)
+    duplicate_request = {
+        "request_id": "request-duplicate-ref",
+        "tool_id": "P0-03",
+        "output_dir": str(tmp_path),
+        "object_inputs": [duplicate_ref, duplicate_ref],
+    }
+    assert list(Draft202012Validator(request_schema).iter_errors(duplicate_request))
 
     structured_input_validator = Draft202012Validator(
         load_schema("bridge://schemas/structured-input-ref/v0.1")

@@ -35,6 +35,26 @@ ToolRequestModel = ToolRequest | ToolRequestV2
 ToolRunModel = ToolRun | ToolRunV2
 StructuredInputSnapshot = tuple[tuple[Path, str], ...]
 SUPPORTED_STRUCTURED_INPUT_MEDIA_TYPES = frozenset({"application/json"})
+STRUCTURED_OBJECT_VERSION_FIELDS = frozenset({"object_version", "version"})
+
+
+class _StrictJSONError(ValueError):
+    pass
+
+
+def _reject_nonstandard_json_constant(value: str) -> None:
+    raise _StrictJSONError(f"non-standard JSON constant: {value}")
+
+
+def _reject_duplicate_json_keys(
+    pairs: list[tuple[str, Any]],
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in payload:
+            raise _StrictJSONError(f"duplicate JSON object key: {key}")
+        payload[key] = value
+    return payload
 
 
 class ToolRegistry:
@@ -111,10 +131,15 @@ class ToolRegistry:
                 reason_codes=["tool_version_mismatch"],
             )
         if spec.implementation_state is not ImplementationState.IMPLEMENTED:
+            reason_code = (
+                "tool_package_not_implemented"
+                if spec.implementation_state is ImplementationState.SCAFFOLD
+                else "tool_package_deprecated"
+            )
             return EligibilityResult(
                 tool_id=request.tool_id,
                 eligible=False,
-                reason_codes=["tool_package_not_implemented"],
+                reason_codes=[reason_code],
             )
         if isinstance(spec, ToolPackageSpecV2):
             input_eligibility, snapshots = self._validate_structured_inputs(request)
@@ -248,12 +273,17 @@ class ToolRegistry:
                 ExecutionState.FAILED,
                 ["tool_version_mismatch"],
             )
-        if spec.implementation_state is ImplementationState.SCAFFOLD:
+        if spec.implementation_state is not ImplementationState.IMPLEMENTED:
+            is_scaffold = spec.implementation_state is ImplementationState.SCAFFOLD
             return self._empty_run(
                 request,
                 spec,
-                ExecutionState.NOT_IMPLEMENTED,
-                ["tool_package_not_implemented"],
+                ExecutionState.NOT_IMPLEMENTED if is_scaffold else ExecutionState.FAILED,
+                [
+                    "tool_package_not_implemented"
+                    if is_scaffold
+                    else "tool_package_deprecated"
+                ],
             )
         if isinstance(spec, ToolPackageSpecV2):
             return self._run_v2(request, spec)
@@ -302,7 +332,17 @@ class ToolRegistry:
                 warnings=eligibility.warnings,
             )
 
-        result = adapter.run(request, spec)
+        try:
+            result = adapter.run(request, spec)
+        except Exception:
+            if not self._structured_inputs_unchanged(snapshots):
+                return self._empty_run(
+                    request,
+                    spec,
+                    ExecutionState.FAILED,
+                    ["input_asset_modified_during_run"],
+                )
+            raise
         if not self._structured_inputs_unchanged(snapshots):
             return self._empty_run(
                 request,
@@ -372,7 +412,16 @@ class ToolRegistry:
         spec: ToolPackageSpecV2,
         snapshots: StructuredInputSnapshot,
     ) -> EligibilityResult:
-        eligibility = adapter.check_eligibility(request, spec)
+        try:
+            eligibility = adapter.check_eligibility(request, spec)
+        except Exception:
+            if not ToolRegistry._structured_inputs_unchanged(snapshots):
+                return EligibilityResult(
+                    tool_id=request.tool_id,
+                    eligible=False,
+                    reason_codes=["input_asset_modified_during_run"],
+                )
+            raise
         if not ToolRegistry._structured_inputs_unchanged(snapshots):
             return EligibilityResult(
                 tool_id=request.tool_id,
@@ -445,8 +494,12 @@ class ToolRegistry:
         if digest != input_ref.sha256:
             return "structured_input_checksum_mismatch", None
         try:
-            payload = json.loads(encoded)
-        except (UnicodeDecodeError, json.JSONDecodeError):
+            payload = json.loads(
+                encoded,
+                parse_constant=_reject_nonstandard_json_constant,
+                object_pairs_hook=_reject_duplicate_json_keys,
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, _StrictJSONError):
             return "structured_input_invalid_json", None
         if input_ref.schema_ref not in SCHEMA_REFS:
             return "structured_input_schema_not_registered", None
@@ -455,9 +508,46 @@ class ToolRegistry:
             Draft202012Validator.check_schema(schema)
         except SchemaError:
             return "structured_input_schema_invalid", None
+        version_reason = ToolRegistry._validate_structured_object_version(
+            input_ref, payload, schema
+        )
+        if version_reason is not None:
+            return version_reason, None
         if not Draft202012Validator(schema).is_valid(payload):
             return "structured_input_schema_validation_failed", None
         return None, digest
+
+    @staticmethod
+    def _validate_structured_object_version(
+        input_ref: StructuredInputRef,
+        payload: Any,
+        schema: dict[str, Any],
+    ) -> str | None:
+        schema_properties = schema.get("properties", {})
+        schema_version_fields = {
+            field
+            for field in STRUCTURED_OBJECT_VERSION_FIELDS
+            if field in schema_properties
+        }
+        payload_version_fields = (
+            {
+                field
+                for field in STRUCTURED_OBJECT_VERSION_FIELDS
+                if field in payload
+            }
+            if isinstance(payload, dict)
+            else set()
+        )
+        if schema_version_fields and not isinstance(payload, dict):
+            return "structured_input_object_version_missing"
+        if isinstance(payload, dict) and any(
+            field not in payload for field in schema_version_fields
+        ):
+            return "structured_input_object_version_missing"
+        for field in schema_version_fields | payload_version_fields:
+            if payload[field] != input_ref.object_version:
+                return "structured_input_object_version_mismatch"
+        return None
 
     @staticmethod
     def _structured_inputs_unchanged(snapshots: StructuredInputSnapshot) -> bool:
