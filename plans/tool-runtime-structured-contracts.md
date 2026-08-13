@@ -30,6 +30,7 @@ The runtime can preserve a structured object's identity and checksum across a re
 ## Decisions
 
 - `tool_id` chooses the package spec before a request model is validated.
+- A manually constructed SDK request with the wrong envelope generation fails as a structured, serializable refusal before adapter or executor resolution.
 - Implemented v0.2 packages resolve only their declared packaged adapter; the central registry gains no new tool-ID dispatch branch for v0.2.
 - Structured JSON inputs are schema-validated and checksum-snapshotted before adapter calls, then checked again after adapter eligibility and execution.
 - Strict JSON, top-level version binding, unique input IDs and unique resolved paths protect structured-object identity before adapter execution. Legacy registered schemas without a version property retain external `object_version` metadata compatibility.
@@ -42,8 +43,8 @@ The runtime can preserve a structured object's identity and checksum across a re
 ## Acceptance evidence
 
 - [x] Baseline: `192 passed, 3 warnings` before edits.
-- [x] Focused contract/CLI/policy suite after second review hardening: `102 passed`.
-- [x] Full source suite after second review hardening: `263 passed, 3 warnings`.
+- [x] Focused contract/CLI/policy suite after public-SDK refusal hardening: `104 passed`.
+- [x] Full source suite after public-SDK refusal hardening: `265 passed, 3 warnings`.
 - [x] CLI registry gate: 12 Tool Packages listed as JSON.
 - [x] Knowledge validation: `valid=true`, no dangling method or source references.
 - [x] Repository policy, runtime-binding and public/packaged schema parity gates after second review hardening: passed.

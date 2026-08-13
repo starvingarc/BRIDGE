@@ -24,6 +24,7 @@ from bridge.toolkit.contracts import (
     ToolPackageSpecV2,
     ToolRequest,
     ToolRequestV2,
+    ToolRun,
     ToolRunV2,
 )
 from bridge.toolkit.registry import ToolRegistry
@@ -1010,6 +1011,53 @@ def test_v2_adapter_resolution_and_sdk_result_binding(
         "reason_codes": [],
         "warnings": [],
     }
+
+
+def test_public_sdk_structures_v1_request_refusal_for_v2_package(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    adapter = SyntheticAdapter()
+    registry = _registry_with_adapter(monkeypatch, adapter)
+    monkeypatch.setattr(ToolRegistry, "load_default", classmethod(lambda cls: registry))
+    request = ToolRequest(
+        request_id="wrong-v1-envelope",
+        tool_id="P0-03",
+        output_dir=tmp_path,
+    )
+
+    eligibility = api.validate_request(request)
+    run = api.run_tool(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["tool_request_v2_required"]
+    assert isinstance(run, ToolRun)
+    assert run.request == request
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["tool_request_v2_required"]
+    assert adapter.eligibility_calls == 0
+    assert adapter.run_calls == 0
+
+
+def test_public_sdk_structures_v2_request_refusal_for_v1_package(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = ToolRegistry.load_default()
+    monkeypatch.setattr(ToolRegistry, "load_default", classmethod(lambda cls: registry))
+    request = ToolRequestV2(
+        request_id="wrong-v2-envelope",
+        tool_id="P0-01",
+        output_dir=tmp_path,
+    )
+
+    eligibility = api.validate_request(request)
+    run = api.run_tool(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["tool_request_v1_required"]
+    assert isinstance(run, ToolRunV2)
+    assert run.request == request
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["tool_request_v1_required"]
 
 
 @pytest.mark.parametrize(

@@ -123,7 +123,13 @@ class ToolRegistry:
 
     def check_eligibility(self, request: ToolRequestModel) -> EligibilityResult:
         spec = self.describe(request.tool_id)
-        self._require_matching_request_model(request, spec)
+        contract_reason = self._request_contract_reason(request, spec)
+        if contract_reason is not None:
+            return EligibilityResult(
+                tool_id=request.tool_id,
+                eligible=False,
+                reason_codes=[contract_reason],
+            )
         if request.tool_version is not None and request.tool_version != spec.version:
             return EligibilityResult(
                 tool_id=request.tool_id,
@@ -265,7 +271,9 @@ class ToolRegistry:
 
     def run(self, request: ToolRequestModel) -> ToolRunModel:
         spec = self.describe(request.tool_id)
-        self._require_matching_request_model(request, spec)
+        contract_reason = self._request_contract_reason(request, spec)
+        if contract_reason is not None:
+            return self._request_contract_failure(request, spec, contract_reason)
         if request.tool_version is not None and request.tool_version != spec.version:
             return self._empty_run(
                 request,
@@ -353,9 +361,35 @@ class ToolRegistry:
         return self._validate_adapter_result(result, request, spec, result_schema)
 
     @staticmethod
-    def _require_matching_request_model(request: ToolRequestModel, spec: ToolSpec) -> None:
-        if isinstance(spec, ToolPackageSpecV2) != isinstance(request, ToolRequestV2):
-            raise TypeError("request model does not match the Tool Package contract version")
+    def _request_contract_reason(
+        request: ToolRequestModel, spec: ToolSpec
+    ) -> str | None:
+        if isinstance(spec, ToolPackageSpecV2) and not isinstance(request, ToolRequestV2):
+            return "tool_request_v2_required"
+        if not isinstance(spec, ToolPackageSpecV2) and isinstance(request, ToolRequestV2):
+            return "tool_request_v1_required"
+        return None
+
+    @staticmethod
+    def _request_contract_failure(
+        request: ToolRequestModel,
+        spec: ToolSpec,
+        reason_code: str,
+    ) -> ToolRunModel:
+        # A refusal must remain serializable even though the caller selected the
+        # wrong envelope. Bind the failure to the request model that actually
+        # arrived; no package adapter or scientific executor is invoked.
+        model = ToolRunV2 if isinstance(request, ToolRequestV2) else ToolRun
+        return model(
+            run_id=f"run-{uuid4().hex}",
+            request=request,
+            implementation_state=spec.implementation_state,
+            execution_state=ExecutionState.FAILED,
+            tool_version=spec.version,
+            environment_spec_id=spec.environment_spec_id,
+            reason_codes=[reason_code],
+            warnings=[],
+        )
 
     @staticmethod
     def _empty_run(

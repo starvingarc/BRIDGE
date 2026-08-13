@@ -10,15 +10,15 @@ Tests use synthetic paths, checksums, package specs, requests, adapter responses
 
 ## Observed finding and interpretation
 
-The source suite passed with v0.1 behavior and schema bytes stable while the v0.2 path rejected inline objects, relative paths, duplicate IDs/path aliases, nonexistent paths, directories, invalid checksums/media types, non-standard or duplicate-key JSON, version mismatches, unknown or violated input schemas, non-packaged adapters and mismatched result bindings. Registered legacy objects without a schema-defined version field remained eligible with external `object_version` metadata. Mixed v0.1/v0.2 registries selected the request model from `tool_id`. Synthetic successful v0.2 runs retained request, tool version, environment and registered result-schema bindings, carried a non-null schema-valid result, and were discarded if an input changed during execution—even when the adapter raised or returned an invalid type. Deprecated packages did not execute.
+The source suite passed with v0.1 behavior and schema bytes stable while the v0.2 path rejected inline objects, relative paths, duplicate IDs/path aliases, nonexistent paths, directories, invalid checksums/media types, non-standard or duplicate-key JSON, version mismatches, unknown or violated input schemas, non-packaged adapters and mismatched result bindings. Registered legacy objects without a schema-defined version field remained eligible with external `object_version` metadata. Mixed v0.1/v0.2 registries selected the request model from `tool_id`; manually constructed SDK requests using the opposite envelope generation returned structured `tool_request_v1_required` or `tool_request_v2_required` refusals without resolving an adapter or executor. Synthetic successful v0.2 runs retained request, tool version, environment and registered result-schema bindings, carried a non-null schema-valid result, and were discarded if an input changed during execution—even when the adapter raised or returned an invalid type. Deprecated packages did not execute.
 
 This evidence cannot establish scientific validity, package eligibility on real data, or any product claim. P0-08 and P0-09 remain unimplemented scaffolds.
 
 ## Engineering evidence
 
 - Pre-change baseline: `PYTHONPATH=src .../.venv/bin/python -m pytest -q` — `192 passed, 3 warnings`.
-- Focused contract/CLI/policy tests: `PYTHONPATH=src .../.venv/bin/python -m pytest -q tests/test_structured_runtime.py tests/test_cli.py tests/test_registry.py tests/test_contracts.py` — `102 passed`.
-- Final source tests: `PYTHONPATH=src .../.venv/bin/python -m pytest -q` — `263 passed, 3 warnings`.
+- Focused contract/CLI/policy tests: `PYTHONPATH=src .../.venv/bin/python -m pytest -q tests/test_structured_runtime.py tests/test_cli.py tests/test_registry.py tests/test_contracts.py` — `104 passed`.
+- Final source tests: `PYTHONPATH=src .../.venv/bin/python -m pytest -q` — `265 passed, 3 warnings`.
 - CLI registry: `PYTHONPATH=src .../.venv/bin/python -m bridge.toolkit.cli list --json` — 12 Tool Packages listed.
 - Knowledge gate: `PYTHONPATH=src .../.venv/bin/python -m bridge.toolkit.cli knowledge validate` — `valid=true`, no dangling method/source references.
 - Repository gate: `PYTHONPATH=src .../.venv/bin/python tools/check_repository.py` — passed; implemented v0.2 adapters and result schemas resolve without adapter execution.
