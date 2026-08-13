@@ -4,26 +4,29 @@ from bridge.toolkit.contracts import (
     EligibilityResult,
     KnowledgeHit,
     ToolPackageSpec,
+    ToolPackageSpecV2,
     ToolRequest,
+    ToolRequestV2,
     ToolRun,
+    ToolRunV2,
 )
 from bridge.toolkit.knowledge import KnowledgeRegistry
 from bridge.toolkit.registry import ToolRegistry
 
 
-def list_tools() -> list[ToolPackageSpec]:
+def list_tools() -> list[ToolPackageSpec | ToolPackageSpecV2]:
     return ToolRegistry.load_default().list()
 
 
-def describe_tool(tool_id: str) -> ToolPackageSpec:
+def describe_tool(tool_id: str) -> ToolPackageSpec | ToolPackageSpecV2:
     return ToolRegistry.load_default().describe(tool_id)
 
 
-def validate_request(request: ToolRequest) -> EligibilityResult:
+def validate_request(request: ToolRequest | ToolRequestV2) -> EligibilityResult:
     return ToolRegistry.load_default().check_eligibility(request)
 
 
-def run_tool(request: ToolRequest) -> ToolRun:
+def run_tool(request: ToolRequest | ToolRequestV2) -> ToolRun | ToolRunV2:
     return ToolRegistry.load_default().run(request)
 
 

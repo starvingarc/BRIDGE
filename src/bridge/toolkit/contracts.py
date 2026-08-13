@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -97,6 +97,83 @@ class ToolPackageSpec(FrozenModel):
         return self
 
 
+class ToolPackageSpecV2(FrozenModel):
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"implementation_state": {"const": "implemented"}},
+                        "required": ["implementation_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "method_ids": {"minItems": 1},
+                            "adapter_ref": {"type": "string", "minLength": 1},
+                            "result_schema_ref": {"type": "string", "minLength": 1},
+                        },
+                        "required": ["adapter_ref", "result_schema_ref"],
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"implementation_state": {"const": "scaffold"}},
+                        "required": ["implementation_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "method_ids": {"maxItems": 0},
+                            "adapter_ref": {"type": "null"},
+                            "result_schema_ref": {"type": "null"},
+                        }
+                    },
+                },
+            ]
+        },
+    )
+
+    tool_id: str = Field(pattern=r"^P0-(0[1-9]|1[0-2])$")
+    name: str
+    version: str
+    summary: str
+    implementation_state: ImplementationState
+    scientific_status: str
+    optional: bool = False
+    environment_spec_id: str
+    input_schema_ref: Literal["bridge://schemas/tool-request/v0.2"]
+    output_schema_ref: Literal["bridge://schemas/tool-run/v0.2"]
+    method_ids: list[str]
+    card_ref: str
+    adapter_ref: str | None = Field(
+        default=None,
+        pattern=(
+            r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+"
+            r":[A-Za-z_][A-Za-z0-9_]*$"
+        ),
+    )
+    result_schema_ref: str | None = None
+
+    @model_validator(mode="after")
+    def validate_implementation_bindings(self) -> "ToolPackageSpecV2":
+        if self.implementation_state is ImplementationState.IMPLEMENTED:
+            if not self.method_ids:
+                raise ValueError("implemented ToolPackageSpecV2 requires at least one method")
+            if not self.adapter_ref:
+                raise ValueError("implemented ToolPackageSpecV2 requires adapter_ref")
+            if not self.result_schema_ref:
+                raise ValueError("implemented ToolPackageSpecV2 requires result_schema_ref")
+        if self.implementation_state is ImplementationState.SCAFFOLD:
+            if self.method_ids:
+                raise ValueError("scaffold ToolPackageSpecV2 requires method_ids=[]")
+            if self.adapter_ref is not None or self.result_schema_ref is not None:
+                raise ValueError(
+                    "scaffold ToolPackageSpecV2 cannot claim an adapter or result schema"
+                )
+        return self
+
+
 class InputAsset(FrozenModel):
     asset_id: str
     path: Path
@@ -127,6 +204,26 @@ class InputAsset(FrozenModel):
         return self
 
 
+class StructuredInputRef(FrozenModel):
+    input_id: str = Field(min_length=1)
+    role: str = Field(min_length=1)
+    schema_ref: str = Field(min_length=1)
+    object_version: str = Field(min_length=1)
+    path: Path = Field(json_schema_extra={"pattern": r"^/"})
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    media_type: str = Field(
+        default="application/json",
+        pattern=r"^[A-Za-z0-9!#$&^_.+\-]+/[A-Za-z0-9!#$&^_.+\-]+$",
+    )
+
+    @field_validator("path")
+    @classmethod
+    def path_is_absolute(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError("structured input path must be absolute")
+        return value
+
+
 class ToolRequest(FrozenModel):
     request_id: str
     tool_id: str = Field(pattern=r"^P0-(0[1-9]|1[0-2])$")
@@ -143,6 +240,43 @@ class ToolRequest(FrozenModel):
         if not value.is_absolute():
             raise ValueError("output_dir must be absolute")
         return value
+
+
+class ToolRequestV2(FrozenModel):
+    request_id: str
+    tool_id: str = Field(pattern=r"^P0-(0[1-9]|1[0-2])$")
+    output_dir: Path
+    tool_version: str | None = None
+    assets: list[InputAsset] = Field(default_factory=list)
+    measurement_spec_ref: str | None = None
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    random_seed: int = 0
+    object_inputs: list[StructuredInputRef] = Field(
+        default_factory=list,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("output_dir")
+    @classmethod
+    def output_dir_is_absolute(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError("output_dir must be absolute")
+        return value
+
+    @model_validator(mode="after")
+    def structured_input_references_are_unique(self) -> "ToolRequestV2":
+        input_ids = [item.input_id for item in self.object_inputs]
+        if len(input_ids) != len(set(input_ids)):
+            raise ValueError("ToolRequestV2 object_inputs require unique input_id values")
+
+        resolved_paths = [
+            item.path.resolve(strict=False) for item in self.object_inputs
+        ]
+        if len(resolved_paths) != len(set(resolved_paths)):
+            raise ValueError(
+                "ToolRequestV2 object_inputs cannot repeat or alias the same resolved path"
+            )
+        return self
 
 
 class MeasurementSpec(FrozenModel):
@@ -814,3 +948,120 @@ class ToolRun(FrozenModel):
             if self.measurements or self.artifacts or self.visualizations or self.result is not None:
                 raise ValueError("scaffold ToolRun cannot contain scientific results or artifacts")
         return self
+
+
+class ToolRunV2(FrozenModel):
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "implementation_state": {"const": "scaffold"}
+                        },
+                        "required": ["implementation_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "execution_state": {"enum": ["not_implemented", "failed"]},
+                            "measurements": {"maxItems": 0},
+                            "artifacts": {"maxItems": 0},
+                            "visualizations": {"maxItems": 0},
+                            "result_schema_ref": {"type": "null"},
+                            "result": {"type": "null"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "execution_state": {"const": "not_implemented"}
+                        },
+                        "required": ["execution_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "measurements": {"maxItems": 0},
+                            "artifacts": {"maxItems": 0},
+                            "visualizations": {"maxItems": 0},
+                            "result_schema_ref": {"type": "null"},
+                            "result": {"type": "null"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "implementation_state": {"const": "implemented"},
+                            "execution_state": {"enum": ["succeeded", "partial"]},
+                        },
+                        "required": ["implementation_state", "execution_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "result_schema_ref": {"type": "string", "minLength": 1},
+                            "result": {"type": "object"},
+                        },
+                        "required": ["result_schema_ref", "result"],
+                    },
+                },
+            ]
+        },
+    )
+
+    run_id: str
+    request: ToolRequestV2
+    implementation_state: ImplementationState
+    execution_state: ExecutionState
+    tool_version: str
+    environment_spec_id: str
+    input_hash: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    measurements: list[MeasurementResult] = Field(default_factory=list)
+    artifacts: list[ArtifactManifest] = Field(default_factory=list)
+    visualizations: list[VisualizationArtifact] = Field(default_factory=list)
+    result_schema_ref: str | None = None
+    result: dict[str, Any] | None = None
+    reason_codes: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_execution_payload(self) -> "ToolRunV2":
+        has_payload = bool(self.measurements or self.artifacts or self.visualizations)
+        has_payload = has_payload or self.result is not None or self.result_schema_ref is not None
+        if self.execution_state is ExecutionState.NOT_IMPLEMENTED and has_payload:
+            raise ValueError(
+                "not_implemented ToolRunV2 cannot contain scientific results, "
+                "artifacts, or a result schema"
+            )
+        if self.implementation_state is ImplementationState.SCAFFOLD:
+            if self.execution_state not in {
+                ExecutionState.NOT_IMPLEMENTED,
+                ExecutionState.FAILED,
+            }:
+                raise ValueError("scaffold ToolRunV2 cannot report successful or partial execution")
+            if has_payload:
+                raise ValueError(
+                    "scaffold ToolRunV2 cannot contain scientific results, artifacts, "
+                    "or a result schema"
+                )
+        if (
+            self.implementation_state is ImplementationState.IMPLEMENTED
+            and self.execution_state in {ExecutionState.SUCCEEDED, ExecutionState.PARTIAL}
+        ):
+            if not self.result_schema_ref or self.result is None:
+                raise ValueError(
+                    "successful or partial ToolRunV2 requires result_schema_ref and result"
+                )
+        return self
+
+
+@runtime_checkable
+class ToolPackageAdapter(Protocol):
+    def check_eligibility(
+        self, request: ToolRequestV2, spec: ToolPackageSpecV2
+    ) -> EligibilityResult: ...
+
+    def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2: ...

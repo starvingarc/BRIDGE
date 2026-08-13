@@ -5,6 +5,11 @@ import re
 import subprocess
 from pathlib import Path
 
+import yaml
+
+from bridge.toolkit.contracts import ImplementationState, ToolPackageSpecV2
+from bridge.toolkit.registry import ToolRegistry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TEXT_SUFFIXES = {".css", ".html", ".json", ".jsonl", ".md", ".py", ".toml", ".tsv", ".txt", ".yaml", ".yml"}
@@ -29,6 +34,9 @@ LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 PRODUCT_LEVEL_V2_BRANDING = re.compile(r"\bbridge(?:\s+|[-_])v2\b", re.IGNORECASE)
 COMPLETED_PLAN_NAME = re.compile(r"(?:^|[-_])(?:complete(?:d)?|done)(?:[-_.]|$)", re.IGNORECASE)
 MAX_TRACKED_FILES = 300
+PACKAGED_ADAPTER_REF = re.compile(
+    r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
+)
 
 
 def main() -> int:
@@ -68,6 +76,7 @@ def main() -> int:
             problems.append(f"legacy scoring term in active source: {legacy_term}")
 
     _check_projection_parity(problems)
+    _check_tool_package_specs(problems)
 
     if problems:
         print("\n".join(sorted(problems)))
@@ -120,6 +129,57 @@ def _check_projection_parity(problems: list[str]) -> None:
         for path in (ROOT / "src" / "bridge" / "resources" / "schemas").glob("*.schema.json")
     }
     _check_byte_projection_pair("schema", public_schemas, packaged_schemas, problems)
+
+
+def _check_tool_package_specs(problems: list[str]) -> None:
+    for path in sorted((ROOT / "src/bridge/tool_packages/specs").glob("*.yaml")):
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if payload.get("input_schema_ref") != "bridge://schemas/tool-request/v0.2":
+            continue
+        relative = path.relative_to(ROOT)
+        state = payload.get("implementation_state")
+        adapter_ref = payload.get("adapter_ref")
+        result_schema_ref = payload.get("result_schema_ref")
+        if state == "implemented":
+            if not payload.get("method_ids"):
+                problems.append(f"implemented v0.2 Tool Package has no methods: {relative}")
+            if not adapter_ref:
+                problems.append(f"implemented v0.2 Tool Package has no adapter_ref: {relative}")
+            elif not PACKAGED_ADAPTER_REF.fullmatch(adapter_ref):
+                problems.append(f"v0.2 Tool Package adapter is not packaged: {relative}")
+            if not result_schema_ref:
+                problems.append(
+                    f"implemented v0.2 Tool Package has no result_schema_ref: {relative}"
+                )
+        if state == "scaffold":
+            if payload.get("method_ids"):
+                problems.append(f"scaffold v0.2 Tool Package claims methods: {relative}")
+            if adapter_ref is not None or result_schema_ref is not None:
+                problems.append(
+                    f"scaffold v0.2 Tool Package claims runtime bindings: {relative}"
+                )
+
+    try:
+        registry = ToolRegistry.load_default()
+    except Exception as exc:
+        problems.append(f"Tool Package specs do not load: {exc}")
+        return
+    for spec in registry.list():
+        if not isinstance(spec, ToolPackageSpecV2):
+            continue
+        if spec.implementation_state is not ImplementationState.IMPLEMENTED:
+            continue
+        try:
+            registry._resolve_result_schema(spec)
+        except Exception as exc:
+            problems.append(
+                f"implemented v0.2 result schema does not resolve: "
+                f"{spec.tool_id}: {exc}"
+            )
+        try:
+            registry._resolve_adapter(spec)
+        except Exception as exc:
+            problems.append(f"implemented v0.2 adapter does not resolve: {spec.tool_id}: {exc}")
 
 
 def _check_byte_projection_pair(

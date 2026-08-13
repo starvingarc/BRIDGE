@@ -1,0 +1,53 @@
+{
+  "$id": "bridge://schemas/structured-input-ref/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "input_id": {
+      "minLength": 1,
+      "title": "Input Id",
+      "type": "string"
+    },
+    "media_type": {
+      "default": "application/json",
+      "pattern": "^[A-Za-z0-9!#$&^_.+\\-]+/[A-Za-z0-9!#$&^_.+\\-]+$",
+      "title": "Media Type",
+      "type": "string"
+    },
+    "object_version": {
+      "minLength": 1,
+      "title": "Object Version",
+      "type": "string"
+    },
+    "path": {
+      "format": "path",
+      "pattern": "^/",
+      "title": "Path",
+      "type": "string"
+    },
+    "role": {
+      "minLength": 1,
+      "title": "Role",
+      "type": "string"
+    },
+    "schema_ref": {
+      "minLength": 1,
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "input_id",
+    "role",
+    "schema_ref",
+    "object_version",
+    "path",
+    "sha256"
+  ],
+  "title": "StructuredInputRef",
+  "type": "object"
+}

@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from bridge.toolkit.contracts import ToolRequest
 from bridge.toolkit.registry import ToolRegistry
 from pydantic import ValidationError
 
@@ -68,12 +67,25 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command in {"validate", "run"}:
         try:
-            request = ToolRequest.model_validate_json(args.request.read_text(encoding="utf-8"))
-        except (OSError, ValidationError, ValueError) as exc:
+            payload = json.loads(args.request.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("request must be a JSON object")
+            request = registry.parse_request(payload)
+        except (json.JSONDecodeError, OSError, KeyError, ValidationError, ValueError) as exc:
             _emit({"error": "invalid_request", "detail": str(exc)})
             return 2
         if args.command == "validate":
-            eligibility = registry.check_eligibility(request)
+            try:
+                eligibility = registry.check_eligibility(request)
+            except Exception as exc:
+                _emit(
+                    {
+                        "error": "tool_validation_error",
+                        "detail": str(exc),
+                        "tool_id": request.tool_id,
+                    }
+                )
+                return 4
             _emit(eligibility.model_dump(mode="json"))
             return 0 if eligibility.eligible else 3
         try:

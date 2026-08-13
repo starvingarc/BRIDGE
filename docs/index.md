@@ -29,6 +29,7 @@
 
 ## Validation Records
 
+- [Structured tool runtime contracts, 2026-08-13](validation/tool_runtime_structured_contracts_20260813.md)
 - [P0-02 external-source preparation validation, 2026-08-13](validation/p0_02_external_source_preparation_20260813.md)
 - [P0-02 external-source asset validation, 2026-08-12](validation/p0_02_external_source_asset_20260812.md)
 - [Server reproducibility validation, 2026-08-12](validation/server_reproducibility_20260812.md)
