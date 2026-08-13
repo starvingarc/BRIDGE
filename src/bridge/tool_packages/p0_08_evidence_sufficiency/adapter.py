@@ -84,9 +84,11 @@ EMBEDDED_POSIX_PATH = re.compile(
     r"(?:^|[\s=:'\"(])/(?!/)(?:[A-Za-z0-9._~-]+/)+[^\s<>\"']*"
 )
 URI_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s<>\"']+")
+FILE_URI = re.compile(r"(?i)(?<![A-Za-z0-9+.-])file:")
 CREDENTIAL_ASSIGNMENT = re.compile(
-    r"(?i)(?:password|api[_-]?key|secret|access[_-]?token|token|"
-    r"auth(?:orization)?|credentials?)\s*=\s*\S+"
+    r"(?i)(?<![A-Za-z0-9_])(?:password|api[_-]?key|secret|access[_-]?token|token|"
+    r"auth(?:orization)?|credentials?)\s*(?:=\s*\S+|"
+    r":\s*[A-Za-z0-9._~+/=-]+(?=$|[,;}\]]))"
 )
 BEARER_CREDENTIAL = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{8,}")
 COMMON_TOKEN = re.compile(
@@ -107,7 +109,8 @@ CREDENTIAL_QUERY_KEYS = frozenset(
     }
 )
 HOME_RELATIVE_PATH = re.compile(
-    r"(?:^|[\s=:'\"(])(?:~|\$HOME|\$\{HOME\}|%USERPROFILE%|%HOMEPATH%)[\\/]",
+    r"(?:^|[\s=:'\"(])(?:~[A-Za-z0-9._-]*|\$HOME|\$\{HOME\}|"
+    r"%USERPROFILE%|%HOMEPATH%)[\\/]",
     re.IGNORECASE,
 )
 VERSIONLESS_ROLE_OBJECT_VERSIONS = {
@@ -564,10 +567,30 @@ def _contains_unsafe_scientific_reference(value: object) -> bool:
     if isinstance(value, str):
         return _unsafe_string(value)
     if isinstance(value, dict):
-        return any(_contains_unsafe_scientific_reference(item) for item in value.values())
+        return any(
+            _unsafe_string(str(key))
+            or (_is_credential_key(key) and _is_nonempty(item))
+            or _contains_unsafe_scientific_reference(item)
+            for key, item in value.items()
+        )
     if isinstance(value, list):
         return any(_contains_unsafe_scientific_reference(item) for item in value)
     return False
+
+
+def _is_credential_key(value: object) -> bool:
+    normalized = re.sub(r"[-\s]+", "_", str(value).strip().lower())
+    return normalized in CREDENTIAL_QUERY_KEYS
+
+
+def _is_nonempty(value: object) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (dict, list)):
+        return bool(value)
+    return True
 
 
 def _unsafe_string(value: str) -> bool:
@@ -580,7 +603,7 @@ def _unsafe_string(value: str) -> bool:
         or WINDOWS_ABSOLUTE_PATH.search(stripped)
         or EMBEDDED_POSIX_PATH.search(stripped)
         or HOME_RELATIVE_PATH.search(stripped)
-        or stripped.lower().startswith("file://")
+        or FILE_URI.search(stripped)
     ):
         return True
     if (

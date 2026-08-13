@@ -1052,8 +1052,14 @@ def test_unbound_structured_input_and_legacy_contract_fail_closed(tmp_path: Path
         "\\\\" + "server\\" + "share\\private.json",
         "source=\\\\" + "server\\" + "share\\private.json",
         "file:" + "///local/private.json",
+        "file:/private.json",
+        "file:private.json",
         "embedded source file:///local/private.json",
+        "embedded source file:/private.json",
+        "embedded source file:private.json",
+        "citation [file:private.json]",
         "source=~/private.json",
+        "source=~alice/private.json",
         "source=$HOME/private.json",
         "source=${HOME}/private.json",
         "source=%USERPROFILE%\\private.json",
@@ -1065,6 +1071,10 @@ def test_unbound_structured_input_and_legacy_contract_fail_closed(tmp_path: Path
         "api_" + "key=placeholder-value",
         "sec" + "ret=placeholder-value",
         "token=placeholder-value",
+        "token: secret-123",
+        "token: x",
+        "password: hunter2",
+        "authorization: credential-123",
         "access_token=placeholder-value",
         "auth=placeholder-value",
         "authorization=placeholder-value",
@@ -1088,6 +1098,40 @@ def test_unsafe_scientific_references_fail_without_publication(
 
 
 @pytest.mark.parametrize(
+    "unsafe_value",
+    [
+        "token: secret-123",
+        "token: x",
+        "password: hunter2",
+        "~alice/private.json",
+        "embedded file:/private.json",
+        "embedded file:private.json",
+        "citation [file:private.json]",
+    ],
+)
+def test_direct_unsafe_string_contract_rejects_new_patterns(
+    unsafe_value: str,
+) -> None:
+    assert adapter_module._unsafe_string(unsafe_value)
+
+
+@pytest.mark.parametrize(
+    "safe_value",
+    [
+        "token: a biological state label",
+        "password-protected assay note",
+        "secret: secreted factor expression",
+        "secreted factor expression: elevated",
+        "bridge://auth/context/v0.1",
+    ],
+)
+def test_direct_unsafe_string_contract_preserves_scientific_text(
+    safe_value: str,
+) -> None:
+    assert not adapter_module._unsafe_string(safe_value)
+
+
+@pytest.mark.parametrize(
     "safe_value",
     [
         "bridge://schemas/example/v0.1",
@@ -1095,7 +1139,12 @@ def test_unsafe_scientific_references_fail_without_publication(
         "https://example.org/data?tokenization=cell-state",
         "bridge://auth/context/v0.1",
         "secreted factor with an API key annotation label",
+        "token: a biological state label",
+        "password-protected assay note",
+        "secret: secreted factor expression",
+        "secreted factor expression: elevated",
         "tokenization=biological-state",
+        "profile:private-state",
         "CD4/CD8 ratio and neuron/glia comparison",
     ],
 )
@@ -1109,6 +1158,64 @@ def test_safe_scientific_references_remain_eligible(
 
     assert adapter.check_eligibility(request, spec).eligible
     assert adapter.run(request, spec).execution_state is ExecutionState.SUCCEEDED
+
+
+@pytest.mark.parametrize(
+    ("unsafe_key", "unsafe_value"),
+    [
+        ("token: secret-123", "masked"),
+        ("password: hunter2", "masked"),
+        ("token", "secret-123"),
+        ("password", "hunter2"),
+        ("api-key", "structural-secret-a"),
+        ("access token", "structural-secret-b"),
+        ("outer", "file:/private.json"),
+        ("outer", "file:private.json"),
+        ("~alice/private.json", "masked"),
+    ],
+)
+def test_recursive_unsafe_keys_and_values_fail_without_echo_or_publication(
+    tmp_path: Path, unsafe_key: str, unsafe_value: str
+) -> None:
+    measurement = _measurement()
+    measurement["raw_value"] = {
+        "level-1": [{"level-2": {unsafe_key: unsafe_value}}]
+    }
+    request = _fixture_request(tmp_path, measurement=measurement)
+    spec = ToolRegistry.load_default().describe("P0-08")
+    eligibility = adapter.check_eligibility(request, spec)
+    run = adapter.run(request, spec)
+
+    assert eligibility.reason_codes == ["unsafe_scientific_reference"]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["unsafe_scientific_reference"]
+    assert unsafe_key not in json.dumps(run.model_dump(mode="json"))
+    assert unsafe_value not in json.dumps(run.model_dump(mode="json"))
+    assert run.result is None
+    assert run.artifacts == []
+    assert not request.output_dir.exists()
+
+
+@pytest.mark.parametrize(
+    "domain",
+    [
+        _domain(evidence_refs=["free form evidence reference"]),
+        _domain(
+            product_case={
+                "object_id": "free form product case",
+                "object_version": "1.0.0",
+                "provenance_refs": ["provenance:case-001"],
+            }
+        ),
+        _domain(score_contract_ref="free form score contract"),
+    ],
+)
+def test_output_bound_refs_must_be_identifier_or_scheme_shaped(
+    tmp_path: Path, domain: dict[str, Any]
+) -> None:
+    request = _fixture_request(tmp_path, domain=domain)
+
+    _assert_failed_without_publication(request, "structured_input_schema_invalid")
 
 
 def test_v1_invocation_and_forbidden_expression_channel_fail_eligibility(

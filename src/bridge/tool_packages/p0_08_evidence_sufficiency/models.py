@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import StrEnum
+import re
 from typing import Literal, Self
 
 from pydantic import Field, field_validator, model_validator
@@ -188,6 +189,10 @@ BLOCKING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[17:24]) | {
 LIMITING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[24:33]) | {
     "raw_evidence_gate_limited"
 }
+PUBLISHED_REF = re.compile(
+    r"^(?:[A-Za-z][A-Za-z0-9+.-]*://[^\s]+|"
+    r"[A-Za-z][A-Za-z0-9._-]*(?::[A-Za-z0-9._:/-]+)?)$"
+)
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -207,6 +212,13 @@ def _strip(value: str) -> str:
     stripped = value.strip()
     if not stripped:
         raise ValueError("reference strings must not be blank")
+    return stripped
+
+
+def _published_ref(value: str) -> str:
+    stripped = _strip(value)
+    if not PUBLISHED_REF.fullmatch(stripped):
+        raise ValueError("published references must be scheme- or identifier-shaped")
     return stripped
 
 
@@ -288,15 +300,20 @@ class VersionedObjectPointer(FrozenModel):
     object_version: str = Field(min_length=1)
     provenance_refs: list[str] = Field(min_length=1)
 
-    @field_validator("object_id", "object_version")
+    @field_validator("object_id")
     @classmethod
-    def strip_refs(cls, value: str) -> str:
+    def object_id_is_publishable(cls, value: str) -> str:
+        return _published_ref(value)
+
+    @field_validator("object_version")
+    @classmethod
+    def strip_version(cls, value: str) -> str:
         return _strip(value)
 
     @field_validator("provenance_refs")
     @classmethod
     def unique_provenance(cls, value: list[str]) -> list[str]:
-        cleaned = [_strip(item) for item in value]
+        cleaned = [_published_ref(item) for item in value]
         return list(_unique(cleaned, "provenance_refs"))
 
 
@@ -327,23 +344,34 @@ class DomainGateInput(FrozenModel):
         "domain_gate_input_id",
         "measurement_spec_input_id",
         "qc_profile_input_id",
-        "score_contract_ref",
     )
     @classmethod
     def strip_optional_refs(cls, value: str | None) -> str | None:
         return None if value is None else _strip(value)
+
+    @field_validator("score_contract_ref")
+    @classmethod
+    def score_ref_is_publishable(cls, value: str | None) -> str | None:
+        return None if value is None else _published_ref(value)
 
     @field_validator(
         "measurement_result_input_ids",
         "validation_record_input_ids",
         "prior_record_input_ids",
         "sensitivity_record_input_ids",
+    )
+    @classmethod
+    def unique_input_id_lists(cls, value: list[str]) -> list[str]:
+        cleaned = [_strip(item) for item in value]
+        return list(_unique(cleaned, "input ID list"))
+
+    @field_validator(
         "evidence_refs",
         "provenance_refs",
     )
     @classmethod
     def unique_ref_lists(cls, value: list[str]) -> list[str]:
-        cleaned = [_strip(item) for item in value]
+        cleaned = [_published_ref(item) for item in value]
         return list(_unique(cleaned, "input/reference list"))
 
     @field_validator("required_sensitivity_kinds")
@@ -402,7 +430,7 @@ class EvidenceValidationRecord(FrozenModel):
     @field_validator("validation_refs", "evidence_refs", "provenance_refs")
     @classmethod
     def unique_ref_lists(cls, value: list[str]) -> list[str]:
-        cleaned = [_strip(item) for item in value]
+        cleaned = [_published_ref(item) for item in value]
         return list(_unique(cleaned, "reference list"))
 
 
@@ -449,7 +477,7 @@ class PriorApplicabilityRecord(FrozenModel):
     @field_validator("evidence_refs", "provenance_refs")
     @classmethod
     def unique_ref_lists(cls, value: list[str]) -> list[str]:
-        cleaned = [_strip(item) for item in value]
+        cleaned = [_published_ref(item) for item in value]
         return list(_unique(cleaned, "reference list"))
 
 
@@ -486,7 +514,7 @@ class EvidenceSensitivityRecord(FrozenModel):
     @field_validator("evidence_refs", "provenance_refs")
     @classmethod
     def unique_ref_lists(cls, value: list[str]) -> list[str]:
-        cleaned = [_strip(item) for item in value]
+        cleaned = [_published_ref(item) for item in value]
         return list(_unique(cleaned, "reference list"))
 
 
@@ -528,6 +556,19 @@ class EvidenceSufficiencyProfile(FrozenModel):
     _created_at_utc = field_validator("created_at")(_aware_utc)
 
     @field_validator(
+        "product_case_ref",
+        "product_definition_ref",
+        "measurement_spec_ref",
+        "score_contract_ref",
+        "qc_profile_ref",
+    )
+    @classmethod
+    def scalar_output_refs_are_publishable(
+        cls, value: str | None
+    ) -> str | None:
+        return None if value is None else _published_ref(value)
+
+    @field_validator(
         "data_reason_codes",
         "robustness_reason_codes",
         "prior_reason_codes",
@@ -550,7 +591,8 @@ class EvidenceSufficiencyProfile(FrozenModel):
     )
     @classmethod
     def output_lists_are_unique(cls, value: list[str]) -> list[str]:
-        return list(_unique(value, "output list"))
+        cleaned = [_published_ref(item) for item in value]
+        return list(_unique(cleaned, "output list"))
 
     @model_validator(mode="after")
     def score_is_always_unavailable(self) -> Self:
@@ -601,6 +643,11 @@ class CaseEvidenceReadinessSummary(FrozenModel):
     @classmethod
     def unique_reasons(cls, value: list[str]) -> list[str]:
         return _reason_codes_in_catalog_order(value)
+
+    @field_validator("product_case_ref")
+    @classmethod
+    def product_case_is_publishable(cls, value: str | None) -> str | None:
+        return None if value is None else _published_ref(value)
 
     @model_validator(mode="after")
     def count_totals_match(self) -> Self:
