@@ -58,7 +58,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "The implementation plan approves this as a formal candidate, not as a selected default.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -122,7 +122,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Approved as a callable formal-candidate component by the implementation plan.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -175,7 +175,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Approved as the independent public-Schema validation channel.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -229,7 +229,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Approved as the exact numeric candidate; no floating tolerance is allowed.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -286,7 +286,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Approved as the callable decimal implementation.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -337,7 +337,7 @@
       "analysis_task": "Exact numeric and unit fidelity",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "A reviewed unit registry and conversion fixtures are not yet available.",
         "reviewer": null,
         "state": "pending"
@@ -389,7 +389,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Approved as the formal deterministic rule layer.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -445,7 +445,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Approved as the callable Unicode pattern engine with bounded execution time.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -497,7 +497,7 @@
       "analysis_task": "Bilingual prohibited-claim rules",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "No OPA binary or frozen Rego parity suite is available for v0.1.",
         "reviewer": null,
         "state": "pending"
@@ -545,7 +545,7 @@
       "analysis_task": "Bilingual prohibited-claim rules",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "LLM judgment is excluded from the v0.1 formal path and cannot clear blockers.",
         "reviewer": "developer-plan-20260814",
         "state": "rejected"
@@ -603,7 +603,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Approved as the fixed renderer; templates cannot come from callers.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -658,7 +658,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Approved only behind the fixed BRIDGE template.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -709,7 +709,7 @@
       "analysis_task": "Controlled report rendering",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Free Markdown import is explicitly outside v0.1.",
         "reviewer": "developer-plan-20260814",
         "state": "rejected"
@@ -757,7 +757,7 @@
       "analysis_task": "Controlled report rendering",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Web and media rendering are unavailable in v0.1.",
         "reviewer": "developer-plan-20260814",
         "state": "rejected"
@@ -805,7 +805,7 @@
       "analysis_task": "External factuality audit",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "External task definitions do not replace BRIDGE structured policy checks.",
         "reviewer": null,
         "state": "pending"
@@ -859,7 +859,7 @@
       "analysis_task": "External factuality audit",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Not part of the deterministic v0.1 decision path.",
         "reviewer": null,
         "state": "pending"
@@ -913,7 +913,7 @@
       "analysis_task": "External factuality audit",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "Not part of the deterministic v0.1 decision path.",
         "reviewer": null,
         "state": "pending"
@@ -967,7 +967,7 @@
       "analysis_task": "External factuality audit",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
+        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
         "reason": "The English scientific-claim dataset is a benchmark reference, not a release rule.",
         "reviewer": null,
         "state": "pending"
