@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import hashlib
 from importlib.resources import files
 import json
 
+from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_10_claim_verifier.models import ClaimVerifierBenchmark
 
 
@@ -20,8 +22,20 @@ def benchmark_sha256() -> str:
     return hashlib.sha256(benchmark_bytes()).hexdigest()
 
 
+def decision_payload_sha256(payload: dict) -> str:
+    normalized = deepcopy(payload)
+    for method in normalized["methods"]:
+        method["decision"]["benchmark_sha256"] = None
+    return hashlib.sha256(canonical_json_bytes(normalized)).hexdigest()
+
+
 def load_benchmark() -> ClaimVerifierBenchmark:
-    return ClaimVerifierBenchmark.model_validate_json(benchmark_bytes())
+    benchmark = ClaimVerifierBenchmark.model_validate_json(benchmark_bytes())
+    expected = decision_payload_sha256(benchmark.model_dump(mode="json"))
+    actual = {method.decision.benchmark_sha256 for method in benchmark.methods}
+    if actual != {expected}:
+        raise ValueError("benchmark decisions do not bind the benchmark payload")
+    return benchmark
 
 
 def render_benchmark_markdown(
@@ -37,6 +51,8 @@ def render_benchmark_markdown(
         f"- Benchmark ID: `{benchmark.benchmark_id}`",
         f"- Version: `{benchmark.benchmark_version}`",
         f"- JSON SHA-256: `{sha256}`",
+        "- Decision payload SHA-256: "
+        f"`{decision_payload_sha256(benchmark.model_dump(mode='json'))}`",
         f"- State: `{benchmark.benchmark_state}`",
         "- Selected default: `none`",
         "- Aggregate score/rank: `null` / `null`",
@@ -120,7 +136,9 @@ def render_benchmark_markdown(
                         _cell(runtime),
                         _cell(method.recommendation.value),
                         _cell(
-                            f"{method.decision.state.value}: {method.decision.reason}"
+                            f"{method.decision.state.value}: {method.decision.reason}; "
+                            f"reviewer={method.decision.reviewer or 'none'}; "
+                            f"table hash={method.decision.benchmark_sha256}"
                         ),
                     ]
                 )

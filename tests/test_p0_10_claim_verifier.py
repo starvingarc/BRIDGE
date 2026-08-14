@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
 from bridge.tool_packages.p0_10_claim_verifier.adapter import adapter
 from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
     benchmark_sha256,
+    decision_payload_sha256,
     load_benchmark,
     render_benchmark_markdown,
 )
@@ -25,6 +27,7 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     StatementRegistry,
     report_content_hash,
 )
+from bridge.tool_packages.p0_10_claim_verifier.verifier import _render_decimal
 from bridge.toolkit.contracts import (
     ExecutionState,
     ImplementationState,
@@ -358,6 +361,9 @@ def test_benchmark_is_task_grouped_complete_and_has_no_default_or_aggregate() ->
     assert benchmark.aggregate_rank is None
     assert set(spec.method_ids) == approved_runtime
     assert len(benchmark.methods) == 18
+    assert {
+        method.decision.benchmark_sha256 for method in benchmark.methods
+    } == {decision_payload_sha256(benchmark.model_dump(mode="json"))}
     assert benchmark_sha256() == hashlib.sha256(
         Path(
             "src/bridge/tool_packages/p0_10_claim_verifier/resources/benchmark_v0.1.json"
@@ -451,6 +457,63 @@ def test_registered_boundary_statement_is_exact_exception(tmp_path: Path) -> Non
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
     assert run.result["verification"]["release_state"] == "verified"
+
+
+@pytest.mark.parametrize(
+    ("text", "language"),
+    [
+        ("该套件通过 192 项测试，因此证明安全性。", "zh"),
+        ("The suite passed 192 tests；这不能证明安全性。", "mixed"),
+    ],
+)
+def test_bilingual_prohibited_claims_are_hard_blockers(
+    tmp_path: Path, text: str, language: str
+) -> None:
+    report = _report_payload(text=text)
+    report["language"] = language
+    report["claim_blocks"][0]["language"] = language
+    report["content_hash"] = report_content_hash(report)
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert "prohibited_claim" in {
+        item["reason_code"]
+        for item in run.result["verification"]["check_records"]
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "- The installed-wheel suite passed 192 tests.",
+        "The *installed-wheel* suite passed 192 tests.",
+        "The suite passed 192 tests. <img src=x onerror=alert(1)>",
+    ],
+)
+def test_report_claims_reject_free_markup(text: str) -> None:
+    with pytest.raises(ValueError, match="plain structured paragraph"):
+        ReportDraft.model_validate(_report_payload(text=text))
+
+
+def test_decimal_rounding_modes_are_explicit() -> None:
+    half_even = NumericFormatSpec(decimal_places=2, rounding="half_even")
+    half_up = NumericFormatSpec(decimal_places=2, rounding="half_up")
+
+    assert _render_decimal(Decimal("2.345"), half_even) == "2.34"
+    assert _render_decimal(Decimal("2.345"), half_up) == "2.35"
+
+
+def test_claim_text_cannot_execute_nested_template_syntax(tmp_path: Path) -> None:
+    report = _report_payload(
+        text="The {{ literal_template_text }} suite passed 192 tests."
+    )
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.result["verification"]["release_state"] == "verified"
+    assert "{{ literal_template_text }}" in run.result["verified_report"][
+        "rendered_markdown"
+    ]
 
 
 def test_human_review_can_clear_review_item_but_not_hard_blocker(tmp_path: Path) -> None:

@@ -15,6 +15,13 @@ from bridge.toolkit.contracts import EvidenceState, FrozenModel
 
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
 EVIDENCE_REF_PATTERN = r"^evidence:[a-f0-9]{24}@[1-9][0-9]*$"
+FREE_MARKUP = re.compile(
+    r"(?:^|\s)(?:#{1,6}|[-+*>]|\d+[.)])\s"
+    r"|\[[^]\n]+\]\([^\n)]+\)"
+    r"|(?:\*\*|__|~~|`)"
+    r"|(?<!\w)[*_](?=\S)"
+    r"|<\s*/?\s*[A-Za-z!][^>]*>"
+)
 
 
 class ReportAudience(StrEnum):
@@ -167,9 +174,8 @@ class ClaimBlock(FrozenModel):
     @field_validator("text")
     @classmethod
     def text_is_plain_structured_content(cls, value: str) -> str:
-        markdown = re.search(r"(?:^|\s)#{1,6}\s|\[[^]]+\]\(|[*_]{2}|`", value)
-        if markdown or any(
-            marker in value for marker in ("\n", "\r", "<script", "</")
+        if FREE_MARKUP.search(value) or any(
+            marker in value for marker in ("\n", "\r")
         ):
             raise ValueError("claim text must be one plain structured paragraph")
         return value
@@ -481,7 +487,9 @@ class ClaimVerifierBenchmark(FrozenModel):
     benchmark_version: Literal["0.1.0"]
     tool_id: Literal["P0-10"]
     benchmark_state: Literal[
-        "awaiting_server_validation", "server_validated_candidate"
+        "awaiting_server_validation",
+        "server_validated_public_candidate",
+        "server_validated_candidate",
     ]
     default_method_id: None = None
     aggregate_score: None = None
