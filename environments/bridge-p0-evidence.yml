@@ -3,16 +3,22 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python=3.12
-  - pip=25.1
-  - pydantic=2.12
-  - jsonschema=4.25
-  - pyarrow=21
+  - python=3.12.13
+  - pip=25.1.1
+  - setuptools=84.0.0
+  - wheel=0.48.0
+  - numpy=2.5.2
+  - pandas=2.3.3
+  - scipy=1.18.0
+  - scikit-learn=1.7.2
+  - pydantic=2.12.5
+  - pyyaml=6.0.3
+  - jsonschema=4.25.1
+  - pyarrow=21.0.0
   - networkx=3.5
-  - scikit-learn=1.7
-  - jinja2=3.1
-  - regex>=2025.7,<2027
-  - markdown-it-py=4.0
-  - pillow=11.3
-  - defusedxml=0.7
-  - pytest=8.4
+  - jinja2=3.1.6
+  - regex=2026.7.19
+  - markdown-it-py=4.0.0
+  - pillow=11.3.0
+  - defusedxml=0.7.1
+  - pytest=8.4.2

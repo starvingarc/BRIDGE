@@ -61,6 +61,37 @@ def test_core_environment_pins_wheel_build_tooling() -> None:
     assert {"setuptools=84.0.0", "wheel=0.47.0"} <= _conda_dependencies(spec)
 
 
+def test_evidence_environment_is_self_contained_and_pinned() -> None:
+    index = _load_yaml("environments/index.yaml")["environment_specs"]
+    entry = index["ENV-EVIDENCE-v0.1"]
+    spec = _load_yaml(entry["yaml_ref"])
+
+    assert entry["conda_name"] == spec["name"] == "bridge-p0-evidence"
+    assert entry["state"] == "proposed"
+    assert spec["channels"] == ["conda-forge", "nodefaults"]
+    assert {
+        "python=3.12.13",
+        "pip=25.1.1",
+        "setuptools=84.0.0",
+        "wheel=0.48.0",
+        "numpy=2.5.2",
+        "pandas=2.3.3",
+        "scipy=1.18.0",
+        "scikit-learn=1.7.2",
+        "pydantic=2.12.5",
+        "pyyaml=6.0.3",
+        "jsonschema=4.25.1",
+        "pyarrow=21.0.0",
+        "networkx=3.5",
+        "jinja2=3.1.6",
+        "regex=2026.7.19",
+        "markdown-it-py=4.0.0",
+        "pillow=11.3.0",
+        "defusedxml=0.7.1",
+        "pytest=8.4.2",
+    } <= _conda_dependencies(spec)
+
+
 def test_active_environment_contracts_do_not_name_machine_local_environments() -> None:
     text = "\n".join(
         path.read_text(encoding="utf-8")
