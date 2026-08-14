@@ -146,6 +146,59 @@ P0-02 controlled or sealed data was opened. The benchmark state is now
 internal case. This completes the package-level internal-run requirement but
 does not select a default method.
 
+## Review-hardening addendum — 2026-08-15
+
+Draft-PR review identified seven release-boundary gaps. Commit
+`4e95bd46c1554be8b71375bf87dbb73b6c93622e` addresses them without adding a
+new framework or implementation module:
+
+- P0-10 now accepts the P0-09 Case graph manifest and opens its checksummed
+  graph artifacts; a standalone `EvidenceRecordSet` is no longer an input;
+- each claim binds one registered Claim and ProductCase, and every cited
+  EvidenceRecord must match both;
+- each numeric binding names one source field and one exact, non-overlapping
+  text span; arbitrary display suffixes and bundled denominator/interval
+  assertions were removed;
+- human- or imported-authored prose requires review, while the complete
+  `ReportDraft`, including review metadata, is checked before publication;
+- broken or self-referential output symlinks return stable failure codes; and
+- the repository limit is a fixed 320 tracked files rather than increasing as
+  more tools become executable.
+
+The exact Git archive SHA-256 was
+`ae138edd6ef9e9671b7e7c40b9587cce395b6d62412a773973203112b325d84e`.
+The resulting wheel SHA-256 was
+`b0f169d10e478176d2c69ec5616d8162e50daa15157a486ade4f4c516407b721`.
+It was installed from `site-packages` in both the evidence and full-suite
+validation environments. The private evidence manifest contains 543 files and
+has SHA-256
+`4ef475c2bd0364ec81d39197f992ca1ba8fb4caf2f818a7e48176d445223fb45`.
+
+| Review-hardening gate | Result |
+|---|---|
+| P0-09/P0-10/shared-runtime installed-wheel tests | `293 passed` in 12.97 s |
+| Complete installed-wheel suite | `940 passed, 1 warning` in 84.52 s |
+| Tool discovery | 12 packages; P0-01, P0-02, P0-08, P0-09 and P0-10 implemented |
+| Knowledge and repository policy | valid; 354 methods, 387 sources, 396 bindings; policy passed |
+| Generated projections | Tool Cards, Schemas and P0-10 benchmark each rendered twice with no diff |
+| Repository size | 318 tracked files against the fixed 320-file limit |
+
+For the anonymous engineering check, the installed P0-09 wheel generated one
+Case graph containing the 940-test, 12-package and 354-method records. It
+accepted all three records and rejected none; the Case manifest SHA-256 was
+`7d538783f3e1fb0eff2fa1dac44a61db4a79a2ae95a358e8a1059faf43b8d617`.
+The records remain `shadow` and the report claims are `internal_candidate`;
+P0-10 `verified` therefore means only that the text matches those supplied
+records and policies.
+
+Five one-thread P0-10 processes produced byte-identical ToolRuns with zero
+blockers, review items or warnings. Wall-clock median was 2.51 s (range
+2.24–2.53 s), CPU-time median was 2.48 s, peak RAM was 226.0 MB and the
+3,394-byte result artifact had SHA-256
+`c61e881e57f0231c342d0d661a33b69188a0d8b859ea18e633f493e5099ceb33`.
+The earlier bare-record-set run above is retained as historical evidence for
+the prior interface; it is not accepted by the hardened interface.
+
 ## Boundaries
 
 - A `verified` result means correspondence to supplied evidence and policy, not

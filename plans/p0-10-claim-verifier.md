@@ -53,7 +53,10 @@ interval, evidence state, comparison scope and approved wording?
    candidate gates.
 7. [x] Run one authorized internal four-object report.
 8. [x] Open one Draft PR after the internal run is represented in the benchmark.
-9. [ ] Resolve the blocking Draft-PR review and repeat exact-SHA server validation.
+9. [x] Address the seven blocking Draft-PR findings and repeat exact-SHA server
+   validation with an authoritative P0-09 Case graph.
+10. [ ] Request review of the hardened Draft PR; merge only after separate
+    authorization.
 
 ## Acceptance
 
