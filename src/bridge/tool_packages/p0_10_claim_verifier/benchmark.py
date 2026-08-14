@@ -73,8 +73,8 @@ def render_benchmark_markdown(
             [
                 f"## {task}",
                 "",
-                "| Method | Version / license | Role and evidence | Failure / abstention | Runtime and resources | BRIDGE recommendation | Human decision |",
-                "|---|---|---|---|---|---|---|",
+                "| Method | Version / source / license | Role, data and metrics | Controls and missing inputs | Failure / abstention | Sensitivity | Runtime and resources | BRIDGE recommendation | Human decision |",
+                "|---|---|---|---|---|---|---|---|---|",
             ]
         )
         for method in [item for item in benchmark.methods if item.analysis_task == task]:
@@ -99,10 +99,23 @@ def render_benchmark_markdown(
                 + " | ".join(
                     [
                         _cell(f"{method.method_name} (`{method.method_id}`)"),
-                        _cell(f"{method.version}; {method.license}"),
-                        _cell(f"{method.role}; {method.evaluation}; {metrics}"),
+                        _cell(f"{method.version}; {method.source}; {method.license}"),
+                        _cell(
+                            f"{method.role}; data={','.join(method.data_case_ids) or 'none'}; "
+                            f"{method.evaluation}; {metrics}; interval={method.uncertainty_or_interval or 'none'}"
+                        ),
+                        _cell(
+                            f"positive={','.join(method.positive_controls) or 'none'}; "
+                            f"negative={','.join(method.negative_controls) or 'none'}; "
+                            f"missing={method.missing_input_behavior}"
+                        ),
                         _cell(
                             f"{method.failure_behavior}; {method.ood_or_abstention_behavior}"
+                        ),
+                        _cell(
+                            f"seeds={method.random_seeds or 'not applicable'}; "
+                            f"downsampling={method.downsampling}; reference={method.reference_sensitivity}; "
+                            f"preprocessing={method.preprocessing_sensitivity}; denominator={method.denominator_sensitivity}"
                         ),
                         _cell(runtime),
                         _cell(method.recommendation.value),

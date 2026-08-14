@@ -61,6 +61,12 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
 }
 
 
+class PublicationError(ValueError):
+    def __init__(self, reason_code: str) -> None:
+        super().__init__(reason_code)
+        self.reason_code = reason_code
+
+
 @dataclass(frozen=True)
 class ClaimVerifierAdapter:
     def check_eligibility(
@@ -116,18 +122,17 @@ class ClaimVerifierAdapter:
             benchmark_sha256=benchmark_hash,
             run_id=run_id,
         )
-        output_file = _publish_result(
-            request=request,
-            spec=spec,
-            run_id=run_id,
-            input_hash=input_hash,
-            result=result,
-        )
-        if output_file is None:
+        try:
+            output_file = _publish_result(
+                request=request,
+                run_id=run_id,
+                result=result,
+            )
+        except PublicationError as exc:
             return _failed_run(
                 request,
                 spec,
-                ["existing_run_bundle_hash_mismatch"],
+                [exc.reason_code],
                 input_hash=input_hash,
             )
         artifact = ArtifactManifest(
@@ -278,11 +283,9 @@ def _input_hash(
 def _publish_result(
     *,
     request: ToolRequestV2,
-    spec: ToolPackageSpecV2,
     run_id: str,
-    input_hash: str,
     result: ClaimVerifierRunResult,
-) -> Path | None:
+) -> Path:
     output_root = request.output_dir.resolve()
     output_root.mkdir(parents=True, exist_ok=True)
     staging = output_root / f".{run_id}.staging-{uuid4().hex}"
@@ -291,13 +294,11 @@ def _publish_result(
     try:
         write_json(staging / filename, result.model_dump(mode="json"))
         if not inputs_unchanged(request.object_inputs):
-            shutil.rmtree(staging)
-            return None
+            raise PublicationError("structured_input_modified_during_run")
         final = output_root / run_id
         if final.exists():
             if final.is_symlink() or not final.is_dir():
-                shutil.rmtree(staging)
-                return None
+                raise PublicationError("existing_run_bundle_hash_mismatch")
             existing = final / filename
             if (
                 not existing.is_file()
@@ -305,8 +306,7 @@ def _publish_result(
                 or existing.read_bytes() != (staging / filename).read_bytes()
                 or {path.name for path in final.iterdir()} != {filename}
             ):
-                shutil.rmtree(staging)
-                return None
+                raise PublicationError("existing_run_bundle_hash_mismatch")
             shutil.rmtree(staging)
         else:
             os.replace(staging, final)

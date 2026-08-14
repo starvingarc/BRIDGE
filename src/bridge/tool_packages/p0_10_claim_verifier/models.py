@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 import hashlib
+import re
 from typing import Any, Literal, Self
 
 from pydantic import Field, StrictBool, StrictInt, field_validator, model_validator
@@ -166,7 +167,10 @@ class ClaimBlock(FrozenModel):
     @field_validator("text")
     @classmethod
     def text_is_plain_structured_content(cls, value: str) -> str:
-        if any(marker in value for marker in ("\n", "\r", "```", "<script", "</")):
+        markdown = re.search(r"(?:^|\s)#{1,6}\s|\[[^]]+\]\(|[*_]{2}|`", value)
+        if markdown or any(
+            marker in value for marker in ("\n", "\r", "<script", "</")
+        ):
             raise ValueError("claim text must be one plain structured paragraph")
         return value
 
