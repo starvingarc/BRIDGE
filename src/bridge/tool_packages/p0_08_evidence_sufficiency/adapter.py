@@ -18,6 +18,7 @@ from bridge.tool_packages._structured_runtime import (
     inputs_unchanged as _inputs_unchanged,
     load_structured_inputs,
     objects_for_role as _objects_for_role,
+    read_regular_bytes,
     single_object as _single_object,
     strict_json_loads as _loads_json,
     write_json as _write_json,
@@ -344,7 +345,22 @@ def _load_structured_inputs(
         model_for=lambda ref: ROLE_MODELS.get(ref.role),
         validate_payload=_validate_input_payload,
         validate_model=_validate_input_model,
+        read_verified=_read_verified_input,
     )
+
+
+def _read_verified_input(ref: StructuredInputRef) -> bytes:
+    try:
+        if not ref.path.exists():
+            raise StructuredInputError("structured_input_not_found")
+        raw = read_regular_bytes(ref.path)
+    except StructuredInputError:
+        raise
+    except OSError as exc:
+        raise StructuredInputError("structured_input_not_regular_file") from exc
+    if hashlib.sha256(raw).hexdigest() != ref.sha256:
+        raise StructuredInputError("structured_input_checksum_mismatch")
+    return raw
 
 
 def _validate_input_payload(ref: StructuredInputRef, payload: Any) -> None:

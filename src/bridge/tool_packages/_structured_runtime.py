@@ -35,6 +35,7 @@ class LoadedInputs:
 ModelResolver = Callable[[StructuredInputRef], type[FrozenModel] | None]
 PayloadValidator = Callable[[StructuredInputRef, Any], None]
 ModelValidator = Callable[[StructuredInputRef, FrozenModel], None]
+VerifiedInputReader = Callable[[StructuredInputRef], bytes]
 
 
 def canonical_json_bytes(payload: object, *, indent: int | None = None) -> bytes:
@@ -106,6 +107,7 @@ def load_structured_inputs(
     model_for: ModelResolver,
     validate_payload: PayloadValidator | None = None,
     validate_model: ModelValidator | None = None,
+    read_verified: VerifiedInputReader = _read_verified_input,
 ) -> tuple[LoadedInputs | None, list[str]]:
     objects: dict[str, FrozenModel] = {}
     payload_bytes: dict[str, bytes] = {}
@@ -122,7 +124,7 @@ def load_structured_inputs(
         if ref.media_type != "application/json":
             reasons.append("structured_input_media_type_unsupported")
         try:
-            raw = _read_verified_input(ref)
+            raw = read_verified(ref)
         except StructuredInputError as exc:
             reasons.append(exc.reason_code)
             continue

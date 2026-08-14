@@ -40,8 +40,17 @@ The high-risk seams are failure fingerprints, semantic input identity, immutable
 
 ## Validation on 2026-08-14
 
-- Net repository change is 116 fewer lines even after adding this plan and seven focused shared-seam test cases; the touched runtime/tooling implementation is 152 lines smaller.
-- Focused shared/P0-08/P0-09 suite: 610 passed. Complete source suite: 897 passed with three existing scientific-library warnings.
+- Independent review reproduced one P0-08 error-taxonomy drift for a dangling
+  structured-input symlink (`not_found` before the refactor versus
+  `not_regular_file` after it). The shared loader now accepts the caller's
+  verified-input reader, P0-08 retains its existing classification, and a
+  regression assertion covers the boundary without changing P0-09 behavior.
+- Post-review focused shared/runtime/P0-08/P0-09 tests: 683 passed. The complete
+  local source suite remains 897 passed with the same three dependency warnings;
+  GitHub wheel/merge validation must be rerun for the amended head.
+- Net repository change is 82 fewer lines after the review fix, this plan and
+  focused shared-seam regression coverage; the touched runtime/tooling
+  implementation is 134 lines smaller.
 - The pre-refactor and post-refactor representative P0-08/P0-09 success bundles and typed failures have the same normalized summary SHA-256: `10c07f3cf2b8b6f770bf07b30ca7fe5bc328ca5102936e03a596c24b178d5a47`.
 - Schema export regenerated 49 public plus 49 packaged Schemas with no byte drift; Tool Card rendering also produced no diff.
 - A clean Python 3.12.13 environment installed the final wheel with all `qc,test,freeze,evidence` extras; dependency check passed and the installed wheel completed all 897 tests.
