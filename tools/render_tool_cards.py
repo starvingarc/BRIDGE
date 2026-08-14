@@ -99,6 +99,9 @@ DETAILS = {
 
 def main() -> int:
     repo = Path(__file__).resolve().parents[1]
+    environment_specs = yaml.safe_load(
+        (repo / "environments/index.yaml").read_text(encoding="utf-8")
+    )["environment_specs"]
     spec_dir = repo / "src" / "bridge" / "tool_packages" / "specs"
     card_dir = repo / "src" / "bridge" / "tool_packages" / "cards"
     for spec_path in sorted(spec_dir.glob("*.yaml")):
@@ -107,7 +110,10 @@ def main() -> int:
         card_path = card_dir / f"{tool_id}.md"
         if tool_id in DETAILED_CARD_IDS:
             text = card_path.read_text(encoding="utf-8")
-            _validate_detailed_card(text, spec)
+            environment_state = environment_specs[spec["environment_spec_id"]][
+                "state"
+            ]
+            _validate_detailed_card(text, spec, environment_state)
         else:
             text = render(spec, DETAILS[tool_id])
         package_dir = repo / "tool_packages" / tool_id
@@ -127,13 +133,13 @@ def _write_card_pair(text: str, public_path: Path, packaged_path: Path) -> None:
     packaged_path.write_bytes(encoded)
 
 
-def _validate_detailed_card(text: str, spec: dict) -> None:
+def _validate_detailed_card(text: str, spec: dict, environment_state: str) -> None:
     required_fragments = (
         f"# {spec['tool_id']} {spec['name']}",
         f"| Package version | `{spec['version']}` |",
         f"| Runtime state | `{spec['implementation_state']}` |",
         f"| Scientific state | `{spec['scientific_status']}` |",
-        f"| EnvironmentSpec | `{spec['environment_spec_id']}` (`proposed`) |",
+        f"| EnvironmentSpec | `{spec['environment_spec_id']}` (`{environment_state}`) |",
         f"| Input envelope | `{spec['input_schema_ref']}` |",
         f"| Output envelope | `{spec['output_schema_ref']}` |",
         f"| Result schema | `{spec['result_schema_ref']}` |",

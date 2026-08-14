@@ -71,7 +71,7 @@ def test_evidence_environment_is_self_contained_and_pinned() -> None:
     spec = _load_yaml(entry["yaml_ref"])
 
     assert entry["conda_name"] == spec["name"] == "bridge-p0-evidence"
-    assert entry["state"] == "proposed"
+    assert entry["state"] == "health_check_passed"
     assert spec["channels"] == ["conda-forge", "nodefaults"]
     assert {
         "python=3.12.13",

@@ -4,7 +4,7 @@
 |---|---|
 | Branch | `p0-10-claim-verifier` |
 | Baseline | `9fa004eeff6ef78d6e737f47f458ae134ec58ba2` |
-| Status | `in_progress` |
+| Status | `public_validation_complete_internal_input_pending` |
 
 ## Biological and reporting question
 
@@ -38,18 +38,19 @@ interval, evidence state, comparison scope and approved wording?
 
 ## Work
 
-1. [ ] Define the four input objects, check records, verification result,
+1. [x] Define the four input objects, check records, verification result,
    verified report and run-result Schema.
-2. [ ] Implement deterministic eligibility, claim/source binding, exact numeric
+2. [x] Implement deterministic eligibility, claim/source binding, exact numeric
    and state checks, comparison constraints, prohibited wording, immutable
    output and typed failures.
-3. [ ] Add a versioned packaged benchmark JSON plus generated `BENCHMARK.md`,
+3. [x] Add a versioned packaged benchmark JSON plus generated `BENCHMARK.md`,
    including method decisions, failure behavior and resource fields.
-4. [ ] Update the Tool spec, detailed Tool Card, example request, generators,
+4. [x] Update the Tool spec, detailed Tool Card, example request, generators,
    package data and focused tests without introducing a general framework.
-5. [ ] Build and install the exact wheel on the server; run the complete suite,
+5. [x] Build and install the exact wheel on the server; run the complete suite,
    benchmark fixtures, determinism/resource measurements and repository gates.
-6. [ ] Add a public-safe server validation record and open one Draft PR.
+6. [ ] Run one authorized internal four-object report, add the public-safe server
+   validation record and open one Draft PR.
 
 ## Acceptance
 

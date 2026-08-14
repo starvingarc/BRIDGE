@@ -14,7 +14,7 @@ No real product case is evaluated by the packaged fixture. The executable implem
 | Package version | `0.2.0` |
 | Runtime state | `implemented` |
 | Scientific state | `candidate` |
-| EnvironmentSpec | `ENV-EVIDENCE-v0.1` (`proposed`) |
+| EnvironmentSpec | `ENV-EVIDENCE-v0.1` (`health_check_passed`) |
 | Input envelope | `bridge://schemas/tool-request/v0.2` |
 | Output envelope | `bridge://schemas/tool-run/v0.2` |
 | Result schema | `bridge://schemas/evidence-sufficiency-run-result/v0.1` |
@@ -279,7 +279,7 @@ The shortened example is explanatory, not a standalone Schema-valid fixture. Exa
 
 ## Methods, environment and license
 
-The package selects only the existing internal records `METHOD-BRIDGE-ALGORITHM-A0908D`, `METHOD-BRIDGE-REGISTRY`, and `METHOD-BRIDGE-VALIDATOR`. All remain `formal_eligible=false`. Pydantic performs contract parsing but is not represented as an executed scientific method. `ENV-EVIDENCE-v0.1` remains proposed pending a separate reproducibility and health-check record. Repository code is distributed under the repository MIT license; selected method/source records retain their own catalogued version, source and license fields.
+The package selects only the existing internal records `METHOD-BRIDGE-ALGORITHM-A0908D`, `METHOD-BRIDGE-REGISTRY`, and `METHOD-BRIDGE-VALIDATOR`. All remain `formal_eligible=false`. Pydantic performs contract parsing but is not represented as an executed scientific method. `ENV-EVIDENCE-v0.1` has passed an engineering health check; that environment status does not promote a method or validate a real ProductCase. Repository code is distributed under the repository MIT license; selected method/source records retain their own catalogued version, source and license fields.
 
 ## Prohibited interpretation and remaining work
 

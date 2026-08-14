@@ -7,7 +7,7 @@ environment_specs:
     runtime_class: cpu_default_gpu_optional
   ENV-EVIDENCE-v0.1:
     conda_name: bridge-p0-evidence
-    state: proposed
+    state: health_check_passed
     yaml_ref: environments/bridge-p0-evidence.yml
     runtime_class: cpu_only
   ENV-CELLSTATE-PY-v0.1:

@@ -18,14 +18,14 @@ constitute a selected default.
 
 ## 1. 任务目标与边界
 
-Claim Verifier 核验正式内容是否忠实于 BRIDGE 已有证据、合同和发布规则。它检查数字、来源、状态语义、比较资格、图表说明、建议边界和禁止主张，并阻止不合格内容进入正式发布或 public-safe 导出。
+Claim Verifier 核验结构化报告内容是否忠实于 BRIDGE 已有证据、合同和发布规则。v0.1 检查数字、来源、状态语义、比较条件和禁止主张，并阻止不合格内容进入后续发布流程。
 
 本模块回答：
 
 - 报告中的每个可核查主张来自哪条 Evidence、Knowledge 或注册 Statement。
 - 数字、单位、分母、区间和显示精度是否与来源对象逐字段一致。
 - `negative`、`missing`、`unknown`、`unavailable` 和 `alert` 是否被正确解释。
-- 产品比较、图表和 Recommendation 是否超出适用范围。
+- 已声明的描述性比较是否被写成推断性或因果性结论。
 - 文本是否包含临床、放行、绝对排名、最佳阶段或其他禁止主张。
 - 当前内容能否发布、是否需要人工复核，或必须阻止发布。
 
@@ -41,10 +41,10 @@ P0 覆盖中文、英文和中英混排。普通探索对话保持 `unverified`�
 | --- | --- |
 | 内部正式报告 | 完整核验；允许内部逻辑 ID，不允许在正文显示服务器路径或原始受限 metadata |
 | public-safe 候选 | 完整核验并输出导出资格；不在本模块执行脱敏或字段删除 |
-| 产品比较报告 | 核验 comparability、comparison mode、效应量、区间和允许措辞 |
+| 产品比较报告 | 仅核验已写入 ClaimBlock 与 EvidenceRecord 的 comparison mode、数值和措辞 |
 | 正式 Web 回答 | 转换为结构化 `ReportDraft` 后核验 |
-| 图表标题、图注和说明 | 与 `VisualizationArtifact`、Evidence IDs 和来源数据共同核验 |
-| Recommendation Card | 核验数量、依据、反对证据、验证方案和禁止内容 |
+| 图表标题、图注和说明 | v0.1 返回 `unavailable`；不接收图像、SVG 或网页 |
+| Recommendation Card | v0.1 不接收；需后续独立合同 |
 | 探索对话与探索图表 | 标记 `unverified/exploratory`，不得冒充正式输出 |
 
 ### 2.2 结构化优先
@@ -57,31 +57,26 @@ P0 覆盖中文、英文和中英混排。普通探索对话保持 `unverified`�
 
 ## 3. 输入与对象合同
 
-### 3.1 必要输入
+### 3.1 v0.1 必要输入
 
-- `ReportDraft` 及其 canonical content hash。
-- `ProductCase`、`ProductDefinitionCard`，存在比较时还需 `ComparisonRecord`。
-- `CaseEvidenceGraph` 或 `ComparisonEvidenceGraph` 的只读查询结果。
-- `EvidenceRecord`、`EvidenceSufficiencyProfile` 和 reconciliation state。
-- `VisualizationArtifact`、Recommendation Cards 和 artifact manifests。
-- 冻结 `ClaimPolicySpec` 集合及 `StatementRegistry`。
-- `MeasurementSpec`、存在时的 `ScoreContract` 和所有 `FormattingSpec`。
-- reference、prior、knowledge、tool、algorithm 和 environment snapshots。
-- 目标受众、语言、发布通道和 visibility policy。
+- 一个带 canonical content hash 的 `ReportDraft`。
+- 一个上游 P0-09 生成的 `EvidenceRecordSet`。
+- 一个活动的 `ClaimPolicySpec`。
+- 一个 `StatementRegistry`。
 
-缺少活动版本的 `ClaimPolicySpec` 时返回 `not_assessed`。schema、引用或 hash 错误进入确定性 blocker，不允许 Verifier 从文件名或文本内容猜测缺失关系。
+四个对象均由 `StructuredInputRef` 提供绝对路径、schema、版本和 SHA-256。
+ProductCase、ComparisonRecord、图表、Recommendation 或其他上游对象必须先被
+编译为 EvidenceRecord；v0.1 不直接读取这些对象。缺少活动策略时返回
+`not_assessed`。schema、引用或 hash 错误进入确定性失败，不从文件名或文本猜测关系。
 
 ### 3.2 ReportDraft
 
 ```text
 report_id / report_version / content_hash
-audience=internal_research|public_candidate
-language=zh|en|mixed
-product_case_refs / comparison_record_ref
-claim_blocks / visualization_refs / recommendation_refs
-policy_snapshot_ref / statement_registry_ref
-renderer_id / renderer_version
-created_at / authoring_channel
+audience=internal_research|public_candidate / language=zh|en|mixed
+evidence_record_set_ref / claim_policy_ref / statement_registry_ref
+claim_blocks / human_review_decisions
+renderer_id / renderer_version / created_at / authoring_channel
 ```
 
 `ReportDraft` 是核验输入，不是已发布报告。`authoring_channel` 至少区分 deterministic renderer、LLM、human edit 和 imported draft。
@@ -90,10 +85,8 @@ created_at / authoring_channel
 
 ```text
 claim_id / claim_version / claim_type
-text / language / source_span
-subject_ref / predicate / biological_context
-evidence_refs / knowledge_refs / statement_refs
-value_bindings / visualization_refs
+text / language / evidence_refs / statement_refs
+value_bindings / reported_evidence_state / comparison_mode
 intended_release_tier / authoring_channel
 ```
 
@@ -104,11 +97,10 @@ intended_release_tier / authoring_channel
 `ValueBinding` 至少保存：
 
 ```text
-binding_id / claim_ref / rendered_span
-source_object_ref / source_field_path
+binding_id / source_evidence_ref / source_field
 canonical_numeric_string / raw_unit
-numerator_ref / denominator_ref / interval_ref
-formatting_spec_ref / rendered_value
+denominator_numeric_string / interval_lower_numeric_string
+interval_upper_numeric_string / format_spec / rendered_value
 ```
 
 `FormattingSpec` 至少保存：显示单位、精度、小数位、百分比转换、舍入模式、区间格式、缺失值格式和本地化规则。数值从 canonical numeric string 构建 `Decimal` 后按冻结规则渲染；不采用“足够接近”的浮点容差。

@@ -380,6 +380,12 @@ def test_benchmark_markdown_is_generated_from_json() -> None:
     assert "Aggregate score/rank: `null` / `null`" in actual
     assert "## Exact numeric and unit fidelity" in actual
 
+    card = Path("src/bridge/tool_packages/cards/P0-10.md").read_text(
+        encoding="utf-8"
+    )
+    assert benchmark_sha256() in card
+    assert f"`{load_benchmark().benchmark_state}`" in card
+
 
 def test_verified_report_records_benchmark_and_one_immutable_artifact(tmp_path: Path) -> None:
     request = _request(tmp_path)

@@ -13,7 +13,7 @@ denominator, interval, evidence state, comparison scope and approved wording.
 | Runtime state | `implemented` |
 | Scientific state | `candidate` |
 | Optional | `no` |
-| EnvironmentSpec | `ENV-EVIDENCE-v0.1` (`proposed`) |
+| EnvironmentSpec | `ENV-EVIDENCE-v0.1` (`health_check_passed`) |
 | Input envelope | `bridge://schemas/tool-request/v0.2` |
 | Output envelope | `bridge://schemas/tool-run/v0.2` |
 | Result schema | `bridge://schemas/claim-verifier-run-result/v0.1` |
@@ -90,8 +90,8 @@ Its human projection is [BENCHMARK.md](https://github.com/starvingarc/BRIDGE/blo
 |---|---|
 | Benchmark ID | `P0-10-BENCHMARK-v0.1` |
 | Benchmark version | `0.1.0` |
-| Benchmark JSON SHA-256 | `3c5ac1c25b86027c32522a1d1774c2c6f32dbc9c363b6aa6585328e54aa5e9df` |
-| Current benchmark state | `awaiting_server_validation` |
+| Benchmark JSON SHA-256 | `7335445beb1204e42463a413dd76ac91cd652bc14072b104a10ad37d5475fe5b` |
+| Current benchmark state | `server_validated_public_candidate` |
 | Selected default | `none` |
 | Aggregate score/rank | `null` / `null` |
 
@@ -116,10 +116,11 @@ and `score_state` remains unavailable.
 
 ## Validation boundary
 
-The package remains a candidate until the exact wheel is built and tested on the
-server, deterministic reruns and five timing repetitions are recorded, the
-public record and an authorized anonymized internal report are run, and the
-benchmark JSON and Markdown projection are updated from that evidence.
+The exact server wheel, public record, synthetic controls and five single-thread
+timing repetitions have been validated. The internal benchmark row remains
+`not_run`: no authorized four-object internal report was found, and old score
+reports or P0-02 controlled data were not substituted. The selected default
+therefore remains unset and the package remains a public-validated candidate.
 
 Detailed requirement:
 `docs/bridge_spec_v0.1/claim_verifier_task_card.md`.

@@ -11,7 +11,7 @@ Given already-computed, versioned product evidence, which atomic records support
 | Package version | `0.2.0` |
 | Runtime state | `implemented` |
 | Scientific state | `candidate` |
-| EnvironmentSpec | `ENV-EVIDENCE-v0.1` (`proposed`) |
+| EnvironmentSpec | `ENV-EVIDENCE-v0.1` (`health_check_passed`) |
 | Input envelope | `bridge://schemas/tool-request/v0.2` |
 | Output envelope | `bridge://schemas/tool-run/v0.2` |
 | Result schema | `bridge://schemas/evidence-compiler-run-result/v0.1` |
