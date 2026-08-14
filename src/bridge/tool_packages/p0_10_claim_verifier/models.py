@@ -458,7 +458,7 @@ class ClaimVerifierMethodBenchmark(FrozenModel):
     task_metrics: dict[str, float | int | str | None]
     uncertainty_or_interval: str | None
     positive_controls: list[str]
-    negative_controls: list[str]
+    negative_controls: list[str] = Field(default_factory=list)
     missing_input_behavior: str
     ood_or_abstention_behavior: str
     failure_behavior: str
