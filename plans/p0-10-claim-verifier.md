@@ -4,7 +4,7 @@
 |---|---|
 | Branch | `p0-10-claim-verifier` |
 | Baseline | `9fa004eeff6ef78d6e737f47f458ae134ec58ba2` |
-| Status | `public_validation_complete_internal_input_pending` |
+| Status | `server_validated_candidate_ready_for_draft_pr` |
 
 ## Biological and reporting question
 
@@ -51,7 +51,7 @@ interval, evidence state, comparison scope and approved wording?
    benchmark fixtures, determinism/resource measurements and repository gates.
 6. [x] Add the public-safe server validation record for the public and synthetic
    candidate gates.
-7. [ ] Run one authorized internal four-object report.
+7. [x] Run one authorized internal four-object report.
 8. [ ] Open one Draft PR after the internal run is represented in the benchmark.
 
 ## Acceptance

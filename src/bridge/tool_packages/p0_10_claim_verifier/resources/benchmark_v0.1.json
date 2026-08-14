@@ -2,7 +2,7 @@
   "aggregate_rank": null,
   "aggregate_score": null,
   "benchmark_id": "P0-10-BENCHMARK-v0.1",
-  "benchmark_state": "server_validated_public_candidate",
+  "benchmark_state": "server_validated_candidate",
   "benchmark_version": "0.1.0",
   "data_cases": [
     {
@@ -37,14 +37,14 @@
       "assay": null,
       "case_id": "INTERNAL-ANONYMIZED-REPORT-v0.1",
       "cell_count": null,
-      "claim_count": 0,
+      "claim_count": 3,
       "data_class": "internal_anonymized",
       "gene_count": null,
       "independent_replicate_count": null,
       "not_applicable_reason": "Only anonymous report type, scale and aggregate verification metrics may be published.",
       "public_accession_or_ref": null,
       "sample_count": null,
-      "scope": "Awaiting an authorized server-only structured report; no private path or identifier is committed.",
+      "scope": "Anonymous internal engineering report with three exact aggregate claims; no private path or identifier is committed.",
       "split": "server-only full report"
     }
   ],
@@ -54,7 +54,8 @@
       "analysis_task": "Deterministic release aggregation",
       "data_case_ids": [
         "PUBLIC-SERVER-REPRO-20260812",
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
@@ -78,7 +79,8 @@
       "negative_controls": [],
       "ood_or_abstention_behavior": "Returns not_assessed for an inactive policy and review_required for unresolved semantic rules.",
       "positive_controls": [
-        "fully bound verified report"
+        "fully bound verified report",
+        "anonymous internal three-claim report"
       ],
       "preprocessing_sensitivity": "Canonical structured objects only; free Markdown is excluded.",
       "random_seeds": [],
@@ -102,7 +104,12 @@
       "source": "BRIDGE repository",
       "task_metrics": {
         "blocker_non_override_rate": 1.0,
-        "deterministic_repeat_match": 1.0
+        "deterministic_repeat_match": 1.0,
+        "internal_blocker_count": 0,
+        "internal_claim_count": 3,
+        "internal_repeat_match": 1.0,
+        "internal_review_count": 0,
+        "internal_warning_count": 0
       },
       "uncertainty_or_interval": "Exact pass/fail counts; no statistical interval.",
       "version": "0.1.0"
@@ -111,7 +118,8 @@
       "analysis_task": "Structured contract validation",
       "data_case_ids": [
         "PUBLIC-SERVER-REPRO-20260812",
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
@@ -163,7 +171,8 @@
     {
       "analysis_task": "Structured contract validation",
       "data_case_ids": [
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
@@ -216,7 +225,8 @@
       "analysis_task": "Exact numeric and unit fidelity",
       "data_case_ids": [
         "PUBLIC-SERVER-REPRO-20260812",
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
@@ -272,7 +282,8 @@
       "analysis_task": "Exact numeric and unit fidelity",
       "data_case_ids": [
         "PUBLIC-SERVER-REPRO-20260812",
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
@@ -374,7 +385,8 @@
       "analysis_task": "Bilingual prohibited-claim rules",
       "data_case_ids": [
         "PUBLIC-SERVER-REPRO-20260812",
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
@@ -429,7 +441,8 @@
     {
       "analysis_task": "Bilingual prohibited-claim rules",
       "data_case_ids": [
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
@@ -586,7 +599,8 @@
       "analysis_task": "Controlled report rendering",
       "data_case_ids": [
         "PUBLIC-SERVER-REPRO-20260812",
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",
@@ -640,7 +654,8 @@
       "analysis_task": "Controlled report rendering",
       "data_case_ids": [
         "PUBLIC-SERVER-REPRO-20260812",
-        "SYNTHETIC-P0-10-CONTROLS-v0.1"
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
         "benchmark_sha256": "95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253",

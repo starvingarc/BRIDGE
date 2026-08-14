@@ -360,8 +360,27 @@ def test_benchmark_is_task_grouped_complete_and_has_no_default_or_aggregate() ->
     assert benchmark.default_method_id is None
     assert benchmark.aggregate_score is None
     assert benchmark.aggregate_rank is None
+    assert benchmark.benchmark_state == "server_validated_candidate"
     assert set(spec.method_ids) == approved_runtime
     assert len(benchmark.methods) == 18
+    internal_case = next(
+        case
+        for case in benchmark.data_cases
+        if case.case_id == "INTERNAL-ANONYMIZED-REPORT-v0.1"
+    )
+    assert internal_case.claim_count == 3
+    assert all(
+        internal_case.case_id in method.data_case_ids
+        for method in benchmark.methods
+        if method.evaluation != "audit_only"
+    )
+    core = next(
+        method
+        for method in benchmark.methods
+        if method.method_id == "METHOD-INTERNAL-DETERMINISTIC-ENGINE-33C959"
+    )
+    assert core.task_metrics["internal_claim_count"] == 3
+    assert core.task_metrics["internal_repeat_match"] == 1.0
     assert {
         method.decision.benchmark_sha256 for method in benchmark.methods
     } == {decision_payload_sha256(benchmark.model_dump(mode="json"))}
