@@ -122,5 +122,7 @@ timing repetitions have been validated. The internal benchmark row remains
 reports or P0-02 controlled data were not substituted. The selected default
 therefore remains unset and the package remains a public-validated candidate.
 
+Server evidence: [P0-10 candidate validation, 2026-08-14](https://github.com/starvingarc/BRIDGE/blob/main/docs/validation/p0_10_claim_verifier_20260814.md).
+
 Detailed requirement:
 `docs/bridge_spec_v0.1/claim_verifier_task_card.md`.

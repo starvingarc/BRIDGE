@@ -19,6 +19,6 @@ Keep Symphony in `bridge-cellstate-bioc-r46` unless a reproducible health check 
 
 The core and cell-state environment validation is recorded in [Server
 reproducibility validation, 2026-08-12](../docs/validation/server_reproducibility_20260812.md).
-The evidence environment validation is recorded with the P0-10 candidate.
+The evidence environment validation is recorded with the [P0-10 candidate](../docs/validation/p0_10_claim_verifier_20260814.md).
 
 No environment installation implies scientific validation or method promotion.

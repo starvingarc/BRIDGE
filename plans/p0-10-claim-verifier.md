@@ -49,8 +49,10 @@ interval, evidence state, comparison scope and approved wording?
    package data and focused tests without introducing a general framework.
 5. [x] Build and install the exact wheel on the server; run the complete suite,
    benchmark fixtures, determinism/resource measurements and repository gates.
-6. [ ] Run one authorized internal four-object report, add the public-safe server
-   validation record and open one Draft PR.
+6. [x] Add the public-safe server validation record for the public and synthetic
+   candidate gates.
+7. [ ] Run one authorized internal four-object report.
+8. [ ] Open one Draft PR after the internal run is represented in the benchmark.
 
 ## Acceptance
 
