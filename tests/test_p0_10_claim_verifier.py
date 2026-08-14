@@ -23,6 +23,7 @@ from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     PUBLIC_SCHEMA_MODELS,
     ClaimPolicySpec,
+    NumericFormatSpec,
     ReportDraft,
     StatementRegistry,
     report_content_hash,

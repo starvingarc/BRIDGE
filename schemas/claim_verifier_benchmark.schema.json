@@ -494,6 +494,7 @@
     "benchmark_state": {
       "enum": [
         "awaiting_server_validation",
+        "server_validated_public_candidate",
         "server_validated_candidate"
       ],
       "title": "Benchmark State",
