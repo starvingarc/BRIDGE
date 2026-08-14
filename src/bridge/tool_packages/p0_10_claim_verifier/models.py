@@ -15,6 +15,8 @@ from bridge.toolkit.contracts import EvidenceState, FrozenModel
 
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
 EVIDENCE_REF_PATTERN = r"^evidence:[a-f0-9]{24}@[1-9][0-9]*$"
+CLAIM_REF_PATTERN = r"^claim:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
+PRODUCT_CASE_REF_PATTERN = r"^product-case:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
 FREE_MARKUP = re.compile(
     r"(?:^|\s)(?:#{1,6}|[-+*>]|\d+[.)])\s"
     r"|\[[^]\n]+\]\([^\n)]+\)"
@@ -105,32 +107,23 @@ class DecisionState(StrEnum):
 class NumericFormatSpec(FrozenModel):
     decimal_places: StrictInt = Field(ge=0, le=12)
     scale: Literal["identity", "percent"] = "identity"
-    suffix: str = ""
     rounding: Literal["half_even", "half_up"] = "half_even"
 
 
 class ValueBinding(FrozenModel):
     binding_id: str = Field(pattern=r"^binding:[A-Za-z0-9._:-]+$")
     source_evidence_ref: str = Field(pattern=EVIDENCE_REF_PATTERN)
-    source_field: Literal["value", "numerator", "denominator"]
+    source_field: Literal[
+        "value", "numerator", "denominator", "interval_lower", "interval_upper"
+    ]
     canonical_numeric_string: str = Field(min_length=1)
     raw_unit: str | None = None
-    denominator_numeric_string: str | None = None
-    interval_lower_numeric_string: str | None = None
-    interval_upper_numeric_string: str | None = None
     format_spec: NumericFormatSpec
-    rendered_value: str = Field(min_length=1)
+    text_span: tuple[StrictInt, StrictInt]
 
-    @field_validator(
-        "canonical_numeric_string",
-        "denominator_numeric_string",
-        "interval_lower_numeric_string",
-        "interval_upper_numeric_string",
-    )
+    @field_validator("canonical_numeric_string")
     @classmethod
-    def decimal_strings_are_finite(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
+    def decimal_string_is_finite(cls, value: str) -> str:
         try:
             number = Decimal(value)
         except InvalidOperation as exc:
@@ -139,13 +132,26 @@ class ValueBinding(FrozenModel):
             raise ValueError("numeric binding requires a finite decimal string")
         return value
 
-    @model_validator(mode="after")
-    def interval_is_complete(self) -> Self:
-        if (self.interval_lower_numeric_string is None) != (
-            self.interval_upper_numeric_string is None
+    @field_validator("raw_unit")
+    @classmethod
+    def raw_unit_is_plain_nonnumeric(cls, value: str | None) -> str | None:
+        if value is not None and (
+            not value.strip()
+            or value != value.strip()
+            or any(character.isdigit() for character in value)
+            or any(character in value for character in ("\n", "\r"))
         ):
-            raise ValueError("interval bindings require both lower and upper values")
-        return self
+            raise ValueError("raw_unit must be a plain nonnumeric unit")
+        return value
+
+    @field_validator("text_span")
+    @classmethod
+    def text_span_is_ordered(
+        cls, value: tuple[int, int]
+    ) -> tuple[int, int]:
+        if value[0] < 0 or value[1] <= value[0]:
+            raise ValueError("text_span must be a non-empty forward range")
+        return value
 
 
 class HumanReviewDecision(FrozenModel):
@@ -160,6 +166,8 @@ class HumanReviewDecision(FrozenModel):
 class ClaimBlock(FrozenModel):
     claim_id: str = Field(pattern=r"^claim-block:[A-Za-z0-9._:-]+$")
     claim_version: str = Field(min_length=1)
+    claim_ref: str = Field(pattern=CLAIM_REF_PATTERN)
+    product_case_ref: str = Field(pattern=PRODUCT_CASE_REF_PATTERN)
     claim_type: ClaimType
     text: str = Field(min_length=1)
     language: ReportLanguage
@@ -202,6 +210,9 @@ class ClaimBlock(FrozenModel):
         ids = [item.binding_id for item in value]
         if len(ids) != len(set(ids)):
             raise ValueError("value bindings must be unique")
+        spans = sorted(item.text_span for item in value)
+        if any(left[1] > right[0] for left, right in zip(spans, spans[1:])):
+            raise ValueError("value binding text spans must not overlap")
         return value
 
 
@@ -374,6 +385,8 @@ class ClaimCheckRecord(FrozenModel):
 
 class VerifiedClaim(FrozenModel):
     claim_id: str
+    claim_ref: str
+    product_case_ref: str
     text: str
     evidence_refs: list[str]
     statement_refs: list[str]

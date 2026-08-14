@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import stat
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from pydantic import ValidationError
 
@@ -87,6 +87,18 @@ def read_regular_bytes(path: Path) -> bytes:
     ):
         raise OSError("file changed while reading")
     return raw
+
+
+def directory_state(path: Path) -> Literal["missing", "directory", "other"]:
+    """Classify one path without following a final symlink."""
+
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError:
+        return "missing"
+    except OSError:
+        return "other"
+    return "directory" if stat.S_ISDIR(mode) else "other"
 
 
 def _read_verified_input(ref: StructuredInputRef) -> bytes:

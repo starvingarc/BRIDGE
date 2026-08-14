@@ -34,12 +34,12 @@ checksums: `examples/requests/p0_10_claim_verifier.json`.
 
 P0-10 accepts exactly four immutable `application/json` objects. Every
 `StructuredInputRef` requires an absolute regular-file path, exact lowercase
-SHA-256 checksum, Schema URI and `object_version=0.1.0`.
+SHA-256 checksum, Schema URI and matching object version.
 
 | Role | Schema | Meaning |
 |---|---|---|
 | `report_draft` | `bridge://schemas/report-draft/v0.1` | Ordered plain-text ClaimBlocks, ValueBindings and optional human review decisions |
-| `evidence_record_set` | `bridge://schemas/evidence-record-set/v0.1` | Versioned upstream EvidenceRecords produced by the evidence compiler |
+| `evidence_graph_manifest` | `bridge://schemas/case-evidence-graph-manifest/v0.1` | P0-09 Case graph manifest whose hashes, graph and EvidenceRecord projection pass the read-only integrity boundary |
 | `claim_policy_spec` | `bridge://schemas/claim-policy-spec/v0.1` | Claim-type, severity, bilingual text and comparison rules |
 | `statement_registry` | `bridge://schemas/statement-registry/v0.1` | Approved fixed boundary statements and exact language variants |
 
@@ -52,14 +52,15 @@ or checksum mismatch produces a failed run with a typed reason code.
 
 The verifier runs these checks in a fixed order:
 
-1. Report hash and four-object binding.
-2. Claim-to-Evidence and Statement references.
+1. Report hash, four-object binding and complete P0-09 graph integrity.
+2. Claim/ProductCase-to-Evidence and Statement references.
 3. Evidence lifecycle, applicability, tier and reported state.
-4. Exact `Decimal` value, unit, denominator, interval, rounding and rendered
-   value fidelity.
+4. One-field/one-span `Decimal` bindings for each rendered value, unit,
+   denominator or interval endpoint.
 5. Unbound numeric tokens and descriptive-versus-inferential comparison scope.
 6. Bounded Unicode bilingual policy patterns and exact Statement exceptions.
-7. Authorized human resolution of review-only findings.
+7. Whole-report private-content checks, deterministic-authoring checks and
+   authorized resolution of policy review items.
 8. Release-state aggregation and controlled Jinja rendering.
 
 A human decision cannot clear a hard blocker. LLM judgment, OPA, free-Markdown

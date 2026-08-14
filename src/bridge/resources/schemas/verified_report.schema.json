@@ -7,12 +7,20 @@
           "title": "Claim Id",
           "type": "string"
         },
+        "claim_ref": {
+          "title": "Claim Ref",
+          "type": "string"
+        },
         "evidence_refs": {
           "items": {
             "type": "string"
           },
           "title": "Evidence Refs",
           "type": "array"
+        },
+        "product_case_ref": {
+          "title": "Product Case Ref",
+          "type": "string"
         },
         "statement_refs": {
           "items": {
@@ -28,6 +36,8 @@
       },
       "required": [
         "claim_id",
+        "claim_ref",
+        "product_case_ref",
         "text",
         "evidence_refs",
         "statement_refs"

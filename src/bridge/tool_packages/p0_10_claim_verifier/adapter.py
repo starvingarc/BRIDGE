@@ -10,13 +10,20 @@ from uuid import uuid4
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
     canonical_json_bytes,
+    directory_state,
     failed_v2_run,
     inputs_unchanged,
     load_structured_inputs,
+    read_regular_bytes,
     single_object,
     write_json,
 )
-from bridge.tool_packages.p0_09_evidence_compiler.models import EvidenceRecordSet
+from bridge.tool_packages.p0_09_evidence_compiler.models import (
+    CaseEvidenceGraphManifest,
+    contains_unsafe_reference,
+    EvidenceRecordSet,
+)
+from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
 from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
     benchmark_sha256,
     load_benchmark,
@@ -46,9 +53,9 @@ from bridge.toolkit.contracts import (
 RESULT_SCHEMA_REF = "bridge://schemas/claim-verifier-run-result/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "report_draft": ("bridge://schemas/report-draft/v0.1", ReportDraft),
-    "evidence_record_set": (
-        "bridge://schemas/evidence-record-set/v0.1",
-        EvidenceRecordSet,
+    "evidence_graph_manifest": (
+        "bridge://schemas/case-evidence-graph-manifest/v0.1",
+        CaseEvidenceGraphManifest,
     ),
     "claim_policy_spec": (
         "bridge://schemas/claim-policy-spec/v0.1",
@@ -82,7 +89,7 @@ class ClaimVerifierAdapter:
         reasons = _envelope_reasons(request, spec)
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
-        if loaded is not None:
+        if loaded is not None and not reasons:
             reasons.extend(_binding_reasons(request, loaded))
         reason_codes = sorted(set(reasons))
         return EligibilityResult(
@@ -100,9 +107,10 @@ class ClaimVerifierAdapter:
             return _failed_run(request, spec, reasons)
 
         report = single_object(request, loaded, "report_draft", ReportDraft)
-        evidence_set = single_object(
-            request, loaded, "evidence_record_set", EvidenceRecordSet
-        )
+        try:
+            evidence_set = _verified_evidence_set(request, loaded)
+        except ValueError:
+            return _failed_run(request, spec, ["evidence_graph_integrity_failed"])
         policy = single_object(
             request, loaded, "claim_policy_spec", ClaimPolicySpec
         )
@@ -196,11 +204,9 @@ def _envelope_reasons(
         contract = ROLE_MODELS.get(ref.role)
         if contract is not None and ref.schema_ref != contract[0]:
             reasons.append("object_input_schema_mismatch")
-        if ref.object_version != "0.1.0":
+        if ref.role != "evidence_graph_manifest" and ref.object_version != "0.1.0":
             reasons.append("object_input_version_mismatch")
-    if request.output_dir.exists() and (
-        request.output_dir.is_symlink() or not request.output_dir.is_dir()
-    ):
+    if directory_state(request.output_dir) == "other":
         reasons.append("output_dir_not_regular_directory")
     return reasons
 
@@ -216,12 +222,10 @@ def _load_inputs(
 
 
 def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> None:
-    version = getattr(
-        value,
-        {
-            "evidence_record_set": "record_set_version",
-        }.get(ref.role, "object_version"),
-        None,
+    version = (
+        str(value.graph_version)
+        if isinstance(value, CaseEvidenceGraphManifest)
+        else getattr(value, "object_version", None)
     )
     if version != ref.object_version:
         from bridge.tool_packages._structured_runtime import StructuredInputError
@@ -231,14 +235,18 @@ def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> Non
 
 def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     report = single_object(request, loaded, "report_draft", ReportDraft)
-    evidence_set = single_object(
-        request, loaded, "evidence_record_set", EvidenceRecordSet
-    )
     policy = single_object(request, loaded, "claim_policy_spec", ClaimPolicySpec)
     statements = single_object(
         request, loaded, "statement_registry", StatementRegistry
     )
     reasons: list[str] = []
+    if contains_unsafe_reference(report.model_dump(mode="json")):
+        reasons.append("unsafe_report_content")
+    try:
+        evidence_set = _verified_evidence_set(request, loaded)
+    except ValueError:
+        reasons.append("evidence_graph_integrity_failed")
+        return reasons
     record_set_ref = f"{evidence_set.record_set_id}@{evidence_set.record_set_version}"
     if report.evidence_record_set_ref != record_set_ref:
         reasons.append("evidence_record_set_binding_mismatch")
@@ -254,6 +262,25 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         if decision.rule_id not in rule_ids:
             reasons.append("human_review_rule_not_found")
     return reasons
+
+
+def _verified_evidence_set(
+    request: ToolRequestV2, loaded: LoadedInputs
+) -> EvidenceRecordSet:
+    manifest = single_object(
+        request, loaded, "evidence_graph_manifest", CaseEvidenceGraphManifest
+    )
+    manifest_ref = next(
+        ref for ref in request.object_inputs if ref.role == "evidence_graph_manifest"
+    )
+    graph = EvidenceGraphQueries.open(manifest_ref.path)
+    evidence_set = graph.evidence_record_set
+    if (
+        evidence_set.graph_id != manifest.graph_id
+        or evidence_set.graph_version != manifest.graph_version
+    ):
+        raise ValueError("manifest_integrity_failed")
+    return evidence_set
 
 
 def _input_hash(
@@ -286,35 +313,48 @@ def _publish_result(
     run_id: str,
     result: ClaimVerifierRunResult,
 ) -> Path:
-    output_root = request.output_dir.resolve()
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root = request.output_dir
+    if directory_state(output_root) == "other":
+        raise PublicationError("output_path_invalid")
+    try:
+        output_root.mkdir(parents=True, exist_ok=True)
+    except (OSError, RuntimeError):
+        raise PublicationError("output_path_invalid") from None
+    if directory_state(output_root) != "directory":
+        raise PublicationError("output_path_invalid")
     staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    staging.mkdir(mode=0o700)
     filename = "claim_verifier_run_result.json"
     try:
+        staging.mkdir(mode=0o700)
         write_json(staging / filename, result.model_dump(mode="json"))
         if not inputs_unchanged(request.object_inputs):
             raise PublicationError("structured_input_modified_during_run")
         final = output_root / run_id
-        if final.exists():
-            if final.is_symlink() or not final.is_dir():
-                raise PublicationError("existing_run_bundle_hash_mismatch")
+        final_state = directory_state(final)
+        if final_state == "directory":
             existing = final / filename
-            if (
-                not existing.is_file()
-                or existing.is_symlink()
-                or existing.read_bytes() != (staging / filename).read_bytes()
-                or {path.name for path in final.iterdir()} != {filename}
-            ):
+            try:
+                matches = (
+                    read_regular_bytes(existing)
+                    == read_regular_bytes(staging / filename)
+                    and {path.name for path in final.iterdir()} == {filename}
+                )
+            except (OSError, RuntimeError):
+                matches = False
+            if not matches:
                 raise PublicationError("existing_run_bundle_hash_mismatch")
             shutil.rmtree(staging)
-        else:
+        elif final_state == "missing":
             os.replace(staging, final)
-        return (final / filename).resolve()
-    except Exception:
-        if staging.exists():
-            shutil.rmtree(staging)
+        else:
+            raise PublicationError("existing_run_bundle_hash_mismatch")
+        return final / filename
+    except PublicationError:
+        shutil.rmtree(staging, ignore_errors=True)
         raise
+    except (OSError, RuntimeError):
+        shutil.rmtree(staging, ignore_errors=True)
+        raise PublicationError("output_path_invalid") from None
 
 
 def _failed_run(

@@ -704,11 +704,13 @@ class EvidenceGraphQueries:
         self,
         *,
         manifest: CaseEvidenceGraphManifest | ComparisonEvidenceGraphManifest,
+        record_set: EvidenceRecordSet,
         nodes: list[GraphNodeRow],
         edges: list[GraphEdgeRow],
         graph: nx.MultiDiGraph,
     ) -> None:
         self._manifest = manifest
+        self._record_set = record_set
         self._nodes = {item.node_id: item for item in nodes}
         self._edges = {item.edge_id: item for item in edges}
         self._graph = graph
@@ -832,7 +834,19 @@ class EvidenceGraphQueries:
                 # This is a public, untrusted-artifact boundary. Nested model
                 # validation details can contain attacker-controlled values.
                 raise ValueError("manifest_integrity_failed") from None
-        return cls(manifest=manifest, nodes=nodes, edges=edges, graph=graph)
+        return cls(
+            manifest=manifest,
+            record_set=record_set,
+            nodes=nodes,
+            edges=edges,
+            graph=graph,
+        )
+
+    @property
+    def evidence_record_set(self) -> EvidenceRecordSet:
+        """Return the record projection validated with the graph manifest."""
+
+        return self._record_set
 
     def get_claim_evidence(
         self,

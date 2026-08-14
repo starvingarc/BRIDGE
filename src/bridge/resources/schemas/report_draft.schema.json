@@ -20,6 +20,11 @@
           "title": "Claim Id",
           "type": "string"
         },
+        "claim_ref": {
+          "pattern": "^claim:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+          "title": "Claim Ref",
+          "type": "string"
+        },
         "claim_type": {
           "$ref": "#/$defs/ClaimType"
         },
@@ -50,6 +55,11 @@
         },
         "language": {
           "$ref": "#/$defs/ReportLanguage"
+        },
+        "product_case_ref": {
+          "pattern": "^product-case:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+          "title": "Product Case Ref",
+          "type": "string"
         },
         "reported_evidence_state": {
           "anyOf": [
@@ -85,6 +95,8 @@
       "required": [
         "claim_id",
         "claim_version",
+        "claim_ref",
+        "product_case_ref",
         "claim_type",
         "text",
         "language",
@@ -208,11 +220,6 @@
           ],
           "title": "Scale",
           "type": "string"
-        },
-        "suffix": {
-          "default": "",
-          "title": "Suffix",
-          "type": "string"
         }
       },
       "required": [
@@ -251,44 +258,8 @@
           "title": "Canonical Numeric String",
           "type": "string"
         },
-        "denominator_numeric_string": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Denominator Numeric String"
-        },
         "format_spec": {
           "$ref": "#/$defs/NumericFormatSpec"
-        },
-        "interval_lower_numeric_string": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Interval Lower Numeric String"
-        },
-        "interval_upper_numeric_string": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Interval Upper Numeric String"
         },
         "raw_unit": {
           "anyOf": [
@@ -302,11 +273,6 @@
           "default": null,
           "title": "Raw Unit"
         },
-        "rendered_value": {
-          "minLength": 1,
-          "title": "Rendered Value",
-          "type": "string"
-        },
         "source_evidence_ref": {
           "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
           "title": "Source Evidence Ref",
@@ -316,10 +282,26 @@
           "enum": [
             "value",
             "numerator",
-            "denominator"
+            "denominator",
+            "interval_lower",
+            "interval_upper"
           ],
           "title": "Source Field",
           "type": "string"
+        },
+        "text_span": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Text Span",
+          "type": "array"
         }
       },
       "required": [
@@ -328,7 +310,7 @@
         "source_field",
         "canonical_numeric_string",
         "format_spec",
-        "rendered_value"
+        "text_span"
       ],
       "title": "ValueBinding",
       "type": "object"

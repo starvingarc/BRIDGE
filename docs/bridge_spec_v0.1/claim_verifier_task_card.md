@@ -10,7 +10,8 @@
 | Current state | `candidate` |
 
 P0-10 `v0.1.0` implements the structured deterministic path only. Its four
-checksummed inputs are `ReportDraft`, `EvidenceRecordSet`, `ClaimPolicySpec` and
+checksummed inputs are `ReportDraft`, a P0-09 Case graph manifest,
+`ClaimPolicySpec` and
 `StatementRegistry`. Free Markdown recovery, LLM judgment, web/media rendering,
 OCR and automatic export are not runtime inputs. The versioned method record is
 [BENCHMARK.md](../../tool_packages/P0-10/BENCHMARK.md); candidate methods do not
@@ -60,11 +61,12 @@ P0 覆盖中文、英文和中英混排。普通探索对话保持 `unverified`�
 ### 3.1 v0.1 必要输入
 
 - 一个带 canonical content hash 的 `ReportDraft`。
-- 一个上游 P0-09 生成的 `EvidenceRecordSet`。
+- 一个上游 P0-09 生成的 Case Evidence Graph manifest 及其同目录制品。
 - 一个活动的 `ClaimPolicySpec`。
 - 一个 `StatementRegistry`。
 
-四个对象均由 `StructuredInputRef` 提供绝对路径、schema、版本和 SHA-256。
+四个入口对象均由 `StructuredInputRef` 提供绝对路径、schema、版本和 SHA-256；
+P0-09 manifest 中的 hash、图结构和 EvidenceRecord 投影必须通过同一只读完整性检查。
 ProductCase、ComparisonRecord、图表、Recommendation 或其他上游对象必须先被
 编译为 EvidenceRecord；v0.1 不直接读取这些对象。缺少活动策略时返回
 `not_assessed`。schema、引用或 hash 错误进入确定性失败，不从文件名或文本猜测关系。
@@ -79,12 +81,13 @@ claim_blocks / human_review_decisions
 renderer_id / renderer_version / created_at / authoring_channel
 ```
 
-`ReportDraft` 是核验输入，不是已发布报告。`authoring_channel` 至少区分 deterministic renderer、LLM、human edit 和 imported draft。
+`ReportDraft` 是核验输入，不是已发布报告。`authoring_channel` 区分
+deterministic renderer、human edit 和 imported draft；后两者始终需要人工复核。
 
 ### 3.3 ClaimBlock
 
 ```text
-claim_id / claim_version / claim_type
+claim_id / claim_version / claim_ref / product_case_ref / claim_type
 text / language / evidence_refs / statement_refs
 value_bindings / reported_evidence_state / comparison_mode
 intended_release_tier / authoring_channel
@@ -98,12 +101,13 @@ intended_release_tier / authoring_channel
 
 ```text
 binding_id / source_evidence_ref / source_field
-canonical_numeric_string / raw_unit
-denominator_numeric_string / interval_lower_numeric_string
-interval_upper_numeric_string / format_spec / rendered_value
+canonical_numeric_string / raw_unit / format_spec / text_span
 ```
 
-`FormattingSpec` 至少保存：显示单位、精度、小数位、百分比转换、舍入模式、区间格式、缺失值格式和本地化规则。数值从 canonical numeric string 构建 `Decimal` 后按冻结规则渲染；不采用“足够接近”的浮点容差。
+一个 binding 只绑定 EvidenceRecord 的一个数值字段；分母和区间端点若出现在文本中，
+分别使用独立 binding。明确的 `text_span` 必须逐字等于按小数位、百分比、舍入模式
+和非数字单位渲染的结果。数值从 canonical numeric string 构建 `Decimal`；不采用
+“足够接近”的浮点容差，也不允许任意数字后缀。
 
 单位转换只有在注册转换表或审核后的 Pint unit registry 中明确允许时才能执行。LLM 不参与数值、单位或舍入计算。
 

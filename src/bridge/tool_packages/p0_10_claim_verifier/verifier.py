@@ -9,7 +9,6 @@ import regex
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
-    contains_unsafe_reference,
     EvidenceApplicability,
     EvidenceLifecycleState,
     EvidenceRecord,
@@ -17,6 +16,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceTier,
 )
 from bridge.tool_packages.p0_10_claim_verifier.models import (
+    AuthoringChannel,
     CheckOutcome,
     CheckSeverity,
     ClaimBlock,
@@ -99,9 +99,16 @@ def verify_report(
     }
     checks: list[ClaimCheckRecord] = []
     for claim in report.claim_blocks:
-        if contains_unsafe_reference(claim.model_dump(mode="json")):
+        if (
+            report.authoring_channel is not AuthoringChannel.DETERMINISTIC_RENDERER
+            or claim.authoring_channel is not AuthoringChannel.DETERMINISTIC_RENDERER
+        ):
             checks.append(
-                _block(claim, "rule:private-content", "unsafe_scientific_reference")
+                _review_required(
+                    claim,
+                    "rule:deterministic-authoring",
+                    "non_deterministic_authoring_requires_review",
+                )
             )
         resolved = [evidence[ref] for ref in claim.evidence_refs if ref in evidence]
         checks.extend(
@@ -155,6 +162,8 @@ def verify_report(
             claims=[
                 VerifiedClaim(
                     claim_id=claim.claim_id,
+                    claim_ref=claim.claim_ref,
+                    product_case_ref=claim.product_case_ref,
                     text=claim.text,
                     evidence_refs=claim.evidence_refs,
                     statement_refs=claim.statement_refs,
@@ -240,6 +249,24 @@ def _check_claim_contract(
             checks.append(
                 _block(claim, "rule:evidence-state-policy", "evidence_state_not_allowed", evidence_refs=[ref])
             )
+        if record.claim_ref.ref != claim.claim_ref:
+            checks.append(
+                _block(
+                    claim,
+                    "rule:claim-scope",
+                    "claim_evidence_semantic_mismatch",
+                    evidence_refs=[ref],
+                )
+            )
+        if record.product_case_ref.ref != claim.product_case_ref:
+            checks.append(
+                _block(
+                    claim,
+                    "rule:case-scope",
+                    "product_case_evidence_mismatch",
+                    evidence_refs=[ref],
+                )
+            )
     if resolved:
         states = {item.evidence_state for item in resolved}
         if len(states) > 1:
@@ -250,9 +277,6 @@ def _check_claim_contract(
             checks.append(_block(claim, "rule:evidence-state", "reported_evidence_state_required"))
         elif claim.reported_evidence_state not in states:
             checks.append(_block(claim, "rule:evidence-state", "evidence_state_mismatch"))
-        product_refs = {item.product_case_ref.ref for item in resolved}
-        if len(product_refs) > 1:
-            checks.append(_block(claim, "rule:case-scope", "cross_case_evidence_forbidden"))
     if claim.comparison_mode not in policy.allowed_comparison_modes:
         checks.append(_block(claim, "rule:comparison-mode", "comparison_mode_not_allowed"))
     checks.extend(_check_statement_bindings(claim, statements))
@@ -288,6 +312,7 @@ def _check_value_bindings(
     policy: ClaimPolicySpec,
 ) -> list[ClaimCheckRecord]:
     checks: list[ClaimCheckRecord] = []
+    covered: list[tuple[int, int]] = []
     for binding in claim.value_bindings:
         record = evidence.get(binding.source_evidence_ref)
         if binding.source_evidence_ref not in claim.evidence_refs:
@@ -295,7 +320,9 @@ def _check_value_bindings(
             continue
         if record is None:
             continue
-        reason = _numeric_binding_reason(binding, record)
+        start, end = binding.text_span
+        rendered = claim.text[start:end] if end <= len(claim.text) else ""
+        reason = _numeric_binding_reason(binding, record, rendered)
         if reason is not None:
             checks.append(
                 _block(
@@ -305,13 +332,12 @@ def _check_value_bindings(
                     evidence_refs=[binding.source_evidence_ref],
                 )
             )
-        if binding.rendered_value not in claim.text:
-            checks.append(_block(claim, "rule:rendered-value", "rendered_value_not_in_claim"))
+        else:
+            covered.append(binding.text_span)
     if (
         policy.require_all_numeric_tokens_bound
         and claim.claim_type is not ClaimType.POLICY_OR_BOUNDARY
     ):
-        covered = _binding_spans(claim)
         for match in NUMERIC_TOKEN.finditer(claim.text, timeout=0.05):
             if not any(start <= match.start() and match.end() <= end for start, end in covered):
                 checks.append(
@@ -326,9 +352,9 @@ def _check_value_bindings(
 
 
 def _numeric_binding_reason(
-    binding: ValueBinding, evidence: EvidenceRecord
+    binding: ValueBinding, evidence: EvidenceRecord, rendered: str
 ) -> str | None:
-    source = getattr(evidence, binding.source_field)
+    source = _numeric_source(evidence, binding.source_field)
     if source is None or isinstance(source, bool):
         return "numeric_source_unavailable"
     try:
@@ -339,48 +365,30 @@ def _numeric_binding_reason(
         return "canonical_numeric_mismatch"
     if binding.raw_unit != evidence.unit:
         return "unit_mismatch"
-    if evidence.denominator is None:
-        if binding.denominator_numeric_string is not None:
-            return "denominator_mismatch"
-    elif binding.denominator_numeric_string is None or Decimal(
-        binding.denominator_numeric_string
-    ) != Decimal(str(evidence.denominator)):
-        return "denominator_mismatch"
-    if evidence.interval is None:
-        if binding.interval_lower_numeric_string is not None:
-            return "interval_mismatch"
-    elif (
-        binding.interval_lower_numeric_string is None
-        or Decimal(binding.interval_lower_numeric_string) != Decimal(str(evidence.interval.lower))
-        or Decimal(binding.interval_upper_numeric_string) != Decimal(str(evidence.interval.upper))
-    ):
-        return "interval_mismatch"
-    if binding.rendered_value != _render_decimal(source_number, binding.format_spec):
+    if rendered != _render_decimal(source_number, binding.format_spec, binding.raw_unit):
         return "rendered_numeric_mismatch"
     return None
 
 
-def _render_decimal(value: Decimal, spec: NumericFormatSpec) -> str:
+def _numeric_source(evidence: EvidenceRecord, source_field: str) -> object:
+    if source_field == "interval_lower":
+        return None if evidence.interval is None else evidence.interval.lower
+    if source_field == "interval_upper":
+        return None if evidence.interval is None else evidence.interval.upper
+    return getattr(evidence, source_field)
+
+
+def _render_decimal(
+    value: Decimal, spec: NumericFormatSpec, raw_unit: str | None = None
+) -> str:
     if spec.scale == "percent":
         value *= Decimal(100)
     quantum = Decimal(1).scaleb(-spec.decimal_places)
     rounding = ROUND_HALF_EVEN if spec.rounding == "half_even" else ROUND_HALF_UP
     rendered = format(value.quantize(quantum, rounding=rounding), f".{spec.decimal_places}f")
-    return rendered + spec.suffix
-
-
-def _binding_spans(claim: ClaimBlock) -> list[tuple[int, int]]:
-    spans: list[tuple[int, int]] = []
-    for binding in claim.value_bindings:
-        start = 0
-        while True:
-            start = claim.text.find(binding.rendered_value, start)
-            if start < 0:
-                break
-            end = start + len(binding.rendered_value)
-            spans.append((start, end))
-            start = end
-    return spans
+    if raw_unit is not None:
+        rendered += raw_unit if raw_unit in {"%", "‰"} else f" {raw_unit}"
+    return rendered
 
 
 def _check_comparison_scope(
@@ -522,6 +530,20 @@ def _block(
         reason_code,
         text_span=text_span,
         evidence_refs=evidence_refs,
+        detail=reason_code,
+    )
+
+
+def _review_required(
+    claim: ClaimBlock, rule_id: str, reason_code: str
+) -> ClaimCheckRecord:
+    return _record(
+        claim,
+        rule_id,
+        "0.1.0",
+        CheckOutcome.REVIEW_REQUIRED,
+        CheckSeverity.REVIEW,
+        reason_code,
         detail=reason_code,
     )
 

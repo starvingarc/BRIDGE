@@ -14,10 +14,10 @@
     {
       "input_id": "evidence",
       "media_type": "application/json",
-      "object_version": "0.1.0",
-      "path": "/absolute/path/to/evidence_record_set.json",
-      "role": "evidence_record_set",
-      "schema_ref": "bridge://schemas/evidence-record-set/v0.1",
+      "object_version": "1",
+      "path": "/absolute/path/to/case_evidence_graph_manifest.json",
+      "role": "evidence_graph_manifest",
+      "schema_ref": "bridge://schemas/case-evidence-graph-manifest/v0.1",
       "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     },
     {

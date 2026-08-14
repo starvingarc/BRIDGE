@@ -4,6 +4,8 @@ import hashlib
 import json
 from decimal import Decimal
 from pathlib import Path
+import shutil
+from types import SimpleNamespace
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -13,6 +15,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceRecord,
     EvidenceRecordSet,
 )
+from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
 from bridge.tool_packages.p0_10_claim_verifier.adapter import adapter
 from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
     benchmark_sha256,
@@ -41,6 +44,8 @@ from bridge.toolkit.registry import ToolRegistry
 
 CREATED_AT = "2026-08-12T00:00:00Z"
 EVIDENCE_REF = "evidence:" + "a" * 24 + "@1"
+CLAIM_REF = "claim:server-validation-test-count@1.0.0"
+PRODUCT_CASE_REF = "product-case:public-validation@1.0.0"
 
 
 def _write(path: Path, payload: object) -> str:
@@ -136,6 +141,60 @@ def _evidence_set(**record_changes: Any) -> EvidenceRecordSet:
     )
 
 
+def _graph_manifest(evidence_set: EvidenceRecordSet | None = None) -> dict[str, Any]:
+    evidence_set = evidence_set or _evidence_set()
+
+    def artifact(filename: str, *, parquet: bool = False) -> dict[str, Any]:
+        return {
+            "filename": filename,
+            "media_type": (
+                "application/vnd.apache.parquet" if parquet else "application/json"
+            ),
+            "sha256": "e" * 64,
+            "row_count": 0 if parquet else None,
+        }
+
+    return {
+        "graph_id": evidence_set.graph_id,
+        "graph_version": evidence_set.graph_version,
+        "canonicalization_id": "bridge-canonical-json/v0.1",
+        "node_count": 1,
+        "edge_count": 0,
+        "object_counts": {"EvidenceRecord": 1},
+        "source_input_hash": "f" * 64,
+        "base_graph_ref": None,
+        "evidence_records": artifact("evidence_records.json"),
+        "evidence_requirements": artifact("evidence_requirements.json"),
+        "reconciliation_records": artifact("reconciliation_records.json"),
+        "graph_nodes": artifact("graph_nodes.parquet", parquet=True)
+        | {"row_count": 1},
+        "graph_edges": artifact("graph_edges.parquet", parquet=True),
+        "created_at": CREATED_AT,
+        "graph_kind": "case",
+        "product_case_ref": {
+            "object_id": "product-case:public-validation",
+            "object_version": "1.0.0",
+        },
+    }
+
+
+@pytest.fixture(autouse=True)
+def _validated_graph_stub(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_graph(monkeypatch, _evidence_set())
+
+
+def _stub_graph(
+    monkeypatch: pytest.MonkeyPatch, evidence_set: EvidenceRecordSet
+) -> None:
+    monkeypatch.setattr(
+        EvidenceGraphQueries,
+        "open",
+        classmethod(
+            lambda cls, path: SimpleNamespace(evidence_record_set=evidence_set)
+        ),
+    )
+
+
 def _policy(*, active: bool = True, severity: str = "hard_blocker") -> ClaimPolicySpec:
     return ClaimPolicySpec.model_validate(
         {
@@ -215,6 +274,31 @@ def _statements() -> StatementRegistry:
     )
 
 
+def _value_binding(
+    text: str,
+    rendered: str,
+    *,
+    binding_id: str = "test-count",
+    source_field: str = "value",
+    canonical: str = "192",
+    raw_unit: str | None = "tests",
+) -> dict[str, Any]:
+    start = text.index(rendered)
+    return {
+        "binding_id": f"binding:{binding_id}",
+        "source_evidence_ref": EVIDENCE_REF,
+        "source_field": source_field,
+        "canonical_numeric_string": canonical,
+        "raw_unit": raw_unit,
+        "format_spec": {
+            "decimal_places": 0,
+            "scale": "identity",
+            "rounding": "half_even",
+        },
+        "text_span": (start, start + len(rendered)),
+    }
+
+
 def _report_payload(
     *,
     text: str = "The installed-wheel suite passed 192 tests.",
@@ -226,25 +310,12 @@ def _report_payload(
     evidence_refs: list[str] | None = None,
     reviews: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    binding = {
-        "binding_id": "binding:test-count",
-        "source_evidence_ref": EVIDENCE_REF,
-        "source_field": "value",
-        "canonical_numeric_string": "192",
-        "raw_unit": "tests",
-        "denominator_numeric_string": "192",
-        "interval_lower_numeric_string": "192",
-        "interval_upper_numeric_string": "192",
-        "format_spec": {
-            "decimal_places": 0,
-            "scale": "identity",
-            "suffix": "",
-            "rounding": "half_even",
-        },
-        "rendered_value": "192",
-    }
-    binding.update(binding_changes or {})
     claim_evidence = [EVIDENCE_REF] if evidence_refs is None else evidence_refs
+    binding = None
+    if claim_evidence:
+        rendered = "192 tests" if "192 tests" in text else "192"
+        binding = _value_binding(text, rendered)
+        binding.update(binding_changes or {})
     payload = {
         "object_version": "0.1.0",
         "report_id": "report:public-server-validation",
@@ -259,12 +330,14 @@ def _report_payload(
             {
                 "claim_id": "claim-block:test-count",
                 "claim_version": "0.1.0",
+                "claim_ref": CLAIM_REF,
+                "product_case_ref": PRODUCT_CASE_REF,
                 "claim_type": claim_type,
                 "text": text,
                 "language": "en",
                 "evidence_refs": claim_evidence,
                 "statement_refs": statement_refs or [],
-                "value_bindings": [binding] if claim_evidence else [],
+                "value_bindings": [binding] if binding is not None else [],
                 "reported_evidence_state": reported_state,
                 "comparison_mode": comparison_mode,
                 "intended_release_tier": "formal",
@@ -285,40 +358,48 @@ def _request(
     tmp_path: Path,
     *,
     report: dict[str, Any] | None = None,
-    evidence_set: EvidenceRecordSet | None = None,
     policy: ClaimPolicySpec | None = None,
 ) -> ToolRequestV2:
     tmp_path.mkdir(parents=True, exist_ok=True)
     objects = [
-        ("report", "report_draft", "bridge://schemas/report-draft/v0.1", report or _report_payload()),
+        (
+            "report",
+            "report_draft",
+            "bridge://schemas/report-draft/v0.1",
+            report or _report_payload(),
+            "0.1.0",
+        ),
         (
             "evidence",
-            "evidence_record_set",
-            "bridge://schemas/evidence-record-set/v0.1",
-            (evidence_set or _evidence_set()).model_dump(mode="json"),
+            "evidence_graph_manifest",
+            "bridge://schemas/case-evidence-graph-manifest/v0.1",
+            _graph_manifest(),
+            "1",
         ),
         (
             "policy",
             "claim_policy_spec",
             "bridge://schemas/claim-policy-spec/v0.1",
             (policy or _policy()).model_dump(mode="json"),
+            "0.1.0",
         ),
         (
             "statements",
             "statement_registry",
             "bridge://schemas/statement-registry/v0.1",
             _statements().model_dump(mode="json"),
+            "0.1.0",
         ),
     ]
     refs: list[StructuredInputRef] = []
-    for input_id, role, schema_ref, payload in objects:
+    for input_id, role, schema_ref, payload, version in objects:
         path = tmp_path / f"{input_id}.json"
         refs.append(
             StructuredInputRef(
                 input_id=input_id,
                 role=role,
                 schema_ref=schema_ref,
-                object_version="0.1.0",
+                object_version=version,
                 path=path,
                 sha256=_write(path, payload),
                 media_type="application/json",
@@ -413,6 +494,11 @@ def test_verified_report_records_benchmark_and_one_immutable_artifact(tmp_path: 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result["verification"]["release_state"] == "verified"
     assert run.result["verified_report"] is not None
+    assert run.result["verified_report"]["claims"][0]["claim_ref"] == CLAIM_REF
+    assert (
+        run.result["verified_report"]["claims"][0]["product_case_ref"]
+        == PRODUCT_CASE_REF
+    )
     assert run.result["benchmark_id"] == "P0-10-BENCHMARK-v0.1"
     assert run.result["benchmark_sha256"] == benchmark_sha256()
     assert run.measurements == []
@@ -436,18 +522,13 @@ def test_identical_inputs_reuse_byte_identical_result(tmp_path: Path) -> None:
     [
         ({"canonical_numeric_string": "191"}, "canonical_numeric_mismatch"),
         ({"raw_unit": "samples"}, "unit_mismatch"),
-        ({"denominator_numeric_string": "191"}, "denominator_mismatch"),
-        ({"interval_upper_numeric_string": "193"}, "interval_mismatch"),
-        ({"rendered_value": "191"}, "rendered_numeric_mismatch"),
+        ({"text_span": (33, 36)}, "rendered_numeric_mismatch"),
     ],
 )
 def test_numeric_mutations_are_hard_blockers(
     tmp_path: Path, changes: dict[str, Any], reason: str
 ) -> None:
     report = _report_payload(binding_changes=changes)
-    if "rendered_value" in changes:
-        report["claim_blocks"][0]["text"] = "The installed-wheel suite passed 191 tests."
-        report["content_hash"] = report_content_hash(report)
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
     assert run.execution_state is ExecutionState.SUCCEEDED
@@ -456,6 +537,153 @@ def test_numeric_mutations_are_hard_blockers(
         item["reason_code"] for item in run.result["verification"]["check_records"]
     }
     assert run.result["verified_report"] is None
+
+
+def test_numeric_suffix_cannot_hide_an_extra_number(tmp_path: Path) -> None:
+    text = "The installed-wheel suite passed 192 tests999."
+    start = text.index("192")
+    report = _report_payload(
+        text=text,
+        binding_changes={"text_span": (start, start + len("192 tests999"))},
+    )
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert "rendered_numeric_mismatch" in {
+        item["reason_code"] for item in run.result["verification"]["check_records"]
+    }
+
+
+def test_denominator_and_interval_values_use_separate_exact_spans(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _stub_graph(
+        monkeypatch,
+        _evidence_set(
+            denominator=200,
+            interval={
+                "lower": 180,
+                "upper": 198,
+                "confidence_level": None,
+                "method_ref": None,
+            },
+        ),
+    )
+    text = (
+        "The value was 192 tests, denominator 200 tests, "
+        "and interval 180 tests to 198 tests."
+    )
+    report = _report_payload(text=text)
+    report["claim_blocks"][0]["value_bindings"] = [
+        _value_binding(text, "192 tests"),
+        _value_binding(
+            text,
+            "200 tests",
+            binding_id="denominator",
+            source_field="denominator",
+            canonical="200",
+        ),
+        _value_binding(
+            text,
+            "180 tests",
+            binding_id="interval-lower",
+            source_field="interval_lower",
+            canonical="180",
+        ),
+        _value_binding(
+            text,
+            "198 tests",
+            binding_id="interval-upper",
+            source_field="interval_upper",
+            canonical="198",
+        ),
+    ]
+    report["content_hash"] = report_content_hash(report)
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.result["verification"]["release_state"] == "verified"
+
+
+def test_repeated_number_requires_one_binding_per_occurrence(tmp_path: Path) -> None:
+    report = _report_payload(
+        text="The first run passed 192 tests and the second passed 192 tests."
+    )
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert "unbound_numeric_token" in {
+        item["reason_code"] for item in run.result["verification"]["check_records"]
+    }
+
+
+def test_overlapping_numeric_spans_are_rejected_by_the_report_schema() -> None:
+    report = _report_payload()
+    duplicate = dict(report["claim_blocks"][0]["value_bindings"][0])
+    duplicate["binding_id"] = "binding:duplicate"
+    report["claim_blocks"][0]["value_bindings"].append(duplicate)
+    report["content_hash"] = report_content_hash(report)
+
+    with pytest.raises(ValueError, match="must not overlap"):
+        ReportDraft.model_validate(report)
+
+
+@pytest.mark.parametrize(
+    ("record_changes", "reason"),
+    [
+        (
+            {
+                "claim_ref": {
+                    "object_id": "claim:unrelated-cell-state",
+                    "object_version": "1.0.0",
+                }
+            },
+            "claim_evidence_semantic_mismatch",
+        ),
+        (
+            {
+                "product_case_ref": {
+                    "object_id": "product-case:other",
+                    "object_version": "1.0.0",
+                }
+            },
+            "product_case_evidence_mismatch",
+        ),
+    ],
+)
+def test_claim_and_product_targets_must_match_every_evidence_record(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    record_changes: dict[str, Any],
+    reason: str,
+) -> None:
+    _stub_graph(monkeypatch, _evidence_set(**record_changes))
+
+    run = adapter.run(_request(tmp_path), _spec())
+
+    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert reason in {
+        item["reason_code"] for item in run.result["verification"]["check_records"]
+    }
+
+
+@pytest.mark.parametrize("channel", ["human_edit", "imported_draft"])
+def test_human_or_imported_prose_requires_review(
+    tmp_path: Path, channel: str
+) -> None:
+    report = _report_payload()
+    report["authoring_channel"] = channel
+    report["claim_blocks"][0]["authoring_channel"] = channel
+    report["content_hash"] = report_content_hash(report)
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.result["verification"]["release_state"] == "review_required"
+    assert run.result["verification"]["public_export_eligibility"] == "ineligible"
+    assert "non_deterministic_authoring_requires_review" in {
+        item["reason_code"] for item in run.result["verification"]["check_records"]
+    }
 
 
 def test_unbound_number_and_evidence_state_substitution_block_release(tmp_path: Path) -> None:
@@ -602,6 +830,75 @@ def test_report_hash_mismatch_fails_before_verification(tmp_path: Path) -> None:
 
     assert eligibility.eligible is False
     assert eligibility.reason_codes == ["structured_input_schema_invalid"]
+
+
+def test_unsafe_review_metadata_fails_without_echoing_the_value(tmp_path: Path) -> None:
+    private_value = "/" + "data1/example/private/reviewer.txt"
+    report = _report_payload(
+        text="The better run passed 192 tests.",
+        reviews=[
+            {
+                "claim_id": "claim-block:test-count",
+                "rule_id": "rule:ambiguous-superiority",
+                "decision": "approved",
+                "reviewer_role": "claim_reviewer",
+                "reviewer_ref": private_value,
+                "reason": "The structured comparison scope was reviewed.",
+            }
+        ],
+    )
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["unsafe_report_content"]
+    assert run.result is None
+    assert private_value not in json.dumps(run.model_dump(mode="json"))
+
+
+def test_invalid_p0_09_graph_is_a_typed_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def reject_graph(cls: type, path: Path) -> None:
+        raise ValueError("manifest_integrity_failed")
+
+    monkeypatch.setattr(
+        EvidenceGraphQueries,
+        "open",
+        classmethod(reject_graph),
+    )
+
+    run = adapter.run(_request(tmp_path), _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["evidence_graph_integrity_failed"]
+    assert run.result is None
+
+
+@pytest.mark.parametrize("target", ["missing-target", "output"])
+def test_broken_or_self_referential_output_symlink_is_typed(
+    tmp_path: Path, target: str
+) -> None:
+    request = _request(tmp_path)
+    request.output_dir.symlink_to(target, target_is_directory=True)
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["output_dir_not_regular_directory"]
+
+
+def test_existing_run_symlink_fails_without_following_it(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    first = adapter.run(request, _spec())
+    final = first.artifacts[0].path.parent
+    shutil.rmtree(final)
+    final.symlink_to(final.name, target_is_directory=True)
+
+    second = adapter.run(request, _spec())
+
+    assert second.execution_state is ExecutionState.FAILED
+    assert second.reason_codes == ["existing_run_bundle_hash_mismatch"]
 
 
 def test_existing_result_drift_fails_without_overwrite(tmp_path: Path) -> None:

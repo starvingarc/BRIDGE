@@ -4,7 +4,7 @@
 |---|---|
 | Branch | `p0-10-claim-verifier` |
 | Baseline | `9fa004eeff6ef78d6e737f47f458ae134ec58ba2` |
-| Status | `server_validated_candidate_ready_for_draft_pr` |
+| Status | `draft_review` |
 
 ## Biological and reporting question
 
@@ -14,8 +14,8 @@ interval, evidence state, comparison scope and approved wording?
 
 ## First complete package
 
-- Accept exactly four checksummed structured inputs: `ReportDraft`, an
-  `EvidenceRecordSet`, an active `ClaimPolicySpec`, and a
+- Accept exactly four checksummed structured inputs: `ReportDraft`, a verified
+  P0-09 Case graph manifest, an active `ClaimPolicySpec`, and a
   `StatementRegistry`.
 - Use Pydantic/JSON Schema for contracts, `Decimal` for exact numeric checks,
   deterministic bilingual rules for prohibited wording, and a controlled
@@ -52,7 +52,8 @@ interval, evidence state, comparison scope and approved wording?
 6. [x] Add the public-safe server validation record for the public and synthetic
    candidate gates.
 7. [x] Run one authorized internal four-object report.
-8. [ ] Open one Draft PR after the internal run is represented in the benchmark.
+8. [x] Open one Draft PR after the internal run is represented in the benchmark.
+9. [ ] Resolve the blocking Draft-PR review and repeat exact-SHA server validation.
 
 ## Acceptance
 

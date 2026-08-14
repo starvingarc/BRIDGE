@@ -71,11 +71,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/product_comparison_stability_task_card.md",
     },
     "P0-10": {
-        "input": "Structured ReportDraft, ClaimBlocks, ValueBindings, evidence/knowledge/statement references, chart artifacts, and policy versions.",
+        "input": "Structured ReportDraft, a verified P0-09 Case graph manifest, ClaimBlocks, one-field numeric spans, statement references, and policy versions.",
         "output": "ClaimVerificationResult and immutable VerifiedReport reference with blockers, warnings, traceability map, and release state.",
         "reject": "Numeric mismatch, invalid evidence, state substitution, unsupported inference, prohibited claim, graft leakage, or unresolved semantic review.",
         "visualization": "Claim-to-evidence map, check results, blocked text spans, chart-binding status, and human-review queue.",
-        "validation": "Exact value copying, bilingual fixtures, prohibited claims, chart bindings, LLM failure, immutable report hashes, and blocker non-override.",
+        "validation": "Graph integrity, semantic Claim/ProductCase binding, exact numeric spans, bilingual prohibited claims, private metadata, immutable hashes, and blocker non-override.",
         "details": "docs/bridge_spec_v0.1/claim_verifier_task_card.md",
     },
     "P0-11": {
