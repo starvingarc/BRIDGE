@@ -11,6 +11,7 @@ dependencies:
   - networkx=3.5
   - scikit-learn=1.7
   - jinja2=3.1
+  - regex>=2025.7,<2027
   - markdown-it-py=4.0
   - pillow=11.3
   - defusedxml=0.7

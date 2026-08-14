@@ -3,11 +3,18 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-CLAIM-VERIFIER` |
-| Version | `v0.1-draft` |
-| Date | 2026-08-07 |
+| Version | `v0.1-candidate` |
+| Date | 2026-08-14 |
 | Verification unit | `report draft x claim block x policy snapshot` |
 | Primary output | `ClaimVerificationResult`、`VerifiedReport` |
 | Current state | `candidate` |
+
+P0-10 `v0.1.0` implements the structured deterministic path only. Its four
+checksummed inputs are `ReportDraft`, `EvidenceRecordSet`, `ClaimPolicySpec` and
+`StatementRegistry`. Free Markdown recovery, LLM judgment, web/media rendering,
+OCR and automatic export are not runtime inputs. The versioned method record is
+[BENCHMARK.md](../../tool_packages/P0-10/BENCHMARK.md); candidate methods do not
+constitute a selected default.
 
 ## 1. 任务目标与边界
 
@@ -44,7 +51,7 @@ P0 覆盖中文、英文和中英混排。普通探索对话保持 `unverified`�
 
 正式内容先生成 `ReportDraft`，再渲染为 Web、Markdown 或后续导出格式。每个 claim、数值和图表在渲染前绑定来源对象；渲染后再进行一次 round-trip 检查，确认正文没有出现未绑定内容或绑定丢失。
 
-允许导入自由 Markdown 作为草稿，但解析器和 LLM 恢复的 claim 只能是 candidate。所有可核查主张必须补齐来源绑定并通过核验后才能进入正式报告。
+自由 Markdown 导入不属于 v0.1 运行接口。后续解析器恢复的 claim 即使加入，也只能先作为 candidate；所有可核查主张仍须补齐来源绑定并重新进入结构化核验。
 
 任何人工或 Agent 文本修改都会改变 report hash，使旧 `VerifiedReport` 失效。系统必须创建新版本并重新核验，不能在已核验对象上静默修改。
 
@@ -148,9 +155,8 @@ flowchart LR
     D --> E["Evidence state and applicability"]
     E --> F["Comparison, graft and visualization rules"]
     F --> G["Bilingual prohibited-claim rules"]
-    G --> H["LLM semantic review"]
-    H --> I["Human review when required"]
-    I --> J["Deterministic release aggregation"]
+    G --> H["Apply supplied authorized review decisions"]
+    H --> I["Deterministic release aggregation"]
 ```
 
 固定顺序如下：
@@ -161,8 +167,8 @@ flowchart LR
 4. 检查 evidence tier、lifecycle、applicability、sufficiency 和 reconciliation state。
 5. 检查状态语义、比较资格、图表合同、Recommendation 和 graft 边界。
 6. 运行中英双语禁止主张和敏感措辞规则。
-7. 仅在确定性输入合格后运行 LLM 语义复核。
-8. 按冻结优先级聚合发布状态；LLM 和人工均不能清除 hard blocker。
+7. 对 review-only 命中应用 ReportDraft 中已有的授权人工决定。
+8. 按固定优先级聚合发布状态；人工决定不能清除 hard blocker。LLM 语义复核为后续候选，不在 v0.1 中运行。
 
 ### 5.1 Hard blockers
 
@@ -215,7 +221,9 @@ flowchart LR
 
 简单禁用词命中只作为规则入口；系统必须结合 claim 类型、否定范围和固定 Statement 例外，避免把边界声明中的禁止词误判为违规主张。
 
-## 7. LLM 语义复核与人工审核
+## 7. 后续 LLM 候选与当前人工审核
+
+v0.1 不调用 LLM。下面的 LLM 输入输出合同仅作为后续 benchmark 候选；在中英双语 benchmark、模型卡和失败边界通过审核前，不进入正式核对流程。
 
 LLM 只接收：
 
@@ -275,7 +283,7 @@ verified_report_ref / created_at
 
 ### 9.1 图表
 
-正式图表检查：component/version、Evidence IDs、数据版本、单位、分母、区间、筛选条件、证据状态和 caption。渲染检查覆盖桌面与移动 Web、SVG/PNG 和报告快照中的标题、图例、文本溢出、缺失状态和颜色语义。
+v0.1 只核对结构化 `VisualizationArtifact` 引用、Evidence IDs、数据版本、单位、分母、区间、筛选条件、证据状态和 caption。桌面与移动 Web、SVG/PNG 和报告快照渲染检查返回 `unavailable`，待独立模块实现。
 
 P0 不使用 OCR 或像素反推数值。数值一致性来自 `VisualizationArtifact` 与其机器可读 data payload；渲染检查只验证最终界面没有截断、遮挡、错标或状态编码错误。
 
@@ -295,14 +303,14 @@ P0 不使用 OCR 或像素反推数值。数值一致性来自 `VisualizationArt
 
 | 工具/组件 | 作用 | P0 状态 | 环境 | 边界 |
 | --- | --- | --- | --- | --- |
-| `BRIDGE-CLAIM-VERIFIER-CORE-v0.1` | 确定性规则、状态聚合和核验记录 | `candidate` | `claim_verifier_core` | 唯一正式发布裁决器 |
-| `BRIDGE-REPORT-DRAFT-RENDERER-v0.1` | 结构化 blocks 渲染与 round-trip map | `candidate` | `claim_verifier_core` | 不生成未绑定数值 |
-| Pydantic + JSON Schema | 对象与枚举合同 | `shortlisted` | `claim_verifier_core` | schema 通过不代表科学主张正确 |
-| markdown-it-py | Markdown token、block 和 span 解析 | `shortlisted` | `claim_verifier_core` | 自由文本恢复结果先为 candidate |
-| Jinja2 | 受控模板渲染 | `shortlisted` | `claim_verifier_core` | 模板内容仍需 Statement ID |
-| Python `Decimal` | canonical numeric fidelity | `shortlisted` | standard library | 不使用浮点容差替代格式合同 |
-| `regex` + 双语规则表 | 规则预筛、否定与术语模式 | `shortlisted` | `claim_verifier_core` | 命中不能单独处理复杂语义 |
-| Pint | 注册单位解析和转换候选 | `proposed` | `claim_verifier_core` | 当前未安装；只接受审核 unit registry |
+| `BRIDGE-CLAIM-VERIFIER-CORE-v0.1` | 确定性规则、状态聚合和核验记录 | `default_candidate` | `ENV-EVIDENCE-v0.1` | 正式候选；尚未选择 default |
+| `BRIDGE-REPORT-DRAFT-RENDERER-v0.1` | 结构化 blocks 的固定模板渲染 | `default_candidate` | `ENV-EVIDENCE-v0.1` | 不接受调用方模板，不生成未绑定数值 |
+| Pydantic + JSON Schema | 对象、枚举和公开 Schema 合同 | `candidate` | `ENV-EVIDENCE-v0.1` | Schema 通过不代表科学主张正确 |
+| markdown-it-py | Markdown token、block 和 span 解析 | `deferred` | `ENV-EVIDENCE-v0.1` | 自由 Markdown 不进入 v0.1 |
+| Jinja2 | 受控固定模板渲染 | `candidate` | `ENV-EVIDENCE-v0.1` | 模板不可由调用方提供 |
+| Python `Decimal` | canonical numeric fidelity | `default_candidate` | standard library | 不使用浮点容差替代格式合同 |
+| `regex` + 双语规则表 | 有超时边界的规则匹配和 span | `default_candidate` | `ENV-EVIDENCE-v0.1` | 复杂语义进入人工复核，不由命中自动通过 |
+| Pint | 注册单位解析和转换候选 | `deferred` | isolated candidate env | 等待审核 unit registry |
 | OPA/Rego | policy-as-code 对照 | `benchmark` | `claim_policy_opa` | 当前无 OPA binary；不作为 P0 必需服务 |
 | LLM semantic-review adapter | 隐含夸大和跨语言一致性 | `conditional` | `agent_runtime` | 只输出 flags，不能清除 blocker |
 | Playwright render validator | Web 桌面/移动渲染检查 | `proposed` | `web_validation` | 不从图像推断科学数值 |

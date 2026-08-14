@@ -38,8 +38,10 @@ freeze = [
   "pyarrow>=18,<24",
 ]
 evidence = [
+  "Jinja2>=3.1,<4",
   "networkx>=3.5,<3.6",
   "pyarrow>=21,<22",
+  "regex>=2025.7,<2027",
 ]
 
 [project.scripts]
@@ -66,6 +68,7 @@ where = ["src"]
 "bridge.tool_packages.p0_02_cell_state.measurement_specs" = ["*.yaml"]
 "bridge.tool_packages.p0_02_cell_state.resources" = ["*.yaml"]
 "bridge.tool_packages.p0_08_evidence_sufficiency.resources" = ["*.json"]
+"bridge.tool_packages.p0_10_claim_verifier.resources" = ["*.json"]
 "bridge.resources" = ["*.json.gz"]
 "bridge.resources.schemas" = ["*.json"]
 

@@ -1,0 +1,515 @@
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
+from enum import StrEnum
+import hashlib
+from typing import Any, Literal, Self
+
+from pydantic import Field, StrictBool, StrictInt, field_validator, model_validator
+
+from bridge.tool_packages._structured_runtime import canonical_json_bytes
+from bridge.toolkit.contracts import EvidenceState, FrozenModel
+
+
+SHA256_PATTERN = r"^[0-9a-f]{64}$"
+EVIDENCE_REF_PATTERN = r"^evidence:[a-f0-9]{24}@[1-9][0-9]*$"
+
+
+class ReportAudience(StrEnum):
+    INTERNAL_RESEARCH = "internal_research"
+    PUBLIC_CANDIDATE = "public_candidate"
+
+
+class ReportLanguage(StrEnum):
+    ZH = "zh"
+    EN = "en"
+    MIXED = "mixed"
+
+
+class AuthoringChannel(StrEnum):
+    DETERMINISTIC_RENDERER = "deterministic_renderer"
+    HUMAN_EDIT = "human_edit"
+    IMPORTED_DRAFT = "imported_draft"
+
+
+class ClaimType(StrEnum):
+    MEASUREMENT = "measurement_claim"
+    DOMAIN_INTERPRETATION = "domain_interpretation"
+    DESCRIPTIVE_COMPARISON = "descriptive_comparison"
+    INFERENTIAL_COMPARISON = "inferential_comparison"
+    AVAILABILITY = "availability_claim"
+    ALERT = "alert_claim"
+    PRIOR_OR_LITERATURE = "prior_or_literature_claim"
+    METHOD = "method_claim"
+    RECOMMENDATION = "recommendation_hypothesis"
+    GRAFT_RETROSPECTIVE = "graft_retrospective_claim"
+    POLICY_OR_BOUNDARY = "policy_or_boundary_statement"
+    VISUALIZATION_CAPTION = "visualization_caption"
+
+
+class ComparisonMode(StrEnum):
+    NOT_APPLICABLE = "not_applicable"
+    DESCRIPTIVE_ONLY = "descriptive_only"
+    INFERENTIAL = "inferential"
+
+
+class ReleaseState(StrEnum):
+    NOT_ASSESSED = "not_assessed"
+    RELEASE_BLOCKED = "release_blocked"
+    REVIEW_REQUIRED = "review_required"
+    VERIFIED_WITH_WARNINGS = "verified_with_warnings"
+    VERIFIED = "verified"
+
+
+class PublicExportEligibility(StrEnum):
+    ELIGIBLE = "eligible"
+    INELIGIBLE = "ineligible"
+    NOT_ASSESSED = "not_assessed"
+
+
+class CheckSeverity(StrEnum):
+    HARD_BLOCKER = "hard_blocker"
+    REVIEW = "review"
+    WARNING = "warning"
+
+
+class CheckOutcome(StrEnum):
+    BLOCKED = "blocked"
+    REVIEW_REQUIRED = "review_required"
+    WARNING = "warning"
+    CLEARED_BY_REVIEW = "cleared_by_review"
+
+
+class SelectionRecommendation(StrEnum):
+    DEFAULT_CANDIDATE = "default_candidate"
+    SENSITIVITY_CANDIDATE = "sensitivity_candidate"
+    BENCHMARK_ONLY = "benchmark_only"
+    DEFERRED = "deferred"
+
+
+class DecisionState(StrEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PENDING = "pending"
+
+
+class NumericFormatSpec(FrozenModel):
+    decimal_places: StrictInt = Field(ge=0, le=12)
+    scale: Literal["identity", "percent"] = "identity"
+    suffix: str = ""
+    rounding: Literal["half_even", "half_up"] = "half_even"
+
+
+class ValueBinding(FrozenModel):
+    binding_id: str = Field(pattern=r"^binding:[A-Za-z0-9._:-]+$")
+    source_evidence_ref: str = Field(pattern=EVIDENCE_REF_PATTERN)
+    source_field: Literal["value", "numerator", "denominator"]
+    canonical_numeric_string: str = Field(min_length=1)
+    raw_unit: str | None = None
+    denominator_numeric_string: str | None = None
+    interval_lower_numeric_string: str | None = None
+    interval_upper_numeric_string: str | None = None
+    format_spec: NumericFormatSpec
+    rendered_value: str = Field(min_length=1)
+
+    @field_validator(
+        "canonical_numeric_string",
+        "denominator_numeric_string",
+        "interval_lower_numeric_string",
+        "interval_upper_numeric_string",
+    )
+    @classmethod
+    def decimal_strings_are_finite(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            number = Decimal(value)
+        except InvalidOperation as exc:
+            raise ValueError("numeric binding requires a decimal string") from exc
+        if not number.is_finite():
+            raise ValueError("numeric binding requires a finite decimal string")
+        return value
+
+    @model_validator(mode="after")
+    def interval_is_complete(self) -> Self:
+        if (self.interval_lower_numeric_string is None) != (
+            self.interval_upper_numeric_string is None
+        ):
+            raise ValueError("interval bindings require both lower and upper values")
+        return self
+
+
+class HumanReviewDecision(FrozenModel):
+    claim_id: str = Field(pattern=r"^claim-block:[A-Za-z0-9._:-]+$")
+    rule_id: str = Field(pattern=r"^rule:[A-Za-z0-9._:-]+$")
+    decision: Literal["approved", "rejected"]
+    reviewer_role: str = Field(min_length=1)
+    reviewer_ref: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class ClaimBlock(FrozenModel):
+    claim_id: str = Field(pattern=r"^claim-block:[A-Za-z0-9._:-]+$")
+    claim_version: str = Field(min_length=1)
+    claim_type: ClaimType
+    text: str = Field(min_length=1)
+    language: ReportLanguage
+    evidence_refs: list[str] = Field(default_factory=list)
+    statement_refs: list[str] = Field(default_factory=list)
+    value_bindings: list[ValueBinding] = Field(default_factory=list)
+    reported_evidence_state: EvidenceState | None = None
+    comparison_mode: ComparisonMode = ComparisonMode.NOT_APPLICABLE
+    intended_release_tier: Literal["formal", "internal_candidate"] = "formal"
+    authoring_channel: AuthoringChannel
+
+    @field_validator("text")
+    @classmethod
+    def text_is_plain_structured_content(cls, value: str) -> str:
+        if any(marker in value for marker in ("\n", "\r", "```", "<script", "</")):
+            raise ValueError("claim text must be one plain structured paragraph")
+        return value
+
+    @field_validator("evidence_refs", "statement_refs")
+    @classmethod
+    def refs_are_unique(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("claim references must be unique")
+        return value
+
+    @field_validator("evidence_refs")
+    @classmethod
+    def evidence_refs_are_versioned(cls, value: list[str]) -> list[str]:
+        import re
+
+        if any(re.fullmatch(EVIDENCE_REF_PATTERN, item) is None for item in value):
+            raise ValueError("evidence_refs must use versioned evidence references")
+        return value
+
+    @field_validator("value_bindings")
+    @classmethod
+    def bindings_are_unique(cls, value: list[ValueBinding]) -> list[ValueBinding]:
+        ids = [item.binding_id for item in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("value bindings must be unique")
+        return value
+
+
+class ReportDraft(FrozenModel):
+    object_version: Literal["0.1.0"]
+    report_id: str = Field(pattern=r"^report:[A-Za-z0-9._:-]+$")
+    report_version: str = Field(min_length=1)
+    content_hash: str = Field(pattern=SHA256_PATTERN)
+    audience: ReportAudience
+    language: ReportLanguage
+    evidence_record_set_ref: str = Field(min_length=1)
+    claim_policy_ref: str = Field(min_length=1)
+    statement_registry_ref: str = Field(min_length=1)
+    claim_blocks: list[ClaimBlock] = Field(min_length=1)
+    human_review_decisions: list[HumanReviewDecision] = Field(default_factory=list)
+    renderer_id: str = Field(min_length=1)
+    renderer_version: str = Field(min_length=1)
+    authoring_channel: AuthoringChannel
+    created_at: datetime
+
+    @field_validator("claim_blocks")
+    @classmethod
+    def claims_are_unique(cls, value: list[ClaimBlock]) -> list[ClaimBlock]:
+        ids = [item.claim_id for item in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("claim blocks must be unique")
+        return value
+
+    @field_validator("human_review_decisions")
+    @classmethod
+    def reviews_are_unique(
+        cls, value: list[HumanReviewDecision]
+    ) -> list[HumanReviewDecision]:
+        keys = [(item.claim_id, item.rule_id) for item in value]
+        if len(keys) != len(set(keys)):
+            raise ValueError("human review decisions must be unique per claim and rule")
+        return value
+
+    @model_validator(mode="after")
+    def content_hash_matches(self) -> Self:
+        expected = report_content_hash(self.model_dump(mode="json"))
+        if self.content_hash != expected:
+            raise ValueError("report content_hash does not match the structured report")
+        return self
+
+    @property
+    def ref(self) -> str:
+        return f"{self.report_id}@{self.report_version}"
+
+
+def report_content_hash(payload: dict[str, Any]) -> str:
+    content = dict(payload)
+    content.pop("content_hash", None)
+    return hashlib.sha256(canonical_json_bytes(content)).hexdigest()
+
+
+class ClaimTypePolicy(FrozenModel):
+    claim_type: ClaimType
+    requires_evidence: StrictBool
+    allowed_evidence_states: list[EvidenceState]
+    allowed_comparison_modes: list[ComparisonMode]
+
+    @field_validator("allowed_evidence_states", "allowed_comparison_modes")
+    @classmethod
+    def values_are_unique(cls, value: list[Any]) -> list[Any]:
+        if len(value) != len(set(value)):
+            raise ValueError("policy enum lists must be unique")
+        return value
+
+
+class TextRule(FrozenModel):
+    rule_id: str = Field(pattern=r"^rule:[A-Za-z0-9._:-]+$")
+    version: str = Field(min_length=1)
+    languages: list[ReportLanguage] = Field(min_length=1)
+    pattern: str = Field(min_length=1, max_length=500)
+    severity: CheckSeverity
+    reason_code: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    except_statement_refs: list[str] = Field(default_factory=list)
+
+
+class ClaimPolicySpec(FrozenModel):
+    object_version: Literal["0.1.0"]
+    policy_id: str = Field(pattern=r"^claim-policy:[A-Za-z0-9._:-]+$")
+    policy_version: str = Field(min_length=1)
+    active: StrictBool
+    claim_type_policies: list[ClaimTypePolicy] = Field(min_length=1)
+    text_rules: list[TextRule]
+    descriptive_forbidden_patterns: list[str]
+    authorized_reviewer_roles: list[str]
+    require_all_numeric_tokens_bound: StrictBool = True
+
+    @field_validator("claim_type_policies")
+    @classmethod
+    def claim_policies_are_unique(
+        cls, value: list[ClaimTypePolicy]
+    ) -> list[ClaimTypePolicy]:
+        kinds = [item.claim_type for item in value]
+        if len(kinds) != len(set(kinds)):
+            raise ValueError("claim type policies must be unique")
+        return value
+
+    @field_validator("text_rules")
+    @classmethod
+    def rules_are_unique(cls, value: list[TextRule]) -> list[TextRule]:
+        ids = [(item.rule_id, item.version) for item in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("text rules must be unique")
+        return value
+
+    @property
+    def ref(self) -> str:
+        return f"{self.policy_id}@{self.policy_version}"
+
+
+class RegisteredStatement(FrozenModel):
+    statement_id: str = Field(pattern=r"^statement:[A-Za-z0-9._:-]+$")
+    statement_version: str = Field(min_length=1)
+    texts: dict[ReportLanguage, str]
+    allowed_claim_types: list[ClaimType]
+    approved: StrictBool
+
+    @field_validator("texts")
+    @classmethod
+    def statement_texts_are_nonempty(
+        cls, value: dict[ReportLanguage, str]
+    ) -> dict[ReportLanguage, str]:
+        if not value or any(not text.strip() for text in value.values()):
+            raise ValueError("registered statements require non-empty text")
+        return value
+
+    @property
+    def ref(self) -> str:
+        return f"{self.statement_id}@{self.statement_version}"
+
+
+class StatementRegistry(FrozenModel):
+    object_version: Literal["0.1.0"]
+    registry_id: Literal["BRIDGE-STATEMENT-REGISTRY-v0.1"]
+    registry_version: Literal["0.1.0"]
+    statements: list[RegisteredStatement]
+
+    @field_validator("statements")
+    @classmethod
+    def statements_are_unique(
+        cls, value: list[RegisteredStatement]
+    ) -> list[RegisteredStatement]:
+        refs = [item.ref for item in value]
+        if len(refs) != len(set(refs)):
+            raise ValueError("registered statements must be unique")
+        return value
+
+    @property
+    def ref(self) -> str:
+        return f"{self.registry_id}@{self.registry_version}"
+
+
+class ClaimCheckRecord(FrozenModel):
+    check_id: str = Field(pattern=r"^check:[a-f0-9]{16}$")
+    claim_id: str
+    rule_id: str
+    rule_version: str
+    outcome: CheckOutcome
+    severity: CheckSeverity
+    reason_code: str
+    text_span: tuple[StrictInt, StrictInt] | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+    detail: str
+    human_review_ref: str | None = None
+
+
+class VerifiedClaim(FrozenModel):
+    claim_id: str
+    text: str
+    evidence_refs: list[str]
+    statement_refs: list[str]
+
+
+class VerifiedReport(FrozenModel):
+    object_version: Literal["0.1.0"]
+    verified_report_id: str = Field(pattern=r"^verified-report:[a-f0-9]{16}$")
+    report_draft_ref: str
+    report_content_hash: str = Field(pattern=SHA256_PATTERN)
+    verification_id: str
+    claim_policy_ref: str
+    statement_registry_ref: str
+    claims: list[VerifiedClaim]
+    rendered_markdown: str
+    rendered_sha256: str = Field(pattern=SHA256_PATTERN)
+
+
+class ClaimVerificationResult(FrozenModel):
+    object_version: Literal["0.1.0"]
+    verification_id: str = Field(pattern=r"^claim-verification:[a-f0-9]{16}$")
+    verifier_version: Literal["0.1.0"]
+    benchmark_id: str
+    benchmark_sha256: str = Field(pattern=SHA256_PATTERN)
+    report_draft_ref: str
+    report_content_hash: str = Field(pattern=SHA256_PATTERN)
+    claim_policy_ref: str
+    statement_registry_ref: str
+    release_state: ReleaseState
+    blocker_count: StrictInt = Field(ge=0)
+    review_count: StrictInt = Field(ge=0)
+    warning_count: StrictInt = Field(ge=0)
+    check_records: list[ClaimCheckRecord]
+    claim_evidence_map: dict[str, list[str]]
+    public_export_eligibility: PublicExportEligibility
+    verified_report_ref: str | None = None
+
+
+class ClaimVerifierRunResult(FrozenModel):
+    object_version: Literal["0.1.0"]
+    benchmark_id: str
+    benchmark_sha256: str = Field(pattern=SHA256_PATTERN)
+    verification: ClaimVerificationResult
+    verified_report: VerifiedReport | None
+
+
+class BenchmarkDataCase(FrozenModel):
+    case_id: str
+    data_class: Literal["public_record", "internal_anonymized", "synthetic_control"]
+    public_accession_or_ref: str | None
+    sample_count: StrictInt | None
+    independent_replicate_count: StrictInt | None
+    claim_count: StrictInt
+    cell_count: StrictInt | None
+    gene_count: StrictInt | None
+    assay: str | None
+    split: str
+    scope: str
+    not_applicable_reason: str | None = None
+
+
+class ResourceMeasurement(FrozenModel):
+    wall_clock_seconds_median: float | None
+    wall_clock_seconds_range: tuple[float, float] | None
+    cpu_seconds_median: float | None
+    peak_ram_mb: float | None
+    peak_vram_mb: float | None
+    threads: StrictInt | None
+    output_bytes: StrictInt | None
+    cache_state: str
+    repetitions: StrictInt
+
+
+class MethodSelectionDecision(FrozenModel):
+    state: DecisionState
+    reason: str
+    reviewer: str | None
+    benchmark_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+
+
+class ClaimVerifierMethodBenchmark(FrozenModel):
+    analysis_task: str
+    method_id: str
+    method_name: str
+    version: str
+    source: str
+    license: str
+    environment_spec_id: str
+    role: str
+    data_case_ids: list[str]
+    evaluation: Literal["measured", "smoke", "audit_only", "not_run"]
+    task_metrics: dict[str, float | int | str | None]
+    uncertainty_or_interval: str | None
+    positive_controls: list[str]
+    negative_controls: list[str]
+    missing_input_behavior: str
+    ood_or_abstention_behavior: str
+    failure_behavior: str
+    random_seeds: list[StrictInt]
+    downsampling: dict[str, str]
+    reference_sensitivity: str
+    preprocessing_sensitivity: str
+    denominator_sensitivity: str
+    resources: ResourceMeasurement
+    recommendation: SelectionRecommendation
+    decision: MethodSelectionDecision
+
+
+class ClaimVerifierBenchmark(FrozenModel):
+    benchmark_id: Literal["P0-10-BENCHMARK-v0.1"]
+    benchmark_version: Literal["0.1.0"]
+    tool_id: Literal["P0-10"]
+    benchmark_state: Literal[
+        "awaiting_server_validation", "server_validated_candidate"
+    ]
+    default_method_id: None = None
+    aggregate_score: None = None
+    aggregate_rank: None = None
+    data_cases: list[BenchmarkDataCase]
+    methods: list[ClaimVerifierMethodBenchmark]
+
+    @model_validator(mode="after")
+    def inventory_is_unique_and_resolved(self) -> Self:
+        case_ids = [item.case_id for item in self.data_cases]
+        if len(case_ids) != len(set(case_ids)):
+            raise ValueError("benchmark data cases must be unique")
+        method_keys = [(item.analysis_task, item.method_id) for item in self.methods]
+        if len(method_keys) != len(set(method_keys)):
+            raise ValueError("benchmark methods must be unique within each task")
+        unknown = {
+            case_id
+            for method in self.methods
+            for case_id in method.data_case_ids
+            if case_id not in set(case_ids)
+        }
+        if unknown:
+            raise ValueError(f"benchmark methods reference unknown data cases: {unknown}")
+        return self
+
+
+PUBLIC_SCHEMA_MODELS = {
+    "bridge://schemas/report-draft/v0.1": ReportDraft,
+    "bridge://schemas/claim-policy-spec/v0.1": ClaimPolicySpec,
+    "bridge://schemas/statement-registry/v0.1": StatementRegistry,
+    "bridge://schemas/claim-verification-result/v0.1": ClaimVerificationResult,
+    "bridge://schemas/verified-report/v0.1": VerifiedReport,
+    "bridge://schemas/claim-verifier-run-result/v0.1": ClaimVerifierRunResult,
+    "bridge://schemas/claim-verifier-benchmark/v0.1": ClaimVerifierBenchmark,
+}
