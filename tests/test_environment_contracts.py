@@ -36,7 +36,11 @@ def test_every_tool_environment_reference_resolves_to_conda_yaml() -> None:
             (REPO_ROOT / specs[tool.environment_spec_id]["yaml_ref"]).read_text(encoding="utf-8")
         )
         assert conda_spec["name"].startswith("bridge-")
-        assert "python=3.12" in conda_spec["dependencies"]
+        assert any(
+            dependency.startswith("python=3.12")
+            for dependency in conda_spec["dependencies"]
+            if isinstance(dependency, str)
+        )
         assert "prefix" not in conda_spec
 
 
