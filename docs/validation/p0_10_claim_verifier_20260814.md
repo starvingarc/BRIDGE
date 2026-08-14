@@ -98,9 +98,9 @@ of 1.71–2.18 s; the exact-commit replication remained inside that range.
 ## Method table and current decision
 
 The machine-readable fact source is `P0-10-BENCHMARK-v0.1`, file SHA-256
-`7335445beb1204e42463a413dd76ac91cd652bc14072b104a10ad37d5475fe5b`.
+`4c5ef92f72fce8659c0a0aafa90ede62172e600fe5f4e506a4c224e2121e6ff7`.
 All 18 rows bind their review state and reviewer to decision-payload SHA-256
-`95a2a7d4a85808f560e4a1e47a15fec3503f6cbdc12d136c1eb1b5b2dba6e253`.
+`f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373`.
 
 The BRIDGE core was measured end to end. Eight callable components were checked
 inside that path rather than assigned misleading per-component runtimes. Nine
@@ -108,18 +108,43 @@ alternative methods remain `audit_only`, with explicit `benchmark_only`,
 `deferred` or rejected dispositions. There is no aggregate score, aggregate
 rank or selected default.
 
-## Internal-report gap
+## Anonymous internal report
 
-No compatible authorized internal four-object report was present on the server.
-The available older report artifacts use the retired Step2/Step3 score format
-and cannot be treated as P0-10 evidence. They were not converted or reused.
+One server-only engineering report supplied three exact aggregate claims: 929
+installed-wheel tests passed, 12 Tool Packages were discovered, and the packaged
+knowledge snapshot contained 354 methods. The report used checksummed
+`ReportDraft`, `EvidenceRecordSet`, `ClaimPolicySpec` and `StatementRegistry`
+objects. Its source manifest SHA-256 was
+`5dd856ad463a689e8c5a437454eb0df81eaa378a63e12d5281b80435ce5ec1f2` and
+its request SHA-256 was
+`e5095c116866fba5eb6e2935989a196c4819c5a165c2bac345a7ced91d7bebae`.
+Private paths and object contents remain server-only.
 
-Accordingly, the benchmark state is
-`server_validated_public_candidate`, the internal row remains `not_run`, and the
-package has not yet met the plan's complete-package requirement. Completing the
-remaining run requires a private manifest identifying one authorized
-`ReportDraft`, `EvidenceRecordSet`, `ClaimPolicySpec` and `StatementRegistry`.
-Only anonymous input scale and aggregate results will be recorded publicly.
+The completed benchmark was generated at commit
+`aeb981bc237bd08bd731fd4bd364bee110a4eb93`. Its Git archive SHA-256 was
+`8109ea7ccf9802f538ed958e56cea3943c1e96fb2d495ef93e6a26926affa7e7`;
+the installed wheel SHA-256 was
+`6202634cef5cd8c602d2b4a859d558d6fc2058b4aad68a8d0b15366ac0520141`.
+Two explicit one-thread runs produced the same run ID, input hash, ToolRun bytes
+and 2,934-byte result artifact. Both returned `verified` with zero blockers,
+review items or warnings. Because the report audience was internal,
+`public_export_eligibility` correctly remained `ineligible`.
+
+| Internal-report measurement | Result |
+|---|---:|
+| Claims | 3 |
+| Wall-clock median | 2.085 s |
+| Wall-clock range | 2.02–2.15 s |
+| CPU-time median | 2.055 s |
+| Peak RAM | 211.96 MB |
+| Peak VRAM | 0 MB |
+| Result artifact SHA-256 | `d1b9c40f783dde4c8767b3b2a176665b20bd6f0e78d2ce874a9358707e3f033c` |
+
+The retired Step2/Step3 score reports were not converted or reused, and no
+P0-02 controlled or sealed data was opened. The benchmark state is now
+`server_validated_candidate`; all nine callable components bind the anonymous
+internal case. This completes the package-level internal-run requirement but
+does not select a default method.
 
 ## Boundaries
 

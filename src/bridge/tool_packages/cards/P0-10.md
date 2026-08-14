@@ -90,8 +90,8 @@ Its human projection is [BENCHMARK.md](https://github.com/starvingarc/BRIDGE/blo
 |---|---|
 | Benchmark ID | `P0-10-BENCHMARK-v0.1` |
 | Benchmark version | `0.1.0` |
-| Benchmark JSON SHA-256 | `7335445beb1204e42463a413dd76ac91cd652bc14072b104a10ad37d5475fe5b` |
-| Current benchmark state | `server_validated_public_candidate` |
+| Benchmark JSON SHA-256 | `4c5ef92f72fce8659c0a0aafa90ede62172e600fe5f4e506a4c224e2121e6ff7` |
+| Current benchmark state | `server_validated_candidate` |
 | Selected default | `none` |
 | Aggregate score/rank | `null` / `null` |
 
@@ -117,10 +117,11 @@ and `score_state` remains unavailable.
 ## Validation boundary
 
 The exact server wheel, public record, synthetic controls and five single-thread
-timing repetitions have been validated. The internal benchmark row remains
-`not_run`: no authorized four-object internal report was found, and old score
-reports or P0-02 controlled data were not substituted. The selected default
-therefore remains unset and the package remains a public-validated candidate.
+timing repetitions have been validated. A separate anonymous internal
+engineering report supplied three exact aggregate claims through the four-object
+contract; two one-thread repetitions were byte-identical and produced no
+blocker, review item or warning. No private path, old score report or P0-02
+controlled data enters the benchmark. The selected default remains unset.
 
 Server evidence: [P0-10 candidate validation, 2026-08-14](https://github.com/starvingarc/BRIDGE/blob/main/docs/validation/p0_10_claim_verifier_20260814.md).
 
