@@ -1,0 +1,220 @@
+{
+  "$defs": {
+    "CheckSeverity": {
+      "enum": [
+        "hard_blocker",
+        "review",
+        "warning"
+      ],
+      "title": "CheckSeverity",
+      "type": "string"
+    },
+    "ClaimType": {
+      "enum": [
+        "measurement_claim",
+        "domain_interpretation",
+        "descriptive_comparison",
+        "inferential_comparison",
+        "availability_claim",
+        "alert_claim",
+        "prior_or_literature_claim",
+        "method_claim",
+        "recommendation_hypothesis",
+        "graft_retrospective_claim",
+        "policy_or_boundary_statement",
+        "visualization_caption"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "ClaimTypePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_comparison_modes": {
+          "items": {
+            "$ref": "#/$defs/ComparisonMode"
+          },
+          "title": "Allowed Comparison Modes",
+          "type": "array"
+        },
+        "allowed_evidence_states": {
+          "items": {
+            "$ref": "#/$defs/EvidenceState"
+          },
+          "title": "Allowed Evidence States",
+          "type": "array"
+        },
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "requires_evidence": {
+          "title": "Requires Evidence",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "claim_type",
+        "requires_evidence",
+        "allowed_evidence_states",
+        "allowed_comparison_modes"
+      ],
+      "title": "ClaimTypePolicy",
+      "type": "object"
+    },
+    "ComparisonMode": {
+      "enum": [
+        "not_applicable",
+        "descriptive_only",
+        "inferential"
+      ],
+      "title": "ComparisonMode",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ReportLanguage": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed"
+      ],
+      "title": "ReportLanguage",
+      "type": "string"
+    },
+    "TextRule": {
+      "additionalProperties": false,
+      "properties": {
+        "except_statement_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Except Statement Refs",
+          "type": "array"
+        },
+        "languages": {
+          "items": {
+            "$ref": "#/$defs/ReportLanguage"
+          },
+          "minItems": 1,
+          "title": "Languages",
+          "type": "array"
+        },
+        "pattern": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Pattern",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "rule_id": {
+          "pattern": "^rule:[A-Za-z0-9._:-]+$",
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/CheckSeverity"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_id",
+        "version",
+        "languages",
+        "pattern",
+        "severity",
+        "reason_code"
+      ],
+      "title": "TextRule",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/claim-policy-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "active": {
+      "title": "Active",
+      "type": "boolean"
+    },
+    "authorized_reviewer_roles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Authorized Reviewer Roles",
+      "type": "array"
+    },
+    "claim_type_policies": {
+      "items": {
+        "$ref": "#/$defs/ClaimTypePolicy"
+      },
+      "minItems": 1,
+      "title": "Claim Type Policies",
+      "type": "array"
+    },
+    "descriptive_forbidden_patterns": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Descriptive Forbidden Patterns",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "policy_id": {
+      "pattern": "^claim-policy:[A-Za-z0-9._:-]+$",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "policy_version": {
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "require_all_numeric_tokens_bound": {
+      "default": true,
+      "title": "Require All Numeric Tokens Bound",
+      "type": "boolean"
+    },
+    "text_rules": {
+      "items": {
+        "$ref": "#/$defs/TextRule"
+      },
+      "title": "Text Rules",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "policy_id",
+    "policy_version",
+    "active",
+    "claim_type_policies",
+    "text_rules",
+    "descriptive_forbidden_patterns",
+    "authorized_reviewer_roles"
+  ],
+  "title": "ClaimPolicySpec",
+  "type": "object"
+}

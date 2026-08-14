@@ -1,0 +1,389 @@
+{
+  "$defs": {
+    "CheckOutcome": {
+      "enum": [
+        "blocked",
+        "review_required",
+        "warning",
+        "cleared_by_review"
+      ],
+      "title": "CheckOutcome",
+      "type": "string"
+    },
+    "CheckSeverity": {
+      "enum": [
+        "hard_blocker",
+        "review",
+        "warning"
+      ],
+      "title": "CheckSeverity",
+      "type": "string"
+    },
+    "ClaimCheckRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "pattern": "^check:[a-f0-9]{16}$",
+          "title": "Check Id",
+          "type": "string"
+        },
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "human_review_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Human Review Ref"
+        },
+        "outcome": {
+          "$ref": "#/$defs/CheckOutcome"
+        },
+        "reason_code": {
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "rule_version": {
+          "title": "Rule Version",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/CheckSeverity"
+        },
+        "text_span": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text Span"
+        }
+      },
+      "required": [
+        "check_id",
+        "claim_id",
+        "rule_id",
+        "rule_version",
+        "outcome",
+        "severity",
+        "reason_code",
+        "detail"
+      ],
+      "title": "ClaimCheckRecord",
+      "type": "object"
+    },
+    "ClaimVerificationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "benchmark_id": {
+          "title": "Benchmark Id",
+          "type": "string"
+        },
+        "benchmark_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Benchmark Sha256",
+          "type": "string"
+        },
+        "blocker_count": {
+          "minimum": 0,
+          "title": "Blocker Count",
+          "type": "integer"
+        },
+        "check_records": {
+          "items": {
+            "$ref": "#/$defs/ClaimCheckRecord"
+          },
+          "title": "Check Records",
+          "type": "array"
+        },
+        "claim_evidence_map": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Claim Evidence Map",
+          "type": "object"
+        },
+        "claim_policy_ref": {
+          "title": "Claim Policy Ref",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "public_export_eligibility": {
+          "$ref": "#/$defs/PublicExportEligibility"
+        },
+        "release_state": {
+          "$ref": "#/$defs/ReleaseState"
+        },
+        "report_content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Report Content Hash",
+          "type": "string"
+        },
+        "report_draft_ref": {
+          "title": "Report Draft Ref",
+          "type": "string"
+        },
+        "review_count": {
+          "minimum": 0,
+          "title": "Review Count",
+          "type": "integer"
+        },
+        "statement_registry_ref": {
+          "title": "Statement Registry Ref",
+          "type": "string"
+        },
+        "verification_id": {
+          "pattern": "^claim-verification:[a-f0-9]{16}$",
+          "title": "Verification Id",
+          "type": "string"
+        },
+        "verified_report_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verified Report Ref"
+        },
+        "verifier_version": {
+          "const": "0.1.0",
+          "title": "Verifier Version",
+          "type": "string"
+        },
+        "warning_count": {
+          "minimum": 0,
+          "title": "Warning Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_version",
+        "verification_id",
+        "verifier_version",
+        "benchmark_id",
+        "benchmark_sha256",
+        "report_draft_ref",
+        "report_content_hash",
+        "claim_policy_ref",
+        "statement_registry_ref",
+        "release_state",
+        "blocker_count",
+        "review_count",
+        "warning_count",
+        "check_records",
+        "claim_evidence_map",
+        "public_export_eligibility"
+      ],
+      "title": "ClaimVerificationResult",
+      "type": "object"
+    },
+    "PublicExportEligibility": {
+      "enum": [
+        "eligible",
+        "ineligible",
+        "not_assessed"
+      ],
+      "title": "PublicExportEligibility",
+      "type": "string"
+    },
+    "ReleaseState": {
+      "enum": [
+        "not_assessed",
+        "release_blocked",
+        "review_required",
+        "verified_with_warnings",
+        "verified"
+      ],
+      "title": "ReleaseState",
+      "type": "string"
+    },
+    "VerifiedClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "statement_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Statement Refs",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "evidence_refs",
+        "statement_refs"
+      ],
+      "title": "VerifiedClaim",
+      "type": "object"
+    },
+    "VerifiedReport": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_policy_ref": {
+          "title": "Claim Policy Ref",
+          "type": "string"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/VerifiedClaim"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "rendered_markdown": {
+          "title": "Rendered Markdown",
+          "type": "string"
+        },
+        "rendered_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Rendered Sha256",
+          "type": "string"
+        },
+        "report_content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Report Content Hash",
+          "type": "string"
+        },
+        "report_draft_ref": {
+          "title": "Report Draft Ref",
+          "type": "string"
+        },
+        "statement_registry_ref": {
+          "title": "Statement Registry Ref",
+          "type": "string"
+        },
+        "verification_id": {
+          "title": "Verification Id",
+          "type": "string"
+        },
+        "verified_report_id": {
+          "pattern": "^verified-report:[a-f0-9]{16}$",
+          "title": "Verified Report Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "verified_report_id",
+        "report_draft_ref",
+        "report_content_hash",
+        "verification_id",
+        "claim_policy_ref",
+        "statement_registry_ref",
+        "claims",
+        "rendered_markdown",
+        "rendered_sha256"
+      ],
+      "title": "VerifiedReport",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/claim-verifier-run-result/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "benchmark_id": {
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "benchmark_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Benchmark Sha256",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "verification": {
+      "$ref": "#/$defs/ClaimVerificationResult"
+    },
+    "verified_report": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VerifiedReport"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "object_version",
+    "benchmark_id",
+    "benchmark_sha256",
+    "verification",
+    "verified_report"
+  ],
+  "title": "ClaimVerifierRunResult",
+  "type": "object"
+}
