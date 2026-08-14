@@ -70,22 +70,6 @@ DETAILS = {
         "validation": "Known shifts and nulls, paired/unpaired designs, insufficient replication, over-correction checks, and independent-versus-joint consistency.",
         "details": "docs/bridge_spec_v0.1/product_comparison_stability_task_card.md",
     },
-    "P0-08": {
-        "input": "QCReadinessProfile, domain MeasurementResults, benchmark and sensitivity records, and frozen reference/prior/contract versions.",
-        "output": "Per-domain EvidenceSufficiencyProfile across data readiness, model robustness, and prior applicability, with deterministic reason codes.",
-        "reject": "Missing gate specification, absent required upstream record, non-applicable method/prior, or unstable evidence needed for interpretation.",
-        "visualization": "Three-axis sufficiency matrix, blocking reasons, domain state summary, and upstream evidence trace.",
-        "validation": "Independent domain gating, missing-state semantics, evidence-family de-duplication, legacy-score exclusion, and deterministic repeatability.",
-        "details": "docs/bridge_spec_v0.1/evidence_sufficiency_task_card.md",
-    },
-    "P0-09": {
-        "input": "MeasurementResults, ToolRuns, Evidence Sufficiency, versioned contracts, references, priors, and artifact manifests.",
-        "output": "Atomic EvidenceRecords, immutable Case/Comparison Evidence Graph projections, and deterministic reconciliation states.",
-        "reject": "Invalid schema, dangling provenance, duplicate logical evidence, forbidden lifecycle/tier, or LLM-authored numeric/reconciliation changes.",
-        "visualization": "Claim neighborhood, provenance, evidence-family grouping, conflicts, missing requirements, and comparison subgraphs.",
-        "validation": "Idempotence, append-only correction, family de-duplication, missing-versus-zero semantics, graph round trips, and read-only Agent access.",
-        "details": "docs/bridge_spec_v0.1/evidence_compiler_task_card.md",
-    },
     "P0-10": {
         "input": "Structured ReportDraft, ClaimBlocks, ValueBindings, evidence/knowledge/statement references, chart artifacts, and policy versions.",
         "output": "ClaimVerificationResult and immutable VerifiedReport reference with blockers, warnings, traceability map, and release state.",
@@ -120,13 +104,12 @@ def main() -> int:
     for spec_path in sorted(spec_dir.glob("*.yaml")):
         spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
         tool_id = spec["tool_id"]
-        detail = DETAILS[tool_id]
         card_path = card_dir / f"{tool_id}.md"
         if tool_id in DETAILED_CARD_IDS:
             text = card_path.read_text(encoding="utf-8")
             _validate_detailed_card(text, spec)
         else:
-            text = render(spec, detail)
+            text = render(spec, DETAILS[tool_id])
         package_dir = repo / "tool_packages" / tool_id
         package_dir.mkdir(parents=True, exist_ok=True)
         _write_card_pair(

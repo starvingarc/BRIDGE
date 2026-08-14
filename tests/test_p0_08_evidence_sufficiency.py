@@ -1900,6 +1900,13 @@ def test_filesystem_checksum_media_and_json_failures_are_distinct(tmp_path: Path
         missing, spec
     ).reason_codes
 
+    dangling_path = tmp_path / "dangling-input.json"
+    dangling_path.symlink_to(tmp_path / "absent-target.json")
+    dangling = _replace_ref(request, "target-domain", path=dangling_path.absolute())
+    assert "structured_input_not_found" in adapter.check_eligibility(
+        dangling, spec
+    ).reason_codes
+
     directory = tmp_path / "directory-input"
     directory.mkdir()
     not_file = _replace_ref(request, "target-domain", path=directory.resolve())

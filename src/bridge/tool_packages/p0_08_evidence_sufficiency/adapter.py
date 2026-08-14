@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 import hashlib
 from importlib.resources import files
-import json
 import os
 from pathlib import Path
 import re
@@ -13,12 +11,21 @@ from typing import Any
 from urllib.parse import parse_qsl, urlsplit
 from uuid import uuid4
 
-from pydantic import ValidationError
-
+from bridge.tool_packages._structured_runtime import (
+    LoadedInputs,
+    StructuredInputError,
+    failed_v2_run,
+    inputs_unchanged as _inputs_unchanged,
+    load_structured_inputs,
+    objects_for_role as _objects_for_role,
+    read_regular_bytes,
+    single_object as _single_object,
+    strict_json_loads as _loads_json,
+    write_json as _write_json,
+)
 from bridge.tool_packages.p0_08_evidence_sufficiency.executor import (
     REASON_CODES,
     canonical_input_hash,
-    canonical_json_bytes,
     canonical_object_sha256,
     evaluate_evidence_sufficiency,
 )
@@ -147,19 +154,6 @@ VERSIONLESS_ROLE_OBJECT_VERSIONS = {
     "qc_readiness_profile": "0.1.0",
     "measurement_result": "0.1.0",
 }
-
-
-class StructuredInputError(ValueError):
-    def __init__(self, reason_code: str, detail: str = "") -> None:
-        super().__init__(reason_code)
-        self.reason_code = reason_code
-        self.detail = detail
-
-
-@dataclass(frozen=True)
-class LoadedInputs:
-    objects_by_input_id: dict[str, FrozenModel]
-    bytes_by_input_id: dict[str, bytes]
 
 
 @dataclass(frozen=True)
@@ -346,83 +340,39 @@ def _resource_bytes(filename: str) -> bytes:
 def _load_structured_inputs(
     refs: list[StructuredInputRef],
 ) -> tuple[LoadedInputs | None, list[str]]:
-    objects: dict[str, FrozenModel] = {}
-    payload_bytes: dict[str, bytes] = {}
-    reasons: list[str] = []
-    seen: set[str] = set()
-    for ref in refs:
-        if ref.input_id in seen:
-            reasons.append("duplicate_object_input_id")
-            continue
-        seen.add(ref.input_id)
-        if ref.role not in ROLE_MODELS:
-            continue
-        if ref.media_type != "application/json":
-            reasons.append("structured_input_media_type_unsupported")
-        try:
-            raw = _read_verified_bytes(ref)
-        except StructuredInputError as exc:
-            reasons.append(exc.reason_code)
-            continue
-        payload_bytes[ref.input_id] = raw
-        try:
-            payload = _loads_json(raw)
-        except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
-            reasons.append("structured_input_json_invalid")
-            continue
-        if _contains_legacy_contract(payload):
-            reasons.append("legacy_evidence_contract_rejected")
-            continue
-        if _contains_unsafe_scientific_reference(payload):
-            reasons.append("unsafe_scientific_reference")
-            continue
-        try:
-            value = ROLE_MODELS[ref.role].model_validate(payload)
-            _validate_declared_object_version(ref, value)
-            _validate_publishable_source_refs(ref.role, value)
-        except (ValidationError, ValueError):
-            reasons.append("structured_input_schema_invalid")
-            continue
-        objects[ref.input_id] = value
-    if reasons:
-        return None, sorted(set(reasons))
-    return LoadedInputs(objects_by_input_id=objects, bytes_by_input_id=payload_bytes), []
+    return load_structured_inputs(
+        refs,
+        model_for=lambda ref: ROLE_MODELS.get(ref.role),
+        validate_payload=_validate_input_payload,
+        validate_model=_validate_input_model,
+        read_verified=_read_verified_input,
+    )
 
 
-def _read_verified_bytes(ref: StructuredInputRef) -> bytes:
-    path = ref.path
+def _read_verified_input(ref: StructuredInputRef) -> bytes:
     try:
-        if not path.exists():
-            raise StructuredInputError("structured_input_not_found", str(path))
-        if path.is_symlink() or not path.is_file():
-            raise StructuredInputError("structured_input_not_regular_file", str(path))
-        raw = path.read_bytes()
+        if not ref.path.exists():
+            raise StructuredInputError("structured_input_not_found")
+        raw = read_regular_bytes(ref.path)
+    except StructuredInputError:
+        raise
     except OSError as exc:
-        raise StructuredInputError(
-            "structured_input_not_regular_file", ref.input_id
-        ) from exc
+        raise StructuredInputError("structured_input_not_regular_file") from exc
     if hashlib.sha256(raw).hexdigest() != ref.sha256:
-        raise StructuredInputError("structured_input_checksum_mismatch", ref.input_id)
+        raise StructuredInputError("structured_input_checksum_mismatch")
     return raw
 
 
-def _loads_json(raw: bytes) -> Any:
-    def reject_constant(value: str) -> None:
-        raise ValueError(f"non-finite JSON constant: {value}")
+def _validate_input_payload(ref: StructuredInputRef, payload: Any) -> None:
+    if _contains_legacy_contract(payload):
+        raise StructuredInputError("legacy_evidence_contract_rejected")
+    if _contains_unsafe_scientific_reference(payload):
+        raise StructuredInputError("unsafe_scientific_reference")
 
-    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for key, value in pairs:
-            if key in result:
-                raise ValueError(f"duplicate JSON key: {key}")
-            result[key] = value
-        return result
 
-    return json.loads(
-        raw.decode("utf-8"),
-        parse_constant=reject_constant,
-        object_pairs_hook=unique_object,
-    )
+def _validate_input_model(ref: StructuredInputRef, value: FrozenModel) -> None:
+    _validate_declared_object_version(ref, value)
+    _validate_publishable_source_refs(ref.role, value)
 
 
 def _validate_declared_object_version(
@@ -771,34 +721,6 @@ def _logical_id_reasons(
     return ["duplicate_logical_object_id"] if duplicate else []
 
 
-def _objects_for_role(
-    request: ToolRequestV2,
-    loaded: LoadedInputs,
-    role: str,
-    model: type[Any],
-) -> list[Any]:
-    values = [
-        loaded.objects_by_input_id[ref.input_id]
-        for ref in request.object_inputs
-        if ref.role == role
-    ]
-    if not all(isinstance(value, model) for value in values):
-        raise TypeError(f"loaded {role} object has the wrong model")
-    return values
-
-
-def _single_object(
-    request: ToolRequestV2,
-    loaded: LoadedInputs,
-    role: str,
-    model: type[Any],
-) -> Any:
-    values = _objects_for_role(request, loaded, role, model)
-    if len(values) != 1:
-        raise ValueError(f"expected exactly one {role}")
-    return values[0]
-
-
 def _write_scientific_payloads(
     *,
     staging_dir: Path,
@@ -886,15 +808,6 @@ def _manifest_payload(
     }
 
 
-def _inputs_unchanged(refs: list[StructuredInputRef]) -> bool:
-    for ref in refs:
-        if ref.path.is_symlink() or not ref.path.is_file():
-            return False
-        if hashlib.sha256(ref.path.read_bytes()).hexdigest() != ref.sha256:
-            return False
-    return True
-
-
 def _bundles_match(staging_dir: Path, final_dir: Path) -> bool:
     if not final_dir.is_dir() or final_dir.is_symlink():
         return False
@@ -915,7 +828,7 @@ def _bundles_match(staging_dir: Path, final_dir: Path) -> bool:
         return False
     try:
         manifest = _loads_json((final_dir / "artifact_manifest.json").read_bytes())
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+    except (OSError, UnicodeDecodeError, ValueError):
         return False
     if not isinstance(manifest, dict) or not isinstance(manifest.get("artifacts"), list):
         return False
@@ -969,10 +882,6 @@ def _runtime_artifacts(
     ]
 
 
-def _write_json(path: Path, payload: object) -> None:
-    path.write_bytes(canonical_json_bytes(payload, indent=2))
-
-
 def _cleanup_and_fail(
     staging_dir: Path,
     *,
@@ -997,42 +906,11 @@ def _failed_run(
     reason_codes: list[str],
     input_hash: str | None = None,
 ) -> ToolRunV2:
-    reason_codes = sorted(set(reason_codes))
-    failure_fingerprint = canonical_json_bytes(
-        {
-            "tool_id": request.tool_id,
-            "tool_version": spec.version,
-            "reason_codes": reason_codes,
-            "structured_inputs": [
-                {
-                    "input_id": ref.input_id,
-                    "role": ref.role,
-                    "schema_ref": ref.schema_ref,
-                    "object_version": ref.object_version,
-                    "sha256": ref.sha256,
-                    "media_type": ref.media_type,
-                }
-                for ref in sorted(
-                    request.object_inputs, key=lambda item: (item.role, item.input_id)
-                )
-            ],
-        }
-    )
-    run_id = f"run-{hashlib.sha256(failure_fingerprint).hexdigest()[:16]}"
-    return ToolRunV2(
-        run_id=run_id,
-        request=request,
-        implementation_state=spec.implementation_state,
-        execution_state=ExecutionState.FAILED,
-        tool_version=spec.version,
-        environment_spec_id=spec.environment_spec_id,
-        input_hash=input_hash,
-        created_at=datetime(1970, 1, 1, tzinfo=timezone.utc),
-        measurements=[],
-        artifacts=[],
-        visualizations=[],
+    return failed_v2_run(
+        request,
+        spec,
+        reason_codes,
         result_schema_ref=RESULT_SCHEMA_REF,
-        result=None,
-        reason_codes=reason_codes,
-        warnings=[],
+        fingerprint_input_key="structured_inputs",
+        input_hash=input_hash,
     )
