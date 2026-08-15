@@ -101,7 +101,11 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 56
+    assert len(SCHEMA_REFS) == 54
+    assert {
+        "bridge://schemas/claim-verifier-run-result/v0.1",
+        "bridge://schemas/verified-report/v0.1",
+    }.isdisjoint(SCHEMA_REFS)
     for schema_ref in SCHEMA_REFS:
         schema = load_schema(schema_ref)
         assert schema["$id"] == schema_ref
