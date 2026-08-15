@@ -11,7 +11,7 @@ from bridge.tool_packages.p0_10_claim_verifier.models import ClaimVerifierBenchm
 
 BENCHMARK_FILENAME = "benchmark_v0.1.json"
 APPROVED_BENCHMARK_SHA256 = (
-    "dd3c8dbcf8ecd7eb6881c503d8cc100788edbac4f2a5d7983cc6b0b67e56434a"
+    "908da7e8c8141e5f44e230315134d53fb63dbc6856b37e06a3b227fe2af51baa"
 )
 
 
