@@ -39,6 +39,7 @@
         },
         "evidence_refs": {
           "items": {
+            "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
             "type": "string"
           },
           "title": "Evidence Refs",
@@ -65,6 +66,7 @@
         },
         "statement_refs": {
           "items": {
+            "pattern": "^statement:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
             "type": "string"
           },
           "title": "Statement Refs",
@@ -165,12 +167,14 @@
         "canonical_numeric_string": {
           "maxLength": 256,
           "minLength": 1,
+          "pattern": "^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$",
           "title": "Canonical Numeric String",
           "type": "string"
         },
         "raw_unit": {
           "anyOf": [
             {
+              "pattern": "^[^0-9\\s\\r\\n](?:[^0-9\\r\\n]*[^0-9\\s\\r\\n])?$",
               "type": "string"
             },
             {

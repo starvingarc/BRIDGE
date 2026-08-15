@@ -92,6 +92,7 @@
         },
         "evidence_refs": {
           "items": {
+            "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
             "type": "string"
           },
           "title": "Evidence Refs",
