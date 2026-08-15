@@ -94,16 +94,16 @@
       "reference_sensitivity": "Supplied policy and Statement Registry objects must equal the versions embedded in the packaged release contract.",
       "resources": {
         "cache_state": "cold process; separate output directory",
-        "cpu_seconds_median": 1.96,
+        "cpu_seconds_median": 2.34,
         "output_bytes": 1036,
-        "peak_ram_mb": 224.1015625,
+        "peak_ram_mb": 223.88671875,
         "peak_vram_mb": 0.0,
         "repetitions": 5,
         "threads": 1,
-        "wall_clock_seconds_median": 1.99,
+        "wall_clock_seconds_median": 2.35,
         "wall_clock_seconds_range": [
-          1.93,
-          2.43
+          2.18,
+          2.51
         ]
       },
       "role": "Ordered deterministic checks and release-state aggregation.",
