@@ -61,8 +61,9 @@ interval, evidence state, comparison scope and approved wording?
     self-consistent result objects and current-only task-card wording.
 11. [x] Validate the exact implementation commit and wheel and update the
     public record.
-12. [ ] Push the reviewed changes and request re-review; merge only after
-    separate authorization.
+12. [x] Push the reviewed changes and request focused re-review.
+13. [ ] Address any new review findings; merge only after separate
+    authorization.
 
 ## Acceptance
 
