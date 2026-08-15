@@ -44,15 +44,6 @@
           "title": "Evidence Refs",
           "type": "array"
         },
-        "intended_release_tier": {
-          "default": "formal",
-          "enum": [
-            "formal",
-            "internal_candidate"
-          ],
-          "title": "Intended Release Tier",
-          "type": "string"
-        },
         "language": {
           "$ref": "#/$defs/ReportLanguage"
         },
@@ -146,88 +137,6 @@
       "title": "EvidenceState",
       "type": "string"
     },
-    "HumanReviewDecision": {
-      "additionalProperties": false,
-      "properties": {
-        "claim_id": {
-          "pattern": "^claim-block:[A-Za-z0-9._:-]+$",
-          "title": "Claim Id",
-          "type": "string"
-        },
-        "decision": {
-          "enum": [
-            "approved",
-            "rejected"
-          ],
-          "title": "Decision",
-          "type": "string"
-        },
-        "reason": {
-          "minLength": 1,
-          "title": "Reason",
-          "type": "string"
-        },
-        "reviewer_ref": {
-          "minLength": 1,
-          "title": "Reviewer Ref",
-          "type": "string"
-        },
-        "reviewer_role": {
-          "minLength": 1,
-          "title": "Reviewer Role",
-          "type": "string"
-        },
-        "rule_id": {
-          "pattern": "^rule:[A-Za-z0-9._:-]+$",
-          "title": "Rule Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "claim_id",
-        "rule_id",
-        "decision",
-        "reviewer_role",
-        "reviewer_ref",
-        "reason"
-      ],
-      "title": "HumanReviewDecision",
-      "type": "object"
-    },
-    "NumericFormatSpec": {
-      "additionalProperties": false,
-      "properties": {
-        "decimal_places": {
-          "maximum": 12,
-          "minimum": 0,
-          "title": "Decimal Places",
-          "type": "integer"
-        },
-        "rounding": {
-          "default": "half_even",
-          "enum": [
-            "half_even",
-            "half_up"
-          ],
-          "title": "Rounding",
-          "type": "string"
-        },
-        "scale": {
-          "default": "identity",
-          "enum": [
-            "identity",
-            "percent"
-          ],
-          "title": "Scale",
-          "type": "string"
-        }
-      },
-      "required": [
-        "decimal_places"
-      ],
-      "title": "NumericFormatSpec",
-      "type": "object"
-    },
     "ReportAudience": {
       "enum": [
         "internal_research",
@@ -254,12 +163,10 @@
           "type": "string"
         },
         "canonical_numeric_string": {
+          "maxLength": 256,
           "minLength": 1,
           "title": "Canonical Numeric String",
           "type": "string"
-        },
-        "format_spec": {
-          "$ref": "#/$defs/NumericFormatSpec"
         },
         "raw_unit": {
           "anyOf": [
@@ -309,7 +216,6 @@
         "source_evidence_ref",
         "source_field",
         "canonical_numeric_string",
-        "format_spec",
         "text_span"
       ],
       "title": "ValueBinding",
@@ -353,13 +259,6 @@
       "title": "Evidence Record Set Ref",
       "type": "string"
     },
-    "human_review_decisions": {
-      "items": {
-        "$ref": "#/$defs/HumanReviewDecision"
-      },
-      "title": "Human Review Decisions",
-      "type": "array"
-    },
     "language": {
       "$ref": "#/$defs/ReportLanguage"
     },
@@ -384,7 +283,7 @@
       "type": "string"
     },
     "report_version": {
-      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._:-]+$",
       "title": "Report Version",
       "type": "string"
     },

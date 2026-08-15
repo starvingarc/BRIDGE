@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 import hashlib
 import re
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -26,6 +26,10 @@ CLAIM_REF_PATTERN = r"^claim:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
 PRODUCT_CASE_REF_PATTERN = r"^product-case:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
 STATEMENT_REF_PATTERN = r"^statement:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
 REPORT_REF_PATTERN = r"^report:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
+DECIMAL_STRING_PATTERN = (
+    r"^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"
+)
+PLAIN_UNIT_PATTERN = r"^(?!\s)(?!.*\s$)(?!.*[0-9\r\n]).+$"
 MAX_DECIMAL_DIGITS = 128
 MAX_DECIMAL_ADJUSTED_EXPONENT = 128
 FREE_MARKUP = re.compile(
@@ -35,6 +39,9 @@ FREE_MARKUP = re.compile(
     r"|(?<!\w)[*_](?=\S)"
     r"|<\s*/?\s*[A-Za-z!][^>]*>"
 )
+
+EvidenceRef = Annotated[str, Field(pattern=EVIDENCE_REF_PATTERN)]
+StatementRef = Annotated[str, Field(pattern=STATEMENT_REF_PATTERN)]
 
 
 class ReportAudience(StrEnum):
@@ -116,19 +123,21 @@ class DecisionState(StrEnum):
 
 class ValueBinding(FrozenModel):
     binding_id: str = Field(pattern=r"^binding:[A-Za-z0-9._:-]+$")
-    source_evidence_ref: str = Field(pattern=EVIDENCE_REF_PATTERN)
+    source_evidence_ref: EvidenceRef
     source_field: Literal[
         "value", "numerator", "denominator", "interval_lower", "interval_upper"
     ]
-    canonical_numeric_string: str = Field(min_length=1, max_length=256)
-    raw_unit: str | None = None
+    canonical_numeric_string: str = Field(
+        min_length=1,
+        max_length=256,
+        pattern=DECIMAL_STRING_PATTERN,
+    )
+    raw_unit: str | None = Field(default=None, pattern=PLAIN_UNIT_PATTERN)
     text_span: tuple[StrictInt, StrictInt]
 
     @field_validator("canonical_numeric_string")
     @classmethod
     def decimal_string_is_finite(cls, value: str) -> str:
-        if value != value.strip():
-            raise ValueError("numeric binding cannot contain surrounding whitespace")
         try:
             number = Decimal(value)
         except InvalidOperation as exc:
@@ -140,18 +149,6 @@ class ValueBinding(FrozenModel):
             or abs(number.adjusted()) > MAX_DECIMAL_ADJUSTED_EXPONENT
         ):
             raise ValueError("numeric binding is outside the supported decimal range")
-        return value
-
-    @field_validator("raw_unit")
-    @classmethod
-    def raw_unit_is_plain_nonnumeric(cls, value: str | None) -> str | None:
-        if value is not None and (
-            not value.strip()
-            or value != value.strip()
-            or any(character.isdigit() for character in value)
-            or any(character in value for character in ("\n", "\r"))
-        ):
-            raise ValueError("raw_unit must be a plain nonnumeric unit")
         return value
 
     @field_validator("text_span")
@@ -172,8 +169,8 @@ class ClaimBlock(FrozenModel):
     claim_type: ClaimType
     text: str = Field(min_length=1)
     language: ReportLanguage
-    evidence_refs: list[str] = Field(default_factory=list)
-    statement_refs: list[str] = Field(default_factory=list)
+    evidence_refs: list[EvidenceRef] = Field(default_factory=list)
+    statement_refs: list[StatementRef] = Field(default_factory=list)
     value_bindings: list[ValueBinding] = Field(default_factory=list)
     reported_evidence_state: EvidenceState | None = None
     comparison_mode: ComparisonMode = ComparisonMode.NOT_APPLICABLE
@@ -193,20 +190,6 @@ class ClaimBlock(FrozenModel):
     def refs_are_unique(cls, value: list[str]) -> list[str]:
         if len(value) != len(set(value)):
             raise ValueError("claim references must be unique")
-        return value
-
-    @field_validator("evidence_refs")
-    @classmethod
-    def evidence_refs_are_versioned(cls, value: list[str]) -> list[str]:
-        if any(re.fullmatch(EVIDENCE_REF_PATTERN, item) is None for item in value):
-            raise ValueError("evidence_refs must use versioned evidence references")
-        return value
-
-    @field_validator("statement_refs")
-    @classmethod
-    def statement_refs_are_versioned(cls, value: list[str]) -> list[str]:
-        if any(re.fullmatch(STATEMENT_REF_PATTERN, item) is None for item in value):
-            raise ValueError("statement_refs must use versioned statement references")
         return value
 
     @field_validator("value_bindings")
@@ -406,14 +389,12 @@ class ClaimCheckRecord(FrozenModel):
     severity: CheckSeverity
     reason_code: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
     text_span: tuple[StrictInt, StrictInt] | None = None
-    evidence_refs: list[str] = Field(default_factory=list)
-    statement_ref: str | None = Field(default=None, pattern=STATEMENT_REF_PATTERN)
+    evidence_refs: list[EvidenceRef] = Field(default_factory=list)
+    statement_ref: StatementRef | None = None
 
     @field_validator("evidence_refs")
     @classmethod
     def evidence_refs_are_unique_and_sorted(cls, value: list[str]) -> list[str]:
-        if any(re.fullmatch(EVIDENCE_REF_PATTERN, item) is None for item in value):
-            raise ValueError("check evidence_refs must use versioned evidence references")
         if value != sorted(set(value)):
             raise ValueError("check evidence_refs must be unique and sorted")
         return value
@@ -562,7 +543,7 @@ class ClaimVerificationResult(FrozenModel):
     verifier_version: Literal["0.1.0"]
     benchmark_id: Literal["P0-10-BENCHMARK-v0.1"]
     benchmark_sha256: Literal[
-        "bb25a8d4a272f051e2918fd18999d7bbe424259258c3353dbc258f528f0edc26"
+        "6ce3dfe1bfbac0a4a05cde6d913f303776d924df7f265ea6b08e11415d001c05"
     ]
     release_contract_id: Literal["P0-10-RELEASE-CONTRACT-v0.1"]
     release_contract_sha256: Literal[

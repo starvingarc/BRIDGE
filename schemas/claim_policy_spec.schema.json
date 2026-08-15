@@ -155,13 +155,6 @@
       "title": "Active",
       "type": "boolean"
     },
-    "authorized_reviewer_roles": {
-      "items": {
-        "type": "string"
-      },
-      "title": "Authorized Reviewer Roles",
-      "type": "array"
-    },
     "claim_type_policies": {
       "items": {
         "$ref": "#/$defs/ClaimTypePolicy"
@@ -192,11 +185,6 @@
       "title": "Policy Version",
       "type": "string"
     },
-    "require_all_numeric_tokens_bound": {
-      "default": true,
-      "title": "Require All Numeric Tokens Bound",
-      "type": "boolean"
-    },
     "text_rules": {
       "items": {
         "$ref": "#/$defs/TextRule"
@@ -212,8 +200,7 @@
     "active",
     "claim_type_policies",
     "text_rules",
-    "descriptive_forbidden_patterns",
-    "authorized_reviewer_roles"
+    "descriptive_forbidden_patterns"
   ],
   "title": "ClaimPolicySpec",
   "type": "object"

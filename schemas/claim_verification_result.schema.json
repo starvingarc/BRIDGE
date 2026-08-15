@@ -4,8 +4,7 @@
       "enum": [
         "blocked",
         "review_required",
-        "warning",
-        "cleared_by_review"
+        "warning"
       ],
       "title": "CheckOutcome",
       "type": "string"
@@ -21,6 +20,65 @@
     },
     "ClaimCheckRecord": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "blocked"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "properties": {
+              "severity": {
+                "const": "hard_blocker"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "review_required"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "properties": {
+              "severity": {
+                "const": "review"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "warning"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "properties": {
+              "severity": {
+                "const": "warning"
+              }
+            }
+          }
+        }
+      ],
       "properties": {
         "check_id": {
           "pattern": "^check:[a-f0-9]{16}$",
@@ -28,11 +86,8 @@
           "type": "string"
         },
         "claim_id": {
+          "pattern": "^claim-block:[A-Za-z0-9._:-]+$",
           "title": "Claim Id",
-          "type": "string"
-        },
-        "detail": {
-          "title": "Detail",
           "type": "string"
         },
         "evidence_refs": {
@@ -42,9 +97,31 @@
           "title": "Evidence Refs",
           "type": "array"
         },
-        "human_review_ref": {
+        "outcome": {
+          "$ref": "#/$defs/CheckOutcome"
+        },
+        "reason_code": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "rule_id": {
+          "pattern": "^rule:[A-Za-z0-9._:-]+$",
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "rule_version": {
+          "minLength": 1,
+          "title": "Rule Version",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/CheckSeverity"
+        },
+        "statement_ref": {
           "anyOf": [
             {
+              "pattern": "^statement:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
               "type": "string"
             },
             {
@@ -52,25 +129,7 @@
             }
           ],
           "default": null,
-          "title": "Human Review Ref"
-        },
-        "outcome": {
-          "$ref": "#/$defs/CheckOutcome"
-        },
-        "reason_code": {
-          "title": "Reason Code",
-          "type": "string"
-        },
-        "rule_id": {
-          "title": "Rule Id",
-          "type": "string"
-        },
-        "rule_version": {
-          "title": "Rule Version",
-          "type": "string"
-        },
-        "severity": {
-          "$ref": "#/$defs/CheckSeverity"
+          "title": "Statement Ref"
         },
         "text_span": {
           "anyOf": [
@@ -102,8 +161,7 @@
         "rule_version",
         "outcome",
         "severity",
-        "reason_code",
-        "detail"
+        "reason_code"
       ],
       "title": "ClaimCheckRecord",
       "type": "object"
@@ -126,6 +184,14 @@
         "verified"
       ],
       "title": "ReleaseState",
+      "type": "string"
+    },
+    "ReportAudience": {
+      "enum": [
+        "internal_research",
+        "public_candidate"
+      ],
+      "title": "ReportAudience",
       "type": "string"
     }
   },
@@ -316,6 +382,82 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "release_state": {
+            "enum": [
+              "verified",
+              "verified_with_warnings"
+            ]
+          },
+          "report_audience": {
+            "const": "public_candidate"
+          }
+        },
+        "required": [
+          "report_audience",
+          "release_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "public_export_eligibility": {
+            "const": "eligible"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "public_export_eligibility": {
+            "const": "eligible"
+          }
+        },
+        "required": [
+          "public_export_eligibility"
+        ]
+      },
+      "then": {
+        "properties": {
+          "release_state": {
+            "enum": [
+              "verified",
+              "verified_with_warnings"
+            ]
+          },
+          "report_audience": {
+            "const": "public_candidate"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "release_state": {
+            "not": {
+              "const": "not_assessed"
+            }
+          },
+          "report_audience": {
+            "const": "internal_research"
+          }
+        },
+        "required": [
+          "report_audience",
+          "release_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "public_export_eligibility": {
+            "const": "ineligible"
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -325,7 +467,7 @@
       "type": "string"
     },
     "benchmark_sha256": {
-      "const": "bb25a8d4a272f051e2918fd18999d7bbe424259258c3353dbc258f528f0edc26",
+      "const": "6ce3dfe1bfbac0a4a05cde6d913f303776d924df7f265ea6b08e11415d001c05",
       "title": "Benchmark Sha256",
       "type": "string"
     },
@@ -334,22 +476,28 @@
         "$ref": "#/$defs/ClaimCheckRecord"
       },
       "title": "Check Records",
-      "type": "array"
-    },
-    "claim_evidence_map": {
-      "additionalProperties": {
-        "items": {
-          "type": "string"
-        },
-        "type": "array"
-      },
-      "title": "Claim Evidence Map",
-      "type": "object"
+      "type": "array",
+      "uniqueItems": true
     },
     "claim_policy_ref": {
       "const": "claim-policy:p0-10-public@0.1.0",
       "title": "Claim Policy Ref",
       "type": "string"
+    },
+    "evidence_graph_id": {
+      "minLength": 1,
+      "title": "Evidence Graph Id",
+      "type": "string"
+    },
+    "evidence_graph_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Evidence Graph Manifest Sha256",
+      "type": "string"
+    },
+    "evidence_graph_version": {
+      "minimum": 1,
+      "title": "Evidence Graph Version",
+      "type": "integer"
     },
     "object_version": {
       "const": "0.1.0",
@@ -365,12 +513,15 @@
       "type": "string"
     },
     "release_contract_sha256": {
-      "const": "3e881633eb281f7c3bf897c578596bf5629061a755854b0fdec71b0cd6b51f5f",
+      "const": "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8",
       "title": "Release Contract Sha256",
       "type": "string"
     },
     "release_state": {
       "$ref": "#/$defs/ReleaseState"
+    },
+    "report_audience": {
+      "$ref": "#/$defs/ReportAudience"
     },
     "report_content_hash": {
       "pattern": "^[0-9a-f]{64}$",
@@ -378,6 +529,7 @@
       "type": "string"
     },
     "report_draft_ref": {
+      "pattern": "^report:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
       "title": "Report Draft Ref",
       "type": "string"
     },
@@ -407,11 +559,14 @@
     "release_contract_sha256",
     "report_draft_ref",
     "report_content_hash",
+    "report_audience",
+    "evidence_graph_id",
+    "evidence_graph_version",
+    "evidence_graph_manifest_sha256",
     "claim_policy_ref",
     "statement_registry_ref",
     "release_state",
     "check_records",
-    "claim_evidence_map",
     "public_export_eligibility"
   ],
   "title": "ClaimVerificationResult",

@@ -963,6 +963,38 @@ def test_report_cannot_downgrade_its_required_evidence_tier(tmp_path: Path) -> N
     assert run.reason_codes == ["structured_input_schema_invalid"]
 
 
+def test_report_model_and_schema_reject_caller_release_authority() -> None:
+    validator = Draft202012Validator(ReportDraft.model_json_schema())
+    mutations = []
+
+    numeric_transform = _report_payload()
+    numeric_transform["claim_blocks"][0]["value_bindings"][0]["format_spec"] = {
+        "scale": "percent"
+    }
+    mutations.append(numeric_transform)
+
+    reviewer = _report_payload()
+    reviewer["human_review_decisions"] = [{"reviewer_role": "claim_reviewer"}]
+    mutations.append(reviewer)
+
+    release_tier = _report_payload()
+    release_tier["claim_blocks"][0]["intended_release_tier"] = "internal_candidate"
+    mutations.append(release_tier)
+
+    invalid_numeric = _report_payload()
+    invalid_numeric["claim_blocks"][0]["value_bindings"][0][
+        "canonical_numeric_string"
+    ] = "NaN"
+    mutations.append(invalid_numeric)
+
+    for payload in mutations:
+        payload["content_hash"] = report_content_hash(payload)
+        with pytest.raises(ValueError):
+            ReportDraft.model_validate(payload)
+        with pytest.raises(JSONSchemaValidationError):
+            validator.validate(payload)
+
+
 def test_caller_cannot_replace_the_approved_claim_policy(tmp_path: Path) -> None:
     payload = _policy().model_dump(mode="json")
     payload["text_rules"] = []
