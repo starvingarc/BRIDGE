@@ -543,7 +543,7 @@ class ClaimVerificationResult(FrozenModel):
     verifier_version: Literal["0.1.0"]
     benchmark_id: Literal["P0-10-BENCHMARK-v0.1"]
     benchmark_sha256: Literal[
-        "6ce3dfe1bfbac0a4a05cde6d913f303776d924df7f265ea6b08e11415d001c05"
+        "dd3c8dbcf8ecd7eb6881c503d8cc100788edbac4f2a5d7983cc6b0b67e56434a"
     ]
     release_contract_id: Literal["P0-10-RELEASE-CONTRACT-v0.1"]
     release_contract_sha256: Literal[
