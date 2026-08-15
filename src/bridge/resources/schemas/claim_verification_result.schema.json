@@ -468,7 +468,7 @@
       "type": "string"
     },
     "benchmark_sha256": {
-      "const": "6ce3dfe1bfbac0a4a05cde6d913f303776d924df7f265ea6b08e11415d001c05",
+      "const": "dd3c8dbcf8ecd7eb6881c503d8cc100788edbac4f2a5d7983cc6b0b67e56434a",
       "title": "Benchmark Sha256",
       "type": "string"
     },

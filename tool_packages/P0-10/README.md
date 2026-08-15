@@ -97,8 +97,8 @@ Its human projection is [BENCHMARK.md](https://github.com/starvingarc/BRIDGE/blo
 |---|---|
 | Benchmark ID | `P0-10-BENCHMARK-v0.1` |
 | Benchmark version | `0.1.0` |
-| Benchmark JSON SHA-256 | `6ce3dfe1bfbac0a4a05cde6d913f303776d924df7f265ea6b08e11415d001c05` |
-| Current benchmark state | `awaiting_server_validation` |
+| Benchmark JSON SHA-256 | `dd3c8dbcf8ecd7eb6881c503d8cc100788edbac4f2a5d7983cc6b0b67e56434a` |
+| Current benchmark state | `server_validated_candidate` |
 | Selected default | `none` |
 | Aggregate score/rank | `null` / `null` |
 
