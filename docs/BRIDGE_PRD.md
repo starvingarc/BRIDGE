@@ -718,7 +718,7 @@ Claim Verifier 检查：
 
 核验失败时返回 `release_blocked`。内部报告草稿可以自动生成；正式发布或 public-safe 导出需要用户确认。
 
-`ProductCase`、`AnalysisPlan`、`MeasurementSpec`、`ScoreContract`、`MeasurementResult`、`ProductEvidenceObject`、`CaseEvidenceGraph`、`ComparisonEvidenceGraph`、`ComparisonRecord`、`VisualizationArtifact`、`RecommendationCard` 和 `VerifiedReport` 均采用追加式版本管理；当前对外字段以 [公开 JSON Schema](../schemas/) 为准，尚未实现的对象保持候选设计。
+`ProductCase`、`AnalysisPlan`、`MeasurementSpec`、`ScoreContract`、`MeasurementResult`、`ProductEvidenceObject`、`CaseEvidenceGraph`、`ComparisonEvidenceGraph`、`ComparisonRecord`、`VisualizationArtifact`、`RecommendationCard` 和 `ClaimVerificationResult` 均采用追加式版本管理；当前对外字段以 [公开 JSON Schema](../schemas/) 为准，尚未实现的对象保持候选设计。
 
 ### 6.9 P0 验收要求
 

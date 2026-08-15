@@ -18,7 +18,6 @@ SCHEMA_REFS = {
     "bridge://schemas/claim-policy-spec/v0.1": "claim_policy_spec.schema.json",
     "bridge://schemas/claim-verification-result/v0.1": "claim_verification_result.schema.json",
     "bridge://schemas/claim-verifier-benchmark/v0.1": "claim_verifier_benchmark.schema.json",
-    "bridge://schemas/claim-verifier-run-result/v0.1": "claim_verifier_run_result.schema.json",
     "bridge://schemas/comparison-evidence-graph-manifest/v0.1": "comparison_evidence_graph_manifest.schema.json",
     "bridge://schemas/cytoscape-evidence-elements/v0.1": "cytoscape_evidence_elements.schema.json",
     "bridge://schemas/domain-gate-input/v0.1": "domain_gate_input.schema.json",
@@ -60,7 +59,6 @@ SCHEMA_REFS = {
     "bridge://schemas/tool-run/v0.1": "tool_run.schema.json",
     "bridge://schemas/tool-run/v0.2": "tool_run_v2.schema.json",
     "bridge://schemas/visualization-artifact/v0.1": "visualization_artifact.schema.json",
-    "bridge://schemas/verified-report/v0.1": "verified_report.schema.json",
 }
 
 

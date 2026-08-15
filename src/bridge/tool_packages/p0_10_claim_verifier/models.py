@@ -24,6 +24,10 @@ SHA256_PATTERN = r"^[0-9a-f]{64}$"
 EVIDENCE_REF_PATTERN = r"^evidence:[a-f0-9]{24}@[1-9][0-9]*$"
 CLAIM_REF_PATTERN = r"^claim:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
 PRODUCT_CASE_REF_PATTERN = r"^product-case:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
+STATEMENT_REF_PATTERN = r"^statement:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
+REPORT_REF_PATTERN = r"^report:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
+MAX_DECIMAL_DIGITS = 128
+MAX_DECIMAL_ADJUSTED_EXPONENT = 128
 FREE_MARKUP = re.compile(
     r"(?:^|\s)(?:#{1,6}|[-+*>]|\d+[.)])\s"
     r"|\[[^]\n]+\]\([^\n)]+\)"
@@ -95,7 +99,6 @@ class CheckOutcome(StrEnum):
     BLOCKED = "blocked"
     REVIEW_REQUIRED = "review_required"
     WARNING = "warning"
-    CLEARED_BY_REVIEW = "cleared_by_review"
 
 
 class SelectionRecommendation(StrEnum):
@@ -111,32 +114,32 @@ class DecisionState(StrEnum):
     PENDING = "pending"
 
 
-class NumericFormatSpec(FrozenModel):
-    decimal_places: StrictInt = Field(ge=0, le=12)
-    scale: Literal["identity", "percent"] = "identity"
-    rounding: Literal["half_even", "half_up"] = "half_even"
-
-
 class ValueBinding(FrozenModel):
     binding_id: str = Field(pattern=r"^binding:[A-Za-z0-9._:-]+$")
     source_evidence_ref: str = Field(pattern=EVIDENCE_REF_PATTERN)
     source_field: Literal[
         "value", "numerator", "denominator", "interval_lower", "interval_upper"
     ]
-    canonical_numeric_string: str = Field(min_length=1)
+    canonical_numeric_string: str = Field(min_length=1, max_length=256)
     raw_unit: str | None = None
-    format_spec: NumericFormatSpec
     text_span: tuple[StrictInt, StrictInt]
 
     @field_validator("canonical_numeric_string")
     @classmethod
     def decimal_string_is_finite(cls, value: str) -> str:
+        if value != value.strip():
+            raise ValueError("numeric binding cannot contain surrounding whitespace")
         try:
             number = Decimal(value)
         except InvalidOperation as exc:
             raise ValueError("numeric binding requires a decimal string") from exc
         if not number.is_finite():
             raise ValueError("numeric binding requires a finite decimal string")
+        if (
+            len(number.as_tuple().digits) > MAX_DECIMAL_DIGITS
+            or abs(number.adjusted()) > MAX_DECIMAL_ADJUSTED_EXPONENT
+        ):
+            raise ValueError("numeric binding is outside the supported decimal range")
         return value
 
     @field_validator("raw_unit")
@@ -161,15 +164,6 @@ class ValueBinding(FrozenModel):
         return value
 
 
-class HumanReviewDecision(FrozenModel):
-    claim_id: str = Field(pattern=r"^claim-block:[A-Za-z0-9._:-]+$")
-    rule_id: str = Field(pattern=r"^rule:[A-Za-z0-9._:-]+$")
-    decision: Literal["approved", "rejected"]
-    reviewer_role: str = Field(min_length=1)
-    reviewer_ref: str = Field(min_length=1)
-    reason: str = Field(min_length=1)
-
-
 class ClaimBlock(FrozenModel):
     claim_id: str = Field(pattern=r"^claim-block:[A-Za-z0-9._:-]+$")
     claim_version: str = Field(min_length=1)
@@ -183,7 +177,6 @@ class ClaimBlock(FrozenModel):
     value_bindings: list[ValueBinding] = Field(default_factory=list)
     reported_evidence_state: EvidenceState | None = None
     comparison_mode: ComparisonMode = ComparisonMode.NOT_APPLICABLE
-    intended_release_tier: Literal["formal", "internal_candidate"] = "formal"
     authoring_channel: AuthoringChannel
 
     @field_validator("text")
@@ -205,10 +198,15 @@ class ClaimBlock(FrozenModel):
     @field_validator("evidence_refs")
     @classmethod
     def evidence_refs_are_versioned(cls, value: list[str]) -> list[str]:
-        import re
-
         if any(re.fullmatch(EVIDENCE_REF_PATTERN, item) is None for item in value):
             raise ValueError("evidence_refs must use versioned evidence references")
+        return value
+
+    @field_validator("statement_refs")
+    @classmethod
+    def statement_refs_are_versioned(cls, value: list[str]) -> list[str]:
+        if any(re.fullmatch(STATEMENT_REF_PATTERN, item) is None for item in value):
+            raise ValueError("statement_refs must use versioned statement references")
         return value
 
     @field_validator("value_bindings")
@@ -226,7 +224,7 @@ class ClaimBlock(FrozenModel):
 class ReportDraft(FrozenModel):
     object_version: Literal["0.1.0"]
     report_id: str = Field(pattern=r"^report:[A-Za-z0-9._:-]+$")
-    report_version: str = Field(min_length=1)
+    report_version: str = Field(pattern=r"^[A-Za-z0-9._:-]+$")
     content_hash: str = Field(pattern=SHA256_PATTERN)
     audience: ReportAudience
     language: ReportLanguage
@@ -234,7 +232,6 @@ class ReportDraft(FrozenModel):
     claim_policy_ref: str = Field(min_length=1)
     statement_registry_ref: str = Field(min_length=1)
     claim_blocks: list[ClaimBlock] = Field(min_length=1)
-    human_review_decisions: list[HumanReviewDecision] = Field(default_factory=list)
     renderer_id: str = Field(min_length=1)
     renderer_version: str = Field(min_length=1)
     authoring_channel: AuthoringChannel
@@ -246,16 +243,6 @@ class ReportDraft(FrozenModel):
         ids = [item.claim_id for item in value]
         if len(ids) != len(set(ids)):
             raise ValueError("claim blocks must be unique")
-        return value
-
-    @field_validator("human_review_decisions")
-    @classmethod
-    def reviews_are_unique(
-        cls, value: list[HumanReviewDecision]
-    ) -> list[HumanReviewDecision]:
-        keys = [(item.claim_id, item.rule_id) for item in value]
-        if len(keys) != len(set(keys)):
-            raise ValueError("human review decisions must be unique per claim and rule")
         return value
 
     @model_validator(mode="after")
@@ -308,8 +295,6 @@ class ClaimPolicySpec(FrozenModel):
     claim_type_policies: list[ClaimTypePolicy] = Field(min_length=1)
     text_rules: list[TextRule]
     descriptive_forbidden_patterns: list[str]
-    authorized_reviewer_roles: list[str]
-    require_all_numeric_tokens_bound: StrictBool = True
 
     @field_validator("claim_type_policies")
     @classmethod
@@ -382,7 +367,6 @@ class ClaimVerifierReleaseContract(FrozenModel):
     renderer_id: Literal["BRIDGE-REPORT-DRAFT-RENDERER-v0.1"]
     renderer_version: Literal["0.1.0"]
     measurement_language: Literal["en"]
-    measurement_template: Literal["{{ metric_id }}: {{ value }}."]
     claim_policy: ClaimPolicySpec
     statement_registry: StatementRegistry
 
@@ -393,42 +377,66 @@ class ClaimVerifierReleaseContract(FrozenModel):
         return self
 
 
+def _check_record_json_schema(schema: dict[str, Any]) -> None:
+    pairs = {
+        "blocked": "hard_blocker",
+        "review_required": "review",
+        "warning": "warning",
+    }
+    schema["allOf"] = [
+        {
+            "if": {
+                "properties": {"outcome": {"const": outcome}},
+                "required": ["outcome"],
+            },
+            "then": {"properties": {"severity": {"const": severity}}},
+        }
+        for outcome, severity in pairs.items()
+    ]
+
+
 class ClaimCheckRecord(FrozenModel):
+    model_config = ConfigDict(json_schema_extra=_check_record_json_schema)
+
     check_id: str = Field(pattern=r"^check:[a-f0-9]{16}$")
-    claim_id: str
-    rule_id: str
-    rule_version: str
+    claim_id: str = Field(pattern=r"^claim-block:[A-Za-z0-9._:-]+$")
+    rule_id: str = Field(pattern=r"^rule:[A-Za-z0-9._:-]+$")
+    rule_version: str = Field(min_length=1)
     outcome: CheckOutcome
     severity: CheckSeverity
-    reason_code: str
+    reason_code: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
     text_span: tuple[StrictInt, StrictInt] | None = None
     evidence_refs: list[str] = Field(default_factory=list)
-    detail: str
-    human_review_ref: str | None = None
+    statement_ref: str | None = Field(default=None, pattern=STATEMENT_REF_PATTERN)
 
-
-class VerifiedClaim(FrozenModel):
-    claim_id: str
-    claim_ref: str
-    product_case_ref: str
-    text: str
-    evidence_refs: list[str]
-    statement_refs: list[str]
-
-
-class VerifiedReport(FrozenModel):
-    object_version: Literal["0.1.0"]
-    verified_report_id: str = Field(pattern=r"^verified-report:[a-f0-9]{16}$")
-    verification_id: str
-    claims: list[VerifiedClaim] = Field(min_length=1)
-
-    @field_validator("claims")
+    @field_validator("evidence_refs")
     @classmethod
-    def claims_are_unique(cls, value: list[VerifiedClaim]) -> list[VerifiedClaim]:
-        ids = [claim.claim_id for claim in value]
-        if len(ids) != len(set(ids)):
-            raise ValueError("verified claims must be unique")
+    def evidence_refs_are_unique_and_sorted(cls, value: list[str]) -> list[str]:
+        if any(re.fullmatch(EVIDENCE_REF_PATTERN, item) is None for item in value):
+            raise ValueError("check evidence_refs must use versioned evidence references")
+        if value != sorted(set(value)):
+            raise ValueError("check evidence_refs must be unique and sorted")
         return value
+
+    @field_validator("text_span")
+    @classmethod
+    def check_text_span_is_ordered(
+        cls, value: tuple[int, int] | None
+    ) -> tuple[int, int] | None:
+        if value is not None and (value[0] < 0 or value[1] <= value[0]):
+            raise ValueError("check text_span must be a non-empty forward range")
+        return value
+
+    @model_validator(mode="after")
+    def outcome_matches_severity(self) -> Self:
+        expected = {
+            CheckOutcome.BLOCKED: CheckSeverity.HARD_BLOCKER,
+            CheckOutcome.REVIEW_REQUIRED: CheckSeverity.REVIEW,
+            CheckOutcome.WARNING: CheckSeverity.WARNING,
+        }[self.outcome]
+        if self.severity is not expected:
+            raise ValueError("check outcome does not match severity")
+        return self
 
 
 def _outcome_schema(*outcomes: str) -> dict[str, Any]:
@@ -497,30 +505,52 @@ def _claim_verification_json_schema(schema: dict[str, Any]) -> None:
             },
             ["eligible", "ineligible"],
         ),
-    ]
-
-
-def _run_result_json_schema(schema: dict[str, Any]) -> None:
-    schema["allOf"] = [
         {
             "if": {
                 "properties": {
-                    "verification": {
-                        "properties": {
-                            "release_state": {
-                                "enum": ["verified", "verified_with_warnings"]
-                            }
-                        },
-                        "required": ["release_state"],
-                    }
+                    "report_audience": {"const": "public_candidate"},
+                    "release_state": {
+                        "enum": ["verified", "verified_with_warnings"]
+                    },
                 },
-                "required": ["verification"],
+                "required": ["report_audience", "release_state"],
             },
             "then": {
-                "properties": {"verified_report": {"not": {"type": "null"}}}
+                "properties": {
+                    "public_export_eligibility": {"const": "eligible"}
+                }
             },
-            "else": {"properties": {"verified_report": {"type": "null"}}},
-        }
+        },
+        {
+            "if": {
+                "properties": {
+                    "public_export_eligibility": {"const": "eligible"}
+                },
+                "required": ["public_export_eligibility"],
+            },
+            "then": {
+                "properties": {
+                    "report_audience": {"const": "public_candidate"},
+                    "release_state": {
+                        "enum": ["verified", "verified_with_warnings"]
+                    },
+                }
+            },
+        },
+        {
+            "if": {
+                "properties": {
+                    "report_audience": {"const": "internal_research"},
+                    "release_state": {"not": {"const": "not_assessed"}},
+                },
+                "required": ["report_audience", "release_state"],
+            },
+            "then": {
+                "properties": {
+                    "public_export_eligibility": {"const": "ineligible"}
+                }
+            },
+        },
     ]
 
 
@@ -536,25 +566,38 @@ class ClaimVerificationResult(FrozenModel):
     ]
     release_contract_id: Literal["P0-10-RELEASE-CONTRACT-v0.1"]
     release_contract_sha256: Literal[
-        "3e881633eb281f7c3bf897c578596bf5629061a755854b0fdec71b0cd6b51f5f"
+        "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8"
     ]
-    report_draft_ref: str
+    report_draft_ref: str = Field(pattern=REPORT_REF_PATTERN)
     report_content_hash: str = Field(pattern=SHA256_PATTERN)
+    report_audience: ReportAudience
+    evidence_graph_id: str = Field(min_length=1)
+    evidence_graph_version: StrictInt = Field(ge=1)
+    evidence_graph_manifest_sha256: str = Field(pattern=SHA256_PATTERN)
     claim_policy_ref: Literal["claim-policy:p0-10-public@0.1.0"]
     statement_registry_ref: Literal[
         "BRIDGE-STATEMENT-REGISTRY-v0.1@0.1.0"
     ]
     release_state: ReleaseState
-    check_records: list[ClaimCheckRecord]
-    claim_evidence_map: dict[str, list[str]]
+    check_records: list[ClaimCheckRecord] = Field(
+        json_schema_extra={"uniqueItems": True}
+    )
     public_export_eligibility: PublicExportEligibility
 
     @model_validator(mode="after")
     def state_matches_checks(self) -> Self:
+        check_ids = [record.check_id for record in self.check_records]
+        if check_ids != sorted(set(check_ids)):
+            raise ValueError("check records must have unique sorted IDs")
         outcomes = {record.outcome for record in self.check_records}
         if self.release_state is ReleaseState.NOT_ASSESSED:
-            if self.check_records or self.public_export_eligibility is not PublicExportEligibility.NOT_ASSESSED:
-                raise ValueError("not_assessed requires no checks and not_assessed export eligibility")
+            if self.check_records or (
+                self.public_export_eligibility
+                is not PublicExportEligibility.NOT_ASSESSED
+            ):
+                raise ValueError(
+                    "not_assessed requires no checks and not_assessed export eligibility"
+                )
             return self
         expected = (
             ReleaseState.RELEASE_BLOCKED
@@ -574,35 +617,27 @@ class ClaimVerificationResult(FrozenModel):
             raise ValueError("blocked or review-required results are not export eligible")
         if self.public_export_eligibility is PublicExportEligibility.NOT_ASSESSED:
             raise ValueError("assessed results cannot have not_assessed export eligibility")
-        return self
-
-
-class ClaimVerifierRunResult(FrozenModel):
-    model_config = ConfigDict(json_schema_extra=_run_result_json_schema)
-
-    object_version: Literal["0.1.0"]
-    verification: ClaimVerificationResult
-    verified_report: VerifiedReport | None
-
-    @model_validator(mode="after")
-    def report_matches_verification(self) -> Self:
-        passed = self.verification.release_state in {
+        eligible = self.release_state in {
             ReleaseState.VERIFIED,
             ReleaseState.VERIFIED_WITH_WARNINGS,
-        }
-        if passed != (self.verified_report is not None):
-            raise ValueError("verified report presence does not match release state")
-        if self.verified_report is None:
-            return self
-        if self.verified_report.verification_id != self.verification.verification_id:
-            raise ValueError("verified report references the wrong verification")
-        claim_map = {
-            claim.claim_id: claim.evidence_refs
-            for claim in self.verified_report.claims
-        }
-        if claim_map != self.verification.claim_evidence_map:
-            raise ValueError("verified report claims do not match the verification map")
+        } and self.report_audience is ReportAudience.PUBLIC_CANDIDATE
+        expected_eligibility = (
+            PublicExportEligibility.ELIGIBLE
+            if eligible
+            else PublicExportEligibility.INELIGIBLE
+        )
+        if self.public_export_eligibility is not expected_eligibility:
+            raise ValueError(
+                "export eligibility does not match report audience and release state"
+            )
         return self
+
+    def matches_report_draft(self, report: ReportDraft) -> bool:
+        return (
+            self.report_draft_ref == report.ref
+            and self.report_content_hash == report.content_hash
+            and self.report_audience is report.audience
+        )
 
 
 class BenchmarkDataCase(FrozenModel):
@@ -706,7 +741,5 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/claim-policy-spec/v0.1": ClaimPolicySpec,
     "bridge://schemas/statement-registry/v0.1": StatementRegistry,
     "bridge://schemas/claim-verification-result/v0.1": ClaimVerificationResult,
-    "bridge://schemas/verified-report/v0.1": VerifiedReport,
-    "bridge://schemas/claim-verifier-run-result/v0.1": ClaimVerifierRunResult,
     "bridge://schemas/claim-verifier-benchmark/v0.1": ClaimVerifierBenchmark,
 }

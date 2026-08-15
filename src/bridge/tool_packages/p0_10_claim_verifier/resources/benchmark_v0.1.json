@@ -2,7 +2,7 @@
   "aggregate_rank": null,
   "aggregate_score": null,
   "benchmark_id": "P0-10-BENCHMARK-v0.1",
-  "benchmark_state": "server_validated_candidate",
+  "benchmark_state": "awaiting_server_validation",
   "benchmark_version": "0.1.0",
   "data_cases": [
     {
@@ -258,7 +258,8 @@
       "positive_controls": [
         "exact integer",
         "decimal",
-        "percent",
+        "scientific identifier beside an exact value",
+        "large finite integer",
         "interval"
       ],
       "preprocessing_sensitivity": "Canonical decimal strings are compared before rendering.",
@@ -614,7 +615,7 @@
       ],
       "decision": {
         "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
-        "reason": "Approved as the fixed renderer; templates cannot come from callers.",
+        "reason": "Approved as direct package-owned construction; callers cannot provide templates or transforms.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
       },
@@ -626,7 +627,7 @@
       },
       "environment_spec_id": "ENV-EVIDENCE-v0.1",
       "evaluation": "smoke",
-      "failure_behavior": "No VerifiedReport is emitted for blocked or review-required content.",
+      "failure_behavior": "No public-eligible receipt is emitted for blocked or review-required content.",
       "license": "MIT",
       "method_id": "METHOD-INTERNAL-RENDERER",
       "method_name": "BRIDGE controlled renderer",
@@ -640,7 +641,7 @@
       "preprocessing_sensitivity": "Only complete ClaimBlock text reconstructed from structured values can pass automatically.",
       "random_seeds": [],
       "recommendation": "default_candidate",
-      "reference_sensitivity": "Renderer ID, version and template are pinned by the packaged release contract.",
+      "reference_sensitivity": "Renderer ID, version and sentence shape are pinned by the packaged release contract.",
       "resources": {
         "cache_state": "covered by the end-to-end run; not isolated",
         "cpu_seconds_median": null,
@@ -663,42 +664,35 @@
     },
     {
       "analysis_task": "Controlled report rendering",
-      "data_case_ids": [
-        "PUBLIC-SERVER-REPRO-20260812",
-        "SYNTHETIC-P0-10-CONTROLS-v0.1",
-        "INTERNAL-ANONYMIZED-REPORT-v0.1"
-      ],
+      "data_case_ids": [],
       "decision": {
         "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
-        "reason": "Approved only behind the fixed BRIDGE template.",
+        "reason": "Direct construction covers the only v0.1 sentence shape without a template engine.",
         "reviewer": "developer-plan-20260814",
-        "state": "approved"
+        "state": "rejected"
       },
-      "denominator_sensitivity": "No calculation in templates.",
+      "denominator_sensitivity": "Not run.",
       "downsampling": {
         "cells": "not applicable",
         "genes": "not applicable",
         "sequencing_depth": "not applicable"
       },
       "environment_spec_id": "ENV-EVIDENCE-v0.1",
-      "evaluation": "smoke",
-      "failure_behavior": "StrictUndefined fails instead of inserting missing content.",
+      "evaluation": "audit_only",
+      "failure_behavior": "Not called by the v0.1 path.",
       "license": "BSD-3-Clause",
       "method_id": "METHOD-TEMPLATE-ENGINE",
       "method_name": "Jinja2",
-      "missing_input_behavior": "Template rendering fails closed.",
+      "missing_input_behavior": "Not applicable.",
       "negative_controls": [],
-      "ood_or_abstention_behavior": "Caller templates are not accepted.",
-      "positive_controls": [
-        "fixed metric template",
-        "exact registered boundary statement"
-      ],
-      "preprocessing_sensitivity": "No arbitrary template input.",
+      "ood_or_abstention_behavior": "Not called by the v0.1 path.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Not run.",
       "random_seeds": [],
-      "recommendation": "default_candidate",
-      "reference_sensitivity": "Only the packaged template is used.",
+      "recommendation": "deferred",
+      "reference_sensitivity": "Not applicable.",
       "resources": {
-        "cache_state": "covered by the end-to-end run; not isolated",
+        "cache_state": "not run; excluded from the v0.1 formal path",
         "cpu_seconds_median": null,
         "output_bytes": null,
         "peak_ram_mb": null,
@@ -708,12 +702,12 @@
         "wall_clock_seconds_median": null,
         "wall_clock_seconds_range": null
       },
-      "role": "Fixed controlled ClaimBlock rendering.",
+      "role": "Audited alternative excluded from direct v0.1 construction.",
       "source": "https://jinja.palletsprojects.com/",
       "task_metrics": {
-        "caller_text_mismatch_rejection_rate": 1.0
+        "formal_path": "excluded"
       },
-      "uncertainty_or_interval": "Exact byte comparison.",
+      "uncertainty_or_interval": null,
       "version": "3.1.6"
     },
     {

@@ -6,7 +6,7 @@
 | Version | `v0.1-candidate` |
 | Date | 2026-08-14 |
 | Verification unit | `report draft x claim block x policy snapshot` |
-| Primary output | `ClaimVerificationResult`、`VerifiedReport` |
+| Primary output | `ClaimVerificationResult` receipt |
 | Current state | `candidate` |
 
 P0-10 `v0.1.0` implements the structured deterministic path only. Its four
@@ -58,7 +58,7 @@ measurement claim，以及与包内 Statement Registry 逐字一致的边界声�
 
 自由 Markdown 导入不属于 v0.1 运行接口。后续解析器恢复的 claim 即使加入，也只能先作为 candidate；所有可核查主张仍须补齐来源绑定并重新进入结构化核验。
 
-任何人工或 Agent 文本修改都会改变 report hash，使旧 `VerifiedReport` 失效。系统必须创建新版本并重新核验，不能在已核验对象上静默修改。
+任何人工或 Agent 文本修改都会改变 report hash，使旧核对回执失效。系统必须创建新版本并重新核验，不能在已核验对象上静默修改。
 
 ## 3. 输入与对象合同
 
@@ -82,7 +82,7 @@ ProductCase、ComparisonRecord、图表、Recommendation 或其他上游对象�
 report_id / report_version / content_hash
 audience=internal_research|public_candidate / language=zh|en|mixed
 evidence_record_set_ref / claim_policy_ref / statement_registry_ref
-claim_blocks / human_review_decisions
+claim_blocks
 renderer_id / renderer_version / created_at / authoring_channel
 ```
 
@@ -95,39 +95,38 @@ deterministic renderer、human edit 和 imported draft；后两者始终需要�
 claim_id / claim_version / claim_ref / product_case_ref / claim_type
 text / language / evidence_refs / statement_refs
 value_bindings / reported_evidence_state / comparison_mode
-intended_release_tier / authoring_channel
+authoring_channel
 ```
 
 每个 `ClaimBlock` 只表达一个可核查主张。包含多个独立事实的句子必须拆分；方法、边界和固定免责声明使用版本化 Statement ID，不允许作为无来源自由文本绕过追溯要求。
 
-### 3.4 ValueBinding 与 FormattingSpec
+### 3.4 ValueBinding
 
 `ValueBinding` 至少保存：
 
 ```text
 binding_id / source_evidence_ref / source_field
-canonical_numeric_string / raw_unit / format_spec / text_span
+canonical_numeric_string / raw_unit / text_span
 ```
 
 一个 binding 只绑定 EvidenceRecord 的一个数值字段；分母和区间端点若出现在文本中，
-分别使用独立 binding。明确的 `text_span` 必须逐字等于按小数位、百分比、舍入模式
-和非数字单位渲染的结果。数值从 canonical numeric string 构建 `Decimal`；不采用
-“足够接近”的浮点容差，也不允许任意数字后缀。
+分别使用独立 binding。明确的 `text_span` 必须逐字等于包内规则生成的 canonical
+十进制数和来源单位。v0.1 仅允许数值恒等呈现，不接受请求方提供的百分比、缩放或
+舍入规则；不采用“足够接近”的浮点容差，也不允许任意数字后缀。
 
-单位转换只有在注册转换表或审核后的 Pint unit registry 中明确允许时才能执行。LLM 不参与数值、单位或舍入计算。
+v0.1 不执行单位转换。未来只有注册转换表或审核后的 Pint unit registry 才能增加
+转换能力；LLM 不参与数值、单位或舍入计算。
 
 ### 3.5 核验记录
 
 | 对象 | 作用 |
 | --- | --- |
 | `ClaimPolicySpec` | 定义 claim 类型、必需来源、允许状态、禁止解释、规则严重度和适用受众 |
-| `ClaimCheckRecord` | 保存 rule ID/version、目标 block/span、结果、severity、reason code 和 Evidence IDs |
-| `HumanReviewDecision` | 保存 claim ID、rule ID、reviewer role/ref、决定和理由；v0.1 不含签字时间或 check ID 列表 |
-| `ClaimVerificationResult` | 保存发布状态、逐项 checks、claim map、导出资格以及 benchmark/release-contract hash；各类数量由 checks 推导，不重复存储 |
-| `VerifiedReport` | 只在通过时保存 verification ID 和逐字通过核验的结构化 claims；不重复存储可漂移的正文 hash |
+| `ClaimCheckRecord` | 保存 rule ID/version、目标 block/span、结果、severity、reason code、Evidence IDs 和可选 Statement ref |
+| `ClaimVerificationResult` | 保存 ReportDraft ref/hash/受众、P0-09 graph ID/version/manifest hash、发布状态、唯一 checks、导出资格以及 benchmark/release-contract hash |
 
-`SemanticReviewRecord`、签字时间和 visualization check references 是后续候选，未进入
-v0.1 公开模型。
+独立签字回执、`SemanticReviewRecord` 和 visualization check references 是后续候选，
+未进入 v0.1 公开模型。ReportDraft 不能携带可改变发布状态的自我声明审核决定。
 
 ## 4. Claim Taxonomy 与追溯规则
 
@@ -154,11 +153,11 @@ v0.1 公开模型。
 flowchart LR
     A["ReportDraft + policy snapshot"] --> B["Schema, version and hash"]
     B --> C["Claim and source binding"]
-    C --> D["Numeric, unit and formatting fidelity"]
+    C --> D["Numeric and unit identity fidelity"]
     D --> E["Evidence state and applicability"]
     E --> F["Comparison rules and unsupported-claim handling"]
     F --> G["Bilingual prohibited-claim rules"]
-    G --> H["Apply supplied authorized review decisions"]
+    G --> H["Complete package-owned reconstruction"]
     H --> I["Deterministic release aggregation"]
 ```
 
@@ -166,17 +165,20 @@ flowchart LR
 
 1. 校验对象 schema、版本、hash 和引用完整性。
 2. 核对每个可核查主张的 Evidence、Knowledge 或 Statement ID。
-3. 核对数值、单位、分母、区间和 `FormattingSpec`。
-4. 检查 evidence tier、lifecycle、applicability、sufficiency 和 reconciliation state。
+3. 核对数值、单位、分母和区间的恒等呈现。
+4. 检查 EvidenceRecord 的 tier、lifecycle 和 applicability；sufficiency 与
+   reconciliation 由已通过完整性校验的 P0-09 graph 继承，本模块不重新计算。
 5. 检查状态语义和比较资格；未进入 v0.1 的 claim 类型不能自动通过。
 6. 运行中英双语禁止主张和敏感措辞规则。
-7. 对 review-only 命中应用 ReportDraft 中已有的授权人工决定。
-8. 按固定优先级聚合发布状态；人工决定不能清除 hard blocker。LLM 语义复核为后续候选，不在 v0.1 中运行。
+7. 用包内固定规则完整重建可自动核对的 ClaimBlock；其他正文保持
+   `review_required`。
+8. 按固定优先级聚合发布状态；ReportDraft 不能自行声明审核权限。LLM 语义复核为后续候选，不在 v0.1 中运行。
 
 ### 5.1 Hard blockers
 
 - schema、hash、版本或必需引用错误。
-- 数值、单位、分母、区间、舍入或显示值不一致。
+- public candidate 的任一 ClaimBlock 缺少 formal、active、applicable Evidence。
+- 数值、单位、分母、区间或恒等显示值不一致。
 - 案例特异性主张缺少可用来源 ID。
 - 引用跨案例、跨 graph scope、superseded、invalidated 或不适用证据。
 - exploratory/shadow 证据被当作 formal 结论。
@@ -184,7 +186,8 @@ flowchart LR
 - 描述性比较使用显著性、普遍优越或因果措辞。
 - 临床疗效、安全性、validated potency、GMP 放行或绝对产品排名主张。
 - graft 证据被回填为移植前产品结果。
-- public candidate 含私有路径、用户名、内部编号或 restricted metadata。
+- public candidate 含私有路径、用户名或 restricted metadata；内部 ID 的公开
+  别名和字段白名单由 P0-11 处理。
 - 核验后正文或绑定对象发生变化。
 
 ### 5.2 Review-required items
@@ -241,12 +244,14 @@ LLM 只能返回结构化 flags：claim ID、文本 span、semantic category、�
 
 模型、provider、prompt、temperature、structured-output schema、输入 hash、输出 hash、延迟和错误均版本化。正式策略不依赖实时联网；新论文或实时检索不能改变当次结论。
 
-未来若接入 LLM，其不可用状态不得改变当前确定性结果。v0.1 的授权人工 reviewer
-只能处理 policy 中的 review-only 规则，并且：
+未来若接入 LLM，其不可用状态不得改变当前确定性结果。若后续允许人工 reviewer
+处理 review-only 规则，必须使用独立、带 checksum 的审核权限登记和签字回执；
+ReportDraft 内的字段不能授予审核权限。当前 v0.1 对 review-only 命中始终保留
+`review_required`。后续审核合同仍必须满足：
 
 - 不能豁免 hard blocker。
 - 不能修改原 ReportDraft；需要修改时创建新版本。
-- 必须记录 claim ID、rule ID、reviewer role/ref、决定和理由；当前模型不含签字时间。
+- 必须记录 claim ID、rule ID、reviewer role/ref、决定、理由和独立回执 hash。
 - 同一人不能通过手工改写绕过重新核验。
 
 ## 8. 发布状态与输出合同
@@ -274,16 +279,20 @@ verification_id / version / verifier_version
 benchmark_id / benchmark_sha256
 release_contract_id / release_contract_sha256
 report_draft_ref / report_content_hash
+report_audience
+evidence_graph_id / evidence_graph_version / evidence_graph_manifest_sha256
 claim_policy_ref / statement_registry_ref
-release_state / check_records / claim_evidence_map
+release_state / check_records
 public_export_eligibility
 ```
 
 `blocker`、`review` 和 `warning` 数量由 `check_records` 推导，不作为第二份事实存储。
-外层 `ClaimVerifierRunResult` 只包含这一核验对象和可选 `VerifiedReport`，因此 benchmark
-信息、报告存在性和核验状态不会出现两份互相矛盾的值。
+工具结果和唯一 JSON artifact 都是这一份回执的相同 canonical bytes；artifact
+checksum 不从发布后的可变路径重新推导。
 
-`public_export_eligibility` 为 `eligible`、`ineligible` 或 `not_assessed`。它只控制下一模块入口；Public-safe Export 必须从字段白名单生成新对象，不能修改或覆盖内部 VerifiedReport。
+`public_export_eligibility` 为 `eligible`、`ineligible` 或 `not_assessed`，并与回执中的
+ReportDraft audience 和 release state 交叉约束。Public-safe Export 必须同时读取原始
+ReportDraft 和本回执，核对 ref/hash 后从字段白名单生成新对象；P0-10 不复制第二份报告。
 
 ## 9. 图表、比较与 Recommendation 核验
 
@@ -310,11 +319,11 @@ visualization checks。此类输入作为不支持的对象角色被拒绝；后
 | 工具/组件 | 作用 | P0 状态 | 环境 | 边界 |
 | --- | --- | --- | --- | --- |
 | `BRIDGE-CLAIM-VERIFIER-CORE-v0.1` | 确定性规则、状态聚合和核验记录 | `default_candidate` | `ENV-EVIDENCE-v0.1` | 正式候选；尚未选择 default |
-| `BRIDGE-REPORT-DRAFT-RENDERER-v0.1` | 结构化 blocks 的固定模板渲染 | `default_candidate` | `ENV-EVIDENCE-v0.1` | 不接受调用方模板，不生成未绑定数值 |
+| `BRIDGE-REPORT-DRAFT-RENDERER-v0.1` | 单值 measurement 和注册边界声明的直接构造 | `default_candidate` | `ENV-EVIDENCE-v0.1` | 不接受调用方模板、缩放或舍入规则 |
 | Pydantic + JSON Schema | 对象、枚举和公开 Schema 合同 | `candidate` | `ENV-EVIDENCE-v0.1` | Schema 通过不代表科学主张正确 |
 | markdown-it-py | Markdown token、block 和 span 解析 | `deferred` | `ENV-EVIDENCE-v0.1` | 自由 Markdown 不进入 v0.1 |
-| Jinja2 | 受控固定模板渲染 | `candidate` | `ENV-EVIDENCE-v0.1` | 模板不可由调用方提供 |
-| Python `Decimal` | canonical numeric fidelity | `default_candidate` | standard library | 不使用浮点容差替代格式合同 |
+| Jinja2 | 模板引擎审计 | `deferred` | 不进入正式环境 | v0.1 的单一语句形状直接构造，无需模板引擎 |
+| Python `Decimal` | canonical numeric fidelity | `default_candidate` | standard library | 仅恒等呈现，不使用浮点容差、缩放或舍入合同 |
 | `regex` + 双语规则表 | 有超时边界的规则匹配和 span | `default_candidate` | `ENV-EVIDENCE-v0.1` | 复杂语义进入人工复核，不由命中自动通过 |
 | Pint | 注册单位解析和转换候选 | `deferred` | isolated candidate env | 等待审核 unit registry |
 | OPA/Rego | policy-as-code 对照 | `benchmark` | `claim_policy_opa` | 当前无 OPA binary；不作为 P0 必需服务 |
@@ -325,12 +334,8 @@ visualization checks。此类输入作为不支持的对象角色被拒绝；后
 
 ### 10.1 环境合同
 
-- `ENV-CLAIM-CORE-v0.1`：CPU、Python 3.12、确定性 schema/parse/render/rule 依赖。
-- `ENV-AGENT-RUNTIME-v0.1`：LLM adapter、provider/model card 和审计日志；provider 保持独立配置。
-- `ENV-WEB-VALIDATION-v0.1`：Node/Playwright、桌面与移动 viewport、SVG/PNG snapshot checks。
-- model/OPA benchmark 环境：隔离运行，不污染正式核验核心。
-
-本任务不安装或修改任何环境。正式冻结前需建立 lock、health check、fixture 和资源卡。
+当前实现只使用 `ENV-EVIDENCE-v0.1`。Jinja2 已从正式依赖中删除；LLM、OPA、
+Playwright 和外部 factuality 方法只保留 benchmark 处置记录，若未来实测必须使用隔离环境。
 
 ## 11. Validation 与冻结要求
 
@@ -338,7 +343,9 @@ visualization checks。此类输入作为不支持的对象角色被拒绝；后
 
 | 场景 | 预期结果 |
 | --- | --- |
-| 数字、百分比、分母、区间、单位或舍入被篡改 | `release_blocked`，指向准确 source field |
+| 数字、分母、区间或单位被篡改 | `release_blocked`，指向准确 source field |
+| 请求方加入百分比、缩放或舍入规则 | typed input failure；v0.1 只允许恒等呈现 |
+| `SOX2`、`CD8`、`O2` 等科学标识符 | 不作为独立数字扫描；完整包内重建仍须逐字一致 |
 | 未绑定的案例特异性 claim | `release_blocked` |
 | 错误、跨案例、superseded 或 invalidated Evidence ID | `release_blocked` |
 | negative/missing/unknown/unavailable/alert 任意互换 | `release_blocked` |
@@ -349,9 +356,9 @@ visualization checks。此类输入作为不支持的对象角色被拒绝；后
 | graft 结果回填移植前评分或疗效 | `release_blocked` |
 | 禁止主张或最佳收获阶段 | `release_blocked` |
 | 不支持的图表或媒体对象进入 v0.1 | typed input failure；不静默忽略 |
-| 人工尝试豁免 hard blocker | 拒绝；必须生成修正后的新 ReportDraft |
-| 核验后文本改变一个字符 | content hash 变化，旧 VerifiedReport 失效 |
-| public candidate 含私有路径或 restricted 字段 | `release_blocked`；不执行自动脱敏 |
+| ReportDraft 自行附加审核身份或决定 | typed input failure；等待未来独立审核回执 |
+| 核验后文本改变一个字符 | content hash 变化，旧核对回执失效 |
+| public candidate 含私有路径或 restricted 字段 | typed input failure；不执行自动脱敏 |
 
 ### 11.2 语言 fixtures 与后续视觉范围
 
@@ -366,7 +373,7 @@ visualization checks。此类输入作为不支持的对象角色被拒绝；后
 
 - 数字复制、ValueBinding 和正式 claim 来源映射 fixture 正确率为 100%。
 - 已登记禁止主张 fixture 的漏放行为 0。
-- 任一 hard blocker 不得被 LLM、人工签字或 warning 降级绕过。
+- 任一 hard blocker 不得被 LLM、请求方声明或 warning 降级绕过。
 - 相同输入、策略和工具版本重复运行的确定性结果逐字段一致。
 - LLM reviewer 达到预注册中英双语 benchmark 前不进入 v0.1 输出模型。
 - 至少一名湿实验用户和一名 Agent 实现者审核真实报告 fixture。
@@ -383,7 +390,10 @@ visualization checks。此类输入作为不支持的对象角色被拒绝；后
 - 将报告文件存在或某个分数可用解释为验证通过。
 - 将 public-safe 检查和科学 claim 核验混为一个 validation state。
 
-Public-safe Export 只接收通过核验且 `public_export_eligibility=eligible` 的 `VerifiedReport`，从冻结字段白名单生成新对象。它不能回写、清洗或覆盖内部报告；详细合同在下一张独立任务卡中整理。
+Public-safe Export 同时接收原始 `ReportDraft` 和
+`public_export_eligibility=eligible` 的 `ClaimVerificationResult` receipt。它必须核对
+report ref/hash、audience、P0-09 graph manifest hash 和 P0-10 artifact checksum，再从
+字段白名单生成新对象。它不能回写、清洗或覆盖原始报告；详细合同在下一张独立任务卡中整理。
 
 ## 13. 主要官方来源
 

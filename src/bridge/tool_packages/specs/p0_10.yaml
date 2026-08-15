@@ -8,7 +8,7 @@ optional: false
 environment_spec_id: ENV-EVIDENCE-v0.1
 input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
-result_schema_ref: bridge://schemas/claim-verifier-run-result/v0.1
+result_schema_ref: bridge://schemas/claim-verification-result/v0.1
 adapter_ref: bridge.tool_packages.p0_10_claim_verifier.adapter:adapter
 method_ids:
   - METHOD-INTERNAL-DETERMINISTIC-ENGINE-33C959
@@ -18,6 +18,5 @@ method_ids:
   - METHOD-SCHEMA-LIBRARY
   - METHOD-SCHEMA-VALIDATOR
   - METHOD-STANDARD-LIBRARY
-  - METHOD-TEMPLATE-ENGINE
   - METHOD-UNICODE-REGEX-ENGINE
 card_ref: bridge://tool-cards/P0-10

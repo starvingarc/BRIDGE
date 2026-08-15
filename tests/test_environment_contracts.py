@@ -87,7 +87,6 @@ def test_evidence_environment_is_self_contained_and_pinned() -> None:
         "jsonschema=4.25.1",
         "pyarrow=21.0.0",
         "networkx=3.5",
-        "jinja2=3.1.6",
         "regex=2026.7.19",
         "markdown-it-py=4.0.0",
         "pillow=11.3.0",

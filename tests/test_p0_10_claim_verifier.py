@@ -3,7 +3,6 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 import json
-from decimal import Decimal
 from pathlib import Path
 import shutil
 from types import SimpleNamespace
@@ -13,6 +12,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
 import pytest
 
+import bridge.tool_packages.p0_10_claim_verifier.adapter as adapter_module
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceRecord,
     EvidenceRecordSet,
@@ -28,14 +28,12 @@ from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     PUBLIC_SCHEMA_MODELS,
     ClaimPolicySpec,
-    ClaimVerifierRunResult,
-    NumericFormatSpec,
+    ClaimVerificationResult,
     ReportDraft,
     StatementRegistry,
     report_content_hash,
 )
 from bridge.tool_packages.p0_10_claim_verifier.verifier import (
-    _render_decimal,
     load_release_contract,
     release_contract_sha256,
 )
@@ -44,8 +42,10 @@ from bridge.toolkit.contracts import (
     ImplementationState,
     StructuredInputRef,
     ToolPackageSpecV2,
+    ToolRequest,
     ToolRequestV2,
 )
+from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.toolkit.registry import ToolRegistry
 
 
@@ -226,11 +226,6 @@ def _value_binding(
         "source_field": source_field,
         "canonical_numeric_string": canonical,
         "raw_unit": raw_unit,
-        "format_spec": {
-            "decimal_places": 0,
-            "scale": "identity",
-            "rounding": "half_even",
-        },
         "text_span": (start, start + len(rendered)),
     }
 
@@ -244,8 +239,8 @@ def _report_payload(
     binding_changes: dict[str, Any] | None = None,
     statement_refs: list[str] | None = None,
     evidence_refs: list[str] | None = None,
-    reviews: list[dict[str, Any]] | None = None,
     include_binding: bool = True,
+    audience: str = "public_candidate",
 ) -> dict[str, Any]:
     claim_evidence = [EVIDENCE_REF] if evidence_refs is None else evidence_refs
     binding = None
@@ -258,7 +253,7 @@ def _report_payload(
         "report_id": "report:public-server-validation",
         "report_version": "0.1.0",
         "content_hash": "0" * 64,
-        "audience": "public_candidate",
+        "audience": audience,
         "language": "en",
         "evidence_record_set_ref": "evidence-record-set:" + "c" * 16 + "@0.1.0",
         "claim_policy_ref": "claim-policy:p0-10-public@0.1.0",
@@ -277,11 +272,9 @@ def _report_payload(
                 "value_bindings": [binding] if binding is not None else [],
                 "reported_evidence_state": reported_state,
                 "comparison_mode": comparison_mode,
-                "intended_release_tier": "formal",
                 "authoring_channel": "deterministic_renderer",
             }
         ],
-        "human_review_decisions": reviews or [],
         "renderer_id": "BRIDGE-REPORT-DRAFT-RENDERER-v0.1",
         "renderer_version": "0.1.0",
         "authoring_channel": "deterministic_renderer",
@@ -379,7 +372,7 @@ def test_benchmark_is_task_grouped_complete_and_has_no_default_or_aggregate() ->
     assert benchmark.default_method_id is None
     assert benchmark.aggregate_score is None
     assert benchmark.aggregate_rank is None
-    assert benchmark.benchmark_state == "server_validated_candidate"
+    assert benchmark.benchmark_state == "awaiting_server_validation"
     assert set(spec.method_ids) == approved_runtime
     assert len(benchmark.methods) == 18
     internal_case = next(
@@ -425,26 +418,51 @@ def test_benchmark_markdown_is_generated_from_json() -> None:
     assert f"`{load_benchmark().benchmark_state}`" in card
 
 
-def test_verified_report_records_benchmark_and_one_immutable_artifact(tmp_path: Path) -> None:
+def test_receipt_binds_authority_and_matches_the_published_bytes(
+    tmp_path: Path,
+) -> None:
     request = _request(tmp_path)
     run = adapter.run(request, _spec())
 
     assert run.execution_state is ExecutionState.SUCCEEDED
-    assert run.result["verification"]["release_state"] == "verified"
-    assert run.result["verified_report"] is not None
-    assert run.result["verified_report"]["claims"][0]["claim_ref"] == CLAIM_REF
-    assert (
-        run.result["verified_report"]["claims"][0]["product_case_ref"]
-        == PRODUCT_CASE_REF
+    assert run.result["release_state"] == "verified"
+    assert run.result["report_audience"] == "public_candidate"
+    assert run.result["evidence_graph_id"] == "case-evidence-graph:" + "d" * 24
+    assert run.result["evidence_graph_version"] == 1
+    manifest_ref = next(
+        ref for ref in request.object_inputs if ref.role == "evidence_graph_manifest"
     )
-    verification = run.result["verification"]
-    assert verification["benchmark_id"] == "P0-10-BENCHMARK-v0.1"
-    assert verification["benchmark_sha256"] == benchmark_sha256()
-    assert verification["release_contract_id"] == load_release_contract().contract_id
-    assert verification["release_contract_sha256"] == release_contract_sha256()
+    assert run.result["evidence_graph_manifest_sha256"] == manifest_ref.sha256
+    assert run.result["benchmark_id"] == "P0-10-BENCHMARK-v0.1"
+    assert run.result["benchmark_sha256"] == benchmark_sha256()
+    assert run.result["release_contract_id"] == load_release_contract().contract_id
+    assert run.result["release_contract_sha256"] == release_contract_sha256()
     assert run.measurements == []
     assert len(run.artifacts) == 1
-    assert hashlib.sha256(run.artifacts[0].path.read_bytes()).hexdigest() == run.artifacts[0].sha256
+    artifact_bytes = run.artifacts[0].path.read_bytes()
+    assert artifact_bytes == canonical_json_bytes(run.result, indent=2)
+    assert hashlib.sha256(artifact_bytes).hexdigest() == run.artifacts[0].sha256
+
+
+def test_p0_11_can_reject_a_mutated_report_draft_from_the_p0_10_receipt(
+    tmp_path: Path,
+) -> None:
+    payload = _report_payload()
+    report = ReportDraft.model_validate(payload)
+    run = adapter.run(_request(tmp_path, report=payload), _spec())
+    receipt = ClaimVerificationResult.model_validate(run.result)
+
+    assert receipt.matches_report_draft(report)
+    for field, value in (
+        ("text", "This product is clinically safe."),
+        ("claim_ref", "claim:replacement@1.0.0"),
+        ("reported_evidence_state", "negative"),
+        ("value_bindings", []),
+    ):
+        mutated = deepcopy(payload)
+        mutated["claim_blocks"][0][field] = value
+        mutated["content_hash"] = report_content_hash(mutated)
+        assert not receipt.matches_report_draft(ReportDraft.model_validate(mutated))
 
 
 def test_identical_inputs_reuse_byte_identical_result(tmp_path: Path) -> None:
@@ -473,11 +491,10 @@ def test_numeric_mutations_are_hard_blockers(
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
     assert run.execution_state is ExecutionState.SUCCEEDED
-    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert run.result["release_state"] == "release_blocked"
     assert reason in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
-    assert run.result["verified_report"] is None
 
 
 def test_numeric_suffix_cannot_hide_an_extra_number(tmp_path: Path) -> None:
@@ -490,30 +507,82 @@ def test_numeric_suffix_cannot_hide_an_extra_number(tmp_path: Path) -> None:
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert run.result["release_state"] == "release_blocked"
     assert "rendered_numeric_mismatch" in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
 
 
-@pytest.mark.parametrize("token", ["192tests", "192cells", "1e3cells", "192_tests"])
-def test_numeric_lexemes_adjacent_to_units_or_identifiers_are_not_hidden(
-    tmp_path: Path, token: str
+@pytest.mark.parametrize(
+    ("token", "numeric", "canonical", "unit", "value"),
+    [
+        ("192tests", "192", "192", "tests", 192),
+        ("192cells", "192", "192", "cells", 192),
+        ("1e3cells", "1e3", "1000", "cells", 1000),
+        ("192_tests", "192", "192", "tests", 192),
+    ],
+)
+def test_noncanonical_numeric_text_cannot_bypass_complete_reconstruction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    token: str,
+    numeric: str,
+    canonical: str,
+    unit: str,
+    value: int,
 ) -> None:
     text = f"installed-wheel-test-count: {token}."
-    numeric = "1e3" if token.startswith("1e3") else "192"
-    start = text.index(numeric)
+    _stub_graph(monkeypatch, _evidence_set(value=value, unit=unit))
     report = _report_payload(text=text, include_binding=False)
+    report["claim_blocks"][0]["value_bindings"] = [
+        _value_binding(
+            text,
+            numeric,
+            canonical=canonical,
+            raw_unit=unit,
+        )
+    ]
+    report["content_hash"] = report_content_hash(report)
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    unbound = [
-        item
-        for item in run.result["verification"]["check_records"]
-        if item["reason_code"] == "unbound_numeric_token"
+    reasons = {item["reason_code"] for item in run.result["check_records"]}
+    assert {"deterministic_claim_text_mismatch", "rendered_numeric_mismatch"} <= reasons
+    assert run.result["release_state"] == "release_blocked"
+
+
+@pytest.mark.parametrize("metric_id", ["SOX2_fraction", "CD8_fraction", "O2_level"])
+def test_scientific_identifiers_are_not_misread_as_numeric_claims(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    metric_id: str,
+) -> None:
+    _stub_graph(monkeypatch, _evidence_set(metric_id=metric_id))
+    report = _report_payload(text=f"{metric_id}: 192 tests.")
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.result["release_state"] == "verified"
+    assert run.result["check_records"] == []
+
+
+def test_large_finite_integer_returns_a_typed_receipt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = 10**30
+    _stub_graph(monkeypatch, _evidence_set(value=value))
+    text = f"installed-wheel-test-count: {value} tests."
+    report = _report_payload(text=text, include_binding=False)
+    report["claim_blocks"][0]["value_bindings"] = [
+        _value_binding(text, str(value), canonical=str(value))
     ]
-    assert any(item["text_span"] == [start, start + len(numeric)] for item in unbound)
-    assert run.result["verification"]["release_state"] == "release_blocked"
+    report["content_hash"] = report_content_hash(report)
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert run.result["release_state"] == "verified"
 
 
 def test_declared_renderer_cannot_author_extra_scientific_prose(tmp_path: Path) -> None:
@@ -526,11 +595,10 @@ def test_declared_renderer_cannot_author_extra_scientific_prose(tmp_path: Path) 
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert run.result["release_state"] == "release_blocked"
     assert "deterministic_claim_text_mismatch" in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
-    assert run.result["verified_report"] is None
 
 
 def test_denominator_and_interval_values_use_separate_exact_spans(
@@ -581,26 +649,25 @@ def test_denominator_and_interval_values_use_separate_exact_spans(
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert run.result["verification"]["release_state"] == "review_required"
+    assert run.result["release_state"] == "review_required"
     assert not {
         "canonical_numeric_mismatch",
         "unit_mismatch",
         "rendered_numeric_mismatch",
-        "unbound_numeric_token",
     }.intersection(
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     )
 
 
-def test_repeated_number_requires_one_binding_per_occurrence(tmp_path: Path) -> None:
+def test_extra_numeric_prose_fails_complete_reconstruction(tmp_path: Path) -> None:
     report = _report_payload(
         text="The first run passed 192 tests and the second passed 192 tests."
     )
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert "unbound_numeric_token" in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+    assert "deterministic_claim_text_mismatch" in {
+        item["reason_code"] for item in run.result["check_records"]
     }
 
 
@@ -648,9 +715,9 @@ def test_claim_and_product_targets_must_match_every_evidence_record(
 
     run = adapter.run(_request(tmp_path), _spec())
 
-    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert run.result["release_state"] == "release_blocked"
     assert reason in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
 
 
@@ -665,10 +732,10 @@ def test_human_or_imported_prose_requires_review(
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert run.result["verification"]["release_state"] == "review_required"
-    assert run.result["verification"]["public_export_eligibility"] == "ineligible"
+    assert run.result["release_state"] == "review_required"
+    assert run.result["public_export_eligibility"] == "ineligible"
     assert "non_deterministic_authoring_requires_review" in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
 
 
@@ -679,9 +746,9 @@ def test_unapproved_renderer_metadata_requires_review(tmp_path: Path) -> None:
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert run.result["verification"]["release_state"] == "review_required"
+    assert run.result["release_state"] == "review_required"
     assert "unapproved_renderer_requires_review" in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
 
 
@@ -692,11 +759,11 @@ def test_unbound_number_and_evidence_state_substitution_block_release(tmp_path: 
     )
     run = adapter.run(_request(tmp_path, report=report), _spec())
     reasons = {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
 
-    assert {"unbound_numeric_token", "evidence_state_mismatch"} <= reasons
-    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert {"deterministic_claim_text_mismatch", "evidence_state_mismatch"} <= reasons
+    assert run.result["release_state"] == "release_blocked"
 
 
 def test_registered_boundary_statement_is_exact_exception(tmp_path: Path) -> None:
@@ -706,10 +773,51 @@ def test_registered_boundary_statement_is_exact_exception(tmp_path: Path) -> Non
         reported_state=None,
         statement_refs=["statement:safety-boundary@0.1.0"],
         evidence_refs=[],
+        audience="internal_research",
     )
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert run.result["verification"]["release_state"] == "verified"
+    assert run.result["release_state"] == "verified"
+
+
+def test_public_boundary_statement_requires_formal_cited_evidence(
+    tmp_path: Path,
+) -> None:
+    report = _report_payload(
+        text="This verification does not establish safety.",
+        claim_type="policy_or_boundary_statement",
+        reported_state=None,
+        statement_refs=["statement:safety-boundary@0.1.0"],
+        evidence_refs=[],
+    )
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.result["release_state"] == "release_blocked"
+    assert "formal_evidence_required_for_public_candidate" in {
+        item["reason_code"] for item in run.result["check_records"]
+    }
+
+
+def test_distinct_missing_statements_emit_distinct_check_ids(tmp_path: Path) -> None:
+    missing = ["statement:missing-a@0.1.0", "statement:missing-b@0.1.0"]
+    report = _report_payload(
+        text="This statement requires review.",
+        claim_type="policy_or_boundary_statement",
+        reported_state=None,
+        statement_refs=missing,
+        evidence_refs=[],
+    )
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    checks = [
+        item
+        for item in run.result["check_records"]
+        if item["reason_code"] == "statement_ref_not_found"
+    ]
+    assert {item["statement_ref"] for item in checks} == set(missing)
+    assert len({item["check_id"] for item in checks}) == 2
 
 
 @pytest.mark.parametrize(
@@ -729,10 +837,10 @@ def test_bilingual_prohibited_claims_are_hard_blockers(
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert run.result["release_state"] == "release_blocked"
     assert "prohibited_claim" in {
         item["reason_code"]
-        for item in run.result["verification"]["check_records"]
+        for item in run.result["check_records"]
     }
 
 
@@ -749,12 +857,23 @@ def test_report_claims_reject_free_markup(text: str) -> None:
         ReportDraft.model_validate(_report_payload(text=text))
 
 
-def test_decimal_rounding_modes_are_explicit() -> None:
-    half_even = NumericFormatSpec(decimal_places=2, rounding="half_even")
-    half_up = NumericFormatSpec(decimal_places=2, rounding="half_up")
+def test_caller_numeric_transform_is_rejected_before_verification(
+    tmp_path: Path,
+) -> None:
+    report = _report_payload(text="installed-wheel-test-count: 19200 tests.")
+    binding = report["claim_blocks"][0]["value_bindings"][0]
+    binding["format_spec"] = {
+        "decimal_places": 0,
+        "scale": "percent",
+        "rounding": "half_even",
+    }
+    report["content_hash"] = report_content_hash(report)
 
-    assert _render_decimal(Decimal("2.345"), half_even) == "2.34"
-    assert _render_decimal(Decimal("2.345"), half_up) == "2.35"
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
+    assert run.result is None
 
 
 def test_claim_text_cannot_execute_nested_template_syntax(tmp_path: Path) -> None:
@@ -763,46 +882,32 @@ def test_claim_text_cannot_execute_nested_template_syntax(tmp_path: Path) -> Non
     )
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
-    assert run.result["verification"]["release_state"] == "release_blocked"
+    assert run.result["release_state"] == "release_blocked"
     assert "deterministic_claim_text_mismatch" in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
-    assert run.result["verified_report"] is None
 
 
-def test_human_review_cannot_turn_free_prose_or_a_blocker_into_verified_output(
+def test_report_cannot_self_declare_release_reviewer_authority(
     tmp_path: Path,
 ) -> None:
-    approved_review = {
-        "claim_id": "claim-block:test-count",
-        "rule_id": "rule:ambiguous-superiority",
-        "decision": "approved",
-        "reviewer_role": "claim_reviewer",
-        "reviewer_ref": "reviewer:authorized",
-        "reason": "The comparison scope is explicit in the structured Evidence.",
-    }
-    review_report = _report_payload(
-        text="The better run passed 192 tests.", reviews=[approved_review]
-    )
-    review_report["authoring_channel"] = "human_edit"
-    review_report["claim_blocks"][0]["authoring_channel"] = "human_edit"
-    review_report["content_hash"] = report_content_hash(review_report)
-    review_run = adapter.run(_request(tmp_path / "review", report=review_report), _spec())
-    assert review_run.result["verification"]["release_state"] == "review_required"
-    assert any(
-        item["outcome"] == "cleared_by_review"
-        for item in review_run.result["verification"]["check_records"]
-    )
-    assert review_run.result["verified_report"] is None
+    report = _report_payload()
+    report["human_review_decisions"] = [
+        {
+            "claim_id": "claim-block:test-count",
+            "rule_id": "rule:ambiguous-superiority",
+            "decision": "approved",
+            "reviewer_role": "claim_reviewer",
+            "reviewer_ref": "reviewer:self-declared",
+            "reason": "caller supplied",
+        }
+    ]
+    report["content_hash"] = report_content_hash(report)
 
-    blocker_report = _report_payload(
-        text="The safe run passed 192 tests.",
-        reviews=[approved_review | {"rule_id": "rule:prohibited-clinical"}],
-    )
-    blocker_run = adapter.run(
-        _request(tmp_path / "blocker", report=blocker_report), _spec()
-    )
-    assert blocker_run.result["verification"]["release_state"] == "release_blocked"
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
 
 
 def test_descriptive_claim_cannot_use_inferential_language(tmp_path: Path) -> None:
@@ -814,8 +919,48 @@ def test_descriptive_claim_cannot_use_inferential_language(tmp_path: Path) -> No
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
     assert "inferential_language_in_descriptive_claim" in {
-        item["reason_code"] for item in run.result["verification"]["check_records"]
+        item["reason_code"] for item in run.result["check_records"]
     }
+
+
+def test_public_candidate_requires_formal_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _stub_graph(monkeypatch, _evidence_set(evidence_tier="shadow"))
+
+    run = adapter.run(_request(tmp_path), _spec())
+
+    assert run.result["release_state"] == "release_blocked"
+    assert run.result["public_export_eligibility"] == "ineligible"
+    assert "nonformal_evidence_used_for_formal_claim" in {
+        item["reason_code"] for item in run.result["check_records"]
+    }
+
+
+def test_internal_report_with_shadow_evidence_stays_export_ineligible(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _stub_graph(monkeypatch, _evidence_set(evidence_tier="shadow"))
+    report = _report_payload(audience="internal_research")
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.result["release_state"] == "verified"
+    assert run.result["report_audience"] == "internal_research"
+    assert run.result["public_export_eligibility"] == "ineligible"
+
+
+def test_report_cannot_downgrade_its_required_evidence_tier(tmp_path: Path) -> None:
+    report = _report_payload()
+    report["claim_blocks"][0]["intended_release_tier"] = "internal_candidate"
+    report["content_hash"] = report_content_hash(report)
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
 
 
 def test_caller_cannot_replace_the_approved_claim_policy(tmp_path: Path) -> None:
@@ -856,26 +1001,25 @@ def test_report_hash_mismatch_fails_before_verification(tmp_path: Path) -> None:
     assert eligibility.reason_codes == ["structured_input_schema_invalid"]
 
 
-def test_unsafe_review_metadata_fails_without_echoing_the_value(tmp_path: Path) -> None:
+def test_removed_review_metadata_fails_without_echoing_the_value(tmp_path: Path) -> None:
     private_value = "/" + "data1/example/private/reviewer.txt"
-    report = _report_payload(
-        text="The better run passed 192 tests.",
-        reviews=[
-            {
-                "claim_id": "claim-block:test-count",
-                "rule_id": "rule:ambiguous-superiority",
-                "decision": "approved",
-                "reviewer_role": "claim_reviewer",
-                "reviewer_ref": private_value,
-                "reason": "The structured comparison scope was reviewed.",
-            }
-        ],
-    )
+    report = _report_payload()
+    report["human_review_decisions"] = [
+        {
+            "claim_id": "claim-block:test-count",
+            "rule_id": "rule:ambiguous-superiority",
+            "decision": "approved",
+            "reviewer_role": "claim_reviewer",
+            "reviewer_ref": private_value,
+            "reason": "caller supplied",
+        }
+    ]
+    report["content_hash"] = report_content_hash(report)
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
     assert run.execution_state is ExecutionState.FAILED
-    assert run.reason_codes == ["unsafe_report_content"]
+    assert run.reason_codes == ["structured_input_schema_invalid"]
     assert run.result is None
     assert private_value not in json.dumps(run.model_dump(mode="json"))
 
@@ -897,6 +1041,44 @@ def test_invalid_p0_09_graph_is_a_typed_failure(
     assert run.execution_state is ExecutionState.FAILED
     assert run.reason_codes == ["evidence_graph_integrity_failed"]
     assert run.result is None
+
+
+def test_direct_and_registry_v1_runs_return_typed_failures(tmp_path: Path) -> None:
+    request = ToolRequest(
+        request_id="legacy-p0-10",
+        tool_id="P0-10",
+        output_dir=(tmp_path / "out").resolve(),
+    )
+
+    direct = adapter.run(request, _spec())
+    registered = ToolRegistry.load_default().run(request)
+
+    assert direct.execution_state is ExecutionState.FAILED
+    assert direct.reason_codes == ["tool_request_v2_required"]
+    assert direct.request.object_inputs == []
+    assert direct.result is None and direct.artifacts == []
+    assert registered.execution_state is ExecutionState.FAILED
+    assert registered.reason_codes == ["tool_request_v2_required"]
+
+
+def test_post_publication_replacement_is_a_typed_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    publish = adapter_module._publish_result
+
+    def replace_after_publish(**kwargs: Any) -> Path:
+        path = publish(**kwargs)
+        path.write_bytes(b'{"replacement":true}\n')
+        return path
+
+    monkeypatch.setattr(adapter_module, "_publish_result", replace_after_publish)
+
+    run = adapter.run(_request(tmp_path), _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["published_result_hash_mismatch"]
+    assert run.result is None and run.artifacts == []
 
 
 @pytest.mark.parametrize("target", ["missing-target", "output"])
@@ -936,13 +1118,13 @@ def test_existing_result_drift_fails_without_overwrite(tmp_path: Path) -> None:
     assert second.reason_codes == ["existing_run_bundle_hash_mismatch"]
 
 
-def test_run_result_model_and_public_schema_reject_impossible_combinations(
+def test_receipt_model_and_public_schema_reject_impossible_combinations(
     tmp_path: Path,
 ) -> None:
     valid = adapter.run(_request(tmp_path / "valid"), _spec()).result
     assert valid is not None
-    ClaimVerifierRunResult.model_validate(valid)
-    validator = Draft202012Validator(ClaimVerifierRunResult.model_json_schema())
+    ClaimVerificationResult.model_validate(valid)
+    validator = Draft202012Validator(ClaimVerificationResult.model_json_schema())
     assert list(validator.iter_errors(valid)) == []
 
     blocked = adapter.run(
@@ -957,18 +1139,24 @@ def test_run_result_model_and_public_schema_reject_impossible_combinations(
     assert blocked is not None
     blocked_check = next(
         item
-        for item in blocked["verification"]["check_records"]
+        for item in blocked["check_records"]
         if item["outcome"] == "blocked"
     )
 
     impossible: list[dict[str, Any]] = []
     state_mismatch = deepcopy(valid)
-    state_mismatch["verification"]["check_records"] = [blocked_check]
+    state_mismatch["check_records"] = [blocked_check]
     impossible.append(state_mismatch)
 
-    missing_report = deepcopy(valid)
-    missing_report["verified_report"] = None
-    impossible.append(missing_report)
+    inconsistent_check = deepcopy(blocked)
+    inconsistent_check["check_records"] = [
+        blocked_check | {"severity": "review"}
+    ]
+    impossible.append(inconsistent_check)
+
+    duplicate_check = deepcopy(blocked)
+    duplicate_check["check_records"] = [blocked_check, deepcopy(blocked_check)]
+    impossible.append(duplicate_check)
 
     duplicate_benchmark = deepcopy(valid)
     duplicate_benchmark["benchmark_id"] = "caller-benchmark"
@@ -976,24 +1164,36 @@ def test_run_result_model_and_public_schema_reject_impossible_combinations(
     impossible.append(duplicate_benchmark)
 
     wrong_benchmark_receipt = deepcopy(valid)
-    wrong_benchmark_receipt["verification"]["benchmark_sha256"] = "0" * 64
+    wrong_benchmark_receipt["benchmark_sha256"] = "0" * 64
     impossible.append(wrong_benchmark_receipt)
 
     wrong_release_receipt = deepcopy(valid)
-    wrong_release_receipt["verification"]["release_contract_sha256"] = "0" * 64
+    wrong_release_receipt["release_contract_sha256"] = "0" * 64
     impossible.append(wrong_release_receipt)
 
-    redundant_counts = deepcopy(valid)
-    redundant_counts["verification"]["blocker_count"] = 3
-    impossible.append(redundant_counts)
+    internal = adapter.run(
+        _request(
+            tmp_path / "internal",
+            report=_report_payload(audience="internal_research"),
+        ),
+        _spec(),
+    ).result
+    assert internal is not None
+    export_promotion = deepcopy(internal)
+    export_promotion["public_export_eligibility"] = "eligible"
+    impossible.append(export_promotion)
 
-    redundant_render_hash = deepcopy(valid)
-    redundant_render_hash["verified_report"]["rendered_sha256"] = "0" * 64
-    impossible.append(redundant_render_hash)
+    lossy_report_copy = deepcopy(valid)
+    lossy_report_copy["verified_report"] = {
+        "text": "This product is clinically safe.",
+        "claim_ref": "not-versioned",
+        "product_case_ref": "/private/case",
+    }
+    impossible.append(lossy_report_copy)
 
     for payload in impossible:
         with pytest.raises(ValueError):
-            ClaimVerifierRunResult.model_validate(payload)
+            ClaimVerificationResult.model_validate(payload)
         with pytest.raises(JSONSchemaValidationError):
             validator.validate(payload)
 
@@ -1003,4 +1203,4 @@ def test_registry_exposes_p0_10_as_v2_candidate() -> None:
 
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert spec.input_schema_ref == "bridge://schemas/tool-request/v0.2"
-    assert spec.result_schema_ref == "bridge://schemas/claim-verifier-run-result/v0.1"
+    assert spec.result_schema_ref == "bridge://schemas/claim-verification-result/v0.1"

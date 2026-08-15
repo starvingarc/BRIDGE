@@ -16,7 +16,6 @@ from bridge.tool_packages._structured_runtime import (
     load_structured_inputs,
     read_regular_bytes,
     single_object,
-    write_json,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CaseEvidenceGraphManifest,
@@ -31,8 +30,6 @@ from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimPolicySpec,
     ClaimVerifierReleaseContract,
-    ClaimVerifierRunResult,
-    ReleaseState,
     ReportDraft,
     StatementRegistry,
 )
@@ -55,7 +52,7 @@ from bridge.toolkit.contracts import (
 )
 
 
-RESULT_SCHEMA_REF = "bridge://schemas/claim-verifier-run-result/v0.1"
+RESULT_SCHEMA_REF = "bridge://schemas/claim-verification-result/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "report_draft": ("bridge://schemas/report-draft/v0.1", ReportDraft),
     "evidence_graph_manifest": (
@@ -77,6 +74,13 @@ class PublicationError(ValueError):
     def __init__(self, reason_code: str) -> None:
         super().__init__(reason_code)
         self.reason_code = reason_code
+
+
+@dataclass(frozen=True)
+class VerifiedEvidenceGraph:
+    manifest: CaseEvidenceGraphManifest
+    manifest_sha256: str
+    evidence_set: EvidenceRecordSet
 
 
 @dataclass(frozen=True)
@@ -110,6 +114,8 @@ class ClaimVerifierAdapter:
         )
 
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
+        if not isinstance(request, ToolRequestV2):
+            return _failed_v1_request(request, spec)
         eligibility = self.check_eligibility(request, spec)
         if not eligibility.eligible:
             return _failed_run(request, spec, eligibility.reason_codes)
@@ -122,7 +128,7 @@ class ClaimVerifierAdapter:
 
         report = single_object(request, loaded, "report_draft", ReportDraft)
         try:
-            evidence_set = _verified_evidence_set(request, loaded)
+            evidence_graph = _verified_evidence_graph(request, loaded)
         except ValueError:
             return _failed_run(request, spec, ["evidence_graph_integrity_failed"])
         policy = single_object(
@@ -138,7 +144,7 @@ class ClaimVerifierAdapter:
         run_id = f"run-{input_hash[:16]}"
         result = verify_report(
             report=report,
-            evidence_set=evidence_set,
+            evidence_set=evidence_graph.evidence_set,
             policy=policy,
             statements=statements,
             release_contract=release_contract,
@@ -146,12 +152,17 @@ class ClaimVerifierAdapter:
             benchmark_id=benchmark.benchmark_id,
             benchmark_sha256=benchmark_hash,
             run_id=run_id,
+            evidence_graph_id=evidence_graph.manifest.graph_id,
+            evidence_graph_version=evidence_graph.manifest.graph_version,
+            evidence_graph_manifest_sha256=evidence_graph.manifest_sha256,
         )
+        result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
+        result_hash = hashlib.sha256(result_bytes).hexdigest()
         try:
             output_file = _publish_result(
                 request=request,
                 run_id=run_id,
-                result=result,
+                payload=result_bytes,
             )
         except PublicationError as exc:
             return _failed_run(
@@ -160,28 +171,36 @@ class ClaimVerifierAdapter:
                 [exc.reason_code],
                 input_hash=input_hash,
             )
+        try:
+            published_matches = read_regular_bytes(output_file) == result_bytes
+        except (OSError, RuntimeError):
+            published_matches = False
+        if not published_matches:
+            return _failed_run(
+                request,
+                spec,
+                ["published_result_hash_mismatch"],
+                input_hash=input_hash,
+            )
         artifact = ArtifactManifest(
             artifact_id=f"artifact:{run_id}:result",
-            kind="claim_verifier_run_result",
+            kind="claim_verification_result",
             path=output_file,
             media_type="application/json",
-            sha256=hashlib.sha256(output_file.read_bytes()).hexdigest(),
+            sha256=result_hash,
             evidence_ids=sorted(
                 {
                     ref.split("@", 1)[0]
-                    for refs in result.verification.claim_evidence_map.values()
-                    for ref in refs
+                    for claim in report.claim_blocks
+                    for ref in claim.evidence_refs
                 }
             ),
         )
-        not_assessed = result.verification.release_state is ReleaseState.NOT_ASSESSED
         return ToolRunV2(
             run_id=run_id,
             request=request,
             implementation_state=ImplementationState.IMPLEMENTED,
-            execution_state=(
-                ExecutionState.PARTIAL if not_assessed else ExecutionState.SUCCEEDED
-            ),
+            execution_state=ExecutionState.SUCCEEDED,
             tool_version=spec.version,
             environment_spec_id=spec.environment_spec_id,
             input_hash=input_hash,
@@ -191,7 +210,7 @@ class ClaimVerifierAdapter:
             visualizations=[],
             result_schema_ref=RESULT_SCHEMA_REF,
             result=result.model_dump(mode="json"),
-            reason_codes=["active_claim_policy_required"] if not_assessed else [],
+            reason_codes=[],
             warnings=[],
         )
 
@@ -271,10 +290,11 @@ def _binding_reasons(
     if contains_unsafe_reference(report.model_dump(mode="json")):
         reasons.append("unsafe_report_content")
     try:
-        evidence_set = _verified_evidence_set(request, loaded)
+        evidence_graph = _verified_evidence_graph(request, loaded)
     except ValueError:
         reasons.append("evidence_graph_integrity_failed")
         return reasons
+    evidence_set = evidence_graph.evidence_set
     record_set_ref = f"{evidence_set.record_set_id}@{evidence_set.record_set_version}"
     if report.evidence_record_set_ref != record_set_ref:
         reasons.append("evidence_record_set_binding_mismatch")
@@ -290,19 +310,12 @@ def _binding_reasons(
         release_contract.statement_registry.model_dump(mode="json")
     ):
         reasons.append("statement_registry_not_approved")
-    claim_ids = {claim.claim_id for claim in report.claim_blocks}
-    rule_ids = {rule.rule_id for rule in policy.text_rules}
-    for decision in report.human_review_decisions:
-        if decision.claim_id not in claim_ids:
-            reasons.append("human_review_claim_not_found")
-        if decision.rule_id not in rule_ids:
-            reasons.append("human_review_rule_not_found")
     return reasons
 
 
-def _verified_evidence_set(
+def _verified_evidence_graph(
     request: ToolRequestV2, loaded: LoadedInputs
-) -> EvidenceRecordSet:
+) -> VerifiedEvidenceGraph:
     manifest = single_object(
         request, loaded, "evidence_graph_manifest", CaseEvidenceGraphManifest
     )
@@ -316,7 +329,11 @@ def _verified_evidence_set(
         or evidence_set.graph_version != manifest.graph_version
     ):
         raise ValueError("manifest_integrity_failed")
-    return evidence_set
+    return VerifiedEvidenceGraph(
+        manifest=manifest,
+        manifest_sha256=manifest_ref.sha256,
+        evidence_set=evidence_set,
+    )
 
 
 def _input_hash(
@@ -349,7 +366,7 @@ def _publish_result(
     *,
     request: ToolRequestV2,
     run_id: str,
-    result: ClaimVerifierRunResult,
+    payload: bytes,
 ) -> Path:
     output_root = request.output_dir
     if directory_state(output_root) == "other":
@@ -361,10 +378,10 @@ def _publish_result(
     if directory_state(output_root) != "directory":
         raise PublicationError("output_path_invalid")
     staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    filename = "claim_verifier_run_result.json"
+    filename = "claim_verification_result.json"
     try:
         staging.mkdir(mode=0o700)
-        write_json(staging / filename, result.model_dump(mode="json"))
+        (staging / filename).write_bytes(payload)
         if not inputs_unchanged(request.object_inputs):
             raise PublicationError("structured_input_modified_during_run")
         final = output_root / run_id
@@ -373,8 +390,7 @@ def _publish_result(
             existing = final / filename
             try:
                 matches = (
-                    read_regular_bytes(existing)
-                    == read_regular_bytes(staging / filename)
+                    read_regular_bytes(existing) == payload
                     and {path.name for path in final.iterdir()} == {filename}
                 )
             except (OSError, RuntimeError):
@@ -386,7 +402,10 @@ def _publish_result(
             os.replace(staging, final)
         else:
             raise PublicationError("existing_run_bundle_hash_mismatch")
-        return final / filename
+        published = final / filename
+        if read_regular_bytes(published) != payload:
+            raise PublicationError("published_result_hash_mismatch")
+        return published
     except PublicationError:
         shutil.rmtree(staging, ignore_errors=True)
         raise
@@ -410,3 +429,20 @@ def _failed_run(
         fingerprint_input_key="structured_inputs",
         input_hash=input_hash,
     )
+
+
+def _failed_v1_request(
+    request: ToolRequest, spec: ToolPackageSpecV2
+) -> ToolRunV2:
+    request_v2 = ToolRequestV2(
+        request_id=request.request_id,
+        tool_id=request.tool_id,
+        output_dir=request.output_dir,
+        tool_version=request.tool_version,
+        assets=request.assets,
+        measurement_spec_ref=request.measurement_spec_ref,
+        parameters=request.parameters,
+        random_seed=request.random_seed,
+        object_inputs=[],
+    )
+    return _failed_run(request_v2, spec, ["tool_request_v2_required"])

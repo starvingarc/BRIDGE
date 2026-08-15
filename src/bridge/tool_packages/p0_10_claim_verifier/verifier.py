@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation
 import hashlib
 from importlib.resources import files
 from typing import Iterable
 
-from jinja2 import Environment, StrictUndefined
 import regex
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
@@ -23,13 +22,13 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimBlock,
     ClaimCheckRecord,
     ClaimPolicySpec,
+    ClaimTypePolicy,
     ClaimType,
     ClaimVerificationResult,
-    ClaimVerifierRunResult,
     ClaimVerifierReleaseContract,
     ComparisonMode,
-    HumanReviewDecision,
-    NumericFormatSpec,
+    MAX_DECIMAL_ADJUSTED_EXPONENT,
+    MAX_DECIMAL_DIGITS,
     PublicExportEligibility,
     RegisteredStatement,
     ReleaseState,
@@ -38,19 +37,13 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ReportLanguage,
     StatementRegistry,
     ValueBinding,
-    VerifiedClaim,
-    VerifiedReport,
 )
 
 
 VERIFIER_VERSION = "0.1.0"
 RELEASE_CONTRACT_FILENAME = "release_contract_v0.1.json"
 APPROVED_RELEASE_CONTRACT_SHA256 = (
-    "3e881633eb281f7c3bf897c578596bf5629061a755854b0fdec71b0cd6b51f5f"
-)
-NUMERIC_TOKEN = regex.compile(
-    r"(?<![\p{N}.])[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?%?",
-    regex.VERSION1,
+    "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8"
 )
 
 
@@ -82,38 +75,14 @@ def verify_report(
     benchmark_id: str,
     benchmark_sha256: str,
     run_id: str,
-) -> ClaimVerifierRunResult:
+    evidence_graph_id: str,
+    evidence_graph_version: int,
+    evidence_graph_manifest_sha256: str,
+) -> ClaimVerificationResult:
     verification_id = f"claim-verification:{run_id.removeprefix('run-')}"
-    if not policy.active:
-        verification = ClaimVerificationResult(
-            object_version="0.1.0",
-            verification_id=verification_id,
-            verifier_version=VERIFIER_VERSION,
-            benchmark_id=benchmark_id,
-            benchmark_sha256=benchmark_sha256,
-            release_contract_id=release_contract.contract_id,
-            release_contract_sha256=release_contract_hash,
-            report_draft_ref=report.ref,
-            report_content_hash=report.content_hash,
-            claim_policy_ref=policy.ref,
-            statement_registry_ref=statements.ref,
-            release_state=ReleaseState.NOT_ASSESSED,
-            check_records=[],
-            claim_evidence_map={claim.claim_id: claim.evidence_refs for claim in report.claim_blocks},
-            public_export_eligibility=PublicExportEligibility.NOT_ASSESSED,
-        )
-        return ClaimVerifierRunResult(
-            object_version="0.1.0",
-            verification=verification,
-            verified_report=None,
-        )
-
     evidence = {record.ref: record for record in evidence_set.records}
     statement_by_ref = {statement.ref: statement for statement in statements.statements}
     claim_policy = {item.claim_type: item for item in policy.claim_type_policies}
-    review_decisions = {
-        (item.claim_id, item.rule_id): item for item in report.human_review_decisions
-    }
     checks: list[ClaimCheckRecord] = []
     for claim in report.claim_blocks:
         resolved = [evidence[ref] for ref in claim.evidence_refs if ref in evidence]
@@ -128,6 +97,7 @@ def verify_report(
         )
         checks.extend(
             _check_claim_contract(
+                report.audience,
                 claim,
                 resolved,
                 evidence,
@@ -135,14 +105,13 @@ def verify_report(
                 claim_policy,
             )
         )
-        checks.extend(_check_value_bindings(claim, evidence, policy))
+        checks.extend(_check_value_bindings(claim, evidence))
         checks.extend(_check_comparison_scope(claim, policy))
         checks.extend(
             _check_text_rules(
                 claim,
                 policy,
                 statement_by_ref,
-                review_decisions,
             )
         )
 
@@ -160,27 +129,7 @@ def verify_report(
     else:
         release_state = ReleaseState.VERIFIED
 
-    verified_report: VerifiedReport | None = None
-    if release_state in {ReleaseState.VERIFIED, ReleaseState.VERIFIED_WITH_WARNINGS}:
-        verified_report_id = f"verified-report:{run_id.removeprefix('run-')}"
-        verified_report = VerifiedReport(
-            object_version="0.1.0",
-            verified_report_id=verified_report_id,
-            verification_id=verification_id,
-            claims=[
-                VerifiedClaim(
-                    claim_id=claim.claim_id,
-                    claim_ref=claim.claim_ref,
-                    product_case_ref=claim.product_case_ref,
-                    text=claim.text,
-                    evidence_refs=claim.evidence_refs,
-                    statement_refs=claim.statement_refs,
-                )
-                for claim in report.claim_blocks
-            ],
-        )
-
-    verification = ClaimVerificationResult(
+    return ClaimVerificationResult(
         object_version="0.1.0",
         verification_id=verification_id,
         verifier_version=VERIFIER_VERSION,
@@ -190,22 +139,20 @@ def verify_report(
         release_contract_sha256=release_contract_hash,
         report_draft_ref=report.ref,
         report_content_hash=report.content_hash,
+        report_audience=report.audience,
+        evidence_graph_id=evidence_graph_id,
+        evidence_graph_version=evidence_graph_version,
+        evidence_graph_manifest_sha256=evidence_graph_manifest_sha256,
         claim_policy_ref=policy.ref,
         statement_registry_ref=statements.ref,
         release_state=release_state,
         check_records=sorted(checks, key=lambda item: item.check_id),
-        claim_evidence_map={claim.claim_id: claim.evidence_refs for claim in report.claim_blocks},
         public_export_eligibility=(
             PublicExportEligibility.ELIGIBLE
             if report.audience is ReportAudience.PUBLIC_CANDIDATE
             and release_state in {ReleaseState.VERIFIED, ReleaseState.VERIFIED_WITH_WARNINGS}
             else PublicExportEligibility.INELIGIBLE
         ),
-    )
-    return ClaimVerifierRunResult(
-        object_version="0.1.0",
-        verification=verification,
-        verified_report=verified_report,
     )
 
 
@@ -283,40 +230,43 @@ def _render_authoritative_claim(
         or isinstance(record.value, bool)
     ):
         return None
-    try:
-        value = _render_decimal(
-            Decimal(str(record.value)),
-            binding.format_spec,
-            record.unit,
-        )
-    except Exception:
+    value = _render_identity_numeric(record.value, record.unit)
+    if value is None:
         return None
-    template = Environment(
-        autoescape=False,
-        undefined=StrictUndefined,
-    ).from_string(contract.measurement_template)
-    return template.render(metric_id=record.metric_id, value=value)
+    return f"{record.metric_id}: {value}."
 
 
 def _check_claim_contract(
+    audience: ReportAudience,
     claim: ClaimBlock,
     resolved: list[EvidenceRecord],
     evidence: dict[str, EvidenceRecord],
     statements: dict[str, RegisteredStatement],
-    policies: dict[ClaimType, object],
+    policies: dict[ClaimType, ClaimTypePolicy],
 ) -> list[ClaimCheckRecord]:
     checks: list[ClaimCheckRecord] = []
     policy = policies.get(claim.claim_type)
     if policy is None:
         checks.append(_block(claim, "rule:claim-type-policy", "claim_type_policy_missing"))
         return checks
-    if policy.requires_evidence and not claim.evidence_refs:
-        checks.append(_block(claim, "rule:evidence-binding", "claim_evidence_required"))
+    if not claim.evidence_refs:
+        reason = (
+            "formal_evidence_required_for_public_candidate"
+            if audience is ReportAudience.PUBLIC_CANDIDATE
+            else "claim_evidence_required"
+        )
+        if audience is ReportAudience.PUBLIC_CANDIDATE or policy.requires_evidence:
+            checks.append(_block(claim, "rule:evidence-binding", reason))
     for ref in claim.evidence_refs:
         record = evidence.get(ref)
         if record is None:
             checks.append(
-                _block(claim, "rule:evidence-binding", "evidence_ref_not_found", evidence_refs=[ref])
+                _block(
+                    claim,
+                    "rule:evidence-binding",
+                    "evidence_ref_not_found",
+                    evidence_refs=[ref],
+                )
             )
             continue
         if record.lifecycle_state is not EvidenceLifecycleState.ACTIVE:
@@ -325,9 +275,17 @@ def _check_claim_contract(
             )
         if record.applicability is not EvidenceApplicability.APPLICABLE:
             checks.append(
-                _block(claim, "rule:evidence-applicability", "evidence_not_applicable", evidence_refs=[ref])
+                _block(
+                    claim,
+                    "rule:evidence-applicability",
+                    "evidence_not_applicable",
+                    evidence_refs=[ref],
+                )
             )
-        if claim.intended_release_tier == "formal" and record.evidence_tier is not EvidenceTier.FORMAL:
+        if (
+            audience is ReportAudience.PUBLIC_CANDIDATE
+            and record.evidence_tier is not EvidenceTier.FORMAL
+        ):
             checks.append(
                 _block(
                     claim,
@@ -338,7 +296,12 @@ def _check_claim_contract(
             )
         if record.evidence_state not in policy.allowed_evidence_states:
             checks.append(
-                _block(claim, "rule:evidence-state-policy", "evidence_state_not_allowed", evidence_refs=[ref])
+                _block(
+                    claim,
+                    "rule:evidence-state-policy",
+                    "evidence_state_not_allowed",
+                    evidence_refs=[ref],
+                )
             )
         if record.claim_ref.ref != claim.claim_ref:
             checks.append(
@@ -362,7 +325,11 @@ def _check_claim_contract(
         states = {item.evidence_state for item in resolved}
         if len(states) > 1:
             checks.append(
-                _block(claim, "rule:evidence-state", "mixed_evidence_states_require_separate_claims")
+                _block(
+                    claim,
+                    "rule:evidence-state",
+                    "mixed_evidence_states_require_separate_claims",
+                )
             )
         elif claim.reported_evidence_state is None:
             checks.append(_block(claim, "rule:evidence-state", "reported_evidence_state_required"))
@@ -382,28 +349,53 @@ def _check_statement_bindings(
     for ref in claim.statement_refs:
         statement = statements.get(ref)
         if statement is None:
-            checks.append(_block(claim, "rule:statement-binding", "statement_ref_not_found"))
+            checks.append(
+                _block(
+                    claim,
+                    "rule:statement-binding",
+                    "statement_ref_not_found",
+                    statement_ref=ref,
+                )
+            )
             continue
         resolved.append(statement)
         if not statement.approved:
-            checks.append(_block(claim, "rule:statement-binding", "statement_not_approved"))
+            checks.append(
+                _block(
+                    claim,
+                    "rule:statement-binding",
+                    "statement_not_approved",
+                    statement_ref=ref,
+                )
+            )
         if claim.claim_type not in statement.allowed_claim_types:
-            checks.append(_block(claim, "rule:statement-binding", "statement_claim_type_mismatch"))
+            checks.append(
+                _block(
+                    claim,
+                    "rule:statement-binding",
+                    "statement_claim_type_mismatch",
+                    statement_ref=ref,
+                )
+            )
     if claim.claim_type is ClaimType.POLICY_OR_BOUNDARY:
         if len(resolved) != 1:
             checks.append(_block(claim, "rule:statement-binding", "exactly_one_statement_required"))
         elif resolved[0].texts.get(claim.language) != claim.text:
-            checks.append(_block(claim, "rule:statement-text", "registered_statement_text_mismatch"))
+            checks.append(
+                _block(
+                    claim,
+                    "rule:statement-text",
+                    "registered_statement_text_mismatch",
+                )
+            )
     return checks
 
 
 def _check_value_bindings(
     claim: ClaimBlock,
     evidence: dict[str, EvidenceRecord],
-    policy: ClaimPolicySpec,
 ) -> list[ClaimCheckRecord]:
     checks: list[ClaimCheckRecord] = []
-    covered: list[tuple[int, int]] = []
     for binding in claim.value_bindings:
         record = evidence.get(binding.source_evidence_ref)
         if binding.source_evidence_ref not in claim.evidence_refs:
@@ -423,22 +415,6 @@ def _check_value_bindings(
                     evidence_refs=[binding.source_evidence_ref],
                 )
             )
-        else:
-            covered.append(binding.text_span)
-    if (
-        policy.require_all_numeric_tokens_bound
-        and claim.claim_type is not ClaimType.POLICY_OR_BOUNDARY
-    ):
-        for match in NUMERIC_TOKEN.finditer(claim.text, timeout=0.05):
-            if not any(start <= match.start() and match.end() <= end for start, end in covered):
-                checks.append(
-                    _block(
-                        claim,
-                        "rule:numeric-binding-completeness",
-                        "unbound_numeric_token",
-                        text_span=(match.start(), match.end()),
-                    )
-                )
     return checks
 
 
@@ -448,15 +424,14 @@ def _numeric_binding_reason(
     source = _numeric_source(evidence, binding.source_field)
     if source is None or isinstance(source, bool):
         return "numeric_source_unavailable"
-    try:
-        source_number = Decimal(str(source))
-    except Exception:
+    canonical = _canonical_decimal(source)
+    if canonical is None:
         return "numeric_source_not_scalar"
-    if Decimal(binding.canonical_numeric_string) != source_number:
+    if binding.canonical_numeric_string != canonical:
         return "canonical_numeric_mismatch"
     if binding.raw_unit != evidence.unit:
         return "unit_mismatch"
-    if rendered != _render_decimal(source_number, binding.format_spec, binding.raw_unit):
+    if rendered != _join_numeric_unit(canonical, binding.raw_unit):
         return "rendered_numeric_mismatch"
     return None
 
@@ -469,31 +444,56 @@ def _numeric_source(evidence: EvidenceRecord, source_field: str) -> object:
     return getattr(evidence, source_field)
 
 
-def _render_decimal(
-    value: Decimal, spec: NumericFormatSpec, raw_unit: str | None = None
-) -> str:
-    if spec.scale == "percent":
-        value *= Decimal(100)
-    quantum = Decimal(1).scaleb(-spec.decimal_places)
-    rounding = ROUND_HALF_EVEN if spec.rounding == "half_even" else ROUND_HALF_UP
-    rendered = format(value.quantize(quantum, rounding=rounding), f".{spec.decimal_places}f")
-    if raw_unit is not None:
-        rendered += raw_unit if raw_unit in {"%", "‰"} else f" {raw_unit}"
-    return rendered
+def _canonical_decimal(value: object) -> str | None:
+    try:
+        number = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+    if not number.is_finite() or (
+        len(number.as_tuple().digits) > MAX_DECIMAL_DIGITS
+        or abs(number.adjusted()) > MAX_DECIMAL_ADJUSTED_EXPONENT
+    ):
+        return None
+    rendered = format(number, "f")
+    if "." in rendered:
+        rendered = rendered.rstrip("0").rstrip(".")
+    return "0" if rendered in {"-0", "+0"} else rendered
+
+
+def _join_numeric_unit(value: str, raw_unit: str | None) -> str:
+    if raw_unit is None:
+        return value
+    return value + raw_unit if raw_unit in {"%", "‰"} else f"{value} {raw_unit}"
+
+
+def _render_identity_numeric(value: object, raw_unit: str | None) -> str | None:
+    canonical = _canonical_decimal(value)
+    return None if canonical is None else _join_numeric_unit(canonical, raw_unit)
 
 
 def _check_comparison_scope(
     claim: ClaimBlock, policy: ClaimPolicySpec
 ) -> list[ClaimCheckRecord]:
     checks: list[ClaimCheckRecord] = []
-    if claim.claim_type is ClaimType.DESCRIPTIVE_COMPARISON and claim.comparison_mode is not ComparisonMode.DESCRIPTIVE_ONLY:
+    if (
+        claim.claim_type is ClaimType.DESCRIPTIVE_COMPARISON
+        and claim.comparison_mode is not ComparisonMode.DESCRIPTIVE_ONLY
+    ):
         checks.append(_block(claim, "rule:comparison-contract", "descriptive_claim_mode_mismatch"))
-    if claim.claim_type is ClaimType.INFERENTIAL_COMPARISON and claim.comparison_mode is not ComparisonMode.INFERENTIAL:
+    if (
+        claim.claim_type is ClaimType.INFERENTIAL_COMPARISON
+        and claim.comparison_mode is not ComparisonMode.INFERENTIAL
+    ):
         checks.append(_block(claim, "rule:comparison-contract", "inferential_claim_mode_mismatch"))
     if claim.comparison_mode is ComparisonMode.DESCRIPTIVE_ONLY:
         for pattern in policy.descriptive_forbidden_patterns:
             try:
-                match = regex.search(pattern, claim.text, regex.IGNORECASE | regex.VERSION1, timeout=0.05)
+                match = regex.search(
+                    pattern,
+                    claim.text,
+                    regex.IGNORECASE | regex.VERSION1,
+                    timeout=0.05,
+                )
             except (regex.error, TimeoutError):
                 checks.append(_block(claim, "rule:descriptive-scope", "policy_pattern_invalid"))
                 continue
@@ -513,7 +513,6 @@ def _check_text_rules(
     claim: ClaimBlock,
     policy: ClaimPolicySpec,
     statements: dict[str, RegisteredStatement],
-    decisions: dict[tuple[str, str], HumanReviewDecision],
 ) -> list[ClaimCheckRecord]:
     checks: list[ClaimCheckRecord] = []
     for rule in policy.text_rules:
@@ -534,7 +533,6 @@ def _check_text_rules(
             checks.append(_block(claim, rule.rule_id, "policy_pattern_invalid", rule.version))
             continue
         for match in matches:
-            decision = decisions.get((claim.claim_id, rule.rule_id))
             checks.append(
                 _text_rule_record(
                     claim,
@@ -543,8 +541,6 @@ def _check_text_rules(
                     rule.reason_code,
                     rule.severity,
                     (match.start(), match.end()),
-                    decision,
-                    policy.authorized_reviewer_roles,
                 )
             )
     return checks
@@ -557,7 +553,11 @@ def _rule_exception_applies(
 ) -> bool:
     for ref in set(claim.statement_refs).intersection(exception_refs):
         statement = statements.get(ref)
-        if statement is not None and statement.approved and statement.texts.get(claim.language) == claim.text:
+        if (
+            statement is not None
+            and statement.approved
+            and statement.texts.get(claim.language) == claim.text
+        ):
             return True
     return False
 
@@ -569,27 +569,12 @@ def _text_rule_record(
     reason_code: str,
     severity: CheckSeverity,
     text_span: tuple[int, int],
-    decision: HumanReviewDecision | None,
-    authorized_roles: list[str],
 ) -> ClaimCheckRecord:
     outcome = {
         CheckSeverity.HARD_BLOCKER: CheckOutcome.BLOCKED,
         CheckSeverity.REVIEW: CheckOutcome.REVIEW_REQUIRED,
         CheckSeverity.WARNING: CheckOutcome.WARNING,
     }[severity]
-    review_ref: str | None = None
-    detail = reason_code
-    if severity is CheckSeverity.REVIEW and decision is not None:
-        review_ref = decision.reviewer_ref
-        if decision.reviewer_role not in authorized_roles:
-            detail = "reviewer_role_not_authorized"
-        elif decision.decision == "approved":
-            outcome = CheckOutcome.CLEARED_BY_REVIEW
-            detail = decision.reason
-        else:
-            outcome = CheckOutcome.BLOCKED
-            severity = CheckSeverity.HARD_BLOCKER
-            detail = "human_review_rejected"
     return _record(
         claim,
         rule_id,
@@ -598,8 +583,6 @@ def _text_rule_record(
         severity,
         reason_code,
         text_span=text_span,
-        detail=detail,
-        human_review_ref=review_ref,
     )
 
 
@@ -611,6 +594,7 @@ def _block(
     *,
     text_span: tuple[int, int] | None = None,
     evidence_refs: list[str] | None = None,
+    statement_ref: str | None = None,
 ) -> ClaimCheckRecord:
     return _record(
         claim,
@@ -621,7 +605,7 @@ def _block(
         reason_code,
         text_span=text_span,
         evidence_refs=evidence_refs,
-        detail=reason_code,
+        statement_ref=statement_ref,
     )
 
 
@@ -635,7 +619,6 @@ def _review_required(
         CheckOutcome.REVIEW_REQUIRED,
         CheckSeverity.REVIEW,
         reason_code,
-        detail=reason_code,
     )
 
 
@@ -649,8 +632,7 @@ def _record(
     *,
     text_span: tuple[int, int] | None = None,
     evidence_refs: list[str] | None = None,
-    detail: str,
-    human_review_ref: str | None = None,
+    statement_ref: str | None = None,
 ) -> ClaimCheckRecord:
     identity = {
         "claim_id": claim.claim_id,
@@ -659,6 +641,7 @@ def _record(
         "reason_code": reason_code,
         "text_span": text_span,
         "evidence_refs": sorted(evidence_refs or []),
+        "statement_ref": statement_ref,
     }
     check_id = "check:" + hashlib.sha256(canonical_json_bytes(identity)).hexdigest()[:16]
     return ClaimCheckRecord(
@@ -671,6 +654,5 @@ def _record(
         reason_code=reason_code,
         text_span=text_span,
         evidence_refs=sorted(evidence_refs or []),
-        detail=detail,
-        human_review_ref=human_review_ref,
+        statement_ref=statement_ref,
     )

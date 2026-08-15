@@ -4,7 +4,7 @@
 |---|---|
 | Branch | `p0-10-claim-verifier` |
 | Baseline | `9fa004eeff6ef78d6e737f47f458ae134ec58ba2` |
-| Status | `draft_review` |
+| Status | `implementation_in_progress` |
 
 ## Biological and reporting question
 
@@ -18,11 +18,12 @@ interval, evidence state, comparison scope and approved wording?
   P0-09 Case graph manifest, a `ClaimPolicySpec`, and a `StatementRegistry`;
   the latter two must equal the approved versions in the packaged release
   contract.
-- Use Pydantic/JSON Schema for contracts, `Decimal` for exact numeric checks,
-  deterministic bilingual rules for prohibited wording, and a controlled
-  renderer for the immutable verified report.
-- Emit `ClaimVerificationResult` plus a `VerifiedReport` only when no blocker or
-  unresolved review item remains. A hard blocker cannot be waived.
+- Use Pydantic/JSON Schema for contracts, identity-only `Decimal` checks,
+  deterministic bilingual rules for prohibited wording, and direct
+  package-owned ClaimBlock reconstruction.
+- Emit one `ClaimVerificationResult` receipt that binds the original ReportDraft,
+  P0-09 graph manifest, audience, checks and export eligibility. A hard blocker
+  cannot be waived and ReportDraft cannot grant reviewer authority.
 - Record the packaged benchmark ID and byte hash in every successful or partial
   result.
 
@@ -34,8 +35,9 @@ interval, evidence state, comparison scope and approved wording?
   safety, potency, GMP release, product quality or overall ranking.
 - Do not add a shared benchmark framework before P0-06 becomes its second real
   caller.
-- Do not use P0-02 controlled test data, modify another Tool Package, or start
-  the next Tool Package branch.
+- Do not use P0-02 controlled test data, implement another Tool Package, or
+  start the next Tool Package branch. The P0-11 task card may only be corrected
+  to consume the original ReportDraft plus this receipt.
 
 ## Work
 
@@ -62,8 +64,15 @@ interval, evidence state, comparison scope and approved wording?
 11. [x] Validate the exact implementation commit and wheel and update the
     public record.
 12. [x] Push the reviewed changes and request focused re-review.
-13. [ ] Address any new review findings; merge only after separate
-    authorization.
+13. [x] Apply the final one-pass deletion-first review scope: derive the public
+    evidence tier from audience, remove caller numeric/reviewer/release-tier
+    authority, delete the lossy VerifiedReport copy, bind one receipt to the
+    graph manifest and publish one pre-hashed byte sequence.
+14. [ ] Regenerate projections and validate the exact implementation commit and
+    wheel on the server, including the complete adversarial matrix and repeated
+    anonymous run.
+15. [ ] Push the validated revision and request focused re-review; merge only
+    after separate authorization.
 
 ## Acceptance
 
