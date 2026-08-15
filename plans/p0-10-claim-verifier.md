@@ -15,8 +15,9 @@ interval, evidence state, comparison scope and approved wording?
 ## First complete package
 
 - Accept exactly four checksummed structured inputs: `ReportDraft`, a verified
-  P0-09 Case graph manifest, an active `ClaimPolicySpec`, and a
-  `StatementRegistry`.
+  P0-09 Case graph manifest, a `ClaimPolicySpec`, and a `StatementRegistry`;
+  the latter two must equal the approved versions in the packaged release
+  contract.
 - Use Pydantic/JSON Schema for contracts, `Decimal` for exact numeric checks,
   deterministic bilingual rules for prohibited wording, and a controlled
   renderer for the immutable verified report.
@@ -55,8 +56,11 @@ interval, evidence state, comparison scope and approved wording?
 8. [x] Open one Draft PR after the internal run is represented in the benchmark.
 9. [x] Address the seven blocking Draft-PR findings and repeat exact-SHA server
    validation with an authoritative P0-09 Case graph.
-10. [ ] Request review of the hardened Draft PR; merge only after separate
-    authorization.
+10. [x] Address the five second-round release-boundary findings: approved input
+    authority, full ClaimBlock reconstruction, adjacent numeric lexemes,
+    self-consistent result objects and current-only task-card wording.
+11. [ ] Validate the exact commit and wheel, update the public record and
+    request re-review; merge only after separate authorization.
 
 ## Acceptance
 

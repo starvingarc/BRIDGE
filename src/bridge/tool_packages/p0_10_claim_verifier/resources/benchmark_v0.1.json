@@ -58,7 +58,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "The implementation plan approves this as a formal candidate, not as a selected default.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -76,8 +76,11 @@
       "method_id": "METHOD-INTERNAL-DETERMINISTIC-ENGINE-33C959",
       "method_name": "BRIDGE Claim Verifier Core",
       "missing_input_behavior": "Typed failure before verification.",
-      "negative_controls": [],
-      "ood_or_abstention_behavior": "Returns not_assessed for an inactive policy and review_required for unresolved semantic rules.",
+      "negative_controls": [
+        "caller-supplied policy or Statement Registry mismatch",
+        "deterministic-renderer claim with appended scientific prose"
+      ],
+      "ood_or_abstention_behavior": "Rejects an unapproved policy or Statement Registry before verification and returns review_required for unsupported authoring.",
       "positive_controls": [
         "fully bound verified report",
         "anonymous internal three-claim report"
@@ -85,31 +88,34 @@
       "preprocessing_sensitivity": "Canonical structured objects only; free Markdown is excluded.",
       "random_seeds": [],
       "recommendation": "default_candidate",
-      "reference_sensitivity": "Policy and Statement Registry swaps are explicit checksummed inputs.",
+      "reference_sensitivity": "Supplied policy and Statement Registry objects must equal the versions embedded in the packaged release contract.",
       "resources": {
         "cache_state": "cold process; separate output directory",
-        "cpu_seconds_median": 1.88,
-        "output_bytes": 2004,
-        "peak_ram_mb": 208.484375,
+        "cpu_seconds_median": 2.3,
+        "output_bytes": 2648,
+        "peak_ram_mb": 225.65234375,
         "peak_vram_mb": 0.0,
         "repetitions": 5,
         "threads": 1,
-        "wall_clock_seconds_median": 1.93,
+        "wall_clock_seconds_median": 2.33,
         "wall_clock_seconds_range": [
-          1.71,
-          2.18
+          2.13,
+          3.06
         ]
       },
       "role": "Ordered deterministic checks and release-state aggregation.",
       "source": "BRIDGE repository",
       "task_metrics": {
         "blocker_non_override_rate": 1.0,
+        "caller_authority_rejection_rate": 1.0,
+        "complete_text_mismatch_rejection_rate": 1.0,
         "deterministic_repeat_match": 1.0,
         "internal_blocker_count": 0,
         "internal_claim_count": 3,
         "internal_repeat_match": 1.0,
         "internal_review_count": 0,
-        "internal_warning_count": 0
+        "internal_warning_count": 0,
+        "result_invariant_rejection_rate": 1.0
       },
       "uncertainty_or_interval": "Exact pass/fail counts; no statistical interval.",
       "version": "0.1.0"
@@ -122,7 +128,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Approved as a callable formal-candidate component by the implementation plan.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -175,7 +181,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Approved as the independent public-Schema validation channel.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -229,7 +235,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Approved as the exact numeric candidate; no floating tolerance is allowed.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -286,7 +292,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Approved as the callable decimal implementation.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -337,7 +343,7 @@
       "analysis_task": "Exact numeric and unit fidelity",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "A reviewed unit registry and conversion fixtures are not yet available.",
         "reviewer": null,
         "state": "pending"
@@ -389,7 +395,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Approved as the formal deterministic rule layer.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -445,7 +451,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Approved as the callable Unicode pattern engine with bounded execution time.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -473,7 +479,7 @@
       "preprocessing_sensitivity": "No free Markdown token recovery.",
       "random_seeds": [],
       "recommendation": "default_candidate",
-      "reference_sensitivity": "Rules are policy inputs.",
+      "reference_sensitivity": "Rules are pinned by the packaged release contract.",
       "resources": {
         "cache_state": "covered by the end-to-end run; not isolated",
         "cpu_seconds_median": null,
@@ -488,6 +494,7 @@
       "role": "Unicode bilingual pattern matching and span location.",
       "source": "https://github.com/mrabarnett/mrab-regex",
       "task_metrics": {
+        "adjacent_numeric_lexeme_detection_rate": 1.0,
         "fixture_false_negative_count": 0
       },
       "uncertainty_or_interval": "Exact fixture count.",
@@ -497,7 +504,7 @@
       "analysis_task": "Bilingual prohibited-claim rules",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "No OPA binary or frozen Rego parity suite is available for v0.1.",
         "reviewer": null,
         "state": "pending"
@@ -515,7 +522,10 @@
       "method_id": "METHOD-POLICY-ENGINE",
       "method_name": "Open Policy Agent",
       "missing_input_behavior": "Unavailable without an isolated binary and policy bundle.",
-      "negative_controls": [],
+      "negative_controls": [
+        "extra prose after the bound value",
+        "caller-defined renderer metadata"
+      ],
       "ood_or_abstention_behavior": "Policy evaluation only; no semantic inference.",
       "positive_controls": [],
       "preprocessing_sensitivity": "Rego translation not validated.",
@@ -545,7 +555,7 @@
       "analysis_task": "Bilingual prohibited-claim rules",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "LLM judgment is excluded from the v0.1 formal path and cannot clear blockers.",
         "reviewer": "developer-plan-20260814",
         "state": "rejected"
@@ -603,7 +613,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Approved as the fixed renderer; templates cannot come from callers.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -624,13 +634,13 @@
       "negative_controls": [],
       "ood_or_abstention_behavior": "Unsupported media return unavailable outside this package.",
       "positive_controls": [
-        "plain structured paragraphs",
-        "stable SHA-256"
+        "canonical metric sentence",
+        "registered boundary statement"
       ],
-      "preprocessing_sensitivity": "Claim order is preserved.",
+      "preprocessing_sensitivity": "Only complete ClaimBlock text reconstructed from structured values can pass automatically.",
       "random_seeds": [],
       "recommendation": "default_candidate",
-      "reference_sensitivity": "Renderer version is part of ReportDraft.",
+      "reference_sensitivity": "Renderer ID, version and template are pinned by the packaged release contract.",
       "resources": {
         "cache_state": "covered by the end-to-end run; not isolated",
         "cpu_seconds_median": null,
@@ -642,10 +652,11 @@
         "wall_clock_seconds_median": null,
         "wall_clock_seconds_range": null
       },
-      "role": "Immutable verified Markdown projection.",
+      "role": "Package-authorized complete ClaimBlock reconstruction.",
       "source": "BRIDGE repository",
       "task_metrics": {
-        "byte_identical_repeat": 1.0
+        "byte_identical_repeat": 1.0,
+        "complete_claim_text_reconstruction_rate": 1.0
       },
       "uncertainty_or_interval": "Exact byte comparison.",
       "version": "0.1.0"
@@ -658,7 +669,7 @@
         "INTERNAL-ANONYMIZED-REPORT-v0.1"
       ],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Approved only behind the fixed BRIDGE template.",
         "reviewer": "developer-plan-20260814",
         "state": "approved"
@@ -679,8 +690,8 @@
       "negative_controls": [],
       "ood_or_abstention_behavior": "Caller templates are not accepted.",
       "positive_controls": [
-        "fixed template",
-        "data containing template syntax"
+        "fixed metric template",
+        "exact registered boundary statement"
       ],
       "preprocessing_sensitivity": "No arbitrary template input.",
       "random_seeds": [],
@@ -697,10 +708,10 @@
         "wall_clock_seconds_median": null,
         "wall_clock_seconds_range": null
       },
-      "role": "Fixed controlled template rendering.",
+      "role": "Fixed controlled ClaimBlock rendering.",
       "source": "https://jinja.palletsprojects.com/",
       "task_metrics": {
-        "nested_template_literal_preservation_rate": 1.0
+        "caller_text_mismatch_rejection_rate": 1.0
       },
       "uncertainty_or_interval": "Exact byte comparison.",
       "version": "3.1.6"
@@ -709,7 +720,7 @@
       "analysis_task": "Controlled report rendering",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Free Markdown import is explicitly outside v0.1.",
         "reviewer": "developer-plan-20260814",
         "state": "rejected"
@@ -757,7 +768,7 @@
       "analysis_task": "Controlled report rendering",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Web and media rendering are unavailable in v0.1.",
         "reviewer": "developer-plan-20260814",
         "state": "rejected"
@@ -805,7 +816,7 @@
       "analysis_task": "External factuality audit",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "External task definitions do not replace BRIDGE structured policy checks.",
         "reviewer": null,
         "state": "pending"
@@ -859,7 +870,7 @@
       "analysis_task": "External factuality audit",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Not part of the deterministic v0.1 decision path.",
         "reviewer": null,
         "state": "pending"
@@ -913,7 +924,7 @@
       "analysis_task": "External factuality audit",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "Not part of the deterministic v0.1 decision path.",
         "reviewer": null,
         "state": "pending"
@@ -967,7 +978,7 @@
       "analysis_task": "External factuality audit",
       "data_case_ids": [],
       "decision": {
-        "benchmark_sha256": "f8b1a9c6946afddb9005d396037fef8af84b36ff27a0cd1137db27ac196fc373",
+        "benchmark_sha256": "2188c8daabff78ee9ce3a1d4b20edb7f8bfa1ed06b38bc9b3bac1286a5041f8e",
         "reason": "The English scientific-claim dataset is a benchmark reference, not a release rule.",
         "reviewer": null,
         "state": "pending"

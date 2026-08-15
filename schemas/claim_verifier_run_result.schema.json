@@ -110,20 +110,203 @@
     },
     "ClaimVerificationResult": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "release_state": {
+                "const": "not_assessed"
+              }
+            },
+            "required": [
+              "release_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "check_records": {
+                "maxItems": 0
+              },
+              "public_export_eligibility": {
+                "const": "not_assessed"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "release_state": {
+                "const": "release_blocked"
+              }
+            },
+            "required": [
+              "release_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "check_records": {
+                "contains": {
+                  "properties": {
+                    "outcome": {
+                      "const": "blocked"
+                    }
+                  },
+                  "required": [
+                    "outcome"
+                  ]
+                }
+              },
+              "public_export_eligibility": {
+                "const": "ineligible"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "release_state": {
+                "const": "review_required"
+              }
+            },
+            "required": [
+              "release_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "check_records": {
+                "contains": {
+                  "properties": {
+                    "outcome": {
+                      "const": "review_required"
+                    }
+                  },
+                  "required": [
+                    "outcome"
+                  ]
+                },
+                "not": {
+                  "contains": {
+                    "properties": {
+                      "outcome": {
+                        "const": "blocked"
+                      }
+                    },
+                    "required": [
+                      "outcome"
+                    ]
+                  }
+                }
+              },
+              "public_export_eligibility": {
+                "const": "ineligible"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "release_state": {
+                "const": "verified_with_warnings"
+              }
+            },
+            "required": [
+              "release_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "check_records": {
+                "contains": {
+                  "properties": {
+                    "outcome": {
+                      "const": "warning"
+                    }
+                  },
+                  "required": [
+                    "outcome"
+                  ]
+                },
+                "not": {
+                  "contains": {
+                    "properties": {
+                      "outcome": {
+                        "enum": [
+                          "blocked",
+                          "review_required"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "outcome"
+                    ]
+                  }
+                }
+              },
+              "public_export_eligibility": {
+                "enum": [
+                  "eligible",
+                  "ineligible"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "release_state": {
+                "const": "verified"
+              }
+            },
+            "required": [
+              "release_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "check_records": {
+                "not": {
+                  "contains": {
+                    "properties": {
+                      "outcome": {
+                        "enum": [
+                          "blocked",
+                          "review_required",
+                          "warning"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "outcome"
+                    ]
+                  }
+                }
+              },
+              "public_export_eligibility": {
+                "enum": [
+                  "eligible",
+                  "ineligible"
+                ]
+              }
+            }
+          }
+        }
+      ],
       "properties": {
         "benchmark_id": {
+          "const": "P0-10-BENCHMARK-v0.1",
           "title": "Benchmark Id",
           "type": "string"
         },
         "benchmark_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
+          "const": "bb25a8d4a272f051e2918fd18999d7bbe424259258c3353dbc258f528f0edc26",
           "title": "Benchmark Sha256",
           "type": "string"
-        },
-        "blocker_count": {
-          "minimum": 0,
-          "title": "Blocker Count",
-          "type": "integer"
         },
         "check_records": {
           "items": {
@@ -143,6 +326,7 @@
           "type": "object"
         },
         "claim_policy_ref": {
+          "const": "claim-policy:p0-10-public@0.1.0",
           "title": "Claim Policy Ref",
           "type": "string"
         },
@@ -153,6 +337,16 @@
         },
         "public_export_eligibility": {
           "$ref": "#/$defs/PublicExportEligibility"
+        },
+        "release_contract_id": {
+          "const": "P0-10-RELEASE-CONTRACT-v0.1",
+          "title": "Release Contract Id",
+          "type": "string"
+        },
+        "release_contract_sha256": {
+          "const": "3e881633eb281f7c3bf897c578596bf5629061a755854b0fdec71b0cd6b51f5f",
+          "title": "Release Contract Sha256",
+          "type": "string"
         },
         "release_state": {
           "$ref": "#/$defs/ReleaseState"
@@ -166,12 +360,8 @@
           "title": "Report Draft Ref",
           "type": "string"
         },
-        "review_count": {
-          "minimum": 0,
-          "title": "Review Count",
-          "type": "integer"
-        },
         "statement_registry_ref": {
+          "const": "BRIDGE-STATEMENT-REGISTRY-v0.1@0.1.0",
           "title": "Statement Registry Ref",
           "type": "string"
         },
@@ -180,27 +370,10 @@
           "title": "Verification Id",
           "type": "string"
         },
-        "verified_report_ref": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verified Report Ref"
-        },
         "verifier_version": {
           "const": "0.1.0",
           "title": "Verifier Version",
           "type": "string"
-        },
-        "warning_count": {
-          "minimum": 0,
-          "title": "Warning Count",
-          "type": "integer"
         }
       },
       "required": [
@@ -209,14 +382,13 @@
         "verifier_version",
         "benchmark_id",
         "benchmark_sha256",
+        "release_contract_id",
+        "release_contract_sha256",
         "report_draft_ref",
         "report_content_hash",
         "claim_policy_ref",
         "statement_registry_ref",
         "release_state",
-        "blocker_count",
-        "review_count",
-        "warning_count",
         "check_records",
         "claim_evidence_map",
         "public_export_eligibility"
@@ -292,42 +464,17 @@
     "VerifiedReport": {
       "additionalProperties": false,
       "properties": {
-        "claim_policy_ref": {
-          "title": "Claim Policy Ref",
-          "type": "string"
-        },
         "claims": {
           "items": {
             "$ref": "#/$defs/VerifiedClaim"
           },
+          "minItems": 1,
           "title": "Claims",
           "type": "array"
         },
         "object_version": {
           "const": "0.1.0",
           "title": "Object Version",
-          "type": "string"
-        },
-        "rendered_markdown": {
-          "title": "Rendered Markdown",
-          "type": "string"
-        },
-        "rendered_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Rendered Sha256",
-          "type": "string"
-        },
-        "report_content_hash": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Report Content Hash",
-          "type": "string"
-        },
-        "report_draft_ref": {
-          "title": "Report Draft Ref",
-          "type": "string"
-        },
-        "statement_registry_ref": {
-          "title": "Statement Registry Ref",
           "type": "string"
         },
         "verification_id": {
@@ -343,14 +490,8 @@
       "required": [
         "object_version",
         "verified_report_id",
-        "report_draft_ref",
-        "report_content_hash",
         "verification_id",
-        "claim_policy_ref",
-        "statement_registry_ref",
-        "claims",
-        "rendered_markdown",
-        "rendered_sha256"
+        "claims"
       ],
       "title": "VerifiedReport",
       "type": "object"
@@ -358,16 +499,47 @@
   },
   "$id": "bridge://schemas/claim-verifier-run-result/v0.1",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "verified_report": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "verification": {
+            "properties": {
+              "release_state": {
+                "enum": [
+                  "verified",
+                  "verified_with_warnings"
+                ]
+              }
+            },
+            "required": [
+              "release_state"
+            ]
+          }
+        },
+        "required": [
+          "verification"
+        ]
+      },
+      "then": {
+        "properties": {
+          "verified_report": {
+            "not": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    }
+  ],
   "properties": {
-    "benchmark_id": {
-      "title": "Benchmark Id",
-      "type": "string"
-    },
-    "benchmark_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Benchmark Sha256",
-      "type": "string"
-    },
     "object_version": {
       "const": "0.1.0",
       "title": "Object Version",
@@ -389,8 +561,6 @@
   },
   "required": [
     "object_version",
-    "benchmark_id",
-    "benchmark_sha256",
     "verification",
     "verified_report"
   ],

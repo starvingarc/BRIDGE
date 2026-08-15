@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
 import hashlib
+from importlib.resources import files
 from typing import Iterable
 
 from jinja2 import Environment, StrictUndefined
@@ -25,6 +26,7 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimType,
     ClaimVerificationResult,
     ClaimVerifierRunResult,
+    ClaimVerifierReleaseContract,
     ComparisonMode,
     HumanReviewDecision,
     NumericFormatSpec,
@@ -42,15 +44,31 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
 
 
 VERIFIER_VERSION = "0.1.0"
+RELEASE_CONTRACT_FILENAME = "release_contract_v0.1.json"
+APPROVED_RELEASE_CONTRACT_SHA256 = (
+    "3e881633eb281f7c3bf897c578596bf5629061a755854b0fdec71b0cd6b51f5f"
+)
 NUMERIC_TOKEN = regex.compile(
-    r"(?<![\p{L}\p{N}_])[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?%?(?![\p{L}\p{N}_])",
+    r"(?<![\p{N}.])[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?%?",
     regex.VERSION1,
 )
-REPORT_TEMPLATE = Environment(
-    autoescape=False,
-    undefined=StrictUndefined,
-    keep_trailing_newline=True,
-).from_string("{% for claim in claims %}{{ claim.text }}{% if not loop.last %}\n\n{% endif %}{% endfor %}\n")
+
+
+def release_contract_bytes() -> bytes:
+    return files(
+        "bridge.tool_packages.p0_10_claim_verifier.resources"
+    ).joinpath(RELEASE_CONTRACT_FILENAME).read_bytes()
+
+
+def release_contract_sha256() -> str:
+    return hashlib.sha256(release_contract_bytes()).hexdigest()
+
+
+def load_release_contract() -> ClaimVerifierReleaseContract:
+    payload = release_contract_bytes()
+    if hashlib.sha256(payload).hexdigest() != APPROVED_RELEASE_CONTRACT_SHA256:
+        raise ValueError("release contract does not match the approved package record")
+    return ClaimVerifierReleaseContract.model_validate_json(payload)
 
 
 def verify_report(
@@ -59,6 +77,8 @@ def verify_report(
     evidence_set: EvidenceRecordSet,
     policy: ClaimPolicySpec,
     statements: StatementRegistry,
+    release_contract: ClaimVerifierReleaseContract,
+    release_contract_hash: str,
     benchmark_id: str,
     benchmark_sha256: str,
     run_id: str,
@@ -71,22 +91,19 @@ def verify_report(
             verifier_version=VERIFIER_VERSION,
             benchmark_id=benchmark_id,
             benchmark_sha256=benchmark_sha256,
+            release_contract_id=release_contract.contract_id,
+            release_contract_sha256=release_contract_hash,
             report_draft_ref=report.ref,
             report_content_hash=report.content_hash,
             claim_policy_ref=policy.ref,
             statement_registry_ref=statements.ref,
             release_state=ReleaseState.NOT_ASSESSED,
-            blocker_count=0,
-            review_count=0,
-            warning_count=0,
             check_records=[],
             claim_evidence_map={claim.claim_id: claim.evidence_refs for claim in report.claim_blocks},
             public_export_eligibility=PublicExportEligibility.NOT_ASSESSED,
         )
         return ClaimVerifierRunResult(
             object_version="0.1.0",
-            benchmark_id=benchmark_id,
-            benchmark_sha256=benchmark_sha256,
             verification=verification,
             verified_report=None,
         )
@@ -99,18 +116,16 @@ def verify_report(
     }
     checks: list[ClaimCheckRecord] = []
     for claim in report.claim_blocks:
-        if (
-            report.authoring_channel is not AuthoringChannel.DETERMINISTIC_RENDERER
-            or claim.authoring_channel is not AuthoringChannel.DETERMINISTIC_RENDERER
-        ):
-            checks.append(
-                _review_required(
-                    claim,
-                    "rule:deterministic-authoring",
-                    "non_deterministic_authoring_requires_review",
-                )
-            )
         resolved = [evidence[ref] for ref in claim.evidence_refs if ref in evidence]
+        checks.extend(
+            _check_authoring(
+                report,
+                claim,
+                resolved,
+                statement_by_ref,
+                release_contract,
+            )
+        )
         checks.extend(
             _check_claim_contract(
                 claim,
@@ -146,19 +161,12 @@ def verify_report(
         release_state = ReleaseState.VERIFIED
 
     verified_report: VerifiedReport | None = None
-    verified_report_ref: str | None = None
     if release_state in {ReleaseState.VERIFIED, ReleaseState.VERIFIED_WITH_WARNINGS}:
-        rendered = REPORT_TEMPLATE.render(claims=report.claim_blocks)
         verified_report_id = f"verified-report:{run_id.removeprefix('run-')}"
-        verified_report_ref = f"{verified_report_id}@0.1.0"
         verified_report = VerifiedReport(
             object_version="0.1.0",
             verified_report_id=verified_report_id,
-            report_draft_ref=report.ref,
-            report_content_hash=report.content_hash,
             verification_id=verification_id,
-            claim_policy_ref=policy.ref,
-            statement_registry_ref=statements.ref,
             claims=[
                 VerifiedClaim(
                     claim_id=claim.claim_id,
@@ -170,8 +178,6 @@ def verify_report(
                 )
                 for claim in report.claim_blocks
             ],
-            rendered_markdown=rendered,
-            rendered_sha256=hashlib.sha256(rendered.encode("utf-8")).hexdigest(),
         )
 
     verification = ClaimVerificationResult(
@@ -180,14 +186,13 @@ def verify_report(
         verifier_version=VERIFIER_VERSION,
         benchmark_id=benchmark_id,
         benchmark_sha256=benchmark_sha256,
+        release_contract_id=release_contract.contract_id,
+        release_contract_sha256=release_contract_hash,
         report_draft_ref=report.ref,
         report_content_hash=report.content_hash,
         claim_policy_ref=policy.ref,
         statement_registry_ref=statements.ref,
         release_state=release_state,
-        blocker_count=blocker_count,
-        review_count=review_count,
-        warning_count=warning_count,
         check_records=sorted(checks, key=lambda item: item.check_id),
         claim_evidence_map={claim.claim_id: claim.evidence_refs for claim in report.claim_blocks},
         public_export_eligibility=(
@@ -196,15 +201,101 @@ def verify_report(
             and release_state in {ReleaseState.VERIFIED, ReleaseState.VERIFIED_WITH_WARNINGS}
             else PublicExportEligibility.INELIGIBLE
         ),
-        verified_report_ref=verified_report_ref,
     )
     return ClaimVerifierRunResult(
         object_version="0.1.0",
-        benchmark_id=benchmark_id,
-        benchmark_sha256=benchmark_sha256,
         verification=verification,
         verified_report=verified_report,
     )
+
+
+def _check_authoring(
+    report: ReportDraft,
+    claim: ClaimBlock,
+    resolved: list[EvidenceRecord],
+    statements: dict[str, RegisteredStatement],
+    contract: ClaimVerifierReleaseContract,
+) -> list[ClaimCheckRecord]:
+    if (
+        report.authoring_channel is not AuthoringChannel.DETERMINISTIC_RENDERER
+        or claim.authoring_channel is not AuthoringChannel.DETERMINISTIC_RENDERER
+    ):
+        return [
+            _review_required(
+                claim,
+                "rule:deterministic-authoring",
+                "non_deterministic_authoring_requires_review",
+            )
+        ]
+    if (
+        report.renderer_id != contract.renderer_id
+        or report.renderer_version != contract.renderer_version
+    ):
+        return [
+            _review_required(
+                claim,
+                "rule:deterministic-authoring",
+                "unapproved_renderer_requires_review",
+            )
+        ]
+    expected = _render_authoritative_claim(claim, resolved, statements, contract)
+    if expected is None:
+        return [
+            _review_required(
+                claim,
+                "rule:deterministic-authoring",
+                "unsupported_deterministic_claim_requires_review",
+            )
+        ]
+    if claim.text != expected:
+        return [
+            _block(
+                claim,
+                "rule:deterministic-authoring",
+                "deterministic_claim_text_mismatch",
+            )
+        ]
+    return []
+
+
+def _render_authoritative_claim(
+    claim: ClaimBlock,
+    resolved: list[EvidenceRecord],
+    statements: dict[str, RegisteredStatement],
+    contract: ClaimVerifierReleaseContract,
+) -> str | None:
+    if claim.claim_type is ClaimType.POLICY_OR_BOUNDARY and len(claim.statement_refs) == 1:
+        statement = statements.get(claim.statement_refs[0])
+        return None if statement is None else statement.texts.get(claim.language)
+    if (
+        claim.claim_type is not ClaimType.MEASUREMENT
+        or claim.language.value != contract.measurement_language
+        or len(resolved) != 1
+        or len(claim.value_bindings) != 1
+    ):
+        return None
+    record = resolved[0]
+    binding = claim.value_bindings[0]
+    if (
+        binding.source_evidence_ref != record.ref
+        or binding.source_field != "value"
+        or record.value is None
+        or isinstance(record.value, bool)
+    ):
+        return None
+    try:
+        value = _render_decimal(
+            Decimal(str(record.value)),
+            binding.format_spec,
+            record.unit,
+        )
+    except Exception:
+        return None
+    template = Environment(
+        autoescape=False,
+        undefined=StrictUndefined,
+    ).from_string(contract.measurement_template)
+    return template.render(metric_id=record.metric_id, value=value)
 
 
 def _check_claim_contract(

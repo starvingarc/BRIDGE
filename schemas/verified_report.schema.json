@@ -49,42 +49,17 @@
   "$id": "bridge://schemas/verified-report/v0.1",
   "additionalProperties": false,
   "properties": {
-    "claim_policy_ref": {
-      "title": "Claim Policy Ref",
-      "type": "string"
-    },
     "claims": {
       "items": {
         "$ref": "#/$defs/VerifiedClaim"
       },
+      "minItems": 1,
       "title": "Claims",
       "type": "array"
     },
     "object_version": {
       "const": "0.1.0",
       "title": "Object Version",
-      "type": "string"
-    },
-    "rendered_markdown": {
-      "title": "Rendered Markdown",
-      "type": "string"
-    },
-    "rendered_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Rendered Sha256",
-      "type": "string"
-    },
-    "report_content_hash": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Report Content Hash",
-      "type": "string"
-    },
-    "report_draft_ref": {
-      "title": "Report Draft Ref",
-      "type": "string"
-    },
-    "statement_registry_ref": {
-      "title": "Statement Registry Ref",
       "type": "string"
     },
     "verification_id": {
@@ -100,14 +75,8 @@
   "required": [
     "object_version",
     "verified_report_id",
-    "report_draft_ref",
-    "report_content_hash",
     "verification_id",
-    "claim_policy_ref",
-    "statement_registry_ref",
-    "claims",
-    "rendered_markdown",
-    "rendered_sha256"
+    "claims"
   ],
   "title": "VerifiedReport",
   "type": "object"

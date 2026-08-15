@@ -12,7 +12,9 @@
 P0-10 `v0.1.0` implements the structured deterministic path only. Its four
 checksummed inputs are `ReportDraft`, a P0-09 Case graph manifest,
 `ClaimPolicySpec` and
-`StatementRegistry`. Free Markdown recovery, LLM judgment, web/media rendering,
+`StatementRegistry`. The supplied policy and statement objects must equal the
+versions embedded in the packaged release contract. Free Markdown recovery,
+LLM judgment, web/media rendering,
 OCR and automatic export are not runtime inputs. The versioned method record is
 [BENCHMARK.md](../../tool_packages/P0-10/BENCHMARK.md); candidate methods do not
 constitute a selected default.
@@ -50,7 +52,9 @@ P0 覆盖中文、英文和中英混排。普通探索对话保持 `unverified`�
 
 ### 2.2 结构化优先
 
-正式内容先生成 `ReportDraft`，再渲染为 Web、Markdown 或后续导出格式。每个 claim、数值和图表在渲染前绑定来源对象；渲染后再进行一次 round-trip 检查，确认正文没有出现未绑定内容或绑定丢失。
+正式内容先生成 `ReportDraft`。v0.1 只自动接受包内模板可完整重建的英文单值
+measurement claim，以及与包内 Statement Registry 逐字一致的边界声明；其他正文保留
+为 `review_required`，由后续模块负责 Web、Markdown 或公开导出。
 
 自由 Markdown 导入不属于 v0.1 运行接口。后续解析器恢复的 claim 即使加入，也只能先作为 candidate；所有可核查主张仍须补齐来源绑定并重新进入结构化核验。
 
@@ -62,14 +66,15 @@ P0 覆盖中文、英文和中英混排。普通探索对话保持 `unverified`�
 
 - 一个带 canonical content hash 的 `ReportDraft`。
 - 一个上游 P0-09 生成的 Case Evidence Graph manifest 及其同目录制品。
-- 一个活动的 `ClaimPolicySpec`。
-- 一个 `StatementRegistry`。
+- 与包内 release contract 完全一致的活动 `ClaimPolicySpec`。
+- 与包内 release contract 完全一致的 `StatementRegistry`。
 
 四个入口对象均由 `StructuredInputRef` 提供绝对路径、schema、版本和 SHA-256；
 P0-09 manifest 中的 hash、图结构和 EvidenceRecord 投影必须通过同一只读完整性检查。
 ProductCase、ComparisonRecord、图表、Recommendation 或其他上游对象必须先被
-编译为 EvidenceRecord；v0.1 不直接读取这些对象。缺少活动策略时返回
-`not_assessed`。schema、引用或 hash 错误进入确定性失败，不从文件名或文本猜测关系。
+编译为 EvidenceRecord；v0.1 不直接读取这些对象。策略或 Statement Registry 与包内
+批准版本不一致时，在核验前返回 typed failure。schema、引用或 hash 错误同样进入
+确定性失败，不从文件名或文本猜测关系。
 
 ### 3.2 ReportDraft
 
@@ -117,10 +122,12 @@ canonical_numeric_string / raw_unit / format_spec / text_span
 | --- | --- |
 | `ClaimPolicySpec` | 定义 claim 类型、必需来源、允许状态、禁止解释、规则严重度和适用受众 |
 | `ClaimCheckRecord` | 保存 rule ID/version、目标 block/span、结果、severity、reason code 和 Evidence IDs |
-| `SemanticReviewRecord` | 保存脱敏输入 hash、model/provider/prompt 版本、flags、稳定性和失败信息 |
-| `HumanReviewDecision` | 保存 reviewer role、处理的 check IDs、决定、理由和签字时间 |
-| `ClaimVerificationResult` | 聚合五状态、blockers、review items、warnings、claim map 和导出资格 |
-| `VerifiedReport` | 不可变地引用通过核验的 ReportDraft、策略快照、核验记录和发布确认 |
+| `HumanReviewDecision` | 保存 claim ID、rule ID、reviewer role/ref、决定和理由；v0.1 不含签字时间或 check ID 列表 |
+| `ClaimVerificationResult` | 保存发布状态、逐项 checks、claim map、导出资格以及 benchmark/release-contract hash；各类数量由 checks 推导，不重复存储 |
+| `VerifiedReport` | 只在通过时保存 verification ID 和逐字通过核验的结构化 claims；不重复存储可漂移的正文 hash |
+
+`SemanticReviewRecord`、签字时间和 visualization check references 是后续候选，未进入
+v0.1 公开模型。
 
 ## 4. Claim Taxonomy 与追溯规则
 
@@ -137,7 +144,7 @@ canonical_numeric_string / raw_unit / format_spec / text_span
 | `recommendation_hypothesis` | RecommendationCard + 支持/反对 Evidence | 最多三项；不得给未经验证的剂量或处理时序 |
 | `graft_retrospective_claim` | graft-specific evidence + explicit linkage | 不回填移植前分数、阈值、训练标签或疗效结论 |
 | `policy_or_boundary_statement` | StatementRegistry | 使用审核后的固定版本，不由 LLM 即兴改写 |
-| `visualization_caption` | VisualizationArtifact + Evidence IDs | 图注必须与图中单位、分母、状态和筛选一致 |
+| `visualization_caption` | v0.1 不支持 | 不接收 `VisualizationArtifact`；图注和媒体核对留待独立合同 |
 
 正式 claim 不得只绑定 artifact 文件路径。它必须引用语义对象和版本；artifact 仅作为 provenance。
 
@@ -149,7 +156,7 @@ flowchart LR
     B --> C["Claim and source binding"]
     C --> D["Numeric, unit and formatting fidelity"]
     D --> E["Evidence state and applicability"]
-    E --> F["Comparison, graft and visualization rules"]
+    E --> F["Comparison rules and unsupported-claim handling"]
     F --> G["Bilingual prohibited-claim rules"]
     G --> H["Apply supplied authorized review decisions"]
     H --> I["Deterministic release aggregation"]
@@ -161,7 +168,7 @@ flowchart LR
 2. 核对每个可核查主张的 Evidence、Knowledge 或 Statement ID。
 3. 核对数值、单位、分母、区间和 `FormattingSpec`。
 4. 检查 evidence tier、lifecycle、applicability、sufficiency 和 reconciliation state。
-5. 检查状态语义、比较资格、图表合同、Recommendation 和 graft 边界。
+5. 检查状态语义和比较资格；未进入 v0.1 的 claim 类型不能自动通过。
 6. 运行中英双语禁止主张和敏感措辞规则。
 7. 对 review-only 命中应用 ReportDraft 中已有的授权人工决定。
 8. 按固定优先级聚合发布状态；人工决定不能清除 hard blocker。LLM 语义复核为后续候选，不在 v0.1 中运行。
@@ -184,7 +191,6 @@ flowchart LR
 
 - 因果、最佳、显著改善、接近临床等隐含外推未被硬规则完全解析。
 - 中文和英文版本的限定词、否定、范围或强度不一致。
-- LLM 复核不可用、输出结构错误或重复运行不稳定。
 - 文本与引用证据大体一致，但适用场景或主语边界存在歧义。
 - 自由文本导入后有 candidate claim 尚待研究者确认映射。
 
@@ -235,11 +241,12 @@ LLM 只能返回结构化 flags：claim ID、文本 span、semantic category、�
 
 模型、provider、prompt、temperature、structured-output schema、输入 hash、输出 hash、延迟和错误均版本化。正式策略不依赖实时联网；新论文或实时检索不能改变当次结论。
 
-LLM 不可用时，确定性检查继续完成，最终状态为 `review_required`。授权人工 reviewer 可以对语义项签字，但：
+未来若接入 LLM，其不可用状态不得改变当前确定性结果。v0.1 的授权人工 reviewer
+只能处理 policy 中的 review-only 规则，并且：
 
 - 不能豁免 hard blocker。
 - 不能修改原 ReportDraft；需要修改时创建新版本。
-- 必须记录 reviewer role、所处理 check IDs、依据和时间。
+- 必须记录 claim ID、rule ID、reviewer role/ref、决定和理由；当前模型不含签字时间。
 - 同一人不能通过手工改写绕过重新核验。
 
 ## 8. 发布状态与输出合同
@@ -248,9 +255,9 @@ LLM 不可用时，确定性检查继续完成，最终状态为 `review_require
 
 | 状态 | 条件 | 发布行为 |
 | --- | --- | --- |
-| `not_assessed` | 尚未运行，或没有活动 `ClaimPolicySpec` snapshot | 不允许正式发布 |
+| `not_assessed` | 尚未形成核验结果的保留状态；当前适配器不会用未批准或未激活策略产生该状态 | 不允许正式发布 |
 | `release_blocked` | 至少一个确定性 blocker | 必须修复输入、证据或文本并生成新版本 |
-| `review_required` | 无 blocker，但有未解决语义项、LLM 故障或人工映射待确认 | 等待授权 reviewer |
+| `review_required` | 无 blocker，但有不受支持的正文生成方式或人工映射待确认 | 等待授权 reviewer |
 | `verified_with_warnings` | 必需检查通过，只剩非阻塞 warning | 可进入用户确认；warning 随报告保存 |
 | `verified` | 必需检查全部通过且无 warning | 可进入用户确认 |
 
@@ -264,14 +271,17 @@ LLM 不可用时，确定性检查继续完成，最终状态为 `review_require
 
 ```text
 verification_id / version / verifier_version
+benchmark_id / benchmark_sha256
+release_contract_id / release_contract_sha256
 report_draft_ref / report_content_hash
-claim_policy_snapshot_ref / statement_registry_ref
-claim_check_records / semantic_review_ref / human_review_refs
-release_state / blocker_count / review_count / warning_count
-claim_evidence_map / visualization_check_refs
+claim_policy_ref / statement_registry_ref
+release_state / check_records / claim_evidence_map
 public_export_eligibility
-verified_report_ref / created_at
 ```
+
+`blocker`、`review` 和 `warning` 数量由 `check_records` 推导，不作为第二份事实存储。
+外层 `ClaimVerifierRunResult` 只包含这一核验对象和可选 `VerifiedReport`，因此 benchmark
+信息、报告存在性和核验状态不会出现两份互相矛盾的值。
 
 `public_export_eligibility` 为 `eligible`、`ineligible` 或 `not_assessed`。它只控制下一模块入口；Public-safe Export 必须从字段白名单生成新对象，不能修改或覆盖内部 VerifiedReport。
 
@@ -279,9 +289,9 @@ verified_report_ref / created_at
 
 ### 9.1 图表
 
-v0.1 只核对结构化 `VisualizationArtifact` 引用、Evidence IDs、数据版本、单位、分母、区间、筛选条件、证据状态和 caption。桌面与移动 Web、SVG/PNG 和报告快照渲染检查返回 `unavailable`，待独立模块实现。
-
-P0 不使用 OCR 或像素反推数值。数值一致性来自 `VisualizationArtifact` 与其机器可读 data payload；渲染检查只验证最终界面没有截断、遮挡、错标或状态编码错误。
+v0.1 不接收 `VisualizationArtifact`、caption、SVG/PNG、网页或报告快照，也不返回
+visualization checks。此类输入作为不支持的对象角色被拒绝；后续媒体模块必须使用
+机器可读 data payload，不能依赖 OCR 或像素反推数值。
 
 ### 9.2 比较
 
@@ -338,19 +348,19 @@ P0 不使用 OCR 或像素反推数值。数值一致性来自 `VisualizationArt
 | zero observation 写成确定不存在 | `release_blocked` 或语义 `review_required`，由冻结规则决定 |
 | graft 结果回填移植前评分或疗效 | `release_blocked` |
 | 禁止主张或最佳收获阶段 | `release_blocked` |
-| 图表 caption 的单位、分母或状态不一致 | `release_blocked` |
-| LLM 不可用或重复输出不稳定 | 无 blocker 时为 `review_required` |
+| 不支持的图表或媒体对象进入 v0.1 | typed input failure；不静默忽略 |
 | 人工尝试豁免 hard blocker | 拒绝；必须生成修正后的新 ReportDraft |
 | 核验后文本改变一个字符 | content hash 变化，旧 VerifiedReport 失效 |
 | public candidate 含私有路径或 restricted 字段 | `release_blocked`；不执行自动脱敏 |
 
-### 11.2 语言与视觉 fixtures
+### 11.2 语言 fixtures 与后续视觉范围
 
 - 为每类禁止主张建立中文、英文和中英混排正例、反例及固定边界 Statement。
 - 覆盖否定范围、双重否定、条件句、比较级、因果词、最佳/绝对词和缺失语义。
 - 同一 claim 的中英文版本在主语、限定范围、方向、状态和强度上保持一致。
-- 图表在 desktop/mobile Web、SVG/PNG 和报告快照中不截断、不遮挡，不以颜色作为唯一状态编码。
-- 不使用 OCR 作为数字 fidelity 的正式通道。
+- 图表、desktop/mobile Web、SVG/PNG 和报告快照属于后续模块；v0.1 fixture 只确认
+  这些对象不会被静默接收。
+- 后续视觉核对不使用 OCR 作为数字 fidelity 的正式通道。
 
 ### 11.3 冻结标准
 
@@ -358,7 +368,7 @@ P0 不使用 OCR 或像素反推数值。数值一致性来自 `VisualizationArt
 - 已登记禁止主张 fixture 的漏放行为 0。
 - 任一 hard blocker 不得被 LLM、人工签字或 warning 降级绕过。
 - 相同输入、策略和工具版本重复运行的确定性结果逐字段一致。
-- LLM reviewer 达到预注册中英双语 benchmark 前只产生 `review_required` 辅助记录。
+- LLM reviewer 达到预注册中英双语 benchmark 前不进入 v0.1 输出模型。
 - 至少一名湿实验用户和一名 Agent 实现者审核真实报告 fixture。
 - sealed competitor 对规则、词表、阈值和 benchmark fixture 的正式数据流为零。
 

@@ -30,12 +30,17 @@ from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
 )
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimPolicySpec,
+    ClaimVerifierReleaseContract,
     ClaimVerifierRunResult,
     ReleaseState,
     ReportDraft,
     StatementRegistry,
 )
-from bridge.tool_packages.p0_10_claim_verifier.verifier import verify_report
+from bridge.tool_packages.p0_10_claim_verifier.verifier import (
+    load_release_contract,
+    release_contract_sha256,
+    verify_report,
+)
 from bridge.toolkit.contracts import (
     ArtifactManifest,
     EligibilityResult,
@@ -87,10 +92,16 @@ class ClaimVerifierAdapter:
                 reason_codes=["tool_request_v2_required"],
             )
         reasons = _envelope_reasons(request, spec)
+        release_contract, contract_reasons = _release_contract()
+        reasons.extend(contract_reasons)
+        try:
+            load_benchmark()
+        except (OSError, ValueError):
+            reasons.append("benchmark_record_invalid")
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
-        if loaded is not None and not reasons:
-            reasons.extend(_binding_reasons(request, loaded))
+        if loaded is not None and release_contract is not None and not reasons:
+            reasons.extend(_binding_reasons(request, loaded, release_contract))
         reason_codes = sorted(set(reasons))
         return EligibilityResult(
             tool_id=request.tool_id,
@@ -105,6 +116,9 @@ class ClaimVerifierAdapter:
         loaded, reasons = _load_inputs(request.object_inputs)
         if loaded is None or reasons:
             return _failed_run(request, spec, reasons)
+        release_contract, contract_reasons = _release_contract()
+        if release_contract is None:
+            return _failed_run(request, spec, contract_reasons)
 
         report = single_object(request, loaded, "report_draft", ReportDraft)
         try:
@@ -119,13 +133,16 @@ class ClaimVerifierAdapter:
         )
         benchmark = load_benchmark()
         benchmark_hash = benchmark_sha256()
-        input_hash = _input_hash(request, spec, benchmark_hash)
+        contract_hash = release_contract_sha256()
+        input_hash = _input_hash(request, spec, benchmark_hash, contract_hash)
         run_id = f"run-{input_hash[:16]}"
         result = verify_report(
             report=report,
             evidence_set=evidence_set,
             policy=policy,
             statements=statements,
+            release_contract=release_contract,
+            release_contract_hash=contract_hash,
             benchmark_id=benchmark.benchmark_id,
             benchmark_sha256=benchmark_hash,
             run_id=run_id,
@@ -233,7 +250,18 @@ def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> Non
         raise StructuredInputError("object_input_version_mismatch")
 
 
-def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
+def _release_contract() -> tuple[ClaimVerifierReleaseContract | None, list[str]]:
+    try:
+        return load_release_contract(), []
+    except (OSError, ValueError):
+        return None, ["release_contract_invalid"]
+
+
+def _binding_reasons(
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    release_contract: ClaimVerifierReleaseContract,
+) -> list[str]:
     report = single_object(request, loaded, "report_draft", ReportDraft)
     policy = single_object(request, loaded, "claim_policy_spec", ClaimPolicySpec)
     statements = single_object(
@@ -254,6 +282,14 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         reasons.append("claim_policy_binding_mismatch")
     if report.statement_registry_ref != statements.ref:
         reasons.append("statement_registry_binding_mismatch")
+    if canonical_json_bytes(policy.model_dump(mode="json")) != canonical_json_bytes(
+        release_contract.claim_policy.model_dump(mode="json")
+    ):
+        reasons.append("claim_policy_not_approved")
+    if canonical_json_bytes(statements.model_dump(mode="json")) != canonical_json_bytes(
+        release_contract.statement_registry.model_dump(mode="json")
+    ):
+        reasons.append("statement_registry_not_approved")
     claim_ids = {claim.claim_id for claim in report.claim_blocks}
     rule_ids = {rule.rule_id for rule in policy.text_rules}
     for decision in report.human_review_decisions:
@@ -287,12 +323,14 @@ def _input_hash(
     request: ToolRequestV2,
     spec: ToolPackageSpecV2,
     benchmark_hash: str,
+    release_contract_hash: str,
 ) -> str:
     payload = {
         "tool_id": spec.tool_id,
         "tool_version": spec.version,
         "environment_spec_id": spec.environment_spec_id,
         "benchmark_sha256": benchmark_hash,
+        "release_contract_sha256": release_contract_hash,
         "structured_inputs": [
             {
                 "role": ref.role,

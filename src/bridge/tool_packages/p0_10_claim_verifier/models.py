@@ -7,7 +7,14 @@ import hashlib
 import re
 from typing import Any, Literal, Self
 
-from pydantic import Field, StrictBool, StrictInt, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.toolkit.contracts import EvidenceState, FrozenModel
@@ -369,6 +376,23 @@ class StatementRegistry(FrozenModel):
         return f"{self.registry_id}@{self.registry_version}"
 
 
+class ClaimVerifierReleaseContract(FrozenModel):
+    contract_id: Literal["P0-10-RELEASE-CONTRACT-v0.1"]
+    contract_version: Literal["0.1.0"]
+    renderer_id: Literal["BRIDGE-REPORT-DRAFT-RENDERER-v0.1"]
+    renderer_version: Literal["0.1.0"]
+    measurement_language: Literal["en"]
+    measurement_template: Literal["{{ metric_id }}: {{ value }}."]
+    claim_policy: ClaimPolicySpec
+    statement_registry: StatementRegistry
+
+    @model_validator(mode="after")
+    def authority_is_active(self) -> Self:
+        if not self.claim_policy.active:
+            raise ValueError("release contract requires an active claim policy")
+        return self
+
+
 class ClaimCheckRecord(FrozenModel):
     check_id: str = Field(pattern=r"^check:[a-f0-9]{16}$")
     claim_id: str
@@ -395,42 +419,190 @@ class VerifiedClaim(FrozenModel):
 class VerifiedReport(FrozenModel):
     object_version: Literal["0.1.0"]
     verified_report_id: str = Field(pattern=r"^verified-report:[a-f0-9]{16}$")
-    report_draft_ref: str
-    report_content_hash: str = Field(pattern=SHA256_PATTERN)
     verification_id: str
-    claim_policy_ref: str
-    statement_registry_ref: str
-    claims: list[VerifiedClaim]
-    rendered_markdown: str
-    rendered_sha256: str = Field(pattern=SHA256_PATTERN)
+    claims: list[VerifiedClaim] = Field(min_length=1)
+
+    @field_validator("claims")
+    @classmethod
+    def claims_are_unique(cls, value: list[VerifiedClaim]) -> list[VerifiedClaim]:
+        ids = [claim.claim_id for claim in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("verified claims must be unique")
+        return value
+
+
+def _outcome_schema(*outcomes: str) -> dict[str, Any]:
+    value = {"const": outcomes[0]} if len(outcomes) == 1 else {"enum": list(outcomes)}
+    return {"properties": {"outcome": value}, "required": ["outcome"]}
+
+
+def _state_rule(
+    state: str,
+    checks: dict[str, Any],
+    eligibility: str | list[str],
+) -> dict[str, Any]:
+    eligibility_schema = (
+        {"const": eligibility}
+        if isinstance(eligibility, str)
+        else {"enum": eligibility}
+    )
+    return {
+        "if": {
+            "properties": {"release_state": {"const": state}},
+            "required": ["release_state"],
+        },
+        "then": {
+            "properties": {
+                "check_records": checks,
+                "public_export_eligibility": eligibility_schema,
+            }
+        },
+    }
+
+
+def _claim_verification_json_schema(schema: dict[str, Any]) -> None:
+    schema["allOf"] = [
+        _state_rule("not_assessed", {"maxItems": 0}, "not_assessed"),
+        _state_rule(
+            "release_blocked",
+            {"contains": _outcome_schema("blocked")},
+            "ineligible",
+        ),
+        _state_rule(
+            "review_required",
+            {
+                "contains": _outcome_schema("review_required"),
+                "not": {"contains": _outcome_schema("blocked")},
+            },
+            "ineligible",
+        ),
+        _state_rule(
+            "verified_with_warnings",
+            {
+                "contains": _outcome_schema("warning"),
+                "not": {
+                    "contains": _outcome_schema("blocked", "review_required")
+                },
+            },
+            ["eligible", "ineligible"],
+        ),
+        _state_rule(
+            "verified",
+            {
+                "not": {
+                    "contains": _outcome_schema(
+                        "blocked", "review_required", "warning"
+                    )
+                }
+            },
+            ["eligible", "ineligible"],
+        ),
+    ]
+
+
+def _run_result_json_schema(schema: dict[str, Any]) -> None:
+    schema["allOf"] = [
+        {
+            "if": {
+                "properties": {
+                    "verification": {
+                        "properties": {
+                            "release_state": {
+                                "enum": ["verified", "verified_with_warnings"]
+                            }
+                        },
+                        "required": ["release_state"],
+                    }
+                },
+                "required": ["verification"],
+            },
+            "then": {
+                "properties": {"verified_report": {"not": {"type": "null"}}}
+            },
+            "else": {"properties": {"verified_report": {"type": "null"}}},
+        }
+    ]
 
 
 class ClaimVerificationResult(FrozenModel):
+    model_config = ConfigDict(json_schema_extra=_claim_verification_json_schema)
+
     object_version: Literal["0.1.0"]
     verification_id: str = Field(pattern=r"^claim-verification:[a-f0-9]{16}$")
     verifier_version: Literal["0.1.0"]
-    benchmark_id: str
-    benchmark_sha256: str = Field(pattern=SHA256_PATTERN)
+    benchmark_id: Literal["P0-10-BENCHMARK-v0.1"]
+    benchmark_sha256: Literal[
+        "bb25a8d4a272f051e2918fd18999d7bbe424259258c3353dbc258f528f0edc26"
+    ]
+    release_contract_id: Literal["P0-10-RELEASE-CONTRACT-v0.1"]
+    release_contract_sha256: Literal[
+        "3e881633eb281f7c3bf897c578596bf5629061a755854b0fdec71b0cd6b51f5f"
+    ]
     report_draft_ref: str
     report_content_hash: str = Field(pattern=SHA256_PATTERN)
-    claim_policy_ref: str
-    statement_registry_ref: str
+    claim_policy_ref: Literal["claim-policy:p0-10-public@0.1.0"]
+    statement_registry_ref: Literal[
+        "BRIDGE-STATEMENT-REGISTRY-v0.1@0.1.0"
+    ]
     release_state: ReleaseState
-    blocker_count: StrictInt = Field(ge=0)
-    review_count: StrictInt = Field(ge=0)
-    warning_count: StrictInt = Field(ge=0)
     check_records: list[ClaimCheckRecord]
     claim_evidence_map: dict[str, list[str]]
     public_export_eligibility: PublicExportEligibility
-    verified_report_ref: str | None = None
+
+    @model_validator(mode="after")
+    def state_matches_checks(self) -> Self:
+        outcomes = {record.outcome for record in self.check_records}
+        if self.release_state is ReleaseState.NOT_ASSESSED:
+            if self.check_records or self.public_export_eligibility is not PublicExportEligibility.NOT_ASSESSED:
+                raise ValueError("not_assessed requires no checks and not_assessed export eligibility")
+            return self
+        expected = (
+            ReleaseState.RELEASE_BLOCKED
+            if CheckOutcome.BLOCKED in outcomes
+            else ReleaseState.REVIEW_REQUIRED
+            if CheckOutcome.REVIEW_REQUIRED in outcomes
+            else ReleaseState.VERIFIED_WITH_WARNINGS
+            if CheckOutcome.WARNING in outcomes
+            else ReleaseState.VERIFIED
+        )
+        if self.release_state is not expected:
+            raise ValueError("release_state does not match check outcomes")
+        if (
+            expected in {ReleaseState.RELEASE_BLOCKED, ReleaseState.REVIEW_REQUIRED}
+            and self.public_export_eligibility is not PublicExportEligibility.INELIGIBLE
+        ):
+            raise ValueError("blocked or review-required results are not export eligible")
+        if self.public_export_eligibility is PublicExportEligibility.NOT_ASSESSED:
+            raise ValueError("assessed results cannot have not_assessed export eligibility")
+        return self
 
 
 class ClaimVerifierRunResult(FrozenModel):
+    model_config = ConfigDict(json_schema_extra=_run_result_json_schema)
+
     object_version: Literal["0.1.0"]
-    benchmark_id: str
-    benchmark_sha256: str = Field(pattern=SHA256_PATTERN)
     verification: ClaimVerificationResult
     verified_report: VerifiedReport | None
+
+    @model_validator(mode="after")
+    def report_matches_verification(self) -> Self:
+        passed = self.verification.release_state in {
+            ReleaseState.VERIFIED,
+            ReleaseState.VERIFIED_WITH_WARNINGS,
+        }
+        if passed != (self.verified_report is not None):
+            raise ValueError("verified report presence does not match release state")
+        if self.verified_report is None:
+            return self
+        if self.verified_report.verification_id != self.verification.verification_id:
+            raise ValueError("verified report references the wrong verification")
+        claim_map = {
+            claim.claim_id: claim.evidence_refs
+            for claim in self.verified_report.claims
+        }
+        if claim_map != self.verification.claim_evidence_map:
+            raise ValueError("verified report claims do not match the verification map")
+        return self
 
 
 class BenchmarkDataCase(FrozenModel):

@@ -10,6 +10,9 @@ from bridge.tool_packages.p0_10_claim_verifier.models import ClaimVerifierBenchm
 
 
 BENCHMARK_FILENAME = "benchmark_v0.1.json"
+APPROVED_BENCHMARK_SHA256 = (
+    "bb25a8d4a272f051e2918fd18999d7bbe424259258c3353dbc258f528f0edc26"
+)
 
 
 def benchmark_bytes() -> bytes:
@@ -30,6 +33,8 @@ def decision_payload_sha256(payload: dict) -> str:
 
 
 def load_benchmark() -> ClaimVerifierBenchmark:
+    if benchmark_sha256() != APPROVED_BENCHMARK_SHA256:
+        raise ValueError("benchmark does not match the approved package record")
     benchmark = ClaimVerifierBenchmark.model_validate_json(benchmark_bytes())
     expected = decision_payload_sha256(benchmark.model_dump(mode="json"))
     actual = {method.decision.benchmark_sha256 for method in benchmark.methods}

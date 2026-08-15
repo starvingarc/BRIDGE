@@ -1,0 +1,102 @@
+{
+  "claim_policy": {
+    "active": true,
+    "authorized_reviewer_roles": [
+      "claim_reviewer"
+    ],
+    "claim_type_policies": [
+      {
+        "allowed_comparison_modes": [
+          "not_applicable"
+        ],
+        "allowed_evidence_states": [
+          "measured",
+          "negative"
+        ],
+        "claim_type": "measurement_claim",
+        "requires_evidence": true
+      },
+      {
+        "allowed_comparison_modes": [
+          "descriptive_only"
+        ],
+        "allowed_evidence_states": [
+          "measured"
+        ],
+        "claim_type": "descriptive_comparison",
+        "requires_evidence": true
+      },
+      {
+        "allowed_comparison_modes": [
+          "not_applicable"
+        ],
+        "allowed_evidence_states": [],
+        "claim_type": "policy_or_boundary_statement",
+        "requires_evidence": false
+      }
+    ],
+    "descriptive_forbidden_patterns": [
+      "(?:statistically significant|显著优于|caused|导致)"
+    ],
+    "object_version": "0.1.0",
+    "policy_id": "claim-policy:p0-10-public",
+    "policy_version": "0.1.0",
+    "require_all_numeric_tokens_bound": true,
+    "text_rules": [
+      {
+        "except_statement_refs": [
+          "statement:safety-boundary@0.1.0"
+        ],
+        "languages": [
+          "zh",
+          "en",
+          "mixed"
+        ],
+        "pattern": "(?:safe|safety|安全|potency|疗效|best product|最佳产品)",
+        "reason_code": "prohibited_claim",
+        "rule_id": "rule:prohibited-clinical",
+        "severity": "hard_blocker",
+        "version": "0.1.0"
+      },
+      {
+        "except_statement_refs": [],
+        "languages": [
+          "zh",
+          "en",
+          "mixed"
+        ],
+        "pattern": "(?:better|更好)",
+        "reason_code": "ambiguous_superiority",
+        "rule_id": "rule:ambiguous-superiority",
+        "severity": "review",
+        "version": "0.1.0"
+      }
+    ]
+  },
+  "contract_id": "P0-10-RELEASE-CONTRACT-v0.1",
+  "contract_version": "0.1.0",
+  "measurement_language": "en",
+  "measurement_template": "{{ metric_id }}: {{ value }}.",
+  "renderer_id": "BRIDGE-REPORT-DRAFT-RENDERER-v0.1",
+  "renderer_version": "0.1.0",
+  "statement_registry": {
+    "object_version": "0.1.0",
+    "registry_id": "BRIDGE-STATEMENT-REGISTRY-v0.1",
+    "registry_version": "0.1.0",
+    "statements": [
+      {
+        "allowed_claim_types": [
+          "policy_or_boundary_statement"
+        ],
+        "approved": true,
+        "statement_id": "statement:safety-boundary",
+        "statement_version": "0.1.0",
+        "texts": {
+          "en": "This verification does not establish safety.",
+          "mixed": "This verification does not establish safety（不能证明安全性）。",
+          "zh": "本次核对不能证明安全性。"
+        }
+      }
+    ]
+  }
+}
