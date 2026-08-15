@@ -377,7 +377,7 @@ def test_benchmark_is_task_grouped_complete_and_has_no_default_or_aggregate() ->
     assert benchmark.default_method_id is None
     assert benchmark.aggregate_score is None
     assert benchmark.aggregate_rank is None
-    assert benchmark.benchmark_state == "awaiting_server_validation"
+    assert benchmark.benchmark_state == "server_validated_candidate"
     assert set(spec.method_ids) == approved_runtime
     assert len(benchmark.methods) == 18
     internal_case = next(

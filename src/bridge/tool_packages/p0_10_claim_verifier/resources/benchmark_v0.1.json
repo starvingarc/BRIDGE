@@ -2,35 +2,35 @@
   "aggregate_rank": null,
   "aggregate_score": null,
   "benchmark_id": "P0-10-BENCHMARK-v0.1",
-  "benchmark_state": "awaiting_server_validation",
+  "benchmark_state": "server_validated_candidate",
   "benchmark_version": "0.1.0",
   "data_cases": [
     {
       "assay": null,
       "case_id": "PUBLIC-SERVER-REPRO-20260812",
       "cell_count": null,
-      "claim_count": 1,
+      "claim_count": 3,
       "data_class": "public_record",
       "gene_count": null,
       "independent_replicate_count": null,
       "not_applicable_reason": "Report verification does not consume an expression matrix or biological replicate.",
       "public_accession_or_ref": "docs/validation/server_reproducibility_20260812.md",
       "sample_count": null,
-      "scope": "Public engineering-result claims with exact counts, units and boundaries.",
-      "split": "full public record"
+      "scope": "Three public engineering claims bound to a real P0-09 shadow evidence graph; public release is blocked because upstream Evidence is non-formal.",
+      "split": "full public record with source-aware shadow evidence"
     },
     {
       "assay": null,
       "case_id": "SYNTHETIC-P0-10-CONTROLS-v0.1",
       "cell_count": null,
-      "claim_count": 25,
+      "claim_count": 61,
       "data_class": "synthetic_control",
       "gene_count": null,
       "independent_replicate_count": null,
       "not_applicable_reason": "Positive and negative text controls are deterministic contract fixtures.",
       "public_accession_or_ref": "tests/test_p0_10_claim_verifier.py",
       "sample_count": null,
-      "scope": "Numeric, unit, denominator, interval, state, bilingual wording, comparison and review controls.",
+      "scope": "Sixty-one deterministic contract and claim regression cases covering authority, numeric fidelity, receipt binding, publication integrity and typed V1 rejection.",
       "split": "predeclared positive and negative controls"
     },
     {
@@ -78,9 +78,12 @@
       "missing_input_behavior": "Typed failure before verification.",
       "negative_controls": [
         "caller-supplied policy or Statement Registry mismatch",
-        "deterministic-renderer claim with appended scientific prose"
+        "caller-supplied transform, reviewer decision or release tier",
+        "deterministic-renderer claim with appended scientific prose",
+        "public candidate over a non-formal P0-09 shadow evidence graph",
+        "post-publication artifact replacement"
       ],
-      "ood_or_abstention_behavior": "Rejects an unapproved policy or Statement Registry before verification and returns review_required for unsupported authoring.",
+      "ood_or_abstention_behavior": "Rejects unapproved authority inputs, blocks public release over a shadow evidence graph and returns review_required for unsupported authoring.",
       "positive_controls": [
         "fully bound verified report",
         "anonymous internal three-claim report"
@@ -91,30 +94,36 @@
       "reference_sensitivity": "Supplied policy and Statement Registry objects must equal the versions embedded in the packaged release contract.",
       "resources": {
         "cache_state": "cold process; separate output directory",
-        "cpu_seconds_median": 2.3,
-        "output_bytes": 2648,
-        "peak_ram_mb": 225.65234375,
+        "cpu_seconds_median": 1.96,
+        "output_bytes": 1036,
+        "peak_ram_mb": 224.1015625,
         "peak_vram_mb": 0.0,
         "repetitions": 5,
         "threads": 1,
-        "wall_clock_seconds_median": 2.33,
+        "wall_clock_seconds_median": 1.99,
         "wall_clock_seconds_range": [
-          2.13,
-          3.06
+          1.93,
+          2.43
         ]
       },
       "role": "Ordered deterministic checks and release-state aggregation.",
       "source": "BRIDGE repository",
       "task_metrics": {
+        "artifact_result_byte_match_rate": 1.0,
         "blocker_non_override_rate": 1.0,
         "caller_authority_rejection_rate": 1.0,
         "complete_text_mismatch_rejection_rate": 1.0,
         "deterministic_repeat_match": 1.0,
+        "direct_v1_typed_failure_rate": 1.0,
         "internal_blocker_count": 0,
         "internal_claim_count": 3,
         "internal_repeat_match": 1.0,
         "internal_review_count": 0,
         "internal_warning_count": 0,
+        "public_blocker_count": 3,
+        "public_claim_count": 3,
+        "public_output_bytes": 2382,
+        "public_shadow_evidence_block_rate": 1.0,
         "result_invariant_rejection_rate": 1.0
       },
       "uncertainty_or_interval": "Exact pass/fail counts; no statistical interval.",
@@ -169,7 +178,8 @@
       "role": "Typed object and enum validation.",
       "source": "https://docs.pydantic.dev/",
       "task_metrics": {
-        "invalid_fixture_rejection_rate": 1.0
+        "invalid_fixture_rejection_rate": 1.0,
+        "removed_authority_field_rejection_rate": 1.0
       },
       "uncertainty_or_interval": "Deterministic contract result.",
       "version": "2.12.5"
@@ -222,6 +232,8 @@
       "role": "Independent JSON Schema validation.",
       "source": "https://python-jsonschema.readthedocs.io/",
       "task_metrics": {
+        "obsolete_schema_absence": 1.0,
+        "receipt_invariant_rejection_rate": 1.0,
         "schema_parity": 1.0
       },
       "uncertainty_or_interval": "Deterministic contract result.",
@@ -280,7 +292,10 @@
       "role": "Bind and compare numeric report values to EvidenceRecord fields.",
       "source": "BRIDGE repository",
       "task_metrics": {
-        "numeric_mutation_detection_rate": 1.0
+        "caller_transform_rejection_rate": 1.0,
+        "large_integer_typed_result_rate": 1.0,
+        "numeric_mutation_detection_rate": 1.0,
+        "scientific_identifier_false_positive_rate": 0.0
       },
       "uncertainty_or_interval": "Intervals are exact source fields, not estimated by the verifier.",
       "version": "0.1.0"
@@ -657,7 +672,9 @@
       "source": "BRIDGE repository",
       "task_metrics": {
         "byte_identical_repeat": 1.0,
-        "complete_claim_text_reconstruction_rate": 1.0
+        "complete_claim_text_reconstruction_rate": 1.0,
+        "p0_11_report_binding_mutation_rejection_rate": 1.0,
+        "post_publication_replacement_rejection_rate": 1.0
       },
       "uncertainty_or_interval": "Exact byte comparison.",
       "version": "0.1.0"
