@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import hashlib
+import importlib
 import json
 from pathlib import Path
 import shutil
@@ -12,7 +13,6 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
 import pytest
 
-import bridge.tool_packages.p0_10_claim_verifier.adapter as adapter_module
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceRecord,
     EvidenceRecordSet,
@@ -47,6 +47,11 @@ from bridge.toolkit.contracts import (
 )
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.toolkit.registry import ToolRegistry
+
+
+adapter_module = importlib.import_module(
+    "bridge.tool_packages.p0_10_claim_verifier.adapter"
+)
 
 
 CREATED_AT = "2026-08-12T00:00:00Z"
@@ -575,7 +580,7 @@ def test_large_finite_integer_returns_a_typed_receipt(
     text = f"installed-wheel-test-count: {value} tests."
     report = _report_payload(text=text, include_binding=False)
     report["claim_blocks"][0]["value_bindings"] = [
-        _value_binding(text, str(value), canonical=str(value))
+        _value_binding(text, f"{value} tests", canonical=str(value))
     ]
     report["content_hash"] = report_content_hash(report)
 
