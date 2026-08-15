@@ -29,7 +29,7 @@ REPORT_REF_PATTERN = r"^report:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
 DECIMAL_STRING_PATTERN = (
     r"^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"
 )
-PLAIN_UNIT_PATTERN = r"^(?!\s)(?!.*\s$)(?!.*[0-9\r\n]).+$"
+PLAIN_UNIT_PATTERN = r"^[^0-9\s\r\n](?:[^0-9\r\n]*[^0-9\s\r\n])?$"
 MAX_DECIMAL_DIGITS = 128
 MAX_DECIMAL_ADJUSTED_EXPONENT = 128
 FREE_MARKUP = re.compile(
