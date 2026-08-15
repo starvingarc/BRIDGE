@@ -4,7 +4,7 @@
 |---|---|
 | Branch | `p0-10-claim-verifier` |
 | Baseline | `9fa004eeff6ef78d6e737f47f458ae134ec58ba2` |
-| Status | `implementation_in_progress` |
+| Status | `draft_review` |
 
 ## Biological and reporting question
 
@@ -41,8 +41,8 @@ interval, evidence state, comparison scope and approved wording?
 
 ## Work
 
-1. [x] Define the four input objects, check records, verification result,
-   verified report and run-result Schema.
+1. [x] Define the four structured inputs, check records and the single
+   `ClaimVerificationResult` receipt Schema.
 2. [x] Implement deterministic eligibility, claim/source binding, exact numeric
    and state checks, comparison constraints, prohibited wording, immutable
    output and typed failures.
@@ -68,7 +68,7 @@ interval, evidence state, comparison scope and approved wording?
     evidence tier from audience, remove caller numeric/reviewer/release-tier
     authority, delete the lossy VerifiedReport copy, bind one receipt to the
     graph manifest and publish one pre-hashed byte sequence.
-14. [ ] Regenerate projections and validate the exact implementation commit and
+14. [x] Regenerate projections and validate the exact implementation commit and
     wheel on the server, including the complete adversarial matrix and repeated
     anonymous run.
 15. [ ] Push the validated revision and request focused re-review; merge only

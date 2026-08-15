@@ -282,3 +282,77 @@ approval for a default method.
 This record is added after the validated implementation commit. The publication
 commit must pass the same repository and installed-wheel gates before a Draft PR
 is opened.
+
+## Single-receipt closure addendum — 2026-08-16
+
+The final one-pass Draft-PR review removed the remaining caller-controlled
+release authority and duplicate output shapes. P0-10 now accepts the original
+structured `ReportDraft`, one P0-09 graph manifest and the two packaged policy
+objects, then emits one `ClaimVerificationResult` receipt. It does not accept a
+caller transform, reviewer decision, release tier or rendering template, and it
+does not create a second report copy for P0-11.
+
+Validated implementation commit
+`a1b5cf3d0dfa499578f424497f1940fb0da16a1d` has tree
+`43ed899027c836443f01c71fa9b056855b8ff561`. The wheel was built from that
+exact Git archive and loaded from `site-packages` in both server environments.
+
+| Exact implementation item | Value |
+|---|---|
+| Git archive SHA-256 | `90fdea4e922b17f56e749b96a75ab8c466b0d3dc3dd3efed4df8b6249d8b73e6` |
+| Wheel SHA-256 | `1cad70706e5842d09a88222ede914650bb0aecf3240dcd6f77444ee6692b7087` |
+| Evidence environment contract SHA-256 | `2e09d5c988aca9a979bedb898c6494b86534021e90d8d2bf83f41095cfe1546f` |
+| Release contract SHA-256 | `c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8` |
+| Benchmark JSON SHA-256 | `908da7e8c8141e5f44e230315134d53fb63dbc6856b37e06a3b227fe2af51baa` |
+| Private evidence manifest | 512 entries; SHA-256 `7dec3e53577c296c535cb23ebd6ff8dd51e7e0f7013bfb98980b7ebfe4c6a21a` |
+
+| Closure gate | Result |
+|---|---|
+| P0-10 installed-wheel suite | `61 passed` in 4.05 s |
+| Complete installed-wheel suite | `959 passed, 2 warnings` in 92.22 s |
+| Schema, Tool Card, example, environment and null-score checks | `39 passed, 1 warning` in 3.27 s |
+| Tool discovery | 12 packages; P0-01, P0-02, P0-08, P0-09 and P0-10 implemented |
+| Knowledge and repository policy | valid; 354 methods, 387 sources, 396 bindings, no dangling references; policy passed |
+| Generated projections | benchmark, Tool Cards and Schemas rendered twice with no diff |
+| Repository size and privacy | 315 tracked files; private absolute-path and LFS-pointer scans passed |
+
+The two complete-suite warnings are unchanged environmental or negative-fixture
+warnings: the installed AnnData version announces future removal of zarr v2
+support, and a QC failure fixture intentionally contains duplicate gene names.
+Two discarded harness attempts are retained in the private record: repository
+projection tests were first launched outside the repository root, and the full
+suite was first launched in the evidence-only environment that deliberately
+lacks optional QC dependencies. The same installed wheel passed when each suite
+was run from its declared root and environment; neither attempt changed tracked
+files.
+
+The five-run resource series was measured on implementation-equivalent commit
+`587731dc2dcfc10466d870abce0d12ee383423f6` before those observations were
+serialized into the benchmark record. All five one-thread internal runs shared
+one run ID, input hash and 1,036-byte artifact and were byte-identical. Wall
+clock median was 2.35 s (range 2.18–2.51 s), CPU-time median was 2.34 s and peak
+RAM was 223.89 MB; GPU memory was not used. The corresponding public-candidate
+run produced exactly three blockers, all
+`nonformal_evidence_used_for_formal_claim`, and a 2,382-byte ineligible result.
+
+One run per audience was then repeated with the exact final benchmark hash. The
+internal receipt remained `verified` but public-ineligible, with artifact
+SHA-256 `f65c21b56e8e51fd94fe088785fa63289051c10e9097718a7ad976ed5e418165`.
+The public-candidate receipt remained `release_blocked` and ineligible, with
+artifact SHA-256
+`90c64559217f21c4d097c554ccbdf26b14197997b3d7c5c7030b95b50d789bdf`.
+
+The graph used for these three anonymous engineering claims is an actual P0-09
+shadow graph. An attempted formal conversion was rejected for all three records
+with `sufficiency_profile_version_binding_unavailable`: the current P0-08
+profiles do not prove the formal object-version bindings required by P0-09.
+P0-10 therefore demonstrates reproducible correspondence checking, not a
+publicly releasable report. No public-eligible P0-10 receipt exists in this
+record, and the blocked result must not be passed to P0-11 as an export
+authorization.
+
+The exact wheel metadata has no Jinja dependency; a separately installed,
+unused Jinja package may remain in a long-lived validation environment. Free
+Markdown, LLM judgment, webpages, OCR and media remain outside v0.1. The
+benchmark state is `server_validated_candidate`, its selected default remains
+`none`, and this addendum does not approve one.
