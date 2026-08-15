@@ -59,8 +59,10 @@ interval, evidence state, comparison scope and approved wording?
 10. [x] Address the five second-round release-boundary findings: approved input
     authority, full ClaimBlock reconstruction, adjacent numeric lexemes,
     self-consistent result objects and current-only task-card wording.
-11. [ ] Validate the exact commit and wheel, update the public record and
-    request re-review; merge only after separate authorization.
+11. [x] Validate the exact implementation commit and wheel and update the
+    public record.
+12. [ ] Push the reviewed changes and request re-review; merge only after
+    separate authorization.
 
 ## Acceptance
 

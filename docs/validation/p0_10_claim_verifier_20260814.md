@@ -199,6 +199,74 @@ blockers, review items or warnings. Wall-clock median was 2.51 s (range
 The earlier bare-record-set run above is retained as historical evidence for
 the prior interface; it is not accepted by the hardened interface.
 
+## Release-authority addendum — 2026-08-15
+
+A second Draft-PR review found five remaining ways in which a caller or an
+invalid result object could overstate what P0-10 had checked. Commit
+`7a6bb063627925e2c51ed862faaa108ffd14044b` addresses those findings while
+keeping the implementation package-local:
+
+- the accepted `ClaimPolicySpec`, `StatementRegistry`, renderer version and
+  template are now pinned by packaged release contract
+  `P0-10-RELEASE-CONTRACT-v0.1`;
+- a deterministic claim must equal the complete package-rendered ClaimBlock,
+  so a caller cannot append unverified scientific prose;
+- numeric lexemes adjacent to letters or underscores, including `192tests`,
+  `192cells`, `1e3cells` and `192_tests`, cannot bypass numeric binding;
+- the result models and public Schemas reject impossible combinations of check
+  severity, release state, export eligibility and VerifiedReport presence; and
+- the task card now describes only the implemented structured-text interface,
+  not future media or review-record fields.
+
+| Exact-commit item | Value |
+|---|---|
+| Complete-history transfer bundle SHA-256 | `aecb6531019466cb8af0e1368ff0636b98284205a04986a5729f20bdc65e8a26` |
+| Git archive SHA-256 | `b6ae9eac1648b6ff12e15558dca4f9cd0ccde40ee6a18e3af9a211e3ef371176` |
+| Wheel SHA-256 | `bf20cac695dfe5fdbb869d62558a4da5968a7e62f09a406c475628c89a90896e` |
+| Evidence environment contract SHA-256 | `c3398ecb4961defec894eede7c1fdda046168687b9219bed53c0f68a91324d8f` |
+| Private evidence manifest | 571 entries; SHA-256 `57794498244ddccf16325ba34fc9171a934a07f04118d7f92e8a8476eb538f53` |
+
+The wheel was built from that exact Git archive and loaded from
+`site-packages` in both validation environments. Two complete generator rounds
+left the worktree unchanged.
+
+| Release-authority gate | Result |
+|---|---|
+| P0-09/P0-10/shared-runtime installed-wheel tests | `301 passed` in 16.35 s |
+| Complete installed-wheel suite | `948 passed, 1 warning` in 100.79 s |
+| Schema, Tool Card, benchmark and example parity | `8 passed` in 2.01 s |
+| Null domain-score guards | `5 passed` in 1.51 s |
+| Tool discovery | 12 packages; P0-01, P0-02, P0-08, P0-09 and P0-10 implemented |
+| Knowledge and repository policy | valid; 354 methods, 387 sources, 396 bindings, no dangling references; policy passed |
+| Repository size and privacy | 319 tracked files against the fixed 320-file limit; absolute private-path scan passed |
+
+The one warning remains the unrelated AnnData duplicate-gene-name warning in a
+negative QC fixture.
+
+The exact wheel was also run five times with one-thread limits against the
+same anonymous three-claim engineering input. The input retains its immutable
+929-test evidence record; the newer 948-test suite result above was not
+silently substituted. All five runs were eligible, returned `verified` with no
+check records, and remained `public_export_eligibility=ineligible`. They shared
+run ID `run-fa336d612b6cff05`, input hash
+`fa336d612b6cff05ad49b70e8a97d8785452b5ef3ea164d55cacf3ecaba3df6f`
+and 2,648-byte result SHA-256
+`857a076f9e64dc1ace3c46f9099df47fb682cc39743db8e895afe8cc79af2b40`.
+
+| Exact-wheel internal replication | Result |
+|---|---:|
+| Wall-clock median | 2.48 s |
+| Wall-clock range | 2.10–2.58 s |
+| CPU-time median | 2.45 s |
+| CPU-time range | 2.08–2.55 s |
+| Peak RAM | 225.32 MB |
+| Peak VRAM | 0 MB |
+
+The packaged benchmark remains `P0-10-BENCHMARK-v0.1`, SHA-256
+`bb25a8d4a272f051e2918fd18999d7bbe424259258c3353dbc258f528f0edc26`.
+Its selected default remains `none`; this validation does not supply developer
+approval for a default method.
+
 ## Boundaries
 
 - A `verified` result means correspondence to supplied evidence and policy, not
