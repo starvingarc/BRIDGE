@@ -6,6 +6,7 @@
 - [Product and scientific principles](product-principles.md)
 - [High-level tool contract](tool-contract.md)
 - [Agent team integration](agent-integration.md)
+- [Local agent runtime architecture](local-agent-runtime.md)
 - [Privacy and provenance](privacy-and-provenance.md)
 - [Quality baseline](quality-baseline.md)
 - [Public JSON Schemas](../schemas/)
