@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from bridge.domain import AnalysisPlan, PlanStep
-from bridge.workflow import LocalWorkflowExecutor
+from bridge.workflow import LocalWorkflowExecutor, SQLiteRunEventStore
 
 
 def _approved_plan() -> AnalysisPlan:
@@ -88,3 +90,19 @@ def test_executor_rejects_draft_plan() -> None:
     draft = _approved_plan().model_copy(update={"status": "draft"})
     with pytest.raises(ValueError, match="not_approved"):
         LocalWorkflowExecutor().submit(draft)
+
+
+def test_sqlite_executor_recovers_an_interrupted_step(tmp_path: Path) -> None:
+    database_path = tmp_path / "workflow.sqlite3"
+    first_process = LocalWorkflowExecutor(SQLiteRunEventStore(database_path))
+    run_id = first_process.submit(_approved_plan())
+    claimed = first_process.claim_step(run_id)
+    assert claimed is not None and claimed.step_id == "step-p0-01"
+
+    restarted_process = LocalWorkflowExecutor(SQLiteRunEventStore(database_path))
+    assert restarted_process.get_status(run_id).status == "running"
+    restarted_process.resume(run_id)
+    reclaimed = restarted_process.claim_step(run_id)
+
+    assert reclaimed is not None and reclaimed.step_id == "step-p0-01"
+    assert restarted_process.get_status(run_id).steps[0].attempts == 2

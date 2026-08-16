@@ -124,8 +124,8 @@ def _apply_event(projection: RunProjection, event: RunEvent) -> None:
             raise ValueError("workflow_resume_requires_step_ids")
         for step_id in step_ids:
             step = _step(projection, step_id)
-            if step.status is not StepStatus.FAILED:
-                raise ValueError("workflow_resume_step_not_failed")
+            if step.status not in {StepStatus.FAILED, StepStatus.RUNNING}:
+                raise ValueError("workflow_resume_step_not_interrupted_or_failed")
             step.status = StepStatus.PENDING
             step.reason_codes = ()
         _refresh_status(projection)
