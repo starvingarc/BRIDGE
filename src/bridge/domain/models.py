@@ -84,6 +84,9 @@ class PlanStep(FrozenModel):
     tool_version: str
     disposition: StepDisposition
     depends_on: list[str] = Field(default_factory=list)
+    measurement_spec_ref: str | None = None
+    reference_refs: list[str] = Field(default_factory=list)
+    prior_refs: list[str] = Field(default_factory=list)
     reason_codes: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
