@@ -101,11 +101,11 @@ work and are not predeclared as empty plugin interfaces.
 |---|---|
 | Immutable ProductCase and AnalysisPlan contracts | Implemented and tested |
 | Deterministic PlanBuilder | Implemented and tested |
-| In-memory workflow state machine | Implemented baseline; being replaced by events |
+| In-memory RunEventStore | Implemented test adapter |
 | Content-addressed LocalArtifactStore | Implemented and tested |
-| RunEvent projection | In implementation on `local-dev-agent` |
-| SQLite RunEventStore | In implementation on `local-dev-agent` |
-| Case-scoped ToolExecutionPipeline | In implementation on `local-dev-agent` |
+| RunEvent projection | Implemented and tested |
+| SQLite RunEventStore | Implemented and recovery-tested |
+| Case-scoped ToolExecutionPipeline | Implemented and tested |
 | Background worker, FastAPI, Agent loop, Evidence and reporting | Not implemented |
 
 No runtime infrastructure change promotes a scientific method, produces a domain

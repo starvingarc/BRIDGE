@@ -37,8 +37,24 @@ scientific states and Tool Package behavior.
 ## Progress
 
 - [x] Freeze architecture, scientific boundary and validation plan.
-- [ ] Implement event contracts and projection.
-- [ ] Implement in-memory and SQLite event stores.
-- [ ] Refactor and recovery-test the workflow executor.
-- [ ] Implement and test the tool-execution pipeline.
-- [ ] Synchronize documentation and record validation evidence.
+- [x] Implement event contracts and projection.
+- [x] Implement in-memory and SQLite event stores.
+- [x] Refactor and recovery-test the workflow executor.
+- [x] Implement and test the tool-execution pipeline.
+- [x] Synchronize documentation and record validation evidence.
+
+## Validation Evidence
+
+Validated on 2026-08-16 from `local-dev-agent`:
+
+- `python -m pytest -q`: 217 passed; three upstream data-library warnings.
+- `python -m bridge.toolkit.cli list --json`: 12 Tool Packages returned.
+- `python -m bridge.toolkit.cli knowledge validate`: `valid: true`, snapshot
+  `BRIDGE-KNOWLEDGE-20260810-v0.1`.
+- `python tools/check_repository.py`: repository policy checks passed.
+- `git diff --check`: passed.
+- The BRIDGE P0 Agent design document was locally patched and verified at revision
+  159; technology status, runtime architecture, DeepSeek Harness tradeoffs and
+  acceptance evidence now match the repository.
+- Implementation commits in this workstream changed 5, 2, 3, 3 and 3 files before
+  this closeout; every commit stays within the five-file limit.
