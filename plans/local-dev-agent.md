@@ -56,8 +56,21 @@ git diff --check
 ## Progress
 
 - [x] Freeze scope, non-goals, and acceptance boundaries.
-- [ ] Add case and plan contracts.
-- [ ] Add deterministic plan construction.
-- [ ] Add local workflow execution and recovery.
-- [ ] Add local artifact storage and verification.
-- [ ] Record final validation evidence.
+- [x] Add case and plan contracts.
+- [x] Add deterministic plan construction.
+- [x] Add local workflow execution and recovery.
+- [x] Add local artifact storage and verification.
+- [x] Record final validation evidence.
+
+## Validation Evidence
+
+Validated on 2026-08-16 from `local-dev-agent`:
+
+- `python -m pytest -q`: 204 passed; three upstream data-library warnings.
+- `python -m bridge.toolkit.cli list --json`: 12 Tool Packages returned.
+- `python -m bridge.toolkit.cli knowledge validate`: `valid: true`, snapshot
+  `BRIDGE-KNOWLEDGE-20260810-v0.1`.
+- `python tools/check_repository.py`: repository policy checks passed.
+- `git diff --check`: passed.
+- Commit file counts before this closeout: 2, 3, 4, 4 and 3 files; all are at or
+  below the five-file limit.
