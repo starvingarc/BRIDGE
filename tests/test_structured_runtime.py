@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 from importlib.machinery import ModuleSpec
+from importlib.resources import files
 import json
 from pathlib import Path
 import sys
@@ -1491,6 +1492,21 @@ def test_artifact_store_addresses_and_verifies_content(tmp_path: Path) -> None:
     assert store.verify(artifact.artifact_id).valid is True
 
 
+def test_artifact_store_keeps_verified_snapshot_unlinked_inside_staging(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "artifacts"
+    store = LocalArtifactStore(root)
+    artifact = store.put(BytesIO(b"private-measurement"), "application/octet-stream")
+
+    source = store.open(artifact.artifact_id)
+    try:
+        assert list((root / ".staging").iterdir()) == []
+        assert source.read() == b"private-measurement"
+    finally:
+        source.close()
+
+
 def test_artifact_store_deduplicates_equal_content(tmp_path: Path) -> None:
     store = LocalArtifactStore(tmp_path / "artifacts")
 
@@ -1627,11 +1643,66 @@ def test_artifact_store_rejects_symlinked_staging_directory(tmp_path: Path) -> N
     assert list(outside.iterdir()) == []
 
 
+def test_artifact_store_rejects_symlinked_intermediate_root_component(
+    tmp_path: Path,
+) -> None:
+    trusted = tmp_path / "trusted"
+    outside = tmp_path / "outside"
+    trusted.mkdir()
+    outside.mkdir()
+    (trusted / "redirect").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="artifact_root_not_directory"):
+        LocalArtifactStore(trusted / "redirect" / "artifacts")
+
+    assert list(outside.iterdir()) == []
+
+
+def test_artifact_store_rejects_parent_traversal_in_root(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="artifact_root_invalid_component"):
+        LocalArtifactStore(tmp_path / "trusted" / ".." / "artifacts")
+
+
 def test_artifact_store_rejects_untrusted_ids(tmp_path: Path) -> None:
     store = LocalArtifactStore(tmp_path / "artifacts")
 
     with pytest.raises(ValueError, match="invalid_artifact_id"):
         store.open("../../private-input")
+
+
+def test_local_runtime_package_facades_preserve_public_exports() -> None:
+    from bridge.domain import ProductCase
+    from bridge.domain.models import ProductCase as ProductCaseModel
+    from bridge.planner import PlanBuilder
+    from bridge.planner.service import PlanBuilder as PlanBuilderService
+    from bridge.runners import ToolExecutionPipeline
+    from bridge.runners.pipeline import ToolExecutionPipeline as PipelineService
+    from bridge.storage import LocalArtifactStore as ArtifactStoreFacade
+    from bridge.workflow import LocalWorkflowExecutor, RunSnapshot
+    from bridge.workflow.events import RunSnapshot as RunSnapshotModel
+    from bridge.workflow.executor import LocalWorkflowExecutor as WorkflowExecutor
+
+    assert ProductCase is ProductCaseModel
+    assert PlanBuilder is PlanBuilderService
+    assert ToolExecutionPipeline is PipelineService
+    assert ArtifactStoreFacade is LocalArtifactStore
+    assert LocalWorkflowExecutor is WorkflowExecutor
+    assert RunSnapshot is RunSnapshotModel
+
+
+def test_namespace_resource_packages_remain_importable() -> None:
+    resources = {
+        "bridge.resources.schemas": "tool_run.schema.json",
+        "bridge.tool_packages.cards": "P0-01.md",
+        "bridge.tool_packages.p0_02_cell_state.resources": "annotation_vocabulary.yaml",
+        "bridge.tool_packages.p0_08_evidence_sufficiency.resources": (
+            "gate_rule_spec_v0.1.json"
+        ),
+    }
+
+    for package, filename in resources.items():
+        assert files(package).joinpath(filename).is_file()
+    assert len(ToolRegistry.load_default().list()) == 12
 
 
 from pathlib import Path
@@ -1753,7 +1824,7 @@ def test_domain_identifiers_and_references_cannot_be_empty() -> None:
             data_role="evaluation",
             sampling_context="pre-transplant",
         )
-    with pytest.raises(ValidationError, match="must be nonempty"):
+    with pytest.raises(ValidationError, match="must be nonblank"):
         PlanStep(
             step_id="step-p0-01",
             tool_id="P0-01",
@@ -1761,11 +1832,28 @@ def test_domain_identifiers_and_references_cannot_be_empty() -> None:
             disposition="skip",
             reason_codes=[""],
         )
+    with pytest.raises(ValidationError, match="must be nonblank"):
+        PlanStep(
+            step_id="step-p0-01",
+            tool_id="P0-01",
+            tool_version="0.1.0",
+            disposition="skip",
+            reference_refs=["   "],
+            reason_codes=["input_missing"],
+        )
     with pytest.raises(ValidationError, match="nonblank"):
         SampleRecord(
             sample_id="   ",
             preparation_id="prep-1",
             asset_ids=["asset-1"],
+            data_role="evaluation",
+            sampling_context="pre-transplant",
+        )
+    with pytest.raises(ValidationError, match="asset ids must be nonblank"):
+        SampleRecord(
+            sample_id="sample-1",
+            preparation_id="prep-1",
+            asset_ids=["   "],
             data_role="evaluation",
             sampling_context="pre-transplant",
         )
@@ -1786,6 +1874,41 @@ def test_plan_collections_are_immutable_snapshots() -> None:
 
     assert step.depends_on == ("step-p0-01",)
     assert isinstance(step.reference_refs, tuple)
+
+
+def test_product_case_defensively_freezes_nested_asset_metadata(tmp_path: Path) -> None:
+    source_metadata = {"nested": {"labels": ["approved"]}}
+    asset = _asset(tmp_path).model_copy(update={"metadata": source_metadata})
+    case = ProductCase(
+        case_id="case-1",
+        version="0.1",
+        status="confirmed",
+        product_type="product",
+        target_cell_type="target",
+        differentiation_stage="D16",
+        intended_use="research",
+        assay="scRNA-seq",
+        product_definition_card_ref="card://pd/v0.1",
+        reference_policy_ref="reference://policy/v0.1",
+        prior_snapshot_ref="prior://snapshot/v0.1",
+        assets=[asset],
+        samples=[
+            SampleRecord(
+                sample_id="sample-1",
+                preparation_id="prep-1",
+                asset_ids=["asset-1"],
+                data_role="evaluation",
+                sampling_context="pre-transplant",
+            )
+        ],
+    )
+
+    source_metadata["nested"]["labels"].append("mutated")
+    assert case.model_dump(mode="json")["assets"][0]["metadata"] == {
+        "nested": {"labels": ["approved"]}
+    }
+    with pytest.raises(TypeError):
+        case.assets[0].metadata["nested"]["labels"] += ("mutated",)
 
 
 from pathlib import Path
@@ -1876,6 +1999,32 @@ def test_plan_builder_rejects_unconfirmed_case(tmp_path: Path) -> None:
         raise AssertionError("draft case unexpectedly produced a plan")
 
 
+def test_plan_builder_uses_safe_hashed_case_key_for_paths_and_request_ids(
+    tmp_path: Path,
+) -> None:
+    payload = _case(tmp_path).model_dump(mode="python")
+    payload["case_id"] = "../escaped/病例 🧬"
+    case = ProductCase.model_validate(payload)
+    output_root = (tmp_path / "runs").resolve()
+
+    plan = PlanBuilder().build(
+        case,
+        output_root=output_root,
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+    )
+
+    request_payloads = [
+        json.loads(step.approved_request_json)
+        for step in plan.steps
+        if step.approved_request_json is not None
+    ]
+    assert request_payloads
+    for request in request_payloads:
+        assert Path(request["output_dir"]).resolve().is_relative_to(output_root)
+        assert case.case_id not in request["request_id"]
+    assert not (tmp_path / "escaped").exists()
+
+
 def test_plan_builder_expands_input_qc_per_asset_without_collapsing_steps(
     tmp_path: Path,
 ) -> None:
@@ -1908,6 +2057,15 @@ class _StructuredPlanningRegistry:
         if request.tool_id == "P0-08":
             return EligibilityResult(tool_id=request.tool_id, eligible=True)
         return self._delegate.check_eligibility(request)
+
+    def check_case_eligibility(self, request, *, case_id, case_version):
+        if request.tool_id == "P0-08":
+            return EligibilityResult(tool_id=request.tool_id, eligible=True)
+        return self._delegate.check_case_eligibility(
+            request,
+            case_id=case_id,
+            case_version=case_version,
+        )
 
 
 def test_structured_tool_requires_explicit_inputs_and_is_not_blocked_by_scaffolds(
@@ -1945,6 +2103,206 @@ def test_structured_tool_requires_explicit_inputs_and_is_not_blocked_by_scaffold
     assert json.loads(supplied_step.approved_request_json or "{}")["object_inputs"][0][
         "input_id"
     ] == "gate-1"
+
+
+def _p0_08_case_binding_refs(
+    tmp_path: Path,
+    *,
+    product_case_id: str | None,
+    product_case_version: str = "0.1",
+) -> list[StructuredInputRef]:
+    gate_bytes = (
+        files("bridge.tool_packages.p0_08_evidence_sufficiency.resources")
+        .joinpath("gate_rule_spec_v0.1.json")
+        .read_bytes()
+    )
+    gate_path = (tmp_path / "gate-rules.json").resolve()
+    gate_path.write_bytes(gate_bytes)
+    domain_payload = {
+        "domain_gate_input_id": "domain-gate-input:case-binding:target-identity",
+        "object_version": "0.1.0",
+        "created_at": "2026-08-13T00:00:00Z",
+        "product_case": (
+            {
+                "object_id": product_case_id,
+                "object_version": product_case_version,
+                "provenance_refs": ["provenance:case-binding"],
+            }
+            if product_case_id is not None
+            else None
+        ),
+        "product_definition": None,
+        "domain_id": "target_identity",
+        "method_requirement": "not_assessed",
+        "prior_requirement": "not_assessed",
+        "task_validation_state": "not_assessed",
+        "provenance_refs": ["run:case-binding"],
+    }
+    domain_bytes = json.dumps(domain_payload, separators=(",", ":")).encode()
+    domain_path = (tmp_path / "domain.json").resolve()
+    domain_path.write_bytes(domain_bytes)
+    return [
+        StructuredInputRef(
+            input_id="gate-rules",
+            role="gate_rule_spec",
+            schema_ref="bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+            object_version="0.1.0",
+            path=gate_path,
+            sha256=hashlib.sha256(gate_bytes).hexdigest(),
+        ),
+        StructuredInputRef(
+            input_id="target-domain",
+            role="domain_gate_input",
+            schema_ref="bridge://schemas/domain-gate-input/v0.1",
+            object_version="0.1.0",
+            path=domain_path,
+            sha256=hashlib.sha256(domain_bytes).hexdigest(),
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("product_case_id", "product_case_version", "reason_code"),
+    [
+        ("foreign-case", "0.1", "approved_product_case_binding_mismatch"),
+        ("case-1", "9.9", "approved_product_case_binding_mismatch"),
+        (None, "0.1", "approved_product_case_binding_missing"),
+    ],
+)
+def test_default_registry_rejects_foreign_or_unbound_p0_08_case_inputs(
+    tmp_path: Path,
+    product_case_id: str | None,
+    product_case_version: str,
+    reason_code: str,
+) -> None:
+    request = ToolRequestV2(
+        request_id="request-case-binding",
+        tool_id="P0-08",
+        tool_version="0.2.0",
+        output_dir=(tmp_path / "output").resolve(),
+        object_inputs=_p0_08_case_binding_refs(
+            tmp_path,
+            product_case_id=product_case_id,
+            product_case_version=product_case_version,
+        ),
+    )
+
+    result = ToolRegistry.load_default().check_case_eligibility(
+        request,
+        case_id="case-1",
+        case_version="0.1",
+    )
+
+    assert result.eligible is False
+    assert reason_code in result.reason_codes
+
+
+def test_default_registry_uses_exact_canonical_p0_08_case_identity(
+    tmp_path: Path,
+) -> None:
+    request = ToolRequestV2(
+        request_id="request-case-binding-match",
+        tool_id="P0-08",
+        tool_version="0.2.0",
+        output_dir=(tmp_path / "output").resolve(),
+        object_inputs=_p0_08_case_binding_refs(
+            tmp_path,
+            product_case_id="case-1",
+        ),
+    )
+
+    result = ToolRegistry.load_default().check_case_eligibility(
+        request,
+        case_id="case-1",
+        case_version="0.1",
+    )
+
+    assert "approved_product_case_binding_missing" not in result.reason_codes
+    assert "approved_product_case_binding_mismatch" not in result.reason_codes
+
+
+def test_default_registry_rejects_mixed_p0_08_case_bindings(tmp_path: Path) -> None:
+    refs = _p0_08_case_binding_refs(
+        tmp_path,
+        product_case_id="case-1",
+    )
+    second_payload = json.loads(refs[1].path.read_text(encoding="utf-8"))
+    second_payload["domain_gate_input_id"] = (
+        "domain-gate-input:case-binding:regional-fidelity"
+    )
+    second_payload["domain_id"] = "regional_fidelity"
+    second_payload["product_case"]["object_id"] = "foreign-case"
+    second_bytes = json.dumps(second_payload, separators=(",", ":")).encode()
+    second_path = (tmp_path / "domain-2.json").resolve()
+    second_path.write_bytes(second_bytes)
+    refs.append(
+        StructuredInputRef(
+            input_id="regional-domain",
+            role="domain_gate_input",
+            schema_ref="bridge://schemas/domain-gate-input/v0.1",
+            object_version="0.1.0",
+            path=second_path,
+            sha256=hashlib.sha256(second_bytes).hexdigest(),
+        )
+    )
+    request = ToolRequestV2(
+        request_id="request-case-binding-mixed",
+        tool_id="P0-08",
+        tool_version="0.2.0",
+        output_dir=(tmp_path / "output").resolve(),
+        object_inputs=refs,
+    )
+
+    result = ToolRegistry.load_default().check_case_eligibility(
+        request,
+        case_id="case-1",
+        case_version="0.1",
+    )
+
+    assert "approved_product_case_binding_mismatch" in result.reason_codes
+
+
+def test_p0_09_comparison_bundle_has_no_implicit_product_case_binding(
+    tmp_path: Path,
+) -> None:
+    from bridge.tool_packages._structured_runtime import LoadedInputs
+    from bridge.tool_packages.p0_09_evidence_compiler.adapter import (
+        _approved_case_binding_reasons,
+    )
+    from bridge.tool_packages.p0_09_evidence_compiler.models import (
+        EvidenceCompilationBundle,
+        GraphKind,
+    )
+
+    bundle_ref = StructuredInputRef(
+        input_id="bundle",
+        role="compilation_bundle",
+        schema_ref="bridge://schemas/evidence-compilation-bundle/v0.1",
+        object_version="0.1.0",
+        path=(tmp_path / "comparison.json").resolve(),
+        sha256="a" * 64,
+    )
+    request = ToolRequestV2(
+        request_id="comparison-request",
+        tool_id="P0-09",
+        tool_version="0.2.0",
+        output_dir=(tmp_path / "output").resolve(),
+        object_inputs=[bundle_ref],
+    )
+    comparison = EvidenceCompilationBundle.model_construct(
+        graph_kind=GraphKind.COMPARISON,
+        product_case_ref=None,
+    )
+    loaded = LoadedInputs(
+        objects_by_input_id={"bundle": comparison},
+        bytes_by_input_id={},
+    )
+
+    assert _approved_case_binding_reasons(
+        request,
+        loaded,
+        ("case-1", "0.1"),
+    ) == ["approved_product_case_binding_missing"]
 
 
 from pathlib import Path
@@ -2003,6 +2361,11 @@ class FakeRegistry:
             reason_codes=[] if self.eligible else ["synthetic_input_ineligible"],
         )
 
+    def check_case_eligibility(
+        self, request: ToolRequest, *, case_id: str, case_version: str
+    ) -> EligibilityResult:
+        return self.check_eligibility(request)
+
     def run(self, request: ToolRequest) -> ToolRun:
         self.ran += 1
         return ToolRun(
@@ -2013,6 +2376,9 @@ class FakeRegistry:
             tool_version="0.1.0",
             environment_spec_id="ENV-P0-CORE-v0.1",
         )
+
+    def validate_result(self, result: object, request: ToolRequest) -> ToolRun:
+        return ToolRegistry.validate_result(self, result, request)
 
 
 def _request(tmp_path: Path, **updates) -> ToolRequest:
@@ -2043,6 +2409,8 @@ def _scope(
         plan_id="plan-1",
         version="0.1",
         case_ref="case-1@0.1",
+        case_id="case-1",
+        case_version="0.1",
         case_contract_sha256=hashlib.sha256(b"case-1@0.1").hexdigest(),
         status="approved",
         knowledge_snapshot_ref="knowledge://p0/2026-08-12",
@@ -2182,9 +2550,76 @@ def test_scope_rejects_legacy_approved_plan_without_case_binding() -> None:
         ToolExecutionScope.from_plan(plan)
 
 
+def test_externally_constructed_scope_cannot_approve_foreign_case_evidence(
+    tmp_path: Path,
+) -> None:
+    registry = ToolRegistry.load_default()
+    spec = registry.describe("P0-08")
+    assert isinstance(spec, ToolPackageSpecV2)
+    request = ToolRequestV2(
+        request_id="foreign-case-request",
+        tool_id="P0-08",
+        tool_version=spec.version,
+        output_dir=(tmp_path / "outputs").resolve(),
+        object_inputs=_p0_08_case_binding_refs(
+            tmp_path,
+            product_case_id="foreign-case",
+        ),
+    )
+    plan = AnalysisPlan(
+        plan_id="external-plan",
+        version="0.2",
+        case_ref="case-1@0.1",
+        case_id="case-1",
+        case_version="0.1",
+        case_contract_sha256=hashlib.sha256(b"case-1").hexdigest(),
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        steps=[
+            PlanStep(
+                step_id="step-p0-08",
+                tool_id="P0-08",
+                tool_version=spec.version,
+                disposition="execute",
+                approved_request_json=json.dumps(
+                    request.model_dump(mode="json"),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                reference_refs=["reference://policy/v0.1"],
+                prior_refs=["prior://snapshot/v0.1"],
+                environment_spec_id=spec.environment_spec_id,
+                input_schema_ref=spec.input_schema_ref,
+                output_schema_ref=spec.output_schema_ref,
+                implementation_state=spec.implementation_state.value,
+                result_schema_ref=spec.result_schema_ref,
+            )
+        ],
+    )
+
+    with pytest.raises(
+        ToolExecutionDenied,
+        match="approved_product_case_binding_mismatch",
+    ):
+        ToolExecutionPipeline(ToolExecutionScope.from_plan(plan), registry).execute(
+            request
+        )
+
+
 class FakeV2Registry:
-    def __init__(self, *, outcome_environment: str = "ENV-EVIDENCE-v0.1") -> None:
+    def __init__(
+        self,
+        *,
+        outcome_environment: str = "ENV-EVIDENCE-v0.1",
+        result: dict | None = None,
+    ) -> None:
         self.outcome_environment = outcome_environment
+        self.result = result or {
+            "tool_id": "P0-08",
+            "eligible": True,
+            "reason_codes": [],
+            "warnings": [],
+        }
         self.spec = ToolPackageSpecV2(
             tool_id="P0-08",
             name="Evidence Sufficiency",
@@ -2195,7 +2630,7 @@ class FakeV2Registry:
             environment_spec_id="ENV-EVIDENCE-v0.1",
             input_schema_ref="bridge://schemas/tool-request/v0.2",
             output_schema_ref="bridge://schemas/tool-run/v0.2",
-            result_schema_ref="bridge://schemas/evidence-sufficiency-run-result/v0.1",
+            result_schema_ref=RESULT_SCHEMA_REF,
             adapter_ref="bridge.tool_packages.p0_08_evidence_sufficiency.adapter:adapter",
             method_ids=["METHOD-FAKE"],
             card_ref="bridge://tool-cards/P0-08",
@@ -2208,6 +2643,11 @@ class FakeV2Registry:
     def check_eligibility(self, request: ToolRequestV2) -> EligibilityResult:
         return EligibilityResult(tool_id=request.tool_id, eligible=True)
 
+    def check_case_eligibility(
+        self, request: ToolRequestV2, *, case_id: str, case_version: str
+    ) -> EligibilityResult:
+        return self.check_eligibility(request)
+
     def run(self, request: ToolRequestV2) -> ToolRunV2:
         return ToolRunV2(
             run_id="tool-run-v2",
@@ -2217,8 +2657,11 @@ class FakeV2Registry:
             tool_version="0.2.0",
             environment_spec_id=self.outcome_environment,
             result_schema_ref=self.spec.result_schema_ref,
-            result={},
+            result=self.result,
         )
+
+    def validate_result(self, result: object, request: ToolRequestV2) -> ToolRunV2:
+        return ToolRegistry.validate_result(self, result, request)
 
 
 def _v2_request(tmp_path: Path) -> ToolRequestV2:
@@ -2236,6 +2679,8 @@ def _v2_scope(tmp_path: Path) -> ToolExecutionScope:
         plan_id="plan-v2",
         version="0.2",
         case_ref="case-1@0.1",
+        case_id="case-1",
+        case_version="0.1",
         case_contract_sha256=hashlib.sha256(b"case-1@0.1").hexdigest(),
         status="approved",
         knowledge_snapshot_ref="knowledge://p0/2026-08-12",
@@ -2257,7 +2702,7 @@ def _v2_scope(tmp_path: Path) -> ToolExecutionScope:
                 output_schema_ref="bridge://schemas/tool-run/v0.2",
                 implementation_state="implemented",
                 result_schema_ref=(
-                    "bridge://schemas/evidence-sufficiency-run-result/v0.1"
+                    RESULT_SCHEMA_REF
                 ),
             )
         ],
@@ -2275,10 +2720,20 @@ def test_pipeline_preserves_registry_selected_v2_contract(tmp_path: Path) -> Non
 
 
 def test_pipeline_rejects_result_environment_drift(tmp_path: Path) -> None:
-    with pytest.raises(RuntimeError, match="outcome_environment_mismatch"):
+    with pytest.raises(RuntimeError, match="tool_outcome_contract_mismatch"):
         ToolExecutionPipeline(
             _v2_scope(tmp_path),
             FakeV2Registry(outcome_environment="ENV-UNAPPROVED"),
+        ).execute(_v2_request(tmp_path))
+
+
+def test_pipeline_rejects_v2_result_that_violates_registered_schema(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(RuntimeError, match="tool_outcome_contract_mismatch"):
+        ToolExecutionPipeline(
+            _v2_scope(tmp_path),
+            FakeV2Registry(result={"tool_id": "P0-08"}),
         ).execute(_v2_request(tmp_path))
 
 
@@ -2503,11 +2958,176 @@ def test_sqlite_restart_preserves_retry_exhaustion_terminalization(
     assert snapshot.steps[1].reason_codes == ["upstream_step_retry_exhausted"]
 
 
+def test_sqlite_recovery_terminalizes_interrupted_final_attempt_atomically(
+    tmp_path: Path,
+) -> None:
+    plan = AnalysisPlan(
+        plan_id="plan-interrupted-branches",
+        version="0.1",
+        case_ref="case-1@0.1",
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        steps=[
+            PlanStep(
+                step_id="interrupted-root",
+                tool_id="P0-01",
+                tool_version="0.1.0",
+                disposition="execute",
+            ),
+            PlanStep(
+                step_id="blocked-child",
+                tool_id="P0-02",
+                tool_version="0.1.0",
+                disposition="execute",
+                depends_on=["interrupted-root"],
+            ),
+            PlanStep(
+                step_id="independent",
+                tool_id="P0-04",
+                tool_version="0.1.0",
+                disposition="execute",
+            ),
+        ],
+    )
+    database_path = tmp_path / "workflow.sqlite3"
+    first_process = LocalWorkflowExecutor(
+        SQLiteRunEventStore(database_path), max_attempts=1
+    )
+    run_id = first_process.submit(plan)
+    assert first_process.claim_step(run_id).step_id == "interrupted-root"  # type: ignore[union-attr]
+
+    # Constructor drift cannot change the retry policy persisted by submit.
+    restarted_process = LocalWorkflowExecutor(
+        SQLiteRunEventStore(database_path), max_attempts=99
+    )
+    restarted_process.resume(run_id)
+
+    snapshot = restarted_process.get_status(run_id)
+    assert snapshot.status == "partial"
+    assert [step.status for step in snapshot.steps] == [
+        "failed",
+        "skipped",
+        "pending",
+    ]
+    assert snapshot.steps[0].reason_codes == [
+        "worker_interrupted_retry_exhausted"
+    ]
+    assert snapshot.steps[1].reason_codes == ["upstream_step_retry_exhausted"]
+    events = SQLiteRunEventStore(database_path).load(run_id)
+    assert events[0].payload.max_attempts == 1  # type: ignore[union-attr]
+    assert events[-1].event_type == "run_recovered"
+    assert events[-1].sequence == 3
+
+    independent = restarted_process.claim_step(run_id)
+    assert independent is not None and independent.step_id == "independent"
+    restarted_process.complete_step(run_id, independent.step_id, succeeded=True)
+    assert restarted_process.get_status(run_id).status == "failed"
+
+
+@pytest.mark.parametrize("store_kind", ["memory", "sqlite"])
+def test_recovery_handles_every_interrupted_step_with_store_parity(
+    tmp_path: Path, store_kind: str
+) -> None:
+    store = (
+        InMemoryRunEventStore()
+        if store_kind == "memory"
+        else SQLiteRunEventStore(tmp_path / "workflow.sqlite3")
+    )
+    run_id = "run-two-interruptions"
+    plan = AnalysisPlan(
+        plan_id="plan-two-interruptions",
+        version="0.1",
+        case_ref="case-1@0.1",
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        steps=[
+            PlanStep(
+                step_id="first",
+                tool_id="P0-01",
+                tool_version="0.1.0",
+                disposition="execute",
+            ),
+            PlanStep(
+                step_id="second",
+                tool_id="P0-02",
+                tool_version="0.1.0",
+                disposition="execute",
+            ),
+        ],
+    )
+    store.append(
+        run_id,
+        "run_submitted",
+        {"plan": plan.model_dump(mode="json"), "max_attempts": 2},
+        expected_sequence=0,
+    )
+    store.append(
+        run_id, "step_claimed", {"step_id": "first"}, expected_sequence=1
+    )
+    store.append(
+        run_id, "step_claimed", {"step_id": "second"}, expected_sequence=2
+    )
+
+    executor = LocalWorkflowExecutor(store, max_attempts=7)
+    executor.resume(run_id)
+
+    snapshot = executor.get_status(run_id)
+    assert [step.status for step in snapshot.steps] == ["pending", "pending"]
+    assert [step.attempts for step in snapshot.steps] == [1, 1]
+    recovered = store.load(run_id)[-1]
+    assert recovered.event_type == "run_recovered"
+    assert [
+        step.step_id for step in recovered.payload.recovered_steps  # type: ignore[union-attr]
+    ] == ["first", "second"]
+
+
+def test_concurrent_sqlite_recovery_has_one_sequence_winner(tmp_path: Path) -> None:
+    from threading import Barrier, Thread
+
+    database_path = tmp_path / "workflow.sqlite3"
+    base_store = SQLiteRunEventStore(database_path)
+    first_process = LocalWorkflowExecutor(base_store, max_attempts=2)
+    run_id = first_process.submit(_approved_plan())
+    assert first_process.claim_step(run_id) is not None
+    barrier = Barrier(2)
+
+    class SynchronizedLoadStore:
+        def append(self, *args, **kwargs):
+            return base_store.append(*args, **kwargs)
+
+        def load(self, loaded_run_id: str):
+            events = base_store.load(loaded_run_id)
+            barrier.wait(timeout=5)
+            return events
+
+    results: list[str] = []
+
+    def recover() -> None:
+        try:
+            LocalWorkflowExecutor(SynchronizedLoadStore()).resume(run_id)
+        except EventSequenceConflict:
+            results.append("conflict")
+        else:
+            results.append("recovered")
+
+    threads = [Thread(target=recover), Thread(target=recover)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+
+    assert not any(thread.is_alive() for thread in threads)
+    assert sorted(results) == ["conflict", "recovered"]
+    events = base_store.load(run_id)
+    assert [event.event_type for event in events].count("run_recovered") == 1
+
+
 from pathlib import Path
 
 import pytest
 
 from bridge.workflow.event_store import (
+    EventCompatibilityError,
     EventSequenceConflict,
     InMemoryRunEventStore,
     SQLiteRunEventStore,
@@ -2628,6 +3248,92 @@ def test_sqlite_store_marks_pre_version_column_rows_as_legacy(tmp_path: Path) ->
 
     events = SQLiteRunEventStore(database_path).load("run-1")
     assert events[0].schema_version == "0"
+
+
+def test_sqlite_legacy_reasonless_failure_migrates_only_in_memory(
+    tmp_path: Path,
+) -> None:
+    import json
+    import sqlite3
+
+    database_path = tmp_path / "legacy-history.sqlite3"
+    store = SQLiteRunEventStore(database_path)
+    rows = [
+        ("event-1", "run_submitted", {"plan": _plan_payload()}),
+        ("event-2", "step_claimed", {"step_id": "step-p0-01"}),
+        ("event-3", "step_failed", {"step_id": "step-p0-01"}),
+    ]
+    with sqlite3.connect(database_path) as connection:
+        for sequence, (event_id, event_type, payload) in enumerate(rows, start=1):
+            connection.execute(
+                """
+                INSERT INTO run_events (
+                    run_id, sequence, event_id, event_type, recorded_at,
+                    payload_json, schema_version
+                ) VALUES (?, ?, ?, ?, ?, ?, '0')
+                """,
+                (
+                    "run-legacy",
+                    sequence,
+                    event_id,
+                    event_type,
+                    "2026-08-16T00:00:00+00:00",
+                    json.dumps(payload, separators=(",", ":")),
+                ),
+            )
+
+    events = store.load("run-legacy")
+    projection = project_run(events)
+
+    assert projection.max_attempts == 2
+    assert projection.steps["step-p0-01"].reason_codes == (
+        "legacy_failure_reason_unrecorded",
+    )
+    assert events[2].payload.retry_exhausted is False  # type: ignore[union-attr]
+    with sqlite3.connect(database_path) as connection:
+        raw_payload = connection.execute(
+            "SELECT payload_json FROM run_events WHERE event_id = 'event-3'"
+        ).fetchone()[0]
+    assert json.loads(raw_payload) == {"step_id": "step-p0-01"}
+
+
+@pytest.mark.parametrize(
+    ("schema_version", "payload_json", "reason_code"),
+    [
+        ("99", "{}", "workflow_event_schema_version_unsupported"),
+        ("0", "[]", "workflow_legacy_event_incompatible"),
+        ("1", "[]", "workflow_event_schema_incompatible"),
+    ],
+)
+def test_sqlite_event_decoder_reports_stable_compatibility_coordinates(
+    tmp_path: Path,
+    schema_version: str,
+    payload_json: str,
+    reason_code: str,
+) -> None:
+    import sqlite3
+
+    database_path = tmp_path / f"incompatible-{schema_version}.sqlite3"
+    store = SQLiteRunEventStore(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO run_events (
+                run_id, sequence, event_id, event_type, recorded_at,
+                payload_json, schema_version
+            ) VALUES ('run-bad', 1, 'event-bad', 'run_submitted', ?, ?, ?)
+            """,
+            ("2026-08-16T00:00:00+00:00", payload_json, schema_version),
+        )
+
+    with pytest.raises(EventCompatibilityError, match=reason_code) as error:
+        store.load("run-bad")
+
+    assert error.value.reason_code == reason_code
+    assert error.value.run_id == "run-bad"
+    assert error.value.sequence == 1
+    assert error.value.event_id == "event-bad"
+    assert error.value.schema_version == schema_version
 
 
 from datetime import datetime, timezone
@@ -2752,3 +3458,38 @@ def test_projection_rejects_cancellation_after_terminal_failure() -> None:
     ]
     with pytest.raises(ValueError, match="terminal_run_cannot_be_cancelled"):
         project_run(events)
+
+
+def test_projection_rejects_recovery_that_disagrees_with_persisted_policy() -> None:
+    events = [
+        RunEvent(
+            event_id="event-1",
+            run_id="run-1",
+            sequence=1,
+            event_type="run_submitted",
+            recorded_at=datetime(2026, 8, 16, tzinfo=timezone.utc),
+            payload={
+                "plan": _plan().model_dump(mode="json"),
+                "max_attempts": 1,
+            },
+        ),
+        _event(2, "step_claimed", {"step_id": "step-p0-01"}),
+        _event(
+            3,
+            "run_recovered",
+            {
+                "recovered_steps": [
+                    {"step_id": "step-p0-01", "outcome": "retry"}
+                ]
+            },
+        ),
+    ]
+
+    with pytest.raises(ValueError, match="recovered_steps_invalid"):
+        project_run(events)
+
+    with pytest.raises(ValueError, match="resume_steps_invalid"):
+        project_run(
+            events[:2]
+            + [_event(3, "run_resumed", {"step_ids": ["step-p0-01"]})]
+        )
