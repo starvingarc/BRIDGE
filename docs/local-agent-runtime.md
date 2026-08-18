@@ -64,17 +64,21 @@ the executor remains single-worker even though event appends reject stale writer
 ## Case-Scoped Tool Pipeline
 
 Each execution receives a scope derived from the approved plan. The scope pins the
-case reference, plan ID, allowed Tool Package IDs and versions, MeasurementSpec,
-reference and prior references, and network/resource permissions.
+case reference and case-contract digest, plan ID, immutable per-step request JSON,
+Tool Package generation and version, implementation/environment/schema bindings,
+MeasurementSpec, reference and prior references, and network/resource permissions.
+Authorizations are keyed by step rather than Tool ID, so an asset-scoped plan may
+contain multiple P0-01 steps without silently collapsing them.
 
 The P0 pipeline is fixed:
 
 ```text
 ToolRequest
-  -> registered tool and approved version gate
+  -> exact approved step/request envelope gate
+  -> registered generation/version/environment/schema gate
   -> deterministic eligibility check
   -> registered Tool Package execution
-  -> ToolRun structural round-trip validation
+  -> generation-aware ToolRun and provenance validation
   -> immutable returned outcome
 ```
 
@@ -82,6 +86,11 @@ Denial and ineligibility return explicit reason codes and do not invoke science
 code. A scaffold remains `not_implemented`; missing evidence remains distinct from
 a negative biological observation. Artifact hashing and evidence compilation remain
 separate deterministic stages.
+
+Planning expands P0-01 into deterministic per-asset steps. P0-08 and P0-09 are not
+made reachable by assuming that unrelated scaffold tools produce their contracts;
+they require explicit, checksummed structured-input bindings. Missing bindings are
+recorded as a skip reason in the plan.
 
 ## Capability Seams
 
