@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any, Mapping
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_serializer, field_validator, model_validator
 
-from bridge.toolkit.contracts import FrozenModel, InputAsset
+from bridge.toolkit.contracts import FrozenModel, InputAsset, InputLevel
 
 
 class CaseStatus(StrEnum):
@@ -20,6 +23,90 @@ class PlanStatus(StrEnum):
 class StepDisposition(StrEnum):
     EXECUTE = "execute"
     SKIP = "skip"
+
+
+def _freeze_json(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {str(key): _freeze_json(item) for key, item in value.items()}
+        )
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_json(item) for item in value)
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise ValueError("asset metadata must contain JSON-compatible immutable values")
+
+
+def _thaw_json(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _thaw_json(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw_json(item) for item in value]
+    return value
+
+
+class CaseInputAsset(FrozenModel):
+    """Defensive, deeply immutable snapshot of an input asset in a confirmed case."""
+
+    asset_id: str = Field(min_length=1)
+    path: Path
+    format: str = Field(min_length=1)
+    input_level: InputLevel
+    checksum: str | None = None
+    matrix_location: str | None = None
+    matrix_semantics: str | None = None
+    assay: str | None = None
+    metadata: Mapping[str, Any] = Field(default_factory=dict)
+
+    @field_validator(
+        "asset_id",
+        "format",
+        "checksum",
+        "matrix_location",
+        "matrix_semantics",
+        "assay",
+    )
+    @classmethod
+    def strings_are_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("asset identity and provenance must be nonblank")
+        return value
+
+    @field_validator("path")
+    @classmethod
+    def path_is_absolute(cls, value: Path) -> Path:
+        path = Path(value)
+        if not path.is_absolute():
+            raise ValueError("asset path must be absolute")
+        return path
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def metadata_is_deeply_frozen(cls, value: Any) -> Mapping[str, Any]:
+        if not isinstance(value, Mapping):
+            raise ValueError("asset metadata must be an object")
+        return _freeze_json(value)
+
+    @field_serializer("metadata")
+    def serialize_metadata(self, value: Mapping[str, Any]) -> dict[str, Any]:
+        return _thaw_json(value)
+
+    @model_validator(mode="after")
+    def validate_input_level_and_matrix_semantics(self) -> "CaseInputAsset":
+        if self.input_level is InputLevel.ANALYSIS_READY:
+            if self.format != "h5ad" or self.matrix_semantics != "normalized_expression":
+                raise ValueError("analysis_ready requires h5ad normalized_expression")
+        elif self.matrix_semantics != "raw_counts":
+            raise ValueError("count_ready and droplet_ready require raw_counts")
+        if self.input_level is InputLevel.DROPLET_READY and self.format not in {
+            "10x_h5",
+            "10x_mtx",
+        }:
+            raise ValueError("droplet_ready requires a 10x_h5 or 10x_mtx asset")
+        return self
+
+    def to_toolkit_asset(self) -> InputAsset:
+        return InputAsset.model_validate(self.model_dump(mode="python"))
 
 
 class SampleRecord(FrozenModel):
@@ -55,6 +142,8 @@ class SampleRecord(FrozenModel):
 
     @model_validator(mode="after")
     def asset_ids_are_unique(self) -> "SampleRecord":
+        if any(not asset_id.strip() for asset_id in self.asset_ids):
+            raise ValueError("sample asset ids must be nonblank")
         if len(self.asset_ids) != len(set(self.asset_ids)):
             raise ValueError("sample asset ids must be unique")
         return self
@@ -72,7 +161,7 @@ class ProductCase(FrozenModel):
     product_definition_card_ref: str = Field(min_length=1)
     reference_policy_ref: str = Field(min_length=1)
     prior_snapshot_ref: str = Field(min_length=1)
-    assets: tuple[InputAsset, ...] = Field(min_length=1)
+    assets: tuple[CaseInputAsset, ...] = Field(min_length=1)
     samples: tuple[SampleRecord, ...] = Field(min_length=1)
 
     @field_validator(
@@ -93,6 +182,16 @@ class ProductCase(FrozenModel):
             raise ValueError("case identifiers and provenance must be nonblank")
         return value
 
+    @field_validator("assets", mode="before")
+    @classmethod
+    def snapshot_assets(cls, value: Any) -> Any:
+        if isinstance(value, (list, tuple)):
+            return [
+                item.model_dump(mode="python") if isinstance(item, InputAsset) else item
+                for item in value
+            ]
+        return value
+
     @model_validator(mode="after")
     def validate_case_graph(self) -> "ProductCase":
         asset_ids = [asset.asset_id for asset in self.assets]
@@ -111,8 +210,8 @@ class ProductCase(FrozenModel):
         )
         if unknown_assets:
             raise ValueError(f"samples reference unknown assets: {unknown_assets}")
-        if any(not asset_id for asset_id in asset_ids):
-            raise ValueError("case asset ids must be nonempty")
+        if any(not asset_id.strip() for asset_id in asset_ids):
+            raise ValueError("case asset ids must be nonblank")
         return self
 
 
@@ -164,8 +263,8 @@ class PlanStep(FrozenModel):
             ("prior", self.prior_refs),
             ("reason code", self.reason_codes),
         ):
-            if any(not value for value in values):
-                raise ValueError(f"plan step {label} values must be nonempty")
+            if any(not value.strip() for value in values):
+                raise ValueError(f"plan step {label} values must be nonblank")
         if self.disposition is StepDisposition.SKIP and self.approved_request_json is not None:
             raise ValueError("skipped plan step cannot carry an approved request")
         return self
@@ -175,6 +274,8 @@ class AnalysisPlan(FrozenModel):
     plan_id: str = Field(min_length=1)
     version: str = Field(min_length=1)
     case_ref: str = Field(min_length=1)
+    case_id: str | None = None
+    case_version: str | None = None
     case_contract_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     status: PlanStatus
     knowledge_snapshot_ref: str = Field(min_length=1)
@@ -182,15 +283,29 @@ class AnalysisPlan(FrozenModel):
     network_required: bool = False
     high_resource_required: bool = False
 
-    @field_validator("plan_id", "version", "case_ref", "knowledge_snapshot_ref")
+    @field_validator(
+        "plan_id",
+        "version",
+        "case_ref",
+        "case_id",
+        "case_version",
+        "knowledge_snapshot_ref",
+    )
     @classmethod
-    def required_strings_are_not_blank(cls, value: str) -> str:
-        if not value.strip():
+    def required_strings_are_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
             raise ValueError("plan identifiers and provenance must be nonblank")
         return value
 
     @model_validator(mode="after")
     def validate_step_graph(self) -> "AnalysisPlan":
+        if (self.case_id is None) != (self.case_version is None):
+            raise ValueError("analysis plan case identity must include ID and version")
+        if (
+            self.case_id is not None
+            and self.case_ref != f"{self.case_id}@{self.case_version}"
+        ):
+            raise ValueError("analysis plan case reference does not match case identity")
         step_ids = [step.step_id for step in self.steps]
         if len(step_ids) != len(set(step_ids)):
             raise ValueError("analysis plan step ids must be unique")
