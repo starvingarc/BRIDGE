@@ -60,6 +60,13 @@ class PlanBuilder:
         output_root = output_root.resolve()
         measurement_spec_refs = measurement_spec_refs or {}
         structured_input_bindings = structured_input_bindings or {}
+        case_identity_json = _canonical_json(
+            {"case_id": case.case_id, "case_version": case.version}
+        )
+        case_key = "case-" + hashlib.sha256(case_identity_json.encode()).hexdigest()
+        case_output_root = (output_root / case_key).resolve()
+        if not case_output_root.is_relative_to(output_root):
+            raise ValueError("case_output_root_not_confined")
         steps: list[PlanStep] = []
         steps_by_tool: dict[str, list[PlanStep]] = {}
 
@@ -102,8 +109,12 @@ class PlanBuilder:
                     disposition = StepDisposition.SKIP
                     reasons = ("measurement_spec_not_selected",)
                 else:
-                    request_id = f"plan-{case.case_id}-{spec.tool_id.lower()}{suffix}"
-                    output_dir = output_root / case.case_id / f"{spec.tool_id.lower()}{suffix}"
+                    request_id = f"plan-{case_key}-{spec.tool_id.lower()}{suffix}"
+                    output_dir = (
+                        case_output_root / f"{spec.tool_id.lower()}{suffix}"
+                    ).resolve()
+                    if not output_dir.is_relative_to(output_root):
+                        raise ValueError("tool_output_dir_not_confined")
                     if isinstance(spec, ToolPackageSpecV2):
                         request = ToolRequestV2(
                             request_id=request_id,
@@ -119,10 +130,18 @@ class PlanBuilder:
                             tool_id=spec.tool_id,
                             tool_version=spec.version,
                             output_dir=output_dir,
-                            assets=[asset] if asset is not None else case.assets,
+                            assets=(
+                                [asset.to_toolkit_asset()]
+                                if asset is not None
+                                else [item.to_toolkit_asset() for item in case.assets]
+                            ),
                             measurement_spec_ref=measurement_spec_ref,
                         )
-                    eligibility = self._registry.check_eligibility(request)
+                    eligibility = self._registry.check_case_eligibility(
+                        request,
+                        case_id=case.case_id,
+                        case_version=case.version,
+                    )
                     disposition = (
                         StepDisposition.EXECUTE
                         if eligibility.eligible
@@ -171,6 +190,8 @@ class PlanBuilder:
             plan_id=f"plan-{digest}",
             version="0.2",
             case_ref=f"{case.case_id}@{case.version}",
+            case_id=case.case_id,
+            case_version=case.version,
             case_contract_sha256=case_digest,
             status="draft",
             knowledge_snapshot_ref=knowledge_snapshot_ref,

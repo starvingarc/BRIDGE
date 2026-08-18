@@ -48,6 +48,8 @@ class ApprovedTool(FrozenModel):
 
 class ToolExecutionScope(FrozenModel):
     case_ref: str
+    case_id: str
+    case_version: str
     case_contract_sha256: str
     plan_id: str
     approved_steps: tuple[ApprovedTool, ...]
@@ -60,6 +62,8 @@ class ToolExecutionScope(FrozenModel):
             raise ValueError("analysis_plan_not_approved")
         if plan.case_contract_sha256 is None:
             raise ValueError("approved_plan_missing_case_contract")
+        if plan.case_id is None or plan.case_version is None:
+            raise ValueError("approved_plan_missing_case_identity")
         approved_steps: list[ApprovedTool] = []
         for step in plan.steps:
             if step.disposition is not StepDisposition.EXECUTE:
@@ -98,6 +102,8 @@ class ToolExecutionScope(FrozenModel):
             )
         return cls(
             case_ref=plan.case_ref,
+            case_id=plan.case_id,
+            case_version=plan.case_version,
             case_contract_sha256=plan.case_contract_sha256,
             plan_id=plan.plan_id,
             approved_steps=approved_steps,
@@ -125,7 +131,19 @@ class ToolRegistryLike(Protocol):
 
     def check_eligibility(self, request: ToolRequestModel) -> EligibilityResult: ...
 
+    def check_case_eligibility(
+        self,
+        request: ToolRequestModel,
+        *,
+        case_id: str,
+        case_version: str,
+    ) -> EligibilityResult: ...
+
     def run(self, request: ToolRequestModel) -> ToolRunModel: ...
+
+    def validate_result(
+        self, result: object, request: ToolRequestModel
+    ) -> ToolRunModel: ...
 
 
 class ToolExecutionPipeline:
@@ -194,29 +212,16 @@ class ToolExecutionPipeline:
         if isinstance(spec, ToolPackageSpecV2) != isinstance(request, ToolRequestV2):
             raise ToolExecutionDenied("registry_request_generation_mismatch")
 
-        eligibility = self._registry.check_eligibility(request)
+        eligibility = self._registry.check_case_eligibility(
+            request,
+            case_id=self._scope.case_id,
+            case_version=self._scope.case_version,
+        )
         if not eligibility.eligible:
             raise ToolExecutionDenied(*eligibility.reason_codes)
 
         candidate = self._registry.run(request)
-        expected_model = ToolRunV2 if isinstance(spec, ToolPackageSpecV2) else ToolRun
-        if not isinstance(candidate, expected_model):
-            raise RuntimeError("tool_outcome_generation_mismatch")
-        outcome = expected_model.model_validate(candidate.model_dump(mode="json"))
-        if outcome.request != request or outcome.tool_version != approved.tool_version:
-            raise RuntimeError("tool_outcome_contract_mismatch")
-        if outcome.environment_spec_id != approved.environment_spec_id:
-            raise RuntimeError("tool_outcome_environment_mismatch")
-        if outcome.implementation_state.value != approved.implementation_state:
-            raise RuntimeError("tool_outcome_implementation_state_mismatch")
-        if isinstance(outcome, ToolRunV2):
-            if outcome.result_schema_ref is not None and (
-                outcome.result_schema_ref != approved.result_schema_ref
-            ):
-                raise RuntimeError("tool_outcome_result_schema_mismatch")
-            if outcome.execution_state in {
-                ExecutionState.SUCCEEDED,
-                ExecutionState.PARTIAL,
-            } and outcome.result_schema_ref != approved.result_schema_ref:
-                raise RuntimeError("tool_outcome_result_schema_mismatch")
-        return outcome
+        try:
+            return self._registry.validate_result(candidate, request)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("tool_outcome_contract_mismatch") from exc
