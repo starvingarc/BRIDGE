@@ -60,6 +60,10 @@ The SQLite event store appends ordered events per run:
 independently mutable rows. Appends use an expected sequence number so competing
 workers cannot both commit the same transition. SQLite is the P0 durability target;
 the executor remains single-worker even though event appends reject stale writers.
+Persisted events carry an explicit schema version and event-specific payload
+validation. Failed attempts require reason codes; retry exhaustion deterministically
+marks dependent work as skipped while independent work remains claimable. Terminal
+failed, succeeded, skipped or cancelled runs cannot be rewritten by cancellation.
 
 ## Case-Scoped Tool Pipeline
 
@@ -103,6 +107,14 @@ interface boundary:
 
 An LLM provider, HTTP server, subprocess isolation and remote storage are future
 work and are not predeclared as empty plugin interfaces.
+
+## Local Artifact Integrity
+
+Derived bytes are stored by SHA-256 under a configured local root. Reads and
+deduplication revalidate the digest, reject non-regular objects, and fail closed on
+symlinked staging, shard or object paths so neither reads nor writes can escape the
+configured root. The store never rewrites a corrupt same-digest target as if
+deduplication had succeeded.
 
 ## Implementation Status
 
