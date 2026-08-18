@@ -6,7 +6,7 @@ import os
 import re
 import secrets
 import stat
-import tempfile
+import sys
 from pathlib import Path
 from typing import BinaryIO
 
@@ -46,11 +46,8 @@ class LocalArtifactStore:
     """Append-only, content-addressed storage beneath one local root."""
 
     def __init__(self, root: Path) -> None:
-        self.root = root.absolute()
-        self.root.mkdir(parents=True, exist_ok=True)
-        if self.root.is_symlink():
-            raise ArtifactStoreError("artifact_root_not_directory")
-        self._root_fd = self._open_directory_fd(self.root)
+        self.root = self._canonical_root(root)
+        self._root_fd = self._establish_root(self.root)
         self._staging = self.root / ".staging"
         try:
             self._staging_fd = self._open_child_directory(
@@ -138,7 +135,7 @@ class LocalArtifactStore:
         expected = self._digest_from_id(artifact_id)
         source = self._open_object(expected)
         try:
-            snapshot = tempfile.TemporaryFile(mode="w+b")
+            snapshot = self._create_unlinked_snapshot()
         except Exception:
             os.close(source)
             raise
@@ -245,13 +242,72 @@ class LocalArtifactStore:
             return name, descriptor
         raise ArtifactStoreError("artifact_staging_collision")
 
-    @staticmethod
-    def _open_directory_fd(path: Path) -> int:
+    def _create_unlinked_snapshot(self) -> BinaryIO:
+        for _ in range(100):
+            name = f"snapshot-{secrets.token_hex(16)}.tmp"
+            try:
+                descriptor = os.open(
+                    name,
+                    os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                    0o600,
+                    dir_fd=self._staging_descriptor(),
+                )
+            except FileExistsError:
+                continue
+            try:
+                os.unlink(name, dir_fd=self._staging_descriptor())
+            except Exception:
+                os.close(descriptor)
+                try:
+                    os.unlink(name, dir_fd=self._staging_descriptor())
+                except FileNotFoundError:
+                    pass
+                raise
+            return os.fdopen(descriptor, "w+b")
+        raise ArtifactStoreError("artifact_staging_collision")
+
+    @classmethod
+    def _canonical_root(cls, root: Path) -> Path:
+        raw_parts = root.parts
+        if any(part in {".", ".."} for part in raw_parts):
+            raise ArtifactStoreError("artifact_root_invalid_component")
+        absolute = root if root.is_absolute() else Path.cwd() / root
+
+        # macOS exposes /tmp as a system-managed symlink to /private/tmp.  Treat
+        # that one OS alias as part of the trusted anchor, while continuing to
+        # reject symlinks in every caller-controlled component below it.
+        if sys.platform == "darwin" and absolute.parts[:2] == ("/", "tmp"):
+            trusted_tmp = Path("/tmp").resolve(strict=True)
+            absolute = trusted_tmp.joinpath(*absolute.parts[2:])
+        return absolute
+
+    @classmethod
+    def _establish_root(cls, path: Path) -> int:
+        if not path.is_absolute():
+            raise ArtifactStoreError("artifact_root_must_be_absolute")
         try:
-            return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            descriptor = os.open(
+                path.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            )
         except OSError as error:
             if error.errno in {errno.ELOOP, errno.ENOTDIR}:
                 raise ArtifactStoreError("artifact_root_not_directory") from error
+            raise
+        try:
+            for component in path.parts[1:]:
+                if component in {"", ".", ".."}:
+                    raise ArtifactStoreError("artifact_root_invalid_component")
+                try:
+                    next_descriptor = cls._open_child_directory(
+                        descriptor, component, create=True
+                    )
+                except ArtifactStoreError as error:
+                    raise ArtifactStoreError("artifact_root_not_directory") from error
+                os.close(descriptor)
+                descriptor = next_descriptor
+            return descriptor
+        except Exception:
+            os.close(descriptor)
             raise
 
     @staticmethod
