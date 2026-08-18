@@ -49,11 +49,12 @@ The SQLite event store appends ordered events per run:
 
 | Event | Meaning |
 |---|---|
-| `run_submitted` | Stores the immutable approved plan snapshot. |
+| `run_submitted` | Stores the immutable approved plan snapshot and retry policy. |
 | `step_claimed` | One worker owns a ready step attempt. |
 | `step_succeeded` | The attempt completed successfully. |
 | `step_failed` | The attempt failed with explicit reason codes. |
 | `run_resumed` | Retry-eligible failed steps return to pending. |
+| `run_recovered` | Atomically recovers interrupted work after worker ownership transfer. |
 | `run_cancelled` | Pending or running work is cancelled. |
 
 `RunStatus`, `StepStatus`, attempt counts and reason codes are projections, not
@@ -64,11 +65,16 @@ Persisted events carry an explicit schema version and event-specific payload
 validation. Failed attempts require reason codes; retry exhaustion deterministically
 marks dependent work as skipped while independent work remains claimable. Terminal
 failed, succeeded, skipped or cancelled runs cannot be rewritten by cancellation.
+Explicit recovery assumes the previous single worker is dead, uses the persisted
+retry limit, and resolves all interrupted steps in one sequence-guarded event.
+Schema-zero histories are normalized in memory without rewriting the append-only
+rows; incompatible or unknown histories fail with a coordinate-bearing compatibility
+error.
 
 ## Case-Scoped Tool Pipeline
 
 Each execution receives a scope derived from the approved plan. The scope pins the
-case reference and case-contract digest, plan ID, immutable per-step request JSON,
+exact case identity/version and case-contract digest, plan ID, immutable per-step request JSON,
 Tool Package generation and version, implementation/environment/schema bindings,
 MeasurementSpec, reference and prior references, and network/resource permissions.
 Authorizations are keyed by step rather than Tool ID, so an asset-scoped plan may
@@ -82,7 +88,7 @@ ToolRequest
   -> registered generation/version/environment/schema gate
   -> deterministic eligibility check
   -> registered Tool Package execution
-  -> generation-aware ToolRun and provenance validation
+  -> generation-aware ToolRun, result-Schema and provenance validation
   -> immutable returned outcome
 ```
 
@@ -95,6 +101,9 @@ Planning expands P0-01 into deterministic per-asset steps. P0-08 and P0-09 are n
 made reachable by assuming that unrelated scaffold tools produce their contracts;
 they require explicit, checksummed structured-input bindings. Missing bindings are
 recorded as a skip reason in the plan.
+Structured P0-08/P0-09 inputs must bind the same exact ProductCase identity and
+version as the approved scope. Case identities are hashed before use in local output
+paths, so opaque IDs cannot alter directory structure.
 
 ## Capability Seams
 
@@ -112,9 +121,12 @@ work and are not predeclared as empty plugin interfaces.
 
 Derived bytes are stored by SHA-256 under a configured local root. Reads and
 deduplication revalidate the digest, reject non-regular objects, and fail closed on
-symlinked staging, shard or object paths so neither reads nor writes can escape the
-configured root. The store never rewrites a corrupt same-digest target as if
-deduplication had succeeded.
+symlinked root components, staging, shard or object paths so neither reads nor writes
+can escape the configured root. Root creation walks from the filesystem anchor with
+directory descriptors instead of resolving caller-controlled ancestors. Verified
+reads use an immediately unlinked snapshot created inside the anchored staging
+directory and never copy plaintext to the system temporary directory. The store
+never rewrites a corrupt same-digest target as if deduplication had succeeded.
 
 ## Implementation Status
 
