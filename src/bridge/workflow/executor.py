@@ -12,6 +12,8 @@ from bridge.workflow.events import (
     StepStatus,
     blocked_descendant_ids,
     project_run,
+    recovery_blocked_step_payloads,
+    recovery_step_payloads,
 )
 
 
@@ -41,7 +43,10 @@ class LocalWorkflowExecutor:
         self._event_store.append(
             run_id,
             RunEventType.RUN_SUBMITTED,
-            {"plan": plan.model_dump(mode="json")},
+            {
+                "plan": plan.model_dump(mode="json"),
+                "max_attempts": self._max_attempts,
+            },
             expected_sequence=0,
         )
         return run_id
@@ -86,7 +91,7 @@ class LocalWorkflowExecutor:
             raise ValueError("workflow_step_not_running")
         if not succeeded and not reason_codes:
             raise ValueError("workflow_failure_requires_reason_codes")
-        retry_exhausted = not succeeded and state.attempts >= self._max_attempts
+        retry_exhausted = not succeeded and state.attempts >= run.max_attempts
         blocked_steps = (
             [
                 {
@@ -131,21 +136,37 @@ class LocalWorkflowExecutor:
         )
 
     def resume(self, run_id: str) -> None:
+        """Recover a run after asserting that its previous local worker is dead.
+
+        The local runtime has one worker and no lease service. This explicit call is
+        therefore the ownership hand-off: every interrupted RUNNING step is handled
+        in one compare-and-append event, so concurrent recovery attempts have one
+        sequence winner.
+        """
         run = self._projection(run_id)
         if run.status not in {RunStatus.RUNNING, RunStatus.FAILED, RunStatus.PARTIAL}:
             raise ValueError("workflow_run_not_resumable")
-        step_ids = [
-            state.step_id
-            for state in run.steps.values()
-            if state.status in {StepStatus.RUNNING, StepStatus.FAILED}
-            and state.attempts < self._max_attempts
-        ]
-        if not step_ids:
+        recovered_steps = recovery_step_payloads(run)
+        if not recovered_steps:
             raise ValueError("workflow_retry_limit_reached")
+        exhausted_ids = {
+            recovered.step_id
+            for recovered in recovered_steps
+            if recovered.outcome == "failed"
+        }
+        blocked_steps = recovery_blocked_step_payloads(run, exhausted_ids)
         self._event_store.append(
             run_id,
-            RunEventType.RUN_RESUMED,
-            {"step_ids": step_ids},
+            RunEventType.RUN_RECOVERED,
+            {
+                "recovered_steps": [
+                    recovered.model_dump(mode="json")
+                    for recovered in recovered_steps
+                ],
+                "blocked_steps": [
+                    blocked.model_dump(mode="json") for blocked in blocked_steps
+                ],
+            },
             expected_sequence=run.last_sequence,
         )
 

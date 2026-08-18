@@ -8,11 +8,36 @@ from threading import Lock
 from typing import Any, Protocol
 from uuid import uuid4
 
+from pydantic import ValidationError
+
 from bridge.workflow.events import RunEvent, RunEventType
 
 
 class EventSequenceConflict(RuntimeError):
     pass
+
+
+class EventCompatibilityError(RuntimeError):
+    """A durable event cannot be interpreted by this runtime version."""
+
+    def __init__(
+        self,
+        reason_code: str,
+        *,
+        run_id: str,
+        sequence: int,
+        event_id: str,
+        schema_version: str,
+    ) -> None:
+        self.reason_code = reason_code
+        self.run_id = run_id
+        self.sequence = sequence
+        self.event_id = event_id
+        self.schema_version = schema_version
+        super().__init__(
+            f"{reason_code}: run_id={run_id} sequence={sequence} "
+            f"event_id={event_id} schema_version={schema_version}"
+        )
 
 
 class RunEventStore(Protocol):
@@ -145,18 +170,24 @@ class SQLiteRunEventStore:
                 """,
                 (run_id,),
             ).fetchall()
-        return [
-            RunEvent(
-                event_id=row[0],
-                run_id=row[1],
-                sequence=row[2],
-                event_type=row[3],
-                recorded_at=row[4],
-                payload=json.loads(row[5]),
-                schema_version=row[6],
-            )
-            for row in rows
-        ]
+        events: list[RunEvent] = []
+        for row in rows:
+            coordinates = {
+                "event_id": row[0],
+                "run_id": row[1],
+                "sequence": row[2],
+                "event_type": row[3],
+                "recorded_at": row[4],
+                "schema_version": row[6],
+            }
+            try:
+                payload = json.loads(row[5])
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise _compatibility_error(
+                    "workflow_event_payload_json_invalid", coordinates
+                ) from exc
+            events.append(_decode_stored_event(coordinates, payload))
+        return events
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path, timeout=30)
@@ -182,3 +213,73 @@ def _new_event(
 
 def _clone_event(event: RunEvent) -> RunEvent:
     return RunEvent.model_validate(event.model_dump(mode="json"))
+
+
+def _decode_stored_event(
+    coordinates: dict[str, Any], payload: Any
+) -> RunEvent:
+    schema_version = str(coordinates["schema_version"])
+    if schema_version == "0":
+        try:
+            payload = _migrate_schema_zero_payload(
+                str(coordinates["event_type"]), payload
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise _compatibility_error(
+                "workflow_legacy_event_incompatible", coordinates
+            ) from exc
+    elif schema_version != "1":
+        raise _compatibility_error(
+            "workflow_event_schema_version_unsupported", coordinates
+        )
+    try:
+        return RunEvent.model_validate(coordinates | {"payload": payload})
+    except (ValidationError, ValueError) as exc:
+        raise _compatibility_error(
+            "workflow_event_schema_incompatible", coordinates
+        ) from exc
+
+
+def _migrate_schema_zero_payload(event_type: str, payload: Any) -> dict[str, Any]:
+    """Interpret legacy rows without rewriting their durable representation."""
+    if not isinstance(payload, dict):
+        raise TypeError("legacy workflow payload must be an object")
+    migrated = dict(payload)
+    if event_type == RunEventType.RUN_SUBMITTED:
+        if "plan" not in migrated:
+            raise KeyError("plan")
+        migrated.setdefault("max_attempts", 2)
+    elif event_type in {
+        RunEventType.STEP_CLAIMED,
+        RunEventType.STEP_SUCCEEDED,
+        RunEventType.STEP_FAILED,
+    }:
+        if "step_id" not in migrated:
+            raise KeyError("step_id")
+        migrated.setdefault("reason_codes", [])
+        migrated.setdefault("retry_exhausted", False)
+        migrated.setdefault("blocked_steps", [])
+        if event_type == RunEventType.STEP_FAILED and not migrated["reason_codes"]:
+            migrated["reason_codes"] = ["legacy_failure_reason_unrecorded"]
+            migrated["retry_exhausted"] = False
+            migrated["blocked_steps"] = []
+    elif event_type == RunEventType.RUN_RESUMED:
+        if "step_ids" not in migrated:
+            raise KeyError("step_ids")
+    elif event_type == RunEventType.RUN_CANCELLED:
+        migrated = {}
+    else:
+        raise ValueError("legacy workflow event type unsupported")
+    return migrated
+
+
+def _compatibility_error(
+    reason_code: str, coordinates: dict[str, Any]
+) -> EventCompatibilityError:
+    return EventCompatibilityError(
+        reason_code,
+        run_id=str(coordinates["run_id"]),
+        sequence=int(coordinates["sequence"]),
+        event_id=str(coordinates["event_id"]),
+        schema_version=str(coordinates["schema_version"]),
+    )
