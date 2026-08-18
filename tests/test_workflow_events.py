@@ -86,3 +86,39 @@ def test_projection_rejects_claim_before_dependencies() -> None:
                 _event(2, "step_claimed", {"step_id": "step-p0-02"}),
             ]
         )
+
+
+def test_event_contract_rejects_missing_and_duplicate_failure_reasons() -> None:
+    with pytest.raises(ValueError, match="failure_requires_reason_codes"):
+        _event(1, "step_failed", {"step_id": "step-p0-01"})
+    with pytest.raises(ValueError, match="reason_codes_must_be_unique"):
+        _event(
+            1,
+            "step_failed",
+            {"step_id": "step-p0-01", "reason_codes": ["failure", "failure"]},
+        )
+
+
+def test_projection_rejects_cancellation_after_terminal_failure() -> None:
+    events = [
+        _event(1, "run_submitted", {"plan": _plan().model_dump(mode="json")}),
+        _event(2, "step_claimed", {"step_id": "step-p0-01"}),
+        _event(
+            3,
+            "step_failed",
+            {
+                "step_id": "step-p0-01",
+                "reason_codes": ["permanent_failure"],
+                "retry_exhausted": True,
+                "blocked_steps": [
+                    {
+                        "step_id": "step-p0-02",
+                        "reason_codes": ["upstream_step_retry_exhausted"],
+                    }
+                ],
+            },
+        ),
+        _event(4, "run_cancelled"),
+    ]
+    with pytest.raises(ValueError, match="terminal_run_cannot_be_cancelled"):
+        project_run(events)

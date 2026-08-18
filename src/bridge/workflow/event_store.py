@@ -46,12 +46,12 @@ class InMemoryRunEventStore:
             if len(events) != expected_sequence:
                 raise EventSequenceConflict("workflow_event_sequence_conflict")
             event = _new_event(run_id, len(events) + 1, event_type, payload)
-            events.append(event)
-            return event
+            events.append(_clone_event(event))
+            return _clone_event(event)
 
     def load(self, run_id: str) -> list[RunEvent]:
         with self._lock:
-            return list(self._events.get(run_id, []))
+            return [_clone_event(event) for event in self._events.get(run_id, [])]
 
 
 class SQLiteRunEventStore:
@@ -69,10 +69,19 @@ class SQLiteRunEventStore:
                     event_type TEXT NOT NULL,
                     recorded_at TEXT NOT NULL,
                     payload_json TEXT NOT NULL,
+                    schema_version TEXT NOT NULL DEFAULT '0',
                     PRIMARY KEY (run_id, sequence)
                 )
                 """
             )
+            columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(run_events)")
+            }
+            if "schema_version" not in columns:
+                connection.execute(
+                    "ALTER TABLE run_events "
+                    "ADD COLUMN schema_version TEXT NOT NULL DEFAULT '0'"
+                )
 
     def append(
         self,
@@ -97,8 +106,9 @@ class SQLiteRunEventStore:
             connection.execute(
                 """
                 INSERT INTO run_events (
-                    run_id, sequence, event_id, event_type, recorded_at, payload_json
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    run_id, sequence, event_id, event_type, recorded_at, payload_json,
+                    schema_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event.run_id,
@@ -106,7 +116,12 @@ class SQLiteRunEventStore:
                     event.event_id,
                     event.event_type.value,
                     event.recorded_at.isoformat(),
-                    json.dumps(event.payload, sort_keys=True, separators=(",", ":")),
+                    json.dumps(
+                        event.payload.model_dump(mode="json"),
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    event.schema_version,
                 ),
             )
             connection.commit()
@@ -122,7 +137,8 @@ class SQLiteRunEventStore:
         with self._connect() as connection:
             rows = connection.execute(
                 """
-                SELECT event_id, run_id, sequence, event_type, recorded_at, payload_json
+                SELECT event_id, run_id, sequence, event_type, recorded_at, payload_json,
+                       schema_version
                 FROM run_events
                 WHERE run_id = ?
                 ORDER BY sequence
@@ -137,6 +153,7 @@ class SQLiteRunEventStore:
                 event_type=row[3],
                 recorded_at=row[4],
                 payload=json.loads(row[5]),
+                schema_version=row[6],
             )
             for row in rows
         ]
@@ -161,3 +178,7 @@ def _new_event(
         recorded_at=datetime.now(timezone.utc),
         payload=payload,
     )
+
+
+def _clone_event(event: RunEvent) -> RunEvent:
+    return RunEvent.model_validate(event.model_dump(mode="json"))
