@@ -1468,3 +1468,1287 @@ def test_jsonschema_is_declared_once_as_a_runtime_dependency() -> None:
     test_dependencies = project["optional-dependencies"]["test"]
     assert sum(item.startswith("jsonschema") for item in runtime_dependencies) == 1
     assert all(not item.startswith("jsonschema") for item in test_dependencies)
+
+
+
+import hashlib
+from io import BytesIO
+from pathlib import Path
+
+import pytest
+
+from bridge.storage.artifacts import LocalArtifactStore
+
+
+def test_artifact_store_addresses_and_verifies_content(tmp_path: Path) -> None:
+    store = LocalArtifactStore(tmp_path / "artifacts")
+    artifact = store.put(BytesIO(b"measurement-result"), "application/json")
+
+    assert artifact.artifact_id == f"sha256:{artifact.sha256}"
+    assert not Path(artifact.relative_path).is_absolute()
+    with store.open(artifact.artifact_id) as source:
+        assert source.read() == b"measurement-result"
+    assert store.verify(artifact.artifact_id).valid is True
+
+
+def test_artifact_store_deduplicates_equal_content(tmp_path: Path) -> None:
+    store = LocalArtifactStore(tmp_path / "artifacts")
+
+    first = store.put(BytesIO(b"same"), "application/octet-stream")
+    second = store.put(BytesIO(b"same"), "application/octet-stream")
+
+    assert first.artifact_id == second.artifact_id
+    assert list((tmp_path / "artifacts").glob("??/*")) == [
+        tmp_path / "artifacts" / first.relative_path
+    ]
+
+
+def test_artifact_store_reports_tampering_without_rewriting(tmp_path: Path) -> None:
+    store = LocalArtifactStore(tmp_path / "artifacts")
+    artifact = store.put(BytesIO(b"original"), "application/octet-stream")
+    stored_path = tmp_path / "artifacts" / artifact.relative_path
+    stored_path.write_bytes(b"tampered")
+
+    verification = store.verify(artifact.artifact_id)
+
+    assert verification.valid is False
+    assert verification.reason_code == "artifact_checksum_mismatch"
+    assert stored_path.read_bytes() == b"tampered"
+
+
+def test_artifact_store_rejects_corrupt_deduplication_target(tmp_path: Path) -> None:
+    root = tmp_path / "artifacts"
+    store = LocalArtifactStore(root)
+    artifact = store.put(BytesIO(b"original"), "application/octet-stream")
+    stored_path = root / artifact.relative_path
+    stored_path.write_bytes(b"tampered")
+
+    with pytest.raises(ValueError, match="artifact_checksum_mismatch"):
+        store.put(BytesIO(b"original"), "application/octet-stream")
+
+    assert stored_path.read_bytes() == b"tampered"
+    assert list((root / ".staging").iterdir()) == []
+
+
+def test_artifact_store_refuses_to_open_corrupt_content(tmp_path: Path) -> None:
+    root = tmp_path / "artifacts"
+    store = LocalArtifactStore(root)
+    artifact = store.put(BytesIO(b"original"), "application/octet-stream")
+    (root / artifact.relative_path).write_bytes(b"tampered")
+
+    with pytest.raises(ValueError, match="artifact_checksum_mismatch"):
+        store.open(artifact.artifact_id)
+
+
+def test_artifact_store_rejects_symlinked_shard_without_external_write(
+    tmp_path: Path,
+) -> None:
+    content = b"outside-root"
+    digest = hashlib.sha256(content).hexdigest()
+    root = tmp_path / "artifacts"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    store = LocalArtifactStore(root)
+    (root / digest[:2]).symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="artifact_directory_not_regular"):
+        store.put(BytesIO(content), "application/octet-stream")
+
+    assert list(outside.iterdir()) == []
+    assert list((root / ".staging").iterdir()) == []
+
+
+def test_artifact_store_rejects_symlinked_object_without_external_read(
+    tmp_path: Path,
+) -> None:
+    content = b"external-private-bytes"
+    digest = hashlib.sha256(content).hexdigest()
+    artifact_id = f"sha256:{digest}"
+    root = tmp_path / "artifacts"
+    outside = tmp_path / "private"
+    outside.write_bytes(content)
+    store = LocalArtifactStore(root)
+    shard = root / digest[:2]
+    shard.mkdir()
+    (shard / digest).symlink_to(outside)
+
+    with pytest.raises(ValueError, match="artifact_not_regular"):
+        store.open(artifact_id)
+
+    verification = store.verify(artifact_id)
+    assert verification.valid is False
+    assert verification.reason_code == "artifact_not_regular"
+
+
+def test_artifact_store_rejects_symlinked_deduplication_target(
+    tmp_path: Path,
+) -> None:
+    content = b"external-private-bytes"
+    digest = hashlib.sha256(content).hexdigest()
+    root = tmp_path / "artifacts"
+    outside = tmp_path / "private"
+    outside.write_bytes(content)
+    store = LocalArtifactStore(root)
+    shard = root / digest[:2]
+    shard.mkdir()
+    (shard / digest).symlink_to(outside)
+
+    with pytest.raises(ValueError, match="artifact_not_regular"):
+        store.put(BytesIO(content), "application/octet-stream")
+
+    assert outside.read_bytes() == content
+    assert list((root / ".staging").iterdir()) == []
+
+
+def test_artifact_store_rejects_non_regular_digest_object(tmp_path: Path) -> None:
+    content = b"expected"
+    digest = hashlib.sha256(content).hexdigest()
+    artifact_id = f"sha256:{digest}"
+    root = tmp_path / "artifacts"
+    store = LocalArtifactStore(root)
+    (root / digest[:2] / digest).mkdir(parents=True)
+
+    with pytest.raises(ValueError, match="artifact_not_regular"):
+        store.open(artifact_id)
+
+    assert store.verify(artifact_id).reason_code == "artifact_not_regular"
+
+
+def test_artifact_store_rejects_symlinked_staging_directory(tmp_path: Path) -> None:
+    root = tmp_path / "artifacts"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    (root / ".staging").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="artifact_directory_not_regular"):
+        LocalArtifactStore(root)
+
+    assert list(outside.iterdir()) == []
+
+
+def test_artifact_store_rejects_untrusted_ids(tmp_path: Path) -> None:
+    store = LocalArtifactStore(tmp_path / "artifacts")
+
+    with pytest.raises(ValueError, match="invalid_artifact_id"):
+        store.open("../../private-input")
+
+
+from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
+
+from bridge.domain.models import AnalysisPlan, PlanStep, ProductCase, SampleRecord
+from bridge.toolkit.contracts import InputAsset
+
+
+def _asset(tmp_path: Path) -> InputAsset:
+    return InputAsset(
+        asset_id="asset-1",
+        path=(tmp_path / "product.h5ad").resolve(),
+        format="h5ad",
+        input_level="analysis_ready",
+        matrix_semantics="normalized_expression",
+        assay="scRNA-seq",
+    )
+
+
+def test_product_case_requires_declared_sample_assets(tmp_path: Path) -> None:
+    with pytest.raises(ValidationError, match="unknown assets"):
+        ProductCase(
+            case_id="case-1",
+            version="0.1",
+            status="confirmed",
+            product_type="mDA progenitor preparation",
+            target_cell_type="midbrain dopaminergic progenitor",
+            differentiation_stage="D16",
+            intended_use="research evaluation",
+            assay="scRNA-seq",
+            product_definition_card_ref="card://pd-mda/v0.1",
+            reference_policy_ref="reference-policy://pd-mda/v0.1",
+            prior_snapshot_ref="prior://pd-mda/v0.1",
+            assets=[_asset(tmp_path)],
+            samples=[
+                SampleRecord(
+                    sample_id="sample-1",
+                    preparation_id="prep-1",
+                    asset_ids=["undeclared-asset"],
+                    data_role="evaluation",
+                    sampling_context="pre-transplant",
+                )
+            ],
+        )
+
+
+def test_analysis_plan_requires_ordered_dependencies() -> None:
+    with pytest.raises(ValidationError, match="must precede"):
+        AnalysisPlan(
+            plan_id="plan-1",
+            version="0.1",
+            case_ref="case-1@0.1",
+            status="draft",
+            knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+            steps=[
+                PlanStep(
+                    step_id="step-p0-02",
+                    tool_id="P0-02",
+                    tool_version="0.1.0",
+                    disposition="execute",
+                    depends_on=["step-p0-01"],
+                ),
+                PlanStep(
+                    step_id="step-p0-01",
+                    tool_id="P0-01",
+                    tool_version="0.1.0",
+                    disposition="execute",
+                ),
+            ],
+        )
+
+
+def test_skipped_plan_step_requires_reason_code() -> None:
+    with pytest.raises(ValidationError, match="requires a reason code"):
+        PlanStep(
+            step_id="step-p0-03",
+            tool_id="P0-03",
+            tool_version="0.1.0",
+            disposition="skip",
+        )
+
+
+def test_plan_rejects_execute_step_after_skipped_dependency() -> None:
+    with pytest.raises(ValidationError, match="depends on skipped steps"):
+        AnalysisPlan(
+            plan_id="plan-1",
+            version="0.1",
+            case_ref="case-1@0.1",
+            status="draft",
+            knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+            steps=[
+                PlanStep(
+                    step_id="step-p0-01",
+                    tool_id="P0-01",
+                    tool_version="0.1.0",
+                    disposition="skip",
+                    reason_codes=["input_missing"],
+                ),
+                PlanStep(
+                    step_id="step-p0-02",
+                    tool_id="P0-02",
+                    tool_version="0.1.0",
+                    disposition="execute",
+                    depends_on=["step-p0-01"],
+                ),
+            ],
+        )
+
+
+def test_domain_identifiers_and_references_cannot_be_empty() -> None:
+    with pytest.raises(ValidationError, match="at least 1 character"):
+        SampleRecord(
+            sample_id="",
+            preparation_id="prep-1",
+            asset_ids=["asset-1"],
+            data_role="evaluation",
+            sampling_context="pre-transplant",
+        )
+    with pytest.raises(ValidationError, match="must be nonempty"):
+        PlanStep(
+            step_id="step-p0-01",
+            tool_id="P0-01",
+            tool_version="0.1.0",
+            disposition="skip",
+            reason_codes=[""],
+        )
+    with pytest.raises(ValidationError, match="nonblank"):
+        SampleRecord(
+            sample_id="   ",
+            preparation_id="prep-1",
+            asset_ids=["asset-1"],
+            data_role="evaluation",
+            sampling_context="pre-transplant",
+        )
+
+
+def test_plan_collections_are_immutable_snapshots() -> None:
+    dependencies = ["step-p0-01"]
+    step = PlanStep(
+        step_id="step-p0-02",
+        tool_id="P0-02",
+        tool_version="0.1.0",
+        disposition="skip",
+        depends_on=dependencies,
+        reference_refs=["reference://v1"],
+        reason_codes=["measurement_spec_not_selected"],
+    )
+    dependencies.append("step-p0-99")
+
+    assert step.depends_on == ("step-p0-01",)
+    assert isinstance(step.reference_refs, tuple)
+
+
+from pathlib import Path
+import hashlib
+import json
+
+from bridge.domain.models import ProductCase, SampleRecord
+from bridge.planner.service import PlanBuilder
+from bridge.toolkit.contracts import EligibilityResult, InputAsset, StructuredInputRef
+from bridge.toolkit.registry import ToolRegistry
+
+
+def _case(
+    tmp_path: Path, *, status: str = "confirmed", asset_count: int = 1
+) -> ProductCase:
+    assets = []
+    for index in range(asset_count):
+        asset_path = tmp_path / f"product-{index + 1}.h5ad"
+        asset_path.touch()
+        assets.append(
+            InputAsset(
+                asset_id=f"asset-{index + 1}",
+                path=asset_path.resolve(),
+                format="h5ad",
+                input_level="analysis_ready",
+                matrix_semantics="normalized_expression",
+                assay="scRNA-seq",
+            )
+        )
+    return ProductCase(
+        case_id="case-1",
+        version="0.1",
+        status=status,
+        product_type="mDA progenitor preparation",
+        target_cell_type="midbrain dopaminergic progenitor",
+        differentiation_stage="D16",
+        intended_use="research evaluation",
+        assay="scRNA-seq",
+        product_definition_card_ref="card://pd-mda/v0.1",
+        reference_policy_ref="reference-policy://pd-mda/v0.1",
+        prior_snapshot_ref="prior://pd-mda/v0.1",
+        assets=assets,
+        samples=[
+            SampleRecord(
+                sample_id="sample-1",
+                preparation_id="prep-1",
+                asset_ids=[asset.asset_id for asset in assets],
+                data_role="evaluation",
+                sampling_context="pre-transplant",
+            )
+        ],
+    )
+
+
+def test_plan_builder_is_deterministic_and_keeps_scaffolds_skipped(tmp_path: Path) -> None:
+    builder = PlanBuilder()
+    case = _case(tmp_path)
+
+    first = builder.build(
+        case,
+        output_root=tmp_path / "runs",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+    )
+    second = builder.build(
+        case,
+        output_root=tmp_path / "runs",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+    )
+
+    assert first == second
+    assert first.steps[0].tool_id == "P0-01"
+    assert first.steps[0].disposition == "execute"
+    assert first.steps[2].disposition == "skip"
+    assert first.steps[2].reason_codes == ("upstream_step_not_executable",)
+    assert first.steps[-1].tool_id == "P0-12"
+
+
+def test_plan_builder_rejects_unconfirmed_case(tmp_path: Path) -> None:
+    try:
+        PlanBuilder().build(
+            _case(tmp_path, status="draft"),
+            output_root=tmp_path / "runs",
+            knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        )
+    except ValueError as exc:
+        assert str(exc) == "case_not_confirmed"
+    else:
+        raise AssertionError("draft case unexpectedly produced a plan")
+
+
+def test_plan_builder_expands_input_qc_per_asset_without_collapsing_steps(
+    tmp_path: Path,
+) -> None:
+    plan = PlanBuilder().build(
+        _case(tmp_path, asset_count=2),
+        output_root=tmp_path / "runs",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+    )
+
+    qc_steps = [step for step in plan.steps if step.tool_id == "P0-01"]
+    assert [step.step_id for step in qc_steps] == [
+        "step-p0-01-asset-001",
+        "step-p0-01-asset-002",
+    ]
+    requests = [json.loads(step.approved_request_json or "{}") for step in qc_steps]
+    assert [[asset["asset_id"] for asset in item["assets"]] for item in requests] == [
+        ["asset-1"],
+        ["asset-2"],
+    ]
+
+
+class _StructuredPlanningRegistry:
+    def __init__(self) -> None:
+        self._delegate = ToolRegistry.load_default()
+
+    def list(self):
+        return self._delegate.list()
+
+    def check_eligibility(self, request):
+        if request.tool_id == "P0-08":
+            return EligibilityResult(tool_id=request.tool_id, eligible=True)
+        return self._delegate.check_eligibility(request)
+
+
+def test_structured_tool_requires_explicit_inputs_and_is_not_blocked_by_scaffolds(
+    tmp_path: Path,
+) -> None:
+    structured_path = (tmp_path / "gate.json").resolve()
+    structured_path.write_text("{}", encoding="utf-8")
+    structured = StructuredInputRef(
+        input_id="gate-1",
+        role="gate_rule_spec",
+        schema_ref="bridge://schemas/evidence-gate-rule-spec/v0.1",
+        object_version="0.1",
+        path=structured_path,
+        sha256=hashlib.sha256(b"{}").hexdigest(),
+    )
+    builder = PlanBuilder(_StructuredPlanningRegistry())
+
+    missing = builder.build(
+        _case(tmp_path),
+        output_root=tmp_path / "runs-missing",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+    )
+    supplied = builder.build(
+        _case(tmp_path),
+        output_root=tmp_path / "runs-supplied",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        structured_input_bindings={"P0-08": [structured]},
+    )
+
+    missing_step = next(step for step in missing.steps if step.tool_id == "P0-08")
+    supplied_step = next(step for step in supplied.steps if step.tool_id == "P0-08")
+    assert missing_step.reason_codes == ("structured_inputs_not_selected",)
+    assert supplied_step.disposition == "execute"
+    assert supplied_step.depends_on == ()
+    assert json.loads(supplied_step.approved_request_json or "{}")["object_inputs"][0][
+        "input_id"
+    ] == "gate-1"
+
+
+from pathlib import Path
+import hashlib
+import json
+
+import pytest
+
+from bridge.domain.models import AnalysisPlan, PlanStep
+from bridge.runners.pipeline import (
+    ToolExecutionDenied,
+    ToolExecutionPipeline,
+    ToolExecutionScope,
+)
+from bridge.toolkit.contracts import (
+    EligibilityResult,
+    ExecutionState,
+    ImplementationState,
+    ToolPackageSpec,
+    ToolPackageSpecV2,
+    ToolRequest,
+    ToolRequestV2,
+    ToolRun,
+    ToolRunV2,
+)
+
+
+class FakeRegistry:
+    def __init__(self, *, eligible: bool = True) -> None:
+        self.eligible = eligible
+        self.checked = 0
+        self.ran = 0
+        self.spec = ToolPackageSpec(
+            tool_id="P0-01",
+            name="Input Audit & QC",
+            version="0.1.0",
+            summary="Fake executable contract.",
+            implementation_state="implemented",
+            scientific_status="candidate",
+            environment_spec_id="ENV-P0-CORE-v0.1",
+            input_schema_ref="bridge://schemas/tool-request/v0.1",
+            output_schema_ref="bridge://schemas/tool-run/v0.1",
+            method_ids=["METHOD-FAKE"],
+            card_ref="bridge://tool-cards/P0-01",
+        )
+
+    def describe(self, tool_id: str) -> ToolPackageSpec:
+        assert tool_id == "P0-01"
+        return self.spec
+
+    def check_eligibility(self, request: ToolRequest) -> EligibilityResult:
+        self.checked += 1
+        return EligibilityResult(
+            tool_id=request.tool_id,
+            eligible=self.eligible,
+            reason_codes=[] if self.eligible else ["synthetic_input_ineligible"],
+        )
+
+    def run(self, request: ToolRequest) -> ToolRun:
+        self.ran += 1
+        return ToolRun(
+            run_id="tool-run-1",
+            request=request,
+            implementation_state=ImplementationState.IMPLEMENTED,
+            execution_state=ExecutionState.SUCCEEDED,
+            tool_version="0.1.0",
+            environment_spec_id="ENV-P0-CORE-v0.1",
+        )
+
+
+def _request(tmp_path: Path, **updates) -> ToolRequest:
+    payload = {
+        "request_id": "request-1",
+        "tool_id": "P0-01",
+        "tool_version": "0.1.0",
+        "output_dir": (tmp_path / "outputs").resolve(),
+    }
+    payload.update(updates)
+    return ToolRequest(**payload)
+
+
+def _canonical_request(request: ToolRequest) -> str:
+    return json.dumps(
+        request.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+    )
+
+
+def _scope(
+    tmp_path: Path,
+    *,
+    network_required: bool = False,
+    high_resource_required: bool = False,
+) -> ToolExecutionScope:
+    request = _request(tmp_path)
+    plan = AnalysisPlan(
+        plan_id="plan-1",
+        version="0.1",
+        case_ref="case-1@0.1",
+        case_contract_sha256=hashlib.sha256(b"case-1@0.1").hexdigest(),
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        network_required=network_required,
+        high_resource_required=high_resource_required,
+        steps=[
+            PlanStep(
+                step_id="step-p0-01",
+                tool_id="P0-01",
+                tool_version="0.1.0",
+                disposition="execute",
+                measurement_spec_ref=None,
+                reference_refs=["reference-policy://pd-mda/v0.1"],
+                prior_refs=["prior://pd-mda/v0.1"],
+                approved_request_json=_canonical_request(request),
+                environment_spec_id="ENV-P0-CORE-v0.1",
+                input_schema_ref="bridge://schemas/tool-request/v0.1",
+                output_schema_ref="bridge://schemas/tool-run/v0.1",
+                implementation_state="implemented",
+            ),
+            PlanStep(
+                step_id="step-p0-03",
+                tool_id="P0-03",
+                tool_version="0.1.0",
+                disposition="skip",
+                reason_codes=["tool_package_not_implemented"],
+            ),
+        ],
+    )
+    return ToolExecutionScope.from_plan(plan)
+
+
+def test_pipeline_executes_only_after_all_gates(tmp_path: Path) -> None:
+    registry = FakeRegistry()
+    outcome = ToolExecutionPipeline(_scope(tmp_path), registry).execute(_request(tmp_path))
+
+    assert outcome.execution_state == "succeeded"
+    assert registry.checked == 1
+    assert registry.ran == 1
+
+
+def test_pipeline_rejects_tool_outside_approved_plan_before_registry(tmp_path: Path) -> None:
+    registry = FakeRegistry()
+
+    with pytest.raises(ToolExecutionDenied, match="tool_not_in_approved_plan"):
+        ToolExecutionPipeline(_scope(tmp_path), registry).execute(
+            _request(tmp_path, tool_id="P0-03")
+        )
+
+    assert registry.checked == 0
+    assert registry.ran == 0
+
+
+def test_pipeline_rejects_version_mismatch_before_registry(tmp_path: Path) -> None:
+    registry = FakeRegistry()
+
+    with pytest.raises(ToolExecutionDenied, match="approved_tool_version_mismatch"):
+        ToolExecutionPipeline(_scope(tmp_path), registry).execute(
+            _request(tmp_path, tool_version="9.9.9")
+        )
+
+    assert registry.checked == 0
+    assert registry.ran == 0
+
+
+def test_pipeline_does_not_run_ineligible_tool(tmp_path: Path) -> None:
+    registry = FakeRegistry(eligible=False)
+
+    with pytest.raises(ToolExecutionDenied, match="synthetic_input_ineligible"):
+        ToolExecutionPipeline(_scope(tmp_path), registry).execute(_request(tmp_path))
+
+    assert registry.checked == 1
+    assert registry.ran == 0
+
+
+@pytest.mark.parametrize(
+    ("scope_updates", "reason_code"),
+    [
+        ({"network_required": True}, "network_capability_not_granted"),
+        ({"high_resource_required": True}, "high_resource_capability_not_granted"),
+    ],
+)
+def test_pipeline_requires_explicit_runtime_capability_grants(
+    tmp_path: Path, scope_updates: dict, reason_code: str
+) -> None:
+    registry = FakeRegistry()
+
+    with pytest.raises(ToolExecutionDenied, match=reason_code):
+        ToolExecutionPipeline(_scope(tmp_path, **scope_updates), registry).execute(
+            _request(tmp_path)
+        )
+
+    assert registry.checked == 0
+    assert registry.ran == 0
+
+
+@pytest.mark.parametrize(
+    "updates",
+    [
+        {"request_id": "case-b-request"},
+        {"output_dir": Path("/tmp/case-b-output")},
+        {"parameters": {"case_id": "case-b"}},
+    ],
+)
+def test_pipeline_rejects_any_unapproved_request_field(
+    tmp_path: Path, updates: dict
+) -> None:
+    registry = FakeRegistry()
+
+    with pytest.raises(ToolExecutionDenied, match="approved_request_mismatch"):
+        ToolExecutionPipeline(_scope(tmp_path), registry).execute(
+            _request(tmp_path, **updates)
+        )
+
+    assert registry.checked == 0
+    assert registry.ran == 0
+
+
+def test_scope_rejects_legacy_approved_plan_without_case_binding() -> None:
+    plan = AnalysisPlan(
+        plan_id="legacy-plan",
+        version="0.1",
+        case_ref="case-1@0.1",
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        steps=[
+            PlanStep(
+                step_id="step-p0-01",
+                tool_id="P0-01",
+                tool_version="0.1.0",
+                disposition="execute",
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="missing_case_contract"):
+        ToolExecutionScope.from_plan(plan)
+
+
+class FakeV2Registry:
+    def __init__(self, *, outcome_environment: str = "ENV-EVIDENCE-v0.1") -> None:
+        self.outcome_environment = outcome_environment
+        self.spec = ToolPackageSpecV2(
+            tool_id="P0-08",
+            name="Evidence Sufficiency",
+            version="0.2.0",
+            summary="Fake structured contract.",
+            implementation_state="implemented",
+            scientific_status="candidate",
+            environment_spec_id="ENV-EVIDENCE-v0.1",
+            input_schema_ref="bridge://schemas/tool-request/v0.2",
+            output_schema_ref="bridge://schemas/tool-run/v0.2",
+            result_schema_ref="bridge://schemas/evidence-sufficiency-run-result/v0.1",
+            adapter_ref="bridge.tool_packages.p0_08_evidence_sufficiency.adapter:adapter",
+            method_ids=["METHOD-FAKE"],
+            card_ref="bridge://tool-cards/P0-08",
+        )
+
+    def describe(self, tool_id: str) -> ToolPackageSpecV2:
+        assert tool_id == "P0-08"
+        return self.spec
+
+    def check_eligibility(self, request: ToolRequestV2) -> EligibilityResult:
+        return EligibilityResult(tool_id=request.tool_id, eligible=True)
+
+    def run(self, request: ToolRequestV2) -> ToolRunV2:
+        return ToolRunV2(
+            run_id="tool-run-v2",
+            request=request,
+            implementation_state="implemented",
+            execution_state="succeeded",
+            tool_version="0.2.0",
+            environment_spec_id=self.outcome_environment,
+            result_schema_ref=self.spec.result_schema_ref,
+            result={},
+        )
+
+
+def _v2_request(tmp_path: Path) -> ToolRequestV2:
+    return ToolRequestV2(
+        request_id="request-v2",
+        tool_id="P0-08",
+        tool_version="0.2.0",
+        output_dir=(tmp_path / "v2-outputs").resolve(),
+    )
+
+
+def _v2_scope(tmp_path: Path) -> ToolExecutionScope:
+    request = _v2_request(tmp_path)
+    plan = AnalysisPlan(
+        plan_id="plan-v2",
+        version="0.2",
+        case_ref="case-1@0.1",
+        case_contract_sha256=hashlib.sha256(b"case-1@0.1").hexdigest(),
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        steps=[
+            PlanStep(
+                step_id="step-p0-08",
+                tool_id="P0-08",
+                tool_version="0.2.0",
+                disposition="execute",
+                approved_request_json=json.dumps(
+                    request.model_dump(mode="json"),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                reference_refs=["reference-policy://pd-mda/v0.1"],
+                prior_refs=["prior://pd-mda/v0.1"],
+                environment_spec_id="ENV-EVIDENCE-v0.1",
+                input_schema_ref="bridge://schemas/tool-request/v0.2",
+                output_schema_ref="bridge://schemas/tool-run/v0.2",
+                implementation_state="implemented",
+                result_schema_ref=(
+                    "bridge://schemas/evidence-sufficiency-run-result/v0.1"
+                ),
+            )
+        ],
+    )
+    return ToolExecutionScope.from_plan(plan)
+
+
+def test_pipeline_preserves_registry_selected_v2_contract(tmp_path: Path) -> None:
+    outcome = ToolExecutionPipeline(
+        _v2_scope(tmp_path), FakeV2Registry()
+    ).execute(_v2_request(tmp_path))
+
+    assert isinstance(outcome, ToolRunV2)
+    assert isinstance(outcome.request, ToolRequestV2)
+
+
+def test_pipeline_rejects_result_environment_drift(tmp_path: Path) -> None:
+    with pytest.raises(RuntimeError, match="outcome_environment_mismatch"):
+        ToolExecutionPipeline(
+            _v2_scope(tmp_path),
+            FakeV2Registry(outcome_environment="ENV-UNAPPROVED"),
+        ).execute(_v2_request(tmp_path))
+
+
+from pathlib import Path
+
+import pytest
+
+from bridge.domain.models import AnalysisPlan, PlanStep
+from bridge.workflow.event_store import SQLiteRunEventStore
+from bridge.workflow.executor import LocalWorkflowExecutor
+
+
+def _approved_plan() -> AnalysisPlan:
+    return AnalysisPlan(
+        plan_id="plan-1",
+        version="0.1",
+        case_ref="case-1@0.1",
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        steps=[
+            PlanStep(
+                step_id="step-p0-01",
+                tool_id="P0-01",
+                tool_version="0.1.0",
+                disposition="execute",
+            ),
+            PlanStep(
+                step_id="step-p0-02",
+                tool_id="P0-02",
+                tool_version="0.1.0",
+                disposition="execute",
+                depends_on=["step-p0-01"],
+            ),
+            PlanStep(
+                step_id="step-p0-03",
+                tool_id="P0-03",
+                tool_version="0.1.0",
+                disposition="skip",
+                depends_on=["step-p0-02"],
+                reason_codes=["tool_package_not_implemented"],
+            ),
+        ],
+    )
+
+
+def test_executor_claims_dependencies_in_order() -> None:
+    executor = LocalWorkflowExecutor()
+    run_id = executor.submit(_approved_plan())
+
+    first = executor.claim_step(run_id)
+    assert first is not None and first.step_id == "step-p0-01"
+    assert executor.claim_step(run_id) is None
+
+    executor.complete_step(run_id, first.step_id, succeeded=True)
+    second = executor.claim_step(run_id)
+    assert second is not None and second.step_id == "step-p0-02"
+    executor.complete_step(run_id, second.step_id, succeeded=True)
+
+    snapshot = executor.get_status(run_id)
+    assert snapshot.status == "succeeded"
+    assert [step.status for step in snapshot.steps] == ["succeeded", "succeeded", "skipped"]
+
+
+def test_executor_resumes_failed_step_without_rerunning_success() -> None:
+    executor = LocalWorkflowExecutor(max_attempts=2)
+    run_id = executor.submit(_approved_plan())
+    first = executor.claim_step(run_id)
+    assert first is not None
+    executor.complete_step(run_id, first.step_id, succeeded=True)
+    second = executor.claim_step(run_id)
+    assert second is not None
+    executor.complete_step(
+        run_id,
+        second.step_id,
+        succeeded=False,
+        reason_codes=["transient_subprocess_failure"],
+    )
+
+    executor.resume(run_id)
+    retried = executor.claim_step(run_id)
+    assert retried is not None and retried.step_id == second.step_id
+    snapshot = executor.get_status(run_id)
+    assert snapshot.steps[0].attempts == 1
+    assert snapshot.steps[1].attempts == 2
+
+    executor.complete_step(
+        run_id,
+        retried.step_id,
+        succeeded=False,
+        reason_codes=["transient_subprocess_failure"],
+    )
+    with pytest.raises(ValueError, match="retry_limit_reached"):
+        executor.resume(run_id)
+
+
+def test_retry_exhaustion_blocks_descendants_but_runs_independent_steps() -> None:
+    plan = AnalysisPlan(
+        plan_id="plan-branches",
+        version="0.1",
+        case_ref="case-1@0.1",
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        steps=[
+            PlanStep(
+                step_id="failed-root",
+                tool_id="P0-01",
+                tool_version="0.1.0",
+                disposition="execute",
+            ),
+            PlanStep(
+                step_id="blocked-child",
+                tool_id="P0-02",
+                tool_version="0.1.0",
+                disposition="execute",
+                depends_on=["failed-root"],
+            ),
+            PlanStep(
+                step_id="blocked-grandchild",
+                tool_id="P0-03",
+                tool_version="0.1.0",
+                disposition="execute",
+                depends_on=["blocked-child"],
+            ),
+            PlanStep(
+                step_id="independent",
+                tool_id="P0-04",
+                tool_version="0.1.0",
+                disposition="execute",
+            ),
+        ],
+    )
+    executor = LocalWorkflowExecutor(max_attempts=1)
+    run_id = executor.submit(plan)
+    failed = executor.claim_step(run_id)
+    assert failed is not None and failed.step_id == "failed-root"
+    executor.complete_step(
+        run_id,
+        failed.step_id,
+        succeeded=False,
+        reason_codes=["permanent_failure"],
+    )
+
+    partial = executor.get_status(run_id)
+    assert partial.status == "partial"
+    assert [step.status for step in partial.steps] == [
+        "failed",
+        "skipped",
+        "skipped",
+        "pending",
+    ]
+    assert partial.steps[1].reason_codes == ["upstream_step_retry_exhausted"]
+
+    independent = executor.claim_step(run_id)
+    assert independent is not None and independent.step_id == "independent"
+    executor.complete_step(run_id, independent.step_id, succeeded=True)
+    assert executor.get_status(run_id).status == "failed"
+
+
+def test_failure_requires_reason_and_terminal_failure_cannot_be_cancelled() -> None:
+    executor = LocalWorkflowExecutor(max_attempts=1)
+    run_id = executor.submit(_approved_plan())
+    claimed = executor.claim_step(run_id)
+    assert claimed is not None
+    with pytest.raises(ValueError, match="failure_requires_reason_codes"):
+        executor.complete_step(run_id, claimed.step_id, succeeded=False)
+
+    executor.complete_step(
+        run_id,
+        claimed.step_id,
+        succeeded=False,
+        reason_codes=["permanent_failure"],
+    )
+    executor.cancel(run_id)
+    assert executor.get_status(run_id).status == "failed"
+
+
+def test_executor_rejects_draft_plan() -> None:
+    draft = _approved_plan().model_copy(update={"status": "draft"})
+    with pytest.raises(ValueError, match="not_approved"):
+        LocalWorkflowExecutor().submit(draft)
+
+
+def test_sqlite_executor_recovers_an_interrupted_step(tmp_path: Path) -> None:
+    database_path = tmp_path / "workflow.sqlite3"
+    first_process = LocalWorkflowExecutor(SQLiteRunEventStore(database_path))
+    run_id = first_process.submit(_approved_plan())
+    claimed = first_process.claim_step(run_id)
+    assert claimed is not None and claimed.step_id == "step-p0-01"
+
+    restarted_process = LocalWorkflowExecutor(SQLiteRunEventStore(database_path))
+    assert restarted_process.get_status(run_id).status == "running"
+    restarted_process.resume(run_id)
+    reclaimed = restarted_process.claim_step(run_id)
+
+    assert reclaimed is not None and reclaimed.step_id == "step-p0-01"
+    assert restarted_process.get_status(run_id).steps[0].attempts == 2
+
+
+def test_sqlite_restart_preserves_retry_exhaustion_terminalization(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "workflow.sqlite3"
+    first_process = LocalWorkflowExecutor(
+        SQLiteRunEventStore(database_path), max_attempts=1
+    )
+    run_id = first_process.submit(_approved_plan())
+    claimed = first_process.claim_step(run_id)
+    assert claimed is not None
+    first_process.complete_step(
+        run_id,
+        claimed.step_id,
+        succeeded=False,
+        reason_codes=["permanent_failure"],
+    )
+
+    restarted_process = LocalWorkflowExecutor(
+        SQLiteRunEventStore(database_path), max_attempts=1
+    )
+    snapshot = restarted_process.get_status(run_id)
+    assert snapshot.status == "failed"
+    assert [step.status for step in snapshot.steps] == ["failed", "skipped", "skipped"]
+    assert snapshot.steps[1].reason_codes == ["upstream_step_retry_exhausted"]
+
+
+from pathlib import Path
+
+import pytest
+
+from bridge.workflow.event_store import (
+    EventSequenceConflict,
+    InMemoryRunEventStore,
+    SQLiteRunEventStore,
+)
+
+
+def _plan_payload() -> dict:
+    return {
+        "plan_id": "plan-1",
+        "version": "0.1",
+        "case_ref": "case-1@0.1",
+        "status": "approved",
+        "knowledge_snapshot_ref": "knowledge://p0/2026-08-12",
+        "steps": [
+            {
+                "step_id": "step-p0-01",
+                "tool_id": "P0-01",
+                "tool_version": "0.1.0",
+                "disposition": "execute",
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize("store_kind", ["memory", "sqlite"])
+def test_event_store_appends_ordered_events(tmp_path: Path, store_kind: str) -> None:
+    store = (
+        InMemoryRunEventStore()
+        if store_kind == "memory"
+        else SQLiteRunEventStore(tmp_path / "workflow.sqlite3")
+    )
+
+    store.append(
+        "run-1",
+        "run_submitted",
+        {"plan": _plan_payload()},
+        expected_sequence=0,
+    )
+    store.append(
+        "run-1",
+        "run_cancelled",
+        {},
+        expected_sequence=1,
+    )
+
+    events = store.load("run-1")
+    assert [event.sequence for event in events] == [1, 2]
+    assert [event.event_type for event in events] == ["run_submitted", "run_cancelled"]
+    assert [event.schema_version for event in events] == ["1", "1"]
+
+
+@pytest.mark.parametrize("store_kind", ["memory", "sqlite"])
+def test_event_store_rejects_stale_sequence(tmp_path: Path, store_kind: str) -> None:
+    store = (
+        InMemoryRunEventStore()
+        if store_kind == "memory"
+        else SQLiteRunEventStore(tmp_path / "workflow.sqlite3")
+    )
+    store.append("run-1", "run_cancelled", {}, expected_sequence=0)
+
+    with pytest.raises(EventSequenceConflict, match="sequence_conflict"):
+        store.append("run-1", "run_cancelled", {}, expected_sequence=0)
+
+
+def test_sqlite_store_persists_across_instances(tmp_path: Path) -> None:
+    database_path = tmp_path / "workflow.sqlite3"
+    first = SQLiteRunEventStore(database_path)
+    first.append("run-1", "run_cancelled", {}, expected_sequence=0)
+
+    second = SQLiteRunEventStore(database_path)
+
+    assert second.load("run-1") == first.load("run-1")
+
+
+def test_memory_store_defensively_snapshots_nested_payloads() -> None:
+    store = InMemoryRunEventStore()
+    payload = {"plan": _plan_payload()}
+    store.append("run-1", "run_submitted", payload, expected_sequence=0)
+    payload["plan"]["plan_id"] = "mutated"
+
+    loaded = store.load("run-1")
+    assert loaded[0].payload.plan.plan_id == "plan-1"  # type: ignore[union-attr]
+    loaded_again = store.load("run-1")
+    assert loaded[0] is not loaded_again[0]
+    assert loaded[0].payload is not loaded_again[0].payload
+
+
+def test_sqlite_store_marks_pre_version_column_rows_as_legacy(tmp_path: Path) -> None:
+    import json
+    import sqlite3
+
+    database_path = tmp_path / "legacy.sqlite3"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE run_events (
+                run_id TEXT NOT NULL,
+                sequence INTEGER NOT NULL,
+                event_id TEXT NOT NULL UNIQUE,
+                event_type TEXT NOT NULL,
+                recorded_at TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                PRIMARY KEY (run_id, sequence)
+            )
+            """
+        )
+        connection.execute(
+            "INSERT INTO run_events VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "run-1",
+                1,
+                "event-1",
+                "run_cancelled",
+                "2026-08-16T00:00:00+00:00",
+                json.dumps({}),
+            ),
+        )
+
+    events = SQLiteRunEventStore(database_path).load("run-1")
+    assert events[0].schema_version == "0"
+
+
+from datetime import datetime, timezone
+
+import pytest
+
+from bridge.domain.models import AnalysisPlan, PlanStep
+from bridge.workflow.events import RunEvent, project_run
+
+
+def _plan() -> AnalysisPlan:
+    return AnalysisPlan(
+        plan_id="plan-1",
+        version="0.1",
+        case_ref="case-1@0.1",
+        status="approved",
+        knowledge_snapshot_ref="knowledge://p0/2026-08-12",
+        steps=[
+            PlanStep(
+                step_id="step-p0-01",
+                tool_id="P0-01",
+                tool_version="0.1.0",
+                disposition="execute",
+            ),
+            PlanStep(
+                step_id="step-p0-02",
+                tool_id="P0-02",
+                tool_version="0.1.0",
+                disposition="execute",
+                depends_on=["step-p0-01"],
+            ),
+        ],
+    )
+
+
+def _event(sequence: int, event_type: str, payload: dict | None = None) -> RunEvent:
+    return RunEvent(
+        event_id=f"event-{sequence}",
+        run_id="run-1",
+        sequence=sequence,
+        event_type=event_type,
+        recorded_at=datetime(2026, 8, 16, tzinfo=timezone.utc),
+        payload=payload or {},
+    )
+
+
+def test_projection_rebuilds_attempts_failure_and_resume() -> None:
+    events = [
+        _event(1, "run_submitted", {"plan": _plan().model_dump(mode="json")}),
+        _event(2, "step_claimed", {"step_id": "step-p0-01"}),
+        _event(3, "step_succeeded", {"step_id": "step-p0-01"}),
+        _event(4, "step_claimed", {"step_id": "step-p0-02"}),
+        _event(
+            5,
+            "step_failed",
+            {"step_id": "step-p0-02", "reason_codes": ["transient_failure"]},
+        ),
+        _event(6, "run_resumed", {"step_ids": ["step-p0-02"]}),
+        _event(7, "step_claimed", {"step_id": "step-p0-02"}),
+        _event(8, "step_succeeded", {"step_id": "step-p0-02"}),
+    ]
+
+    projection = project_run(events)
+
+    assert projection.status == "succeeded"
+    assert projection.steps["step-p0-01"].attempts == 1
+    assert projection.steps["step-p0-02"].attempts == 2
+    assert projection.last_sequence == 8
+
+
+def test_projection_rejects_a_sequence_gap() -> None:
+    with pytest.raises(ValueError, match="sequence_invalid"):
+        project_run(
+            [
+                _event(1, "run_submitted", {"plan": _plan().model_dump(mode="json")}),
+                _event(3, "step_claimed", {"step_id": "step-p0-01"}),
+            ]
+        )
+
+
+def test_projection_rejects_claim_before_dependencies() -> None:
+    with pytest.raises(ValueError, match="dependencies_not_succeeded"):
+        project_run(
+            [
+                _event(1, "run_submitted", {"plan": _plan().model_dump(mode="json")}),
+                _event(2, "step_claimed", {"step_id": "step-p0-02"}),
+            ]
+        )
+
+
+def test_event_contract_rejects_missing_and_duplicate_failure_reasons() -> None:
+    with pytest.raises(ValueError, match="failure_requires_reason_codes"):
+        _event(1, "step_failed", {"step_id": "step-p0-01"})
+    with pytest.raises(ValueError, match="reason_codes_must_be_unique"):
+        _event(
+            1,
+            "step_failed",
+            {"step_id": "step-p0-01", "reason_codes": ["failure", "failure"]},
+        )
+
+
+def test_projection_rejects_cancellation_after_terminal_failure() -> None:
+    events = [
+        _event(1, "run_submitted", {"plan": _plan().model_dump(mode="json")}),
+        _event(2, "step_claimed", {"step_id": "step-p0-01"}),
+        _event(
+            3,
+            "step_failed",
+            {
+                "step_id": "step-p0-01",
+                "reason_codes": ["permanent_failure"],
+                "retry_exhausted": True,
+                "blocked_steps": [
+                    {
+                        "step_id": "step-p0-02",
+                        "reason_codes": ["upstream_step_retry_exhausted"],
+                    }
+                ],
+            },
+        ),
+        _event(4, "run_cancelled"),
+    ]
+    with pytest.raises(ValueError, match="terminal_run_cannot_be_cancelled"):
+        project_run(events)
