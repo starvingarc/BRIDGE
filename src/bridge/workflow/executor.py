@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from bridge.domain import AnalysisPlan, PlanStatus, PlanStep
+from bridge.domain.models import AnalysisPlan, PlanStatus, PlanStep
 from bridge.workflow.event_store import InMemoryRunEventStore, RunEventStore
 from bridge.workflow.events import (
     RunEventType,
     RunProjection,
+    RunSnapshot,
+    RunStatus,
+    StepStatus,
     blocked_descendant_ids,
     project_run,
 )
-from bridge.workflow.models import RunSnapshot, RunStatus, StepStatus
 
 
 class LocalWorkflowExecutor:
