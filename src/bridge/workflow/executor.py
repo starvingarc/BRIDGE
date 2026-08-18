@@ -4,7 +4,12 @@ from uuid import uuid4
 
 from bridge.domain import AnalysisPlan, PlanStatus, PlanStep
 from bridge.workflow.event_store import InMemoryRunEventStore, RunEventStore
-from bridge.workflow.events import RunEventType, RunProjection, project_run
+from bridge.workflow.events import (
+    RunEventType,
+    RunProjection,
+    blocked_descendant_ids,
+    project_run,
+)
 from bridge.workflow.models import RunSnapshot, RunStatus, StepStatus
 
 
@@ -77,6 +82,20 @@ class LocalWorkflowExecutor:
         state = self._step(run, step_id)
         if state.status is not StepStatus.RUNNING:
             raise ValueError("workflow_step_not_running")
+        if not succeeded and not reason_codes:
+            raise ValueError("workflow_failure_requires_reason_codes")
+        retry_exhausted = not succeeded and state.attempts >= self._max_attempts
+        blocked_steps = (
+            [
+                {
+                    "step_id": blocked_step_id,
+                    "reason_codes": ["upstream_step_retry_exhausted"],
+                }
+                for blocked_step_id in blocked_descendant_ids(run, step_id)
+            ]
+            if retry_exhausted
+            else []
+        )
         self._event_store.append(
             run_id,
             (
@@ -84,13 +103,23 @@ class LocalWorkflowExecutor:
                 if succeeded
                 else RunEventType.STEP_FAILED
             ),
-            {"step_id": step_id, "reason_codes": reason_codes or []},
+            {
+                "step_id": step_id,
+                "reason_codes": reason_codes or [],
+                "retry_exhausted": retry_exhausted,
+                "blocked_steps": blocked_steps,
+            },
             expected_sequence=run.last_sequence,
         )
 
     def cancel(self, run_id: str) -> None:
         run = self._projection(run_id)
-        if run.status in {RunStatus.SUCCEEDED, RunStatus.CANCELLED, RunStatus.SKIPPED}:
+        if run.status in {
+            RunStatus.SUCCEEDED,
+            RunStatus.FAILED,
+            RunStatus.CANCELLED,
+            RunStatus.SKIPPED,
+        }:
             return
         self._event_store.append(
             run_id,
