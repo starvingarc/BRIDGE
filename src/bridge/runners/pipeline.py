@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Protocol
 
-from bridge.domain import AnalysisPlan, PlanStatus, StepDisposition
+from bridge.domain.models import AnalysisPlan, PlanStatus, StepDisposition
 from bridge.toolkit.contracts import (
     EligibilityResult,
     ExecutionState,

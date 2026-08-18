@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from bridge.domain import AnalysisPlan, PlanStep, ProductCase, StepDisposition
+from bridge.domain.models import AnalysisPlan, PlanStep, ProductCase, StepDisposition
 from bridge.toolkit.contracts import (
     StructuredInputRef,
     ToolPackageSpecV2,
