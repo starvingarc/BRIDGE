@@ -163,6 +163,29 @@ class EvidenceSufficiencyAdapter:
         request: ToolRequestV2,
         spec: ToolPackageSpecV2,
     ) -> EligibilityResult:
+        return self._check_eligibility(request, spec)
+
+    def check_case_eligibility(
+        self,
+        request: ToolRequestV2,
+        spec: ToolPackageSpecV2,
+        *,
+        case_id: str,
+        case_version: str,
+    ) -> EligibilityResult:
+        return self._check_eligibility(
+            request,
+            spec,
+            approved_case=(case_id, case_version),
+        )
+
+    def _check_eligibility(
+        self,
+        request: ToolRequestV2,
+        spec: ToolPackageSpecV2,
+        *,
+        approved_case: tuple[str, str] | None = None,
+    ) -> EligibilityResult:
         if not isinstance(request, ToolRequestV2):
             tool_id = request.tool_id if isinstance(request, ToolRequest) else "P0-08"
             return EligibilityResult(
@@ -175,6 +198,10 @@ class EvidenceSufficiencyAdapter:
         reasons.extend(loading_reasons)
         if loaded is not None:
             reasons.extend(_binding_reasons(request, loaded))
+            if approved_case is not None:
+                reasons.extend(
+                    _approved_case_binding_reasons(request, loaded, approved_case)
+                )
         reason_codes = sorted(set(reasons))
         return EligibilityResult(
             tool_id=request.tool_id,
@@ -437,6 +464,29 @@ def _pointer_identity(
         pointer.object_version,
         tuple(sorted(pointer.provenance_refs)),
     )
+
+
+def _approved_case_binding_reasons(
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    approved_case: tuple[str, str],
+) -> list[str]:
+    domain_inputs = _objects_for_role(
+        request,
+        loaded,
+        "domain_gate_input",
+        DomainGateInput,
+    )
+    if not domain_inputs or any(item.product_case is None for item in domain_inputs):
+        return ["approved_product_case_binding_missing"]
+    actual = {
+        (item.product_case.object_id, item.product_case.object_version)
+        for item in domain_inputs
+        if item.product_case is not None
+    }
+    if actual != {approved_case}:
+        return ["approved_product_case_binding_mismatch"]
+    return []
 
 
 def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:

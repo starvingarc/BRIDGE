@@ -134,6 +134,29 @@ class EvidenceCompilerAdapter:
     def check_eligibility(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
     ) -> EligibilityResult:
+        return self._check_eligibility(request, spec)
+
+    def check_case_eligibility(
+        self,
+        request: ToolRequestV2,
+        spec: ToolPackageSpecV2,
+        *,
+        case_id: str,
+        case_version: str,
+    ) -> EligibilityResult:
+        return self._check_eligibility(
+            request,
+            spec,
+            approved_case=(case_id, case_version),
+        )
+
+    def _check_eligibility(
+        self,
+        request: ToolRequestV2,
+        spec: ToolPackageSpecV2,
+        *,
+        approved_case: tuple[str, str] | None = None,
+    ) -> EligibilityResult:
         if not isinstance(request, ToolRequestV2):
             tool_id = request.tool_id if isinstance(request, ToolRequest) else "P0-09"
             return EligibilityResult(
@@ -147,6 +170,10 @@ class EvidenceCompilerAdapter:
         if loaded is not None:
             try:
                 reasons.extend(_binding_reasons(request, loaded))
+                if approved_case is not None:
+                    reasons.extend(
+                        _approved_case_binding_reasons(request, loaded, approved_case)
+                    )
             except (OSError, RuntimeError):
                 reasons.append("output_dir_preflight_failed")
         reason_codes = sorted(set(reasons))
@@ -420,6 +447,34 @@ def _top_level_raw_payload(role: str, value: Any) -> Any:
             "external_case_evidence_refs",
         }
     }
+
+
+def _approved_case_binding_reasons(
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    approved_case: tuple[str, str],
+) -> list[str]:
+    bundles = _objects_for_role(
+        request,
+        loaded,
+        "compilation_bundle",
+        EvidenceCompilationBundle,
+    )
+    if len(bundles) != 1:
+        return ["approved_product_case_binding_missing"]
+    bundle = bundles[0]
+    # A comparison bundle is rooted in a ComparisonRecord, not one ProductCase.
+    # A case-scoped plan must therefore refuse it instead of guessing a case from
+    # filenames, graph prefixes, or one member of its comparison set.
+    if bundle.graph_kind is not GraphKind.CASE or bundle.product_case_ref is None:
+        return ["approved_product_case_binding_missing"]
+    actual = (
+        bundle.product_case_ref.object_id,
+        bundle.product_case_ref.object_version,
+    )
+    if actual != approved_case:
+        return ["approved_product_case_binding_mismatch"]
+    return []
 
 
 def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
