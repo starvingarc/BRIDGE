@@ -157,6 +157,7 @@ class AgentTurn(FrozenModel):
 
 
 class AgentTurnRequest(FrozenModel):
+    classification: Literal["public_safe"]
     user_message: str = Field(min_length=1, max_length=65536)
     public_safe_context: tuple[PublicAgentContext, ...] = ()
 
@@ -264,18 +265,17 @@ class LocalAgentLoop:
 
     def respond(
         self,
-        user_message: str,
-        *,
-        context: tuple[PublicAgentContext, ...] = (),
+        request: AgentTurnRequest,
     ) -> AgentTurn:
-        if not user_message.strip():
-            raise ValueError("agent_user_message_blank")
-        context_ids = tuple(item.context_id for item in context)
+        context_ids = tuple(item.context_id for item in request.public_safe_context)
         if len(context_ids) != len(set(context_ids)):
             raise ValueError("agent_context_ids_duplicate")
-        context_payload = [item.model_dump(mode="json") for item in context]
+        context_payload = [
+            item.model_dump(mode="json") for item in request.public_safe_context
+        ]
         user_payload = {
-            "user_message": user_message,
+            "classification": request.classification,
+            "user_message": request.user_message,
             "public_safe_context": context_payload,
         }
         call = self._client.complete(
@@ -326,10 +326,7 @@ def main(argv: list[str] | None = None) -> int:
         request = AgentTurnRequest.model_validate_json(raw)
         turn = LocalAgentLoop(
             DeepInferClient.from_env(timeout_seconds=args.timeout)
-        ).respond(
-            request.user_message,
-            context=request.public_safe_context,
-        )
+        ).respond(request)
         print(turn.model_dump_json())
         return 0
     except DeepInferError as error:

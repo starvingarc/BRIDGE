@@ -3623,6 +3623,7 @@ def test_local_agent_loop_accepts_only_explicit_public_safe_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from bridge.runners import (
+        AgentTurnRequest,
         AgentIntent,
         DeepInferClient,
         DeepInferConfig,
@@ -3647,13 +3648,16 @@ def test_local_agent_loop_accepts_only_explicit_public_safe_context(
         DeepInferClient(DeepInferConfig(base_url="https://inference.example/v1"))
     )
     turn = loop.respond(
-        "Can this case run?",
-        context=(
-            PublicAgentContext(
-                context_id="status-summary",
-                content="P0-01 succeeded; score_state=unavailable",
+        AgentTurnRequest(
+            classification="public_safe",
+            user_message="Can this case run?",
+            public_safe_context=(
+                PublicAgentContext(
+                    context_id="status-summary",
+                    content="P0-01 succeeded; score_state=unavailable",
+                ),
             ),
-        ),
+        )
     )
 
     assert turn.decision.intent is AgentIntent.CLARIFY
@@ -3675,11 +3679,20 @@ def test_local_agent_loop_accepts_only_explicit_public_safe_context(
         )
     with pytest.raises(ValueError, match="context_ids_duplicate"):
         loop.respond(
-            "explain",
-            context=(
-                PublicAgentContext(context_id="same", content="one"),
-                PublicAgentContext(context_id="same", content="two"),
-            ),
+            AgentTurnRequest(
+                classification="public_safe",
+                user_message="explain",
+                public_safe_context=(
+                    PublicAgentContext(context_id="same", content="one"),
+                    PublicAgentContext(context_id="same", content="two"),
+                ),
+            )
+        )
+
+    with pytest.raises(ValidationError):
+        AgentTurnRequest(
+            classification="private",  # type: ignore[arg-type]
+            user_message="must not leave the runtime",
         )
 
 
@@ -3741,7 +3754,13 @@ def test_deepinfer_transport_errors_are_stable_and_secret_free(
 def test_local_agent_loop_rejects_unstructured_model_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from bridge.runners import DeepInferClient, DeepInferConfig, DeepInferError, LocalAgentLoop
+    from bridge.runners import (
+        AgentTurnRequest,
+        DeepInferClient,
+        DeepInferConfig,
+        DeepInferError,
+        LocalAgentLoop,
+    )
 
     monkeypatch.setattr(
         "bridge.runners.llm.urlopen",
@@ -3753,7 +3772,12 @@ def test_local_agent_loop_rejects_unstructured_model_output(
         DeepInferClient(DeepInferConfig(base_url="https://inference.example/v1"))
     )
     with pytest.raises(DeepInferError) as caught:
-        loop.respond("Run the tool")
+        loop.respond(
+            AgentTurnRequest(
+                classification="public_safe",
+                user_message="Run the tool",
+            )
+        )
     assert caught.value.reason_code == "agent_response_contract_invalid"
 
 
@@ -3768,6 +3792,7 @@ def test_bridge_agent_cli_runs_one_structured_turn(
     request_path.write_text(
         json.dumps(
             {
+                "classification": "public_safe",
                 "user_message": "Explain this deterministic status.",
                 "public_safe_context": [
                     {
@@ -3813,6 +3838,7 @@ def test_bridge_agent_cli_rejects_private_or_invalid_input_without_echo(
     request_path.write_text(
         json.dumps(
             {
+                "classification": "private",
                 "user_message": "secret-canary",
                 "public_safe_context": [
                     {
