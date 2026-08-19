@@ -59,7 +59,7 @@ class DeepInferError(RuntimeError):
 class DeepInferConfig(FrozenModel):
     base_url: str = Field(min_length=1)
     model: Literal["deepseek-v4-flash-0731"] = DEEPINFER_MODEL
-    timeout_seconds: float = Field(default=60.0, gt=0, le=300)
+    timeout_seconds: float = Field(default=120.0, gt=0, le=300)
 
     @field_validator("base_url")
     @classmethod
@@ -177,7 +177,7 @@ class DeepInferClient:
         self._api_key = api_key or None
 
     @classmethod
-    def from_env(cls, *, timeout_seconds: float = 60.0) -> "DeepInferClient":
+    def from_env(cls, *, timeout_seconds: float = 120.0) -> "DeepInferClient":
         base_url = os.environ.get("DEEPINFER_BASE_URL")
         if not base_url:
             raise DeepInferError("deepinfer_base_url_missing")
@@ -313,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="AgentTurnRequest JSON path, or '-' to read stdin.",
     )
-    parser.add_argument("--timeout", type=float, default=60.0)
+    parser.add_argument("--timeout", type=float, default=120.0)
     args = parser.parse_args(argv)
     try:
         if args.request == "-":

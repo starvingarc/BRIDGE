@@ -89,6 +89,9 @@ the `AgentTurn`, error payload or audit record.
 bridge-agent --request agent-turn.json
 ```
 
+The synchronous timeout defaults to 120 seconds and can be overridden with
+`--timeout`; the first configured-service smoke response took about 82 seconds.
+
 The explicit `public_safe` classification is a caller assertion, not automatic
 redaction. The entire user message and every context item leave the local process
 for the configured provider; raw assets, private manifests, filesystem paths and

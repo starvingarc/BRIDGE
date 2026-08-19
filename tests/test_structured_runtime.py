@@ -3536,6 +3536,7 @@ def test_deepinfer_configuration_is_fixed_and_secret_free(monkeypatch: pytest.Mo
     assert config.base_url == "https://inference.example/v1"
     assert config.chat_completions_url == "https://inference.example/v1/chat/completions"
     assert config.model == DEEPINFER_MODEL == "deepseek-v4-flash-0731"
+    assert config.timeout_seconds == 120
 
     monkeypatch.setenv("DEEPINFER_BASE_URL", "https://inference.example/v1")
     monkeypatch.setenv("DEEPINFER_API_KEY", "secret-canary")
