@@ -3493,3 +3493,265 @@ def test_projection_rejects_recovery_that_disagrees_with_persisted_policy() -> N
             events[:2]
             + [_event(3, "run_resumed", {"step_ids": ["step-p0-01"]})]
         )
+
+
+class _FakeHTTPResponse:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> "_FakeHTTPResponse":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def read(self, _limit: int) -> bytes:
+        return self._payload
+
+
+def _deepinfer_payload(content: str, *, model: str = "deepseek-v4-flash-0731") -> bytes:
+    return json.dumps(
+        {
+            "id": "chatcmpl-test",
+            "model": model,
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": content},
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 11,
+                "completion_tokens": 7,
+                "total_tokens": 18,
+            },
+        }
+    ).encode()
+
+
+def test_deepinfer_configuration_is_fixed_and_secret_free(monkeypatch: pytest.MonkeyPatch) -> None:
+    from bridge.runners.llm import DEEPINFER_MODEL, DeepInferClient, DeepInferConfig
+
+    config = DeepInferConfig(base_url="https://inference.example/v1/")
+    assert config.base_url == "https://inference.example/v1"
+    assert config.chat_completions_url == "https://inference.example/v1/chat/completions"
+    assert config.model == DEEPINFER_MODEL == "deepseek-v4-flash-0731"
+
+    monkeypatch.setenv("DEEPINFER_BASE_URL", "https://inference.example/v1")
+    monkeypatch.setenv("DEEPINFER_API_KEY", "secret-canary")
+    client = DeepInferClient.from_env(timeout_seconds=12)
+    assert client.config.timeout_seconds == 12
+    assert "secret-canary" not in repr(client)
+    assert "secret-canary" not in client.config.model_dump_json()
+
+    for invalid in (
+        "",
+        "file:///tmp/model",
+        "https://user:password@example.test/v1",
+        "https://example.test/v1?token=secret",
+        "https://example.test/v1#fragment",
+    ):
+        with pytest.raises(ValidationError):
+            DeepInferConfig(base_url=invalid)
+
+
+def test_deepinfer_from_env_fails_before_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    from bridge.runners.llm import DeepInferClient, DeepInferError
+
+    monkeypatch.delenv("DEEPINFER_BASE_URL", raising=False)
+    with pytest.raises(DeepInferError) as missing:
+        DeepInferClient.from_env()
+    assert missing.value.reason_code == "deepinfer_base_url_missing"
+
+    monkeypatch.setenv("DEEPINFER_BASE_URL", "not-a-url")
+    with pytest.raises(DeepInferError) as invalid:
+        DeepInferClient.from_env()
+    assert invalid.value.reason_code == "deepinfer_base_url_invalid"
+
+
+def test_deepinfer_client_sends_exact_model_and_returns_audit_hashes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from bridge.runners import DeepInferClient, DeepInferConfig
+    from bridge.runners.llm import AgentMessage
+
+    captured: dict[str, object] = {}
+    response_bytes = _deepinfer_payload('{"assistant_message":"ok"}')
+
+    def fake_urlopen(request: object, *, timeout: float) -> _FakeHTTPResponse:
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return _FakeHTTPResponse(response_bytes)
+
+    monkeypatch.setattr("bridge.runners.llm.urlopen", fake_urlopen)
+    client = DeepInferClient(
+        DeepInferConfig(base_url="https://inference.example/v1", timeout_seconds=9),
+        api_key="secret-canary",
+    )
+    result = client.complete((AgentMessage(role="user", content="hello"),))
+
+    request = captured["request"]
+    body = json.loads(request.data)
+    assert request.full_url == "https://inference.example/v1/chat/completions"
+    assert request.get_header("Authorization") == "Bearer secret-canary"
+    assert captured["timeout"] == 9
+    assert body == {
+        "messages": [{"content": "hello", "role": "user"}],
+        "model": "deepseek-v4-flash-0731",
+        "response_format": {"type": "json_object"},
+        "stream": False,
+        "temperature": 0,
+    }
+    assert "tools" not in body and "tool_choice" not in body
+    assert result.provider_request_id == "chatcmpl-test"
+    assert result.model == "deepseek-v4-flash-0731"
+    assert result.usage.total_tokens == 18
+    assert result.request_sha256 == hashlib.sha256(request.data).hexdigest()
+    expected_response_hash = hashlib.sha256(
+        json.dumps(
+            json.loads(response_bytes),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode()
+    ).hexdigest()
+    assert result.response_sha256 == expected_response_hash
+    assert "secret-canary" not in result.model_dump_json()
+
+
+def test_local_agent_loop_accepts_only_explicit_public_safe_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from bridge.runners import (
+        AgentIntent,
+        DeepInferClient,
+        DeepInferConfig,
+        LocalAgentLoop,
+        PublicAgentContext,
+    )
+
+    captured: dict[str, object] = {}
+    decision = {
+        "assistant_message": "Please confirm the measurement specification.",
+        "intent": "clarify",
+        "proposed_actions": ["confirm MeasurementSpec"],
+        "requires_user_confirmation": True,
+    }
+
+    def fake_urlopen(request: object, *, timeout: float) -> _FakeHTTPResponse:
+        captured["body"] = json.loads(request.data)
+        return _FakeHTTPResponse(_deepinfer_payload(json.dumps(decision)))
+
+    monkeypatch.setattr("bridge.runners.llm.urlopen", fake_urlopen)
+    loop = LocalAgentLoop(
+        DeepInferClient(DeepInferConfig(base_url="https://inference.example/v1"))
+    )
+    turn = loop.respond(
+        "Can this case run?",
+        context=(
+            PublicAgentContext(
+                context_id="status-summary",
+                content="P0-01 succeeded; score_state=unavailable",
+            ),
+        ),
+    )
+
+    assert turn.decision.intent is AgentIntent.CLARIFY
+    assert turn.decision.requires_user_confirmation is True
+    assert turn.context_ids == ("status-summary",)
+    body = captured["body"]
+    assert len(body["messages"]) == 2
+    assert body["messages"][0]["role"] == "system"
+    assert "cannot execute tools" in body["messages"][0]["content"]
+    user_payload = json.loads(body["messages"][1]["content"])
+    assert user_payload["public_safe_context"][0]["classification"] == "public_safe"
+    assert "tools" not in body
+
+    with pytest.raises(ValidationError):
+        PublicAgentContext(
+            context_id="private",
+            classification="private",  # type: ignore[arg-type]
+            content="must not leave the runtime",
+        )
+    with pytest.raises(ValueError, match="context_ids_duplicate"):
+        loop.respond(
+            "explain",
+            context=(
+                PublicAgentContext(context_id="same", content="one"),
+                PublicAgentContext(context_id="same", content="two"),
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    ("payload", "reason_code"),
+    [
+        (b"not-json", "deepinfer_response_invalid"),
+        (_deepinfer_payload("{}", model="another-model"), "deepinfer_response_invalid"),
+    ],
+)
+def test_deepinfer_rejects_invalid_provider_responses(
+    monkeypatch: pytest.MonkeyPatch, payload: bytes, reason_code: str
+) -> None:
+    from bridge.runners.llm import AgentMessage, DeepInferClient, DeepInferConfig, DeepInferError
+
+    monkeypatch.setattr(
+        "bridge.runners.llm.urlopen",
+        lambda *_args, **_kwargs: _FakeHTTPResponse(payload),
+    )
+    client = DeepInferClient(DeepInferConfig(base_url="https://inference.example/v1"))
+    with pytest.raises(DeepInferError) as caught:
+        client.complete((AgentMessage(role="user", content="hello"),))
+    assert caught.value.reason_code == reason_code
+
+
+def test_deepinfer_transport_errors_are_stable_and_secret_free(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from urllib.error import HTTPError, URLError
+
+    from bridge.runners import AgentMessage, DeepInferClient, DeepInferConfig, DeepInferError
+
+    client = DeepInferClient(
+        DeepInferConfig(base_url="https://inference.example/v1"),
+        api_key="secret-canary",
+    )
+    monkeypatch.setattr(
+        "bridge.runners.llm.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            HTTPError("https://redacted.invalid", 503, "down", {}, None)
+        ),
+    )
+    with pytest.raises(DeepInferError) as http_error:
+        client.complete((AgentMessage(role="user", content="hello"),))
+    assert http_error.value.reason_code == "deepinfer_http_error"
+    assert http_error.value.status_code == 503
+    assert "secret-canary" not in str(http_error.value)
+
+    monkeypatch.setattr(
+        "bridge.runners.llm.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(URLError("secret-canary")),
+    )
+    with pytest.raises(DeepInferError) as transport_error:
+        client.complete((AgentMessage(role="user", content="hello"),))
+    assert transport_error.value.reason_code == "deepinfer_transport_error"
+    assert "secret-canary" not in str(transport_error.value)
+
+
+def test_local_agent_loop_rejects_unstructured_model_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from bridge.runners import DeepInferClient, DeepInferConfig, DeepInferError, LocalAgentLoop
+
+    monkeypatch.setattr(
+        "bridge.runners.llm.urlopen",
+        lambda *_args, **_kwargs: _FakeHTTPResponse(
+            _deepinfer_payload("I executed P0-01")
+        ),
+    )
+    loop = LocalAgentLoop(
+        DeepInferClient(DeepInferConfig(base_url="https://inference.example/v1"))
+    )
+    with pytest.raises(DeepInferError) as caught:
+        loop.respond("Run the tool")
+    assert caught.value.reason_code == "agent_response_contract_invalid"
