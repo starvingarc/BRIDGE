@@ -39,9 +39,11 @@ ProductCase -> deterministic PlanBuilder -> approved AnalysisPlan
 ```
 
 The conversational Agent loop and the scientific workflow are separate state
-machines. A conversation can clarify a case, explain a deterministic reason code or
-request plan approval. Once approved, the scientific DAG is executed from the
-frozen plan; model output cannot add a tool, change a version or overwrite a result.
+machines. The current DeepInfer loop can clarify a case, explain a deterministic
+reason code or suggest a plan, but it has no tool/function-call binding and no plan
+approval method. Once a human-approved plan exists, the scientific DAG is executed
+from the frozen plan; model output cannot add a tool, change a version or overwrite
+a result.
 
 ## Durable Workflow Events
 
@@ -105,6 +107,27 @@ Structured P0-08/P0-09 inputs must bind the same exact ProductCase identity and
 version as the approved scope. Case identities are hashed before use in local output
 paths, so opaque IDs cannot alter directory structure.
 
+## Conversational Model Boundary
+
+`DeepInferClient` is the single concrete model integration. It reads
+`DEEPINFER_BASE_URL`, uses optional bearer credentials from
+`DEEPINFER_API_KEY`, and pins `deepseek-v4-flash-0731`. `LocalAgentLoop` sends
+only an explicitly `public_safe` `AgentTurnRequest` and validates the model's JSON
+response as a text-only `AgentDecision`. The whole turn is rejected before a model
+call if the explicit classification or context contract is invalid.
+
+Successful calls return provider/model identity, usage, latency and canonical
+request/response hashes. They do not expose the credential, base URL or a raw
+provider response envelope. Model calls are not RunEvents: scientific workflow
+history continues to contain only approved-plan and deterministic execution facts.
+The caller may separately persist an AgentTurn under an appropriate conversation
+retention policy.
+
+This boundary does not perform automatic DLP. Callers must not include raw data,
+private sample identifiers, filesystem paths, private manifests or internal logs in
+the turn. The client is synchronous and deliberately has no retry, streaming,
+function calling, background-worker or conversation-store abstraction.
+
 ## Capability Seams
 
 Only capabilities with a current or committed second implementation receive an
@@ -112,10 +135,11 @@ interface boundary:
 
 - workflow event storage: in-memory for unit tests and SQLite for the local runtime;
 - artifact storage: current local content-addressed implementation;
-- Tool Package dispatch: current `ToolRegistry`.
+- Tool Package dispatch: current `ToolRegistry`;
+- conversational model: one concrete DeepInfer client and one local text loop.
 
-An LLM provider, HTTP server, subprocess isolation and remote storage are future
-work and are not predeclared as empty plugin interfaces.
+An HTTP server, subprocess isolation and remote storage are future work and are not
+predeclared as empty plugin interfaces.
 
 ## Local Artifact Integrity
 
@@ -139,7 +163,8 @@ never rewrites a corrupt same-digest target as if deduplication had succeeded.
 | RunEvent projection | Implemented and tested |
 | SQLite RunEventStore | Implemented and recovery-tested |
 | Case-scoped ToolExecutionPipeline | Implemented and tested |
-| Background worker, FastAPI, Agent loop, Evidence and reporting | Not implemented |
+| DeepInfer one-turn conversational Agent | Implemented and contract-tested |
+| Background worker, FastAPI, persistent conversation, Evidence and reporting | Not implemented |
 
 No runtime infrastructure change promotes a scientific method, produces a domain
 score, or authorizes clinical efficacy, safety, potency, GMP release or absolute

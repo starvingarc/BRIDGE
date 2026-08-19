@@ -51,14 +51,61 @@ The Python package includes a minimal, framework-neutral application boundary:
   root, addresses them by SHA-256 and verifies content without repairing or
   rewriting a mismatch. Returned metadata uses relative paths.
 
-These components do not invoke an LLM, create formal Evidence Records, render
-reports, expose HTTP routes, start a background worker or promote any scientific
-package. Tool execution remains owned by the registered high-level Tool Package
-APIs above.
+The scientific planner, workflow, pipeline and Tool Packages do not invoke an LLM.
+The separate `bridge-agent` entry point can make one bounded conversational model
+call; it cannot create formal Evidence Records, render reports, expose HTTP routes,
+start a background worker, approve a plan or promote any scientific package. Tool
+execution remains owned by the registered high-level Tool Package APIs above.
 
 P0-01, P0-02, P0-08 and P0-09 are executable candidate packages. P0-02 emits shadow Cell-State Evidence unless its `MeasurementSpec` names a signed `CellStateReleaseManifest`; draft review cards or benchmark results never become formal labels. P0-08 accepts only immutable, checksum- and Schema-bound upstream evidence objects, applies Data Readiness → Model Robustness → Prior Applicability → sufficiency, and emits no measurements or domain score. A scientifically incomplete but contract-valid P0-08 case returns `not_assessed`; malformed inputs fail eligibility. P0-09 compiles accepted atomic records and explicit missing requirements into immutable JSON/Parquet Case or Comparison Evidence Graphs. Its Agent surface exposes only seven bounded read-only queries; callers cannot submit arbitrary graph queries or writes. Rejected sibling records yield a traceable `partial` bundle without entering the graph, while top-level contract failures publish nothing. P0-03 through P0-07 and P0-10 through P0-12 deliberately return `not_implemented` without measurements. HTTP, MCP and queue adapters may wrap the same JSON contracts later without changing scientific semantics.
 
 Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.
+
+## DeepInfer Conversational Boundary
+
+The local Agent has one concrete synchronous DeepInfer integration. It reads the
+OpenAI-compatible API root from `DEEPINFER_BASE_URL`, optionally reads
+`DEEPINFER_API_KEY`, and pins the request model to
+`deepseek-v4-flash-0731`. Credentials and the configured URL are not returned in
+the `AgentTurn`, error payload or audit record.
+
+`bridge-agent` accepts one `AgentTurnRequest` JSON file, or `-` for stdin:
+
+```json
+{
+  "classification": "public_safe",
+  "user_message": "Explain why this deterministic status is unavailable.",
+  "public_safe_context": [
+    {
+      "context_id": "status-summary",
+      "classification": "public_safe",
+      "content": "score_state=unavailable"
+    }
+  ]
+}
+```
+
+```bash
+bridge-agent --request agent-turn.json
+```
+
+The explicit `public_safe` classification is a caller assertion, not automatic
+redaction. The entire user message and every context item leave the local process
+for the configured provider; raw assets, private manifests, filesystem paths and
+internal logs must not be placed in this request.
+
+The provider request contains text messages only: no `tools`, `tool_choice`,
+Tool Registry handle or plan-approval capability. The validated response is an
+`AgentDecision` with an explanation, a constrained intent, text-only proposed
+actions and a confirmation flag. `AgentTurn.model_call` records the provider
+request ID, pinned model, finish reason, token usage, latency, canonical request
+SHA-256 and canonical response SHA-256 without persisting credentials or prompt
+text. Model output remains advisory and cannot be converted into a ToolRequest or
+approved AnalysisPlan by this component.
+
+This first boundary is one-shot and synchronous. It does not provide streaming,
+conversation persistence, automatic retry, background execution, function calling
+or model-authored reports.
 
 ## Failure Boundary
 
