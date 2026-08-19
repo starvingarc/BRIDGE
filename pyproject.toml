@@ -43,6 +43,7 @@ evidence = [
 ]
 
 [project.scripts]
+bridge-agent = "bridge.runners.llm:main"
 bridge-tool = "bridge.toolkit.cli:main"
 bridge-reference = "bridge.tool_packages.p0_02_cell_state.reference_cli:main"
 bridge-benchmark = "bridge.tool_packages.p0_02_cell_state.benchmark_cli:main"

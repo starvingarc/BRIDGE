@@ -3755,3 +3755,77 @@ def test_local_agent_loop_rejects_unstructured_model_output(
     with pytest.raises(DeepInferError) as caught:
         loop.respond("Run the tool")
     assert caught.value.reason_code == "agent_response_contract_invalid"
+
+
+def test_bridge_agent_cli_runs_one_structured_turn(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from bridge.runners.llm import main as agent_main
+
+    request_path = tmp_path / "agent-request.json"
+    request_path.write_text(
+        json.dumps(
+            {
+                "user_message": "Explain this deterministic status.",
+                "public_safe_context": [
+                    {
+                        "context_id": "status",
+                        "classification": "public_safe",
+                        "content": "score_state=unavailable",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    decision = {
+        "assistant_message": "No score is available.",
+        "intent": "explain",
+        "proposed_actions": [],
+        "requires_user_confirmation": False,
+    }
+    monkeypatch.setenv("DEEPINFER_BASE_URL", "https://inference.example/v1")
+    monkeypatch.setenv("DEEPINFER_API_KEY", "secret-canary")
+    monkeypatch.setattr(
+        "bridge.runners.llm.urlopen",
+        lambda *_args, **_kwargs: _FakeHTTPResponse(
+            _deepinfer_payload(json.dumps(decision))
+        ),
+    )
+
+    assert agent_main(["--request", str(request_path), "--timeout", "5"]) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["decision"] == decision
+    assert output["context_ids"] == ["status"]
+    assert output["model_call"]["model"] == "deepseek-v4-flash-0731"
+    assert "secret-canary" not in json.dumps(output)
+
+
+def test_bridge_agent_cli_rejects_private_or_invalid_input_without_echo(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from bridge.runners.llm import main as agent_main
+
+    request_path = tmp_path / "agent-request.json"
+    request_path.write_text(
+        json.dumps(
+            {
+                "user_message": "secret-canary",
+                "public_safe_context": [
+                    {
+                        "context_id": "private",
+                        "classification": "private",
+                        "content": "secret-canary",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert agent_main(["--request", str(request_path)]) == 2
+    output = capsys.readouterr().out
+    assert json.loads(output) == {"ok": False, "reason_code": "agent_request_invalid"}
+    assert "secret-canary" not in output

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
+from pathlib import Path
+import sys
 import time
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -153,6 +156,18 @@ class AgentTurn(FrozenModel):
     context_ids: tuple[str, ...] = ()
 
 
+class AgentTurnRequest(FrozenModel):
+    user_message: str = Field(min_length=1, max_length=65536)
+    public_safe_context: tuple[PublicAgentContext, ...] = ()
+
+    @field_validator("user_message")
+    @classmethod
+    def user_message_is_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("agent_user_message_blank")
+        return value
+
+
 class DeepInferClient:
     """One concrete synchronous OpenAI-compatible DeepInfer client."""
 
@@ -286,3 +301,54 @@ class LocalAgentLoop:
             model_call=call,
             context_ids=context_ids,
         )
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="bridge-agent",
+        description="Run one public-safe BRIDGE DeepInfer Agent turn.",
+    )
+    parser.add_argument(
+        "--request",
+        required=True,
+        help="AgentTurnRequest JSON path, or '-' to read stdin.",
+    )
+    parser.add_argument("--timeout", type=float, default=60.0)
+    args = parser.parse_args(argv)
+    try:
+        if args.request == "-":
+            raw = sys.stdin.buffer.read(_MAX_REQUEST_BYTES + 1)
+        else:
+            with Path(args.request).open("rb") as source:
+                raw = source.read(_MAX_REQUEST_BYTES + 1)
+        if len(raw) > _MAX_REQUEST_BYTES:
+            raise DeepInferError("agent_request_too_large")
+        request = AgentTurnRequest.model_validate_json(raw)
+        turn = LocalAgentLoop(
+            DeepInferClient.from_env(timeout_seconds=args.timeout)
+        ).respond(
+            request.user_message,
+            context=request.public_safe_context,
+        )
+        print(turn.model_dump_json())
+        return 0
+    except DeepInferError as error:
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "reason_code": error.reason_code,
+                    "status_code": error.status_code,
+                },
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        )
+        return 2
+    except (OSError, ValueError):
+        print('{"ok":false,"reason_code":"agent_request_invalid"}')
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
