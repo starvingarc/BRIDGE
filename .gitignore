@@ -34,6 +34,7 @@ knowledge/index/*.pkl
 *.qs
 *.parquet
 !tests/fixtures/**/*.parquet
+!examples/demo-data/scrna-upload-v0.1/demo_scrna.h5ad
 
 # External BRIDGE model assets; download via models/assets.json.
 models/whole_brain_ref_model/
