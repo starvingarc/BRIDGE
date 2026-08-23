@@ -507,7 +507,7 @@ def test_versioned_schema_requires_object_version_binding(
 def test_established_top_level_version_binds_to_reference(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    package_payload = ToolRegistry.load_default().describe("P0-03").model_dump(
+    package_payload = ToolRegistry.load_default().describe("P0-04").model_dump(
         mode="json"
     )
     input_ref = _write_structured_input(
@@ -544,7 +544,7 @@ def test_established_top_level_version_rejects_missing_or_mismatch(
     case: str,
     reason_code: str,
 ) -> None:
-    package_payload = ToolRegistry.load_default().describe("P0-03").model_dump(
+    package_payload = ToolRegistry.load_default().describe("P0-04").model_dump(
         mode="json"
     )
     if case == "missing":
@@ -938,14 +938,15 @@ def test_registry_loads_mixed_contract_versions_and_selects_request_model(
 def test_deprecated_v1_package_is_ineligible_and_non_executable(tmp_path: Path) -> None:
     specs = ToolRegistry.load_default().list()
     deprecated = ToolPackageSpec.model_validate(
-        specs[2].model_dump(mode="json")
+        ToolRegistry.load_default().describe("P0-04").model_dump(mode="json")
         | {"implementation_state": ImplementationState.DEPRECATED}
     )
-    specs[2] = deprecated
-    registry = ToolRegistry(specs)
+    registry = ToolRegistry(
+        [deprecated if spec.tool_id == "P0-04" else spec for spec in specs]
+    )
     request = ToolRequest(
         request_id="request-deprecated-v1",
-        tool_id="P0-03",
+        tool_id="P0-04",
         output_dir=tmp_path,
     )
 
