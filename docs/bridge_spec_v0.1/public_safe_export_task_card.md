@@ -5,7 +5,7 @@
 | Task ID | `TASK-PUBLIC-SAFE` |
 | Version | `v0.1-draft` |
 | Date | 2026-08-08 |
-| Input | `VerifiedReport` + `ClaimVerificationResult` + `PublicExportPolicySpec` |
+| Input | original `ReportDraft` + `ClaimVerificationResult` receipt + `PublicExportPolicySpec` |
 | Primary output | `PublicSafeReport`、`PublicExportManifest`、`PublicExportCheckRecord` |
 | Current state | `candidate` |
 
@@ -20,7 +20,8 @@ Public-safe Export 将通过 Claim Verifier 的内部报告转换为可以公开
 - JSON、CSV、Markdown 和注册图表中是否存在泄漏或不安全内容。
 - 输出包是否完整、可复现，并与用户确认的候选版本一致。
 
-本模块不验证科学结论，也不重新判断产品质量。它不修改内部 `VerifiedReport`，不自动上传文件，不处理原始单细胞数据，不执行通用患者微数据匿名化，也不负责 PDF、Office 或任意 HTML 发布。
+本模块不验证科学结论，也不重新判断产品质量。它不修改原始 `ReportDraft` 或
+P0-10 receipt，不自动上传文件，不处理原始单细胞数据，不执行通用患者微数据匿名化，也不负责 PDF、Office 或任意 HTML 发布。
 
 ## 2. 核心原则
 
@@ -36,8 +37,9 @@ Public-safe Export 将通过 Claim Verifier 的内部报告转换为可以公开
 
 ### 3.1 必要输入
 
-- `VerifiedReport`，release state 为 `verified` 或允许公开的 `verified_with_warnings`。
-- `ClaimVerificationResult.public_export_eligibility=eligible`。
+- 原始 `ReportDraft`。
+- `ClaimVerificationResult.public_export_eligibility=eligible`，且 receipt 中的
+  report ref/hash/audience 与原始 ReportDraft 一致，artifact checksum 与输入 ref 一致。
 - 冻结的 `PublicExportPolicySpec` 和字段白名单。
 - 案例级 disclosure decision、公开别名和可公开 accession。
 - 允许公开的 `VisualizationArtifact` 及其机器可读 data payload。
@@ -60,7 +62,7 @@ Public-safe Export 将通过 Claim Verifier 的内部报告转换为可以公开
 
 ```text
 public_report_id / version / schema_version
-source_verified_report_hash / export_policy_ref
+source_report_hash / claim_verification_receipt_hash / export_policy_ref
 public_case_labels / public_source_accessions
 approved_summary_fields / approved_visualization_refs
 limitations / public_statement_refs
@@ -83,7 +85,7 @@ export_state / manifest_ref / created_at
 
 ```mermaid
 flowchart LR
-    A["Eligible VerifiedReport"] --> B["Field allowlist projection"]
+    A["Eligible ReportDraft + P0-10 receipt"] --> B["Field allowlist projection"]
     B --> C["Public labels and approved summaries"]
     C --> D["Text, path and secret scan"]
     D --> E["Regenerate and inspect figures"]

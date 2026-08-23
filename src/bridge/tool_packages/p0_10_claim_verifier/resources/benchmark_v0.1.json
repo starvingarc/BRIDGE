@@ -1,0 +1,1044 @@
+{
+  "aggregate_rank": null,
+  "aggregate_score": null,
+  "benchmark_id": "P0-10-BENCHMARK-v0.1",
+  "benchmark_state": "server_validated_candidate",
+  "benchmark_version": "0.1.0",
+  "data_cases": [
+    {
+      "assay": null,
+      "case_id": "PUBLIC-SERVER-REPRO-20260812",
+      "cell_count": null,
+      "claim_count": 3,
+      "data_class": "public_record",
+      "gene_count": null,
+      "independent_replicate_count": null,
+      "not_applicable_reason": "Report verification does not consume an expression matrix or biological replicate.",
+      "public_accession_or_ref": "docs/validation/server_reproducibility_20260812.md",
+      "sample_count": null,
+      "scope": "Three public engineering claims bound to a real P0-09 shadow evidence graph; public release is blocked because upstream Evidence is non-formal.",
+      "split": "full public record with source-aware shadow evidence"
+    },
+    {
+      "assay": null,
+      "case_id": "SYNTHETIC-P0-10-CONTROLS-v0.1",
+      "cell_count": null,
+      "claim_count": 61,
+      "data_class": "synthetic_control",
+      "gene_count": null,
+      "independent_replicate_count": null,
+      "not_applicable_reason": "Positive and negative text controls are deterministic contract fixtures.",
+      "public_accession_or_ref": "tests/test_p0_10_claim_verifier.py",
+      "sample_count": null,
+      "scope": "Sixty-one deterministic contract and claim regression cases covering authority, numeric fidelity, receipt binding, publication integrity and typed V1 rejection.",
+      "split": "predeclared positive and negative controls"
+    },
+    {
+      "assay": null,
+      "case_id": "INTERNAL-ANONYMIZED-REPORT-v0.1",
+      "cell_count": null,
+      "claim_count": 3,
+      "data_class": "internal_anonymized",
+      "gene_count": null,
+      "independent_replicate_count": null,
+      "not_applicable_reason": "Only anonymous report type, scale and aggregate verification metrics may be published.",
+      "public_accession_or_ref": null,
+      "sample_count": null,
+      "scope": "Anonymous internal engineering report with three exact aggregate claims; no private path or identifier is committed.",
+      "split": "server-only full report"
+    }
+  ],
+  "default_method_id": null,
+  "methods": [
+    {
+      "analysis_task": "Deterministic release aggregation",
+      "data_case_ids": [
+        "PUBLIC-SERVER-REPRO-20260812",
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
+      ],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "The implementation plan approves this as a formal candidate, not as a selected default.",
+        "reviewer": "developer-plan-20260814",
+        "state": "approved"
+      },
+      "denominator_sensitivity": "Exact denominator changes must change the result or block release.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "measured",
+      "failure_behavior": "Fail closed on invalid contracts; report findings without converting them into a score.",
+      "license": "MIT",
+      "method_id": "METHOD-INTERNAL-DETERMINISTIC-ENGINE-33C959",
+      "method_name": "BRIDGE Claim Verifier Core",
+      "missing_input_behavior": "Typed failure before verification.",
+      "negative_controls": [
+        "caller-supplied policy or Statement Registry mismatch",
+        "caller-supplied transform, reviewer decision or release tier",
+        "deterministic-renderer claim with appended scientific prose",
+        "public candidate over a non-formal P0-09 shadow evidence graph",
+        "post-publication artifact replacement"
+      ],
+      "ood_or_abstention_behavior": "Rejects unapproved authority inputs, blocks public release over a shadow evidence graph and returns review_required for unsupported authoring.",
+      "positive_controls": [
+        "fully bound verified report",
+        "anonymous internal three-claim report"
+      ],
+      "preprocessing_sensitivity": "Canonical structured objects only; free Markdown is excluded.",
+      "random_seeds": [],
+      "recommendation": "default_candidate",
+      "reference_sensitivity": "Supplied policy and Statement Registry objects must equal the versions embedded in the packaged release contract.",
+      "resources": {
+        "cache_state": "cold process; separate output directory",
+        "cpu_seconds_median": 2.34,
+        "output_bytes": 1036,
+        "peak_ram_mb": 223.88671875,
+        "peak_vram_mb": 0.0,
+        "repetitions": 5,
+        "threads": 1,
+        "wall_clock_seconds_median": 2.35,
+        "wall_clock_seconds_range": [
+          2.18,
+          2.51
+        ]
+      },
+      "role": "Ordered deterministic checks and release-state aggregation.",
+      "source": "BRIDGE repository",
+      "task_metrics": {
+        "artifact_result_byte_match_rate": 1.0,
+        "blocker_non_override_rate": 1.0,
+        "caller_authority_rejection_rate": 1.0,
+        "complete_text_mismatch_rejection_rate": 1.0,
+        "deterministic_repeat_match": 1.0,
+        "direct_v1_typed_failure_rate": 1.0,
+        "internal_blocker_count": 0,
+        "internal_claim_count": 3,
+        "internal_repeat_match": 1.0,
+        "internal_review_count": 0,
+        "internal_warning_count": 0,
+        "public_blocker_count": 3,
+        "public_claim_count": 3,
+        "public_output_bytes": 2382,
+        "public_shadow_evidence_block_rate": 1.0,
+        "result_invariant_rejection_rate": 1.0
+      },
+      "uncertainty_or_interval": "Exact pass/fail counts; no statistical interval.",
+      "version": "0.1.0"
+    },
+    {
+      "analysis_task": "Structured contract validation",
+      "data_case_ids": [
+        "PUBLIC-SERVER-REPRO-20260812",
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
+      ],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Approved as a callable formal-candidate component by the implementation plan.",
+        "reviewer": "developer-plan-20260814",
+        "state": "approved"
+      },
+      "denominator_sensitivity": "Validated as typed input fields.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "smoke",
+      "failure_behavior": "Rejects missing, extra or invalid typed fields.",
+      "license": "MIT",
+      "method_id": "METHOD-SCHEMA-LIBRARY",
+      "method_name": "Pydantic",
+      "missing_input_behavior": "Validation error; no result artifact.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Unknown fields are rejected rather than guessed.",
+      "positive_controls": [
+        "valid four-object envelope"
+      ],
+      "preprocessing_sensitivity": "Strict JSON is parsed before model validation.",
+      "random_seeds": [],
+      "recommendation": "default_candidate",
+      "reference_sensitivity": "Schema URI and object version must match the declared role.",
+      "resources": {
+        "cache_state": "covered by the end-to-end run; not isolated",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Typed object and enum validation.",
+      "source": "https://docs.pydantic.dev/",
+      "task_metrics": {
+        "invalid_fixture_rejection_rate": 1.0,
+        "removed_authority_field_rejection_rate": 1.0
+      },
+      "uncertainty_or_interval": "Deterministic contract result.",
+      "version": "2.12.5"
+    },
+    {
+      "analysis_task": "Structured contract validation",
+      "data_case_ids": [
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
+      ],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Approved as the independent public-Schema validation channel.",
+        "reviewer": "developer-plan-20260814",
+        "state": "approved"
+      },
+      "denominator_sensitivity": "Validated as Schema fields.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "smoke",
+      "failure_behavior": "Rejects output that does not match the published result Schema.",
+      "license": "MIT",
+      "method_id": "METHOD-SCHEMA-VALIDATOR",
+      "method_name": "jsonschema",
+      "missing_input_behavior": "Schema resolution or validation failure.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "No inference outside the published Schema.",
+      "positive_controls": [
+        "generated Draft 2020-12 Schemas"
+      ],
+      "preprocessing_sensitivity": "Validates canonical JSON output.",
+      "random_seeds": [],
+      "recommendation": "sensitivity_candidate",
+      "reference_sensitivity": "Generated public and wheel Schemas must be byte-identical.",
+      "resources": {
+        "cache_state": "covered by the end-to-end run; not isolated",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Independent JSON Schema validation.",
+      "source": "https://python-jsonschema.readthedocs.io/",
+      "task_metrics": {
+        "obsolete_schema_absence": 1.0,
+        "receipt_invariant_rejection_rate": 1.0,
+        "schema_parity": 1.0
+      },
+      "uncertainty_or_interval": "Deterministic contract result.",
+      "version": "4.25.1"
+    },
+    {
+      "analysis_task": "Exact numeric and unit fidelity",
+      "data_case_ids": [
+        "PUBLIC-SERVER-REPRO-20260812",
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
+      ],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Approved as the exact numeric candidate; no floating tolerance is allowed.",
+        "reviewer": "developer-plan-20260814",
+        "state": "approved"
+      },
+      "denominator_sensitivity": "Exact numerator, denominator and interval strings are checked independently.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "smoke",
+      "failure_behavior": "Any value, unit, denominator, interval or rendering mismatch blocks release.",
+      "license": "MIT",
+      "method_id": "METHOD-INTERNAL-NUMERIC-ENGINE",
+      "method_name": "BRIDGE numeric fidelity rules",
+      "missing_input_behavior": "A required source field produces a hard blocker.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Unsupported unit conversion is refused.",
+      "positive_controls": [
+        "exact integer",
+        "decimal",
+        "scientific identifier beside an exact value",
+        "large finite integer",
+        "interval"
+      ],
+      "preprocessing_sensitivity": "Canonical decimal strings are compared before rendering.",
+      "random_seeds": [],
+      "recommendation": "default_candidate",
+      "reference_sensitivity": "Evidence field path and source checksum are explicit.",
+      "resources": {
+        "cache_state": "covered by the end-to-end run; not isolated",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Bind and compare numeric report values to EvidenceRecord fields.",
+      "source": "BRIDGE repository",
+      "task_metrics": {
+        "caller_transform_rejection_rate": 1.0,
+        "large_integer_typed_result_rate": 1.0,
+        "numeric_mutation_detection_rate": 1.0,
+        "scientific_identifier_false_positive_rate": 0.0
+      },
+      "uncertainty_or_interval": "Intervals are exact source fields, not estimated by the verifier.",
+      "version": "0.1.0"
+    },
+    {
+      "analysis_task": "Exact numeric and unit fidelity",
+      "data_case_ids": [
+        "PUBLIC-SERVER-REPRO-20260812",
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
+      ],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Approved as the callable decimal implementation.",
+        "reviewer": "developer-plan-20260814",
+        "state": "approved"
+      },
+      "denominator_sensitivity": "Exact Decimal comparison.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "smoke",
+      "failure_behavior": "Non-finite or non-decimal strings are rejected.",
+      "license": "PSF-2.0",
+      "method_id": "METHOD-STANDARD-LIBRARY",
+      "method_name": "Python Decimal",
+      "missing_input_behavior": "No fallback to binary floating comparison.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Unknown conversions remain unavailable.",
+      "positive_controls": [
+        "ROUND_HALF_EVEN",
+        "ROUND_HALF_UP"
+      ],
+      "preprocessing_sensitivity": "No locale-dependent parsing.",
+      "random_seeds": [],
+      "recommendation": "default_candidate",
+      "reference_sensitivity": "No external reference registry.",
+      "resources": {
+        "cache_state": "covered by the end-to-end run; not isolated",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Exact decimal construction, scaling and rounding.",
+      "source": "https://docs.python.org/3/library/decimal.html",
+      "task_metrics": {
+        "rounding_fixture_pass_rate": 1.0
+      },
+      "uncertainty_or_interval": "Not applicable; exact arithmetic.",
+      "version": "Python 3.12.13"
+    },
+    {
+      "analysis_task": "Exact numeric and unit fidelity",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "A reviewed unit registry and conversion fixtures are not yet available.",
+        "reviewer": null,
+        "state": "pending"
+      },
+      "denominator_sensitivity": "Not run.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "audit_only",
+      "failure_behavior": "Must fail closed for unregistered conversions.",
+      "license": "BSD-3-Clause",
+      "method_id": "METHOD-UNIT-LIBRARY",
+      "method_name": "Pint",
+      "missing_input_behavior": "Unavailable without an approved registry.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Unknown units must be rejected.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Registry-dependent.",
+      "random_seeds": [],
+      "recommendation": "deferred",
+      "reference_sensitivity": "Requires a versioned BRIDGE unit registry.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Candidate registered unit conversion.",
+      "source": "https://pint.readthedocs.io/",
+      "task_metrics": {
+        "audit_complete": "license and interface only"
+      },
+      "uncertainty_or_interval": null,
+      "version": "unresolved"
+    },
+    {
+      "analysis_task": "Bilingual prohibited-claim rules",
+      "data_case_ids": [
+        "PUBLIC-SERVER-REPRO-20260812",
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
+      ],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Approved as the formal deterministic rule layer.",
+        "reviewer": "developer-plan-20260814",
+        "state": "approved"
+      },
+      "denominator_sensitivity": "State and denominator wording are separate typed checks.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "smoke",
+      "failure_behavior": "Hard rules block release; review rules require an authorized reviewer.",
+      "license": "MIT",
+      "method_id": "METHOD-INTERNAL-RULESET",
+      "method_name": "BRIDGE bilingual rule set",
+      "missing_input_behavior": "Inactive policy returns not_assessed.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Unresolved semantics remain review_required.",
+      "positive_controls": [
+        "Chinese",
+        "English",
+        "mixed-language",
+        "registered boundary statement"
+      ],
+      "preprocessing_sensitivity": "Plain structured paragraphs only.",
+      "random_seeds": [],
+      "recommendation": "default_candidate",
+      "reference_sensitivity": "Policy and statement versions are checksummed inputs.",
+      "resources": {
+        "cache_state": "covered by the end-to-end run; not isolated",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Severity, exception and reviewer-resolution rules.",
+      "source": "BRIDGE repository",
+      "task_metrics": {
+        "prohibited_claim_leak_count": 0
+      },
+      "uncertainty_or_interval": "Exact fixture count.",
+      "version": "0.1.0"
+    },
+    {
+      "analysis_task": "Bilingual prohibited-claim rules",
+      "data_case_ids": [
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
+      ],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Approved as the callable Unicode pattern engine with bounded execution time.",
+        "reviewer": "developer-plan-20260814",
+        "state": "approved"
+      },
+      "denominator_sensitivity": "Numeric token spans are checked separately.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "smoke",
+      "failure_behavior": "Invalid or timed-out policy patterns block release.",
+      "license": "Apache-2.0 AND CNRI-Python",
+      "method_id": "METHOD-UNICODE-REGEX-ENGINE",
+      "method_name": "regex",
+      "missing_input_behavior": "No pattern means no implicit semantic inference.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Complex unresolved meaning is sent to human review, not guessed.",
+      "positive_controls": [
+        "Unicode word boundaries",
+        "bilingual phrases",
+        "numeric spans"
+      ],
+      "preprocessing_sensitivity": "No free Markdown token recovery.",
+      "random_seeds": [],
+      "recommendation": "default_candidate",
+      "reference_sensitivity": "Rules are pinned by the packaged release contract.",
+      "resources": {
+        "cache_state": "covered by the end-to-end run; not isolated",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Unicode bilingual pattern matching and span location.",
+      "source": "https://github.com/mrabarnett/mrab-regex",
+      "task_metrics": {
+        "adjacent_numeric_lexeme_detection_rate": 1.0,
+        "fixture_false_negative_count": 0
+      },
+      "uncertainty_or_interval": "Exact fixture count.",
+      "version": "2026.7.19"
+    },
+    {
+      "analysis_task": "Bilingual prohibited-claim rules",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "No OPA binary or frozen Rego parity suite is available for v0.1.",
+        "reviewer": null,
+        "state": "pending"
+      },
+      "denominator_sensitivity": "Not run.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "claim_policy_opa",
+      "evaluation": "audit_only",
+      "failure_behavior": "Must not become a network service dependency.",
+      "license": "Apache-2.0",
+      "method_id": "METHOD-POLICY-ENGINE",
+      "method_name": "Open Policy Agent",
+      "missing_input_behavior": "Unavailable without an isolated binary and policy bundle.",
+      "negative_controls": [
+        "extra prose after the bound value",
+        "caller-defined renderer metadata"
+      ],
+      "ood_or_abstention_behavior": "Policy evaluation only; no semantic inference.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Rego translation not validated.",
+      "random_seeds": [],
+      "recommendation": "deferred",
+      "reference_sensitivity": "Requires versioned Rego parity with BRIDGE rules.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Policy-as-code comparison only.",
+      "source": "https://www.openpolicyagent.org/docs/",
+      "task_metrics": {
+        "audit_complete": "documentation only"
+      },
+      "uncertainty_or_interval": null,
+      "version": "unresolved"
+    },
+    {
+      "analysis_task": "Bilingual prohibited-claim rules",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "LLM judgment is excluded from the v0.1 formal path and cannot clear blockers.",
+        "reviewer": "developer-plan-20260814",
+        "state": "rejected"
+      },
+      "denominator_sensitivity": "Not permitted to evaluate numbers.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-AGENT-RUNTIME-v0.1",
+      "evaluation": "audit_only",
+      "failure_behavior": "Provider failure would require human review; never a release pass.",
+      "license": "provider-dependent",
+      "method_id": "METHOD-PROVIDER-NEUTRAL-ADAPTER",
+      "method_name": "LLM semantic-review adapter",
+      "missing_input_behavior": "Unavailable without an approved provider/model card.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Flags ambiguity only; no deterministic decision.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Sanitized claim spans only if later benchmarked.",
+      "random_seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "recommendation": "deferred",
+      "reference_sensitivity": "Provider and prompt dependent.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Future semantic flag sensitivity only.",
+      "source": "provider-neutral",
+      "task_metrics": {
+        "formal_path": "excluded"
+      },
+      "uncertainty_or_interval": null,
+      "version": "unresolved"
+    },
+    {
+      "analysis_task": "Controlled report rendering",
+      "data_case_ids": [
+        "PUBLIC-SERVER-REPRO-20260812",
+        "SYNTHETIC-P0-10-CONTROLS-v0.1",
+        "INTERNAL-ANONYMIZED-REPORT-v0.1"
+      ],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Approved as direct package-owned construction; callers cannot provide templates or transforms.",
+        "reviewer": "developer-plan-20260814",
+        "state": "approved"
+      },
+      "denominator_sensitivity": "Rendered values arrive only through verified structured claims.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "smoke",
+      "failure_behavior": "No public-eligible receipt is emitted for blocked or review-required content.",
+      "license": "MIT",
+      "method_id": "METHOD-INTERNAL-RENDERER",
+      "method_name": "BRIDGE controlled renderer",
+      "missing_input_behavior": "No implicit content recovery.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Unsupported media return unavailable outside this package.",
+      "positive_controls": [
+        "canonical metric sentence",
+        "registered boundary statement"
+      ],
+      "preprocessing_sensitivity": "Only complete ClaimBlock text reconstructed from structured values can pass automatically.",
+      "random_seeds": [],
+      "recommendation": "default_candidate",
+      "reference_sensitivity": "Renderer ID, version and sentence shape are pinned by the packaged release contract.",
+      "resources": {
+        "cache_state": "covered by the end-to-end run; not isolated",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Package-authorized complete ClaimBlock reconstruction.",
+      "source": "BRIDGE repository",
+      "task_metrics": {
+        "byte_identical_repeat": 1.0,
+        "complete_claim_text_reconstruction_rate": 1.0,
+        "p0_11_report_binding_mutation_rejection_rate": 1.0,
+        "post_publication_replacement_rejection_rate": 1.0
+      },
+      "uncertainty_or_interval": "Exact byte comparison.",
+      "version": "0.1.0"
+    },
+    {
+      "analysis_task": "Controlled report rendering",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Direct construction covers the only v0.1 sentence shape without a template engine.",
+        "reviewer": "developer-plan-20260814",
+        "state": "rejected"
+      },
+      "denominator_sensitivity": "Not run.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "audit_only",
+      "failure_behavior": "Not called by the v0.1 path.",
+      "license": "BSD-3-Clause",
+      "method_id": "METHOD-TEMPLATE-ENGINE",
+      "method_name": "Jinja2",
+      "missing_input_behavior": "Not applicable.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Not called by the v0.1 path.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Not run.",
+      "random_seeds": [],
+      "recommendation": "deferred",
+      "reference_sensitivity": "Not applicable.",
+      "resources": {
+        "cache_state": "not run; excluded from the v0.1 formal path",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Audited alternative excluded from direct v0.1 construction.",
+      "source": "https://jinja.palletsprojects.com/",
+      "task_metrics": {
+        "formal_path": "excluded"
+      },
+      "uncertainty_or_interval": null,
+      "version": "3.1.6"
+    },
+    {
+      "analysis_task": "Controlled report rendering",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Free Markdown import is explicitly outside v0.1.",
+        "reviewer": "developer-plan-20260814",
+        "state": "rejected"
+      },
+      "denominator_sensitivity": "Not run.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-EVIDENCE-v0.1",
+      "evaluation": "audit_only",
+      "failure_behavior": "Imported Markdown remains an unverified candidate.",
+      "license": "MIT",
+      "method_id": "METHOD-MARKDOWN-PARSER",
+      "method_name": "markdown-it-py",
+      "missing_input_behavior": "Not called by the formal path.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Cannot recover missing claim bindings.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Parser configuration dependent.",
+      "random_seeds": [],
+      "recommendation": "deferred",
+      "reference_sensitivity": "Not applicable.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Audit of future imported Markdown only.",
+      "source": "https://markdown-it-py.readthedocs.io/",
+      "task_metrics": {
+        "formal_path": "excluded"
+      },
+      "uncertainty_or_interval": null,
+      "version": "4.0"
+    },
+    {
+      "analysis_task": "Controlled report rendering",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Web and media rendering are unavailable in v0.1.",
+        "reviewer": "developer-plan-20260814",
+        "state": "rejected"
+      },
+      "denominator_sensitivity": "Not run.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "ENV-WEB-VALIDATION-v0.1",
+      "evaluation": "audit_only",
+      "failure_behavior": "Returns unavailable rather than silently skipping media.",
+      "license": "Apache-2.0",
+      "method_id": "METHOD-BROWSER-AUTOMATION",
+      "method_name": "Playwright",
+      "missing_input_behavior": "No browser environment means unavailable.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "No OCR or pixel-derived scientific values.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Viewport-dependent and isolated.",
+      "random_seeds": [],
+      "recommendation": "deferred",
+      "reference_sensitivity": "Not applicable.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Future visual render validation only.",
+      "source": "https://playwright.dev/",
+      "task_metrics": {
+        "formal_path": "excluded"
+      },
+      "uncertainty_or_interval": null,
+      "version": "unresolved"
+    },
+    {
+      "analysis_task": "External factuality audit",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "External task definitions do not replace BRIDGE structured policy checks.",
+        "reviewer": null,
+        "state": "pending"
+      },
+      "denominator_sensitivity": "Not applicable.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "isolated_model_env",
+      "evaluation": "audit_only",
+      "failure_behavior": "Never clears a BRIDGE hard blocker.",
+      "license": "MIT",
+      "method_id": "METHOD-FACTUALITY-PACKAGE",
+      "method_name": "FActScore",
+      "missing_input_behavior": "Unavailable without isolated model assets.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "External benchmark semantics only.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Atomic-fact extraction dependent.",
+      "random_seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "recommendation": "benchmark_only",
+      "reference_sensitivity": "Model/reference dependent.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Atomic factuality benchmark audit.",
+      "source": "https://github.com/shmsw25/FActScore",
+      "task_metrics": {
+        "audit_complete": "documentation and license"
+      },
+      "uncertainty_or_interval": null,
+      "version": "unresolved"
+    },
+    {
+      "analysis_task": "External factuality audit",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Not part of the deterministic v0.1 decision path.",
+        "reviewer": null,
+        "state": "pending"
+      },
+      "denominator_sensitivity": "Not applicable.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "isolated_model_env",
+      "evaluation": "audit_only",
+      "failure_behavior": "Never clears a BRIDGE hard blocker.",
+      "license": "Apache-2.0",
+      "method_id": "METHOD-HALLUCINATION-CHECKER",
+      "method_name": "RefChecker",
+      "missing_input_behavior": "Unavailable without isolated model assets.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Triplet/reference benchmark only.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Extraction/model dependent.",
+      "random_seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "recommendation": "benchmark_only",
+      "reference_sensitivity": "Model/reference dependent.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Reference-consistency benchmark audit.",
+      "source": "https://github.com/amazon-science/RefChecker",
+      "task_metrics": {
+        "audit_complete": "documentation and license"
+      },
+      "uncertainty_or_interval": null,
+      "version": "unresolved"
+    },
+    {
+      "analysis_task": "External factuality audit",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "Not part of the deterministic v0.1 decision path.",
+        "reviewer": null,
+        "state": "pending"
+      },
+      "denominator_sensitivity": "Not applicable.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "isolated_model_env",
+      "evaluation": "audit_only",
+      "failure_behavior": "Never clears a BRIDGE hard blocker.",
+      "license": "MIT",
+      "method_id": "METHOD-FACTUAL-CONSISTENCY-MODEL",
+      "method_name": "AlignScore",
+      "missing_input_behavior": "Unavailable without isolated model assets.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "Text-alignment benchmark only.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Model and segmentation dependent.",
+      "random_seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "recommendation": "benchmark_only",
+      "reference_sensitivity": "Model/reference dependent.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Text alignment benchmark audit.",
+      "source": "https://github.com/yuh-zha/AlignScore",
+      "task_metrics": {
+        "audit_complete": "documentation and license"
+      },
+      "uncertainty_or_interval": null,
+      "version": "unresolved"
+    },
+    {
+      "analysis_task": "External factuality audit",
+      "data_case_ids": [],
+      "decision": {
+        "benchmark_sha256": "e6ff7e1783834548855055f5668dfc75bca37e43177256b1e127a4fe3024e0f7",
+        "reason": "The English scientific-claim dataset is a benchmark reference, not a release rule.",
+        "reviewer": null,
+        "state": "pending"
+      },
+      "denominator_sensitivity": "Not applicable.",
+      "downsampling": {
+        "cells": "not applicable",
+        "genes": "not applicable",
+        "sequencing_depth": "not applicable"
+      },
+      "environment_spec_id": "isolated_model_env",
+      "evaluation": "audit_only",
+      "failure_behavior": "Dataset performance never clears a BRIDGE hard blocker.",
+      "license": "repository and data terms require review",
+      "method_id": "METHOD-SCIENTIFIC-CLAIM-DATASET-CODE",
+      "method_name": "SciFact",
+      "missing_input_behavior": "Unavailable until data terms and task mapping are reviewed.",
+      "negative_controls": [],
+      "ood_or_abstention_behavior": "External English benchmark only.",
+      "positive_controls": [],
+      "preprocessing_sensitivity": "Dataset/task mapping dependent.",
+      "random_seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "recommendation": "benchmark_only",
+      "reference_sensitivity": "Dataset evidence abstracts differ from BRIDGE EvidenceRecord semantics.",
+      "resources": {
+        "cache_state": "not run",
+        "cpu_seconds_median": null,
+        "output_bytes": null,
+        "peak_ram_mb": null,
+        "peak_vram_mb": null,
+        "repetitions": 0,
+        "threads": null,
+        "wall_clock_seconds_median": null,
+        "wall_clock_seconds_range": null
+      },
+      "role": "Scientific-claim benchmark reference.",
+      "source": "https://github.com/allenai/scifact",
+      "task_metrics": {
+        "audit_complete": "documentation; data terms pending"
+      },
+      "uncertainty_or_interval": null,
+      "version": "unresolved"
+    }
+  ],
+  "tool_id": "P0-10"
+}

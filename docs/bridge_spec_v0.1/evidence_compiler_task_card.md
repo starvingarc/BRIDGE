@@ -126,7 +126,7 @@ LadybugDB 在 v0.1 中为 `shadow/deferred` adapter 候选：不安装、不参�
 | `METHOD-COLUMNAR-STORAGE` | PyArrow/Parquet 事实表 | 固定 Schema；版本内确定性 |
 | `METHOD-GRAPH-LIBRARY` | NetworkX 图约束和重建 | 不承担正式持久化 |
 
-四个方法均保持 `formal_eligible=false`。`ENV-EVIDENCE-v0.1` 仍为 `proposed`；本地测试不能将环境或科学状态晋升为 frozen/formal。依赖和 wheel 打包由公共整合 PR 统一声明。
+四个方法均保持 `formal_eligible=false`。`ENV-EVIDENCE-v0.1` 已通过服务器工程健康检查；该环境状态不代表方法或真实案例得到科学确认。依赖和 wheel 打包由公共整合 PR 统一声明。
 
 ## 10. 验证要求与当前声明
 

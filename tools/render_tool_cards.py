@@ -10,7 +10,7 @@ import yaml
 # both public projections. The generic renderer is intentionally too small for
 # their structured-object contracts, so regeneration validates and mirrors each
 # source instead of replacing it with a scaffold-era summary.
-DETAILED_CARD_IDS = {"P0-08", "P0-09"}
+DETAILED_CARD_IDS = {"P0-08", "P0-09", "P0-10"}
 
 
 DETAILS = {
@@ -71,15 +71,15 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/product_comparison_stability_task_card.md",
     },
     "P0-10": {
-        "input": "Structured ReportDraft, ClaimBlocks, ValueBindings, evidence/knowledge/statement references, chart artifacts, and policy versions.",
-        "output": "ClaimVerificationResult and immutable VerifiedReport reference with blockers, warnings, traceability map, and release state.",
-        "reject": "Numeric mismatch, invalid evidence, state substitution, unsupported inference, prohibited claim, graft leakage, or unresolved semantic review.",
-        "visualization": "Claim-to-evidence map, check results, blocked text spans, chart-binding status, and human-review queue.",
-        "validation": "Exact value copying, bilingual fixtures, prohibited claims, chart bindings, LLM failure, immutable report hashes, and blocker non-override.",
+        "input": "Structured ReportDraft, a verified P0-09 Case graph manifest, ClaimBlocks, one-field numeric spans, statement references, and policy versions.",
+        "output": "One ClaimVerificationResult receipt binding the ReportDraft, P0-09 graph manifest, checks, audience, export eligibility and release state.",
+        "reject": "Numeric mismatch, invalid evidence, state substitution, unsupported inference, prohibited claim, graft leakage, or prose outside package-owned reconstruction.",
+        "visualization": "No visualization output in v0.1; deterministic checks retain claim IDs and relevant text spans.",
+        "validation": "Graph integrity, semantic Claim/ProductCase binding, exact numeric spans, bilingual prohibited claims, private metadata, immutable hashes, and blocker non-override.",
         "details": "docs/bridge_spec_v0.1/claim_verifier_task_card.md",
     },
     "P0-11": {
-        "input": "VerifiedReport with eligible export state, field allowlist, public aliases, registered visualizations, and export policy version.",
+        "input": "Original ReportDraft plus an eligible P0-10 ClaimVerificationResult receipt, field allowlist, public aliases and export policy version.",
         "output": "New PublicSafeReport candidate, regenerated public figures, file manifest, checksums, scan results, and confirmation-bound package hash.",
         "reject": "Any non-allowlisted field, private path or identifier, unsafe embedded content, unregistered file, hash drift, or missing user confirmation.",
         "visualization": "Public-data payload only; figures are regenerated and checked for metadata, scripts, links, hidden text, and tooltip leakage.",
@@ -99,6 +99,9 @@ DETAILS = {
 
 def main() -> int:
     repo = Path(__file__).resolve().parents[1]
+    environment_specs = yaml.safe_load(
+        (repo / "environments/index.yaml").read_text(encoding="utf-8")
+    )["environment_specs"]
     spec_dir = repo / "src" / "bridge" / "tool_packages" / "specs"
     card_dir = repo / "src" / "bridge" / "tool_packages" / "cards"
     for spec_path in sorted(spec_dir.glob("*.yaml")):
@@ -107,7 +110,10 @@ def main() -> int:
         card_path = card_dir / f"{tool_id}.md"
         if tool_id in DETAILED_CARD_IDS:
             text = card_path.read_text(encoding="utf-8")
-            _validate_detailed_card(text, spec)
+            environment_state = environment_specs[spec["environment_spec_id"]][
+                "state"
+            ]
+            _validate_detailed_card(text, spec, environment_state)
         else:
             text = render(spec, DETAILS[tool_id])
         package_dir = repo / "tool_packages" / tool_id
@@ -127,13 +133,13 @@ def _write_card_pair(text: str, public_path: Path, packaged_path: Path) -> None:
     packaged_path.write_bytes(encoded)
 
 
-def _validate_detailed_card(text: str, spec: dict) -> None:
+def _validate_detailed_card(text: str, spec: dict, environment_state: str) -> None:
     required_fragments = (
         f"# {spec['tool_id']} {spec['name']}",
         f"| Package version | `{spec['version']}` |",
         f"| Runtime state | `{spec['implementation_state']}` |",
         f"| Scientific state | `{spec['scientific_status']}` |",
-        f"| EnvironmentSpec | `{spec['environment_spec_id']}` (`proposed`) |",
+        f"| EnvironmentSpec | `{spec['environment_spec_id']}` (`{environment_state}`) |",
         f"| Input envelope | `{spec['input_schema_ref']}` |",
         f"| Output envelope | `{spec['output_schema_ref']}` |",
         f"| Result schema | `{spec['result_schema_ref']}` |",

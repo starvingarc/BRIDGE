@@ -16,7 +16,7 @@ Generate allowlisted public artifacts from an eligible verified report.
 | Input schema | `bridge://schemas/tool-request/v0.1` |
 | Output schema | `bridge://schemas/tool-run/v0.1` |
 
-**Input:** VerifiedReport with eligible export state, field allowlist, public aliases, registered visualizations, and export policy version.
+**Input:** Original ReportDraft plus an eligible P0-10 ClaimVerificationResult receipt, field allowlist, public aliases and export policy version.
 
 **Output:** New PublicSafeReport candidate, regenerated public figures, file manifest, checksums, scan results, and confirmation-bound package hash.
 

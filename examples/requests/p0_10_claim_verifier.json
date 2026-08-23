@@ -1,0 +1,48 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "report",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/report_draft.json",
+      "role": "report_draft",
+      "schema_ref": "bridge://schemas/report-draft/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "evidence",
+      "media_type": "application/json",
+      "object_version": "1",
+      "path": "/absolute/path/to/case_evidence_graph_manifest.json",
+      "role": "evidence_graph_manifest",
+      "schema_ref": "bridge://schemas/case-evidence-graph-manifest/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "policy",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/claim_policy_spec.json",
+      "role": "claim_policy_spec",
+      "schema_ref": "bridge://schemas/claim-policy-spec/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "statements",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/statement_registry.json",
+      "role": "statement_registry",
+      "schema_ref": "bridge://schemas/statement-registry/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-10-documentation-only",
+  "tool_id": "P0-10",
+  "tool_version": "0.1.0"
+}

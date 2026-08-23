@@ -1,0 +1,543 @@
+{
+  "$defs": {
+    "BenchmarkDataCase": {
+      "additionalProperties": false,
+      "properties": {
+        "assay": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Assay"
+        },
+        "case_id": {
+          "title": "Case Id",
+          "type": "string"
+        },
+        "cell_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cell Count"
+        },
+        "claim_count": {
+          "title": "Claim Count",
+          "type": "integer"
+        },
+        "data_class": {
+          "enum": [
+            "public_record",
+            "internal_anonymized",
+            "synthetic_control"
+          ],
+          "title": "Data Class",
+          "type": "string"
+        },
+        "gene_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Gene Count"
+        },
+        "independent_replicate_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Independent Replicate Count"
+        },
+        "not_applicable_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Not Applicable Reason"
+        },
+        "public_accession_or_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Public Accession Or Ref"
+        },
+        "sample_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Sample Count"
+        },
+        "scope": {
+          "title": "Scope",
+          "type": "string"
+        },
+        "split": {
+          "title": "Split",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "data_class",
+        "public_accession_or_ref",
+        "sample_count",
+        "independent_replicate_count",
+        "claim_count",
+        "cell_count",
+        "gene_count",
+        "assay",
+        "split",
+        "scope"
+      ],
+      "title": "BenchmarkDataCase",
+      "type": "object"
+    },
+    "ClaimVerifierMethodBenchmark": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_task": {
+          "title": "Analysis Task",
+          "type": "string"
+        },
+        "data_case_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Data Case Ids",
+          "type": "array"
+        },
+        "decision": {
+          "$ref": "#/$defs/MethodSelectionDecision"
+        },
+        "denominator_sensitivity": {
+          "title": "Denominator Sensitivity",
+          "type": "string"
+        },
+        "downsampling": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Downsampling",
+          "type": "object"
+        },
+        "environment_spec_id": {
+          "title": "Environment Spec Id",
+          "type": "string"
+        },
+        "evaluation": {
+          "enum": [
+            "measured",
+            "smoke",
+            "audit_only",
+            "not_run"
+          ],
+          "title": "Evaluation",
+          "type": "string"
+        },
+        "failure_behavior": {
+          "title": "Failure Behavior",
+          "type": "string"
+        },
+        "license": {
+          "title": "License",
+          "type": "string"
+        },
+        "method_id": {
+          "title": "Method Id",
+          "type": "string"
+        },
+        "method_name": {
+          "title": "Method Name",
+          "type": "string"
+        },
+        "missing_input_behavior": {
+          "title": "Missing Input Behavior",
+          "type": "string"
+        },
+        "negative_controls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Negative Controls",
+          "type": "array"
+        },
+        "ood_or_abstention_behavior": {
+          "title": "Ood Or Abstention Behavior",
+          "type": "string"
+        },
+        "positive_controls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Positive Controls",
+          "type": "array"
+        },
+        "preprocessing_sensitivity": {
+          "title": "Preprocessing Sensitivity",
+          "type": "string"
+        },
+        "random_seeds": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Random Seeds",
+          "type": "array"
+        },
+        "recommendation": {
+          "$ref": "#/$defs/SelectionRecommendation"
+        },
+        "reference_sensitivity": {
+          "title": "Reference Sensitivity",
+          "type": "string"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceMeasurement"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "task_metrics": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Task Metrics",
+          "type": "object"
+        },
+        "uncertainty_or_interval": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncertainty Or Interval"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "analysis_task",
+        "method_id",
+        "method_name",
+        "version",
+        "source",
+        "license",
+        "environment_spec_id",
+        "role",
+        "data_case_ids",
+        "evaluation",
+        "task_metrics",
+        "uncertainty_or_interval",
+        "positive_controls",
+        "missing_input_behavior",
+        "ood_or_abstention_behavior",
+        "failure_behavior",
+        "random_seeds",
+        "downsampling",
+        "reference_sensitivity",
+        "preprocessing_sensitivity",
+        "denominator_sensitivity",
+        "resources",
+        "recommendation",
+        "decision"
+      ],
+      "title": "ClaimVerifierMethodBenchmark",
+      "type": "object"
+    },
+    "DecisionState": {
+      "enum": [
+        "approved",
+        "rejected",
+        "pending"
+      ],
+      "title": "DecisionState",
+      "type": "string"
+    },
+    "MethodSelectionDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "benchmark_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Benchmark Sha256"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "reviewer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reviewer"
+        },
+        "state": {
+          "$ref": "#/$defs/DecisionState"
+        }
+      },
+      "required": [
+        "state",
+        "reason",
+        "reviewer"
+      ],
+      "title": "MethodSelectionDecision",
+      "type": "object"
+    },
+    "ResourceMeasurement": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_state": {
+          "title": "Cache State",
+          "type": "string"
+        },
+        "cpu_seconds_median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cpu Seconds Median"
+        },
+        "output_bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Output Bytes"
+        },
+        "peak_ram_mb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Peak Ram Mb"
+        },
+        "peak_vram_mb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Peak Vram Mb"
+        },
+        "repetitions": {
+          "title": "Repetitions",
+          "type": "integer"
+        },
+        "threads": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Threads"
+        },
+        "wall_clock_seconds_median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Wall Clock Seconds Median"
+        },
+        "wall_clock_seconds_range": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Wall Clock Seconds Range"
+        }
+      },
+      "required": [
+        "wall_clock_seconds_median",
+        "wall_clock_seconds_range",
+        "cpu_seconds_median",
+        "peak_ram_mb",
+        "peak_vram_mb",
+        "threads",
+        "output_bytes",
+        "cache_state",
+        "repetitions"
+      ],
+      "title": "ResourceMeasurement",
+      "type": "object"
+    },
+    "SelectionRecommendation": {
+      "enum": [
+        "default_candidate",
+        "sensitivity_candidate",
+        "benchmark_only",
+        "deferred"
+      ],
+      "title": "SelectionRecommendation",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/claim-verifier-benchmark/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "aggregate_rank": {
+      "default": null,
+      "title": "Aggregate Rank",
+      "type": "null"
+    },
+    "aggregate_score": {
+      "default": null,
+      "title": "Aggregate Score",
+      "type": "null"
+    },
+    "benchmark_id": {
+      "const": "P0-10-BENCHMARK-v0.1",
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "benchmark_state": {
+      "enum": [
+        "awaiting_server_validation",
+        "server_validated_public_candidate",
+        "server_validated_candidate"
+      ],
+      "title": "Benchmark State",
+      "type": "string"
+    },
+    "benchmark_version": {
+      "const": "0.1.0",
+      "title": "Benchmark Version",
+      "type": "string"
+    },
+    "data_cases": {
+      "items": {
+        "$ref": "#/$defs/BenchmarkDataCase"
+      },
+      "title": "Data Cases",
+      "type": "array"
+    },
+    "default_method_id": {
+      "default": null,
+      "title": "Default Method Id",
+      "type": "null"
+    },
+    "methods": {
+      "items": {
+        "$ref": "#/$defs/ClaimVerifierMethodBenchmark"
+      },
+      "title": "Methods",
+      "type": "array"
+    },
+    "tool_id": {
+      "const": "P0-10",
+      "title": "Tool Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "benchmark_id",
+    "benchmark_version",
+    "tool_id",
+    "benchmark_state",
+    "data_cases",
+    "methods"
+  ],
+  "title": "ClaimVerifierBenchmark",
+  "type": "object"
+}

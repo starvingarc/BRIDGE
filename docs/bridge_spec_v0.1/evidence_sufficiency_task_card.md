@@ -13,7 +13,7 @@
 
 P0-08 `v0.2.0` 已实现为确定性候选工具，使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同为 `bridge://schemas/evidence-sufficiency-run-result/v0.1`；候选 gate rule 与 reason-code catalog 均为 `object_version=0.1.0`。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析、不生成 `MeasurementResult` 或可视化。
 
-这是一项工程可执行性进展，不是科学冻结。`ENV-EVIDENCE-v0.1` 仍为 `proposed`，所有已选内部方法记录仍为 `formal_eligible=false`；真实 ProductCase 的三轴状态尚未由此实现得到验证。当前没有冻结的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
+这是一项工程可执行性进展，不是科学确认。`ENV-EVIDENCE-v0.1` 已通过服务器工程健康检查，所有已选内部方法记录仍为 `formal_eligible=false`；真实 ProductCase 的三轴状态尚未由此实现得到验证。当前没有批准的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
 
 完整输入角色、字段、eligibility、artifact、reason code、失败与幂等行为见 `tool_packages/P0-08/README.md`；合成对象的可复现工程验证见 `docs/validation/p0_08_evidence_sufficiency_20260813.md`。
 
@@ -169,7 +169,7 @@ created_at / deterministic_run_ref
 
 | 环境 | 组件 | 当前状态 |
 | --- | --- | --- |
-| `ENV-EVIDENCE-v0.1` | Pydantic、pandas、SciPy、scikit-learn 与确定性门控 | `proposed` |
+| `ENV-EVIDENCE-v0.1` | Pydantic、pandas、SciPy、scikit-learn 与确定性门控 | `health_check_passed` |
 | `ENV-EVIDENCE-SCHEMA-v0.1` | Pandera 及 schema fixture | `proposed_optional`；不阻塞 P0 |
 | upstream benchmark environments | scConform、Lopez-De-Castro conformal annotator、scIB 和其他域级 benchmark | `external_result_only` |
 | `knowledge_curator` | OAK 与 ontology 审核工具 | `proposed_optional` |

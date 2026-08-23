@@ -33,7 +33,7 @@ FORBIDDEN_PRIVATE = (
 LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 PRODUCT_LEVEL_V2_BRANDING = re.compile(r"\bbridge(?:\s+|[-_])v2\b", re.IGNORECASE)
 COMPLETED_PLAN_NAME = re.compile(r"(?:^|[-_])(?:complete(?:d)?|done)(?:[-_.]|$)", re.IGNORECASE)
-MAX_TRACKED_FILES = 300
+MAX_TRACKED_FILES = 320
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
 )
@@ -44,7 +44,9 @@ def main() -> int:
     tracked_files = _tracked_files()
     if tracked_files is not None:
         if len(tracked_files) > MAX_TRACKED_FILES:
-            problems.append(f"tracked file count exceeds {MAX_TRACKED_FILES}: {len(tracked_files)}")
+            problems.append(
+                f"tracked file count exceeds {MAX_TRACKED_FILES}: {len(tracked_files)}"
+            )
         _check_tracked_layout(tracked_files, problems)
         paths = [ROOT / relative for relative in tracked_files]
     else:

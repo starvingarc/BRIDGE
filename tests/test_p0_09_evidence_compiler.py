@@ -1451,7 +1451,9 @@ def test_all_seven_queries_are_bounded_deterministic_and_read_only(tmp_path: Pat
     manifest = final / "case_evidence_graph_manifest.json"
     before = {item.name: hashlib.sha256(item.read_bytes()).hexdigest() for item in final.iterdir()}
     queries = EvidenceGraphQueries.open(manifest)
-    record = json.loads((final / "evidence_records.json").read_text())["records"][0]
+    record_payload = json.loads((final / "evidence_records.json").read_text())
+    assert queries.evidence_record_set.model_dump(mode="json") == record_payload
+    record = record_payload["records"][0]
     calls = [
         queries.get_claim_evidence(claim_id="claim:target-identity"),
         queries.trace_evidence_provenance(

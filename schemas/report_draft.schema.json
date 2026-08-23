@@ -1,0 +1,318 @@
+{
+  "$defs": {
+    "AuthoringChannel": {
+      "enum": [
+        "deterministic_renderer",
+        "human_edit",
+        "imported_draft"
+      ],
+      "title": "AuthoringChannel",
+      "type": "string"
+    },
+    "ClaimBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "authoring_channel": {
+          "$ref": "#/$defs/AuthoringChannel"
+        },
+        "claim_id": {
+          "pattern": "^claim-block:[A-Za-z0-9._:-]+$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "claim_ref": {
+          "pattern": "^claim:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+          "title": "Claim Ref",
+          "type": "string"
+        },
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "claim_version": {
+          "minLength": 1,
+          "title": "Claim Version",
+          "type": "string"
+        },
+        "comparison_mode": {
+          "$ref": "#/$defs/ComparisonMode",
+          "default": "not_applicable"
+        },
+        "evidence_refs": {
+          "items": {
+            "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "language": {
+          "$ref": "#/$defs/ReportLanguage"
+        },
+        "product_case_ref": {
+          "pattern": "^product-case:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+          "title": "Product Case Ref",
+          "type": "string"
+        },
+        "reported_evidence_state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "statement_refs": {
+          "items": {
+            "pattern": "^statement:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Statement Refs",
+          "type": "array"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "value_bindings": {
+          "items": {
+            "$ref": "#/$defs/ValueBinding"
+          },
+          "title": "Value Bindings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "claim_id",
+        "claim_version",
+        "claim_ref",
+        "product_case_ref",
+        "claim_type",
+        "text",
+        "language",
+        "authoring_channel"
+      ],
+      "title": "ClaimBlock",
+      "type": "object"
+    },
+    "ClaimType": {
+      "enum": [
+        "measurement_claim",
+        "domain_interpretation",
+        "descriptive_comparison",
+        "inferential_comparison",
+        "availability_claim",
+        "alert_claim",
+        "prior_or_literature_claim",
+        "method_claim",
+        "recommendation_hypothesis",
+        "graft_retrospective_claim",
+        "policy_or_boundary_statement",
+        "visualization_caption"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "ComparisonMode": {
+      "enum": [
+        "not_applicable",
+        "descriptive_only",
+        "inferential"
+      ],
+      "title": "ComparisonMode",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ReportAudience": {
+      "enum": [
+        "internal_research",
+        "public_candidate"
+      ],
+      "title": "ReportAudience",
+      "type": "string"
+    },
+    "ReportLanguage": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed"
+      ],
+      "title": "ReportLanguage",
+      "type": "string"
+    },
+    "ValueBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "binding_id": {
+          "pattern": "^binding:[A-Za-z0-9._:-]+$",
+          "title": "Binding Id",
+          "type": "string"
+        },
+        "canonical_numeric_string": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$",
+          "title": "Canonical Numeric String",
+          "type": "string"
+        },
+        "raw_unit": {
+          "anyOf": [
+            {
+              "pattern": "^[^0-9\\s\\r\\n](?:[^0-9\\r\\n]*[^0-9\\s\\r\\n])?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Unit"
+        },
+        "source_evidence_ref": {
+          "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
+          "title": "Source Evidence Ref",
+          "type": "string"
+        },
+        "source_field": {
+          "enum": [
+            "value",
+            "numerator",
+            "denominator",
+            "interval_lower",
+            "interval_upper"
+          ],
+          "title": "Source Field",
+          "type": "string"
+        },
+        "text_span": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Text Span",
+          "type": "array"
+        }
+      },
+      "required": [
+        "binding_id",
+        "source_evidence_ref",
+        "source_field",
+        "canonical_numeric_string",
+        "text_span"
+      ],
+      "title": "ValueBinding",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/report-draft/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "audience": {
+      "$ref": "#/$defs/ReportAudience"
+    },
+    "authoring_channel": {
+      "$ref": "#/$defs/AuthoringChannel"
+    },
+    "claim_blocks": {
+      "items": {
+        "$ref": "#/$defs/ClaimBlock"
+      },
+      "minItems": 1,
+      "title": "Claim Blocks",
+      "type": "array"
+    },
+    "claim_policy_ref": {
+      "minLength": 1,
+      "title": "Claim Policy Ref",
+      "type": "string"
+    },
+    "content_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "evidence_record_set_ref": {
+      "minLength": 1,
+      "title": "Evidence Record Set Ref",
+      "type": "string"
+    },
+    "language": {
+      "$ref": "#/$defs/ReportLanguage"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "renderer_id": {
+      "minLength": 1,
+      "title": "Renderer Id",
+      "type": "string"
+    },
+    "renderer_version": {
+      "minLength": 1,
+      "title": "Renderer Version",
+      "type": "string"
+    },
+    "report_id": {
+      "pattern": "^report:[A-Za-z0-9._:-]+$",
+      "title": "Report Id",
+      "type": "string"
+    },
+    "report_version": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "title": "Report Version",
+      "type": "string"
+    },
+    "statement_registry_ref": {
+      "minLength": 1,
+      "title": "Statement Registry Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "report_id",
+    "report_version",
+    "content_hash",
+    "audience",
+    "language",
+    "evidence_record_set_ref",
+    "claim_policy_ref",
+    "statement_registry_ref",
+    "claim_blocks",
+    "renderer_id",
+    "renderer_version",
+    "authoring_channel",
+    "created_at"
+  ],
+  "title": "ReportDraft",
+  "type": "object"
+}

@@ -1,12 +1,22 @@
 tool_id: P0-10
 name: Claim Verifier
 version: 0.1.0
-summary: Verify that report claims, values and visualizations match evidence and policy.
-implementation_state: scaffold
+summary: Verify that structured report claims, values and wording match approved evidence and policy.
+implementation_state: implemented
 scientific_status: candidate
 optional: false
 environment_spec_id: ENV-EVIDENCE-v0.1
-input_schema_ref: bridge://schemas/tool-request/v0.1
-output_schema_ref: bridge://schemas/tool-run/v0.1
-method_ids: []
+input_schema_ref: bridge://schemas/tool-request/v0.2
+output_schema_ref: bridge://schemas/tool-run/v0.2
+result_schema_ref: bridge://schemas/claim-verification-result/v0.1
+adapter_ref: bridge.tool_packages.p0_10_claim_verifier.adapter:adapter
+method_ids:
+  - METHOD-INTERNAL-DETERMINISTIC-ENGINE-33C959
+  - METHOD-INTERNAL-NUMERIC-ENGINE
+  - METHOD-INTERNAL-RENDERER
+  - METHOD-INTERNAL-RULESET
+  - METHOD-SCHEMA-LIBRARY
+  - METHOD-SCHEMA-VALIDATOR
+  - METHOD-STANDARD-LIBRARY
+  - METHOD-UNICODE-REGEX-ENGINE
 card_ref: bridge://tool-cards/P0-10
