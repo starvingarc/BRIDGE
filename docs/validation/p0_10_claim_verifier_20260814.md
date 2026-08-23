@@ -356,3 +356,53 @@ unused Jinja package may remain in a long-lived validation environment. Free
 Markdown, LLM judgment, webpages, OCR and media remain outside v0.1. The
 benchmark state is `server_validated_candidate`, its selected default remains
 `none`, and this addendum does not approve one.
+
+## Latest-main integration closeout — 2026-08-24
+
+The validated P0-10 branch was merged, without rewriting its history, with
+canonical `main` commit `4638b35c97a015b4f00e4d69e434403122208a7e`.
+The resulting implementation commit was
+`7e8609c1fdeb96f1c3471060d419b8ebb2c92582`. The only incoming product files
+were the fully synthetic scRNA upload demo and its documentation; no P0-10,
+P0-08 or P0-09 interface changed.
+
+Validation ran exclusively under `/data1` from a complete transferred Git
+bundle. The old server worktree was not reused because its Git metadata still
+depended on the unavailable legacy volume. A new independent checkout and a
+new append-only evidence directory were used instead. No long-lived Conda
+environment was modified: the existing core environment supplied QC/test
+dependencies, while the exact pinned `regex` 2026.7.19 package was copied from
+the evidence environment into a temporary validation layer.
+
+| Latest-main closeout item | Result |
+|---|---|
+| Git archive SHA-256 | `ae8a989818dcf90c9ffc698f1b1acb9d6c73fed7b0e2e70a3a28a64063b8ee11` |
+| Wheel SHA-256 | `a20c5ab4229e636743d72d21efc90aaf9a384f424ce8c01d47d8d6ba011b5d66` |
+| Wheel import | loaded from the fresh temporary validation environment's `site-packages` |
+| P0-10 focused tests | `61 passed` |
+| Complete installed-wheel suite | `959 passed, 1 warning` |
+| Tool discovery | 12 packages; P0-10 implemented |
+| Knowledge and repository policy | valid; 354 methods, 396 bindings, no dangling references, zero formal-eligible methods; policy passed |
+| Generated projections | benchmark, Tool Cards, Schemas and knowledge rendered twice with no diff |
+| Public/packaged Schema parity | 54 pairs byte-identical |
+| Repository size | 317 tracked files against the fixed 320-file limit |
+| Privacy and storage | no private absolute path or LFS pointer in tracked content |
+| Evidence manifest | 28 retained files; SHA-256 `8e3e69db23d87f381794e07ba7a392c16f0efd1a6a7c8b469d90c9e991ee37d9` |
+
+The first complete-suite source attempt in the long-lived core environment
+stopped during collection because that environment did not yet contain the
+new P0-10 `regex` dependency. The first installed-wheel focused invocation was
+then launched outside the repository root and two projection tests could not
+resolve their repository-relative files. Both command errors are retained in
+the private log. The declared temporary dependency layer and repository-root
+invocations subsequently passed; neither attempt changed tracked files or a
+long-lived environment.
+
+Two exact-wheel internal runs were byte-identical and reproduced result
+SHA-256 `f65c21b56e8e51fd94fe088785fa63289051c10e9097718a7ad976ed5e418165`:
+the receipt remained `verified` but public-ineligible. The public-candidate run
+again emitted three `nonformal_evidence_used_for_formal_claim` blockers and
+reproduced result SHA-256
+`90c64559217f21c4d097c554ccbdf26b14197997b3d7c5c7030b95b50d789bdf`.
+Thus synchronization with the upload demo did not change scientific behavior,
+does not create a public-eligible receipt and does not authorize P0-11.

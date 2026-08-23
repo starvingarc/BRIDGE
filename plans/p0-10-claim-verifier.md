@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Branch | `p0-10-claim-verifier` |
-| Baseline | `9fa004eeff6ef78d6e737f47f458ae134ec58ba2` |
-| Status | `draft_review` |
+| Baseline | `4638b35c97a015b4f00e4d69e434403122208a7e` |
+| Status | `ready_review` |
 
 ## Biological and reporting question
 
@@ -71,8 +71,11 @@ interval, evidence state, comparison scope and approved wording?
 14. [x] Regenerate projections and validate the exact implementation commit and
     wheel on the server, including the complete adversarial matrix and repeated
     anonymous run.
-15. [ ] Push the validated revision and request focused re-review; merge only
-    after separate authorization.
+15. [x] Synchronize the latest `main` without rewriting branch history and
+    repeat source and clean-wheel validation on `/data1`.
+16. [x] Prepare the exact-head closure matrix and push the validation-ready
+    revision for final focused review. GitHub records thread resolution and the
+    explicitly authorized merge rather than this temporary construction plan.
 
 ## Acceptance
 
