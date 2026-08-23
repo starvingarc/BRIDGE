@@ -52,7 +52,8 @@ The result is one `TargetRegionalEvidenceResult` containing:
 
 - module-local models, executor and adapter;
 - public and packaged JSON Schemas generated from the same Pydantic models;
-- P0-03 v0.2 implemented spec with one deterministic method ID;
+- P0-03 v0.2 implemented spec with the two registered target/regional
+  StateRoleMap method IDs;
 - synthetic example inputs/request/output expectations;
 - one detailed Tool Card source and its byte-identical public projection;
 - focused tests for deterministic results, cross-binding, missing/unmapped
@@ -73,3 +74,12 @@ Branch: `p0-03-target-regional-evidence`.
 
 The PR remains Draft until its exact head passes the required GitHub check and
 an independent closure review. Implementation and CI do not authorize merge.
+
+## Current status
+
+Implementation and exact installed-wheel verification are complete at
+`0c876c183b2c17e15af26c68c915434c258c7fba`: 27 focused and 986 total tests
+passed, 12 tools remained discoverable, the knowledge snapshot retained zero
+formal-eligible methods, and repository policy passed. The remaining plan item
+is an independent closure review of Draft PR #20; no scientific review or
+release promotion is implied.
