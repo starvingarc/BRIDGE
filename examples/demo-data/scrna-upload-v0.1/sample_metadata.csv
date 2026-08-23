@@ -1,0 +1,5 @@
+capture_id,sample_id,batch_id,preparation_id,timepoint
+demo-capture-a1,demo-sample-a,demo-batch-1,demo-preparation-a,demo-day-21
+demo-capture-a2,demo-sample-a,demo-batch-2,demo-preparation-a,demo-day-21
+demo-capture-b1,demo-sample-b,demo-batch-1,demo-preparation-b,demo-day-21
+demo-capture-b2,demo-sample-b,demo-batch-2,demo-preparation-b,demo-day-21
