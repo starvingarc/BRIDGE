@@ -327,6 +327,7 @@ def test_complete_configuration_runs_and_preserves_denominators(
     assert len(run.artifacts) == 1
     target = run.result["target_identity_channels"][0]
     roles = _role_map(target)
+    assert target["denominator_view"] == "all input observations"
     assert target["denominator"] == 100
     assert roles["target"] == {
         "role": "target",
@@ -337,6 +338,7 @@ def test_complete_configuration_runs_and_preserves_denominators(
     assert roles["acceptable_adjacent"]["numerator"] == 20
     assert roles["not_target"]["numerator"] == 20
     regional = run.result["regional_fidelity_channels"][0]
+    assert regional["denominator_view"] == "all input observations"
     assert regional["target_related_denominator"] == 80
     assert regional["whole_product_target_region_fraction"]["fraction"] == 0.6
     assert run.result["reason_codes"] == ["spatial_projection_not_supplied"]
@@ -427,6 +429,35 @@ def test_complete_contract_without_requested_axis_returns_not_assessed(
     assert run.result["target_identity_channels"] == []
     assert run.result["regional_fidelity_channels"] == []
     assert "cell_state_composition_not_assessed" in run.result["reason_codes"]
+
+
+def test_missing_explicit_source_is_partial(tmp_path: Path) -> None:
+    payloads = _payloads()
+    payloads["target_regional_assessment_spec"].update(
+        {
+            "composition_views": ["source_specific"],
+            "source_ids": ["REF-PRESENT", "REF-MISSING"],
+        }
+    )
+    records = payloads["cell_state_evidence_profile"]["composition"]["records"]
+    records.append(
+        {
+            "view": "source_specific",
+            "source_id": "REF-PRESENT",
+            "label": "state:alpha",
+            "count": 100,
+            "fraction": 1.0,
+            "denominator": 100,
+            "label_level": "L1",
+            "denominator_view": "all input observations",
+        }
+    )
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    assert run.result["result_state"] == "partial"
+    assert "requested_composition_channel_unavailable" in run.reason_codes
 
 
 @pytest.mark.parametrize(

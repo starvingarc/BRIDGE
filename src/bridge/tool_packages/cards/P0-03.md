@@ -117,8 +117,8 @@ A successful or partial run publishes one immutable
   QC references;
 - SHA-256 bindings for all six input roles without caller-local input IDs or
   paths;
-- target-identity channels with role numerator, denominator and fraction;
-- regional-fidelity channels with the explicit target-related denominator and
+- target-identity channels with role numerator, denominator view, denominator and fraction;
+- regional-fidelity channels with the original denominator view, explicit target-related denominator and
   whole-product target-region fraction;
 - every unmapped upstream state and stable reason code;
 - a spatial profile fixed to `not_assessed` with

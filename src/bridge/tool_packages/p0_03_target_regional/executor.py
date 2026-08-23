@@ -85,11 +85,19 @@ def evaluate_target_regional(
     observed_channel_kinds = {(key[0], key[2]) for key in grouped}
     if requested_channel_kinds - observed_channel_kinds:
         reasons.add("requested_composition_channel_unavailable")
+    requested_source_channels = {
+        (CompositionView.SOURCE_SPECIFIC, source_id, level)
+        for source_id in assessment_spec.source_ids
+        for level in assessment_spec.included_label_levels
+        if CompositionView.SOURCE_SPECIFIC in assessment_spec.composition_views
+    }
+    if requested_source_channels - set(grouped):
+        reasons.add("requested_composition_channel_unavailable")
 
     for (view, source_id, label_level), channel_records in sorted(
         grouped.items(), key=_channel_sort_key
     ):
-        denominator = _channel_denominator(channel_records)
+        denominator, denominator_view = _channel_denominator(channel_records)
         lineage_counts = {role: 0 for role in LineageRole}
         regional_counts = {role: 0 for role in RegionalRole}
         target_related_denominator = 0
@@ -132,6 +140,7 @@ def evaluate_target_regional(
                 composition_view=view,
                 source_id=source_id,
                 label_level=label_level,
+                denominator_view=denominator_view,
                 denominator=denominator,
                 role_fractions=[
                     _fraction(role.value, lineage_counts[role], denominator)
@@ -144,6 +153,7 @@ def evaluate_target_regional(
                 composition_view=view,
                 source_id=source_id,
                 label_level=label_level,
+                denominator_view=denominator_view,
                 whole_product_denominator=denominator,
                 target_related_denominator=target_related_denominator,
                 target_related_role_fractions=[
@@ -256,12 +266,14 @@ def _group_records(
     return dict(grouped)
 
 
-def _channel_denominator(records: list[UpstreamCompositionRecord]) -> int:
+def _channel_denominator(
+    records: list[UpstreamCompositionRecord],
+) -> tuple[int, str]:
     denominators = {record.denominator for record in records}
     denominator_views = {record.denominator_view for record in records}
     if len(denominators) != 1 or len(denominator_views) != 1:
         raise ValueError("cell_state_composition_denominator_mismatch")
-    return next(iter(denominators))
+    return next(iter(denominators)), next(iter(denominator_views))
 
 
 def _fraction(role: str, numerator: int, denominator: int) -> RoleFraction:

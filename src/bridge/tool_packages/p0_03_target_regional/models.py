@@ -277,6 +277,7 @@ class TargetIdentityChannel(FrozenModel):
     composition_view: CompositionView
     source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
     label_level: Literal["L1", "L2", "L3"]
+    denominator_view: str = Field(min_length=1)
     denominator: StrictInt = Field(gt=0)
     role_fractions: list[RoleFraction] = Field(min_length=1)
 
@@ -285,6 +286,7 @@ class RegionalFidelityChannel(FrozenModel):
     composition_view: CompositionView
     source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
     label_level: Literal["L1", "L2", "L3"]
+    denominator_view: str = Field(min_length=1)
     whole_product_denominator: StrictInt = Field(gt=0)
     target_related_denominator: StrictInt = Field(ge=0)
     target_related_role_fractions: list[RoleFraction] = Field(min_length=1)
