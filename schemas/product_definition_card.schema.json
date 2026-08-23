@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/product-definition-card/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "definition_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Definition Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_id": {
+      "pattern": "^product-definition:[A-Za-z0-9._:-]+$",
+      "title": "Product Definition Id",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "review_state": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "Review State",
+      "type": "string"
+    },
+    "state_role_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "supported_assays": {
+      "items": {
+        "enum": [
+          "scRNA-seq",
+          "snRNA-seq"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Supported Assays",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "product_definition_id",
+    "definition_version",
+    "state_role_map_ref",
+    "supported_assays",
+    "review_state",
+    "provenance_refs"
+  ],
+  "title": "ProductDefinitionCard",
+  "type": "object"
+}
