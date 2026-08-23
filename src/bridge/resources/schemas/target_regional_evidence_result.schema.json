@@ -59,6 +59,11 @@
         "composition_view": {
           "$ref": "#/$defs/CompositionView"
         },
+        "denominator_view": {
+          "minLength": 1,
+          "title": "Denominator View",
+          "type": "string"
+        },
         "label_level": {
           "enum": [
             "L1",
@@ -106,6 +111,7 @@
       "required": [
         "composition_view",
         "label_level",
+        "denominator_view",
         "whole_product_denominator",
         "target_related_denominator",
         "target_related_role_fractions",
@@ -187,6 +193,11 @@
           "title": "Denominator",
           "type": "integer"
         },
+        "denominator_view": {
+          "minLength": 1,
+          "title": "Denominator View",
+          "type": "string"
+        },
         "label_level": {
           "enum": [
             "L1",
@@ -221,6 +232,7 @@
       "required": [
         "composition_view",
         "label_level",
+        "denominator_view",
         "denominator",
         "role_fractions"
       ],
