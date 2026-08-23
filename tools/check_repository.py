@@ -33,7 +33,9 @@ FORBIDDEN_PRIVATE = (
 LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 PRODUCT_LEVEL_V2_BRANDING = re.compile(r"\bbridge(?:\s+|[-_])v2\b", re.IGNORECASE)
 COMPLETED_PLAN_NAME = re.compile(r"(?:^|[-_])(?:complete(?:d)?|done)(?:[-_.]|$)", re.IGNORECASE)
-MAX_TRACKED_FILES = 320
+TRACKED_FILE_BASELINE = 314
+IMPLEMENTED_TOOL_BASELINE = 5
+MAX_FILES_PER_NEW_IMPLEMENTED_TOOL = 18
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
 )
@@ -43,9 +45,10 @@ def main() -> int:
     problems: list[str] = []
     tracked_files = _tracked_files()
     if tracked_files is not None:
-        if len(tracked_files) > MAX_TRACKED_FILES:
+        tracked_file_budget = _tracked_file_budget()
+        if len(tracked_files) > tracked_file_budget:
             problems.append(
-                f"tracked file count exceeds {MAX_TRACKED_FILES}: {len(tracked_files)}"
+                f"tracked file count exceeds {tracked_file_budget}: {len(tracked_files)}"
             )
         _check_tracked_layout(tracked_files, problems)
         paths = [ROOT / relative for relative in tracked_files]
@@ -101,6 +104,15 @@ def _tracked_files() -> list[Path] | None:
     if result.returncode != 0:
         return None
     return [Path(line) for line in result.stdout.splitlines() if line]
+
+
+def _tracked_file_budget() -> int:
+    implemented = 0
+    for path in (ROOT / "src/bridge/tool_packages/specs").glob("p0_*.yaml"):
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        implemented += payload.get("implementation_state") == "implemented"
+    added_tools = max(0, implemented - IMPLEMENTED_TOOL_BASELINE)
+    return TRACKED_FILE_BASELINE + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
 
 
 def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> None:

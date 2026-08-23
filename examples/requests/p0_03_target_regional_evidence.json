@@ -1,0 +1,66 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "case",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_case.json",
+      "role": "product_case",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "definition",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_definition_card.json",
+      "role": "product_definition_card",
+      "schema_ref": "bridge://schemas/product-definition-card/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "roles",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/state_role_map.json",
+      "role": "state_role_map",
+      "schema_ref": "bridge://schemas/state-role-map/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "assessment",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/target_regional_assessment_spec.json",
+      "role": "target_regional_assessment_spec",
+      "schema_ref": "bridge://schemas/target-regional-assessment-spec/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "input_id": "cell-state",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/cell_state_evidence_profile.json",
+      "role": "cell_state_evidence_profile",
+      "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.1",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "input_id": "qc",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/qc_readiness_profile.json",
+      "role": "qc_readiness_profile",
+      "schema_ref": "bridge://schemas/qc-readiness-profile/v0.1",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-03-documentation-only",
+  "tool_id": "P0-03",
+  "tool_version": "0.2.0"
+}

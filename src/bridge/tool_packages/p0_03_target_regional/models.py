@@ -1,0 +1,369 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from enum import StrEnum
+import math
+import re
+from typing import Literal, Self
+
+from pydantic import Field, StrictFloat, StrictInt, field_validator, model_validator
+
+from bridge.toolkit.contracts import FrozenModel, ScoreState
+
+
+OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
+VERSION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+SHA256_PATTERN = r"^[0-9a-f]{64}$"
+INPUT_ROLES = frozenset(
+    {
+        "product_case",
+        "product_definition_card",
+        "state_role_map",
+        "target_regional_assessment_spec",
+        "cell_state_evidence_profile",
+        "qc_readiness_profile",
+    }
+)
+
+
+def _unique(values: list[object], field: str) -> None:
+    if len(values) != len(set(values)):
+        raise ValueError(f"{field} must contain unique values")
+
+
+def _aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("created_at must include a timezone")
+    return value.astimezone(timezone.utc)
+
+
+class VersionedObjectRef(FrozenModel):
+    object_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    object_version: str = Field(pattern=VERSION_PATTERN)
+
+    @property
+    def ref(self) -> str:
+        return f"{self.object_id}@{self.object_version}"
+
+
+class ProductCase(FrozenModel):
+    object_version: Literal["0.1.0"]
+    product_case_id: str = Field(pattern=r"^product-case:[A-Za-z0-9._:-]+$")
+    case_version: str = Field(pattern=VERSION_PATTERN)
+    product_definition_ref: VersionedObjectRef
+    sample_or_preparation_ref: VersionedObjectRef
+    measurement_spec_ref: VersionedObjectRef
+    assay: Literal["scRNA-seq", "snRNA-seq"]
+    provenance_refs: list[VersionedObjectRef] = Field(min_length=1)
+    created_at: datetime
+
+    _created_at_utc = field_validator("created_at")(_aware_utc)
+
+    @field_validator("provenance_refs")
+    @classmethod
+    def provenance_is_unique(
+        cls, value: list[VersionedObjectRef]
+    ) -> list[VersionedObjectRef]:
+        _unique([item.ref for item in value], "provenance_refs")
+        return value
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.product_case_id,
+            object_version=self.case_version,
+        )
+
+
+class ProductDefinitionCard(FrozenModel):
+    object_version: Literal["0.1.0"]
+    product_definition_id: str = Field(
+        pattern=r"^product-definition:[A-Za-z0-9._:-]+$"
+    )
+    definition_version: str = Field(pattern=VERSION_PATTERN)
+    state_role_map_ref: VersionedObjectRef
+    supported_assays: list[Literal["scRNA-seq", "snRNA-seq"]] = Field(
+        min_length=1
+    )
+    review_state: Literal["draft", "reviewed", "frozen"]
+    provenance_refs: list[VersionedObjectRef] = Field(min_length=1)
+
+    @field_validator("supported_assays")
+    @classmethod
+    def assays_are_unique(cls, value: list[str]) -> list[str]:
+        _unique(value, "supported_assays")
+        return value
+
+    @field_validator("provenance_refs")
+    @classmethod
+    def provenance_is_unique(
+        cls, value: list[VersionedObjectRef]
+    ) -> list[VersionedObjectRef]:
+        _unique([item.ref for item in value], "provenance_refs")
+        return value
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.product_definition_id,
+            object_version=self.definition_version,
+        )
+
+
+class LineageRole(StrEnum):
+    TARGET = "target"
+    ACCEPTABLE_ADJACENT = "acceptable_adjacent"
+    NOT_TARGET = "not_target"
+    UNRESOLVED = "unresolved"
+
+
+class RegionalRole(StrEnum):
+    TARGET_REGION = "target_region"
+    ACCEPTABLE_ADJACENT_REGION = "acceptable_adjacent_region"
+    REGIONAL_SHIFT = "regional_shift"
+    NOT_APPLICABLE = "not_applicable"
+    UNRESOLVED = "unresolved"
+
+
+class StateRoleAssignment(FrozenModel):
+    state_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    label_level: Literal["L1", "L2", "L3"]
+    lineage_role: LineageRole
+    regional_role: RegionalRole
+    provenance_refs: list[VersionedObjectRef] = Field(default_factory=list)
+
+    @field_validator("provenance_refs")
+    @classmethod
+    def provenance_is_unique(
+        cls, value: list[VersionedObjectRef]
+    ) -> list[VersionedObjectRef]:
+        _unique([item.ref for item in value], "provenance_refs")
+        return value
+
+
+class StateRoleMap(FrozenModel):
+    object_version: Literal["0.1.0"]
+    role_map_id: str = Field(pattern=r"^state-role-map:[A-Za-z0-9._:-]+$")
+    role_map_version: str = Field(pattern=VERSION_PATTERN)
+    product_definition_ref: VersionedObjectRef
+    annotation_vocabulary_ref: str = Field(pattern=OBJECT_ID_PATTERN)
+    review_state: Literal["draft", "reviewed", "frozen"]
+    assignments: list[StateRoleAssignment] = Field(min_length=1)
+
+    @field_validator("assignments")
+    @classmethod
+    def assignments_are_unique(
+        cls, value: list[StateRoleAssignment]
+    ) -> list[StateRoleAssignment]:
+        _unique(
+            [(item.label_level, item.state_id) for item in value],
+            "assignments",
+        )
+        return value
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.role_map_id,
+            object_version=self.role_map_version,
+        )
+
+
+class CompositionView(StrEnum):
+    CONSENSUS_SUPPORTED_ONLY = "consensus_supported_only"
+    SOURCE_SPECIFIC = "source_specific"
+
+
+class UpstreamCompositionView(StrEnum):
+    CONSENSUS_SUPPORTED_ONLY = "consensus_supported_only"
+    SOURCE_SPECIFIC = "source_specific"
+    RECONCILIATION_STATE = "reconciliation_state"
+
+
+class TargetRegionalAssessmentSpec(FrozenModel):
+    object_version: Literal["0.1.0"]
+    assessment_spec_id: str = Field(
+        pattern=r"^target-regional-assessment-spec:[A-Za-z0-9._:-]+$"
+    )
+    assessment_spec_version: str = Field(pattern=VERSION_PATTERN)
+    product_definition_ref: VersionedObjectRef
+    status: Literal["candidate", "frozen"]
+    composition_views: list[CompositionView] = Field(min_length=1)
+    included_label_levels: list[Literal["L1", "L2", "L3"]] = Field(
+        min_length=1
+    )
+    source_ids: list[str] = Field(default_factory=list)
+    regional_denominator_lineage_roles: list[LineageRole] = Field(min_length=1)
+    whole_product_target_region_roles: list[RegionalRole] = Field(min_length=1)
+    unmapped_state_policy: Literal["report_unresolved"]
+    spatial_policy: Literal["not_assessed_without_projection"]
+
+    @field_validator(
+        "composition_views",
+        "included_label_levels",
+        "source_ids",
+        "regional_denominator_lineage_roles",
+        "whole_product_target_region_roles",
+    )
+    @classmethod
+    def configured_values_are_unique(cls, value: list[object]) -> list[object]:
+        _unique(value, "configured list")
+        return value
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.assessment_spec_id,
+            object_version=self.assessment_spec_version,
+        )
+
+
+class UpstreamCompositionRecord(FrozenModel):
+    view: UpstreamCompositionView
+    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
+    label: str = Field(pattern=OBJECT_ID_PATTERN)
+    label_level: Literal["L1", "L2", "L3"]
+    denominator_view: str = Field(min_length=1)
+    count: StrictInt = Field(ge=0)
+    fraction: StrictFloat = Field(ge=0.0, le=1.0)
+    denominator: StrictInt = Field(gt=0)
+
+    @model_validator(mode="after")
+    def record_is_coherent(self) -> Self:
+        if self.count > self.denominator:
+            raise ValueError("composition count exceeds denominator")
+        if not math.isclose(
+            self.fraction,
+            self.count / self.denominator,
+            rel_tol=0.0,
+            abs_tol=1e-9,
+        ):
+            raise ValueError("composition fraction does not match count/denominator")
+        if self.view is UpstreamCompositionView.SOURCE_SPECIFIC and self.source_id is None:
+            raise ValueError("source_specific composition requires source_id")
+        if self.view is not UpstreamCompositionView.SOURCE_SPECIFIC and self.source_id is not None:
+            raise ValueError("non-source-specific composition cannot declare source_id")
+        return self
+
+
+class RoleFraction(FrozenModel):
+    role: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    numerator: StrictInt = Field(ge=0)
+    denominator: StrictInt = Field(ge=0)
+    fraction: StrictFloat | None = Field(default=None, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def fraction_matches_counts(self) -> Self:
+        if self.denominator == 0:
+            if self.numerator != 0 or self.fraction is not None:
+                raise ValueError("zero denominator requires zero numerator and null fraction")
+        elif self.fraction is None or not math.isclose(
+            self.fraction,
+            self.numerator / self.denominator,
+            rel_tol=0.0,
+            abs_tol=1e-9,
+        ):
+            raise ValueError("role fraction does not match numerator/denominator")
+        return self
+
+
+class UnmappedStateRecord(FrozenModel):
+    state_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    label_level: Literal["L1", "L2", "L3"]
+    composition_view: CompositionView
+    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
+    count: StrictInt = Field(ge=0)
+    denominator: StrictInt = Field(gt=0)
+    reason_code: Literal["state_role_not_configured"]
+
+
+class TargetIdentityChannel(FrozenModel):
+    composition_view: CompositionView
+    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
+    label_level: Literal["L1", "L2", "L3"]
+    denominator: StrictInt = Field(gt=0)
+    role_fractions: list[RoleFraction] = Field(min_length=1)
+
+
+class RegionalFidelityChannel(FrozenModel):
+    composition_view: CompositionView
+    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
+    label_level: Literal["L1", "L2", "L3"]
+    whole_product_denominator: StrictInt = Field(gt=0)
+    target_related_denominator: StrictInt = Field(ge=0)
+    target_related_role_fractions: list[RoleFraction] = Field(min_length=1)
+    whole_product_target_region_fraction: RoleFraction
+
+
+class SpatialReferenceProjectionProfile(FrozenModel):
+    assessment_state: Literal["not_assessed"]
+    reason_code: Literal["spatial_projection_not_supplied"]
+
+
+class TargetRegionalEvidenceResult(FrozenModel):
+    object_version: Literal["0.1.0"]
+    result_id: str = Field(pattern=r"^target-regional-result:[a-f0-9]{16}$")
+    tool_id: Literal["P0-03"]
+    tool_version: str = Field(pattern=VERSION_PATTERN)
+    product_case_ref: VersionedObjectRef
+    product_definition_ref: VersionedObjectRef
+    state_role_map_ref: VersionedObjectRef
+    assessment_spec_ref: VersionedObjectRef
+    cell_state_profile_ref: VersionedObjectRef
+    qc_profile_ref: VersionedObjectRef
+    input_sha256_by_role: dict[str, str]
+    result_state: Literal["complete", "partial", "not_assessed"]
+    target_identity_channels: list[TargetIdentityChannel]
+    regional_fidelity_channels: list[RegionalFidelityChannel]
+    unmapped_states: list[UnmappedStateRecord]
+    spatial_projection: SpatialReferenceProjectionProfile
+    evidence_refs: list[str]
+    reason_codes: list[str]
+    domain_score: None = None
+    score_state: Literal[ScoreState.SHADOW, ScoreState.UNAVAILABLE]
+
+    @field_validator("evidence_refs", "reason_codes")
+    @classmethod
+    def string_lists_are_unique_sorted(cls, value: list[str]) -> list[str]:
+        if value != sorted(set(value)):
+            raise ValueError("result string lists must be unique and sorted")
+        return value
+
+    @field_validator("input_sha256_by_role")
+    @classmethod
+    def input_hashes_are_complete(cls, value: dict[str, str]) -> dict[str, str]:
+        if set(value) != INPUT_ROLES:
+            raise ValueError("result must bind every structured-input role")
+        if any(not re.fullmatch(SHA256_PATTERN, digest) for digest in value.values()):
+            raise ValueError("result input hashes must be SHA-256 values")
+        return value
+
+    @model_validator(mode="after")
+    def result_state_is_coherent(self) -> Self:
+        has_channels = bool(
+            self.target_identity_channels or self.regional_fidelity_channels
+        )
+        if self.result_state == "not_assessed" and has_channels:
+            raise ValueError("not_assessed result cannot contain assessed channels")
+        if self.result_state == "complete" and (
+            not self.target_identity_channels
+            or not self.regional_fidelity_channels
+            or self.unmapped_states
+        ):
+            raise ValueError("complete result requires both profiles and no unmapped states")
+        if self.score_state == ScoreState.UNAVAILABLE and self.result_state != "not_assessed":
+            raise ValueError("assessed candidate result must remain shadow")
+        return self
+
+
+PUBLIC_SCHEMA_MODELS = {
+    "bridge://schemas/product-case/v0.1": ProductCase,
+    "bridge://schemas/product-definition-card/v0.1": ProductDefinitionCard,
+    "bridge://schemas/state-role-map/v0.1": StateRoleMap,
+    "bridge://schemas/target-regional-assessment-spec/v0.1": (
+        TargetRegionalAssessmentSpec
+    ),
+    "bridge://schemas/target-regional-evidence-result/v0.1": (
+        TargetRegionalEvidenceResult
+    ),
+}

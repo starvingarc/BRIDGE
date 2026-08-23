@@ -44,6 +44,8 @@ SCHEMA_REFS = {
     "bridge://schemas/measurement-spec/v0.1": "measurement_spec.schema.json",
     "bridge://schemas/qc-readiness-profile/v0.1": "qc_readiness_profile.schema.json",
     "bridge://schemas/prior-applicability-record/v0.1": "prior_applicability_record.schema.json",
+    "bridge://schemas/product-case/v0.1": "product_case.schema.json",
+    "bridge://schemas/product-definition-card/v0.1": "product_definition_card.schema.json",
     "bridge://schemas/reference-manifest/v0.1": "reference_manifest.schema.json",
     "bridge://schemas/reference-profile/v0.1": "reference_profile.schema.json",
     "bridge://schemas/reconciliation-record/v0.1": "reconciliation_record.schema.json",
@@ -51,6 +53,7 @@ SCHEMA_REFS = {
     "bridge://schemas/reconciliation-spec-registry/v0.1": "reconciliation_spec_registry.schema.json",
     "bridge://schemas/report-draft/v0.1": "report_draft.schema.json",
     "bridge://schemas/statement-registry/v0.1": "statement_registry.schema.json",
+    "bridge://schemas/state-role-map/v0.1": "state_role_map.schema.json",
     "bridge://schemas/structured-input-ref/v0.1": "structured_input_ref.schema.json",
     "bridge://schemas/tool-package-spec/v0.1": "tool_package_spec.schema.json",
     "bridge://schemas/tool-package-spec/v0.2": "tool_package_spec_v2.schema.json",
@@ -58,6 +61,8 @@ SCHEMA_REFS = {
     "bridge://schemas/tool-request/v0.2": "tool_request_v2.schema.json",
     "bridge://schemas/tool-run/v0.1": "tool_run.schema.json",
     "bridge://schemas/tool-run/v0.2": "tool_run_v2.schema.json",
+    "bridge://schemas/target-regional-assessment-spec/v0.1": "target_regional_assessment_spec.schema.json",
+    "bridge://schemas/target-regional-evidence-result/v0.1": "target_regional_evidence_result.schema.json",
     "bridge://schemas/visualization-artifact/v0.1": "visualization_artifact.schema.json",
 }
 

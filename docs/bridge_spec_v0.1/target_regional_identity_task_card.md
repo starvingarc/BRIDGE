@@ -10,6 +10,22 @@
 | 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard` |
 | 主要输出 | `TargetIdentityProfile`、`RegionalFidelityProfile`、`SpatialReferenceProjectionProfile` |
 
+## 0. 当前可执行候选
+
+P0-03 v0.2.0 实现了组成解释的最小确定性路径。它通过
+`ToolRequestV2` 接收带 checksum 的 `ProductCase`、
+`ProductDefinitionCard`、`StateRoleMap`、
+`TargetRegionalAssessmentSpec`、`CellStateEvidenceProfile` 和
+`QCReadinessProfile`，输出一个 `TargetRegionalEvidenceResult`。
+
+实现代码不包含任何具体状态到产品角色的映射。下文 PD-mDA 角色均为
+待审核候选内容；只有请求中版本化 `StateRoleMap` 的值参与本次运行。
+因此后续生物学决定通过替换输入版本和 checksum 生效，不需要修改执行器。
+`StateRoleMap` 必须绑定 P0-02 的 annotation vocabulary，评估规则必须绑定同一
+ProductDefinitionCard；P0-02 的 reconciliation-state 记录只作为上游诊断信息读取，
+不进入目标或区域组成分母。
+当前路径不运行表达分析或空间投射，不输出区间、分数、效力、安全或放行结论。
+
 ## 1. 任务目标
 
 本模块把 Cell-State 的状态证据解释为两个独立的产品评估问题：
@@ -22,8 +38,8 @@
 ## 2. 评估边界
 
 - Cell-State 模块负责生成 prediction set、连续权重、方法分歧和 unknown；本模块负责依据 ProductDefinitionCard 解释这些证据。
-- Target Identity 的默认分母为全部 `eligible_cells_view` 细胞。
-- Regional Fidelity 的正式候选分母为 target-related cells；同时单列完整制剂中的区域支持比例。
+- Target Identity 分母来自所选 P0-02 composition channel，并由输入记录显式携带。
+- Regional Fidelity 分母由 `TargetRegionalAssessmentSpec` 指定的 lineage roles 组成；同时单列完整制剂中的区域支持比例。
 - 区域身份、细胞谱系和发育阶段分别判断。体外分化日不能自动换算为 GW/PCW。
 - 体外产品 scRNA 投射到人胚空间参考称为 **Spatial Reference Projection**，不表示产品具有真实组织空间结构。
 - 非目标细胞和异常状态传递给 Off-target Control 与 Proliferation & Stress Response，不在本模块重复定义。

@@ -32,6 +32,11 @@ Every package supports:
 | `CellStateBenchmarkSpec` / `BenchmarkSplitManifest` | Source/sample-aware pilot or locked benchmark contract |
 | `FreezeGateSpec` | Human-signed thresholds fixed before locked assets are opened |
 | `CellStateReleaseManifest` | Approved per-state release state and runtime method selection |
+| `ProductCase` | Versioned product, preparation, assay, MeasurementSpec and ProductDefinition binding |
+| `ProductDefinitionCard` | Versioned product context and exact StateRoleMap binding; no role decisions live in code |
+| `StateRoleMap` | Versioned per-state lineage and regional assignments supplied as structured input |
+| `TargetRegionalAssessmentSpec` | Versioned selection of composition views, label levels and denominator mechanics |
+| `TargetRegionalEvidenceResult` | Raw role-resolved target/regional evidence with unresolved states and null score |
 
 Implemented Tool Packages retain at least one selected `method_id`. Scaffold packages keep `method_ids` empty until an executable, benchmark-bound method contract exists; candidate catalog entries do not imply implementation.
 
@@ -76,7 +81,17 @@ Original inputs are read-only. Each run creates a new bundle containing a manife
 
 The versioned JSON contracts in `schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` are the Python source used to generate those schemas.
 
-For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability; P0-08 and P0-09 are separately reviewed deterministic candidates, while the remaining unimplemented packages stay scaffolds.
+For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability; P0-03, P0-08 and P0-09 are separately reviewed deterministic candidates, while the remaining unimplemented packages stay scaffolds.
+
+P0-03 consumes exactly one ProductCase, ProductDefinitionCard, StateRoleMap,
+TargetRegionalAssessmentSpec, CellStateEvidenceProfile and QCReadinessProfile.
+It joins upstream composition records to caller-supplied versioned roles and
+calculates explicit numerators, denominators and fractions. The implementation
+contains no product-specific state names, role mapping, thresholds or pass/fail
+rule. Unmapped states remain unresolved, absent requested channels return
+`not_assessed`, spatial evidence remains `not_assessed` until independently
+implemented, and `domain_score` is always null. The complete interface is in
+the [P0-03 Tool Card](../tool_packages/P0-03/README.md).
 
 P0-08 consumes only versioned upstream evidence objects. It applies Data Readiness, Model Robustness and Prior Applicability before selecting `not_assessed`, `insufficient`, `limited` or `sufficient` in the registered precedence order. It never reruns scientific analysis, emits a `MeasurementResult`, or makes a domain score available. Its module-specific input/result schemas and complete field contract are documented in the [P0-08 Tool Card](../tool_packages/P0-08/README.md).
 

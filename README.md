@@ -33,10 +33,11 @@ cells.
 | Can unrelated cells be rejected? | Cortical organoid, neural crest, motor-neuron and mesenchymal OOD data | Tested inductive methods can force these cells into known ventral-midbrain labels | Formal target, regional-fidelity and off-target conclusions are blocked |
 | Can markers provide an independent check? | Internal marker/program cards | Negative-marker coverage is incomplete and all seven L2 marker cards remain unfrozen | Marker evidence remains a shadow interpretation channel |
 
-The next scientific step is the **P0-02 External-Source Freeze Candidate**: review
-the 25 state definitions and marker cards together with the ProductDefinitionCard
-and StateRoleMap, then sign the FreezeGate before any locked runner is implemented
-or run. Unresolved Nb boundaries remain provisional or unavailable.
+The P0-02 scientific freeze remains an independent future review step. Current
+engineering does not encode its draft biological decisions: P0-03 instead reads
+versioned ProductDefinitionCard and StateRoleMap objects, so later review can
+change those inputs without changing tool code. Unresolved boundaries remain
+provisional or unavailable.
 
 ## Repository status
 
@@ -44,10 +45,11 @@ or run. Unresolved Nb boundaries remain provisional or unavailable.
 |---|---|
 | P0-01 Input Audit & QC | Executable candidate |
 | P0-02 Cell-State Evidence | Executable shadow; no state or method frozen |
+| P0-03 Target Identity & Regional Fidelity | Executable configurable candidate over P0-02 composition; no embedded biological role map, spatial result or score |
 | P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
 | P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
-| P0-10 Report Claim Verifier | Draft PR under review; public/synthetic and anonymous internal engineering runs completed; default remains unset |
-| P0-03–P0-07, P0-11–P0-12 | Scientific contracts only; executors pending |
+| P0-10 Report Claim Verifier | Executable deterministic candidate; `verified` means evidence/package correspondence, not biological truth or public release |
+| P0-04–P0-07, P0-11–P0-12 | Scientific contracts only; executors pending |
 
 ## Minimal usage
 

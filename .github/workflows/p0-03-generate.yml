@@ -1,0 +1,45 @@
+name: P0-03 generated projections
+
+on:
+  push:
+    branches:
+      - p0-03-target-regional-evidence
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install generator dependencies
+        run: python -m pip install -e .
+      - name: Generate projections
+        run: |
+          python tools/export_schemas.py
+          python tools/render_tool_cards.py
+          python tools/build_knowledge_catalog.py \
+            --registry catalog_seed/tool_registry_rows.json \
+            --repo .
+      - name: Commit generated projections
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add schemas src/bridge/resources/schemas \
+            knowledge/active-methods.md src/bridge/resources/knowledge_snapshot.json.gz
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: regenerate P0-03 projections"
+          git push
