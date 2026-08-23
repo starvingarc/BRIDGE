@@ -3,10 +3,16 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import StrEnum
 import math
-import re
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
-from pydantic import Field, StrictFloat, StrictInt, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    StrictFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
@@ -14,18 +20,8 @@ from bridge.toolkit.contracts import FrozenModel, ScoreState
 OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
 VERSION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
-INPUT_ROLES = frozenset(
-    {
-        "product_case",
-        "product_definition_card",
-        "state_role_map",
-        "target_regional_assessment_spec",
-        "cell_state_evidence_profile",
-        "qc_readiness_profile",
-    }
-)
-
-
+PublishedRef = Annotated[str, Field(pattern=OBJECT_ID_PATTERN)]
+ReasonCode = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
 def _unique(values: list[object], field: str) -> None:
     if len(values) != len(set(values)):
         raise ValueError(f"{field} must contain unique values")
@@ -300,7 +296,65 @@ class SpatialReferenceProjectionProfile(FrozenModel):
     reason_code: Literal["spatial_projection_not_supplied"]
 
 
+class InputChecksumBindings(FrozenModel):
+    product_case: str = Field(pattern=SHA256_PATTERN)
+    product_definition_card: str = Field(pattern=SHA256_PATTERN)
+    state_role_map: str = Field(pattern=SHA256_PATTERN)
+    target_regional_assessment_spec: str = Field(pattern=SHA256_PATTERN)
+    cell_state_evidence_profile: str = Field(pattern=SHA256_PATTERN)
+    qc_readiness_profile: str = Field(pattern=SHA256_PATTERN)
+
+
 class TargetRegionalEvidenceResult(FrozenModel):
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"result_state": {"const": "not_assessed"}},
+                        "required": ["result_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "target_identity_channels": {"maxItems": 0},
+                            "regional_fidelity_channels": {"maxItems": 0},
+                            "score_state": {"const": "unavailable"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"result_state": {"const": "complete"}},
+                        "required": ["result_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "target_identity_channels": {"minItems": 1},
+                            "regional_fidelity_channels": {"minItems": 1},
+                            "unmapped_states": {"maxItems": 0},
+                            "score_state": {"const": "shadow"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"result_state": {"const": "partial"}},
+                        "required": ["result_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "target_identity_channels": {"minItems": 1},
+                            "regional_fidelity_channels": {"minItems": 1},
+                            "score_state": {"const": "shadow"},
+                        }
+                    },
+                },
+            ]
+        },
+    )
+
     object_version: Literal["0.1.0"]
     result_id: str = Field(pattern=r"^target-regional-result:[a-f0-9]{16}$")
     tool_id: Literal["P0-03"]
@@ -311,14 +365,18 @@ class TargetRegionalEvidenceResult(FrozenModel):
     assessment_spec_ref: VersionedObjectRef
     cell_state_profile_ref: VersionedObjectRef
     qc_profile_ref: VersionedObjectRef
-    input_sha256_by_role: dict[str, str]
+    input_sha256_by_role: InputChecksumBindings
     result_state: Literal["complete", "partial", "not_assessed"]
     target_identity_channels: list[TargetIdentityChannel]
     regional_fidelity_channels: list[RegionalFidelityChannel]
     unmapped_states: list[UnmappedStateRecord]
     spatial_projection: SpatialReferenceProjectionProfile
-    evidence_refs: list[str]
-    reason_codes: list[str]
+    evidence_refs: list[PublishedRef] = Field(
+        json_schema_extra={"uniqueItems": True}
+    )
+    reason_codes: list[ReasonCode] = Field(
+        json_schema_extra={"uniqueItems": True}
+    )
     domain_score: None = None
     score_state: Literal[ScoreState.SHADOW, ScoreState.UNAVAILABLE]
 
@@ -327,15 +385,6 @@ class TargetRegionalEvidenceResult(FrozenModel):
     def string_lists_are_unique_sorted(cls, value: list[str]) -> list[str]:
         if value != sorted(set(value)):
             raise ValueError("result string lists must be unique and sorted")
-        return value
-
-    @field_validator("input_sha256_by_role")
-    @classmethod
-    def input_hashes_are_complete(cls, value: dict[str, str]) -> dict[str, str]:
-        if set(value) != INPUT_ROLES:
-            raise ValueError("result must bind every structured-input role")
-        if any(not re.fullmatch(SHA256_PATTERN, digest) for digest in value.values()):
-            raise ValueError("result input hashes must be SHA-256 values")
         return value
 
     @model_validator(mode="after")

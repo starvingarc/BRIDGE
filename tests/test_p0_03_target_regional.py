@@ -11,7 +11,10 @@ import pytest
 
 import bridge.tool_packages.p0_03_target_regional.adapter as adapter_module
 from bridge.tool_packages.p0_03_target_regional.adapter import adapter
-from bridge.tool_packages.p0_03_target_regional.models import PUBLIC_SCHEMA_MODELS
+from bridge.tool_packages.p0_03_target_regional.models import (
+    PUBLIC_SCHEMA_MODELS,
+    TargetRegionalEvidenceResult,
+)
 from bridge.toolkit.contracts import (
     ExecutionState,
     ImplementationState,
@@ -342,6 +345,23 @@ def test_complete_configuration_runs_and_preserves_denominators(
         ref.input_id in json.dumps(run.result, sort_keys=True)
         for ref in run.request.object_inputs
     )
+
+
+def test_result_schema_rejects_state_and_checksum_binding_conflicts(
+    tmp_path: Path,
+) -> None:
+    result = ToolRegistry.load_default().run(_request(tmp_path)).result
+    validator = Draft202012Validator(
+        TargetRegionalEvidenceResult.model_json_schema()
+    )
+
+    inconsistent_state = deepcopy(result)
+    inconsistent_state["result_state"] = "not_assessed"
+    assert list(validator.iter_errors(inconsistent_state))
+
+    incomplete_binding = deepcopy(result)
+    incomplete_binding["input_sha256_by_role"].pop("state_role_map")
+    assert list(validator.iter_errors(incomplete_binding))
 
 
 def test_biological_assignment_changes_only_through_role_map(
