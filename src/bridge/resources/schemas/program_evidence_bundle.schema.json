@@ -1,0 +1,238 @@
+{
+  "$defs": {
+    "ProgramEvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable"
+      ],
+      "title": "ProgramEvidenceState",
+      "type": "string"
+    },
+    "ProgramObservation": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "gene_coverage": {
+                "type": [
+                  "number",
+                  "integer"
+                ]
+              },
+              "value": {
+                "type": [
+                  "number",
+                  "integer"
+                ]
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "evidence_state": {
+                "enum": [
+                  "missing",
+                  "unknown",
+                  "unavailable"
+                ]
+              }
+            },
+            "required": [
+              "evidence_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "gene_coverage": {
+                "type": "null"
+              },
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "analysis_unit_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "evidence_family_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Evidence Family Id",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/ProgramEvidenceState"
+        },
+        "gene_coverage": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "ge": 0,
+              "le": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gene Coverage"
+        },
+        "independence_group": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Independence Group",
+          "type": "string"
+        },
+        "method_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "observation_id": {
+          "pattern": "^program-observation:[A-Za-z0-9._:-]+$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "program_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "rule_id": {
+          "pattern": "^program-review-rule:[A-Za-z0-9._:-]+$",
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "observation_id",
+        "rule_id",
+        "program_ref",
+        "analysis_unit_ref",
+        "evidence_family_id",
+        "independence_group",
+        "method_ref",
+        "evidence_state",
+        "value",
+        "evidence_refs"
+      ],
+      "title": "ProgramObservation",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/program-evidence-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assay": {
+      "enum": [
+        "scRNA-seq",
+        "snRNA-seq"
+      ],
+      "title": "Assay",
+      "type": "string"
+    },
+    "cell_state_profile_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "developmental_result_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "evidence_bundle_id": {
+      "pattern": "^program-evidence-bundle:[A-Za-z0-9._:-]+$",
+      "title": "Evidence Bundle Id",
+      "type": "string"
+    },
+    "evidence_bundle_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Evidence Bundle Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/ProgramObservation"
+      },
+      "minItems": 1,
+      "title": "Observations",
+      "type": "array"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    }
+  },
+  "required": [
+    "object_version",
+    "evidence_bundle_id",
+    "evidence_bundle_version",
+    "product_case_ref",
+    "product_definition_ref",
+    "developmental_result_ref",
+    "cell_state_profile_ref",
+    "assay",
+    "observations"
+  ],
+  "title": "ProgramEvidenceBundle",
+  "type": "object"
+}

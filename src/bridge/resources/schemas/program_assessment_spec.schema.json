@@ -1,0 +1,280 @@
+{
+  "$defs": {
+    "AnalysisScope": {
+      "enum": [
+        "whole_product",
+        "state_specific"
+      ],
+      "title": "AnalysisScope",
+      "type": "string"
+    },
+    "ProgramEvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable"
+      ],
+      "title": "ProgramEvidenceState",
+      "type": "string"
+    },
+    "ProgramReviewRule": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "state_ref": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "analysis_scope": {
+                "const": "state_specific"
+              }
+            },
+            "required": [
+              "analysis_scope"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state_ref": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "applicable_assays": {
+          "items": {
+            "enum": [
+              "scRNA-seq",
+              "snRNA-seq"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Applicable Assays",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "eligible_evidence_states": {
+          "items": {
+            "$ref": "#/$defs/ProgramEvidenceState"
+          },
+          "minItems": 1,
+          "title": "Eligible Evidence States",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "metric_name": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "minimum_gene_coverage": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "ge": 0,
+          "le": 1,
+          "title": "Minimum Gene Coverage"
+        },
+        "minimum_independence_groups": {
+          "exclusiveMinimum": 0,
+          "title": "Minimum Independence Groups",
+          "type": "integer"
+        },
+        "orthogonal_follow_up_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Orthogonal Follow Up Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "program_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "reference_lower": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Reference Lower"
+        },
+        "reference_upper": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Reference Upper"
+        },
+        "review_direction": {
+          "$ref": "#/$defs/ReviewDirection"
+        },
+        "rule_id": {
+          "pattern": "^program-review-rule:[A-Za-z0-9._:-]+$",
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "stage_context_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "state_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_id",
+        "program_ref",
+        "analysis_scope",
+        "stage_context_ref",
+        "applicable_assays",
+        "metric_name",
+        "unit",
+        "reference_lower",
+        "reference_upper",
+        "minimum_gene_coverage",
+        "eligible_evidence_states",
+        "minimum_independence_groups",
+        "review_direction"
+      ],
+      "title": "ProgramReviewRule",
+      "type": "object"
+    },
+    "ReviewDirection": {
+      "enum": [
+        "above_reference",
+        "below_reference",
+        "outside_reference"
+      ],
+      "title": "ReviewDirection",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/program-assessment-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assessment_spec_id": {
+      "pattern": "^program-assessment-spec:[A-Za-z0-9._:-]+$",
+      "title": "Assessment Spec Id",
+      "type": "string"
+    },
+    "assessment_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Assessment Spec Version",
+      "type": "string"
+    },
+    "development_window_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "no_flag_policy": {
+      "const": "cannot_resolve_without_validated_lod",
+      "title": "No Flag Policy",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "review_state": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "Review State",
+      "type": "string"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/ProgramReviewRule"
+      },
+      "minItems": 1,
+      "title": "Rules",
+      "type": "array"
+    },
+    "unmatched_observation_policy": {
+      "const": "report_unmatched",
+      "title": "Unmatched Observation Policy",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "assessment_spec_id",
+    "assessment_spec_version",
+    "product_definition_ref",
+    "development_window_ref",
+    "review_state",
+    "rules",
+    "unmatched_observation_policy",
+    "no_flag_policy"
+  ],
+  "title": "ProgramAssessmentSpec",
+  "type": "object"
+}
