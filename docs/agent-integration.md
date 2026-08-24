@@ -26,7 +26,7 @@ The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Sc
 6. Use knowledge search for planning and explanation; never turn retrieval rank into scientific evidence weight.
 7. Declare `source_family_id` so the tool can exclude same-family references, and resolve logical QC/reference IDs through deployment-owned catalogs.
 
-P0-01 through P0-11 are executable
+P0-01 through P0-12 are executable
 candidate packages. P0-02 emits shadow Cell-State Evidence unless its
 `MeasurementSpec` names a signed `CellStateReleaseManifest`; draft review cards
 or benchmark results never become formal labels. P0-03 consumes a checksummed
