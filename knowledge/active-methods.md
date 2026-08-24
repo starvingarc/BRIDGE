@@ -1,6 +1,6 @@
 # Active BRIDGE Methods
 
-This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
+This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09, P0-11 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
 
 ## P0-01: Input Audit & QC
 
@@ -64,3 +64,8 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 - `METHOD-INTERNAL-READ-ONLY-API` — internal read-only API ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-READ-ONLY-API))
 - `METHOD-COLUMNAR-STORAGE` — columnar storage ([catalog record](bridge://knowledge/methods/METHOD-COLUMNAR-STORAGE))
 - `METHOD-GRAPH-LIBRARY` — graph library ([catalog record](bridge://knowledge/methods/METHOD-GRAPH-LIBRARY))
+
+## P0-11: Public-safe Export
+
+- `METHOD-BRIDGE-ALGORITHM-2AFBC8` — BRIDGE algorithm ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ALGORITHM-2AFBC8))
+- `METHOD-BRIDGE-RULE-ENGINE` — BRIDGE rule engine ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RULE-ENGINE))

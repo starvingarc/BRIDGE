@@ -1,0 +1,332 @@
+{
+  "$defs": {
+    "ClaimType": {
+      "enum": [
+        "measurement_claim",
+        "domain_interpretation",
+        "descriptive_comparison",
+        "inferential_comparison",
+        "availability_claim",
+        "alert_claim",
+        "prior_or_literature_claim",
+        "method_claim",
+        "recommendation_hypothesis",
+        "graft_retrospective_claim",
+        "policy_or_boundary_statement",
+        "visualization_caption"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "ComparisonMode": {
+      "enum": [
+        "not_applicable",
+        "descriptive_only",
+        "inferential"
+      ],
+      "title": "ComparisonMode",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ExportState": {
+      "enum": [
+        "ready_for_confirmation",
+        "review_required"
+      ],
+      "title": "ExportState",
+      "type": "string"
+    },
+    "PublicExportInputChecksums": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_verification_result": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Claim Verification Result",
+          "type": "string"
+        },
+        "public_export_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Public Export Spec",
+          "type": "string"
+        },
+        "report_draft": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Report Draft",
+          "type": "string"
+        }
+      },
+      "required": [
+        "report_draft",
+        "claim_verification_result",
+        "public_export_spec"
+      ],
+      "title": "PublicExportInputChecksums",
+      "type": "object"
+    },
+    "PublicSafeClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "comparison_mode": {
+          "$ref": "#/$defs/ComparisonMode"
+        },
+        "evidence_state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "language": {
+          "$ref": "#/$defs/ReportLanguage"
+        },
+        "public_case_label": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Public Case Label",
+          "type": "string"
+        },
+        "public_claim_id": {
+          "pattern": "^public-claim:[A-Za-z0-9._:-]+$",
+          "title": "Public Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "value_bindings": {
+          "items": {
+            "$ref": "#/$defs/PublicValueBinding"
+          },
+          "title": "Value Bindings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "public_claim_id",
+        "public_case_label",
+        "claim_type",
+        "text",
+        "language",
+        "evidence_state",
+        "comparison_mode",
+        "value_bindings"
+      ],
+      "title": "PublicSafeClaim",
+      "type": "object"
+    },
+    "PublicValueBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "binding_index": {
+          "minimum": 0,
+          "title": "Binding Index",
+          "type": "integer"
+        },
+        "canonical_numeric_string": {
+          "pattern": "^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$",
+          "title": "Canonical Numeric String",
+          "type": "string"
+        },
+        "raw_unit": {
+          "anyOf": [
+            {
+              "pattern": "^[^0-9\\s\\r\\n](?:[^0-9\\r\\n]*[^0-9\\s\\r\\n])?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Unit"
+        },
+        "source_field": {
+          "enum": [
+            "value",
+            "numerator",
+            "denominator",
+            "interval_lower",
+            "interval_upper"
+          ],
+          "title": "Source Field",
+          "type": "string"
+        }
+      },
+      "required": [
+        "binding_index",
+        "source_field",
+        "canonical_numeric_string"
+      ],
+      "title": "PublicValueBinding",
+      "type": "object"
+    },
+    "ReportLanguage": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed"
+      ],
+      "title": "ReportLanguage",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/public-safe-report/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "candidate_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Candidate Hash",
+      "type": "string"
+    },
+    "checks": {
+      "items": {
+        "enum": [
+          "allowlist_projection_passed",
+          "configured_literals_absent",
+          "bounded_machine_reference_guard_passed"
+        ],
+        "type": "string"
+      },
+      "maxItems": 3,
+      "minItems": 3,
+      "title": "Checks",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "claim_verification_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Claim Verification Sha256",
+      "type": "string"
+    },
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/PublicSafeClaim"
+      },
+      "minItems": 1,
+      "title": "Claims",
+      "type": "array"
+    },
+    "export_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "export_state": {
+      "$ref": "#/$defs/ExportState"
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/PublicExportInputChecksums"
+    },
+    "language": {
+      "$ref": "#/$defs/ReportLanguage"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "public_report_id": {
+      "pattern": "^public-report:[a-f0-9]{16}$",
+      "title": "Public Report Id",
+      "type": "string"
+    },
+    "public_report_version": {
+      "const": "0.1.0",
+      "title": "Public Report Version",
+      "type": "string"
+    },
+    "public_source_accessions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Public Source Accessions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "source_report_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Report Hash",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-11",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "public_report_id",
+    "public_report_version",
+    "tool_id",
+    "tool_version",
+    "source_report_hash",
+    "claim_verification_sha256",
+    "export_spec_ref",
+    "input_sha256_by_role",
+    "language",
+    "public_source_accessions",
+    "claims",
+    "export_state",
+    "checks",
+    "reason_codes",
+    "candidate_hash"
+  ],
+  "title": "PublicSafeReport",
+  "type": "object"
+}

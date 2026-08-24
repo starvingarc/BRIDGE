@@ -1,0 +1,209 @@
+{
+  "$defs": {
+    "ClaimType": {
+      "enum": [
+        "measurement_claim",
+        "domain_interpretation",
+        "descriptive_comparison",
+        "inferential_comparison",
+        "availability_claim",
+        "alert_claim",
+        "prior_or_literature_claim",
+        "method_claim",
+        "recommendation_hypothesis",
+        "graft_retrospective_claim",
+        "policy_or_boundary_statement",
+        "visualization_caption"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "PublicAliasReplacement": {
+      "additionalProperties": false,
+      "properties": {
+        "public_literal": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Public Literal",
+          "type": "string"
+        },
+        "source_literal": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Source Literal",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_literal",
+        "public_literal"
+      ],
+      "title": "PublicAliasReplacement",
+      "type": "object"
+    },
+    "PublicClaimSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "public_case_label": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Public Case Label",
+          "type": "string"
+        },
+        "public_claim_id": {
+          "pattern": "^public-claim:[A-Za-z0-9._:-]+$",
+          "title": "Public Claim Id",
+          "type": "string"
+        },
+        "replacements": {
+          "items": {
+            "$ref": "#/$defs/PublicAliasReplacement"
+          },
+          "title": "Replacements",
+          "type": "array"
+        },
+        "source_claim_id": {
+          "pattern": "^claim-block:[A-Za-z0-9._:-]+$",
+          "title": "Source Claim Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_claim_id",
+        "public_claim_id",
+        "public_case_label"
+      ],
+      "title": "PublicClaimSelection",
+      "type": "object"
+    },
+    "ReportLanguage": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed"
+      ],
+      "title": "ReportLanguage",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-export-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "allow_claims_without_evidence_state": {
+      "title": "Allow Claims Without Evidence State",
+      "type": "boolean"
+    },
+    "allowed_claim_types": {
+      "items": {
+        "$ref": "#/$defs/ClaimType"
+      },
+      "minItems": 1,
+      "title": "Allowed Claim Types",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "allowed_evidence_states": {
+      "items": {
+        "$ref": "#/$defs/EvidenceState"
+      },
+      "minItems": 1,
+      "title": "Allowed Evidence States",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "candidate_policy": {
+      "const": "human_confirmation_required",
+      "title": "Candidate Policy",
+      "type": "string"
+    },
+    "claim_verification_id": {
+      "pattern": "^claim-verification:[a-f0-9]{16}$",
+      "title": "Claim Verification Id",
+      "type": "string"
+    },
+    "export_spec_id": {
+      "pattern": "^public-export-spec:[A-Za-z0-9._:-]+$",
+      "title": "Export Spec Id",
+      "type": "string"
+    },
+    "export_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Export Spec Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "prohibited_literals": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Prohibited Literals",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "public_source_accessions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Public Source Accessions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "selections": {
+      "items": {
+        "$ref": "#/$defs/PublicClaimSelection"
+      },
+      "minItems": 1,
+      "title": "Selections",
+      "type": "array"
+    },
+    "source_report_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Report Hash",
+      "type": "string"
+    },
+    "source_report_ref": {
+      "pattern": "^report:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+      "title": "Source Report Ref",
+      "type": "string"
+    },
+    "target_language": {
+      "$ref": "#/$defs/ReportLanguage"
+    }
+  },
+  "required": [
+    "object_version",
+    "export_spec_id",
+    "export_spec_version",
+    "source_report_ref",
+    "source_report_hash",
+    "claim_verification_id",
+    "target_language",
+    "allowed_claim_types",
+    "allowed_evidence_states",
+    "allow_claims_without_evidence_state",
+    "selections",
+    "prohibited_literals",
+    "candidate_policy"
+  ],
+  "title": "PublicExportSpec",
+  "type": "object"
+}
