@@ -3,8 +3,8 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.1.1` |
-| 日期 | 2026-08-12 |
+| 文档版本 | `0.2.0` |
+| 日期 | 2026-08-24 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
 | 上游输入 | `ProductCase`、`QCReadinessProfile`、`CellStateEvidenceProfile`、`DevelopmentWindowSpec`、`ProtocolIR` |
@@ -20,6 +20,20 @@
 - PRD 中的 Critical Alerts 在本任务内暂实现为 `TranscriptomicReviewFlag`；当前全部保持 `shadow`，只表示需要正交复核。
 - Off-target Control 负责细胞组成；本模块只读取其状态证据，不重复计算非目标比例。
 - 缺少 process metadata 时可以描述信号，不能把信号归因于具体工艺步骤。
+
+### 1.1 当前可执行切片
+
+P0-06 的首个可调用 candidate 只装配上游已经计算好的程序观测，不直接
+打开表达矩阵，也不在运行时选择 UCell、decoupler、Scanpy 或其他评分器。
+它读取 checksummed `ProgramAssessmentSpec` 和 `ProgramEvidenceBundle`，按输入
+给出的 stage context、reference interval、gene coverage、eligible evidence
+state、independence group 和 review direction 做确定性比较与去重。
+
+程序名称、基因、权重、阶段、reference/null、阈值、检测边界和复核方向均不
+写入代码。后续生物学审核通过创建新版本输入对象改变这些决定，无需修改执行器。
+当前 `ProtocolIR`、residual-pluripotency LOD 和 transcriptomic CNV 没有进入
+此切片，均返回 `not_assessed`；未触发 shadow review flag 不能解释为安全或
+不存在风险。
 
 ## 2. 增殖、应激及相关程序合同
 

@@ -42,6 +42,9 @@ from bridge.tool_packages.p0_04_developmental.models import (
 from bridge.tool_packages.p0_05_off_target.models import (
     PUBLIC_SCHEMA_MODELS as P0_05_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_06_proliferation_stress.models import (
+    PUBLIC_SCHEMA_MODELS as P0_06_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     PUBLIC_SCHEMA_MODELS as P0_09_SCHEMA_MODELS,
 )
@@ -87,6 +90,7 @@ for schema_models in (
     P0_03_SCHEMA_MODELS,
     P0_04_SCHEMA_MODELS,
     P0_05_SCHEMA_MODELS,
+    P0_06_SCHEMA_MODELS,
     P0_08_SCHEMA_MODELS,
     P0_09_SCHEMA_MODELS,
     P0_10_SCHEMA_MODELS,
