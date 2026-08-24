@@ -14,12 +14,13 @@ from pydantic import (
     model_validator,
 )
 
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     OBJECT_ID_PATTERN,
     SHA256_PATTERN,
     VERSION_PATTERN,
     VersionedObjectRef,
 )
+from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -114,6 +115,10 @@ class ProgramReviewRule(FrozenModel):
     orthogonal_follow_up_refs: list[PublishedRef] = Field(
         default_factory=list,
         json_schema_extra={"uniqueItems": True},
+    )
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
     )
 
     @field_validator(
@@ -349,6 +354,10 @@ class ProgramRuleResult(FrozenModel):
     review_flag_state: ReviewFlagState
     evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
     reason_codes: list[ReasonCode] = Field(json_schema_extra={"uniqueItems": True})
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
+    )
 
     @field_validator("reference_lower", "reference_upper")
     @classmethod

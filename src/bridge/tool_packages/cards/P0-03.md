@@ -82,8 +82,10 @@ Before execution, the adapter verifies:
 6. ProductCase MeasurementSpec identity against the P0-02 profile;
 7. QC readiness is not blocked, not assessed or not applicable;
 8. every upstream composition row has a coherent nonnegative count,
-   denominator and fraction;
-9. evidence and published profile references use publication-safe identifier syntax;
+   denominator and fraction, and its configured denominator label contains no
+   machine-local path or credential-like content;
+9. evidence IDs use the `evidence:` namespace, while upstream profiles use
+   `cell-state-profile:` and `qc-profile:` respectively;
 10. the deterministic request uses the fixed zero random-seed value and a usable output directory.
 
 A failed envelope or cross-binding returns a typed failed `ToolRunV2` with no
@@ -123,6 +125,10 @@ A successful or partial run publishes one immutable
 - every unmapped upstream state and stable reason code;
 - a spatial profile fixed to `not_assessed` with
   `spatial_projection_not_supplied`.
+
+Configured denominator wording remains scientifically flexible, but cannot
+carry local paths, home-directory forms, file URIs or credential assignments
+into the published JSON artifact.
 
 No `MeasurementResult` or visualization is emitted in v0.2.0. Spatial
 projection, uncertainty intervals and method/reference sensitivity remain

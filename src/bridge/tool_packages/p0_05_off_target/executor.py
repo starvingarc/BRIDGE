@@ -3,14 +3,14 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Iterable, Literal
 
-from bridge.tool_packages.p0_03_target_regional.executor import parse_composition
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     CompositionView,
     ProductCase,
     ProductDefinitionCard,
     RoleFraction,
     UpstreamCompositionRecord,
     VersionedObjectRef,
+    parse_composition,
 )
 from bridge.tool_packages.p0_05_off_target.models import (
     OffTargetCompositionChannel,
