@@ -49,6 +49,7 @@ jobs:
           wheel_test_root="$(mktemp -d)"
           cp tests/test_p0_03_target_regional.py "$wheel_test_root/"
           cp tests/test_p0_04_developmental.py "$wheel_test_root/"
+          cp tests/test_p0_05_off_target.py "$wheel_test_root/"
           cd "$wheel_test_root"
           python - <<'PY'
           from pathlib import Path
@@ -60,7 +61,7 @@ jobs:
               raise SystemExit(f"bridge imported from source tree: {package_path}")
           print(f"installed_bridge={package_path}")
           PY
-          python -m pytest -q test_p0_03_target_regional.py test_p0_04_developmental.py
+          python -m pytest -q test_p0_03_target_regional.py test_p0_04_developmental.py test_p0_05_off_target.py
 
       - name: Run tests
         run: python -m pytest -q

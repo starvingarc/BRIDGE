@@ -10,7 +10,7 @@ import yaml
 # both public projections. The generic renderer is intentionally too small for
 # their structured-object contracts, so regeneration validates and mirrors each
 # source instead of replacing it with a scaffold-era summary.
-DETAILED_CARD_IDS = {"P0-03", "P0-04", "P0-08", "P0-09", "P0-10"}
+DETAILED_CARD_IDS = {"P0-03", "P0-04", "P0-05", "P0-08", "P0-09", "P0-10"}
 
 
 DETAILS = {

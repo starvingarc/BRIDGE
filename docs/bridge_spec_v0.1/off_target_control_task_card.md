@@ -10,6 +10,18 @@
 | 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard` |
 | 主要输出 | `OffTargetControlProfile` |
 
+## 0. 当前可执行候选
+
+P0-05 v0.2.0 实现全产品静态组成的最小确定性路径。它通过
+`ToolRequestV2` 读取带 checksum 的 ProductCase、ProductDefinitionCard、
+OffTargetRoleSpec、CellStateEvidenceProfile 和 QCReadinessProfile，输出一个
+OffTargetControlResult。
+
+代码不包含具体状态、产品角色、OOD 规则、稀有状态 LOD、比例阈值或危害判断；
+这些决定只来自版本化 OffTargetRoleSpec 或未来独立校准输入。当前不运行 OOD
+模型、rare-state spike-in、区间模型或临床解释；相应通道明确为
+`not_assessed`，而不是用占位算法代替。
+
 ## 1. 任务目标与边界
 
 本模块描述全部移植前制剂中的目标、相邻、非目标、角色未决和 unknown/OOD 组成，并量化稀有状态的检测能力。当前阶段只整理并验证数据、方法、环境和输出合同，不制定 0-100 分数。

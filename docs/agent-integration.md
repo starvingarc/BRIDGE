@@ -26,7 +26,7 @@ The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Sc
 6. Use knowledge search for planning and explanation; never turn retrieval rank into scientific evidence weight.
 7. Declare `source_family_id` so the tool can exclude same-family references, and resolve logical QC/reference IDs through deployment-owned catalogs.
 
-P0-01, P0-02, P0-03, P0-04, P0-08, P0-09 and P0-10 are executable
+P0-01, P0-02, P0-03, P0-04, P0-05, P0-08, P0-09 and P0-10 are executable
 candidate packages. P0-02 emits shadow Cell-State Evidence unless its
 `MeasurementSpec` names a signed `CellStateReleaseManifest`; draft review cards
 or benchmark results never become formal labels. P0-03 consumes a checksummed
@@ -39,7 +39,10 @@ keeps `domain_score=null`, and reports absent spatial evidence as
 instead of embedding state names, developmental windows, time conversions or
 thresholds. Its first callable path reports static whole-product and
 target-related composition while reference-stage and true-timepoint evidence
-remain explicit `not_assessed` or `unavailable`. P0-08 accepts only immutable,
+remain explicit `not_assessed` or `unavailable`. P0-05 reads a checksummed
+OffTargetRoleSpec instead of embedding product roles or thresholds. It reports
+static full-product role composition while OOD and rare-state calibration stay
+`not_assessed`. P0-08 accepts only immutable,
 checksum- and Schema-bound upstream evidence objects, applies Data Readiness →
 Model Robustness → Prior Applicability → sufficiency, and emits no measurements
 or domain score. A scientifically incomplete but contract-valid P0-08 case
@@ -52,7 +55,7 @@ entering the graph, while top-level contract failures publish nothing. P0-10
 checks a structured `ReportDraft` against one P0-09 graph manifest and packaged
 policy authority, then emits one receipt; internal correspondence does not make
 a report public-eligible, and public claims require cited formal Evidence.
-P0-05 through P0-07 and P0-11 through P0-12 deliberately return
+P0-06 through P0-07 and P0-11 through P0-12 deliberately return
 `not_implemented` without measurements. HTTP, MCP and queue adapters may wrap
 the same JSON contracts later without changing scientific semantics.
 

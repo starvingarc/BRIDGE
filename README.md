@@ -47,10 +47,11 @@ provisional or unavailable.
 | P0-02 Cell-State Evidence | Executable shadow; no state or method frozen |
 | P0-03 Target Identity & Regional Fidelity | Executable configurable candidate over P0-02 composition; no embedded biological role map, spatial result or score |
 | P0-04 Developmental Compatibility | Executable configurable static candidate; developmental window and state roles are versioned inputs, while reference-stage/time-course evidence remains unavailable |
+| P0-05 Off-target Control | Executable configurable static candidate; product roles and denominator selection are versioned inputs, while OOD/rare-state calibration remains not assessed |
 | P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
 | P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
 | P0-10 Report Claim Verifier | Executable deterministic candidate; `verified` means evidence/package correspondence, not biological truth or public release |
-| P0-05–P0-07, P0-11–P0-12 | Scientific contracts only; executors pending |
+| P0-06–P0-07, P0-11–P0-12 | Scientific contracts only; executors pending |
 
 ## Minimal usage
 
