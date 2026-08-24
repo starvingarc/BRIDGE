@@ -44,3 +44,13 @@ All project execution occurs in GitHub Actions. The PR remains Draft after
 engineering gates. Biological ProgramSpecs, reference envelopes, thresholds,
 evidence-family independence, LOD and review directions require separate
 scientific review and can change without a code modification.
+
+## Current closure state
+
+- implementation, three public Schemas, Tool Card, example and validation
+  record are complete on implementation head `23b0f39`;
+- GitHub Actions run `32686715446` passed 108 installed-wheel focused tests and
+  1,067 complete-suite tests, plus discovery, knowledge, policy and diff gates;
+- Draft PR #23 remains stacked on P0-05 and awaits one bounded closure review;
+- biological ProgramSpecs, ranges, independence assignments and LOD review
+  remain separate from this callable candidate path.

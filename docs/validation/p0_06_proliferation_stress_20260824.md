@@ -31,9 +31,25 @@ ProliferationStressResponseProfile and no MeasurementResult or visualization.
 
 ## Evidence status
 
-No local project code is run. GitHub Actions evidence will be recorded here
-after the exact implementation head and generated projections pass. Until then,
-the interface remains a Draft candidate under review.
+No local project code was run. GitHub Actions run
+[`32686715446`](https://github.com/starvingarc/BRIDGE/actions/runs/32686715446)
+validated implementation head `23b0f39` through the PR merge ref on Ubuntu and
+Python 3.12. The installed package resolved from `site-packages`, outside the
+source checkout.
+
+| Gate | Current result |
+|---|---|
+| Installed-wheel focused chain | 108 P0-03/P0-04/P0-05/P0-06 tests passed |
+| Complete pytest | 1,067 passed; 3 existing dependency warnings |
+| 12-tool discovery | passed; exactly 12 |
+| Knowledge validation | passed; no dangling method/source refs; 0 formal-eligible methods |
+| Repository policy | passed |
+| Public/packaged Schema and Tool Card parity | passed |
+| Committed diff check | passed |
+
+The PR remains Draft. These results demonstrate packaging, strict contracts and
+deterministic mechanics, not approval of a biological program, reference range
+or release rule.
 
 ## Scientific boundary
 
