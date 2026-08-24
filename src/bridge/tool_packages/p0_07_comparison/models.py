@@ -14,12 +14,13 @@ from pydantic import (
     model_validator,
 )
 
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     OBJECT_ID_PATTERN,
     SHA256_PATTERN,
     VERSION_PATTERN,
     VersionedObjectRef,
 )
+from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -108,6 +109,10 @@ class MetricComparisonRule(FrozenModel):
     eligible_evidence_states: list[MetricEvidenceState] = Field(
         min_length=1,
         json_schema_extra={"uniqueItems": True},
+    )
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
     )
 
     @field_validator("eligible_evidence_states")
@@ -217,6 +222,10 @@ class PreparationMetric(FrozenModel):
     evidence_refs: list[PublishedRef] = Field(
         min_length=1,
         json_schema_extra={"uniqueItems": True},
+    )
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
     )
 
     @field_validator("value")
@@ -351,6 +360,10 @@ class MetricComparisonResult(FrozenModel):
     result_state: Literal["available", "unavailable"]
     evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
     reason_codes: list[ReasonCode] = Field(json_schema_extra={"uniqueItems": True})
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
+    )
 
     @field_validator("raw_delta_candidate_minus_baseline")
     @classmethod
