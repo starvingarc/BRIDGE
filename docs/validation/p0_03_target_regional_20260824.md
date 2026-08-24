@@ -89,7 +89,7 @@ the six-input interface or any biological configuration.
 | Wheel SHA-256 | `202939edebc6b9350ae1f09810f8bba6a7e4f3b35cb9e025f94bcb81a4a83482` |
 | Installed import | independent Python 3.12 `site-packages` |
 | Tool discovery | 12 packages; 6 implemented at this stacked head |
-| Knowledge and repository policy | valid; no dangling references; 0 formal-eligible methods; policy passed |
+| Knowledge and repository policy | valid; no dangling references; 0 formal-eligible methods; 334 tracked files fit the 332 package budget plus 2 shared infrastructure files |
 
 No project code ran in the local checkout. The warnings are the same unrelated
 AnnData duplicate-name and SciPy sparse-matrix deprecation warnings.
