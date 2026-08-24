@@ -48,9 +48,11 @@ scientific review and can change without a code modification.
 ## Current closure state
 
 - implementation, three public Schemas, Tool Card, example and validation
-  record are complete on implementation head `23b0f39`;
-- GitHub Actions run `32686715446` passed 108 installed-wheel focused tests and
-  1,067 complete-suite tests, plus discovery, knowledge, policy and diff gates;
-- Draft PR #23 remains stacked on P0-05 and awaits one bounded closure review;
+  record are complete; bounded closure implementation is `2785a9c`;
+- P0-06 now consumes shared generic contracts and rejects non-public unit text
+  before result or artifact publication;
+- `/data1` source and clean-wheel validation passed 1,085 tests, with 126
+  focused P0-03 through P0-06 tests, discovery, knowledge and policy gates;
+- Draft PR #23 remains stacked on P0-05 and awaits the required GitHub check;
 - biological ProgramSpecs, ranges, independence assignments and LOD review
   remain separate from this callable candidate path.

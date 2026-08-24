@@ -77,9 +77,10 @@ an independent closure review. Implementation and CI do not authorize merge.
 
 ## Current status
 
-Implementation and exact installed-wheel verification are complete at
-`0c876c183b2c17e15af26c68c915434c258c7fba`: 27 focused and 986 total tests
-passed, 12 tools remained discoverable, the knowledge snapshot retained zero
-formal-eligible methods, and repository policy passed. The remaining plan item
-is an independent closure review of Draft PR #20; no scientific review or
-release promotion is implied.
+The independent closure review findings are fixed at implementation commit
+`512ff6055bf6374c18192d83b9909352e1fcbf07`. P0-03/P0-09 regression tests
+passed 214 cases; complete source and clean-wheel suites each passed 995 tests.
+Twelve tools remained discoverable, the knowledge snapshot retained zero
+formal-eligible methods, and repository policy passed. GitHub exact-head CI and
+final thread closure remain; no scientific review or release promotion is
+implied.

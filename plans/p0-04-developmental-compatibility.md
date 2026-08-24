@@ -48,10 +48,11 @@ in-vitro day, or claim efficacy, safety, potency or release readiness.
 ## Current closure state
 
 - implementation, public Schemas, Tool Card, example and validation record are
-  complete on implementation head `7028955`;
-- GitHub Actions run `32683980747` passed 53 installed-wheel focused tests and
-  1,012 complete-suite tests, plus discovery, knowledge, policy and diff gates;
-- Draft PR #21 remains stacked on P0-03 and awaits one bounded independent
-  closure review;
+  complete; bounded closure implementation is `3b7928e`;
+- P0-04 now consumes the shared configurable contracts directly and rejects
+  non-public `denominator_view` text before publication;
+- `/data1` source and clean-wheel validation passed 1,024 tests, with 65
+  focused P0-03/P0-04 tests, 12-tool discovery, knowledge and policy gates;
+- Draft PR #21 remains stacked on P0-03 and awaits the required GitHub check;
 - biological review of any DevelopmentWindowSpec remains separate and is not a
   prerequisite for exercising this candidate engineering path.

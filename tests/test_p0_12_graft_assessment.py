@@ -414,6 +414,32 @@ def test_product_case_is_cross_bound(tmp_path: Path) -> None:
     assert eligibility.reason_codes == ["graft_product_case_binding_mismatch"]
 
 
+@pytest.mark.parametrize(
+    ("surface", "unsafe_unit"),
+    [
+        ("graft_assessment_spec", "/home/demo-user/private"),
+        ("graft_evidence_bundle", "~/demo-private"),
+        ("graft_evidence_bundle", "${HOME}/demo-private"),
+    ],
+)
+def test_machine_local_unit_is_not_published(
+    tmp_path: Path, surface: str, unsafe_unit: str
+) -> None:
+    payloads = _payloads()
+    if surface == "graft_assessment_spec":
+        payloads[surface]["rules"][0]["unit"] = unsafe_unit
+    else:
+        payloads[surface]["units"][0]["observations"][0]["unit"] = unsafe_unit
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
+    assert run.result is None
+    assert run.artifacts == []
+    assert unsafe_unit not in json.dumps(run.model_dump(mode="json"))
+
+
 @pytest.mark.parametrize("value", [True, "3.0", math.nan, math.inf])
 def test_scientific_numeric_values_are_strict_and_finite(value: object) -> None:
     payload = _observation(1, "configured-primary", 3.0)

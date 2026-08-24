@@ -14,10 +14,10 @@ from bridge.tool_packages._structured_runtime import (
     publish_single_json,
     single_object,
 )
-from bridge.tool_packages.p0_03_target_regional.executor import parse_composition
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
+    parse_composition,
 )
 from bridge.tool_packages.p0_04_developmental.executor import (
     evaluate_developmental_compatibility,

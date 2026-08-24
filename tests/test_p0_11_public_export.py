@@ -306,6 +306,9 @@ def test_alias_is_controlled_only_by_export_spec(tmp_path: Path) -> None:
     [
         "private-canary measured 1.2 configured-unit.",
         "/data1/private measured 1.2 configured-unit.",
+        "/home/demo-user/private measured 1.2 configured-unit.",
+        "~/demo-private measured 1.2 configured-unit.",
+        "${HOME}/demo-private measured 1.2 configured-unit.",
         "token:demo-secret measured 1.2 configured-unit.",
         "evidence:private-ref measured 1.2 configured-unit.",
     ],
@@ -330,6 +333,28 @@ def test_unsafe_public_text_fails_without_artifact(
     assert run.result is None
     assert run.artifacts == []
     assert unsafe_text not in json.dumps(run.model_dump(mode="json"))
+
+
+def test_entire_reconstructed_payload_is_scanned_before_hash(
+    tmp_path: Path,
+) -> None:
+    unsafe_unit = "${HOME}/demo-private"
+    payloads = _payloads()
+    report = payloads["report_draft"]
+    report["claim_blocks"][0]["value_bindings"][0]["raw_unit"] = unsafe_unit
+    report["content_hash"] = report_content_hash(report)
+    payloads["claim_verification_result"]["report_content_hash"] = report[
+        "content_hash"
+    ]
+    payloads["public_export_spec"]["source_report_hash"] = report["content_hash"]
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["public_projection_failed"]
+    assert run.result is None
+    assert run.artifacts == []
+    assert unsafe_unit not in json.dumps(run.model_dump(mode="json"))
 
 
 def test_verified_with_warnings_requires_human_review(tmp_path: Path) -> None:

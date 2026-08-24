@@ -98,6 +98,8 @@ def build_public_safe_report(
         ),
         "reason_codes": reason_codes,
     }
+    if contains_machine_reference(payload):
+        raise ValueError("bounded machine reference remains")
     payload["candidate_hash"] = public_safe_report_hash(payload)
     return PublicSafeReport.model_validate(payload)
 

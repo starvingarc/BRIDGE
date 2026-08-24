@@ -27,25 +27,26 @@ visualization, expression-derived object or pre-transplant update.
 
 ## Evidence status
 
-No local project code was run. GitHub Actions run
-[`32691515962`](https://github.com/starvingarc/BRIDGE/actions/runs/32691515962)
-validated executable head
-`e0d83a7da55c7ab1d5b89986aecb3dfdc1263781`:
+No local project code was run. The bounded closure implementation at
+`d6fc5c55f7808911dacc8a55b9397c78a9262c49` was transferred as a Git archive
+to `/data1` and validated from exact source and a clean wheel. The wheel
+SHA-256 was
+`753370f64d8eb6dcfb88b3e508f69e8590d5ebde9fcac9450bbc81a1daa547c0`:
 
 - the wheel was built and `bridge` was imported from the clean installed
   site-packages directory, not the source checkout;
-- the cumulative installed-wheel configurable-interface suite passed
-  `195` tests, including P0-12 execution, refusal, reuse and mutation cases;
-- the full source suite passed `1,154` tests with three pre-existing dependency
-  warnings;
-- exactly 12 tools were discoverable and all 74 registered public Schemas were
-  packaged;
+- the cumulative source configurable-interface suite passed `223` tests;
+- both complete source and installed-wheel suites passed `1,182` tests, with
+  three existing source-environment and two installed-environment warnings;
+- exactly 12 tools were discoverable and public Schema parity remained green;
 - knowledge validation reported no dangling method or source references and
   `formal_eligible_method_count=0`;
 - repository policy and committed-whitespace checks passed.
 
-The following documentation-only evidence commit must retain the same green
-gates before this Draft PR is treated as implementation-complete.
+The closure also moves generic object references to the shared configurable
+contract and rejects machine-local or credential-like units in channel rules,
+observations and result summaries. Graft calculations and scientific
+boundaries are unchanged.
 
 ## Scientific boundary
 
