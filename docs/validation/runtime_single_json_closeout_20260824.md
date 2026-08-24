@@ -48,3 +48,22 @@ This is engineering and packaging evidence. Every P0 package remains a
 still stops at mandatory human confirmation. Real biological inputs were not
 needed to reproduce the interface findings, so no unpublished data was opened
 or copied.
+
+## Independent integration with V1 output hardening
+
+The final stacked head `79a6fb4e6a1cfd9f1c0192e917091b3cc0c8ef1c`
+was merged in a temporary, unpushed integration branch with the independently
+green V1 output-path head
+`94269dc3fb0d0d16bb971be7ef97f232405a0a2d`. The reproducible combined tree was
+`038fa7f779f50d10098f187f248c2348f56ba414`.
+
+- 271 affected P0-01 through P0-07 plus P0-11/P0-12 tests passed;
+- complete source and clean-wheel suites each passed 1,185 tests;
+- the installed wheel SHA-256 was
+  `e4843fe0389edefafbec6e1f58cf80261f5ab91b04c69c9b84e577a6a628dd38`;
+- all 12 tools were implemented and discoverable, repository policy passed
+  against 415 tracked files, and formal-eligible methods remained zero.
+
+Only `PLANS.md` and `docs/index.md` required additive conflict resolution; the
+runtime and tool code merged without conflict. The temporary branch was not
+pushed and does not change the required integration order.
