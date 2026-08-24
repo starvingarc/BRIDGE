@@ -28,20 +28,28 @@ MeasurementResult or visualization. `domain_score` is always null.
 
 ## Evidence status
 
-No local project code was run. GitHub Actions run
-[`32683980747`](https://github.com/starvingarc/BRIDGE/actions/runs/32683980747)
-validated implementation head `7028955` through the PR merge ref on Ubuntu and
-Python 3.12. The installed package resolved from `site-packages`, outside the
-source checkout.
+No local project code was run. The bounded closure implementation at
+`3b7928e130cf1853d4e28a68efb2e1f5c820f7bf` was transferred as a Git archive
+to `/data1` and exercised there from both the exact source tree and a clean
+wheel installation. The installed package resolved from the temporary
+environment's `site-packages`, outside the source checkout. The wheel SHA-256
+was `54b0877d5ef22509b2b91ee27f98e9c259aa22088d7e3032da0e35bbe372f03f`.
 
 | Gate | Current result |
 |---|---|
-| Installed-wheel focused suite | 53 P0-03/P0-04 tests passed |
-| Complete pytest | 1,012 passed; 3 existing dependency warnings |
+| Source focused suite | 65 P0-03/P0-04 tests passed |
+| Source complete pytest | 1,024 passed; 3 existing dependency warnings |
+| Installed-wheel complete pytest | 1,024 passed; 2 dependency warnings |
 | 12-tool discovery | passed; exactly 12 |
 | Knowledge validation | passed; no dangling method/source refs; 0 formal-eligible methods |
 | Repository policy | passed |
 | Schema/Card projection parity and diff check | passed |
+
+The closure also removes P0-04's dependency on P0-03-private contract
+implementations and rejects machine-local or credential-like
+`denominator_view` text before any result or artifact is published. These are
+interface and publication-safety changes only; developmental assignments and
+fractions are unchanged.
 
 The PR remains Draft. These results demonstrate packaging and deterministic
 mechanics, not approval of any biological assignment or scientific release.
