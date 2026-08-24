@@ -39,6 +39,9 @@ result and never degrades or rewrites pre-transplant evidence.
 
 ## Verification and stop
 
-All project execution occurs in GitHub Actions. The PR remains Draft after
-engineering gates. Real graft rules, biological assignments and release status
-remain independent scientific review inputs and can change without code edits.
+All project execution occurs in GitHub Actions. The clean installed-wheel
+configurable-interface suite passes 195 tests and the full suite passes 1,154;
+12-tool discovery, 74-Schema packaging, knowledge and repository policy are
+green on the code-bearing head. Draft PR #26 remains at the independent-review
+stop. Real graft rules, biological assignments and release status remain
+separate scientific inputs and can change without code edits.
