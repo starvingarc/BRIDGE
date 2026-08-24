@@ -47,6 +47,9 @@ jobs:
       - name: Verify installed configurable interfaces
         run: |
           wheel_test_root="$(mktemp -d)"
+          mkdir -p "$wheel_test_root/tests"
+          touch "$wheel_test_root/tests/__init__.py"
+          cp tests/p0_biological_units.py "$wheel_test_root/tests/"
           cp tests/test_p0_03_target_regional.py "$wheel_test_root/"
           cp tests/test_p0_04_developmental.py "$wheel_test_root/"
           cp tests/test_p0_05_off_target.py "$wheel_test_root/"
