@@ -39,9 +39,20 @@ result and never degrades or rewrites pre-transplant evidence.
 
 ## Verification and stop
 
-All project execution occurs in GitHub Actions. The clean installed-wheel
-configurable-interface suite passes 195 tests and the full suite passes 1,154;
-12-tool discovery, 74-Schema packaging, knowledge and repository policy are
-green on the code-bearing head. Draft PR #26 remains at the independent-review
-stop. Real graft rules, biological assignments and release status remain
-separate scientific inputs and can change without code edits.
+All project execution occurs outside the local checkout. The `/data1` source
+and clean installed-wheel suites pass 1,182 tests, including 223 cumulative
+configurable-interface tests; 12-tool discovery, Schema parity, knowledge and
+repository policy are green on the code-bearing head. Draft PR #26 remains at
+the independent-review stop. Real graft rules, biological assignments and
+release status remain separate scientific inputs and can change without code
+edits.
+
+## Current closure state
+
+- implementation, public Schemas, Tool Card, example and validation record are
+  complete; bounded closure implementation is `d6fc5c5`;
+- generic references use the shared contract and every unit-bearing public
+  input/output model rejects non-public machine-local text;
+- Draft PR #26 remains stacked on P0-11 and awaits the required GitHub check;
+- product backfill, biological interpretation, scoring and release remain out
+  of scope.
