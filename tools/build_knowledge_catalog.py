@@ -25,6 +25,7 @@ ACTIVE_MODULE_IDS = (
     "P0-07",
     "P0-08",
     "P0-09",
+    "P0-11",
 )
 PUBLIC_URL = re.compile(r"^https?://", re.IGNORECASE)
 SENTINELS = {"internal_no_public_url", "not_registered_in_source"}

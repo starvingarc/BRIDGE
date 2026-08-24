@@ -23,6 +23,22 @@ Public-safe Export 将通过 Claim Verifier 的内部报告转换为可以公开
 本模块不验证科学结论，也不重新判断产品质量。它不修改原始 `ReportDraft` 或
 P0-10 receipt，不自动上传文件，不处理原始单细胞数据，不执行通用患者微数据匿名化，也不负责 PDF、Office 或任意 HTML 发布。
 
+### 当前可执行切片（2026-08-24）
+
+P0-11 v0.2 先实现最小的 allowlist-first JSON 投影：输入一个 ReportDraft、
+一个 P0-10 eligible ClaimVerificationResult 和一个 PublicExportSpec，只输出
+一个新的 PublicSafeReport candidate。选择哪些 claim、允许哪些 claim/evidence
+状态、公开 claim ID、case label、精确别名替换、公开 accession 和禁止字面量
+全部来自版本化、带 checksum 的策略对象。
+
+当前输出不会携带 source report/claim/ProductCase/Evidence/binding ID；未选中的
+claim 不会先复制再删除。P0-10 warning 会降级为 `review_required`，干净 receipt
+最多得到 `ready_for_confirmation`，永远不会自动变成 `exported`。
+
+本切片不处理 CSV、Markdown、压缩包、图表、SVG/HTML、媒体 metadata、外部
+scanner、PII 匿名化、确认 receipt 或上传。下文这些内容仍是后续设计目标，
+不表示已经可调用。
+
 ## 2. 核心原则
 
 1. **白名单生成**：从允许字段生成新对象，不能先复制内部报告再尝试删除敏感内容。

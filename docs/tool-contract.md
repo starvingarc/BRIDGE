@@ -88,7 +88,7 @@ Original inputs are read-only. Each run creates a new bundle containing a manife
 
 The versioned JSON contracts in `schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` are the Python source used to generate those schemas.
 
-For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability; P0-03 through P0-10 are separately reviewed deterministic candidates, while P0-11 and P0-12 stay scaffolds.
+For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability; P0-03 through P0-11 are separately reviewed deterministic candidates, while P0-12 stays a scaffold.
 
 P0-03 consumes exactly one ProductCase, ProductDefinitionCard, StateRoleMap,
 TargetRegionalAssessmentSpec, CellStateEvidenceProfile and QCReadinessProfile.
@@ -134,6 +134,15 @@ score and rank remain unavailable. See the
 P0-08 consumes only versioned upstream evidence objects. It applies Data Readiness, Model Robustness and Prior Applicability before selecting `not_assessed`, `insufficient`, `limited` or `sufficient` in the registered precedence order. It never reruns scientific analysis, emits a `MeasurementResult`, or makes a domain score available. Its module-specific input/result schemas and complete field contract are documented in the [P0-08 Tool Card](../tool_packages/P0-08/README.md).
 
 P0-09 consumes a compilation bundle, P0-08 profiles and versioned Evidence Family, Claim and reconciliation registries. It creates append-only `EvidenceRecord` and `EvidenceRequirement` facts, deterministic reconciliation records, Case or Comparison graph manifests, fixed-column Parquet node/edge tables and a Cytoscape projection. Missing evidence creates a requirement rather than a zero-valued record; shadow or exploratory evidence cannot become formal. JSON/Parquet remain authoritative, while NetworkX is limited to reconstruction, invariant checks and seven named read-only query helpers. LadybugDB is deferred shadow work and is not a release dependency. The complete interface and reason-code contract are documented in the [P0-09 Tool Card](../tool_packages/P0-09/README.md).
+
+P0-11 consumes one ReportDraft, one P0-10 ClaimVerificationResult and one
+PublicExportSpec. It constructs a new JSON object from selected fields and
+policy-supplied aliases; source report/claim/ProductCase/Evidence IDs and
+unselected prose are not projected. A bounded local-path/namespace/credential
+guard supplements the explicit prohibited-literal list but is not a universal
+secret scanner. The tool stops at `ready_for_confirmation` or
+`review_required`, does not upload, and does not handle arbitrary files. See the
+[P0-11 Tool Card](../tool_packages/P0-11/README.md).
 
 Only `implemented` packages execute. A scaffold returns `not_implemented` with `tool_package_not_implemented`; a deprecated package is ineligible and returns a failed run with `tool_package_deprecated`. Neither state resolves or invokes an adapter.
 

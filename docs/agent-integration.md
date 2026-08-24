@@ -26,7 +26,7 @@ The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Sc
 6. Use knowledge search for planning and explanation; never turn retrieval rank into scientific evidence weight.
 7. Declare `source_family_id` so the tool can exclude same-family references, and resolve logical QC/reference IDs through deployment-owned catalogs.
 
-P0-01 through P0-10 are executable
+P0-01 through P0-11 are executable
 candidate packages. P0-02 emits shadow Cell-State Evidence unless its
 `MeasurementSpec` names a signed `CellStateReleaseManifest`; draft review cards
 or benchmark results never become formal labels. P0-03 consumes a checksummed
@@ -62,8 +62,10 @@ a report public-eligible, and public claims require cited formal Evidence.
 P0-07 reads a checksummed ComparisonSpec and preparation-level evidence bundle.
 It performs only pairwise descriptive summaries and raw deltas; biological
 directions and comparability requirements come from the input, while inference,
-Pareto, score and rank remain unavailable. P0-11 through P0-12 deliberately return
-`not_implemented` without measurements. HTTP, MCP and queue adapters may wrap
+Pareto, score and rank remain unavailable. P0-11 rebuilds only explicitly
+selected fields from a P0-10-eligible report and checksummed PublicExportSpec;
+it omits source identifiers and stops at a human-confirmation candidate. P0-12
+deliberately returns `not_implemented` without measurements. HTTP, MCP and queue adapters may wrap
 the same JSON contracts later without changing scientific semantics.
 
 Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.

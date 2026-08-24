@@ -4,9 +4,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
+import shutil
 import stat
 from typing import Any, Callable, Literal
+from uuid import uuid4
 
 from pydantic import ValidationError
 
@@ -204,6 +207,63 @@ def inputs_unchanged(refs: list[StructuredInputRef]) -> bool:
 
 def write_json(path: Path, payload: object) -> None:
     path.write_bytes(canonical_json_bytes(payload, indent=2))
+
+
+def publish_single_json(
+    *,
+    request: ToolRequestV2,
+    run_id: str,
+    filename: str,
+    payload: bytes,
+) -> Path:
+    """Publish one immutable JSON result without following output symlinks."""
+
+    if Path(filename).name != filename or not filename.endswith(".json"):
+        raise StructuredInputError("output_filename_invalid")
+    output_root = request.output_dir
+    if directory_state(output_root) == "other":
+        raise StructuredInputError("output_path_invalid")
+    try:
+        output_root.mkdir(parents=True, exist_ok=True)
+    except (OSError, RuntimeError):
+        raise StructuredInputError("output_path_invalid") from None
+    if directory_state(output_root) != "directory":
+        raise StructuredInputError("output_path_invalid")
+
+    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
+    try:
+        staging.mkdir(mode=0o700)
+        (staging / filename).write_bytes(payload)
+        if not inputs_unchanged(request.object_inputs):
+            raise StructuredInputError("structured_input_modified_during_run")
+        final = output_root / run_id
+        final_state = directory_state(final)
+        if final_state == "directory":
+            existing = final / filename
+            try:
+                matches = (
+                    read_regular_bytes(existing) == payload
+                    and {path.name for path in final.iterdir()} == {filename}
+                )
+            except (OSError, RuntimeError):
+                matches = False
+            if not matches:
+                raise StructuredInputError("existing_run_bundle_hash_mismatch")
+            shutil.rmtree(staging)
+        elif final_state == "missing":
+            os.replace(staging, final)
+        else:
+            raise StructuredInputError("existing_run_bundle_hash_mismatch")
+        published = final / filename
+        if read_regular_bytes(published) != payload:
+            raise StructuredInputError("published_result_hash_mismatch")
+        return published
+    except StructuredInputError:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    except (OSError, RuntimeError):
+        shutil.rmtree(staging, ignore_errors=True)
+        raise StructuredInputError("output_path_invalid") from None
 
 
 def failed_v2_run(

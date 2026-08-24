@@ -56,6 +56,8 @@ SCHEMA_REFS = {
     "bridge://schemas/prior-applicability-record/v0.1": "prior_applicability_record.schema.json",
     "bridge://schemas/product-case/v0.1": "product_case.schema.json",
     "bridge://schemas/product-definition-card/v0.1": "product_definition_card.schema.json",
+    "bridge://schemas/public-export-spec/v0.1": "public_export_spec.schema.json",
+    "bridge://schemas/public-safe-report/v0.1": "public_safe_report.schema.json",
     "bridge://schemas/reference-manifest/v0.1": "reference_manifest.schema.json",
     "bridge://schemas/reference-profile/v0.1": "reference_profile.schema.json",
     "bridge://schemas/reconciliation-record/v0.1": "reconciliation_record.schema.json",

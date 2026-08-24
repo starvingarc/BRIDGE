@@ -1,0 +1,36 @@
+{
+  "request_id": "request-p0-11-demo",
+  "tool_id": "P0-11",
+  "tool_version": "0.2.0",
+  "output_dir": "/tmp/bridge-p0-11-output",
+  "random_seed": 0,
+  "object_inputs": [
+    {
+      "input_id": "report",
+      "role": "report_draft",
+      "schema_ref": "bridge://schemas/report-draft/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-11-input/report_draft.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "media_type": "application/json"
+    },
+    {
+      "input_id": "verification",
+      "role": "claim_verification_result",
+      "schema_ref": "bridge://schemas/claim-verification-result/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-11-input/claim_verification_result.json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "media_type": "application/json"
+    },
+    {
+      "input_id": "export-policy",
+      "role": "public_export_spec",
+      "schema_ref": "bridge://schemas/public-export-spec/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-11-input/public_export_spec.json",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "media_type": "application/json"
+    }
+  ]
+}
