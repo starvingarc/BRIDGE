@@ -29,6 +29,7 @@
 
 ## Validation Records
 
+- [V1 output-path hardening validation, 2026-08-24](validation/runtime_output_path_hardening_20260824.md)
 - [P0-10 Report Claim Verifier candidate validation, 2026-08-14](validation/p0_10_claim_verifier_20260814.md)
 - [P0-09 Evidence Compiler & Reconciler candidate validation, 2026-08-13](validation/p0_09_evidence_compiler_20260813.md)
 - [P0-08 Evidence Sufficiency candidate validation, 2026-08-13](validation/p0_08_evidence_sufficiency_20260813.md)

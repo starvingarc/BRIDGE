@@ -32,3 +32,11 @@ checks 12-tool discovery, knowledge validity, repository policy and the diff.
 Branch: `runtime-output-path-hardening`.
 
 Implementation and green CI do not independently authorize merge.
+
+## Current status
+
+Implementation commit `967047adbdc7f9c983f0fa2cdeb818f0a6af5bce` passed
+the three focused regression cases and both complete source and clean-wheel
+suites (`962 passed`). Twelve tools remained discoverable, knowledge retained
+zero formal-eligible methods, and repository policy passed. GitHub review and
+the required check remain pending.
