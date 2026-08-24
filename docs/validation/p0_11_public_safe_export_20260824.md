@@ -27,20 +27,27 @@ visualization, archive or upload.
 
 ## Evidence status
 
-No local project code was run. GitHub Actions run
-[`32689491713`](https://github.com/starvingarc/BRIDGE/actions/runs/32689491713)
-validated implementation head `52ba293` through the PR merge ref on Ubuntu and
-Python 3.12. The installed package resolved from `site-packages`, outside the
-source checkout.
+No local project code was run. The bounded closure implementation at
+`fd00fc41d6511259f61f2ec5becfe548c8c021bd` was transferred as a Git archive
+to `/data1` and exercised there from both the exact source tree and a clean
+wheel installation. The installed package resolved from the temporary
+environment's `site-packages`, outside the source checkout. The wheel SHA-256
+was `7b04814f84ef4bbdd3f8eaa1f338caf3b018c8ddbe0eecb9d64254d36faec2d6`.
 
 | Gate | Current result |
 |---|---|
-| Installed-wheel focused chain | 159 P0-03/P0-04/P0-05/P0-06/P0-07/P0-11 tests passed |
-| Complete pytest | 1,118 passed; 3 existing dependency warnings |
+| Source focused chain | 184 P0-03/P0-04/P0-05/P0-06/P0-07/P0-11 tests passed |
+| Source complete pytest | 1,143 passed; 3 existing dependency warnings |
+| Installed-wheel complete pytest | 1,143 passed; 2 dependency warnings |
 | 12-tool discovery | passed; exactly 12 |
 | Public and packaged Schemas | 71 registered Schemas; byte-mirrored generated copies packaged with the wheel |
 | Knowledge validation | passed; no dangling method/source refs; 0 formal-eligible methods |
 | Repository policy and committed diff | passed |
+
+The closure reuses the shared publication scanner and applies it recursively to
+the complete reconstructed payload before candidate hashing. Absolute and
+home-relative paths, credential-like values, internal namespaces and leaks in
+nested non-prose fields are rejected without suppressing valid `public-*` IDs.
 
 The PR remains Draft. These results establish deterministic projection and
 packaging, not approval of a disclosure policy or public release.

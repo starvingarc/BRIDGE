@@ -38,3 +38,14 @@ silently dropped.
 All execution occurs in GitHub Actions. The PR remains Draft after engineering
 gates. Real disclosure policies and public aliases require independent human
 approval and can change without code changes.
+
+## Current closure state
+
+- implementation, public Schemas, Tool Card, example and validation record are
+  complete; bounded closure implementation is `fd00fc4`;
+- the complete reconstructed payload is recursively scanned before hashing, so
+  machine paths or credential-like values cannot hide outside selected prose;
+- `/data1` source and clean-wheel validation passed 1,143 tests, with 184
+  focused P0-03 through P0-07 plus P0-11 tests and all repository gates;
+- Draft PR #25 remains stacked on P0-07 and awaits the required GitHub check;
+- human disclosure approval and publication remain separate and mandatory.
