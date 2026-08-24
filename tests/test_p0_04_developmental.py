@@ -527,6 +527,27 @@ def test_cross_binding_and_publication_failures_are_typed(
     assert run.artifacts == []
 
 
+@pytest.mark.parametrize(
+    "unsafe_denominator",
+    ["/home/demo-user/private", "~/demo-private", "${HOME}/demo-private"],
+)
+def test_machine_local_denominator_is_not_published(
+    tmp_path: Path, unsafe_denominator: str
+) -> None:
+    payloads = _payloads()
+    payloads["cell_state_evidence_profile"]["composition"]["records"][0][
+        "denominator_view"
+    ] = unsafe_denominator
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["cell_state_composition_invalid"]
+    assert run.result is None
+    assert run.artifacts == []
+    assert unsafe_denominator not in json.dumps(run.model_dump(mode="json"))
+
+
 @pytest.mark.parametrize("field", ["count", "denominator", "fraction"])
 def test_scientific_numeric_strings_are_rejected(tmp_path: Path, field: str) -> None:
     payloads = _payloads()
