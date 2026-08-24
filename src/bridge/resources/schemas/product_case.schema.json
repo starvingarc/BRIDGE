@@ -24,6 +24,48 @@
   },
   "$id": "bridge://schemas/product-case/v0.1",
   "additionalProperties": false,
+  "oneOf": [
+    {
+      "properties": {
+        "biological_unit_manifest_ref": {
+          "type": "null"
+        },
+        "biological_unit_manifest_sha256": {
+          "type": "null"
+        },
+        "independence_group_refs": {
+          "maxItems": 0
+        },
+        "independence_scope_ref": {
+          "type": "null"
+        }
+      }
+    },
+    {
+      "properties": {
+        "biological_unit_manifest_ref": {
+          "not": {
+            "type": "null"
+          }
+        },
+        "biological_unit_manifest_sha256": {
+          "not": {
+            "type": "null"
+          }
+        },
+        "independence_scope_ref": {
+          "not": {
+            "type": "null"
+          }
+        }
+      },
+      "required": [
+        "biological_unit_manifest_ref",
+        "biological_unit_manifest_sha256",
+        "independence_scope_ref"
+      ]
+    }
+  ],
   "properties": {
     "assay": {
       "enum": [
@@ -57,13 +99,6 @@
       "default": null,
       "title": "Biological Unit Manifest Sha256"
     },
-    "biological_unit_refs": {
-      "items": {
-        "$ref": "#/$defs/VersionedObjectRef"
-      },
-      "title": "Biological Unit Refs",
-      "type": "array"
-    },
     "case_version": {
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
       "title": "Case Version",
@@ -73,6 +108,13 @@
       "format": "date-time",
       "title": "Created At",
       "type": "string"
+    },
+    "independence_group_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "title": "Independence Group Refs",
+      "type": "array"
     },
     "independence_scope_ref": {
       "anyOf": [
@@ -111,6 +153,14 @@
     },
     "sample_or_preparation_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "source_unit_kind": {
+      "enum": [
+        "sample",
+        "preparation"
+      ],
+      "title": "Source Unit Kind",
+      "type": "string"
     }
   },
   "required": [
@@ -118,6 +168,7 @@
     "product_case_id",
     "case_version",
     "product_definition_ref",
+    "source_unit_kind",
     "sample_or_preparation_ref",
     "measurement_spec_ref",
     "assay",

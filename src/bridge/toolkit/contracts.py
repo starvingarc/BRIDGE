@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import StrEnum
+import math
 from pathlib import Path
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Annotated, Any, Literal, Protocol, runtime_checkable
 
 from pydantic import (
     BaseModel,
@@ -64,6 +65,28 @@ class InputLevel(StrEnum):
     ANALYSIS_READY = "analysis_ready"
     COUNT_READY = "count_ready"
     DROPLET_READY = "droplet_ready"
+
+
+def _paired_optional_json_schema(first: str, second: str) -> dict[str, Any]:
+    """Express an all-null/absent or all-present pair in public JSON Schema."""
+
+    return {
+        "oneOf": [
+            {
+                "properties": {
+                    first: {"type": "null"},
+                    second: {"type": "null"},
+                }
+            },
+            {
+                "required": [first, second],
+                "properties": {
+                    first: {"not": {"type": "null"}},
+                    second: {"not": {"type": "null"}},
+                },
+            },
+        ]
+    }
 
 
 class FrozenModel(BaseModel):
@@ -296,8 +319,6 @@ class MeasurementSpec(FrozenModel):
     applicable_product_cards: list[str] = Field(default_factory=list)
     input_contract: dict[str, Any]
     analysis_unit: str
-    analysis_unit_kind: str | None = None
-    applicable_contexts: list[str] = Field(default_factory=list)
     raw_metric_definition: dict[str, Any]
     numerator: str | None = None
     denominator: str | None = None
@@ -311,6 +332,11 @@ class MeasurementSpec(FrozenModel):
     validation_ref: str | None = None
     exclusion_rules: dict[str, Any] = Field(default_factory=dict)
     release_manifest_ref: str | None = None
+
+
+class MeasurementSpecV2(MeasurementSpec):
+    analysis_unit_kind: str | None = None
+    applicable_contexts: list[str] = Field(default_factory=list)
 
 
 class MeasurementResult(FrozenModel):
@@ -328,10 +354,46 @@ class MeasurementResult(FrozenModel):
 
 
 class MeasurementResultV2(MeasurementResult):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                _paired_optional_json_schema(
+                    "source_run_ref", "source_execution_state"
+                ),
+                _paired_optional_json_schema("numerator", "denominator"),
+                {
+                    "if": {
+                        "properties": {
+                            "evidence_state": {
+                                "enum": ["missing", "unavailable"]
+                            }
+                        },
+                        "required": ["evidence_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            name: {"type": "null"}
+                            for name in (
+                                "raw_value",
+                                "numerator",
+                                "denominator",
+                                "interval",
+                            )
+                        }
+                    },
+                },
+            ]
+        }
+    )
+
     measurement_spec_version: str | None = None
     unit: str | None = None
     numerator: StrictInt | StrictFloat | None = None
-    denominator: StrictInt | StrictFloat | None = None
+    denominator: (
+        Annotated[StrictInt, Field(gt=0)]
+        | Annotated[StrictFloat, Field(gt=0)]
+        | None
+    ) = None
     interval: tuple[StrictInt | StrictFloat, StrictInt | StrictFloat] | None = None
     interval_confidence_level: StrictFloat | None = Field(
         default=None,
@@ -344,6 +406,7 @@ class MeasurementResultV2(MeasurementResult):
         pattern=r"^tool-run:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
     )
     source_execution_state: Literal["succeeded", "partial"] | None = None
+    unknown_scope: Literal["identity", "role", "measurement"] | None = None
 
     @model_validator(mode="after")
     def source_and_interval_metadata_are_coherent(self) -> "MeasurementResultV2":
@@ -356,6 +419,32 @@ class MeasurementResultV2(MeasurementResult):
             or self.interval_method_ref is not None
         ):
             raise ValueError("interval metadata requires interval bounds")
+        if (self.numerator is None) != (self.denominator is None):
+            raise ValueError("numerator and denominator must be supplied together")
+        if self.interval is not None:
+            lower, upper = self.interval
+            if not math.isfinite(lower) or not math.isfinite(upper):
+                raise ValueError("interval bounds must be finite")
+            if lower > upper:
+                raise ValueError("interval lower bound cannot exceed upper bound")
+        if self.evidence_state in {
+            EvidenceState.MISSING,
+            EvidenceState.UNAVAILABLE,
+        } and any(
+            value is not None
+            for value in (
+                self.raw_value,
+                self.numerator,
+                self.denominator,
+                self.interval,
+            )
+        ):
+            raise ValueError("missing or unavailable evidence cannot carry a value")
+        if self.evidence_state is EvidenceState.UNKNOWN:
+            if self.unknown_scope is None:
+                raise ValueError("unknown evidence requires unknown_scope")
+        elif self.unknown_scope is not None:
+            raise ValueError("unknown_scope requires unknown evidence")
         return self
 
 
@@ -370,6 +459,17 @@ class ArtifactManifest(FrozenModel):
 
 class DataViewBinding(FrozenModel):
     """Content-addressed expression view passed between scientific tools."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                _paired_optional_json_schema(
+                    "biological_unit_manifest_ref",
+                    "biological_unit_manifest_sha256",
+                )
+            ]
+        }
+    )
 
     view_id: str = Field(min_length=1)
     view_kind: Literal["all_observations", "qc_selected_observations"]
@@ -416,7 +516,6 @@ class QCReadinessProfile(FrozenModel):
     input_level: str
     assay: str
     assay_spec_id: str | None = None
-    measurement_spec_version: str | None = None
     measurement_spec_status: str = "not_selected"
     readiness_state: ReadinessState
     schema_integrity: dict[str, Any]
@@ -428,7 +527,6 @@ class QCReadinessProfile(FrozenModel):
     cell_calling_assessment: dict[str, Any]
     ambient_assessment: dict[str, Any]
     data_views: dict[str, Any]
-    selected_data_view: DataViewBinding | None = None
     module_eligibility: dict[str, str]
     missing_inputs: list[str] = Field(default_factory=list)
     blocking_issues: list[str] = Field(default_factory=list)
@@ -436,6 +534,11 @@ class QCReadinessProfile(FrozenModel):
     evidence_ids: list[str] = Field(default_factory=list)
     score_state: CurrentScoreState = ScoreState.UNAVAILABLE
     domain_score: None = None
+
+
+class QCReadinessProfileV2(QCReadinessProfile):
+    measurement_spec_version: str | None = None
+    selected_data_view: DataViewBinding | None = None
 
 
 class AnnotationLabel(FrozenModel):
@@ -929,13 +1032,7 @@ class CellStateEvidenceProfile(FrozenModel):
     profile_id: str
     assay: str
     measurement_spec_id: str
-    measurement_spec_version: str | None = None
     measurement_spec_status: str
-    upstream_qc_profile_ref: str | None = None
-    upstream_qc_profile_sha256: str | None = Field(
-        default=None, pattern=r"^[0-9a-f]{64}$"
-    )
-    input_data_view: DataViewBinding | None = None
     annotation_vocabulary_ref: str
     reference_snapshot_ref: str
     n_observations: int
@@ -959,6 +1056,35 @@ class CellStateEvidenceProfile(FrozenModel):
     evidence_ids: list[str] = Field(default_factory=list)
     score_state: CurrentScoreState = ScoreState.SHADOW
     domain_score: None = None
+
+
+class CellStateEvidenceProfileV2(CellStateEvidenceProfile):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                _paired_optional_json_schema(
+                    "upstream_qc_profile_ref", "upstream_qc_profile_sha256"
+                )
+            ]
+        }
+    )
+
+    measurement_spec_version: str | None = None
+    upstream_qc_profile_ref: str | None = None
+    upstream_qc_profile_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    input_data_view: DataViewBinding | None = None
+
+    @model_validator(mode="after")
+    def upstream_qc_binding_is_coherent(self) -> "CellStateEvidenceProfileV2":
+        if (self.upstream_qc_profile_ref is None) != (
+            self.upstream_qc_profile_sha256 is None
+        ):
+            raise ValueError(
+                "upstream QC profile reference and checksum must be paired"
+            )
+        return self
 
 
 class EligibilityResult(FrozenModel):
@@ -1102,7 +1228,7 @@ class ToolRunV2(FrozenModel):
     environment_spec_id: str
     input_hash: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    measurements: list[MeasurementResultV2] = Field(default_factory=list)
+    measurements: list[MeasurementResult] = Field(default_factory=list)
     artifacts: list[ArtifactManifest] = Field(default_factory=list)
     visualizations: list[VisualizationArtifact] = Field(default_factory=list)
     result_schema_ref: str | None = None

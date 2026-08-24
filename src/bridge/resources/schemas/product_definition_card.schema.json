@@ -49,11 +49,7 @@
       "type": "array"
     },
     "review_state": {
-      "enum": [
-        "draft",
-        "reviewed",
-        "frozen"
-      ],
+      "const": "draft",
       "title": "Review State",
       "type": "string"
     },

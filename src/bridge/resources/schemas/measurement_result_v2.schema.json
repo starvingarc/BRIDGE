@@ -17,13 +17,112 @@
   },
   "$id": "bridge://schemas/measurement-result/v0.2",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "source_execution_state": {
+              "type": "null"
+            },
+            "source_run_ref": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "source_execution_state": {
+              "not": {
+                "type": "null"
+              }
+            },
+            "source_run_ref": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "source_run_ref",
+            "source_execution_state"
+          ]
+        }
+      ]
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "denominator": {
+              "type": "null"
+            },
+            "numerator": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "denominator": {
+              "not": {
+                "type": "null"
+              }
+            },
+            "numerator": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "numerator",
+            "denominator"
+          ]
+        }
+      ]
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_state": {
+            "enum": [
+              "missing",
+              "unavailable"
+            ]
+          }
+        },
+        "required": [
+          "evidence_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "denominator": {
+            "type": "null"
+          },
+          "interval": {
+            "type": "null"
+          },
+          "numerator": {
+            "type": "null"
+          },
+          "raw_value": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "denominator": {
       "anyOf": [
         {
+          "exclusiveMinimum": 0,
           "type": "integer"
         },
         {
+          "exclusiveMinimum": 0,
           "type": "number"
         },
         {
@@ -200,6 +299,23 @@
       ],
       "default": null,
       "title": "Unit"
+    },
+    "unknown_scope": {
+      "anyOf": [
+        {
+          "enum": [
+            "identity",
+            "role",
+            "measurement"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unknown Scope"
     }
   },
   "required": [

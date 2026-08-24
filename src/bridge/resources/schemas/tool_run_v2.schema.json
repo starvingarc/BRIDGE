@@ -169,16 +169,16 @@
       "title": "InputLevel",
       "type": "string"
     },
-    "MeasurementResultV2": {
+    "MeasurementResult": {
       "additionalProperties": false,
       "properties": {
         "denominator": {
           "anyOf": [
             {
-              "type": "integer"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "integer"
             },
             {
               "type": "null"
@@ -202,24 +202,10 @@
               "minItems": 2,
               "prefixItems": [
                 {
-                  "anyOf": [
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "number"
-                    }
-                  ]
+                  "type": "number"
                 },
                 {
-                  "anyOf": [
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "number"
-                    }
-                  ]
+                  "type": "number"
                 }
               ],
               "type": "array"
@@ -231,32 +217,6 @@
           "default": null,
           "title": "Interval"
         },
-        "interval_confidence_level": {
-          "anyOf": [
-            {
-              "exclusiveMaximum": 1,
-              "exclusiveMinimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Interval Confidence Level"
-        },
-        "interval_method_ref": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Interval Method Ref"
-        },
         "measurement_id": {
           "title": "Measurement Id",
           "type": "string"
@@ -265,18 +225,6 @@
           "title": "Measurement Spec Id",
           "type": "string"
         },
-        "measurement_spec_version": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Measurement Spec Version"
-        },
         "metric_name": {
           "title": "Metric Name",
           "type": "string"
@@ -284,10 +232,10 @@
         "numerator": {
           "anyOf": [
             {
-              "type": "integer"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "integer"
             },
             {
               "type": "null"
@@ -313,47 +261,6 @@
           ],
           "title": "Score State",
           "type": "string"
-        },
-        "source_execution_state": {
-          "anyOf": [
-            {
-              "enum": [
-                "succeeded",
-                "partial"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Source Execution State"
-        },
-        "source_run_ref": {
-          "anyOf": [
-            {
-              "pattern": "^tool-run:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Source Run Ref"
-        },
-        "unit": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Unit"
         }
       },
       "required": [
@@ -364,7 +271,7 @@
         "score_state",
         "evidence_state"
       ],
-      "title": "MeasurementResultV2",
+      "title": "MeasurementResult",
       "type": "object"
     },
     "StructuredInputRef": {
@@ -706,7 +613,7 @@
     },
     "measurements": {
       "items": {
-        "$ref": "#/$defs/MeasurementResultV2"
+        "$ref": "#/$defs/MeasurementResult"
       },
       "title": "Measurements",
       "type": "array"

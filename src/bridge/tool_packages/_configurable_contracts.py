@@ -2,16 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import StrEnum
+import hashlib
+import json
 import math
 from typing import Literal, Self
 
-from pydantic import Field, StrictFloat, StrictInt, ValidationError, field_validator, model_validator
+from pydantic import ConfigDict, Field, StrictFloat, StrictInt, ValidationError, field_validator, model_validator
 
 from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import (
-    CellStateEvidenceProfile,
+    CellStateEvidenceProfileV2,
     FrozenModel,
-    QCReadinessProfile,
+    QCReadinessProfileV2,
 )
 
 
@@ -49,6 +51,9 @@ class BiologicalUnitKind(StrEnum):
     GRAFT_UNIT = "graft_unit"
 
 
+IndependenceGroupKind = Literal["preparation", "sample", "donor", "animal"]
+
+
 class BiologicalUnitLineageState(StrEnum):
     DECLARED = "declared"
     REVIEWED = "reviewed"
@@ -59,35 +64,32 @@ class BiologicalUnitBinding(FrozenModel):
     analysis_unit_ref: VersionedObjectRef
     analysis_unit_kind: BiologicalUnitKind
     independence_group_ref: VersionedObjectRef
-    independence_group_kind: BiologicalUnitKind
+    independence_group_kind: IndependenceGroupKind
     capture_ref: VersionedObjectRef | None = None
     preparation_ref: VersionedObjectRef | None = None
     sample_ref: VersionedObjectRef | None = None
+    donor_ref: VersionedObjectRef | None = None
+    animal_ref: VersionedObjectRef | None = None
+    graft_unit_ref: VersionedObjectRef | None = None
 
     @model_validator(mode="after")
     def unit_roles_are_coherent(self) -> Self:
-        if self.independence_group_kind in {
-            BiologicalUnitKind.CAPTURE,
-            BiologicalUnitKind.GRAFT_UNIT,
-        }:
+        hierarchy = {
+            "capture": self.capture_ref,
+            "preparation": self.preparation_ref,
+            "sample": self.sample_ref,
+            "donor": self.donor_ref,
+            "animal": self.animal_ref,
+            "graft_unit": self.graft_unit_ref,
+        }
+        if hierarchy[self.analysis_unit_kind.value] != self.analysis_unit_ref:
             raise ValueError(
-                "capture and graft_unit cannot be declared independent groups"
+                f"{self.analysis_unit_kind.value} analysis unit must bind its typed hierarchy ref"
             )
-        if (
-            self.analysis_unit_kind is BiologicalUnitKind.CAPTURE
-            and self.capture_ref != self.analysis_unit_ref
-        ):
-            raise ValueError("capture analysis unit must bind capture_ref")
-        if (
-            self.analysis_unit_kind is BiologicalUnitKind.PREPARATION
-            and self.preparation_ref != self.analysis_unit_ref
-        ):
-            raise ValueError("preparation analysis unit must bind preparation_ref")
-        if (
-            self.analysis_unit_kind is BiologicalUnitKind.SAMPLE
-            and self.sample_ref != self.analysis_unit_ref
-        ):
-            raise ValueError("sample analysis unit must bind sample_ref")
+        if hierarchy[self.independence_group_kind] != self.independence_group_ref:
+            raise ValueError(
+                "independence group must equal its typed hierarchy ref"
+            )
         return self
 
 
@@ -107,6 +109,18 @@ class BiologicalUnitAssignment(FrozenModel):
         default=None,
         pattern=r"^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
     )
+    donor_ref: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
+    animal_ref: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
+    graft_unit_ref: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
     analysis_unit_ref: str = Field(
         pattern=r"^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$"
     )
@@ -115,7 +129,81 @@ class BiologicalUnitAssignment(FrozenModel):
     )
 
 
+class BiologicalUnitAssignmentArtifact(FrozenModel):
+    """Checksummed observation-to-unit mapping consumed as one JSON object."""
+
+    object_version: Literal["0.1.0"]
+    schema_ref: Literal["bridge://schemas/biological-unit-assignment/v0.1"]
+    data_view_ref: str = Field(min_length=1)
+    observation_ids_sha256: str = Field(pattern=SHA256_PATTERN)
+    assignments: list[BiologicalUnitAssignment]
+
+    @field_validator("assignments")
+    @classmethod
+    def observations_are_unique(
+        cls, value: list[BiologicalUnitAssignment]
+    ) -> list[BiologicalUnitAssignment]:
+        _unique([item.observation_id for item in value], "observation IDs")
+        return value
+
+
+def observation_ids_sha256(observation_ids: list[str]) -> str:
+    canonical = json.dumps(
+        sorted(observation_ids),
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 class BiologicalUnitManifest(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"generator_tool_id": {"const": "P0-01"}},
+                        "required": ["generator_tool_id"],
+                    },
+                    "then": {
+                        "properties": {
+                            "lineage_state": {"const": "declared"},
+                            "review_gate_ref": {"type": "null"},
+                            "review_gate_sha256": {"type": "null"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "generator_tool_id": {
+                                "const": "BRIDGE-BIOLOGICAL-UNIT-REVIEW"
+                            }
+                        },
+                        "required": ["generator_tool_id"],
+                    },
+                    "then": {
+                        "required": ["review_gate_ref", "review_gate_sha256"],
+                        "properties": {
+                            "lineage_state": {"enum": ["reviewed", "frozen"]},
+                            "review_gate_ref": {"not": {"type": "null"}},
+                            "review_gate_sha256": {"not": {"type": "null"}},
+                        },
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"n_observations": {"const": 0}},
+                        "required": ["n_observations"],
+                    },
+                    "then": {"properties": {"unit_bindings": {"maxItems": 0}}},
+                    "else": {"properties": {"unit_bindings": {"minItems": 1}}},
+                },
+            ]
+        }
+    )
+
     object_version: Literal["0.1.0"]
     manifest_id: str = Field(
         pattern=r"^biological-unit-manifest:[A-Za-z0-9._:-]+$"
@@ -135,7 +223,7 @@ class BiologicalUnitManifest(FrozenModel):
     assignment_row_count: StrictInt = Field(ge=0)
     unit_identity_namespace_ref: VersionedObjectRef
     analysis_unit_kind: BiologicalUnitKind
-    independence_group_kind: BiologicalUnitKind
+    independence_group_kind: IndependenceGroupKind
     independence_scope_ref: VersionedObjectRef
     lineage_state: BiologicalUnitLineageState
     review_gate_ref: VersionedObjectRef | None = None
@@ -158,14 +246,9 @@ class BiologicalUnitManifest(FrozenModel):
             raise ValueError(
                 "unit bindings must be empty exactly when the selected view is empty"
             )
-        if self.independence_group_kind in {
-            BiologicalUnitKind.CAPTURE,
-            BiologicalUnitKind.GRAFT_UNIT,
-        }:
-            raise ValueError("technical units cannot satisfy independence assertions")
         if any(
-            item.analysis_unit_kind is not self.analysis_unit_kind
-            or item.independence_group_kind is not self.independence_group_kind
+            item.analysis_unit_kind != self.analysis_unit_kind
+            or item.independence_group_kind != self.independence_group_kind
             for item in self.unit_bindings
         ):
             raise ValueError("unit bindings must use the manifest unit kinds")
@@ -202,20 +285,116 @@ class BiologicalUnitManifest(FrozenModel):
         return [by_ref[key] for key in sorted(by_ref)]
 
     @property
-    def independence_is_reviewed(self) -> bool:
+    def review_claim_is_present(self) -> bool:
         return self.lineage_state in {
             BiologicalUnitLineageState.REVIEWED,
             BiologicalUnitLineageState.FROZEN,
         }
 
 
+def biological_unit_assignment_reasons(
+    *,
+    manifest: BiologicalUnitManifest,
+    artifact: BiologicalUnitAssignmentArtifact,
+    artifact_sha256: str,
+) -> list[str]:
+    """Validate every observation assignment against the manifest bindings."""
+
+    reasons: set[str] = set()
+    if manifest.assignment_schema_ref != artifact.schema_ref:
+        reasons.add("biological_unit_assignment_schema_mismatch")
+    if manifest.assignment_artifact_sha256 != artifact_sha256:
+        reasons.add("biological_unit_assignment_checksum_mismatch")
+    if manifest.data_view_ref != artifact.data_view_ref:
+        reasons.add("biological_unit_assignment_data_view_mismatch")
+    if len(artifact.assignments) != manifest.assignment_row_count:
+        reasons.add("biological_unit_assignment_row_count_mismatch")
+
+    calculated_observation_sha = observation_ids_sha256(
+        [item.observation_id for item in artifact.assignments]
+    )
+    if (
+        artifact.observation_ids_sha256 != calculated_observation_sha
+        or manifest.observation_ids_sha256 != calculated_observation_sha
+    ):
+        reasons.add("biological_unit_assignment_observation_set_mismatch")
+
+    bindings = {
+        item.analysis_unit_ref.ref: item for item in manifest.unit_bindings
+    }
+    used_analysis_units: set[str] = set()
+    used_independence_groups: set[str] = set()
+    hierarchy_fields = (
+        "capture_ref",
+        "preparation_ref",
+        "sample_ref",
+        "donor_ref",
+        "animal_ref",
+        "graft_unit_ref",
+    )
+    for assignment in artifact.assignments:
+        binding = bindings.get(assignment.analysis_unit_ref)
+        if binding is None:
+            reasons.add("biological_unit_assignment_unknown_analysis_unit")
+            continue
+        used_analysis_units.add(assignment.analysis_unit_ref)
+        used_independence_groups.add(assignment.independence_group_ref)
+        if assignment.independence_group_ref != binding.independence_group_ref.ref:
+            reasons.add("biological_unit_assignment_group_mismatch")
+        for field in hierarchy_fields:
+            expected_ref = getattr(binding, field)
+            expected = None if expected_ref is None else expected_ref.ref
+            if getattr(assignment, field) != expected:
+                reasons.add("biological_unit_assignment_hierarchy_mismatch")
+
+    if used_analysis_units != set(bindings):
+        reasons.add("biological_unit_assignment_unused_analysis_unit")
+    if used_independence_groups != {
+        item.ref for item in manifest.independence_group_refs
+    }:
+        reasons.add("biological_unit_assignment_unused_independence_group")
+    return sorted(reasons)
+
+
 class ProductCase(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "oneOf": [
+                {
+                    "properties": {
+                        "biological_unit_manifest_ref": {"type": "null"},
+                        "biological_unit_manifest_sha256": {"type": "null"},
+                        "independence_scope_ref": {"type": "null"},
+                        "independence_group_refs": {"maxItems": 0},
+                    }
+                },
+                {
+                    "required": [
+                        "biological_unit_manifest_ref",
+                        "biological_unit_manifest_sha256",
+                        "independence_scope_ref",
+                    ],
+                    "properties": {
+                        "biological_unit_manifest_ref": {
+                            "not": {"type": "null"}
+                        },
+                        "biological_unit_manifest_sha256": {
+                            "not": {"type": "null"}
+                        },
+                        "independence_scope_ref": {"not": {"type": "null"}},
+                    },
+                },
+            ]
+        }
+    )
+
     object_version: Literal["0.1.0"]
     product_case_id: str = Field(pattern=r"^product-case:[A-Za-z0-9._:-]+$")
     case_version: str = Field(pattern=VERSION_PATTERN)
     product_definition_ref: VersionedObjectRef
+    source_unit_kind: Literal["sample", "preparation"]
     sample_or_preparation_ref: VersionedObjectRef
-    biological_unit_refs: list[VersionedObjectRef] = Field(default_factory=list)
+    independence_group_refs: list[VersionedObjectRef] = Field(default_factory=list)
     biological_unit_manifest_ref: VersionedObjectRef | None = None
     biological_unit_manifest_sha256: str | None = Field(
         default=None,
@@ -229,7 +408,7 @@ class ProductCase(FrozenModel):
 
     _created_at_utc = field_validator("created_at")(_aware_utc)
 
-    @field_validator("biological_unit_refs", "provenance_refs")
+    @field_validator("independence_group_refs", "provenance_refs")
     @classmethod
     def provenance_is_unique(
         cls, value: list[VersionedObjectRef]
@@ -257,6 +436,10 @@ class ProductCase(FrozenModel):
             raise ValueError(
                 "biological unit manifest, checksum, and independence scope must be supplied together"
             )
+        if self.independence_group_refs and any(value is None for value in values):
+            raise ValueError(
+                "independence group references require the complete biological unit binding"
+            )
         return self
 
 
@@ -270,7 +453,7 @@ class ProductDefinitionCard(FrozenModel):
     supported_assays: list[Literal["scRNA-seq", "snRNA-seq"]] = Field(
         min_length=1
     )
-    review_state: Literal["draft", "reviewed", "frozen"]
+    review_state: Literal["draft"]
     provenance_refs: list[VersionedObjectRef] = Field(min_length=1)
 
     @field_validator("supported_assays")
@@ -360,7 +543,7 @@ class RoleFraction(FrozenModel):
 
 
 def parse_composition(
-    profile: CellStateEvidenceProfile,
+    profile: CellStateEvidenceProfileV2,
 ) -> list[UpstreamCompositionRecord]:
     raw_records = profile.composition.get("records")
     if raw_records is None:
@@ -385,14 +568,33 @@ def parse_composition(
 def profile_lineage_reasons(
     *,
     product_case: ProductCase,
-    cell_state_profile: CellStateEvidenceProfile,
-    qc_profile: QCReadinessProfile,
+    cell_state_profile: CellStateEvidenceProfileV2,
+    qc_profile: QCReadinessProfileV2,
     biological_unit_manifest: BiologicalUnitManifest,
+    biological_unit_assignment_artifact: BiologicalUnitAssignmentArtifact,
     input_sha256_by_role: dict[str, str],
 ) -> list[str]:
-    """Validate the immutable P0-01 -> P0-02 -> ProductCase handoff."""
+    """Validate the content-addressed P0-01 -> P0-02 -> ProductCase handoff."""
 
     reasons: list[str] = []
+    reasons.extend(
+        biological_unit_assignment_reasons(
+            manifest=biological_unit_manifest,
+            artifact=biological_unit_assignment_artifact,
+            artifact_sha256=input_sha256_by_role.get(
+                "biological_unit_assignment", ""
+            ),
+        )
+    )
+    source_ref_field = f"{product_case.source_unit_kind}_ref"
+    manifest_source_refs = {
+        source_ref.ref
+        for binding in biological_unit_manifest.unit_bindings
+        if (source_ref := getattr(binding, source_ref_field)) is not None
+    }
+    if product_case.sample_or_preparation_ref.ref not in manifest_source_refs:
+        reasons.append("product_case_source_unit_binding_mismatch")
+
     qc_view = qc_profile.selected_data_view
     cell_state_view = cell_state_profile.input_data_view
     if qc_view is None:
@@ -438,13 +640,13 @@ def profile_lineage_reasons(
         if (
             product_case.independence_scope_ref
             != biological_unit_manifest.independence_scope_ref
-            or {item.ref for item in product_case.biological_unit_refs}
+            or {item.ref for item in product_case.independence_group_refs}
             != {
                 item.ref
                 for item in biological_unit_manifest.independence_group_refs
             }
         ):
-            reasons.append("product_case_biological_unit_binding_mismatch")
+            reasons.append("product_case_independence_binding_mismatch")
 
     if cell_state_profile.upstream_qc_profile_ref != qc_profile.profile_id:
         reasons.append("cell_state_qc_profile_ref_mismatch")

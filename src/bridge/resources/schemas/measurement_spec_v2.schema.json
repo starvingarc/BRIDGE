@@ -1,10 +1,29 @@
 {
-  "$id": "bridge://schemas/measurement-spec/v0.1",
+  "$id": "bridge://schemas/measurement-spec/v0.2",
   "additionalProperties": false,
   "properties": {
     "analysis_unit": {
       "title": "Analysis Unit",
       "type": "string"
+    },
+    "analysis_unit_kind": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Analysis Unit Kind"
+    },
+    "applicable_contexts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Applicable Contexts",
+      "type": "array"
     },
     "applicable_product_cards": {
       "items": {
@@ -162,6 +181,6 @@
     "raw_metric_definition",
     "missing_behavior"
   ],
-  "title": "MeasurementSpec",
+  "title": "MeasurementSpecV2",
   "type": "object"
 }

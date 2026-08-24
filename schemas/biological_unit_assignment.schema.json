@@ -1,68 +1,151 @@
 {
+  "$defs": {
+    "BiologicalUnitAssignment": {
+      "additionalProperties": false,
+      "description": "Logical row contract for the checksummed assignment artifact.",
+      "properties": {
+        "analysis_unit_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "animal_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Animal Ref"
+        },
+        "capture_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capture Ref"
+        },
+        "donor_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Donor Ref"
+        },
+        "graft_unit_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Graft Unit Ref"
+        },
+        "independence_group_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Independence Group Ref",
+          "type": "string"
+        },
+        "observation_id": {
+          "minLength": 1,
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "preparation_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preparation Ref"
+        },
+        "sample_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Ref"
+        }
+      },
+      "required": [
+        "observation_id",
+        "analysis_unit_ref",
+        "independence_group_ref"
+      ],
+      "title": "BiologicalUnitAssignment",
+      "type": "object"
+    }
+  },
   "$id": "bridge://schemas/biological-unit-assignment/v0.1",
   "additionalProperties": false,
-  "description": "Logical row contract for the checksummed assignment artifact.",
+  "description": "Checksummed observation-to-unit mapping consumed as one JSON object.",
   "properties": {
-    "analysis_unit_ref": {
-      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Analysis Unit Ref",
-      "type": "string"
+    "assignments": {
+      "items": {
+        "$ref": "#/$defs/BiologicalUnitAssignment"
+      },
+      "title": "Assignments",
+      "type": "array"
     },
-    "capture_ref": {
-      "anyOf": [
-        {
-          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Capture Ref"
-    },
-    "independence_group_ref": {
-      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Independence Group Ref",
-      "type": "string"
-    },
-    "observation_id": {
+    "data_view_ref": {
       "minLength": 1,
-      "title": "Observation Id",
+      "title": "Data View Ref",
       "type": "string"
     },
-    "preparation_ref": {
-      "anyOf": [
-        {
-          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Preparation Ref"
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
     },
-    "sample_ref": {
-      "anyOf": [
-        {
-          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Sample Ref"
+    "observation_ids_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Observation Ids Sha256",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/biological-unit-assignment/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
     }
   },
   "required": [
-    "observation_id",
-    "analysis_unit_ref",
-    "independence_group_ref"
+    "object_version",
+    "schema_ref",
+    "data_view_ref",
+    "observation_ids_sha256",
+    "assignments"
   ],
-  "title": "BiologicalUnitAssignment",
+  "title": "BiologicalUnitAssignmentArtifact",
   "type": "object"
 }

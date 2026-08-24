@@ -6,10 +6,10 @@ Independent P0 modules must exchange the same selected observations, product ins
 
 ## Scope
 
-- Add content-addressed `DataViewBinding` fields to QC and cell-state profiles.
-- Add version/context fields to `MeasurementSpec` and a backward-compatible `MeasurementResultV2` used by `ToolRunV2`.
-- Add versioned BiologicalUnit assignment/manifest, ProductCase and ProductDefinitionCard contracts.
-- Add exact lineage comparison helpers, safe configured-text validation and immutable snapshot/atomic single-JSON publication primitives.
+- Add content-addressed `DataViewBinding` fields through additive `QCReadinessProfileV2` and `CellStateEvidenceProfileV2` contracts.
+- Add `MeasurementSpecV2` context and a standalone `MeasurementResultV2`; keep the existing `ToolRunV2` measurement envelope unchanged.
+- Add a typed, checksummed BiologicalUnit assignment artifact/manifest plus ProductCase and draft-only ProductDefinitionCard contracts.
+- Add exact row/digest/lineage comparison helpers and safe configured-text validation.
 - Register and generate matching public and packaged JSON Schemas.
 - Document experimental-unit and scientific-authority boundaries.
 
@@ -19,14 +19,18 @@ Independent P0 modules must exchange the same selected observations, product ins
 - No cell-state role, marker, threshold, developmental window, assay decision or statistical estimand is embedded in code.
 - No caller label grants biological independence, scientific review or release authority.
 - No score, efficacy, safety, potency or clinical claim is introduced.
+- No new path snapshot or publication helper is introduced; file-descriptor-based output hardening remains with the first module that needs that seam.
 
 ## Frozen interfaces
 
-- Existing v0.1 request, run and measurement payloads remain valid.
+- Existing v0.1 request, run, measurement, measurement-spec and profile Schema bytes remain unchanged.
 - New public schema references are:
   - `bridge://schemas/biological-unit-assignment/v0.1`
   - `bridge://schemas/biological-unit-manifest/v0.1`
   - `bridge://schemas/measurement-result/v0.2`
+  - `bridge://schemas/measurement-spec/v0.2`
+  - `bridge://schemas/qc-readiness-profile/v0.2`
+  - `bridge://schemas/cell-state-evidence-profile/v0.2`
   - `bridge://schemas/product-case/v0.1`
   - `bridge://schemas/product-definition-card/v0.1`
 - P0-01 can produce only `declared` BiologicalUnit lineage.
@@ -34,7 +38,7 @@ Independent P0 modules must exchange the same selected observations, product ins
 
 ## Validation
 
-- Focused model, schema-parity, lineage-authority and runtime-publication tests.
+- Focused model, public-Schema parity, assignment-row, lineage-authority and numeric-semantics tests.
 - Full source-tree test suite and repository gates.
 - Wheel build, isolated install, full suite and 12-tool discovery from the installed package.
 - Two schema-generation passes with no diff.

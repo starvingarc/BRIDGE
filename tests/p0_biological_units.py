@@ -26,8 +26,50 @@ def bind_reviewed_biological_units(
     unit_identity_namespace_ref: str | None = None,
     independence_scope_ref: str | None = None,
     lineage_state: str = "reviewed",
+    observation_ids: list[str] | None = None,
 ) -> None:
     resolved_units = units or [(preparation_ref, independence_group_ref)]
+    resolved_observation_ids = observation_ids or [
+        f"demo-observation-{index:04d}"
+        for index in range(view["n_observations"])
+    ]
+    if len(resolved_observation_ids) != view["n_observations"]:
+        raise ValueError("observation_ids must match the selected view")
+    if len(resolved_observation_ids) < len(resolved_units):
+        raise ValueError("every declared analysis unit requires an observation")
+
+    observation_ids_sha256 = hashlib.sha256(
+        json.dumps(
+            sorted(resolved_observation_ids),
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+    view["observation_ids_sha256"] = observation_ids_sha256
+    assignments = [
+        {
+            "observation_id": observation_id,
+            "capture_ref": None,
+            "preparation_ref": unit_ref,
+            "sample_ref": group_ref,
+            "donor_ref": None,
+            "animal_ref": None,
+            "graft_unit_ref": None,
+            "analysis_unit_ref": unit_ref,
+            "independence_group_ref": group_ref,
+        }
+        for index, observation_id in enumerate(resolved_observation_ids)
+        for unit_ref, group_ref in [resolved_units[index % len(resolved_units)]]
+    ]
+    assignment_artifact = {
+        "object_version": "0.1.0",
+        "schema_ref": "bridge://schemas/biological-unit-assignment/v0.1",
+        "data_view_ref": view["view_id"],
+        "observation_ids_sha256": observation_ids_sha256,
+        "assignments": assignments,
+    }
+    assignment_artifact_sha256 = canonical_sha256(assignment_artifact)
     manifest_id = f"biological-unit-manifest:{slug}"
     manifest = {
         "object_version": "0.1.0",
@@ -42,12 +84,12 @@ def bind_reviewed_biological_units(
         "generator_tool_version": "1.0.0",
         "data_view_ref": view["view_id"],
         "selected_artifact_sha256": view["sha256"],
-        "observation_ids_sha256": view["observation_ids_sha256"],
+        "observation_ids_sha256": observation_ids_sha256,
         "n_observations": view["n_observations"],
         "assignment_schema_ref": (
             "bridge://schemas/biological-unit-assignment/v0.1"
         ),
-        "assignment_artifact_sha256": "d" * 64,
+        "assignment_artifact_sha256": assignment_artifact_sha256,
         "assignment_row_count": view["n_observations"],
         "unit_identity_namespace_ref": {
             "object_id": (
@@ -95,7 +137,8 @@ def bind_reviewed_biological_units(
     product_case = payloads["product_case"]
     product_case.update(
         {
-            "biological_unit_refs": [
+            "source_unit_kind": "preparation",
+            "independence_group_refs": [
                 _ref(group_ref)
                 for group_ref in sorted(
                     {group_ref for _, group_ref in resolved_units}
@@ -109,6 +152,7 @@ def bind_reviewed_biological_units(
             "independence_scope_ref": manifest["independence_scope_ref"],
         }
     )
+    payloads["biological_unit_assignment"] = assignment_artifact
     payloads["biological_unit_manifest"] = manifest
 
 

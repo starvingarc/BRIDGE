@@ -40,11 +40,7 @@ environment's `site-packages` rather than the source tree.
 | Repository policy and diff check | passed |
 | Installed environment dependency check | passed |
 
-The tests reject capture or graft units as independent groups, prevent P0-01
-from claiming reviewed/frozen lineage, require a complete ProductCase manifest
-binding, and require paired source-run and interval metadata. Existing
-v0.1-shaped measurements remain valid inside `ToolRunV2`, but no non-null
-domain score becomes possible.
+The tests reject capture or graft units as independent groups, reject hierarchy/group contradictions, parse and verify every assignment row and observation-set digest, prevent P0-01 from claiming reviewed/frozen lineage, keep ProductDefinitionCard draft-only, and require ProductCase source/manifest/group coherence. Public Schemas cover structural pair/null alternatives; the standard validators cover cross-object equality, digests, finite interval order and assignment membership. `ToolRunV2` continues to accept the unchanged v0.1 `MeasurementResult`; standalone `MeasurementResultV2` adds stricter numeric semantics without making any non-null domain score possible.
 
 The three warnings are the existing AnnData duplicate-name and SciPy sparse
 matrix deprecation warnings in unrelated QC fixtures.
