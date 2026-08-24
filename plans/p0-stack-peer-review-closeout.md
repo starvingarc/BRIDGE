@@ -27,3 +27,9 @@ Independent biology, single-cell and AI-for-science reviews rated Draft PRs #20â
 ## Verification and stop
 
 All project execution, schema rendering, source tests, clean-wheel tests and adversarial checks run on `/data1`. Exact final SHAs receive parallel biology, single-cell and AI4S review. Draft PRs remain Draft and merging remains a separate explicit authorization.
+
+Implementation commit `b6607aee6ea6930fe5b1baf5c4fc7020d92460d3`
+passed 1,198 exact-source tests and 1,198 clean-wheel tests, including the
+direct P0-08 to P0-11 handoff. Detailed evidence is recorded in
+`docs/validation/p0_stack_peer_review_closeout_20260824.md`. Independent
+exact-head peer review remains the final stop.
