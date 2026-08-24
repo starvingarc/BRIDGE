@@ -3,11 +3,17 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import StrEnum
 import re
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
+from bridge.tool_packages._configurable_contracts import VersionedObjectRef
 from bridge.toolkit.contracts import FrozenModel, ScoreState
+
+
+EvidenceFamilyId = Annotated[
+    str, Field(pattern=r"^evidence-family:[A-Za-z0-9._:-]+$")
+]
 
 
 class P0DomainId(StrEnum):
@@ -137,6 +143,9 @@ SCIENTIFIC_REASON_CODES = (
     "measurement_spec_not_provided",
     "qc_profile_not_provided",
     "measurement_result_not_provided",
+    "measurement_evidence_missing",
+    "measurement_evidence_unknown",
+    "measurement_evidence_unavailable",
     "task_validation_not_assessed",
     "method_requirement_not_assessed",
     "validation_record_not_provided",
@@ -180,13 +189,13 @@ SCIENTIFIC_REASON_CODES = (
 SCIENTIFIC_REASON_ORDER = {
     code: position for position, code in enumerate(SCIENTIFIC_REASON_CODES)
 }
-MISSING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[:17]) | {
+MISSING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[:20]) | {
     "raw_evidence_gate_not_assessed"
 }
-BLOCKING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[17:24]) | {
+BLOCKING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[20:27]) | {
     "raw_evidence_gate_insufficient"
 }
-LIMITING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[24:33]) | {
+LIMITING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[27:36]) | {
     "raw_evidence_gate_limited"
 }
 PUBLISHED_REF = re.compile(
@@ -391,7 +400,7 @@ class EvidenceValidationRecord(FrozenModel):
     method_version: str = Field(min_length=1)
     tool_ref: str = Field(min_length=1)
     environment_spec_ref: str = Field(min_length=1)
-    evidence_family_id: str = Field(min_length=1)
+    evidence_family_id: EvidenceFamilyId
     required_for_interpretation: bool = True
     method_kind: MethodKind
     validation_state: ContractValidationState
@@ -443,7 +452,7 @@ class PriorApplicabilityRecord(FrozenModel):
     prior_ref: str = Field(min_length=1)
     snapshot_ref: str = Field(min_length=1)
     prior_kind: PriorKind
-    evidence_family_id: str = Field(min_length=1)
+    evidence_family_id: EvidenceFamilyId
     required_for_interpretation: bool = True
     species_match: ContextMatchState
     assay_match: ContextMatchState
@@ -487,7 +496,7 @@ class EvidenceSensitivityRecord(FrozenModel):
     created_at: datetime
     measurement_spec_ref: str = Field(min_length=1)
     sensitivity_kind: SensitivityKind
-    evidence_family_id: str = Field(min_length=1)
+    evidence_family_id: EvidenceFamilyId
     required_for_interpretation: bool = True
     state: SensitivityState
     baseline_ref: str = Field(min_length=1)
@@ -518,6 +527,21 @@ class EvidenceSensitivityRecord(FrozenModel):
         return list(_unique(cleaned, "reference list"))
 
 
+class MeasurementEvidenceStateCount(FrozenModel):
+    measured: int = Field(ge=0)
+    inferred: int = Field(ge=0)
+    prior_only: int = Field(ge=0)
+    negative: int = Field(ge=0)
+    missing: int = Field(ge=0)
+    unknown: int = Field(ge=0)
+    unavailable: int = Field(ge=0)
+    alert: int = Field(ge=0)
+
+    @property
+    def total(self) -> int:
+        return sum(self.model_dump().values())
+
+
 class EvidenceSufficiencyProfile(FrozenModel):
     profile_id: str = Field(
         pattern=r"^evidence-sufficiency-profile:[a-f0-9]{16}:[A-Za-z0-9._:-]+$"
@@ -525,14 +549,14 @@ class EvidenceSufficiencyProfile(FrozenModel):
     profile_version: Literal["0.1.0"]
     gate_rule_spec_ref: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.1"]
     gate_rule_version: Literal["0.1.0"]
-    product_case_ref: str | None = None
-    product_definition_ref: str | None = None
+    product_case_ref: VersionedObjectRef | None = None
+    product_definition_ref: VersionedObjectRef | None = None
     domain_id: P0DomainId | None = None
-    measurement_spec_ref: str | None = None
+    measurement_spec_ref: VersionedObjectRef | None = None
     score_contract_ref: str | None = None
     data_readiness: DataReadinessState
     data_reason_codes: list[str]
-    qc_profile_ref: str | None = None
+    qc_profile_ref: VersionedObjectRef | None = None
     model_robustness: ModelRobustnessState
     robustness_reason_codes: list[str]
     validation_refs: list[str]
@@ -546,21 +570,18 @@ class EvidenceSufficiencyProfile(FrozenModel):
     domain_score: None = None
     score_state: Literal[ScoreState.UNAVAILABLE] = ScoreState.UNAVAILABLE
     score_reason_codes: list[str]
-    measurement_result_refs: list[str]
+    measurement_result_refs: list[VersionedObjectRef]
+    measurement_evidence_state_counts: MeasurementEvidenceStateCount
     evidence_refs: list[str]
     sensitivity_refs: list[str]
-    deduplicated_evidence_family_ids: list[str]
+    deduplicated_evidence_family_ids: list[EvidenceFamilyId]
     created_at: datetime
     deterministic_run_ref: str = Field(pattern=r"^run-[a-f0-9]{16}$")
 
     _created_at_utc = field_validator("created_at")(_aware_utc)
 
     @field_validator(
-        "product_case_ref",
-        "product_definition_ref",
-        "measurement_spec_ref",
         "score_contract_ref",
-        "qc_profile_ref",
     )
     @classmethod
     def scalar_output_refs_are_publishable(
@@ -584,7 +605,6 @@ class EvidenceSufficiencyProfile(FrozenModel):
     @field_validator(
         "validation_refs",
         "snapshot_refs",
-        "measurement_result_refs",
         "evidence_refs",
         "sensitivity_refs",
         "deduplicated_evidence_family_ids",
@@ -593,6 +613,15 @@ class EvidenceSufficiencyProfile(FrozenModel):
     def output_lists_are_unique(cls, value: list[str]) -> list[str]:
         cleaned = [published_ref(item) for item in value]
         return list(_unique(cleaned, "output list"))
+
+    @field_validator("measurement_result_refs")
+    @classmethod
+    def measurement_results_are_unique(
+        cls, value: list[VersionedObjectRef]
+    ) -> list[VersionedObjectRef]:
+        if len({item.ref for item in value}) != len(value):
+            raise ValueError("measurement_result_refs must be unique")
+        return value
 
     @model_validator(mode="after")
     def score_is_always_unavailable(self) -> Self:
@@ -616,6 +645,24 @@ class EvidenceSufficiencyProfile(FrozenModel):
             f":{self.domain_id.value}"
         ):
             raise ValueError("profile ID suffix must match the declared domain")
+        if self.measurement_evidence_state_counts.total != len(
+            self.measurement_result_refs
+        ):
+            raise ValueError(
+                "measurement evidence-state counts must match result refs"
+            )
+        if self.evidence_sufficiency_state is not EvidenceSufficiencyState.NOT_ASSESSED:
+            required = (
+                self.product_case_ref,
+                self.product_definition_ref,
+                self.domain_id,
+                self.measurement_spec_ref,
+                self.qc_profile_ref,
+            )
+            if any(item is None for item in required):
+                raise ValueError(
+                    "assessed profile requires complete versioned context"
+                )
         return self
 
 
@@ -633,9 +680,10 @@ class ScoreStateCount(FrozenModel):
 class CaseEvidenceReadinessSummary(FrozenModel):
     summary_id: str = Field(pattern=r"^case-evidence-readiness-summary:[a-f0-9]{16}$")
     summary_version: Literal["0.1.0"]
-    product_case_ref: str | None = None
+    product_case_ref: VersionedObjectRef | None = None
     profile_count: int = Field(ge=1, le=5)
     evidence_sufficiency_counts: StateCount
+    measurement_evidence_state_counts: MeasurementEvidenceStateCount
     score_state_counts: ScoreStateCount
     blocking_reasons: list[str]
 
@@ -643,11 +691,6 @@ class CaseEvidenceReadinessSummary(FrozenModel):
     @classmethod
     def unique_reasons(cls, value: list[str]) -> list[str]:
         return _reason_codes_in_catalog_order(value)
-
-    @field_validator("product_case_ref")
-    @classmethod
-    def product_case_is_publishable(cls, value: str | None) -> str | None:
-        return None if value is None else published_ref(value)
 
     @model_validator(mode="after")
     def count_totals_match(self) -> Self:
@@ -734,6 +777,18 @@ class EvidenceSufficiencyRunResult(FrozenModel):
         }
         if self.case_summary.evidence_sufficiency_counts.model_dump() != actual_counts:
             raise ValueError("case summary state counts must match profiles")
+        expected_measurement_counts = {
+            state: sum(
+                profile.measurement_evidence_state_counts.model_dump()[state]
+                for profile in self.profiles
+            )
+            for state in self.case_summary.measurement_evidence_state_counts.model_dump()
+        }
+        if (
+            self.case_summary.measurement_evidence_state_counts.model_dump()
+            != expected_measurement_counts
+        ):
+            raise ValueError("case summary measurement-state counts must match profiles")
         expected_blocking = sorted(
             {
                 reason

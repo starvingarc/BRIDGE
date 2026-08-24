@@ -89,7 +89,7 @@ def _payloads() -> dict[str, dict]:
             "reference_upper": 0.8,
             "minimum_gene_coverage": 0.5,
             "eligible_evidence_states": ["measured", "inferred"],
-            "minimum_independence_groups": 2,
+            "minimum_biological_units": 2,
             "review_direction": "above_reference",
             "orthogonal_follow_up_refs": ["assay:orthogonal-alpha"],
         },
@@ -112,7 +112,7 @@ def _payloads() -> dict[str, dict]:
             "reference_upper": 0.5,
             "minimum_gene_coverage": 0.4,
             "eligible_evidence_states": ["measured"],
-            "minimum_independence_groups": 1,
+            "minimum_biological_units": 1,
             "review_direction": "outside_reference",
             "orthogonal_follow_up_refs": [],
         },
@@ -127,7 +127,6 @@ def _payloads() -> dict[str, dict]:
                 "object_version": "1.0.0",
             },
             "evidence_family_id": "evidence-family:alpha-a",
-            "independence_group": "independence-group:alpha-a",
             "method_ref": {
                 "object_id": "method:configured-a",
                 "object_version": "1.0.0",
@@ -146,7 +145,6 @@ def _payloads() -> dict[str, dict]:
                 "object_version": "1.0.0",
             },
             "evidence_family_id": "evidence-family:alpha-b",
-            "independence_group": "independence-group:alpha-b",
             "method_ref": {
                 "object_id": "method:configured-b",
                 "object_version": "1.0.0",
@@ -165,7 +163,6 @@ def _payloads() -> dict[str, dict]:
                 "object_version": "1.0.0",
             },
             "evidence_family_id": "evidence-family:beta-a",
-            "independence_group": "independence-group:beta-a",
             "method_ref": {
                 "object_id": "method:configured-a",
                 "object_version": "1.0.0",
@@ -176,6 +173,18 @@ def _payloads() -> dict[str, dict]:
             "evidence_refs": ["evidence:program-beta-a"],
         },
     ]
+    rules_by_id = {item["rule_id"]: item for item in rules}
+    for observation in observations:
+        rule = rules_by_id[observation["rule_id"]]
+        observation.update(
+            {
+                "metric_name": rule["metric_name"],
+                "unit": rule["unit"],
+                "analysis_scope": rule["analysis_scope"],
+                "state_ref": rule["state_ref"],
+                "stage_context_ref": rule["stage_context_ref"],
+            }
+        )
     return {
         "product_case": {
             "object_version": "0.1.0",
@@ -186,6 +195,16 @@ def _payloads() -> dict[str, dict]:
                 "object_id": "preparation:demo",
                 "object_version": "1.0.0",
             },
+            "biological_unit_refs": [
+                {
+                    "object_id": "preparation:demo-a",
+                    "object_version": "1.0.0",
+                },
+                {
+                    "object_id": "preparation:demo-b",
+                    "object_version": "1.0.0",
+                },
+            ],
             "measurement_spec_ref": {
                 "object_id": "measurement-spec:cell-state-demo",
                 "object_version": "0.1.0",
@@ -240,6 +259,10 @@ def _payloads() -> dict[str, dict]:
             "product_case_ref": product_case_ref,
             "product_definition_ref": product_definition_ref,
             "development_window_ref": development_window_ref,
+            "state_role_map_ref": {
+                "object_id": "state-role-map:demo",
+                "object_version": "1.0.0",
+            },
             "cell_state_profile_ref": cell_state_profile_ref,
             "qc_profile_ref": {
                 "object_id": "qc-profile:demo",
@@ -248,6 +271,7 @@ def _payloads() -> dict[str, dict]:
             "input_sha256_by_role": {
                 "product_case": SHA,
                 "product_definition_card": SHA,
+                "state_role_map": SHA,
                 "development_window_spec": SHA,
                 "cell_state_evidence_profile": SHA,
                 "qc_readiness_profile": SHA,
@@ -396,7 +420,7 @@ def test_configured_program_evidence_runs(tmp_path: Path) -> None:
         "transcriptomic_review_flag"
     )
     assert results["program-review-rule:alpha"][
-        "triggering_independence_group_count"
+        "triggering_biological_unit_count"
     ] == 2
     assert results["program-review-rule:beta"]["review_flag_state"] == (
         "cannot_resolve"
@@ -451,17 +475,19 @@ def test_biological_rule_changes_only_through_spec(tmp_path: Path) -> None:
     assert baseline.run_id != changed.run_id
 
 
-def test_same_independence_group_does_not_count_twice(tmp_path: Path) -> None:
+def test_same_biological_unit_does_not_count_twice(tmp_path: Path) -> None:
     payloads = _payloads()
     payloads["program_evidence_bundle"]["observations"][1][
-        "independence_group"
-    ] = "independence-group:alpha-a"
+        "analysis_unit_ref"
+    ] = payloads["program_evidence_bundle"]["observations"][0][
+        "analysis_unit_ref"
+    ]
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
     alpha = run.result["program_results"][0]
-    assert alpha["included_independence_group_count"] == 1
+    assert alpha["included_biological_unit_count"] == 1
     assert alpha["review_flag_state"] == "cannot_resolve"
-    assert "independence_group_evidence_insufficient" in alpha["reason_codes"]
+    assert "biological_unit_evidence_insufficient" in alpha["reason_codes"]
 
 
 def test_low_coverage_is_excluded_not_zeroed(tmp_path: Path) -> None:

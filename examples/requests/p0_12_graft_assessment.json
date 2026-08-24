@@ -6,12 +6,21 @@
   "random_seed": 0,
   "object_inputs": [
     {
+      "input_id": "product-case",
+      "role": "product_case",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-12-input/product_case.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "media_type": "application/json"
+    },
+    {
       "input_id": "graft-policy",
       "role": "graft_assessment_spec",
       "schema_ref": "bridge://schemas/graft-assessment-spec/v0.1",
       "object_version": "0.1.0",
       "path": "/tmp/bridge-p0-12-input/graft_assessment_spec.json",
-      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "media_type": "application/json"
     },
     {
@@ -20,7 +29,7 @@
       "schema_ref": "bridge://schemas/graft-evidence-bundle/v0.1",
       "object_version": "0.1.0",
       "path": "/tmp/bridge-p0-12-input/graft_evidence_bundle.json",
-      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "media_type": "application/json"
     }
   ]

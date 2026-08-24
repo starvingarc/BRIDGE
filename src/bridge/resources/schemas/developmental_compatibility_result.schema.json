@@ -35,11 +35,17 @@
           "pattern": "^[0-9a-f]{64}$",
           "title": "Qc Readiness Profile",
           "type": "string"
+        },
+        "state_role_map": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "State Role Map",
+          "type": "string"
         }
       },
       "required": [
         "product_case",
         "product_definition_card",
+        "state_role_map",
         "development_window_spec",
         "cell_state_evidence_profile",
         "qc_readiness_profile"
@@ -442,6 +448,9 @@
       "title": "Stage Composition Channels",
       "type": "array"
     },
+    "state_role_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
     "timecourse_profile": {
       "$ref": "#/$defs/TimecourseProfile"
     },
@@ -470,6 +479,7 @@
     "tool_version",
     "product_case_ref",
     "product_definition_ref",
+    "state_role_map_ref",
     "development_window_ref",
     "cell_state_profile_ref",
     "qc_profile_ref",

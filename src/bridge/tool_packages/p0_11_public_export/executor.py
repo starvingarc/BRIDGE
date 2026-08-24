@@ -33,11 +33,6 @@ def build_public_safe_report(
     ):
         source = claims_by_id[selection.source_claim_id]
         text = source.text
-        for replacement in sorted(
-            selection.replacements,
-            key=lambda item: (-len(item.source_literal), item.source_literal),
-        ):
-            text = text.replace(replacement.source_literal, replacement.public_literal)
         _require_public_text(
             [text, selection.public_case_label],
             export_spec.prohibited_literals,
@@ -66,11 +61,9 @@ def build_public_safe_report(
         export_spec.public_source_accessions,
         export_spec.prohibited_literals,
     )
-    reason_codes = (
-        ["p0_10_verified_with_warnings"]
-        if verification.release_state is ReleaseState.VERIFIED_WITH_WARNINGS
-        else []
-    )
+    reason_codes = ["public_release_authority_not_configured"]
+    if verification.release_state is ReleaseState.VERIFIED_WITH_WARNINGS:
+        reason_codes.append("p0_10_verified_with_warnings")
     payload = {
         "object_version": "0.1.0",
         "public_report_id": f"public-report:{run_id.removeprefix('run-')}",
@@ -84,11 +77,7 @@ def build_public_safe_report(
         "language": export_spec.target_language,
         "public_source_accessions": sorted(export_spec.public_source_accessions),
         "claims": [claim.model_dump(mode="json") for claim in public_claims],
-        "export_state": (
-            ExportState.REVIEW_REQUIRED
-            if reason_codes
-            else ExportState.READY_FOR_CONFIRMATION
-        ),
+        "export_state": ExportState.REVIEW_REQUIRED,
         "checks": sorted(
             [
                 "allowlist_projection_passed",
@@ -96,7 +85,7 @@ def build_public_safe_report(
                 "bounded_machine_reference_guard_passed",
             ]
         ),
-        "reason_codes": reason_codes,
+        "reason_codes": sorted(reason_codes),
     }
     if contains_machine_reference(payload):
         raise ValueError("bounded machine reference remains")

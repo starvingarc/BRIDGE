@@ -47,12 +47,13 @@ decision requires a new input object and checksum, not an implementation edit.
 
 ## Structured inputs
 
-P0-05 accepts exactly five immutable JSON objects:
+P0-05 accepts exactly six immutable JSON objects:
 
 | Role | Schema | Required content |
 |---|---|---|
 | `product_case` | `bridge://schemas/product-case/v0.1` | ProductDefinition, assay, preparation and MeasurementSpec binding |
 | `product_definition_card` | `bridge://schemas/product-definition-card/v0.1` | Versioned product context |
+| `state_role_map` | `bridge://schemas/state-role-map/v0.1` | Exact ProductDefinition-owned state vocabulary and role authority |
 | `off_target_role_spec` | `bridge://schemas/off-target-role-spec/v0.1` | Product/vocabulary-bound roles and denominator selection |
 | `cell_state_evidence_profile` | `bridge://schemas/cell-state-evidence-profile/v0.1` | P0-02 composition and evidence references |
 | `qc_readiness_profile` | `bridge://schemas/qc-readiness-profile/v0.1` | P0-01 assay/readiness and evidence references |
@@ -98,9 +99,10 @@ claim.
 - Assessed results remain `shadow`; not-assessed results are `unavailable`.
 
 Eligibility checks exact role/Schema/version/checksum cardinality,
-ProductDefinition, vocabulary, assay, MeasurementSpec, QC readiness and
-publication-safe references. Failures return a typed run with no result or
-artifact. Stable reasons include `tool_request_v2_required`,
+ProductDefinition, StateRoleMap, vocabulary, exact P0-01 QC-selected
+`DataViewBinding`, assay, MeasurementSpec, QC readiness and publication-safe
+references. Failures return a typed run with no result or artifact. Stable
+reasons include `tool_request_v2_required`,
 `object_input_schema_mismatch`, `product_definition_binding_mismatch`,
 `off_target_role_spec_product_definition_mismatch`,
 `annotation_vocabulary_binding_mismatch`,

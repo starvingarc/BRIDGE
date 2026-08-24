@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 import math
+import re
 from typing import Annotated, Literal, Self
 
 from pydantic import (
@@ -136,7 +137,7 @@ class ComparisonSpec(FrozenModel):
     )
     dimension_mismatch_policy: Literal["contextual_comparator", "not_comparable"]
     comparison_mode: Literal["descriptive_only"]
-    minimum_independent_preparations_per_case: StrictInt = Field(gt=0)
+    minimum_biological_units_per_case: StrictInt = Field(gt=0)
     metrics: list[MetricComparisonRule] = Field(min_length=1)
     missing_metric_policy: Literal["report_unavailable"]
     pareto_policy: Literal["not_assessed_without_score_contract"]
@@ -146,7 +147,13 @@ class ComparisonSpec(FrozenModel):
     def dimensions_are_unique(
         cls, value: list[ContractDimension]
     ) -> list[ContractDimension]:
-        return _unique(value, "required_equal_dimensions")
+        _unique(value, "required_equal_dimensions")
+        required = set(ContractDimension) - {ContractDimension.SCORE_CONTRACT}
+        if set(value) != required:
+            raise ValueError(
+                "required_equal_dimensions must contain every non-score contract dimension"
+            )
+        return value
 
     @field_validator("cases")
     @classmethod
@@ -164,6 +171,8 @@ class ComparisonSpec(FrozenModel):
         cls, value: list[MetricComparisonRule]
     ) -> list[MetricComparisonRule]:
         _unique([item.metric_id for item in value], "metrics")
+        if not any(item.required for item in value):
+            raise ValueError("at least one comparison metric must be required")
         return value
 
     @property
@@ -269,8 +278,7 @@ class PreparationEvidence(FrozenModel):
 class ComparisonCaseEvidence(FrozenModel):
     product_case_ref: VersionedObjectRef
     contract_snapshot: ComparisonContractSnapshot
-    sufficiency_profile_ref: VersionedObjectRef
-    sufficiency_state: Literal["not_assessed", "insufficient", "limited", "sufficient"]
+    sufficiency_summary_ref: VersionedObjectRef
     preparations: list[PreparationEvidence] = Field(min_length=1)
 
     @field_validator("preparations")
@@ -315,7 +323,7 @@ class ContractDimensionCheck(FrozenModel):
 
 class CaseMetricSummary(FrozenModel):
     product_case_ref: VersionedObjectRef
-    eligible_preparation_count: StrictInt = Field(ge=0)
+    eligible_biological_unit_count: StrictInt = Field(ge=0)
     mean: FiniteNumber | None
     minimum: FiniteNumber | None
     maximum: FiniteNumber | None
@@ -338,11 +346,11 @@ class CaseMetricSummary(FrozenModel):
     @model_validator(mode="after")
     def summary_is_coherent(self) -> Self:
         values = (self.mean, self.minimum, self.maximum)
-        if self.eligible_preparation_count == 0 and any(
+        if self.eligible_biological_unit_count == 0 and any(
             value is not None for value in values
         ):
             raise ValueError("empty summary cannot contain numeric values")
-        if self.eligible_preparation_count > 0 and any(
+        if self.eligible_biological_unit_count > 0 and any(
             value is None for value in values
         ):
             raise ValueError("nonempty summary requires mean and range")
@@ -397,9 +405,9 @@ class MetricComparisonResult(FrozenModel):
 class CaseReadinessSummary(FrozenModel):
     role: ComparisonRole
     product_case_ref: VersionedObjectRef
-    sufficiency_profile_ref: VersionedObjectRef
+    sufficiency_summary_ref: VersionedObjectRef
     sufficiency_state: Literal["not_assessed", "insufficient", "limited", "sufficient"]
-    independent_preparation_count: StrictInt = Field(gt=0)
+    declared_biological_unit_count: StrictInt = Field(gt=0)
 
 
 class ParetoAssessment(FrozenModel):
@@ -410,6 +418,24 @@ class ParetoAssessment(FrozenModel):
 class ComparisonInputChecksums(FrozenModel):
     comparison_spec: str = Field(pattern=SHA256_PATTERN)
     comparison_evidence_bundle: str = Field(pattern=SHA256_PATTERN)
+    product_cases: list[str] = Field(
+        min_length=2,
+        max_length=2,
+        json_schema_extra={"uniqueItems": True},
+    )
+    case_evidence_readiness_summaries: list[str] = Field(
+        min_length=2,
+        max_length=2,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("product_cases", "case_evidence_readiness_summaries")
+    @classmethod
+    def summary_checksums_are_unique(cls, value: list[str]) -> list[str]:
+        _unique(value, "multi-object checksums")
+        if any(re.fullmatch(SHA256_PATTERN, item) is None for item in value):
+            raise ValueError("invalid summary checksum")
+        return value
 
 
 class ComparisonRecord(FrozenModel):

@@ -47,12 +47,13 @@ They cannot approve themselves, and every assessed P0-04 output remains
 
 ## Structured inputs
 
-P0-04 accepts exactly five immutable `application/json` objects:
+P0-04 accepts exactly six immutable `application/json` objects:
 
 | Role | Schema | Required content |
 |---|---|---|
 | `product_case` | `bridge://schemas/product-case/v0.1` | ProductDefinition, assay, preparation and MeasurementSpec binding |
 | `product_definition_card` | `bridge://schemas/product-definition-card/v0.1` | Versioned product context |
+| `state_role_map` | `bridge://schemas/state-role-map/v0.1` | Exact ProductDefinition-owned state vocabulary and target-role assignments |
 | `development_window_spec` | `bridge://schemas/development-window-spec/v0.1` | Product/vocabulary-bound state roles and selected composition channels |
 | `cell_state_evidence_profile` | `bridge://schemas/cell-state-evidence-profile/v0.1` | P0-02 composition and shadow evidence references |
 | `qc_readiness_profile` | `bridge://schemas/qc-readiness-profile/v0.1` | P0-01 assay/readiness and evidence references |
@@ -64,9 +65,10 @@ top-level MeasurementSpec parameters and nonzero random seeds are refused.
 ## Eligibility
 
 The adapter verifies exact role cardinality, Schema/version/checksum bindings,
-ProductCase/ProductDefinition/DevelopmentWindow identity, annotation
-vocabulary, assay, MeasurementSpec, QC readiness and publication-safe evidence
-and profile references. P0-02 `reconciliation_state` composition rows are
+ProductCase/ProductDefinition/StateRoleMap/DevelopmentWindow identity, exact
+P0-01 QC-selected `DataViewBinding` lineage, annotation vocabulary, assay,
+MeasurementSpec, QC readiness and publication-safe evidence and profile
+references. P0-02 `reconciliation_state` composition rows are
 accepted as upstream diagnostics but excluded from developmental denominators.
 
 Malformed or cross-bound inputs return a typed failed `ToolRunV2` with no
@@ -92,7 +94,7 @@ silently substituted.
 A successful or partial run publishes one immutable
 `developmental_compatibility_result.json` containing:
 
-- references and SHA-256 bindings for all five input roles;
+- references and SHA-256 bindings for all six input roles;
 - `analysis_mode=static_profile`;
 - whole-product and target-related stage fractions with explicit denominator
   views;

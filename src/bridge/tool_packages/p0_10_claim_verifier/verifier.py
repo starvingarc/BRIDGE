@@ -10,7 +10,6 @@ import regex
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceApplicability,
-    EvidenceLifecycleState,
     EvidenceRecord,
     EvidenceRecordSet,
     EvidenceTier,
@@ -43,7 +42,7 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
 VERIFIER_VERSION = "0.1.0"
 RELEASE_CONTRACT_FILENAME = "release_contract_v0.1.json"
 APPROVED_RELEASE_CONTRACT_SHA256 = (
-    "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8"
+    "ac0b6d8251ac2d7d73ae9e1247d9a7bca3a0676f64b9707a51a16ddfe22e640c"
 )
 
 
@@ -68,6 +67,7 @@ def verify_report(
     *,
     report: ReportDraft,
     evidence_set: EvidenceRecordSet,
+    effective_evidence_refs: frozenset[str],
     policy: ClaimPolicySpec,
     statements: StatementRegistry,
     release_contract: ClaimVerifierReleaseContract,
@@ -101,6 +101,7 @@ def verify_report(
                 claim,
                 resolved,
                 evidence,
+                effective_evidence_refs,
                 statement_by_ref,
                 claim_policy,
             )
@@ -137,6 +138,9 @@ def verify_report(
         benchmark_sha256=benchmark_sha256,
         release_contract_id=release_contract.contract_id,
         release_contract_sha256=release_contract_hash,
+        public_release_authority_state=(
+            release_contract.public_release_authority_state
+        ),
         report_draft_ref=report.ref,
         report_content_hash=report.content_hash,
         report_audience=report.audience,
@@ -147,12 +151,7 @@ def verify_report(
         statement_registry_ref=statements.ref,
         release_state=release_state,
         check_records=sorted(checks, key=lambda item: item.check_id),
-        public_export_eligibility=(
-            PublicExportEligibility.ELIGIBLE
-            if report.audience is ReportAudience.PUBLIC_CANDIDATE
-            and release_state in {ReleaseState.VERIFIED, ReleaseState.VERIFIED_WITH_WARNINGS}
-            else PublicExportEligibility.INELIGIBLE
-        ),
+        public_export_eligibility=PublicExportEligibility.INELIGIBLE,
     )
 
 
@@ -241,6 +240,7 @@ def _check_claim_contract(
     claim: ClaimBlock,
     resolved: list[EvidenceRecord],
     evidence: dict[str, EvidenceRecord],
+    effective_evidence_refs: frozenset[str],
     statements: dict[str, RegisteredStatement],
     policies: dict[ClaimType, ClaimTypePolicy],
 ) -> list[ClaimCheckRecord]:
@@ -269,9 +269,14 @@ def _check_claim_contract(
                 )
             )
             continue
-        if record.lifecycle_state is not EvidenceLifecycleState.ACTIVE:
+        if ref not in effective_evidence_refs:
             checks.append(
-                _block(claim, "rule:evidence-lifecycle", "evidence_not_active", evidence_refs=[ref])
+                _block(
+                    claim,
+                    "rule:evidence-lifecycle",
+                    "evidence_not_effective",
+                    evidence_refs=[ref],
+                )
             )
         if record.applicability is not EvidenceApplicability.APPLICABLE:
             checks.append(

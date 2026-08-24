@@ -33,7 +33,7 @@ ROLE_SCHEMAS = {
 
 
 def _report() -> dict:
-    text = "product-case:demo@1.0.0 measured 1.2 configured-unit."
+    text = "configured_metric: 1.2 configured-unit."
     start = text.index("1.2")
     payload = {
         "object_version": "0.1.0",
@@ -107,8 +107,9 @@ def _verification(report: dict, *, warnings: bool = False) -> dict:
         ),
         "release_contract_id": "P0-10-RELEASE-CONTRACT-v0.1",
         "release_contract_sha256": (
-            "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8"
+            "ac0b6d8251ac2d7d73ae9e1247d9a7bca3a0676f64b9707a51a16ddfe22e640c"
         ),
+        "public_release_authority_state": "not_configured",
         "report_draft_ref": "report:demo@1.0.0",
         "report_content_hash": report["content_hash"],
         "report_audience": "public_candidate",
@@ -119,7 +120,7 @@ def _verification(report: dict, *, warnings: bool = False) -> dict:
         "statement_registry_ref": "BRIDGE-STATEMENT-REGISTRY-v0.1@0.1.0",
         "release_state": "verified_with_warnings" if warnings else "verified",
         "check_records": checks,
-        "public_export_eligibility": "eligible",
+        "public_export_eligibility": "ineligible",
     }
 
 
@@ -145,12 +146,6 @@ def _payloads(*, warnings: bool = False) -> dict[str, dict]:
                     "source_claim_id": "claim-block:demo",
                     "public_claim_id": "public-claim:demo",
                     "public_case_label": "Demo candidate",
-                    "replacements": [
-                        {
-                            "source_literal": "product-case:demo@1.0.0",
-                            "public_literal": "Demo candidate",
-                        }
-                    ],
                 }
             ],
             "public_source_accessions": ["GSE-DEMO"],
@@ -225,16 +220,19 @@ def test_public_models_emit_valid_draft_2020_12_schemas(
     Draft202012Validator.check_schema(schema)
 
 
-def test_allowlist_projection_runs_without_internal_identifiers(tmp_path: Path) -> None:
+def test_allowlist_projection_is_a_review_candidate_without_internal_identifiers(
+    tmp_path: Path,
+) -> None:
     run = ToolRegistry.load_default().run(_request(tmp_path))
 
-    assert run.execution_state is ExecutionState.SUCCEEDED
-    assert run.result["export_state"] == "ready_for_confirmation"
+    assert run.execution_state is ExecutionState.PARTIAL
+    assert run.result["export_state"] == "review_required"
+    assert run.reason_codes == ["public_release_authority_not_configured"]
     assert run.result["public_source_accessions"] == ["GSE-DEMO"]
     claim = run.result["claims"][0]
     assert claim["public_claim_id"] == "public-claim:demo"
     assert claim["public_case_label"] == "Demo candidate"
-    assert claim["text"] == "Demo candidate measured 1.2 configured-unit."
+    assert claim["text"] == "configured_metric: 1.2 configured-unit."
     assert claim["value_bindings"] == [
         {
             "binding_index": 0,
@@ -284,21 +282,34 @@ def test_unselected_claim_is_not_copied(tmp_path: Path) -> None:
     assert "Private unselected prose" not in json.dumps(run.result)
 
 
-def test_alias_is_controlled_only_by_export_spec(tmp_path: Path) -> None:
+def test_public_label_cannot_rewrite_verified_claim_text(tmp_path: Path) -> None:
     baseline = ToolRegistry.load_default().run(_request(tmp_path / "baseline"))
     payloads = _payloads()
     selection = payloads["public_export_spec"]["selections"][0]
     selection["public_case_label"] = "Alternate public label"
-    selection["replacements"][0]["public_literal"] = "Alternate public label"
     changed = ToolRegistry.load_default().run(
         _request(tmp_path / "changed", payloads=payloads)
     )
 
-    assert baseline.result["claims"][0]["text"].startswith("Demo candidate")
-    assert changed.result["claims"][0]["text"].startswith(
+    assert changed.result["claims"][0]["public_case_label"] == (
         "Alternate public label"
     )
+    assert changed.result["claims"][0]["text"] == baseline.result["claims"][0][
+        "text"
+    ]
     assert baseline.run_id != changed.run_id
+
+
+def test_removed_alias_rewrite_contract_is_rejected(tmp_path: Path) -> None:
+    payloads = _payloads()
+    payloads["public_export_spec"]["selections"][0]["replacements"] = [
+        {"source_literal": "configured_metric", "public_literal": "rewritten"}
+    ]
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_validation_failed"]
 
 
 @pytest.mark.parametrize(
@@ -325,7 +336,6 @@ def test_unsafe_public_text_fails_without_artifact(
         "content_hash"
     ]
     payloads["public_export_spec"]["source_report_hash"] = report["content_hash"]
-    payloads["public_export_spec"]["selections"][0]["replacements"] = []
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
     assert run.execution_state is ExecutionState.FAILED
@@ -364,7 +374,10 @@ def test_verified_with_warnings_requires_human_review(tmp_path: Path) -> None:
 
     assert run.execution_state is ExecutionState.PARTIAL
     assert run.result["export_state"] == "review_required"
-    assert run.reason_codes == ["p0_10_verified_with_warnings"]
+    assert run.reason_codes == [
+        "p0_10_verified_with_warnings",
+        "public_release_authority_not_configured",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -375,6 +388,24 @@ def test_verified_with_warnings_requires_human_review(tmp_path: Path) -> None:
                 {"report_content_hash": "e" * 64}
             ),
             "claim_verification_report_binding_mismatch",
+        ),
+        (
+            lambda p: (
+                p["report_draft"].update({"audience": "internal_research"}),
+                p["report_draft"].update(
+                    {"content_hash": report_content_hash(p["report_draft"])}
+                ),
+                p["claim_verification_result"].update(
+                    {
+                        "report_content_hash": p["report_draft"]["content_hash"],
+                        "report_audience": "internal_research",
+                    }
+                ),
+                p["public_export_spec"].update(
+                    {"source_report_hash": p["report_draft"]["content_hash"]}
+                ),
+            ),
+            "report_audience_not_public_candidate",
         ),
         (
             lambda p: p["claim_verification_result"].update(
@@ -397,7 +428,7 @@ def test_verified_with_warnings_requires_human_review(tmp_path: Path) -> None:
                     ],
                 }
             ),
-            "claim_verification_not_export_eligible",
+            "claim_verification_not_verified_for_review_candidate",
         ),
         (
             lambda p: p["public_export_spec"].update(
@@ -432,12 +463,6 @@ def test_verified_with_warnings_requires_human_review(tmp_path: Path) -> None:
                 {"allowed_evidence_states": ["inferred"]}
             ),
             "export_evidence_state_not_allowed",
-        ),
-        (
-            lambda p: p["public_export_spec"]["selections"][0][
-                "replacements"
-            ][0].update({"source_literal": "not-in-source"}),
-            "public_alias_source_not_found",
         ),
     ],
 )

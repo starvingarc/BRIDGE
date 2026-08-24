@@ -22,6 +22,7 @@ Every package supports:
 | `ToolRequestV2` | v0.2 request retaining asset inputs while adding schema-bound structured-object references |
 | `ToolRunV2` | v0.2 run envelope binding successful or partial structured results to a declared result schema |
 | `MeasurementResult` | Raw metric, denominator, interval, evidence and score state |
+| `DataViewBinding` | Exact checksummed matrix artifact, semantics, cell count and deterministic cell-index checksum selected by QC |
 | `ArtifactManifest` | Immutable output files, media type, checksum and provenance |
 | `VisualizationArtifact` | Chart component, data binding, Evidence IDs and render files |
 | `KnowledgeHit` | Versioned method/source result returned by local retrieval |
@@ -32,7 +33,7 @@ Every package supports:
 | `CellStateBenchmarkSpec` / `BenchmarkSplitManifest` | Source/sample-aware pilot or locked benchmark contract |
 | `FreezeGateSpec` | Human-signed thresholds fixed before locked assets are opened |
 | `CellStateReleaseManifest` | Approved per-state release state and runtime method selection |
-| `ProductCase` | Versioned product, preparation, assay, MeasurementSpec and ProductDefinition binding |
+| `ProductCase` | Versioned product, assay, MeasurementSpec, ProductDefinition and explicit biological-unit bindings |
 | `ProductDefinitionCard` | Versioned product context and exact StateRoleMap binding; no role decisions live in code |
 | `StateRoleMap` | Versioned per-state lineage and regional assignments supplied as structured input |
 | `TargetRegionalAssessmentSpec` | Versioned selection of composition views, label levels and denominator mechanics |
@@ -42,11 +43,11 @@ Every package supports:
 | `OffTargetRoleSpec` | Versioned ProductDefinition/vocabulary-bound product roles and full-product denominator selection |
 | `OffTargetControlResult` | Static role-resolved full-product composition with unavailable OOD/rare-state calibration and null score |
 | `ProgramAssessmentSpec` | Versioned ProductDefinition/window-bound program rules, reference intervals, coverage and review directions supplied as input |
-| `ProgramEvidenceBundle` | Versioned precomputed program observations with method, Evidence Family, independence group and evidence state |
+| `ProgramEvidenceBundle` | Versioned precomputed program observations with exact metric/unit/scope/state/stage, method, Evidence Family, biological unit and evidence state |
 | `ProliferationStressResponseProfile` | Configured reference relations and shadow transcriptomic review flags with deferred ProtocolIR/LOD/CNV channels and null score |
-| `GraftAssessmentSpec` | Versioned channel, unit, eligible-state, independent-unit and optional interval policy supplied as input |
-| `GraftEvidenceBundle` | Versioned precomputed graft observations, explicit independent units, design constraints and preparation linkage |
-| `GraftAssessment` | Descriptive configured summaries with explicit absence/linkage state, null score and no ProductCase backfill |
+| `GraftAssessmentSpec` | Versioned channel, unit, eligible-state, independent-animal and optional interval policy supplied as input |
+| `GraftEvidenceBundle` | Versioned precomputed graft/timepoint observation units, animal refs, design constraints and declared preparation linkage |
+| `GraftAssessment` | Equal-animal descriptive summaries with explicit absence/linkage-declaration state, null score and no ProductCase backfill |
 
 Implemented Tool Packages retain at least one selected `method_id`. Scaffold packages keep `method_ids` empty until an executable, benchmark-bound method contract exists; candidate catalog entries do not imply implementation.
 
@@ -103,14 +104,14 @@ rule. Unmapped states remain unresolved, absent requested channels return
 implemented, and `domain_score` is always null. The complete interface is in
 the [P0-03 Tool Card](../tool_packages/P0-03/README.md).
 
-P0-04 consumes a ProductCase, ProductDefinitionCard, DevelopmentWindowSpec,
+P0-04 consumes a ProductCase, ProductDefinitionCard, StateRoleMap, DevelopmentWindowSpec,
 CellStateEvidenceProfile and QCReadinessProfile. It calculates only configured
 static stage composition over whole-product and target-related denominators.
 The implementation contains no biological state mapping or time conversion;
 reference-stage, time-course and lineage evidence remain explicitly absent.
 See the [P0-04 Tool Card](../tool_packages/P0-04/README.md).
 
-P0-05 consumes a ProductCase, ProductDefinitionCard, OffTargetRoleSpec,
+P0-05 consumes a ProductCase, ProductDefinitionCard, StateRoleMap, OffTargetRoleSpec,
 CellStateEvidenceProfile and QCReadinessProfile. It reports only configured
 full-product role composition, preserves the selected denominator view, and
 keeps unconfigured identities role-unresolved. The implementation contains no
@@ -120,40 +121,52 @@ state-role table, OOD decision, rare-state limit or safety threshold. See the
 P0-06 consumes a ProductCase, ProductDefinitionCard, ProgramAssessmentSpec,
 ProgramEvidenceBundle, P0-04 DevelopmentalCompatibilityResult and
 QCReadinessProfile. It preserves precomputed values, compares them only with
-caller-supplied reference intervals and counts caller-supplied independence
-groups. The implementation contains no program, gene, stage, range, coverage
+caller-supplied reference intervals and counts ProductCase-declared biological
+units. Each observation must match its rule's metric, unit, scope, state and
+stage context exactly. The implementation contains no program, gene, stage, range, coverage
 limit or biological threshold. Protocol attribution, residual-pluripotency LOD
 and transcriptomic CNV remain not assessed. See the
 [P0-06 Tool Card](../tool_packages/P0-06/README.md).
 
-P0-07 consumes exactly one ComparisonSpec and one ComparisonEvidenceBundle. It
-checks caller-selected contract dimensions, summarizes eligible preparation
+P0-07 consumes exactly two ProductCases, one ComparisonSpec and one
+ComparisonEvidenceBundle. It checks caller-selected contract dimensions,
+requires evidence units to exactly match each ProductCase without cross-arm
+overlap, summarizes eligible biological-unit
 values and publishes only the raw candidate-minus-baseline delta. The
 implementation contains no assay allowlist, metric catalogue, biological
 direction or threshold. Inferential statistics, stability modelling, Pareto,
 score and rank remain unavailable. See the
 [P0-07 Tool Card](../tool_packages/P0-07/README.md).
 
-P0-08 consumes only versioned upstream evidence objects. It applies Data Readiness, Model Robustness and Prior Applicability before selecting `not_assessed`, `insufficient`, `limited` or `sufficient` in the registered precedence order. It never reruns scientific analysis, emits a `MeasurementResult`, or makes a domain score available. Its module-specific input/result schemas and complete field contract are documented in the [P0-08 Tool Card](../tool_packages/P0-08/README.md).
+P0-08 consumes only versioned upstream evidence objects. Its profiles retain exact ProductCase, ProductDefinition, MeasurementSpec, QC and MeasurementResult object versions, and use the shared `evidence-family:<id>` namespace consumed by P0-09. It applies Data Readiness, Model Robustness and Prior Applicability before selecting `not_assessed`, `insufficient`, `limited` or `sufficient` in the registered precedence order. It never reruns scientific analysis, emits a `MeasurementResult`, or makes a domain score available. Its module-specific input/result schemas and complete field contract are documented in the [P0-08 Tool Card](../tool_packages/P0-08/README.md).
 
 P0-09 consumes a compilation bundle, P0-08 profiles and versioned Evidence Family, Claim and reconciliation registries. It creates append-only `EvidenceRecord` and `EvidenceRequirement` facts, deterministic reconciliation records, Case or Comparison graph manifests, fixed-column Parquet node/edge tables and a Cytoscape projection. Missing evidence creates a requirement rather than a zero-valued record; shadow or exploratory evidence cannot become formal. JSON/Parquet remain authoritative, while NetworkX is limited to reconstruction, invariant checks and seven named read-only query helpers. LadybugDB is deferred shadow work and is not a release dependency. The complete interface and reason-code contract are documented in the [P0-09 Tool Card](../tool_packages/P0-09/README.md).
 
+P0-10 verifies a structured ReportDraft against a manifest-validated P0-09 Case
+graph, package-owned policy and statements. Evidence lifecycle is taken from the
+graph-derived latest active projection, not a predecessor row's immutable
+creation state. The current package has no trusted public-release authority, so
+every assessed receipt is fail-closed with
+`public_release_authority_state=not_configured` and
+`public_export_eligibility=ineligible`; `verified` means correspondence only.
+
 P0-11 consumes one ReportDraft, one P0-10 ClaimVerificationResult and one
 PublicExportSpec. It constructs a new JSON object from selected fields and
-policy-supplied aliases; source report/claim/ProductCase/Evidence IDs and
+preserves selected verified claim text exactly; source report/claim/ProductCase/Evidence IDs and
 unselected prose are not projected. A bounded local-path/namespace/credential
 guard supplements the explicit prohibited-literal list but is not a universal
-secret scanner. The tool stops at `ready_for_confirmation` or
+secret scanner. With public authority unconfigured, the tool always stops at
 `review_required`, does not upload, and does not handle arbitrary files. See the
 [P0-11 Tool Card](../tool_packages/P0-11/README.md).
 
-P0-12 consumes exactly one GraftAssessmentSpec and one GraftEvidenceBundle.
+P0-12 consumes exactly one ProductCase, one GraftAssessmentSpec and one GraftEvidenceBundle.
 The spec supplies channel IDs, units, eligible evidence states, minimum
-independent-unit counts and optional interpretation intervals; the bundle
+independent-animal counts and optional interpretation intervals; the bundle
 supplies precomputed observations and explicit preparation-linkage evidence.
-The executor only calculates deterministic per-channel mean/range and the
+The executor first aggregates repeated graft/timepoint observations within an
+animal, then calculates deterministic equal-animal per-channel mean/range and the
 configured interval relation. It does not read expression matrices, infer
-biology or linkage, emit a score, or write graft evidence back into a
+biology or verify linkage, emit a score, or write graft evidence back into a
 pre-transplant ProductCase. See the
 [P0-12 Tool Card](../tool_packages/P0-12/README.md).
 

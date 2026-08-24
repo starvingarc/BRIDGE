@@ -26,6 +26,7 @@ from bridge.tool_packages.p0_01_input_qc.visualization import (
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
+    DataViewBinding,
     EvidenceState,
     ExecutionState,
     MeasurementResult,
@@ -62,6 +63,15 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         adata = read_expression_asset(asset)
         require_counts = asset.matrix_semantics == "raw_counts"
         validate_expression_object(adata, require_counts=require_counts)
+        metadata_hierarchy = _validate_metadata_hierarchy(
+            adata.obs,
+            asset.metadata,
+            require_sample_and_capture=asset.input_level.value
+            in {"count_ready", "analysis_ready"},
+        )
+        sample_or_preparation_ref = _optional_metadata_ref(
+            asset.metadata, "sample_or_preparation_ref"
+        )
     except InputAuditError as exc:
         return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
     except Exception as exc:
@@ -77,6 +87,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
     evidence_ids = [f"evidence:{run_id}:structure"]
     artifacts: list[ArtifactManifest] = []
     visualizations: list[VisualizationArtifact] = []
+    selected_data_view: DataViewBinding | None = None
     measurements = _structural_measurements(
         run_id,
         adata.n_obs,
@@ -162,22 +173,44 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
                 adata.obs[column] = flags[column].to_numpy()
             for column in metrics.columns:
                 adata.obs[f"bridge_qc_{column}"] = metrics[column].to_numpy()
+            eligible = flags["bridge_qc_candidate_eligible"].to_numpy(dtype=bool)
+            selected = adata[eligible].copy()
             derived_path = run_dir / "candidate_qc_view.h5ad"
-            adata.write_h5ad(derived_path)
+            selected.write_h5ad(derived_path)
             evidence_ids.append(f"evidence:{run_id}:candidate-flags")
-            artifacts.append(
-                _artifact(
-                    f"artifact:{run_id}:candidate-view",
-                    "derived_h5ad",
-                    derived_path,
-                    [f"evidence:{run_id}:candidate-flags"],
-                )
+            candidate_artifact = _artifact(
+                f"artifact:{run_id}:candidate-view",
+                "derived_h5ad",
+                derived_path,
+                [f"evidence:{run_id}:candidate-flags"],
+            )
+            artifacts.append(candidate_artifact)
+            selected_data_view = DataViewBinding(
+                view_id=f"data-view:{run_id}:qc-selected",
+                view_kind="qc_selected_observations",
+                artifact_id=candidate_artifact.artifact_id,
+                sha256=candidate_artifact.sha256,
+                parent_asset_id=asset.asset_id,
+                parent_asset_sha256=input_hash,
+                matrix_location="X",
+                matrix_semantics=asset.matrix_semantics,
+                n_observations=int(selected.n_obs),
+                observation_ids_sha256=_observation_ids_sha256(selected.obs_names),
+                sample_or_preparation_ref=sample_or_preparation_ref,
+                selection_spec_ref=(
+                    f"{measurement_spec.measurement_spec_id}@{measurement_spec.version}"
+                ),
             )
             data_views["eligible_cells_view"] = {
                 "state": "candidate",
-                "n_observations": int(flags["bridge_qc_candidate_eligible"].sum()),
+                "n_observations": int(selected.n_obs),
                 "observation_unit": observation_unit,
-                "artifact_id": f"artifact:{run_id}:candidate-view",
+                "artifact_id": candidate_artifact.artifact_id,
+                "sha256": candidate_artifact.sha256,
+                "view_id": selected_data_view.view_id,
+                "observation_ids_sha256": selected_data_view.observation_ids_sha256,
+                "matrix_location": selected_data_view.matrix_location,
+                "matrix_semantics": selected_data_view.matrix_semantics,
             }
             data_views["sensitivity_views"].append("candidate_measurement_spec_flags")
         else:
@@ -214,6 +247,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         input_level=input_level,
         assay=asset.assay or "unknown",
         assay_spec_id=measurement_spec.measurement_spec_id if measurement_spec else None,
+        measurement_spec_version=measurement_spec.version if measurement_spec else None,
         measurement_spec_status=measurement_spec.status if measurement_spec else "not_selected",
         readiness_state=readiness,
         schema_integrity={
@@ -227,7 +261,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
             "unique_cell_ids": bool(adata.obs_names.is_unique),
             "unique_gene_ids": bool(adata.var_names.is_unique),
         },
-        metadata_completeness=_metadata_completeness(adata.obs, asset.metadata),
+        metadata_completeness=metadata_hierarchy,
         matrix_provenance={
             "asset_id": asset.asset_id,
             "format": asset.format,
@@ -244,6 +278,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         cell_calling_assessment={"state": "not_assessed", "reason": "droplet_module_not_executed"},
         ambient_assessment={"state": "not_assessed", "reason": "droplet_module_not_executed"},
         data_views=data_views,
+        selected_data_view=selected_data_view,
         module_eligibility={
             "count_based_qc": "eligible" if input_level == "count_ready" else "ineligible",
             "cell_calling": "not_implemented" if input_level == "droplet_ready" else "ineligible",
@@ -403,29 +438,113 @@ def _count_measurements(run_id: str, metrics: pd.DataFrame, spec: MeasurementSpe
 def _declared_gene_names(adata, metadata: dict[str, Any]) -> tuple[pd.Index, str]:
     column = metadata.get("gene_symbol_column")
     if column is None:
-        return adata.var_names.astype(str), "var_names"
-    if column not in adata.var.columns:
-        raise InputAuditError("gene_symbol_column_not_found", str(column))
-    values = adata.var[column]
-    if values.isna().any() or (values.astype(str).str.strip() == "").any():
-        raise InputAuditError("gene_symbol_column_incomplete", str(column))
-    return pd.Index(values.astype(str)), f"var/{column}"
-
-
-def _metadata_completeness(obs: pd.DataFrame, metadata: dict[str, Any]) -> dict[str, Any]:
-    checks: dict[str, bool] = {}
-    for logical_name in ("sample_id", "capture_id"):
-        column = metadata.get(f"{logical_name}_column")
-        checks[logical_name] = bool(
-            logical_name in metadata or (column is not None and column in obs.columns)
+        names = pd.Index(adata.var_names.astype(str))
+        source = "var_names"
+    else:
+        if column not in adata.var.columns:
+            raise InputAuditError("gene_symbol_column_not_found", str(column))
+        values = adata.var[column]
+        if values.isna().any() or (values.astype(str).str.strip() == "").any():
+            raise InputAuditError("gene_symbol_column_incomplete", str(column))
+        names = pd.Index(values.astype(str))
+        source = f"var/{column}"
+    normalized = names.str.strip().str.upper()
+    if normalized.has_duplicates:
+        raise InputAuditError(
+            "gene_symbol_normalization_collision",
+            source,
         )
-    return {"fields": checks, "complete": all(checks.values())}
+    return names, source
+
+
+def _validate_metadata_hierarchy(
+    obs: pd.DataFrame,
+    metadata: dict[str, Any],
+    *,
+    require_sample_and_capture: bool,
+) -> dict[str, Any]:
+    fields = ("sample_id", "capture_id", "batch_id", "preparation_id", "timepoint")
+    resolved: dict[str, pd.Series] = {}
+    checks: dict[str, bool] = {}
+    for logical_name in fields:
+        values, _ = _declared_group(obs, metadata, logical_name)
+        checks[logical_name] = values is not None
+        if values is None:
+            continue
+        if values.isna().any() or (values.astype(str).str.strip() == "").any():
+            raise InputAuditError("metadata_field_incomplete", logical_name)
+        resolved[logical_name] = values.astype(str)
+
+    if require_sample_and_capture:
+        missing = [name for name in ("sample_id", "capture_id") if name not in resolved]
+        if missing:
+            raise InputAuditError("required_metadata_not_declared", ",".join(missing))
+
+    capture = resolved.get("capture_id")
+    if capture is not None:
+        for parent_name in ("sample_id", "preparation_id", "batch_id", "timepoint"):
+            parent = resolved.get(parent_name)
+            if parent is None:
+                continue
+            mapping = pd.DataFrame({"capture": capture, "parent": parent})
+            if (mapping.groupby("capture", dropna=False)["parent"].nunique() > 1).any():
+                raise InputAuditError(
+                    "metadata_hierarchy_conflict",
+                    f"capture_id->{parent_name}",
+                )
+
+    sample = resolved.get("sample_id")
+    preparation = resolved.get("preparation_id")
+    if sample is not None and preparation is not None:
+        mapping = pd.DataFrame({"preparation": preparation, "sample": sample})
+        if (mapping.groupby("preparation", dropna=False)["sample"].nunique() > 1).any():
+            raise InputAuditError(
+                "metadata_hierarchy_conflict",
+                "preparation_id->sample_id",
+            )
+
+    return {
+        "fields": checks,
+        "complete": all(checks[name] for name in ("sample_id", "capture_id")),
+        "hierarchy_state": "validated",
+    }
+
+
+def _optional_metadata_ref(metadata: dict[str, Any], key: str) -> str | None:
+    value = metadata.get(key)
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        raise InputAuditError("metadata_reference_invalid", key)
+    return text
+
+
+def _observation_ids_sha256(values: pd.Index) -> str:
+    payload = json.dumps(
+        [str(value) for value in values],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _declared_group(obs: pd.DataFrame, metadata: dict[str, Any], logical_name: str) -> tuple[pd.Series | None, str | None]:
     column = metadata.get(f"{logical_name}_column")
-    if column is not None and column in obs.columns:
-        return obs[column], None
+    if column is not None:
+        if column not in obs.columns:
+            raise InputAuditError(
+                "metadata_column_not_found", f"{logical_name}:{column}"
+            )
+        values = obs[column]
+        declared = metadata.get(logical_name)
+        if declared is not None and (
+            values.astype(str).str.strip() != str(declared).strip()
+        ).any():
+            raise InputAuditError(
+                "metadata_declaration_conflict", logical_name
+            )
+        return values, None
     value = metadata.get(logical_name)
     if value is not None:
         return pd.Series([str(value)] * len(obs), index=obs.index), None

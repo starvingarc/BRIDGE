@@ -155,6 +155,7 @@ profile_id / profile_version / gate_rule_version
 product_case_ref / product_definition_ref / domain_id
 measurement_spec_ref / score_contract_ref
 data_readiness / data_reason_codes / qc_profile_ref
+measurement_evidence_state_counts
 model_robustness / robustness_reason_codes / validation_refs
 prior_applicability / prior_reason_codes / snapshot_refs
 evidence_sufficiency_state / blocking_reasons / limiting_reasons
@@ -163,7 +164,7 @@ measurement_result_refs / evidence_refs / sensitivity_refs
 created_at / deterministic_run_ref
 ```
 
-案例级 `CaseEvidenceReadinessSummary` 只包含各域 `sufficient/limited/insufficient/not_assessed` 数量、`score_state` 数量和阻塞原因列表。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
+ProductCase、ProductDefinition、MeasurementSpec、QC profile 和 MeasurementResult 均保存精确版本化引用；Evidence Family ID 统一使用可直接交给 P0-09 的 `evidence-family:<id>` 命名空间。案例级 `CaseEvidenceReadinessSummary` 包含各域 `sufficient/limited/insufficient/not_assessed` 数量、八种 MeasurementResult evidence state 聚合数、`score_state` 数量和阻塞原因列表。`missing`、`unknown` 或 `unavailable` 的绑定 MeasurementResult 使 Data Readiness 为 `not_assessed`；`negative` 与 `alert` 保持独立、可观察状态，不自动等于缺失或失败。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
 
 ## 8. 运行环境
 

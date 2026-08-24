@@ -122,7 +122,7 @@ def _validation(**overrides: Any) -> dict[str, Any]:
         "method_version": "0.1.0",
         "tool_ref": "P0-03",
         "environment_spec_ref": "ENV-EVIDENCE-v0.1",
-        "evidence_family_id": "family:validation-1",
+        "evidence_family_id": "evidence-family:validation-1",
         "required_for_interpretation": True,
         "method_kind": "deterministic",
         "validation_state": "frozen",
@@ -153,7 +153,7 @@ def _prior(**overrides: Any) -> dict[str, Any]:
         "prior_ref": "prior:test-v0.1",
         "snapshot_ref": "snapshot:test-v0.1",
         "prior_kind": "reference",
-        "evidence_family_id": "family:prior-1",
+        "evidence_family_id": "evidence-family:prior-1",
         "required_for_interpretation": True,
         "species_match": "match",
         "assay_match": "match",
@@ -179,7 +179,7 @@ def _sensitivity(**overrides: Any) -> dict[str, Any]:
         "created_at": "2026-08-13T00:00:00Z",
         "measurement_spec_ref": "MS-TARGET-v0.1",
         "sensitivity_kind": "reference",
-        "evidence_family_id": "family:sensitivity-1",
+        "evidence_family_id": "evidence-family:sensitivity-1",
         "required_for_interpretation": True,
         "state": "stable",
         "baseline_ref": "result:baseline",
@@ -393,7 +393,7 @@ def test_packaged_rule_and_reason_catalog_are_exact_candidate_resources() -> Non
     assert gate.status.value == "candidate"
     assert gate.precedence == ("not_assessed", "insufficient", "limited", "sufficient")
     assert tuple(reason.code for reason in catalog.reasons) == REASON_CODES
-    assert len(catalog.reasons) == 45
+    assert len(catalog.reasons) == 48
 
 
 @pytest.mark.parametrize("schema_ref,model", PUBLIC_SCHEMA_MODELS.items())
@@ -419,6 +419,31 @@ def test_sufficient_raw_evidence_never_enables_a_domain_score(tmp_path: Path) ->
     assert profile.domain_score is None
     assert profile.score_state.value == "unavailable"
     assert profile.score_reason_codes == ["p0_score_contract_unavailable"]
+    assert [item.model_dump() for item in profile.measurement_result_refs] == [
+        {"object_id": "measurement:target-1", "object_version": "0.1.0"}
+    ]
+
+
+def test_profile_state_counts_must_match_versioned_measurement_refs(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path)
+    payload = json.loads(json.dumps(run.result))
+    payload["profiles"][0]["measurement_evidence_state_counts"]["measured"] = 2
+
+    with pytest.raises(ValueError, match="counts must match result refs"):
+        EvidenceSufficiencyRunResult.model_validate(payload)
+
+
+def test_assessed_profile_requires_complete_versioned_context(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path)
+    payload = json.loads(json.dumps(run.result))
+    payload["profiles"][0]["product_case_ref"] = None
+
+    with pytest.raises(ValueError, match="complete versioned context"):
+        EvidenceSufficiencyRunResult.model_validate(payload)
 
 
 def test_default_registry_dispatches_p0_08_through_declared_adapter(tmp_path: Path) -> None:
@@ -734,22 +759,29 @@ def test_score_reference_is_provenance_only_and_never_enables_score(tmp_path: Pa
 
 
 @pytest.mark.parametrize(
-    "evidence_state", ["negative", "alert", "unknown", "missing", "unavailable"]
+    ("evidence_state", "expected_gate_state", "expected_reason"),
+    [
+        ("negative", "sufficient", None),
+        ("alert", "sufficient", None),
+        ("unknown", "not_assessed", "measurement_evidence_unknown"),
+        ("missing", "not_assessed", "measurement_evidence_missing"),
+        ("unavailable", "not_assessed", "measurement_evidence_unavailable"),
+    ],
 )
-def test_raw_measurement_state_is_not_reinterpreted(
-    tmp_path: Path, evidence_state: str
+def test_raw_measurement_state_is_preserved_without_promoting_absence(
+    tmp_path: Path,
+    evidence_state: str,
+    expected_gate_state: str,
+    expected_reason: str | None,
 ) -> None:
     run = _run(tmp_path, measurement=_measurement(evidence_state=evidence_state))
     profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
 
-    assert profile.evidence_sufficiency_state.value == "sufficient"
-    assert evidence_state not in {
-        *profile.data_reason_codes,
-        *profile.robustness_reason_codes,
-        *profile.prior_reason_codes,
-        *profile.blocking_reasons,
-        *profile.limiting_reasons,
-    }
+    assert profile.evidence_sufficiency_state.value == expected_gate_state
+    assert profile.measurement_evidence_state_counts.model_dump()[evidence_state] == 1
+    if expected_reason is not None:
+        assert expected_reason in profile.data_reason_codes
+        assert expected_reason in profile.missing_requirements
     assert profile.domain_score is None
 
 
@@ -796,7 +828,12 @@ def test_same_family_identical_records_collapse_without_a_vote(tmp_path: Path) -
     assert result.profiles[0].model_robustness.value == "validated_applicable"
     assert "evidence_family_duplicate_collapsed" in result.profiles[0].robustness_reason_codes
     assert result.gate_trace[0].ignored_duplicate_input_refs == ["validation-copy"]
-    assert result.profiles[0].deduplicated_evidence_family_ids.count("family:validation-1") == 1
+    assert (
+        result.profiles[0].deduplicated_evidence_family_ids.count(
+            "evidence-family:validation-1"
+        )
+        == 1
+    )
 
 
 def test_same_family_nonidentical_records_require_review(tmp_path: Path) -> None:
@@ -830,12 +867,12 @@ def test_same_family_nonidentical_records_require_review(tmp_path: Path) -> None
 def test_nonidentical_optional_family_records_remain_provenance_only(tmp_path: Path) -> None:
     optional_a = _validation(
         validation_record_id="validation-record:optional-a",
-        evidence_family_id="family:optional",
+        evidence_family_id="evidence-family:optional",
         required_for_interpretation=False,
     )
     optional_b = _validation(
         validation_record_id="validation-record:optional-b",
-        evidence_family_id="family:optional",
+        evidence_family_id="evidence-family:optional",
         required_for_interpretation=False,
         evidence_refs=["evidence:optional-b"],
     )
@@ -1782,7 +1819,7 @@ def test_record_logical_id_cannot_cross_evidence_families(
         role = "validation_record"
         schema_ref = "bridge://schemas/evidence-validation-record/v0.1"
         payload = _validation(
-            evidence_family_id="family:validation-other",
+            evidence_family_id="evidence-family:validation-other",
             evidence_refs=["evidence:validation-other"],
         )
         domain = _domain(
@@ -1793,7 +1830,7 @@ def test_record_logical_id_cannot_cross_evidence_families(
         role = "prior_applicability_record"
         schema_ref = "bridge://schemas/prior-applicability-record/v0.1"
         payload = _prior(
-            evidence_family_id="family:prior-other",
+            evidence_family_id="evidence-family:prior-other",
             evidence_refs=["evidence:prior-other"],
         )
         domain = _domain(prior_record_input_ids=["target-prior", input_id])
@@ -1802,7 +1839,7 @@ def test_record_logical_id_cannot_cross_evidence_families(
         role = "sensitivity_record"
         schema_ref = "bridge://schemas/evidence-sensitivity-record/v0.1"
         payload = _sensitivity(
-            evidence_family_id="family:sensitivity-other",
+            evidence_family_id="evidence-family:sensitivity-other",
             evidence_refs=["evidence:sensitivity-other"],
         )
         domain = _domain(
@@ -2293,7 +2330,7 @@ def test_set_like_input_list_order_does_not_change_run_identity_or_result_bytes(
         second_validation = _validation(
             validation_record_id="validation-record:method-2",
             tool_ref="P0-04",
-            evidence_family_id="family:validation-2",
+            evidence_family_id="evidence-family:validation-2",
             validation_refs=["validation:method-2a", "validation:method-2b"],
             evidence_refs=["evidence:validation-3", "evidence:validation-4"],
             provenance_refs=["run:validation-3", "run:validation-4"],
@@ -2302,14 +2339,14 @@ def test_set_like_input_list_order_does_not_change_run_identity_or_result_bytes(
             prior_record_id="prior-record:prior-2",
             prior_ref="prior:second-v0.1",
             snapshot_ref="snapshot:second-v0.1",
-            evidence_family_id="family:prior-2",
+            evidence_family_id="evidence-family:prior-2",
             evidence_refs=["evidence:prior-3", "evidence:prior-4"],
             provenance_refs=["run:prior-3", "run:prior-4"],
         )
         second_sensitivity = _sensitivity(
             sensitivity_record_id="sensitivity-record:preprocessing-2",
             sensitivity_kind="preprocessing",
-            evidence_family_id="family:sensitivity-2",
+            evidence_family_id="evidence-family:sensitivity-2",
             evidence_refs=["evidence:sensitivity-3", "evidence:sensitivity-4"],
             provenance_refs=["run:sensitivity-3", "run:sensitivity-4"],
         )

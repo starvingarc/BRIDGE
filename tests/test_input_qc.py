@@ -164,7 +164,7 @@ def test_scientific_request_metadata_changes_run_identity(tmp_path: Path) -> Non
     assert first.run_id != second.run_id
 
 
-def test_missing_capture_id_degrades_doublet_without_failing_basic_qc(tmp_path: Path) -> None:
+def test_missing_capture_id_fails_the_declared_upload_contract(tmp_path: Path) -> None:
     input_path = _write_h5ad(tmp_path / "counts.h5ad", counts=True)
     request = _request(tmp_path, input_path, semantics="raw_counts")
     request = request.model_copy(
@@ -175,9 +175,92 @@ def test_missing_capture_id_degrades_doublet_without_failing_basic_qc(tmp_path: 
 
     run = ToolRegistry.load_default().run(request)
 
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["required_metadata_not_declared"]
+
+
+def test_explicit_missing_metadata_column_is_not_silently_ignored(
+    tmp_path: Path,
+) -> None:
+    input_path = _write_h5ad(tmp_path / "counts.h5ad", counts=True)
+    request = _request(tmp_path, input_path, semantics="raw_counts")
+    request = request.model_copy(
+        update={
+            "assets": [
+                request.assets[0].model_copy(
+                    update={
+                        "metadata": {
+                            "sample_id_column": "missing_sample_column",
+                            "sample_id": "sample-a",
+                            "capture_id_column": "capture_id",
+                        }
+                    }
+                )
+            ]
+        }
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["metadata_column_not_found"]
+
+
+def test_one_sample_may_have_multiple_preparations(tmp_path: Path) -> None:
+    input_path = _write_h5ad(tmp_path / "multiple-preparations.h5ad", counts=True)
+    adata = ad.read_h5ad(input_path)
+    adata.obs["capture_id"] = ["capture-a"] * 3 + ["capture-b"] * 3
+    adata.obs["preparation_id"] = ["preparation-a"] * 3 + ["preparation-b"] * 3
+    adata.write_h5ad(input_path)
+    request = _request(tmp_path, input_path, semantics="raw_counts")
+    request = request.model_copy(
+        update={
+            "assets": [
+                request.assets[0].model_copy(
+                    update={
+                        "metadata": {
+                            **request.assets[0].metadata,
+                            "preparation_id_column": "preparation_id",
+                        }
+                    }
+                )
+            ]
+        }
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
     assert run.execution_state is ExecutionState.SUCCEEDED
-    assert run.result["doublet_assessment"]["state"] == "not_assessed"
-    assert "capture_id_not_declared" in run.result["warnings"]
+    assert run.result["metadata_completeness"]["hierarchy_state"] == "validated"
+
+
+def test_one_preparation_cannot_map_to_multiple_samples(tmp_path: Path) -> None:
+    input_path = _write_h5ad(tmp_path / "conflicting-preparation.h5ad", counts=True)
+    adata = ad.read_h5ad(input_path)
+    adata.obs["sample_id"] = ["sample-a"] * 3 + ["sample-b"] * 3
+    adata.obs["capture_id"] = ["capture-a"] * 3 + ["capture-b"] * 3
+    adata.obs["preparation_id"] = ["preparation-shared"] * 6
+    adata.write_h5ad(input_path)
+    request = _request(tmp_path, input_path, semantics="raw_counts")
+    request = request.model_copy(
+        update={
+            "assets": [
+                request.assets[0].model_copy(
+                    update={
+                        "metadata": {
+                            **request.assets[0].metadata,
+                            "preparation_id_column": "preparation_id",
+                        }
+                    }
+                )
+            ]
+        }
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["metadata_hierarchy_conflict"]
 
 
 def test_invalid_count_semantics_returns_structured_blocked_run(tmp_path: Path) -> None:

@@ -35,15 +35,15 @@ Produce source-aware reference and marker-program evidence against the internal 
 | Input schema | `bridge://schemas/tool-request/v0.1` |
 | Output schema | `bridge://schemas/tool-run/v0.1` |
 
-**Input:** QC-qualified expression views, declared scRNA/snRNA modality, internal annotation vocabulary, frozen reference candidates, and provenance.
+**Input:** A P0-01 `QCReadinessProfile` plus the exact checksummed expression artifact named by its selected `DataViewBinding`, declared scRNA/snRNA modality, internal annotation vocabulary, reference candidates, and provenance.
 
-**Output:** Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, and product-level composition evidence.
+**Output:** Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, product-level composition evidence, and exact P0-01 profile/view/checksum lineage. Rows with no finite informative expression remain `unknown`; the implementation cannot assign a biological state to an all-zero or otherwise information-free row.
 
 **Runtime behavior:** Executable candidate; it emits raw measurements and never emits a domain score.
 
 ## Refusal Conditions
 
-Reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.
+QC/view/checksum mismatch, reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.
 
 Missing, unknown, unavailable, negative, and alert states remain distinct. No package may infer a clinical, safety, potency, GMP-release, or absolute product-ranking claim.
 

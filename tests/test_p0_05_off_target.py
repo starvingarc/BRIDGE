@@ -29,6 +29,7 @@ from bridge.toolkit.registry import ToolRegistry
 ROLE_SCHEMAS = {
     "product_case": "bridge://schemas/product-case/v0.1",
     "product_definition_card": "bridge://schemas/product-definition-card/v0.1",
+    "state_role_map": "bridge://schemas/state-role-map/v0.1",
     "off_target_role_spec": "bridge://schemas/off-target-role-spec/v0.1",
     "cell_state_evidence_profile": (
         "bridge://schemas/cell-state-evidence-profile/v0.1"
@@ -75,6 +76,47 @@ def _payloads() -> dict[str, dict]:
                 {"object_id": "source:fully-synthetic", "object_version": "1"}
             ],
         },
+        "state_role_map": {
+            "object_version": "0.1.0",
+            "role_map_id": "state-role-map:demo",
+            "role_map_version": "1.0.0",
+            "product_definition_ref": {
+                "object_id": "product-definition:demo",
+                "object_version": "1.0.0",
+            },
+            "annotation_vocabulary_ref": "annotation-vocabulary:demo",
+            "review_state": "draft",
+            "assignments": [
+                {
+                    "state_id": "state:alpha",
+                    "label_level": "L1",
+                    "lineage_role": "target",
+                    "regional_role": "target_region",
+                    "provenance_refs": [],
+                },
+                {
+                    "state_id": "state:beta",
+                    "label_level": "L1",
+                    "lineage_role": "acceptable_adjacent",
+                    "regional_role": "acceptable_adjacent_region",
+                    "provenance_refs": [],
+                },
+                {
+                    "state_id": "state:gamma",
+                    "label_level": "L1",
+                    "lineage_role": "not_target",
+                    "regional_role": "regional_shift",
+                    "provenance_refs": [],
+                },
+                {
+                    "state_id": "state:delta",
+                    "label_level": "L1",
+                    "lineage_role": "unresolved",
+                    "regional_role": "unresolved",
+                    "provenance_refs": [],
+                },
+            ],
+        },
         "off_target_role_spec": {
             "object_version": "0.1.0",
             "role_spec_id": "off-target-role-spec:demo",
@@ -83,12 +125,38 @@ def _payloads() -> dict[str, dict]:
                 "object_id": "product-definition:demo",
                 "object_version": "1.0.0",
             },
+            "state_role_map_ref": {
+                "object_id": "state-role-map:demo",
+                "object_version": "1.0.0",
+            },
             "annotation_vocabulary_ref": "annotation-vocabulary:demo",
             "review_state": "draft",
             "composition_views": ["consensus_supported_only"],
             "included_label_levels": ["L1"],
             "source_ids": [],
             "required_denominator_view": "all input observations",
+            "lineage_role_rules": [
+                {
+                    "product_role": "target",
+                    "allowed_lineage_roles": ["target"],
+                },
+                {
+                    "product_role": "acceptable_adjacent",
+                    "allowed_lineage_roles": ["acceptable_adjacent"],
+                },
+                {
+                    "product_role": "known_off_target",
+                    "allowed_lineage_roles": ["not_target"],
+                },
+                {
+                    "product_role": "role_unresolved",
+                    "allowed_lineage_roles": ["unresolved"],
+                },
+                {
+                    "product_role": "unknown",
+                    "allowed_lineage_roles": ["unresolved"],
+                },
+            ],
             "assignments": [
                 {
                     "state_id": "state:alpha",
@@ -258,6 +326,41 @@ def _write_json(path: Path, payload: dict) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _bind_upstream_profiles(payloads: dict[str, dict]) -> None:
+    view = {
+        "view_id": "data-view:demo:qc-selected",
+        "view_kind": "qc_selected_observations",
+        "artifact_id": "artifact:demo:candidate-view",
+        "sha256": "a" * 64,
+        "parent_asset_id": "asset:demo",
+        "parent_asset_sha256": "b" * 64,
+        "matrix_location": "X",
+        "matrix_semantics": "raw_counts",
+        "n_observations": 100,
+        "observation_ids_sha256": "c" * 64,
+        "sample_or_preparation_ref": "preparation:demo@1.0.0",
+        "selection_spec_ref": "QC-scRNA-candidate-v0.1@0.1.0",
+    }
+    qc = payloads["qc_readiness_profile"]
+    qc["selected_data_view"] = view
+    qc_raw = json.dumps(
+        qc,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    cell_state = payloads["cell_state_evidence_profile"]
+    cell_state.update(
+        {
+            "measurement_spec_version": "0.1.0",
+            "upstream_qc_profile_ref": qc["profile_id"],
+            "upstream_qc_profile_sha256": hashlib.sha256(qc_raw).hexdigest(),
+            "input_data_view": view,
+        }
+    )
+
+
 def _request(
     tmp_path: Path,
     *,
@@ -267,6 +370,7 @@ def _request(
     random_seed: int = 0,
 ) -> ToolRequestV2:
     values = deepcopy(payloads or _payloads())
+    _bind_upstream_profiles(values)
     input_root = tmp_path / f"objects-{input_id_prefix}"
     input_root.mkdir(parents=True)
     refs: list[StructuredInputRef] = []
@@ -370,7 +474,9 @@ def test_result_schema_rejects_state_and_checksum_conflicts(tmp_path: Path) -> N
     assert list(validator.iter_errors(unknown_without_reason))
 
 
-def test_biological_role_changes_only_through_role_spec(tmp_path: Path) -> None:
+def test_biological_role_change_requires_explicit_lineage_compatibility(
+    tmp_path: Path,
+) -> None:
     baseline = ToolRegistry.load_default().run(
         _request(tmp_path / "baseline", output_dir=tmp_path / "output")
     )
@@ -378,6 +484,12 @@ def test_biological_role_changes_only_through_role_spec(tmp_path: Path) -> None:
     payloads["off_target_role_spec"]["assignments"][2][
         "product_role"
     ] = "role_unresolved"
+    unresolved_rule = next(
+        item
+        for item in payloads["off_target_role_spec"]["lineage_role_rules"]
+        if item["product_role"] == "role_unresolved"
+    )
+    unresolved_rule["allowed_lineage_roles"].append("not_target")
     changed = ToolRegistry.load_default().run(
         _request(
             tmp_path / "changed",
@@ -392,6 +504,20 @@ def test_biological_role_changes_only_through_role_spec(tmp_path: Path) -> None:
     assert after["known_off_target"]["numerator"] == 0
     assert after["role_unresolved"]["numerator"] == 20
     assert baseline.run_id != changed.run_id
+
+
+def test_contradictory_lineage_and_off_target_roles_are_rejected(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    payloads["off_target_role_spec"]["assignments"][2][
+        "product_role"
+    ] = "target"
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["off_target_lineage_role_binding_mismatch"]
 
 
 def test_unmapped_identity_is_role_unresolved_not_unknown(tmp_path: Path) -> None:

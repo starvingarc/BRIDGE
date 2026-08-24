@@ -196,13 +196,24 @@ def _validated_graph_stub(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _stub_graph(
-    monkeypatch: pytest.MonkeyPatch, evidence_set: EvidenceRecordSet
+    monkeypatch: pytest.MonkeyPatch,
+    evidence_set: EvidenceRecordSet,
+    *,
+    effective_evidence_refs: frozenset[str] | None = None,
 ) -> None:
+    effective = (
+        frozenset(record.ref for record in evidence_set.records)
+        if effective_evidence_refs is None
+        else effective_evidence_refs
+    )
     monkeypatch.setattr(
         EvidenceGraphQueries,
         "open",
         classmethod(
-            lambda cls, path: SimpleNamespace(evidence_record_set=evidence_set)
+            lambda cls, path: SimpleNamespace(
+                evidence_record_set=evidence_set,
+                effective_evidence_refs=effective,
+            )
         ),
     )
 
@@ -442,6 +453,8 @@ def test_receipt_binds_authority_and_matches_the_published_bytes(
     assert run.result["benchmark_sha256"] == benchmark_sha256()
     assert run.result["release_contract_id"] == load_release_contract().contract_id
     assert run.result["release_contract_sha256"] == release_contract_sha256()
+    assert run.result["public_release_authority_state"] == "not_configured"
+    assert run.result["public_export_eligibility"] == "ineligible"
     assert run.measurements == []
     assert len(run.artifacts) == 1
     artifact_bytes = run.artifacts[0].path.read_bytes()
@@ -722,6 +735,25 @@ def test_claim_and_product_targets_must_match_every_evidence_record(
 
     assert run.result["release_state"] == "release_blocked"
     assert reason in {
+        item["reason_code"] for item in run.result["check_records"]
+    }
+
+
+def test_graph_effective_lifecycle_blocks_a_superseded_predecessor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evidence_set = _evidence_set()
+    _stub_graph(
+        monkeypatch,
+        evidence_set,
+        effective_evidence_refs=frozenset(),
+    )
+
+    run = adapter.run(_request(tmp_path), _spec())
+
+    assert run.result["release_state"] == "release_blocked"
+    assert "evidence_not_effective" in {
         item["reason_code"] for item in run.result["check_records"]
     }
 

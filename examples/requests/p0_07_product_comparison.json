@@ -6,12 +6,30 @@
   "random_seed": 0,
   "object_inputs": [
     {
+      "input_id": "baseline-case",
+      "role": "product_case",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-07-input/baseline_product_case.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "media_type": "application/json"
+    },
+    {
+      "input_id": "candidate-case",
+      "role": "product_case",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-07-input/candidate_product_case.json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "media_type": "application/json"
+    },
+    {
       "input_id": "comparison-spec",
       "role": "comparison_spec",
       "schema_ref": "bridge://schemas/comparison-spec/v0.1",
       "object_version": "0.1.0",
       "path": "/tmp/bridge-p0-07-input/comparison_spec.json",
-      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "media_type": "application/json"
     },
     {
@@ -20,7 +38,7 @@
       "schema_ref": "bridge://schemas/comparison-evidence-bundle/v0.1",
       "object_version": "0.1.0",
       "path": "/tmp/bridge-p0-07-input/comparison_evidence_bundle.json",
-      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "media_type": "application/json"
     }
   ]

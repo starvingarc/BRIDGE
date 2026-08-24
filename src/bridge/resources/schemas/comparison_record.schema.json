@@ -3,9 +3,9 @@
     "CaseMetricSummary": {
       "additionalProperties": false,
       "properties": {
-        "eligible_preparation_count": {
+        "eligible_biological_unit_count": {
           "minimum": 0,
-          "title": "Eligible Preparation Count",
+          "title": "Eligible Biological Unit Count",
           "type": "integer"
         },
         "evidence_refs": {
@@ -65,7 +65,7 @@
       },
       "required": [
         "product_case_ref",
-        "eligible_preparation_count",
+        "eligible_biological_unit_count",
         "mean",
         "minimum",
         "maximum",
@@ -77,9 +77,9 @@
     "CaseReadinessSummary": {
       "additionalProperties": false,
       "properties": {
-        "independent_preparation_count": {
+        "declared_biological_unit_count": {
           "exclusiveMinimum": 0,
-          "title": "Independent Preparation Count",
+          "title": "Declared Biological Unit Count",
           "type": "integer"
         },
         "product_case_ref": {
@@ -87,9 +87,6 @@
         },
         "role": {
           "$ref": "#/$defs/ComparisonRole"
-        },
-        "sufficiency_profile_ref": {
-          "$ref": "#/$defs/VersionedObjectRef"
         },
         "sufficiency_state": {
           "enum": [
@@ -100,14 +97,17 @@
           ],
           "title": "Sufficiency State",
           "type": "string"
+        },
+        "sufficiency_summary_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
         }
       },
       "required": [
         "role",
         "product_case_ref",
-        "sufficiency_profile_ref",
+        "sufficiency_summary_ref",
         "sufficiency_state",
-        "independent_preparation_count"
+        "declared_biological_unit_count"
       ],
       "title": "CaseReadinessSummary",
       "type": "object"
@@ -124,6 +124,16 @@
     "ComparisonInputChecksums": {
       "additionalProperties": false,
       "properties": {
+        "case_evidence_readiness_summaries": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Case Evidence Readiness Summaries",
+          "type": "array",
+          "uniqueItems": true
+        },
         "comparison_evidence_bundle": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Comparison Evidence Bundle",
@@ -133,11 +143,23 @@
           "pattern": "^[0-9a-f]{64}$",
           "title": "Comparison Spec",
           "type": "string"
+        },
+        "product_cases": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Product Cases",
+          "type": "array",
+          "uniqueItems": true
         }
       },
       "required": [
         "comparison_spec",
-        "comparison_evidence_bundle"
+        "comparison_evidence_bundle",
+        "product_cases",
+        "case_evidence_readiness_summaries"
       ],
       "title": "ComparisonInputChecksums",
       "type": "object"

@@ -109,9 +109,9 @@
           "title": "Interpretation Policy",
           "type": "string"
         },
-        "minimum_independent_units": {
+        "minimum_independent_animals": {
           "exclusiveMinimum": 0,
-          "title": "Minimum Independent Units",
+          "title": "Minimum Independent Animals",
           "type": "integer"
         },
         "required": {
@@ -130,7 +130,7 @@
         "unit",
         "required",
         "eligible_evidence_states",
-        "minimum_independent_units",
+        "minimum_independent_animals",
         "interpretation_policy"
       ],
       "title": "GraftChannelRule",

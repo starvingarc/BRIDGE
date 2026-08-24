@@ -2,8 +2,9 @@
 
 ## Purpose
 
-Rebuild a minimal public JSON candidate from an eligible P0-10 report and an
-explicit, checksummed allowlist. The source report is never copied wholesale.
+Rebuild a minimal, human-review-only JSON candidate from a P0-10-verified report
+and an explicit, checksummed allowlist. The source report is never copied
+wholesale, and this package does not grant publication authority.
 
 ## Package contract
 
@@ -34,9 +35,9 @@ URI, object version, media type and SHA-256 checksum.
 
 | Role | Schema | Required content |
 |---|---|---|
-| `report_draft` | `bridge://schemas/report-draft/v0.1` | The original structured P0-10 ReportDraft. |
-| `claim_verification_result` | `bridge://schemas/claim-verification-result/v0.1` | A receipt bound to the same report/hash/audience with `public_export_eligibility=eligible` and release state `verified` or `verified_with_warnings`. |
-| `public_export_spec` | `bridge://schemas/public-export-spec/v0.1` | Source report and receipt binding, target language, allowed claim types/evidence states, selected claims, public IDs and case labels, exact alias replacements, public accessions, prohibited literals and mandatory human-confirmation policy. |
+| `report_draft` | `bridge://schemas/report-draft/v0.1` | The original structured P0-10 ReportDraft; `audience` must be `public_candidate`. Internal-research reports cannot enter public projection. |
+| `claim_verification_result` | `bridge://schemas/claim-verification-result/v0.1` | A receipt bound to the same report/hash/audience with release state `verified` or `verified_with_warnings`, `public_release_authority_state=not_configured` and fail-closed `public_export_eligibility=ineligible`. |
+| `public_export_spec` | `bridge://schemas/public-export-spec/v0.1` | Source report and receipt binding, target language, allowed claim types/evidence states, selected claims, public IDs and case labels, public accessions, prohibited literals and mandatory human-confirmation policy. It contains no text-rewrite contract. |
 
 All three object versions are `0.1.0`. File assets, arbitrary parameters,
 MeasurementSpec envelope fields and nonzero seeds are refused.
@@ -47,7 +48,7 @@ The implementation creates a new object from selected fields only. For every
 selected source claim it emits:
 
 - a caller-approved public claim ID and public case label;
-- the P0-10-verified text after exact policy-supplied literal replacements;
+- the exact P0-10-verified text, byte-for-byte at the string level;
 - claim type, language, evidence state and comparison mode;
 - numeric strings, source-field semantics and units without source Evidence IDs.
 
@@ -59,9 +60,11 @@ from the export spec.
 
 One `PublicSafeReport` is written as `public_safe_report.json` in an immutable,
 content-addressed run directory. It binds source-report hash, receipt checksum,
-export spec, all three input checksums and candidate hash. A clean P0-10 receipt
-produces `ready_for_confirmation`; a receipt with warnings produces
-`review_required`. Neither state means `exported`, and the tool never uploads.
+export spec, all three input checksums and candidate hash. Because no trusted
+public-release authority is configured, every current output is
+`review_required` with `public_release_authority_not_configured`; a P0-10
+warning adds its separate reason. The tool never emits a ready/exported state
+and never uploads.
 
 The result has no MeasurementResult, visualization, source Evidence ID, score
 or biological reinterpretation.
@@ -71,10 +74,11 @@ or biological reinterpretation.
 Top-level failures publish nothing:
 
 - missing, duplicate or unsupported role; Schema/version/checksum mismatch;
-- receipt/report/hash/audience mismatch or ineligible P0-10 receipt;
+- a report whose audience is not `public_candidate`, receipt/report/hash/audience mismatch, non-verified P0-10 result or an
+  authority/eligibility state inconsistent with the current fail-closed contract;
 - export-spec/report/receipt/language mismatch;
 - missing selected claim, disallowed claim type or evidence state;
-- configured alias source absent from the verified text;
+- any legacy alias-replacement field, because verified claim text is immutable;
 - unusable output, immutable-run collision or input mutation;
 - V1 request (`tool_request_v2_required`).
 

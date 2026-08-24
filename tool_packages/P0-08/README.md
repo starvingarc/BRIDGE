@@ -71,7 +71,7 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 | `domain_gate_input` | 1..5 | `bridge://schemas/domain-gate-input/v0.1` | One profile per object; non-null domains are unique. |
 | `measurement_spec` | 0..5 | `bridge://schemas/measurement-spec/v0.1` | Selected by `measurement_spec_input_id`. |
 | `qc_readiness_profile` | 0..5 | `bridge://schemas/qc-readiness-profile/v0.1` | Selected by `qc_profile_input_id`. |
-| `measurement_result` | 0..N | `bridge://schemas/measurement-result/v0.1` | IDs occur in `measurement_result_input_ids`. |
+| `measurement_result` | 0..N | `bridge://schemas/measurement-result/v0.1` | Request-local IDs occur in `measurement_result_input_ids`; the profile retains each result ID together with its `StructuredInputRef.object_version`. |
 | `validation_record` | 0..N | `bridge://schemas/evidence-validation-record/v0.1` | IDs occur in `validation_record_input_ids`. |
 | `prior_applicability_record` | 0..N | `bridge://schemas/prior-applicability-record/v0.1` | IDs occur in `prior_record_input_ids`. |
 | `sensitivity_record` | 0..N | `bridge://schemas/evidence-sensitivity-record/v0.1` | IDs occur in `sensitivity_record_input_ids`. |
@@ -87,7 +87,7 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 | `status` | `candidate` or `frozen` | yes | Packaged release is `candidate`; alternate bytes are rejected even if fields validate. |
 | `created_at` | UTC datetime | yes | Version timestamp, never the runtime wall clock. |
 | four `*_method_id` fields | literals | yes | Bind the deterministic engine/matcher, reason registry and legacy checker records. |
-| `reason_code_catalog_ref` | literal URI | yes | Binds the 45-code packaged catalog. |
+| `reason_code_catalog_ref` | literal URI | yes | Binds the 48-code packaged catalog. |
 | `applicable_domains` | five-domain array | yes | Exact enum order, without duplicates. |
 | `precedence` | four-state tuple | yes | Exact order `not_assessed`, `insufficient`, `limited`, `sufficient`. |
 | `score_policy` | literal | yes | Forces null/unavailable score behavior. |
@@ -115,7 +115,7 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 
 `VersionedObjectPointer` contains non-empty `object_id`, `object_version` and `provenance_refs`. All identifier/reference strings are stripped and all declared lists reject duplicates. Pointer provenance order is set-like for identity, but changing its membership creates a different pointer and fails cross-domain eligibility.
 
-References actually copied into public profiles—including ProductCase/ProductDefinition, MeasurementSpec ID, QC profile ID, score, validation/prior/sensitivity record IDs, snapshot, measurement ID, selected evidence and Evidence Family IDs—are checked before eligibility succeeds and must be scheme-shaped or identifier-shaped. A shape failure returns `structured_input_schema_invalid`; direct and public SDK execution return a failed `ToolRunV2` without creating a bundle. Request-local `*_input_ids` are binding keys and deliberately use only the non-empty/unique binding contract. Fields not copied into a public result remain governed by their source schema rather than this output-reference allowlist.
+References actually copied into public profiles—including versioned ProductCase, ProductDefinition, MeasurementSpec, QC profile and MeasurementResult refs plus score, validation/prior/sensitivity record IDs, snapshots and selected evidence—are checked before eligibility succeeds and must be scheme-shaped or identifier-shaped. Evidence Family IDs use the shared `evidence-family:<id>` namespace required by P0-09. A shape failure returns `structured_input_schema_invalid`; direct and public SDK execution return a failed `ToolRunV2` without creating a bundle. Request-local `*_input_ids` are binding keys and deliberately use only the non-empty/unique binding contract. Fields not copied into a public result remain governed by their source schema rather than this output-reference allowlist.
 
 ### Validation record fields
 
@@ -124,7 +124,7 @@ References actually copied into public profiles—including ProductCase/ProductD
 | `validation_record_id`, `object_version`, `created_at` | ID/version/UTC datetime | Immutable upstream record identity. |
 | `measurement_spec_ref` | string | Must equal the bound MeasurementSpec ID. |
 | `method_id`, `method_version`, `tool_ref`, `environment_spec_ref` | strings | Exact executed method/tool/environment lineage; `tool_ref` must occur in the non-empty bound MeasurementSpec tool list. |
-| `evidence_family_id`, `required_for_interpretation` | string, boolean | Family de-duplication and gate participation. |
+| `evidence_family_id`, `required_for_interpretation` | `evidence-family:<id>`, boolean | Family de-duplication and gate participation; the namespace is directly consumable by P0-09. |
 | `method_kind` | learned/deterministic | Only a frozen deterministic record can establish `method_requirement=not_required`. |
 | `validation_state`, `environment_state` | frozen/candidate/not_assessed | Upstream review conclusions, not recomputed. |
 | `context_of_use_ref`, `context_of_use_state` | string, enum | Required applicability conclusion. |
@@ -140,7 +140,7 @@ References actually copied into public profiles—including ProductCase/ProductD
 | `prior_record_id`, `object_version`, `created_at` | ID/version/UTC datetime | Immutable upstream record identity. |
 | `measurement_spec_ref`, `product_definition_ref` | strings | Must match the domain binding. |
 | `prior_ref`, `snapshot_ref`, `prior_kind` | strings/enum | Exact versioned prior or knowledge snapshot. |
-| `evidence_family_id`, `required_for_interpretation` | string, boolean | Family de-duplication and gate participation. |
+| `evidence_family_id`, `required_for_interpretation` | `evidence-family:<id>`, boolean | Family de-duplication and gate participation; the namespace is directly consumable by P0-09. |
 | nine `*_match` fields | match/partial_match/mismatch/not_required/not_assessed | Species, assay, specimen, anatomy, developmental stage, product definition, gene coverage, version and license applicability. |
 | `crosswalk_ref` | string or null | Optional reviewed crosswalk lineage; never inferred. |
 | `evidence_refs`, `provenance_refs` | non-empty unique arrays | Biological evidence and internal provenance. |
@@ -154,7 +154,7 @@ There is no database-count, support-score, rank or majority field. A required li
 | `sensitivity_record_id`, `object_version`, `created_at` | ID/version/UTC datetime | Immutable upstream record identity. |
 | `measurement_spec_ref` | string | Must equal the bound MeasurementSpec ID. |
 | `sensitivity_kind` | reference/preprocessing/annotation/assay/method/downsampling | Upstream sensitivity dimension. |
-| `evidence_family_id`, `required_for_interpretation` | string, boolean | Family and gate participation. |
+| `evidence_family_id`, `required_for_interpretation` | `evidence-family:<id>`, boolean | Family and gate participation; the namespace is directly consumable by P0-09. |
 | `state` | stable/limited/unstable/not_assessed | Upstream conclusion; no recomputation. |
 | `baseline_ref`, `perturbation_ref`, `conclusion_ref` | strings | Trace the compared records and their conclusion. |
 | `evidence_refs`, `provenance_refs` | non-empty unique arrays | Biological evidence and internal provenance. |
@@ -189,16 +189,18 @@ The deterministic scientific input hash sorts `object_inputs` and normalizes onl
 | Field group | Type | Meaning |
 |---|---|---|
 | `profile_id`, `profile_version`, `deterministic_run_ref`, `created_at` | IDs/version/UTC datetime | Deterministic identity and source-binding timestamp. |
-| gate, case, product, domain and MeasurementSpec refs | strings or null | Exact assessed context; null stays null. |
+| gate, case, product, domain and MeasurementSpec refs | versioned refs or null | Exact object ID and version for the assessed context; null stays null. |
 | `data_readiness`, `data_reason_codes`, `qc_profile_ref` | enum/list/ref | Data axis and its upstream QC lineage. |
 | `model_robustness`, `robustness_reason_codes`, `validation_refs` | enum/list/list | Method axis and validation records. |
 | `prior_applicability`, `prior_reason_codes`, `snapshot_refs` | enum/list/list | Prior axis and snapshot lineage. |
 | `evidence_sufficiency_state` | four-state enum | First matching state under the fixed precedence. |
 | `blocking_reasons`, `limiting_reasons`, `missing_requirements` | catalog-ordered unique arrays | Severity-separated trace: only catalog `blocking`, `limiting` and `missing` codes respectively. A missing code is never duplicated into `blocking_reasons`. |
 | `domain_score`, `score_state`, `score_reason_codes` | null/unavailable/list | Forced no-score release contract. |
+| `measurement_result_refs` | versioned-ref array | Exact MeasurementResult logical ID plus the checksummed input object's contract version; P0-09 must match both. |
+| `measurement_evidence_state_counts` | eight-state count object | Exact measured/inferred/prior-only/negative/missing/unknown/unavailable/alert counts for bound MeasurementResults. |
 | measurement, evidence, sensitivity and family refs | unique arrays | Upstream record identifiers and de-duplicated Evidence Families. |
 
-P0-08 emits categorical states, identifiers and counts only: there is no biological numeric unit, numerator, interval or raw-value denominator. The summary denominator is `profile_count` (one per accepted `DomainGateInput`, range 1..5), and all four sufficiency counts must sum to it. `score_state_counts.unavailable` must also equal `profile_count`.
+P0-08 emits categorical states, identifiers and counts only: there is no biological numeric unit, numerator, interval or raw-value denominator. The summary denominator is `profile_count` (one per accepted `DomainGateInput`, range 1..5), and all four sufficiency counts must sum to it. `score_state_counts.unavailable` must also equal `profile_count`; aggregate measurement-state counts must equal the sum of profile counts.
 
 Every profile has `domain_score=null`, `score_state=unavailable`, and `p0_score_contract_unavailable`. A supplied `score_contract_ref` adds `score_contract_ignored_current_release` but cannot enable a score.
 
@@ -221,11 +223,11 @@ Technical eligibility failures return `execution_state=failed`, no result and no
 - binding and policy: `unsupported_gate_rule_spec`, `domain_gate_input_binding_invalid`, `domain_input_measurement_spec_mismatch`, `domain_input_product_definition_mismatch`, `duplicate_logical_object_id`, `duplicate_domain_id`, `multiple_product_cases_in_request`, `unbound_structured_input`, `output_dir_overlaps_structured_input`, `legacy_evidence_contract_rejected`, `unsafe_scientific_reference`;
 - publication: `existing_run_bundle_hash_mismatch`.
 
-Eligibility reason codes are de-duplicated and lexicographically sorted. Scientific profile reason codes instead follow the fixed 45-code catalog order; they include missing-contract, data, model, prior, final-gate, score and Evidence-Family provenance reasons. Descriptions and remediations live in the packaged `reason_code_catalog_v0.1.json` and never describe a product failure.
+Eligibility reason codes are de-duplicated and lexicographically sorted. Scientific profile reason codes instead follow the fixed 48-code catalog order; they include missing-contract, data, model, prior, final-gate, score and Evidence-Family provenance reasons. Descriptions and remediations live in the packaged `reason_code_catalog_v0.1.json` and never describe a product failure.
 
 The public SDK/registry rejects a v0.1 request for P0-08 with `tool_request_v2_required`; the module adapter returns the same stable code when called directly.
 
-A contract-complete request with absent or unassessed scientific evidence is different: it is eligible, executes successfully and emits a `not_assessed` profile. Its catalog `missing` codes appear only in `missing_requirements`; case-summary blocking reasons are derived only from profile `blocking_reasons`. Missing, unknown, unavailable, negative and alert upstream states remain distinct and are never converted to zero, product failure or a safety statement.
+A contract-complete request with absent or unassessed scientific evidence is different: it is eligible, executes successfully and emits a `not_assessed` profile. A bound MeasurementResult in `missing`, `unknown` or `unavailable` makes data readiness `not_assessed` with a distinct reason; `negative` and `alert` stay observable evidence states and may still be sufficient when every other gate passes. These states are counted separately and are never converted to zero, product failure or a safety statement.
 
 ## Minimum request example
 

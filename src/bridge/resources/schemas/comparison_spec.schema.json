@@ -169,9 +169,9 @@
       "title": "Metrics",
       "type": "array"
     },
-    "minimum_independent_preparations_per_case": {
+    "minimum_biological_units_per_case": {
       "exclusiveMinimum": 0,
-      "title": "Minimum Independent Preparations Per Case",
+      "title": "Minimum Biological Units Per Case",
       "type": "integer"
     },
     "missing_metric_policy": {
@@ -207,7 +207,7 @@
     "required_equal_dimensions",
     "dimension_mismatch_policy",
     "comparison_mode",
-    "minimum_independent_preparations_per_case",
+    "minimum_biological_units_per_case",
     "metrics",
     "missing_metric_policy",
     "pareto_policy"

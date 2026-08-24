@@ -48,8 +48,9 @@ class GraftAvailability(StrEnum):
 
 class GraftLinkageState(StrEnum):
     NOT_APPLICABLE = "not_applicable"
-    PROVIDED_UNLINKED = "provided_unlinked"
-    PROVIDED_LINKED = "provided_linked"
+    NOT_DECLARED = "not_declared"
+    PARTIALLY_DECLARED = "partially_declared"
+    DECLARED_WITH_EVIDENCE = "declared_with_evidence"
 
 
 class GraftAnalysisMode(StrEnum):
@@ -106,7 +107,7 @@ class GraftChannelRule(FrozenModel):
         min_length=1,
         json_schema_extra={"uniqueItems": True},
     )
-    minimum_independent_units: StrictInt = Field(gt=0)
+    minimum_independent_animals: StrictInt = Field(gt=0)
     interpretation_policy: Literal["descriptive_only", "configured_interval"]
     configured_lower_bound: FiniteNumber | None = None
     configured_upper_bound: FiniteNumber | None = None
@@ -392,12 +393,34 @@ class GraftEvidenceBundle(FrozenModel):
         )
 
 
+class GraftAnimalChannelSummary(FrozenModel):
+    animal_ref: VersionedObjectRef
+    eligible_observation_count: StrictInt = Field(gt=0)
+    mean: FiniteNumber
+    evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
+
+    @field_validator("mean")
+    @classmethod
+    def mean_is_finite(cls, value: FiniteNumber) -> FiniteNumber:
+        checked = _finite(value)
+        assert checked is not None
+        return checked
+
+    @field_validator("evidence_refs")
+    @classmethod
+    def evidence_is_unique_sorted(cls, value: list[str]) -> list[str]:
+        if value != sorted(set(value)):
+            raise ValueError("animal evidence must be unique and sorted")
+        return value
+
+
 class GraftChannelSummary(FrozenModel):
     channel_id: str = Field(pattern=r"^graft-channel:[A-Za-z0-9._:-]+$")
     unit: str = Field(min_length=1, max_length=120)
     required: StrictBool
-    minimum_independent_units: StrictInt = Field(gt=0)
-    eligible_unit_count: StrictInt = Field(ge=0)
+    minimum_independent_animals: StrictInt = Field(gt=0)
+    eligible_animal_count: StrictInt = Field(ge=0)
+    animal_summaries: list[GraftAnimalChannelSummary]
     mean: FiniteNumber | None
     minimum: FiniteNumber | None
     maximum: FiniteNumber | None
@@ -432,21 +455,33 @@ class GraftChannelSummary(FrozenModel):
             raise ValueError("summary lists must be unique and sorted")
         return value
 
+    @field_validator("animal_summaries")
+    @classmethod
+    def animal_summaries_are_unique_sorted(
+        cls, value: list[GraftAnimalChannelSummary]
+    ) -> list[GraftAnimalChannelSummary]:
+        refs = [item.animal_ref.ref for item in value]
+        if refs != sorted(set(refs)):
+            raise ValueError("animal summaries must be unique and sorted")
+        return value
+
     @model_validator(mode="after")
     def summary_is_coherent(self) -> Self:
         values = (self.mean, self.minimum, self.maximum)
         if self.result_state == "unavailable":
-            if self.eligible_unit_count != 0 or any(
+            if self.eligible_animal_count != 0 or self.animal_summaries or any(
                 value is not None for value in values
             ):
                 raise ValueError("unavailable summary cannot contain values")
             if self.configured_interval_relation is not ConfiguredIntervalRelation.UNAVAILABLE:
                 raise ValueError("unavailable summary requires unavailable relation")
         else:
-            if self.eligible_unit_count == 0 or any(
+            if self.eligible_animal_count == 0 or any(
                 value is None for value in values
             ):
                 raise ValueError("available summary requires values")
+            if self.eligible_animal_count != len(self.animal_summaries):
+                raise ValueError("eligible animal count must match animal summaries")
             if (
                 self.configured_lower_bound is None
                 and self.configured_upper_bound is None
@@ -475,6 +510,7 @@ class GraftChannelSummary(FrozenModel):
 
 class PreparationGraftLinkage(FrozenModel):
     unit_ref: VersionedObjectRef
+    animal_ref: VersionedObjectRef
     originating_preparation_ref: VersionedObjectRef
     evidence_refs: list[PublishedRef] = Field(
         min_length=1,
@@ -497,6 +533,7 @@ class UnmatchedGraftObservation(FrozenModel):
 
 
 class GraftInputChecksums(FrozenModel):
+    product_case: str = Field(pattern=SHA256_PATTERN)
     graft_assessment_spec: str = Field(pattern=SHA256_PATTERN)
     graft_evidence_bundle: str = Field(pattern=SHA256_PATTERN)
 
@@ -516,7 +553,8 @@ class GraftAssessment(FrozenModel):
     graft_availability: GraftAvailability
     linkage_state: GraftLinkageState
     analysis_mode: GraftAnalysisMode
-    independent_unit_count: StrictInt = Field(ge=0)
+    observation_unit_count: StrictInt = Field(ge=0)
+    independent_animal_count: StrictInt = Field(ge=0)
     design_constraint_refs: list[VersionedObjectRef]
     channel_summaries: list[GraftChannelSummary]
     preparation_linkages: list[PreparationGraftLinkage]
@@ -567,7 +605,8 @@ class GraftAssessment(FrozenModel):
                 (
                     self.graft_case_ref is not None,
                     self.measurement_spec_ref is not None,
-                    self.independent_unit_count != 0,
+                    self.observation_unit_count != 0,
+                    self.independent_animal_count != 0,
                     bool(self.channel_summaries),
                     bool(self.preparation_linkages),
                     bool(self.unmatched_observations),
@@ -595,20 +634,26 @@ class GraftAssessment(FrozenModel):
                     item.required
                     and (
                         item.result_state != "available"
-                        or item.eligible_unit_count
-                        < item.minimum_independent_units
+                        or item.eligible_animal_count
+                        < item.minimum_independent_animals
                     )
                     for item in self.channel_summaries
                 )
             ):
                 raise ValueError("complete result requires all configured evidence")
-            fully_linked = self.independent_unit_count > 0 and len(
+            fully_linked = self.observation_unit_count > 0 and len(
                 self.preparation_linkages
-            ) == self.independent_unit_count
-            if (
-                self.linkage_state is GraftLinkageState.PROVIDED_LINKED
-            ) != fully_linked:
+            ) == self.observation_unit_count
+            if (self.linkage_state is GraftLinkageState.DECLARED_WITH_EVIDENCE) != fully_linked:
                 raise ValueError("linkage state does not match explicit records")
+            if not self.preparation_linkages and self.linkage_state is not GraftLinkageState.NOT_DECLARED:
+                raise ValueError("absent linkage records require not_declared")
+            if (
+                self.preparation_linkages
+                and not fully_linked
+                and self.linkage_state is not GraftLinkageState.PARTIALLY_DECLARED
+            ):
+                raise ValueError("partial linkage records require partially_declared")
         expected_score_state = (
             ScoreState.SHADOW if available else ScoreState.UNAVAILABLE
         )

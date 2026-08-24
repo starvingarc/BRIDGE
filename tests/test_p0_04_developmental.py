@@ -31,6 +31,7 @@ ROLE_SCHEMAS = {
     "product_definition_card": (
         "bridge://schemas/product-definition-card/v0.1"
     ),
+    "state_role_map": "bridge://schemas/state-role-map/v0.1",
     "development_window_spec": (
         "bridge://schemas/development-window-spec/v0.1"
     ),
@@ -79,6 +80,40 @@ def _payloads() -> dict[str, dict]:
                 {"object_id": "source:fully-synthetic", "object_version": "1"}
             ],
         },
+        "state_role_map": {
+            "object_version": "0.1.0",
+            "role_map_id": "state-role-map:demo",
+            "role_map_version": "1.0.0",
+            "product_definition_ref": {
+                "object_id": "product-definition:demo",
+                "object_version": "1.0.0",
+            },
+            "annotation_vocabulary_ref": "annotation-vocabulary:demo",
+            "review_state": "draft",
+            "assignments": [
+                {
+                    "state_id": "state:alpha",
+                    "label_level": "L1",
+                    "lineage_role": "target",
+                    "regional_role": "target_region",
+                    "provenance_refs": [],
+                },
+                {
+                    "state_id": "state:beta",
+                    "label_level": "L1",
+                    "lineage_role": "acceptable_adjacent",
+                    "regional_role": "acceptable_adjacent_region",
+                    "provenance_refs": [],
+                },
+                {
+                    "state_id": "state:gamma",
+                    "label_level": "L1",
+                    "lineage_role": "not_target",
+                    "regional_role": "regional_shift",
+                    "provenance_refs": [],
+                },
+            ],
+        },
         "development_window_spec": {
             "object_version": "0.1.0",
             "window_spec_id": "development-window-spec:demo",
@@ -87,12 +122,20 @@ def _payloads() -> dict[str, dict]:
                 "object_id": "product-definition:demo",
                 "object_version": "1.0.0",
             },
+            "state_role_map_ref": {
+                "object_id": "state-role-map:demo",
+                "object_version": "1.0.0",
+            },
             "annotation_vocabulary_ref": "annotation-vocabulary:demo",
             "review_state": "draft",
             "applicable_assays": ["scRNA-seq"],
             "composition_views": ["consensus_supported_only"],
             "included_label_levels": ["L1"],
             "source_ids": [],
+            "target_related_lineage_roles": [
+                "target",
+                "acceptable_adjacent",
+            ],
             "assignments": [
                 {
                     "state_id": "state:alpha",
@@ -235,6 +278,41 @@ def _write_json(path: Path, payload: dict) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _bind_upstream_profiles(payloads: dict[str, dict]) -> None:
+    view = {
+        "view_id": "data-view:demo:qc-selected",
+        "view_kind": "qc_selected_observations",
+        "artifact_id": "artifact:demo:candidate-view",
+        "sha256": "a" * 64,
+        "parent_asset_id": "asset:demo",
+        "parent_asset_sha256": "b" * 64,
+        "matrix_location": "X",
+        "matrix_semantics": "raw_counts",
+        "n_observations": 100,
+        "observation_ids_sha256": "c" * 64,
+        "sample_or_preparation_ref": "preparation:demo@1.0.0",
+        "selection_spec_ref": "QC-scRNA-candidate-v0.1@0.1.0",
+    }
+    qc = payloads["qc_readiness_profile"]
+    qc["selected_data_view"] = view
+    qc_raw = json.dumps(
+        qc,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    cell_state = payloads["cell_state_evidence_profile"]
+    cell_state.update(
+        {
+            "measurement_spec_version": "0.1.0",
+            "upstream_qc_profile_ref": qc["profile_id"],
+            "upstream_qc_profile_sha256": hashlib.sha256(qc_raw).hexdigest(),
+            "input_data_view": view,
+        }
+    )
+
+
 def _request(
     tmp_path: Path,
     *,
@@ -244,6 +322,7 @@ def _request(
     random_seed: int = 0,
 ) -> ToolRequestV2:
     values = deepcopy(payloads or _payloads())
+    _bind_upstream_profiles(values)
     input_root = tmp_path / f"objects-{input_id_prefix}"
     input_root.mkdir(parents=True)
     refs: list[StructuredInputRef] = []

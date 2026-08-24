@@ -37,11 +37,11 @@ The documentation-only example is
 
 `ProgramAssessmentSpec` supplies every program reference, stage context,
 analysis scope, assay applicability, metric and unit, reference interval,
-minimum gene coverage, eligible evidence states, evidence-independence
+minimum gene coverage, eligible evidence states, biological-unit
 requirement, review direction and orthogonal follow-up reference.
 
 `ProgramEvidenceBundle` supplies the corresponding observed values, coverage,
-method, Evidence Family, independence group and evidence state. The package
+method, Evidence Family, biological analysis unit and evidence state. The package
 contains no program ID, gene, signature, cell-state name, stage window,
 reference envelope, numerical threshold or pass/fail table. Changing a
 biological interpretation requires a new object version and checksum, not a
@@ -71,12 +71,13 @@ upstream methods; this package does not open H5AD or recompute expression.
 Each review rule has a unique `rule_id`, versioned `program_ref`, whole-product
 or state-specific scope, exact P0-04 `stage_context_ref`, assay list,
 `metric_name`, publication-safe `unit`, inclusive reference bounds, coverage requirement,
-eligible evidence states, minimum independence-group count, review direction
+eligible evidence states, minimum biological-unit count, review direction
 and optional follow-up assay references.
 
 Each observation has a unique `observation_id`, matching rule/program,
-analysis-unit reference, Evidence Family, independence group, method reference,
-explicit evidence state, raw value, gene coverage and evidence references.
+analysis-unit reference, Evidence Family, method reference, explicit metric,
+unit, analysis scope, state and stage context, evidence state, raw value, gene
+coverage and evidence references.
 `missing`, `unknown` and `unavailable` carry null numeric fields. Numeric
 strings, booleans, NaN and infinity are refused rather than coerced.
 
@@ -86,11 +87,14 @@ For every configured rule, P0-06:
 
 1. checks ProductCase, ProductDefinition, P0-04 window, Cell-State profile,
    assay and QC bindings;
-2. compares supplied values with the supplied inclusive reference interval;
+2. requires each observation's metric, unit, scope, state and stage context to
+   match its rule exactly, then compares the supplied value with the supplied
+   inclusive reference interval;
 3. excludes observations with ineligible evidence states or insufficient
    configured gene coverage without replacing them with zero;
-4. counts unique caller-supplied independence groups, so duplicate methods or
-   Evidence Families do not become votes;
+4. counts unique ProductCase-declared biological analysis units, so repeated
+   observations, methods or Evidence Families from one unit do not become
+   independent votes;
 5. emits a shadow `transcriptomic_review_flag` only when the configured
    direction is supported by the configured minimum number of non-conflicting
    groups;
@@ -106,7 +110,7 @@ One immutable `proliferation_stress_response_profile.json` contains:
 
 - all six versioned input references and role-specific checksums;
 - per-rule raw values, gene coverage, reference relation, inclusion and reason;
-- distinct included and triggering independence-group counts;
+- distinct included and triggering biological-unit counts;
 - one aligned `TranscriptomicReviewFlag` record per rule;
 - unmatched observation metadata and evidence references;
 - explicit deferred process-attribution, residual-pluripotency LOD and

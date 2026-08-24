@@ -18,13 +18,13 @@ Validate expression inputs and emit a QC readiness profile.
 
 **Input:** A declared h5ad, 10x H5, or 10x MTX asset; input level, assay, matrix semantics, sample/capture metadata, gene-identifier source, and output location.
 
-**Output:** Raw structural and QC metrics, `QCReadinessProfile`, candidate data views when a candidate MeasurementSpec is selected, visualizations, and a checksummed artifact manifest.
+**Output:** Raw structural and QC metrics, `QCReadinessProfile`, physical candidate data views when a candidate MeasurementSpec is selected, visualizations, and a checksummed artifact manifest. Each published view has a `DataViewBinding` with its artifact checksum, matrix semantics, exact cell count and deterministic cell-index checksum; a QC-selected view is a real subset, not a renamed pointer to the all-cells matrix.
 
 **Runtime behavior:** Executable candidate; it emits raw measurements and never emits a domain score.
 
 ## Refusal Conditions
 
-Unreadable or ambiguous matrix, duplicate identifiers, invalid count semantics, missing assay, missing required sample/capture information, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input.
+Unreadable or ambiguous matrix, duplicate identifiers, invalid count semantics, missing assay, inconsistent sample/capture/batch/preparation hierarchy, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input. Each capture must map to one declared parent value, and each preparation must map to one sample; one biological sample may legitimately have multiple preparations.
 
 Missing, unknown, unavailable, negative, and alert states remain distinct. No package may infer a clinical, safety, potency, GMP-release, or absolute product-ranking claim.
 

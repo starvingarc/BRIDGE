@@ -58,19 +58,27 @@ def source_support(
     ref_ranked = _row_standardize(rankdata(label_centroids, axis=1, method="average"))
     ref_cosine = _row_standardize(label_centroids, center=False)
 
-    def calculate_chunk(start: int) -> tuple[np.ndarray, np.ndarray]:
+    def calculate_chunk(start: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         chunk = query[start : start + chunk_size, q_indices]
         dense = chunk.toarray() if sparse.issparse(chunk) else np.asarray(chunk)
+        informative = (
+            np.isfinite(dense).all(axis=1)
+            & (np.linalg.norm(dense, axis=1) > 0)
+            & (np.nanstd(dense, axis=1) > 0)
+        )
         ranked = _row_standardize(rankdata(dense, axis=1, method="average"))
         cosine_query = _row_standardize(dense, center=False)
-        return ranked @ ref_ranked.T, cosine_query @ ref_cosine.T
+        return ranked @ ref_ranked.T, cosine_query @ ref_cosine.T, informative
 
     starts = range(0, query.shape[0], chunk_size)
     with ThreadPoolExecutor(max_workers=workers) as pool:
         parts = list(pool.map(calculate_chunk, starts))
-    spearman_parts, cosine_parts = zip(*parts, strict=True)
+    spearman_parts, cosine_parts, informative_parts = zip(*parts, strict=True)
     spearman = np.vstack(spearman_parts)
     cosine = np.vstack(cosine_parts)
+    informative = np.concatenate(informative_parts)
+    spearman[~informative, :] = np.nan
+    cosine[~informative, :] = np.nan
 
     long = pd.DataFrame(
         {
@@ -85,7 +93,7 @@ def source_support(
     runner_index = ordered[:, -2] if len(unique_labels) > 1 else top_index
     top = spearman[np.arange(len(observation_ids)), top_index]
     runner = spearman[np.arange(len(observation_ids)), runner_index]
-    finite = np.isfinite(top)
+    finite = np.isfinite(top) & informative
     summary = pd.DataFrame(
         {
             "observation_id": observation_ids,

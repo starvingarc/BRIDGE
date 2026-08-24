@@ -81,6 +81,7 @@ class VerifiedEvidenceGraph:
     manifest: CaseEvidenceGraphManifest
     manifest_sha256: str
     evidence_set: EvidenceRecordSet
+    effective_evidence_refs: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -145,6 +146,7 @@ class ClaimVerifierAdapter:
         result = verify_report(
             report=report,
             evidence_set=evidence_graph.evidence_set,
+            effective_evidence_refs=evidence_graph.effective_evidence_refs,
             policy=policy,
             statements=statements,
             release_contract=release_contract,
@@ -333,6 +335,7 @@ def _verified_evidence_graph(
         manifest=manifest,
         manifest_sha256=manifest_ref.sha256,
         evidence_set=evidence_set,
+        effective_evidence_refs=graph.effective_evidence_refs,
     )
 
 

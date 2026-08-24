@@ -482,10 +482,13 @@ def _profile_matches_record(
     profile: EvidenceSufficiencyProfile, record: EvidenceRecord
 ) -> bool:
     return (
-        profile.product_case_ref == record.product_case_ref.object_id
+        profile.product_case_ref is not None
+        and profile.product_case_ref.ref == record.product_case_ref.ref
         and profile.domain_id is record.domain_id
-        and profile.measurement_spec_ref == record.measurement_spec_ref.object_id
-        and record.measurement_result_ref.object_id in profile.measurement_result_refs
+        and profile.measurement_spec_ref is not None
+        and profile.measurement_spec_ref.ref == record.measurement_spec_ref.ref
+        and record.measurement_result_ref.ref
+        in {item.ref for item in profile.measurement_result_refs}
         and record.evidence_family_ref.object_id
         in profile.deduplicated_evidence_family_ids
     )
@@ -910,15 +913,22 @@ def _compile_candidates(
         if profile is None:
             reasons.append("sufficiency_profile_not_bound")
         else:
-            if profile.product_case_ref != candidate.product_case_ref.object_id:
+            if (
+                profile.product_case_ref is None
+                or profile.product_case_ref.ref != candidate.product_case_ref.ref
+            ):
                 reasons.append("sufficiency_profile_case_mismatch")
             if profile.domain_id is not candidate.domain_id:
                 reasons.append("sufficiency_profile_domain_mismatch")
-            if profile.measurement_spec_ref != candidate.measurement_spec_ref.object_id:
+            if (
+                profile.measurement_spec_ref is None
+                or profile.measurement_spec_ref.ref
+                != candidate.measurement_spec_ref.ref
+            ):
                 reasons.append("sufficiency_profile_measurement_spec_mismatch")
             if (
-                candidate.measurement_result_ref.object_id
-                not in profile.measurement_result_refs
+                candidate.measurement_result_ref.ref
+                not in {item.ref for item in profile.measurement_result_refs}
             ):
                 reasons.append("sufficiency_profile_measurement_result_mismatch")
             if (
@@ -1461,18 +1471,20 @@ def _validate_comparison_bindings(
         elif (
             comparison_claim is not None
             and (
-                profile.product_case_ref != external.product_case_ref.object_id
+                profile.product_case_ref is None
+                or profile.product_case_ref.ref != external.product_case_ref.ref
                 or profile.domain_id is not comparison_claim.domain_id
             )
         ):
             reasons.append("external_evidence_claim_mapping_invalid")
         elif source_record is not None and (
-            source_record.measurement_result_ref.object_id
-            not in profile.measurement_result_refs
+            source_record.measurement_result_ref.ref
+            not in {item.ref for item in profile.measurement_result_refs}
             or source_record.evidence_family_ref.object_id
             not in profile.deduplicated_evidence_family_ids
-            or profile.measurement_spec_ref
-            != source_record.measurement_spec_ref.object_id
+            or profile.measurement_spec_ref is None
+            or profile.measurement_spec_ref.ref
+            != source_record.measurement_spec_ref.ref
         ):
             reasons.append("external_evidence_claim_mapping_invalid")
         if external.evidence_tier is EvidenceTier.FORMAL and profile is not None:

@@ -28,6 +28,7 @@ from bridge.toolkit.registry import ToolRegistry
 
 
 ROLE_SCHEMAS = {
+    "product_case": "bridge://schemas/product-case/v0.1",
     "graft_assessment_spec": "bridge://schemas/graft-assessment-spec/v0.1",
     "graft_evidence_bundle": "bridge://schemas/graft-evidence-bundle/v0.1",
 }
@@ -57,6 +58,21 @@ def _payloads() -> dict[str, dict]:
     reference = _ref("reference-snapshot:configured")
     algorithm = _ref("algorithm:configured")
     return {
+        "product_case": {
+            "object_version": "0.1.0",
+            "product_case_id": "product-case:configured",
+            "case_version": "1.0.0",
+            "product_definition_ref": _ref("product-definition:configured"),
+            "sample_or_preparation_ref": _ref("preparation:configured"),
+            "biological_unit_refs": [
+                _ref("preparation:one"),
+                _ref("preparation:two"),
+            ],
+            "measurement_spec_ref": measurement,
+            "assay": "scRNA-seq",
+            "provenance_refs": [_ref("source:fully-synthetic")],
+            "created_at": "2026-08-24T00:00:00Z",
+        },
         "graft_assessment_spec": {
             "object_version": "0.1.0",
             "assessment_spec_id": "graft-assessment-spec:configured",
@@ -73,7 +89,7 @@ def _payloads() -> dict[str, dict]:
                     "unit": "configured-unit",
                     "required": True,
                     "eligible_evidence_states": ["measured", "inferred"],
-                    "minimum_independent_units": 2,
+                    "minimum_independent_animals": 2,
                     "interpretation_policy": "configured_interval",
                     "configured_lower_bound": 1.0,
                     "configured_upper_bound": 4.0,
@@ -83,7 +99,7 @@ def _payloads() -> dict[str, dict]:
                     "unit": "configured-unit",
                     "required": False,
                     "eligible_evidence_states": ["measured"],
-                    "minimum_independent_units": 1,
+                    "minimum_independent_animals": 1,
                     "interpretation_policy": "descriptive_only",
                     "configured_lower_bound": None,
                     "configured_upper_bound": None,
@@ -210,9 +226,11 @@ def test_configured_graft_summary_runs_without_backfill_or_score(
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result["result_state"] == "complete"
     assert run.result["graft_availability"] == "provided"
-    assert run.result["linkage_state"] == "provided_linked"
+    assert run.result["linkage_state"] == "declared_with_evidence"
+    assert "preparation_linkage_declared_not_verified" in run.reason_codes
     assert run.result["analysis_mode"] == "descriptive_only"
-    assert run.result["independent_unit_count"] == 2
+    assert run.result["observation_unit_count"] == 2
+    assert run.result["independent_animal_count"] == 2
     primary = run.result["channel_summaries"][0]
     assert primary["mean"] == 3.0
     assert primary["minimum"] == 2.0
@@ -224,6 +242,36 @@ def test_configured_graft_summary_runs_without_backfill_or_score(
     assert run.result["score_state"] == "shadow"
     assert run.measurements == []
     assert len(run.artifacts) == 1
+
+
+def test_repeated_timepoints_are_aggregated_within_animal_before_summary(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    payloads["graft_evidence_bundle"]["units"].append(
+        {
+            "unit_ref": _ref("graft-unit:one-later"),
+            "animal_ref": _ref("animal:one"),
+            "graft_ref": _ref("graft:one"),
+            "timepoint_ref": _ref("timepoint:later"),
+            "originating_preparation_ref": _ref("preparation:one"),
+            "linkage_evidence_refs": ["evidence:link-one-later"],
+            "observations": [_observation(3, "configured-primary", 8.0)],
+        }
+    )
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+    primary = run.result["channel_summaries"][0]
+
+    assert run.result["observation_unit_count"] == 3
+    assert run.result["independent_animal_count"] == 2
+    assert primary["eligible_animal_count"] == 2
+    assert primary["mean"] == 4.5
+    assert primary["animal_summaries"][0]["eligible_observation_count"] == 2
+    assert primary["animal_summaries"][0]["mean"] == 5.0
+    assert "repeated_observations_aggregated_within_animal" in primary[
+        "reason_codes"
+    ]
 
 
 def test_interval_interpretation_changes_only_with_versioned_spec(
@@ -293,7 +341,7 @@ def test_missing_observations_are_unavailable_not_zero(tmp_path: Path) -> None:
     assert run.result["result_state"] == "partial"
     assert primary["result_state"] == "unavailable"
     assert primary["mean"] is None
-    assert primary["eligible_unit_count"] == 0
+    assert primary["eligible_animal_count"] == 0
     assert "graft_channel_unavailable" in primary["reason_codes"]
 
 
@@ -305,7 +353,8 @@ def test_provided_bundle_without_units_is_not_assessed(tmp_path: Path) -> None:
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result["result_state"] == "not_assessed"
-    assert run.result["independent_unit_count"] == 0
+    assert run.result["observation_unit_count"] == 0
+    assert run.result["independent_animal_count"] == 0
     assert run.result["score_state"] == "unavailable"
     assert all(
         item["result_state"] == "unavailable"
@@ -324,8 +373,8 @@ def test_independent_unit_minimum_is_policy_input(tmp_path: Path) -> None:
     primary = run.result["channel_summaries"][0]
 
     assert run.execution_state is ExecutionState.PARTIAL
-    assert primary["eligible_unit_count"] == 1
-    assert "independent_units_below_configured_minimum" in primary["reason_codes"]
+    assert primary["eligible_animal_count"] == 1
+    assert "independent_animals_below_configured_minimum" in primary["reason_codes"]
 
 
 def test_unconfigured_channels_are_reported_not_silently_used(
@@ -357,9 +406,9 @@ def test_linkage_is_never_inferred_from_graft_metadata(tmp_path: Path) -> None:
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
-    assert run.result["linkage_state"] == "provided_unlinked"
+    assert run.result["linkage_state"] == "not_declared"
     assert run.result["preparation_linkages"] == []
-    assert "preparation_linkage_not_provided" in run.reason_codes
+    assert "preparation_linkage_not_declared" in run.reason_codes
     assert "configured_design_constraints_present" in run.reason_codes
 
 
@@ -371,9 +420,10 @@ def test_partial_linkage_remains_unlinked(tmp_path: Path) -> None:
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
-    assert run.result["linkage_state"] == "provided_unlinked"
+    assert run.result["linkage_state"] == "partially_declared"
     assert len(run.result["preparation_linkages"]) == 1
-    assert "partial_preparation_linkage" in run.reason_codes
+    assert "partial_preparation_linkage_declaration" in run.reason_codes
+    assert "preparation_linkage_declared_not_verified" in run.reason_codes
 
 
 @pytest.mark.parametrize(
@@ -412,6 +462,22 @@ def test_product_case_is_cross_bound(tmp_path: Path) -> None:
 
     assert eligibility.eligible is False
     assert eligibility.reason_codes == ["graft_product_case_binding_mismatch"]
+
+
+def test_originating_preparation_must_belong_to_product_case(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    payloads["graft_evidence_bundle"]["units"][0][
+        "originating_preparation_ref"
+    ] = _ref("preparation:other")
+
+    eligibility = ToolRegistry.load_default().check_eligibility(
+        _request(tmp_path, payloads=payloads)
+    )
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["graft_preparation_product_case_mismatch"]
 
 
 @pytest.mark.parametrize(

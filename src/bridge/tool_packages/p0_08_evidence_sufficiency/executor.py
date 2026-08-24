@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 import hashlib
-from typing import Any, Mapping, Sequence, TypeVar
+from typing import Any, Iterable, Mapping, Sequence, TypeVar
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
+from bridge.tool_packages._configurable_contracts import VersionedObjectRef
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     BLOCKING_REASON_CODES,
     CaseEvidenceReadinessSummary,
@@ -16,6 +17,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     DataReadinessState,
     DomainGateInput,
     EvidenceSensitivityRecord,
+    MeasurementEvidenceStateCount,
     EvidenceSufficiencyProfile,
     EvidenceSufficiencyRunResult,
     EvidenceSufficiencyState,
@@ -38,6 +40,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     ValidationCheckState,
 )
 from bridge.toolkit.contracts import (
+    EvidenceState,
     FrozenModel,
     MeasurementResult,
     MeasurementSpec,
@@ -206,6 +209,9 @@ def evaluate_evidence_sufficiency(
             run_id=run_id,
             gate_rule=gate_rule,
             objects_by_input_id=objects_by_input_id,
+            object_versions_by_input_id={
+                ref.input_id: ref.object_version for ref in request.object_inputs
+            },
         )
         for domain_input in ordered_domains
     ]
@@ -224,6 +230,9 @@ def evaluate_evidence_sufficiency(
             limited=state_counts[EvidenceSufficiencyState.LIMITED.value],
             insufficient=state_counts[EvidenceSufficiencyState.INSUFFICIENT.value],
             not_assessed=state_counts[EvidenceSufficiencyState.NOT_ASSESSED.value],
+        ),
+        measurement_evidence_state_counts=_sum_measurement_state_counts(
+            profiles
         ),
         score_state_counts=ScoreStateCount(unavailable=len(profiles)),
         blocking_reasons=_ordered_reasons(
@@ -247,6 +256,7 @@ def _evaluate_domain(
     run_id: str,
     gate_rule: GateRuleSpec,
     objects_by_input_id: Mapping[str, FrozenModel],
+    object_versions_by_input_id: Mapping[str, str],
 ) -> DomainEvaluation:
     measurement_spec = _typed_object(
         objects_by_input_id, domain_input.measurement_spec_input_id, MeasurementSpec
@@ -254,9 +264,22 @@ def _evaluate_domain(
     qc_profile = _typed_object(
         objects_by_input_id, domain_input.qc_profile_input_id, QCReadinessProfile
     )
-    measurement_results = _typed_objects(
+    measurement_result_pairs = _typed_object_pairs(
         objects_by_input_id, domain_input.measurement_result_input_ids, MeasurementResult
     )
+    measurement_results = [
+        result
+        for _, result in measurement_result_pairs
+        if isinstance(result, MeasurementResult)
+    ]
+    measurement_result_refs = [
+        VersionedObjectRef(
+            object_id=result.measurement_id,
+            object_version=object_versions_by_input_id[input_id],
+        )
+        for input_id, result in measurement_result_pairs
+        if isinstance(result, MeasurementResult)
+    ]
     validation_pairs = _typed_object_pairs(
         objects_by_input_id,
         domain_input.validation_record_input_ids,
@@ -373,17 +396,41 @@ def _evaluate_domain(
         gate_rule_spec_ref=gate_rule.gate_rule_spec_id,
         gate_rule_version=gate_rule.object_version,
         product_case_ref=(
-            domain_input.product_case.object_id if domain_input.product_case else None
+            VersionedObjectRef(
+                object_id=domain_input.product_case.object_id,
+                object_version=domain_input.product_case.object_version,
+            )
+            if domain_input.product_case
+            else None
         ),
         product_definition_ref=(
-            domain_input.product_definition.object_id if domain_input.product_definition else None
+            VersionedObjectRef(
+                object_id=domain_input.product_definition.object_id,
+                object_version=domain_input.product_definition.object_version,
+            )
+            if domain_input.product_definition
+            else None
         ),
         domain_id=domain_input.domain_id,
-        measurement_spec_ref=(measurement_spec.measurement_spec_id if measurement_spec else None),
+        measurement_spec_ref=(
+            VersionedObjectRef(
+                object_id=measurement_spec.measurement_spec_id,
+                object_version=measurement_spec.version,
+            )
+            if measurement_spec
+            else None
+        ),
         score_contract_ref=domain_input.score_contract_ref,
         data_readiness=data_state,
         data_reason_codes=data_reasons,
-        qc_profile_ref=qc_profile.profile_id if qc_profile else None,
+        qc_profile_ref=(
+            VersionedObjectRef(
+                object_id=qc_profile.profile_id,
+                object_version="0.1.0",
+            )
+            if qc_profile
+            else None
+        ),
         model_robustness=model_state,
         robustness_reason_codes=model_reasons,
         validation_refs=sorted(
@@ -405,7 +452,12 @@ def _evaluate_domain(
         domain_score=None,
         score_state="unavailable",
         score_reason_codes=score_reasons,
-        measurement_result_refs=sorted(result.measurement_id for result in measurement_results),
+        measurement_result_refs=sorted(
+            measurement_result_refs, key=lambda item: item.ref
+        ),
+        measurement_evidence_state_counts=_measurement_state_counts(
+            result.evidence_state.value for result in measurement_results
+        ),
         evidence_refs=evidence_refs,
         sensitivity_refs=sorted(
             {record.sensitivity_record_id for record in sensitivity_records}
@@ -445,6 +497,14 @@ def _data_readiness(
         reasons.append("qc_profile_not_provided")
     if not measurement_results:
         reasons.append("measurement_result_not_provided")
+    states = {result.evidence_state for result in measurement_results}
+    for state, reason in (
+        (EvidenceState.MISSING, "measurement_evidence_missing"),
+        (EvidenceState.UNKNOWN, "measurement_evidence_unknown"),
+        (EvidenceState.UNAVAILABLE, "measurement_evidence_unavailable"),
+    ):
+        if state in states:
+            reasons.append(reason)
     if domain_input.task_validation_state is ContractValidationState.NOT_ASSESSED:
         reasons.append("task_validation_not_assessed")
     if reasons:
@@ -723,6 +783,34 @@ def _ordered_reasons(reasons: Sequence[str] | object) -> list[str]:
     return sorted(values, key=REASON_ORDER.__getitem__)
 
 
+def _measurement_state_counts(states: Iterable[str]) -> MeasurementEvidenceStateCount:
+    counts = Counter(states)
+    return MeasurementEvidenceStateCount(
+        measured=counts[EvidenceState.MEASURED.value],
+        inferred=counts[EvidenceState.INFERRED.value],
+        prior_only=counts[EvidenceState.PRIOR_ONLY.value],
+        negative=counts[EvidenceState.NEGATIVE.value],
+        missing=counts[EvidenceState.MISSING.value],
+        unknown=counts[EvidenceState.UNKNOWN.value],
+        unavailable=counts[EvidenceState.UNAVAILABLE.value],
+        alert=counts[EvidenceState.ALERT.value],
+    )
+
+
+def _sum_measurement_state_counts(
+    profiles: Sequence[EvidenceSufficiencyProfile],
+) -> MeasurementEvidenceStateCount:
+    return MeasurementEvidenceStateCount(
+        **{
+            state.value: sum(
+                profile.measurement_evidence_state_counts.model_dump()[state.value]
+                for profile in profiles
+            )
+            for state in EvidenceState
+        }
+    )
+
+
 def _typed_object(
     objects: Mapping[str, FrozenModel],
     input_id: str | None,
@@ -734,14 +822,6 @@ def _typed_object(
     if not isinstance(value, model):
         raise TypeError(f"{input_id} is not a {model.__name__}")
     return value
-
-
-def _typed_objects(
-    objects: Mapping[str, FrozenModel],
-    input_ids: Sequence[str],
-    model: type[ModelT],
-) -> list[ModelT]:
-    return [value for input_id in input_ids if (value := _typed_object(objects, input_id, model))]
 
 
 def _typed_object_pairs(

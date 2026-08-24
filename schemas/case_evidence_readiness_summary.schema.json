@@ -1,5 +1,62 @@
 {
   "$defs": {
+    "MeasurementEvidenceStateCount": {
+      "additionalProperties": false,
+      "properties": {
+        "alert": {
+          "minimum": 0,
+          "title": "Alert",
+          "type": "integer"
+        },
+        "inferred": {
+          "minimum": 0,
+          "title": "Inferred",
+          "type": "integer"
+        },
+        "measured": {
+          "minimum": 0,
+          "title": "Measured",
+          "type": "integer"
+        },
+        "missing": {
+          "minimum": 0,
+          "title": "Missing",
+          "type": "integer"
+        },
+        "negative": {
+          "minimum": 0,
+          "title": "Negative",
+          "type": "integer"
+        },
+        "prior_only": {
+          "minimum": 0,
+          "title": "Prior Only",
+          "type": "integer"
+        },
+        "unavailable": {
+          "minimum": 0,
+          "title": "Unavailable",
+          "type": "integer"
+        },
+        "unknown": {
+          "minimum": 0,
+          "title": "Unknown",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "MeasurementEvidenceStateCount",
+      "type": "object"
+    },
     "ScoreStateCount": {
       "additionalProperties": false,
       "properties": {
@@ -47,6 +104,27 @@
       ],
       "title": "StateCount",
       "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
     }
   },
   "$id": "bridge://schemas/case-evidence-readiness-summary/v0.1",
@@ -62,17 +140,19 @@
     "evidence_sufficiency_counts": {
       "$ref": "#/$defs/StateCount"
     },
+    "measurement_evidence_state_counts": {
+      "$ref": "#/$defs/MeasurementEvidenceStateCount"
+    },
     "product_case_ref": {
       "anyOf": [
         {
-          "type": "string"
+          "$ref": "#/$defs/VersionedObjectRef"
         },
         {
           "type": "null"
         }
       ],
-      "default": null,
-      "title": "Product Case Ref"
+      "default": null
     },
     "profile_count": {
       "maximum": 5,
@@ -99,6 +179,7 @@
     "summary_version",
     "profile_count",
     "evidence_sufficiency_counts",
+    "measurement_evidence_state_counts",
     "score_state_counts",
     "blocking_reasons"
   ],

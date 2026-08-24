@@ -12,7 +12,15 @@ from bridge.tool_packages._structured_runtime import (
     failed_v2_run,
     load_structured_inputs,
     publish_single_json,
+    objects_for_role,
     single_object,
+)
+from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
+    CaseEvidenceReadinessSummary,
+)
+from bridge.tool_packages._configurable_contracts import (
+    ProductCase,
+    VersionedObjectRef,
 )
 from bridge.tool_packages.p0_07_comparison.executor import evaluate_comparison
 from bridge.tool_packages.p0_07_comparison.models import (
@@ -35,6 +43,10 @@ from bridge.toolkit.contracts import (
 
 RESULT_SCHEMA_REF = "bridge://schemas/comparison-record/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
+    "product_case": (
+        "bridge://schemas/product-case/v0.1",
+        ProductCase,
+    ),
     "comparison_spec": (
         "bridge://schemas/comparison-spec/v0.1",
         ComparisonSpec,
@@ -42,6 +54,10 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "comparison_evidence_bundle": (
         "bridge://schemas/comparison-evidence-bundle/v0.1",
         ComparisonEvidenceBundle,
+    ),
+    "case_evidence_readiness_summary": (
+        "bridge://schemas/case-evidence-readiness-summary/v0.1",
+        CaseEvidenceReadinessSummary,
     ),
 }
 
@@ -88,6 +104,12 @@ class ComparisonAdapter:
             "comparison_evidence_bundle",
             ComparisonEvidenceBundle,
         )
+        readiness_summaries = objects_for_role(
+            request,
+            loaded,
+            "case_evidence_readiness_summary",
+            CaseEvidenceReadinessSummary,
+        )
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
         try:
@@ -96,8 +118,28 @@ class ComparisonAdapter:
                 tool_version=spec.version,
                 comparison_spec=comparison_spec,
                 evidence_bundle=evidence_bundle,
+                readiness_summaries=readiness_summaries,
                 input_sha256_by_role={
-                    ref.role: ref.sha256 for ref in request.object_inputs
+                    "comparison_spec": next(
+                        ref.sha256
+                        for ref in request.object_inputs
+                        if ref.role == "comparison_spec"
+                    ),
+                    "comparison_evidence_bundle": next(
+                        ref.sha256
+                        for ref in request.object_inputs
+                        if ref.role == "comparison_evidence_bundle"
+                    ),
+                    "product_cases": sorted(
+                        ref.sha256
+                        for ref in request.object_inputs
+                        if ref.role == "product_case"
+                    ),
+                    "case_evidence_readiness_summaries": sorted(
+                        ref.sha256
+                        for ref in request.object_inputs
+                        if ref.role == "case_evidence_readiness_summary"
+                    ),
                 },
             )
         except ValueError:
@@ -172,8 +214,14 @@ def _envelope_reasons(
         reasons.append("p0_07_random_seed_forbidden")
     roles = [ref.role for ref in request.object_inputs]
     for role in ROLE_MODELS:
-        if roles.count(role) != 1:
-            reasons.append(f"exactly_one_{role}_required")
+        expected = (
+            2
+            if role in {"product_case", "case_evidence_readiness_summary"}
+            else 1
+        )
+        if roles.count(role) != expected:
+            cardinality = "two" if expected == 2 else "one"
+            reasons.append(f"exactly_{cardinality}_{role}_required")
     if any(role not in ROLE_MODELS for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
@@ -198,7 +246,10 @@ def _load_inputs(
 
 
 def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> None:
-    if getattr(value, "object_version", None) != ref.object_version:
+    version = getattr(value, "object_version", None)
+    if isinstance(value, CaseEvidenceReadinessSummary):
+        version = value.summary_version
+    if version != ref.object_version:
         raise StructuredInputError("object_input_version_mismatch")
 
 
@@ -215,11 +266,66 @@ def _binding_reasons(
         "comparison_evidence_bundle",
         ComparisonEvidenceBundle,
     )
+    readiness_summaries = objects_for_role(
+        request,
+        loaded,
+        "case_evidence_readiness_summary",
+        CaseEvidenceReadinessSummary,
+    )
+    product_cases = objects_for_role(
+        request,
+        loaded,
+        "product_case",
+        ProductCase,
+    )
     reasons: list[str] = []
     spec_refs = {item.product_case_ref.ref for item in comparison_spec.cases}
     evidence_refs = {item.product_case_ref.ref for item in evidence_bundle.cases}
     if spec_refs != evidence_refs:
         reasons.append("comparison_case_binding_mismatch")
+    product_cases_by_ref = {item.ref.ref: item for item in product_cases}
+    if set(product_cases_by_ref) != evidence_refs:
+        reasons.append("comparison_product_case_binding_mismatch")
+    summaries_by_case = {
+        item.product_case_ref.ref: item
+        for item in readiness_summaries
+        if item.product_case_ref is not None
+    }
+    if set(summaries_by_case) != evidence_refs:
+        reasons.append("comparison_sufficiency_case_binding_mismatch")
+    for case in evidence_bundle.cases:
+        product_case = product_cases_by_ref.get(case.product_case_ref.ref)
+        if product_case is not None:
+            declared_units = {
+                item.ref for item in product_case.biological_unit_refs
+            }
+            supplied_units = {
+                item.preparation_ref.ref for item in case.preparations
+            }
+            if not declared_units or supplied_units != declared_units:
+                reasons.append("comparison_biological_unit_binding_mismatch")
+            if (
+                case.contract_snapshot.product_definition_ref
+                != product_case.product_definition_ref
+                or case.contract_snapshot.measurement_spec_ref
+                != product_case.measurement_spec_ref
+            ):
+                reasons.append("comparison_product_case_contract_mismatch")
+        summary = summaries_by_case.get(case.product_case_ref.ref)
+        if summary is None:
+            continue
+        expected_ref = VersionedObjectRef(
+            object_id=summary.summary_id,
+            object_version=summary.summary_version,
+        )
+        if case.sufficiency_summary_ref != expected_ref:
+            reasons.append("comparison_sufficiency_summary_ref_mismatch")
+    preparation_sets = [
+        {item.preparation_ref.ref for item in case.preparations}
+        for case in evidence_bundle.cases
+    ]
+    if len(preparation_sets) == 2 and preparation_sets[0] & preparation_sets[1]:
+        reasons.append("comparison_biological_unit_overlap")
     if any(
         case.contract_snapshot.score_contract_ref is not None
         for case in evidence_bundle.cases
@@ -241,7 +347,10 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
                 "sha256": ref.sha256,
                 "media_type": ref.media_type,
             }
-            for ref in sorted(request.object_inputs, key=lambda item: item.role)
+            for ref in sorted(
+                request.object_inputs,
+                key=lambda item: (item.role, item.sha256),
+            )
         ],
     }
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()

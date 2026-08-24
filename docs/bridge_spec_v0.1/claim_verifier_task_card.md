@@ -268,7 +268,7 @@ ReportDraft 内的字段不能授予审核权限。当前 v0.1 对 review-only �
 
 状态优先级固定为：`release_blocked` > `review_required` > `verified_with_warnings` > `verified`。`not_assessed` 表示尚未形成可聚合的完整核验运行，不参与已运行结果的严重度比较。
 
-用户确认是发布流程的独立步骤。`verified` 只表示核验通过，不等于已经发布，也不等于科学真值已被验证。
+用户确认是发布流程的独立步骤。`verified` 只表示报告与当前证据包和 package policy 对应，不等于已经发布，也不等于科学真值已被验证。当前 package 没有可信公开发布授权源，因此所有 assessed receipt 均为 `public_release_authority_state=not_configured`、`public_export_eligibility=ineligible`。
 
 ### 8.2 ClaimVerificationResult
 
@@ -277,7 +277,7 @@ ReportDraft 内的字段不能授予审核权限。当前 v0.1 对 review-only �
 ```text
 verification_id / version / verifier_version
 benchmark_id / benchmark_sha256
-release_contract_id / release_contract_sha256
+release_contract_id / release_contract_sha256 / public_release_authority_state
 report_draft_ref / report_content_hash
 report_audience
 evidence_graph_id / evidence_graph_version / evidence_graph_manifest_sha256
@@ -290,9 +290,7 @@ public_export_eligibility
 工具结果和唯一 JSON artifact 都是这一份回执的相同 canonical bytes；artifact
 checksum 不从发布后的可变路径重新推导。
 
-`public_export_eligibility` 为 `eligible`、`ineligible` 或 `not_assessed`，并与回执中的
-ReportDraft audience 和 release state 交叉约束。Public-safe Export 必须同时读取原始
-ReportDraft 和本回执，核对 ref/hash 后从字段白名单生成新对象；P0-10 不复制第二份报告。
+当前 release contract 只允许 assessed receipt 为 `ineligible`；`not_assessed` receipt 保持 `not_assessed`。未来若接入独立、可信且版本化的公开发布授权源，必须升级 release contract 与 Schema，不能由调用方参数把当前 receipt 改成 eligible。Public-safe Export 同时读取原始 ReportDraft 和本回执，核对 ref/hash 后仅可生成 `review_required` 白名单候选；P0-10 不复制第二份报告。
 
 ## 9. 图表、比较与 Recommendation 核验
 
@@ -390,10 +388,11 @@ Playwright 和外部 factuality 方法只保留 benchmark 处置记录，若未�
 - 将报告文件存在或某个分数可用解释为验证通过。
 - 将 public-safe 检查和科学 claim 核验混为一个 validation state。
 
-Public-safe Export 同时接收原始 `ReportDraft` 和
-`public_export_eligibility=eligible` 的 `ClaimVerificationResult` receipt。它必须核对
-report ref/hash、audience、P0-09 graph manifest hash 和 P0-10 artifact checksum，再从
-字段白名单生成新对象。它不能回写、清洗或覆盖原始报告；详细合同在下一张独立任务卡中整理。
+Public-safe Export 同时接收原始 `ReportDraft` 和 release state 为 `verified` 或
+`verified_with_warnings`、但因 `public_release_authority_state=not_configured` 而保持
+`public_export_eligibility=ineligible` 的 receipt。它必须核对 report ref/hash、audience、
+P0-09 graph manifest hash 和 P0-10 artifact checksum，再从字段白名单生成
+`review_required` 新对象。它不能回写、清洗、覆盖或字符串改写已经核验的 claim；详细合同在下一张独立任务卡中整理。
 
 ## 13. 主要官方来源
 

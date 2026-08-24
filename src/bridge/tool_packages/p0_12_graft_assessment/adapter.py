@@ -14,6 +14,7 @@ from bridge.tool_packages._structured_runtime import (
     publish_single_json,
     single_object,
 )
+from bridge.tool_packages._configurable_contracts import ProductCase
 from bridge.tool_packages.p0_12_graft_assessment.executor import (
     evaluate_graft_assessment,
 )
@@ -37,6 +38,7 @@ from bridge.toolkit.contracts import (
 
 RESULT_SCHEMA_REF = "bridge://schemas/graft-assessment/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
+    "product_case": ("bridge://schemas/product-case/v0.1", ProductCase),
     "graft_assessment_spec": (
         "bridge://schemas/graft-assessment-spec/v0.1",
         GraftAssessmentSpec,
@@ -208,12 +210,28 @@ def _binding_reasons(
     assessment_spec = single_object(
         request, loaded, "graft_assessment_spec", GraftAssessmentSpec
     )
+    product_case = single_object(request, loaded, "product_case", ProductCase)
     evidence_bundle = single_object(
         request, loaded, "graft_evidence_bundle", GraftEvidenceBundle
     )
     reasons: list[str] = []
-    if assessment_spec.product_case_ref != evidence_bundle.product_case_ref:
+    if (
+        assessment_spec.product_case_ref != product_case.ref
+        or evidence_bundle.product_case_ref != product_case.ref
+    ):
         reasons.append("graft_product_case_binding_mismatch")
+    if assessment_spec.measurement_spec_ref != product_case.measurement_spec_ref:
+        reasons.append("graft_measurement_spec_product_case_mismatch")
+    declared_preparations = set(product_case.biological_unit_refs)
+    linked_preparations = {
+        unit.originating_preparation_ref
+        for unit in evidence_bundle.units
+        if unit.originating_preparation_ref is not None
+    }
+    if linked_preparations and not declared_preparations:
+        reasons.append("product_case_biological_units_required")
+    elif not linked_preparations.issubset(declared_preparations):
+        reasons.append("graft_preparation_product_case_mismatch")
     if evidence_bundle.graft_availability == "provided":
         bindings = (
             (assessment_spec.measurement_spec_ref, evidence_bundle.measurement_spec_ref),

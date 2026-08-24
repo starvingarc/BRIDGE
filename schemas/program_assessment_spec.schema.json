@@ -82,6 +82,11 @@
           "title": "Metric Name",
           "type": "string"
         },
+        "minimum_biological_units": {
+          "exclusiveMinimum": 0,
+          "title": "Minimum Biological Units",
+          "type": "integer"
+        },
         "minimum_gene_coverage": {
           "anyOf": [
             {
@@ -94,11 +99,6 @@
           "ge": 0,
           "le": 1,
           "title": "Minimum Gene Coverage"
-        },
-        "minimum_independence_groups": {
-          "exclusiveMinimum": 0,
-          "title": "Minimum Independence Groups",
-          "type": "integer"
         },
         "orthogonal_follow_up_refs": {
           "items": {
@@ -175,7 +175,7 @@
         "reference_upper",
         "minimum_gene_coverage",
         "eligible_evidence_states",
-        "minimum_independence_groups",
+        "minimum_biological_units",
         "review_direction"
       ],
       "title": "ProgramReviewRule",

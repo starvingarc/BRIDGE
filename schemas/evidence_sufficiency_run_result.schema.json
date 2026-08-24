@@ -13,17 +13,19 @@
         "evidence_sufficiency_counts": {
           "$ref": "#/$defs/StateCount"
         },
+        "measurement_evidence_state_counts": {
+          "$ref": "#/$defs/MeasurementEvidenceStateCount"
+        },
         "product_case_ref": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/VersionedObjectRef"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Product Case Ref"
+          "default": null
         },
         "profile_count": {
           "maximum": 5,
@@ -50,6 +52,7 @@
         "summary_version",
         "profile_count",
         "evidence_sufficiency_counts",
+        "measurement_evidence_state_counts",
         "score_state_counts",
         "blocking_reasons"
       ],
@@ -93,6 +96,7 @@
         },
         "deduplicated_evidence_family_ids": {
           "items": {
+            "pattern": "^evidence-family:[A-Za-z0-9._:-]+$",
             "type": "string"
           },
           "title": "Deduplicated Evidence Family Ids",
@@ -146,9 +150,12 @@
           "title": "Limiting Reasons",
           "type": "array"
         },
+        "measurement_evidence_state_counts": {
+          "$ref": "#/$defs/MeasurementEvidenceStateCount"
+        },
         "measurement_result_refs": {
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/VersionedObjectRef"
           },
           "title": "Measurement Result Refs",
           "type": "array"
@@ -156,14 +163,13 @@
         "measurement_spec_ref": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/VersionedObjectRef"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Measurement Spec Ref"
+          "default": null
         },
         "missing_requirements": {
           "items": {
@@ -188,26 +194,24 @@
         "product_case_ref": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/VersionedObjectRef"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Product Case Ref"
+          "default": null
         },
         "product_definition_ref": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/VersionedObjectRef"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Product Definition Ref"
+          "default": null
         },
         "profile_id": {
           "pattern": "^evidence-sufficiency-profile:[a-f0-9]{16}:[A-Za-z0-9._:-]+$",
@@ -222,14 +226,13 @@
         "qc_profile_ref": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/VersionedObjectRef"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Qc Profile Ref"
+          "default": null
         },
         "robustness_reason_codes": {
           "items": {
@@ -304,6 +307,7 @@
         "missing_requirements",
         "score_reason_codes",
         "measurement_result_refs",
+        "measurement_evidence_state_counts",
         "evidence_refs",
         "sensitivity_refs",
         "deduplicated_evidence_family_ids",
@@ -387,6 +391,63 @@
       "title": "GateTraceEntry",
       "type": "object"
     },
+    "MeasurementEvidenceStateCount": {
+      "additionalProperties": false,
+      "properties": {
+        "alert": {
+          "minimum": 0,
+          "title": "Alert",
+          "type": "integer"
+        },
+        "inferred": {
+          "minimum": 0,
+          "title": "Inferred",
+          "type": "integer"
+        },
+        "measured": {
+          "minimum": 0,
+          "title": "Measured",
+          "type": "integer"
+        },
+        "missing": {
+          "minimum": 0,
+          "title": "Missing",
+          "type": "integer"
+        },
+        "negative": {
+          "minimum": 0,
+          "title": "Negative",
+          "type": "integer"
+        },
+        "prior_only": {
+          "minimum": 0,
+          "title": "Prior Only",
+          "type": "integer"
+        },
+        "unavailable": {
+          "minimum": 0,
+          "title": "Unavailable",
+          "type": "integer"
+        },
+        "unknown": {
+          "minimum": 0,
+          "title": "Unknown",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "MeasurementEvidenceStateCount",
+      "type": "object"
+    },
     "ModelRobustnessState": {
       "enum": [
         "validated_applicable",
@@ -467,6 +528,27 @@
         "not_assessed"
       ],
       "title": "StateCount",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
       "type": "object"
     }
   },

@@ -21,6 +21,7 @@ from bridge.tool_packages.p0_04_developmental.models import (
     TimecourseProfile,
     UnmappedDevelopmentState,
 )
+from bridge.tool_packages.p0_03_target_regional.models import StateRoleMap
 from bridge.toolkit.contracts import CellStateEvidenceProfile, QCReadinessProfile, ScoreState
 
 
@@ -30,6 +31,7 @@ def evaluate_developmental_compatibility(
     tool_version: str,
     product_case: ProductCase,
     product_definition: ProductDefinitionCard,
+    state_role_map: StateRoleMap,
     window_spec: DevelopmentWindowSpec,
     cell_state_profile: CellStateEvidenceProfile,
     cell_state_profile_version: str,
@@ -131,6 +133,7 @@ def evaluate_developmental_compatibility(
         tool_version=tool_version,
         product_case_ref=product_case.ref,
         product_definition_ref=product_definition.ref,
+        state_role_map_ref=state_role_map.ref,
         development_window_ref=window_spec.ref,
         cell_state_profile_ref=VersionedObjectRef(
             object_id=cell_state_profile.profile_id,

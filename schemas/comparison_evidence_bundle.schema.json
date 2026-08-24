@@ -17,25 +17,14 @@
         "product_case_ref": {
           "$ref": "#/$defs/VersionedObjectRef"
         },
-        "sufficiency_profile_ref": {
+        "sufficiency_summary_ref": {
           "$ref": "#/$defs/VersionedObjectRef"
-        },
-        "sufficiency_state": {
-          "enum": [
-            "not_assessed",
-            "insufficient",
-            "limited",
-            "sufficient"
-          ],
-          "title": "Sufficiency State",
-          "type": "string"
         }
       },
       "required": [
         "product_case_ref",
         "contract_snapshot",
-        "sufficiency_profile_ref",
-        "sufficiency_state",
+        "sufficiency_summary_ref",
         "preparations"
       ],
       "title": "ComparisonCaseEvidence",

@@ -7,7 +7,7 @@
 | 日期 | 2026-08-24 |
 | 状态 | `candidate` |
 | 适用范围 | 可选的移植后 graft scRNA-seq/snRNA-seq 独立评估 |
-| 当前运行输入 | 一个 `GraftAssessmentSpec` 和一个 `GraftEvidenceBundle`；未来证据生产层仍可读取 `GraftCase`、QC、MeasurementSpec 与 reference snapshot |
+| 当前运行输入 | 一个 `ProductCase`、一个 `GraftAssessmentSpec` 和一个 `GraftEvidenceBundle`；未来证据生产层仍可读取 `GraftCase`、QC、MeasurementSpec 与 reference snapshot |
 | 主要输出 | 当前可执行切片输出一个 `GraftAssessment`；显式 preparation linkage 作为内部记录嵌入，不另造第二个运行产物 |
 
 ## 1. 任务目标与边界
@@ -18,7 +18,7 @@
 - Graft 结果与移植前产品评估分库存储，不回填移植前分域结果、阈值、训练标签或产品比较结论。
 - 当前没有匹配的临床疗效、安全性或功能真值。本模块不输出临床疗效、安全性、potency、GMP 放行或 graft 总分。
 - scRNA-seq 与 snRNA-seq 使用独立 `MeasurementSpec`，不得直接复用未验证的阈值、检出边界或分类校准。
-- 分析单位为独立 `animal/graft x post-transplant timepoint`。cell 或 nucleus 不能充当 biological replicate。
+- 独立分析单位为 animal。`graft x post-transplant timepoint` 是同一 animal 内的观察单位，必须先在 animal 内聚合；cell、nucleus 或重复 timepoint 不能充当 biological replicate。
 - 时间、cell line、protocol、sorting 或 assay 完全混杂时，只能输出 `descriptive_only`。
 
 ### 1.1 当前可执行切片
@@ -27,13 +27,16 @@ P0-12 v0.2.0 不直接执行本任务卡后文列出的表达矩阵 QC、物种�
 reference mapping、cell-state、composition、maturation、trajectory 或
 communication 方法。它只封装这些上游流程已经形成的结构化观测：
 
+- 一个 checksummed `ProductCase` 明确案例、MeasurementSpec 和允许的来源
+  biological preparation units；
 - 一个 checksummed `GraftAssessmentSpec` 提供 ProductCase/MeasurementSpec/
   assay/sampling/reference/algorithm 绑定，以及 channel、单位、可接受
-  evidence state、最小独立单位数和可选解释区间；
+  evidence state、最小独立 animal 数和可选解释区间；
 - 一个 checksummed `GraftEvidenceBundle` 提供显式 graft context、按
-  `animal/graft/timepoint` 组织的独立单位、预计算观测、design constraint
-  引用及可验证的 preparation linkage；
-- 代码只输出每个配置 channel 的 eligible unit 数、均值、范围和相对输入
+  `animal/graft/timepoint` 组织的观察单位、预计算观测、design constraint
+  引用及显式声明的 preparation linkage evidence；
+- 代码先在 animal 内聚合重复 graft/timepoint 观察，再以 animal 等权汇总；只输出
+  每个配置 channel 的 eligible animal 数、per-animal aggregate、均值、范围和相对输入
   区间的位置。它不含 state 名称、物种、月份、基因、程序或阈值常量；
 - `graft_availability=not_provided` 是显式输入状态，会产生可追溯的
   `not_provided` 结果，不降低任何移植前证据；
@@ -112,7 +115,7 @@ missing_fields / user_confirmations
 ```
 
 - `animal_id`、`graft_id` 或 timepoint 缺失时，Agent 只能运行不依赖该字段的模块。
-- `originating_preparation_id` 缺失时仍可生成独立 `GraftAssessment`，但 linkage 状态必须为 `provided_unlinked`。
+- `originating_preparation_id` 缺失时仍可生成独立 `GraftAssessment`，但 linkage 状态必须为 `not_declared`；部分声明为 `partially_declared`，全部带 Evidence 声明为 `declared_with_evidence`。这些状态不表示 lineage 已被独立验证。
 - 系统不得从文件名、目录、cluster 名或论文惯例推断 graft 关系。
 - 人源细胞已经过物理 sorting 或仅提供人源矩阵时，必须如实记录 species assignment 未重新评测。
 
@@ -204,7 +207,8 @@ reference support、subtype、program、time 和 sensitivity 等丰富字段仍�
 | 字段 | 含义 |
 | --- | --- |
 | `graft_availability` | `not_provided` / `provided` |
-| `linkage_state` | `provided_unlinked` / `provided_linked` / `not_applicable` |
+| `linkage_state` | `not_declared` / `partially_declared` / `declared_with_evidence` / `not_applicable`；声明不等于验证 |
+| `observation_unit_count` / `independent_animal_count` | 原始 graft/timepoint 观察单位数与真正独立 animal 数 |
 | `analysis_mode` | `static_profile` / `descriptive_only` / `inferential` / `unavailable` |
 | `measurement_spec_ref` | graft scRNA 或 snRNA 的冻结合同 |
 | `species_qc` | species method、human/host/ambiguous evidence 与适用性 |
@@ -229,7 +233,8 @@ reference support、subtype、program、time 和 sensitivity 等丰富字段仍�
 | 条件 | 输出行为 |
 | --- | --- |
 | 用户未提供 graft | `graft_availability=not_provided`；移植前评估不受影响 |
-| graft 已提供但无 preparation linkage | 生成独立 `GraftAssessment`；`provided_unlinked` |
+| graft 已提供但无 preparation linkage | 生成独立 `GraftAssessment`；`not_declared` |
+| preparation 不在 ProductCase biological units 中 | 顶层 binding failure；不发布 artifact |
 | 缺少 animal/graft ID | 不发布个体间变异或推断性统计 |
 | timepoint 与 cell line/protocol 完全混杂 | `descriptive_only`；显式列出混杂 |
 | sc/sn MeasurementSpec 不匹配 | 对应结果 `unavailable`，不复用另一模态阈值 |

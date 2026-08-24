@@ -140,19 +140,33 @@ def _profile(
         "insufficient": "raw_evidence_gate_insufficient",
         "not_assessed": "raw_evidence_gate_not_assessed",
     }[state]
+    product_case = {
+        "object_id": product_case_ref,
+        "object_version": "1.0.0",
+    }
+    measurement_spec = {
+        "object_id": measurement_spec_ref,
+        "object_version": "1.0.0",
+    }
     return {
         "profile_id": profile_id,
         "profile_version": "0.1.0",
         "gate_rule_spec_ref": "GATE-EVIDENCE-SUFFICIENCY-v0.1",
         "gate_rule_version": "0.1.0",
-        "product_case_ref": product_case_ref,
-        "product_definition_ref": "product-definition:synthetic",
+        "product_case_ref": product_case,
+        "product_definition_ref": {
+            "object_id": "product-definition:synthetic",
+            "object_version": "1.0.0",
+        },
         "domain_id": domain_id,
-        "measurement_spec_ref": measurement_spec_ref,
+        "measurement_spec_ref": measurement_spec,
         "score_contract_ref": None,
         "data_readiness": "adequate",
         "data_reason_codes": ["data_readiness_adequate"],
-        "qc_profile_ref": "qc-profile:synthetic",
+        "qc_profile_ref": {
+            "object_id": "qc-profile:synthetic",
+            "object_version": "0.1.0",
+        },
         "model_robustness": "validated_applicable",
         "robustness_reason_codes": ["method_validated_applicable"],
         "validation_refs": ["validation:synthetic"],
@@ -160,13 +174,28 @@ def _profile(
         "prior_reason_codes": ["prior_applicable"],
         "snapshot_refs": ["snapshot:synthetic"],
         "evidence_sufficiency_state": state,
-        "blocking_reasons": [] if state == "sufficient" else [state_reason],
-        "limiting_reasons": [],
-        "missing_requirements": [],
+        "blocking_reasons": [state_reason] if state == "insufficient" else [],
+        "limiting_reasons": [state_reason] if state == "limited" else [],
+        "missing_requirements": [state_reason] if state == "not_assessed" else [],
         "domain_score": None,
         "score_state": "unavailable",
         "score_reason_codes": ["p0_score_contract_unavailable"],
-        "measurement_result_refs": ["measurement-result:target"],
+        "measurement_result_refs": [
+            {
+                "object_id": "measurement-result:target",
+                "object_version": "1.0.0",
+            }
+        ],
+        "measurement_evidence_state_counts": {
+            "measured": 1,
+            "inferred": 0,
+            "prior_only": 0,
+            "negative": 0,
+            "missing": 0,
+            "unknown": 0,
+            "unavailable": 0,
+            "alert": 0,
+        },
         "evidence_refs": ["upstream-evidence:target"],
         "sensitivity_refs": ["sensitivity:synthetic"],
         "deduplicated_evidence_family_ids": ["evidence-family:transcriptomic"],
@@ -1094,6 +1123,22 @@ def test_shadow_record_is_visible_but_never_formal_reconciliation_input(tmp_path
     assert "lower_tier_excluded" in reconciliation["reason_codes"]
 
 
+def test_profile_measurement_result_version_must_match_candidate(
+    tmp_path: Path,
+) -> None:
+    profile = _profile()
+    profile["measurement_result_refs"][0]["object_version"] = "2.0.0"
+
+    run = _run(tmp_path, profile=profile)
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert rejected[0]["reason_codes"] == [
+        "sufficiency_profile_measurement_result_mismatch"
+    ]
+
+
 def test_shadow_integration_role_cannot_create_integration_sensitive_conclusion(
     tmp_path: Path,
 ) -> None:
@@ -1306,8 +1351,11 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
     )
     assert source_effective[f"{second_records[0]['evidence_id']}@1"] is EvidenceLifecycleState.SUPERSEDED
     assert source_effective[f"{second_records[1]['evidence_id']}@2"] is EvidenceLifecycleState.ACTIVE
-    edges = EvidenceGraphQueries.open(second_dir / "case_evidence_graph_manifest.json")
-    provenance = edges.trace_evidence_provenance(
+    graph = EvidenceGraphQueries.open(second_dir / "case_evidence_graph_manifest.json")
+    assert graph.effective_evidence_refs == {
+        f"{second_records[1]['evidence_id']}@2"
+    }
+    provenance = graph.trace_evidence_provenance(
         evidence_ref=f"{second_records[1]['evidence_id']}@2"
     )
     assert provenance.returned_node_count > 1
@@ -1343,6 +1391,10 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
     )["records"]
     assert [item["evidence_version"] for item in third_records] == [1, 2, 3]
     assert third_records[-1]["lifecycle_state"] == "invalidated"
+    third_dir = third.request.output_dir / third.run_id
+    assert EvidenceGraphQueries.open(
+        third_dir / "case_evidence_graph_manifest.json"
+    ).effective_evidence_refs == frozenset()
 
 
 def test_request_and_object_input_order_do_not_change_identity_or_artifact_bytes(

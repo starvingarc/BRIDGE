@@ -60,7 +60,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     if asset.checksum is not None and asset.checksum != input_hash:
         return _failed_run(request, spec, input_hash, "input_checksum_mismatch")
     try:
-        validate_upstream_qc(asset, input_hash)
+        qc_binding = validate_upstream_qc(asset, input_hash)
     except UpstreamQCError as exc:
         return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
     measurement_spec = load_measurement_spec(request.measurement_spec_ref)
@@ -117,8 +117,17 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
             raise ReferenceError("measurement_spec_not_supported_by_reference", measurement_spec.measurement_spec_id)
         adata = read_expression_asset(asset)
         validate_expression_object(adata, require_counts=asset.matrix_semantics == "raw_counts")
+        if (
+            adata.n_obs != qc_binding.selected_view.n_observations
+            or _observation_ids_sha256(adata.obs_names)
+            != qc_binding.selected_view.observation_ids_sha256
+        ):
+            raise UpstreamQCError(
+                "qc_selected_view_observations_mismatch",
+                qc_binding.selected_view.view_id,
+            )
         genes = _declared_gene_names(adata, asset.metadata)
-    except (InputAuditError, ReferenceError) as exc:
+    except (InputAuditError, ReferenceError, UpstreamQCError) as exc:
         return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
     except Exception as exc:
         return _failed_run(request, spec, input_hash, "cell_state_input_read_failed", str(exc))
@@ -128,7 +137,13 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     minimum_shared = int(measurement_spec.minimum_data["minimum_shared_genes"])
     chunk_size = int(request.parameters.get("chunk_size", 256))
     workers = max(1, min(int(request.parameters.get("workers", min(4, os.cpu_count() or 1))), 8))
-    run_id = _run_id(request, spec, input_hash, sha256_path(snapshot_root / "reference_manifest.json"))
+    run_id = _run_id(
+        request,
+        spec,
+        input_hash,
+        sha256_path(snapshot_root / "reference_manifest.json"),
+        qc_binding.profile_sha256,
+    )
     run_dir = request.output_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -225,7 +240,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     composition = composition_records(evidence, source_summaries, primary_source_ids)
     for record in composition:
         record["label_level"] = "L1"
-        record["denominator_view"] = "all input observations"
+        record["denominator_view"] = "checksummed QC-selected observations"
     composition.extend(l2_composition)
     modality_sensitivity, sensitivity_support = _run_sensitivity(
         query,
@@ -253,12 +268,16 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         profile_id=f"cell-state-profile:{run_id}",
         assay=asset.assay or "unknown",
         measurement_spec_id=measurement_spec.measurement_spec_id,
+        measurement_spec_version=measurement_spec.version,
         measurement_spec_status=measurement_spec.status,
+        upstream_qc_profile_ref=qc_binding.profile.profile_id,
+        upstream_qc_profile_sha256=qc_binding.profile_sha256,
+        input_data_view=qc_binding.selected_view,
         annotation_vocabulary_ref=vocabulary.vocabulary_id,
         reference_snapshot_ref=manifest.snapshot_id,
         n_observations=int(adata.n_obs),
         n_genes=int(adata.n_vars),
-        denominator="all observations in the declared post-QC input view",
+        denominator="all observations in the checksummed QC-selected input view",
         label_levels={
             "L1": {"state": "shadow", "n_observations": int(adata.n_obs)},
             "L2": {
@@ -715,13 +734,29 @@ def _declared_gene_names(adata, metadata: dict[str, Any]) -> np.ndarray:
     return genes
 
 
-def _run_id(request: ToolRequest, spec: ToolPackageSpec, input_hash: str, reference_hash: str) -> str:
+def _observation_ids_sha256(values) -> str:
+    payload = json.dumps(
+        [str(value) for value in values],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _run_id(
+    request: ToolRequest,
+    spec: ToolPackageSpec,
+    input_hash: str,
+    reference_hash: str,
+    qc_profile_sha256: str,
+) -> str:
     payload = json.dumps(
         {
             "request": request.model_dump(mode="json"),
             "tool_version": spec.version,
             "input_hash": input_hash,
             "reference_hash": reference_hash,
+            "qc_profile_sha256": qc_profile_sha256,
         },
         sort_keys=True,
         separators=(",", ":"),

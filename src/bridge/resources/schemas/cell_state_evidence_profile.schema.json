@@ -1,4 +1,108 @@
 {
+  "$defs": {
+    "DataViewBinding": {
+      "additionalProperties": false,
+      "description": "Content-addressed expression view passed between scientific tools.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "matrix_location": {
+          "minLength": 1,
+          "title": "Matrix Location",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "enum": [
+            "raw_counts",
+            "normalized_expression"
+          ],
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_ids_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Ids Sha256",
+          "type": "string"
+        },
+        "parent_asset_id": {
+          "minLength": 1,
+          "title": "Parent Asset Id",
+          "type": "string"
+        },
+        "parent_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Parent Asset Sha256",
+          "type": "string"
+        },
+        "sample_or_preparation_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Or Preparation Ref"
+        },
+        "selection_spec_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Spec Ref"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "view_id": {
+          "minLength": 1,
+          "title": "View Id",
+          "type": "string"
+        },
+        "view_kind": {
+          "enum": [
+            "all_observations",
+            "qc_selected_observations"
+          ],
+          "title": "View Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "view_kind",
+        "artifact_id",
+        "sha256",
+        "parent_asset_id",
+        "parent_asset_sha256",
+        "matrix_location",
+        "matrix_semantics",
+        "n_observations",
+        "observation_ids_sha256"
+      ],
+      "title": "DataViewBinding",
+      "type": "object"
+    }
+  },
   "$id": "bridge://schemas/cell-state-evidence-profile/v0.1",
   "additionalProperties": false,
   "properties": {
@@ -46,6 +150,17 @@
       "title": "Gene Coverage",
       "type": "object"
     },
+    "input_data_view": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DataViewBinding"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "label_levels": {
       "additionalProperties": true,
       "title": "Label Levels",
@@ -63,6 +178,18 @@
     "measurement_spec_status": {
       "title": "Measurement Spec Status",
       "type": "string"
+    },
+    "measurement_spec_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Measurement Spec Version"
     },
     "method_disagreement": {
       "additionalProperties": true,
@@ -132,6 +259,31 @@
       },
       "title": "Unresolved Labels",
       "type": "array"
+    },
+    "upstream_qc_profile_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Upstream Qc Profile Ref"
+    },
+    "upstream_qc_profile_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Upstream Qc Profile Sha256"
     },
     "warnings": {
       "items": {

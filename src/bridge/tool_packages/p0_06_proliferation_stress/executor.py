@@ -55,7 +55,7 @@ def evaluate_proliferation_stress_response(
                     reason_code="program_rule_not_configured",
                 )
             )
-        elif observation.program_ref != rule.program_ref:
+        elif not _observation_matches_rule(observation, rule):
             unmatched.append(
                 UnmatchedProgramObservation(
                     observation_id=observation.observation_id,
@@ -189,11 +189,11 @@ def _evaluate_rule(
         )
 
     included = [item for item in assessments if item.included]
-    groups = {item.independence_group for item in included}
+    groups = {item.analysis_unit_ref.ref for item in included}
     by_group: dict[str, list[ReferenceRelation]] = defaultdict(list)
     for item in included:
         assert item.reference_relation is not None
-        by_group[item.independence_group].append(item.reference_relation)
+        by_group[item.analysis_unit_ref.ref].append(item.reference_relation)
     triggering_groups = {
         group
         for group, relations in by_group.items()
@@ -215,10 +215,10 @@ def _evaluate_rule(
     elif not included:
         state = ReviewFlagState.NOT_ASSESSED
         reasons.add("program_evidence_not_eligible")
-    elif len(groups) < rule.minimum_independence_groups:
+    elif len(groups) < rule.minimum_biological_units:
         state = ReviewFlagState.CANNOT_RESOLVE
-        reasons.add("independence_group_evidence_insufficient")
-    elif len(triggering_groups) >= rule.minimum_independence_groups:
+        reasons.add("biological_unit_evidence_insufficient")
+    elif len(triggering_groups) >= rule.minimum_biological_units:
         state = ReviewFlagState.TRANSCRIPTOMIC_REVIEW_FLAG
         reasons.add("configured_review_condition_met")
     else:
@@ -238,13 +238,14 @@ def _evaluate_rule(
         program_ref=rule.program_ref,
         analysis_scope=rule.analysis_scope,
         state_ref=rule.state_ref,
+        stage_context_ref=rule.stage_context_ref,
         metric_name=rule.metric_name,
         unit=rule.unit,
         reference_lower=rule.reference_lower,
         reference_upper=rule.reference_upper,
         observations=assessments,
-        included_independence_group_count=len(groups),
-        triggering_independence_group_count=len(triggering_groups),
+        included_biological_unit_count=len(groups),
+        triggering_biological_unit_count=len(triggering_groups),
         review_flag_state=state,
         evidence_refs=sorted(
             {evidence for item in included for evidence in item.evidence_refs}
@@ -281,7 +282,12 @@ def _assess_observation(
     return ProgramObservationAssessment(
         observation_id=observation.observation_id,
         evidence_family_id=observation.evidence_family_id,
-        independence_group=observation.independence_group,
+        analysis_unit_ref=observation.analysis_unit_ref,
+        metric_name=observation.metric_name,
+        unit=observation.unit,
+        analysis_scope=observation.analysis_scope,
+        state_ref=observation.state_ref,
+        stage_context_ref=observation.stage_context_ref,
         method_ref=observation.method_ref,
         evidence_state=observation.evidence_state,
         value=observation.value,
@@ -290,6 +296,20 @@ def _assess_observation(
         included=exclusion is None,
         exclusion_reason=exclusion,
         evidence_refs=sorted(observation.evidence_refs),
+    )
+
+
+def _observation_matches_rule(
+    observation: ProgramObservation,
+    rule: ProgramReviewRule,
+) -> bool:
+    return (
+        observation.program_ref == rule.program_ref
+        and observation.metric_name == rule.metric_name
+        and observation.unit == rule.unit
+        and observation.analysis_scope is rule.analysis_scope
+        and observation.state_ref == rule.state_ref
+        and observation.stage_context_ref == rule.stage_context_ref
     )
 
 

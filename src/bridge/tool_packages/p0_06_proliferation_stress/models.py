@@ -110,7 +110,7 @@ class ProgramReviewRule(FrozenModel):
         min_length=1,
         json_schema_extra={"uniqueItems": True},
     )
-    minimum_independence_groups: StrictInt = Field(gt=0)
+    minimum_biological_units: StrictInt = Field(gt=0)
     review_direction: ReviewDirection
     orthogonal_follow_up_refs: list[PublishedRef] = Field(
         default_factory=list,
@@ -214,9 +214,13 @@ class ProgramObservation(FrozenModel):
     observation_id: str = Field(pattern=r"^program-observation:[A-Za-z0-9._:-]+$")
     rule_id: str = Field(pattern=r"^program-review-rule:[A-Za-z0-9._:-]+$")
     program_ref: VersionedObjectRef
+    metric_name: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9._:-]*$")
+    unit: str = Field(min_length=1, max_length=120)
+    analysis_scope: AnalysisScope
+    state_ref: VersionedObjectRef | None = None
+    stage_context_ref: VersionedObjectRef
     analysis_unit_ref: VersionedObjectRef
     evidence_family_id: PublishedRef
-    independence_group: PublishedRef
     method_ref: VersionedObjectRef
     evidence_state: ProgramEvidenceState
     value: FiniteNumber | None
@@ -224,6 +228,10 @@ class ProgramObservation(FrozenModel):
     evidence_refs: list[PublishedRef] = Field(
         min_length=1,
         json_schema_extra={"uniqueItems": True},
+    )
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
     )
 
     @field_validator("value", "gene_coverage")
@@ -240,6 +248,10 @@ class ProgramObservation(FrozenModel):
 
     @model_validator(mode="after")
     def numeric_state_is_coherent(self) -> Self:
+        if self.analysis_scope is AnalysisScope.STATE_SPECIFIC and self.state_ref is None:
+            raise ValueError("state_specific observation requires state_ref")
+        if self.analysis_scope is AnalysisScope.WHOLE_PRODUCT and self.state_ref is not None:
+            raise ValueError("whole_product observation cannot declare state_ref")
         unavailable = {
             ProgramEvidenceState.MISSING,
             ProgramEvidenceState.UNKNOWN,
@@ -285,7 +297,12 @@ class ProgramEvidenceBundle(FrozenModel):
 class ProgramObservationAssessment(FrozenModel):
     observation_id: str = Field(pattern=r"^program-observation:[A-Za-z0-9._:-]+$")
     evidence_family_id: PublishedRef
-    independence_group: PublishedRef
+    analysis_unit_ref: VersionedObjectRef
+    metric_name: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9._:-]*$")
+    unit: str = Field(min_length=1, max_length=120)
+    analysis_scope: AnalysisScope
+    state_ref: VersionedObjectRef | None
+    stage_context_ref: VersionedObjectRef
     method_ref: VersionedObjectRef
     evidence_state: ProgramEvidenceState
     value: FiniteNumber | None
@@ -294,6 +311,10 @@ class ProgramObservationAssessment(FrozenModel):
     included: StrictBool
     exclusion_reason: ReasonCode | None
     evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
+    )
 
     @field_validator("value", "gene_coverage")
     @classmethod
@@ -344,13 +365,14 @@ class ProgramRuleResult(FrozenModel):
     program_ref: VersionedObjectRef
     analysis_scope: AnalysisScope
     state_ref: VersionedObjectRef | None
+    stage_context_ref: VersionedObjectRef
     metric_name: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9._:-]*$")
     unit: str = Field(min_length=1, max_length=120)
     reference_lower: FiniteNumber
     reference_upper: FiniteNumber
     observations: list[ProgramObservationAssessment]
-    included_independence_group_count: StrictInt = Field(ge=0)
-    triggering_independence_group_count: StrictInt = Field(ge=0)
+    included_biological_unit_count: StrictInt = Field(ge=0)
+    triggering_biological_unit_count: StrictInt = Field(ge=0)
     review_flag_state: ReviewFlagState
     evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
     reason_codes: list[ReasonCode] = Field(json_schema_extra={"uniqueItems": True})

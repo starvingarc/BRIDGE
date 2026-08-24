@@ -90,6 +90,12 @@
     "ProgramObservationAssessment": {
       "additionalProperties": false,
       "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "analysis_unit_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
         "evidence_family_id": {
           "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
           "title": "Evidence Family Id",
@@ -144,13 +150,13 @@
           "title": "Included",
           "type": "boolean"
         },
-        "independence_group": {
-          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
-          "title": "Independence Group",
-          "type": "string"
-        },
         "method_ref": {
           "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "metric_name": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Metric Name",
+          "type": "string"
         },
         "observation_id": {
           "pattern": "^program-observation:[A-Za-z0-9._:-]+$",
@@ -166,6 +172,25 @@
               "type": "null"
             }
           ]
+        },
+        "stage_context_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "state_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
         },
         "value": {
           "anyOf": [
@@ -185,7 +210,12 @@
       "required": [
         "observation_id",
         "evidence_family_id",
-        "independence_group",
+        "analysis_unit_ref",
+        "metric_name",
+        "unit",
+        "analysis_scope",
+        "state_ref",
+        "stage_context_ref",
         "method_ref",
         "evidence_state",
         "value",
@@ -212,9 +242,9 @@
           "type": "array",
           "uniqueItems": true
         },
-        "included_independence_group_count": {
+        "included_biological_unit_count": {
           "minimum": 0,
-          "title": "Included Independence Group Count",
+          "title": "Included Biological Unit Count",
           "type": "integer"
         },
         "metric_name": {
@@ -271,6 +301,9 @@
           "title": "Rule Id",
           "type": "string"
         },
+        "stage_context_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
         "state_ref": {
           "anyOf": [
             {
@@ -281,9 +314,9 @@
             }
           ]
         },
-        "triggering_independence_group_count": {
+        "triggering_biological_unit_count": {
           "minimum": 0,
-          "title": "Triggering Independence Group Count",
+          "title": "Triggering Biological Unit Count",
           "type": "integer"
         },
         "unit": {
@@ -298,13 +331,14 @@
         "program_ref",
         "analysis_scope",
         "state_ref",
+        "stage_context_ref",
         "metric_name",
         "unit",
         "reference_lower",
         "reference_upper",
         "observations",
-        "included_independence_group_count",
-        "triggering_independence_group_count",
+        "included_biological_unit_count",
+        "triggering_biological_unit_count",
         "review_flag_state",
         "evidence_refs",
         "reason_codes"

@@ -35,12 +35,15 @@ profile and QC profile. Its code contains no biological state-role table:
 changing a product interpretation requires a new input object and checksum,
 not an implementation edit. P0-03 emits raw role-resolved composition only,
 keeps `domain_score=null`, and reports absent spatial evidence as
-`not_assessed`. P0-04 similarly reads a checksummed DevelopmentWindowSpec
+`not_assessed`. P0-01 emits physical checksummed `DataViewBinding` records;
+P0-02 and P0-03 through P0-05 bind the exact QC-selected view rather than a
+logical label. P0-04 similarly reads checksummed StateRoleMap and
+DevelopmentWindowSpec
 instead of embedding state names, developmental windows, time conversions or
 thresholds. Its first callable path reports static whole-product and
 target-related composition while reference-stage and true-timepoint evidence
-remain explicit `not_assessed` or `unavailable`. P0-05 reads a checksummed
-OffTargetRoleSpec instead of embedding product roles or thresholds. It reports
+remain explicit `not_assessed` or `unavailable`. P0-05 reads checksummed
+StateRoleMap and OffTargetRoleSpec instead of embedding product roles or thresholds. It reports
 static full-product role composition while OOD and rare-state calibration stay
 `not_assessed`. P0-06 reads checksummed ProgramAssessmentSpec and
 ProgramEvidenceBundle objects instead of embedding program names, genes,
@@ -49,7 +52,9 @@ precomputed observations and emits only shadow review signals; ProtocolIR,
 residual-pluripotency LOD and transcriptomic CNV stay `not_assessed`. P0-08 accepts only immutable,
 checksum- and Schema-bound upstream evidence objects, applies Data Readiness →
 Model Robustness → Prior Applicability → sufficiency, and emits no measurements
-or domain score. A scientifically incomplete but contract-valid P0-08 case
+or domain score. P0-08 preserves exact MeasurementResult object versions and
+uses the shared `evidence-family:<id>` namespace, so P0-09 can reject version or
+family drift without a caller-side translation. A scientifically incomplete but contract-valid P0-08 case
 returns `not_assessed`; malformed inputs fail eligibility. P0-09 compiles
 accepted atomic records and explicit missing requirements into immutable
 JSON/Parquet Case or Comparison Evidence Graphs. Its Agent surface exposes only
@@ -57,16 +62,22 @@ seven bounded read-only queries; callers cannot submit arbitrary graph queries
 or writes. Rejected sibling records yield a traceable `partial` bundle without
 entering the graph, while top-level contract failures publish nothing. P0-10
 checks a structured `ReportDraft` against one P0-09 graph manifest and packaged
-policy authority, then emits one receipt; internal correspondence does not make
-a report public-eligible, and public claims require cited formal Evidence.
-P0-07 reads a checksummed ComparisonSpec and preparation-level evidence bundle.
-It performs only pairwise descriptive summaries and raw deltas; biological
+policy, using graph-derived effective lifecycle rather than predecessor row
+state. It emits one receipt; internal correspondence does not make a report
+public-eligible, and the current public-release authority is explicitly
+`not_configured`.
+P0-07 reads two checksummed ProductCases, a ComparisonSpec and biological-unit
+evidence bundle. It rejects unit mismatch or cross-arm overlap and performs only
+pairwise descriptive summaries and raw deltas; biological
 directions and comparability requirements come from the input, while inference,
 Pareto, score and rank remain unavailable. P0-11 rebuilds only explicitly
-selected fields from a P0-10-eligible report and checksummed PublicExportSpec;
-it omits source identifiers and stops at a human-confirmation candidate. P0-12
-summarizes checksummed, precomputed graft observations under a caller-supplied
-versioned rule object; it never infers linkage, scores a graft or backfills the
+selected fields from a P0-10-verified report and checksummed PublicExportSpec,
+preserving claim text exactly. Because P0-10 has no configured public-release
+authority, its receipt remains export-ineligible and P0-11 can produce only
+`review_required`; it omits source identifiers and never authorizes
+publication. P0-12 summarizes checksummed, precomputed graft observations under
+a caller-supplied versioned rule object, aggregating repeated timepoints within
+animal before across-animal summary; it never verifies linkage, scores a graft or backfills the
 pre-transplant product. HTTP, MCP and queue adapters may wrap
 the same JSON contracts later without changing scientific semantics.
 

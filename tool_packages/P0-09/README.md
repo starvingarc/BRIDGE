@@ -66,7 +66,7 @@ Successful or partial execution writes one immutable `<output_dir>/run-<digest>/
 - `shadow` and `exploratory` records remain visible for audit but never enter formal reconciliation.
 - Failed, skipped, or not-implemented upstream runs cannot become evidence.
 - Records sharing an EvidenceFamily retain provenance but contribute one family direction. Families in the same `independence_scope`, or joined by the symmetric/transitive closure of `known_dependencies`, count as one independent component. Opposite directions within a component remain unresolved; tools and records are never majority votes.
-- P0-08 v0.1 exposes bare ProductCase and MeasurementSpec IDs rather than versioned refs. P0-09 therefore validates shadow/exploratory ID, MeasurementResult and retained-family bindings but conservatively rejects every formal candidate/external ref with `sufficiency_profile_version_binding_unavailable`; v0.1 cannot emit an eligible formal reconciliation.
+- P0-08 v0.1 exposes exact versioned ProductCase and MeasurementSpec refs. P0-09 requires exact ID-and-version equality, MeasurementResult membership and retained-family binding. Formal reconciliation remains unavailable because the P0-08 profile contract is still a candidate and cannot authorize formal evidence-tier promotion.
 
 ## Refusal and degradation
 
@@ -163,7 +163,7 @@ Each `StructuredInputRef` requires `input_id:string`, exact `role:string`, regis
 | `ClaimRequirementSpec` | key/channel role/modality/experiment/blocking scope/required | Missing required role materializes Requirement |
 | `ReconciliationSpecRegistry` | registry ID/version/status/time; specs | Formal evidence requires frozen registry and frozen spec |
 | `ReconciliationSpec` | ID/version/claim type, required/optional/primary/confirmation/integration roles, minimum family map, allowed states, fixed rules, review/validation/status | No weights, score thresholds, fallback method or expression language |
-| P0-08 `EvidenceSufficiencyProfile` | profile ID/version, bare ProductCase/MeasurementSpec IDs, MeasurementResult refs, retained family IDs, sufficiency state, reasons, UTC time | Shadow/exploratory evidence must match every available ID/family binding. Missing versioned ProductCase/MeasurementSpec refs make formal authorization unavailable in v0.1 |
+| P0-08 `EvidenceSufficiencyProfile` | profile ID/version, versioned ProductCase/ProductDefinition/MeasurementSpec/QC refs, MeasurementResult refs and evidence-state counts, retained family IDs, sufficiency state, reasons, UTC time | Candidate records must match exact ProductCase and MeasurementSpec versions plus every available result/family binding. The candidate P0-08 contract still cannot authorize formal tier promotion. |
 
 Reason-code lists with scientific precedence preserve their declared order. Object catalogs, refs, registry entries and other explicitly set-like lists are normalized deterministically. Reordering an interpretive/temporal list changes content identity; reordering a set-like list does not.
 
@@ -214,7 +214,7 @@ Case manifest adds `product_case_ref`; Comparison manifest adds `comparison_ref`
 
 `artifact_manifest.json` records run/tool/environment/result schema, caller-label-free semantic identities of structured objects, and exact checksums/media types/available byte sizes of nine preceding files. It deliberately does not hash itself. Raw input SHA remains in the current `ToolRunV2.request`; base/source graph inputs also retain their content-addressed source SHA in the reusable manifest. Semantically equivalent set-order or consistent input-label variants reuse the same byte-identical bundle. `ToolRunV2.artifacts` adds absolute deployment paths for local retrieval; those paths never enter scientific JSON/Parquet facts.
 
-Every `EvidenceGraphQueryResult` contains query name, graph ID/version, sorted node/edge objects, returned and omitted counts, `truncated`, and stable reason codes. `truncated=true` only when at least one reachable node or edge was actually omitted. It never exposes arbitrary predicates, executable query strings or mutation methods.
+Every `EvidenceGraphQueryResult` contains query name, graph ID/version, sorted node/edge objects, returned and omitted counts, `truncated`, and stable reason codes. `truncated=true` only when at least one reachable node or edge was actually omitted. `EvidenceGraphQueries.effective_evidence_refs` separately exposes the manifest-validated, graph-derived latest active owned Evidence versions for downstream verification. It never trusts the immutable predecessor row's original lifecycle field after a successor supersedes or invalidates it, and it never exposes arbitrary predicates, executable query strings or mutation methods.
 
 | Query | Required/filter parameters | Bounds and graph rule |
 |---|---|---|

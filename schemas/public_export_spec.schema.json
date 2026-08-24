@@ -32,29 +32,6 @@
       "title": "EvidenceState",
       "type": "string"
     },
-    "PublicAliasReplacement": {
-      "additionalProperties": false,
-      "properties": {
-        "public_literal": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Public Literal",
-          "type": "string"
-        },
-        "source_literal": {
-          "maxLength": 500,
-          "minLength": 1,
-          "title": "Source Literal",
-          "type": "string"
-        }
-      },
-      "required": [
-        "source_literal",
-        "public_literal"
-      ],
-      "title": "PublicAliasReplacement",
-      "type": "object"
-    },
     "PublicClaimSelection": {
       "additionalProperties": false,
       "properties": {
@@ -68,13 +45,6 @@
           "pattern": "^public-claim:[A-Za-z0-9._:-]+$",
           "title": "Public Claim Id",
           "type": "string"
-        },
-        "replacements": {
-          "items": {
-            "$ref": "#/$defs/PublicAliasReplacement"
-          },
-          "title": "Replacements",
-          "type": "array"
         },
         "source_claim_id": {
           "pattern": "^claim-block:[A-Za-z0-9._:-]+$",

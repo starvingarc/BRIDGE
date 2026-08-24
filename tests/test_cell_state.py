@@ -13,6 +13,7 @@ import yaml
 from pydantic import ValidationError
 from scipy import sparse
 
+from bridge.tool_packages.p0_02_cell_state.metrics import source_support
 from bridge.tool_packages.p0_02_cell_state.reference import (
     DENIED_SOURCE_FAMILIES,
     ReferenceError,
@@ -38,7 +39,38 @@ MARKERS = [
     "GFAP",
     "SOX10",
 ]
-GENES = MARKERS + [f"G{index:03d}" for index in range(109)]
+GENES = MARKERS + ["MT-ND1", "RPS3"] + [f"G{index:03d}" for index in range(210)]
+
+
+def test_information_free_rows_do_not_receive_shadow_labels() -> None:
+    query = np.asarray([[0.0, 0.0, 0.0], [2.0, 2.0, 2.0], [1.0, 2.0, 4.0]])
+    reference = np.asarray(
+        [[1.0, 2.0, 4.0], [1.0, 3.0, 5.0], [4.0, 2.0, 1.0], [5.0, 3.0, 1.0]]
+    )
+    metadata = {
+        "genes": ["G1", "G2", "G3"],
+        "rows": [
+            {"label": "state-a"},
+            {"label": "state-a"},
+            {"label": "state-b"},
+            {"label": "state-b"},
+        ],
+    }
+
+    _, summary, coverage = source_support(
+        query,
+        np.asarray(metadata["genes"]),
+        reference,
+        metadata,
+        np.asarray(["zero", "constant", "informative"]),
+        minimum_shared_genes=3,
+    )
+
+    assert coverage["state"] == "available"
+    by_id = summary.set_index("observation_id")
+    assert pd.isna(by_id.loc["zero", "top_label"])
+    assert pd.isna(by_id.loc["constant", "top_label"])
+    assert pd.notna(by_id.loc["informative", "top_label"])
 
 
 def _sha256(path: Path) -> str:
@@ -58,8 +90,10 @@ def _expression(label: str, *, replicate: int = 0) -> np.ndarray:
     elif label == "Radial_Glia":
         values[25:90] = 16 + replicate
     elif label == "RG_mFP":
+        values[25:90] = 16 + replicate
         values[25:58] = 24 + replicate
     elif label == "RG_mBMP":
+        values[25:90] = 16 + replicate
         values[58:90] = 24 + replicate
     elif label == "Nb_mFP":
         values[18:48] = 24 + replicate
@@ -180,8 +214,19 @@ def _source(source_id: str, family: str, path: Path, assay: str) -> dict:
     }
 
 
-def _request(tmp_path: Path, query: Path, *, assay: str = "scRNA-seq") -> ToolRequest:
+def _request(
+    tmp_path: Path,
+    query: Path,
+    *,
+    assay: str = "scRNA-seq",
+    use_qc_view: bool = True,
+) -> ToolRequest:
     spec = "CELLSTATE-scRNA-shadow-v0.1" if assay == "scRNA-seq" else "CELLSTATE-snRNA-shadow-v0.1"
+    input_path = (
+        Path(os.environ["BRIDGE_TEST_QC_VIEW_PATH"])
+        if use_qc_view
+        else query
+    )
     return ToolRequest(
         request_id=f"cell-state-{assay}",
         tool_id="P0-02",
@@ -189,7 +234,7 @@ def _request(tmp_path: Path, query: Path, *, assay: str = "scRNA-seq") -> ToolRe
         assets=[
             InputAsset(
                 asset_id="query-product",
-                path=query.resolve(),
+                path=input_path.resolve(),
                 format="h5ad",
                 input_level="count_ready",
                 matrix_location="X",
@@ -197,6 +242,10 @@ def _request(tmp_path: Path, query: Path, *, assay: str = "scRNA-seq") -> ToolRe
                 assay=assay,
                 metadata={
                     "qc_profile_ref": os.environ["BRIDGE_TEST_QC_PROFILE_REF"],
+                    "data_view_ref": os.environ["BRIDGE_TEST_QC_VIEW_REF"],
+                    "sample_or_preparation_ref": os.environ[
+                        "BRIDGE_TEST_SAMPLE_OR_PREPARATION_REF"
+                    ],
                     "source_family_id": "QUERY-INDEPENDENT",
                 },
             )
@@ -206,7 +255,19 @@ def _request(tmp_path: Path, query: Path, *, assay: str = "scRNA-seq") -> ToolRe
     )
 
 
-def _configure_qc_catalog(tmp_path: Path, monkeypatch, query: Path, *, assay: str = "scRNA-seq") -> None:
+def _configure_qc_catalog(
+    tmp_path: Path,
+    monkeypatch,
+    query: Path,
+    *,
+    assay: str = "scRNA-seq",
+) -> None:
+    qc_spec = (
+        "QC-scRNA-candidate-v0.1"
+        if assay == "scRNA-seq"
+        else "QC-snRNA-candidate-v0.1"
+    )
+    sample_or_preparation_ref = "preparation:sample-test@0.1.0"
     qc_request = ToolRequest(
         request_id=f"qc-{query.stem}",
         tool_id="P0-01",
@@ -220,13 +281,21 @@ def _configure_qc_catalog(tmp_path: Path, monkeypatch, query: Path, *, assay: st
                 matrix_location="X",
                 matrix_semantics="raw_counts",
                 assay=assay,
-                metadata={"sample_id": "sample-test", "capture_id": "capture-test"},
+                metadata={
+                    "sample_id": "sample-test",
+                    "capture_id": "capture-test",
+                    "sample_or_preparation_ref": sample_or_preparation_ref,
+                },
             )
         ],
+        measurement_spec_ref=qc_spec,
     )
     run = ToolRegistry.load_default().run(qc_request)
+    assert run.execution_state is ExecutionState.SUCCEEDED
     profile_artifact = next(item for item in run.artifacts if item.kind == "qc_profile")
+    selected_artifact = next(item for item in run.artifacts if item.kind == "derived_h5ad")
     profile_ref = run.result["profile_id"]
+    selected_view = run.result["selected_data_view"]
     catalog_path = tmp_path / f"qc-catalog-{query.stem}.json"
     catalog_path.write_text(
         json.dumps(
@@ -243,6 +312,11 @@ def _configure_qc_catalog(tmp_path: Path, monkeypatch, query: Path, *, assay: st
     )
     monkeypatch.setenv("BRIDGE_QC_PROFILE_CATALOG", str(catalog_path))
     monkeypatch.setenv("BRIDGE_TEST_QC_PROFILE_REF", profile_ref)
+    monkeypatch.setenv("BRIDGE_TEST_QC_VIEW_PATH", str(selected_artifact.path))
+    monkeypatch.setenv("BRIDGE_TEST_QC_VIEW_REF", selected_view["view_id"])
+    monkeypatch.setenv(
+        "BRIDGE_TEST_SAMPLE_OR_PREPARATION_REF", sample_or_preparation_ref
+    )
 
 
 def test_vocabulary_has_fixed_hierarchy_alias_and_unresolved_conflict() -> None:
@@ -444,7 +518,9 @@ def test_qc_profile_must_bind_the_same_input_hash(tmp_path: Path, monkeypatch) -
     adata.X[0, 0] = adata.X[0, 0] + 1
     adata.write_h5ad(changed)
 
-    eligibility = ToolRegistry.load_default().check_eligibility(_request(tmp_path, changed))
+    eligibility = ToolRegistry.load_default().check_eligibility(
+        _request(tmp_path, changed, use_qc_view=False)
+    )
 
     assert eligibility.eligible is False
     assert "qc_profile_binding_mismatch" in eligibility.reason_codes
@@ -509,7 +585,7 @@ def test_l2_respects_l1_parent_and_uses_its_own_denominator(tmp_path: Path, monk
     )
     composition = pd.read_parquet(next(item.path for item in run.artifacts if item.kind == "shadow_composition"))
     assert set(composition["denominator_view"]) == {
-        "all input observations",
+        "checksummed QC-selected observations",
         "L2-eligible observations",
     }
     denominators = {item.denominator for item in run.visualizations if "composition" in item.component_id}
@@ -554,7 +630,13 @@ def test_modality_mismatch_is_rejected_before_execution(tmp_path: Path, monkeypa
 
 def test_low_gene_coverage_refuses_without_synthetic_measurement(tmp_path: Path, monkeypatch) -> None:
     _build_snapshot(tmp_path, monkeypatch)
-    query = _write_query(tmp_path / "query-small.h5ad", genes=GENES[:20])
+    query = tmp_path / "query-small.h5ad"
+    genes = GENES[:20] + [f"UNSHARED{index:03d}" for index in range(203)]
+    ad.AnnData(
+        sparse.csr_matrix(np.ones((4, len(genes)), dtype=np.int64)),
+        obs=pd.DataFrame(index=[f"query-{index}" for index in range(4)]),
+        var=pd.DataFrame(index=genes),
+    ).write_h5ad(query)
     _configure_qc_catalog(tmp_path, monkeypatch, query)
 
     run = ToolRegistry.load_default().run(_request(tmp_path, query))

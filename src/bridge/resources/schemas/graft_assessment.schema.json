@@ -19,6 +19,47 @@
       "title": "GraftAnalysisMode",
       "type": "string"
     },
+    "GraftAnimalChannelSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "animal_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "eligible_observation_count": {
+          "exclusiveMinimum": 0,
+          "title": "Eligible Observation Count",
+          "type": "integer"
+        },
+        "evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Mean"
+        }
+      },
+      "required": [
+        "animal_ref",
+        "eligible_observation_count",
+        "mean",
+        "evidence_refs"
+      ],
+      "title": "GraftAnimalChannelSummary",
+      "type": "object"
+    },
     "GraftAvailability": {
       "enum": [
         "not_provided",
@@ -30,6 +71,13 @@
     "GraftChannelSummary": {
       "additionalProperties": false,
       "properties": {
+        "animal_summaries": {
+          "items": {
+            "$ref": "#/$defs/GraftAnimalChannelSummary"
+          },
+          "title": "Animal Summaries",
+          "type": "array"
+        },
         "channel_id": {
           "pattern": "^graft-channel:[A-Za-z0-9._:-]+$",
           "title": "Channel Id",
@@ -66,9 +114,9 @@
           ],
           "title": "Configured Upper Bound"
         },
-        "eligible_unit_count": {
+        "eligible_animal_count": {
           "minimum": 0,
-          "title": "Eligible Unit Count",
+          "title": "Eligible Animal Count",
           "type": "integer"
         },
         "evidence_refs": {
@@ -122,9 +170,9 @@
           ],
           "title": "Minimum"
         },
-        "minimum_independent_units": {
+        "minimum_independent_animals": {
           "exclusiveMinimum": 0,
-          "title": "Minimum Independent Units",
+          "title": "Minimum Independent Animals",
           "type": "integer"
         },
         "reason_codes": {
@@ -159,8 +207,9 @@
         "channel_id",
         "unit",
         "required",
-        "minimum_independent_units",
-        "eligible_unit_count",
+        "minimum_independent_animals",
+        "eligible_animal_count",
+        "animal_summaries",
         "mean",
         "minimum",
         "maximum",
@@ -186,9 +235,15 @@
           "pattern": "^[0-9a-f]{64}$",
           "title": "Graft Evidence Bundle",
           "type": "string"
+        },
+        "product_case": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Case",
+          "type": "string"
         }
       },
       "required": [
+        "product_case",
         "graft_assessment_spec",
         "graft_evidence_bundle"
       ],
@@ -198,8 +253,9 @@
     "GraftLinkageState": {
       "enum": [
         "not_applicable",
-        "provided_unlinked",
-        "provided_linked"
+        "not_declared",
+        "partially_declared",
+        "declared_with_evidence"
       ],
       "title": "GraftLinkageState",
       "type": "string"
@@ -207,6 +263,9 @@
     "PreparationGraftLinkage": {
       "additionalProperties": false,
       "properties": {
+        "animal_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
         "evidence_refs": {
           "items": {
             "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
@@ -226,6 +285,7 @@
       },
       "required": [
         "unit_ref",
+        "animal_ref",
         "originating_preparation_ref",
         "evidence_refs"
       ],
@@ -348,9 +408,9 @@
       "title": "Graft Score",
       "type": "null"
     },
-    "independent_unit_count": {
+    "independent_animal_count": {
       "minimum": 0,
-      "title": "Independent Unit Count",
+      "title": "Independent Animal Count",
       "type": "integer"
     },
     "input_sha256_by_role": {
@@ -373,6 +433,11 @@
       "const": "0.1.0",
       "title": "Object Version",
       "type": "string"
+    },
+    "observation_unit_count": {
+      "minimum": 0,
+      "title": "Observation Unit Count",
+      "type": "integer"
     },
     "preparation_linkages": {
       "items": {
@@ -449,7 +514,8 @@
     "graft_availability",
     "linkage_state",
     "analysis_mode",
-    "independent_unit_count",
+    "observation_unit_count",
+    "independent_animal_count",
     "design_constraint_refs",
     "channel_summaries",
     "preparation_linkages",

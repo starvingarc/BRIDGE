@@ -22,6 +22,7 @@ from bridge.tool_packages.p0_05_off_target.models import (
     StateCompositionRecord,
     UnmappedOffTargetState,
 )
+from bridge.tool_packages.p0_03_target_regional.models import StateRoleMap
 from bridge.toolkit.contracts import CellStateEvidenceProfile, QCReadinessProfile, ScoreState
 
 
@@ -31,6 +32,7 @@ def evaluate_off_target_control(
     tool_version: str,
     product_case: ProductCase,
     product_definition: ProductDefinitionCard,
+    state_role_map: StateRoleMap,
     role_spec: OffTargetRoleSpec,
     cell_state_profile: CellStateEvidenceProfile,
     cell_state_profile_version: str,
@@ -141,6 +143,7 @@ def evaluate_off_target_control(
         tool_version=tool_version,
         product_case_ref=product_case.ref,
         product_definition_ref=product_definition.ref,
+        state_role_map_ref=state_role_map.ref,
         role_spec_ref=role_spec.ref,
         cell_state_profile_ref=VersionedObjectRef(
             object_id=cell_state_profile.profile_id,

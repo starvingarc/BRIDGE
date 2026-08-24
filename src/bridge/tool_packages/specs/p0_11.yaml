@@ -1,7 +1,7 @@
 tool_id: P0-11
 name: Public-safe Export
 version: 0.2.0
-summary: Rebuild an allowlisted public JSON candidate from a P0-10-eligible report and explicit export policy.
+summary: Rebuild a review-only allowlisted public JSON candidate from a P0-10-verified report and explicit export policy.
 implementation_state: implemented
 scientific_status: candidate
 optional: false

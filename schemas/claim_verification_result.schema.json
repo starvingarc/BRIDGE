@@ -336,10 +336,7 @@
             }
           },
           "public_export_eligibility": {
-            "enum": [
-              "eligible",
-              "ineligible"
-            ]
+            "const": "ineligible"
           }
         }
       }
@@ -376,61 +373,7 @@
             }
           },
           "public_export_eligibility": {
-            "enum": [
-              "eligible",
-              "ineligible"
-            ]
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "release_state": {
-            "enum": [
-              "verified",
-              "verified_with_warnings"
-            ]
-          },
-          "report_audience": {
-            "const": "public_candidate"
-          }
-        },
-        "required": [
-          "report_audience",
-          "release_state"
-        ]
-      },
-      "then": {
-        "properties": {
-          "public_export_eligibility": {
-            "const": "eligible"
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "public_export_eligibility": {
-            "const": "eligible"
-          }
-        },
-        "required": [
-          "public_export_eligibility"
-        ]
-      },
-      "then": {
-        "properties": {
-          "release_state": {
-            "enum": [
-              "verified",
-              "verified_with_warnings"
-            ]
-          },
-          "report_audience": {
-            "const": "public_candidate"
+            "const": "ineligible"
           }
         }
       }
@@ -508,13 +451,18 @@
     "public_export_eligibility": {
       "$ref": "#/$defs/PublicExportEligibility"
     },
+    "public_release_authority_state": {
+      "const": "not_configured",
+      "title": "Public Release Authority State",
+      "type": "string"
+    },
     "release_contract_id": {
       "const": "P0-10-RELEASE-CONTRACT-v0.1",
       "title": "Release Contract Id",
       "type": "string"
     },
     "release_contract_sha256": {
-      "const": "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8",
+      "const": "ac0b6d8251ac2d7d73ae9e1247d9a7bca3a0676f64b9707a51a16ddfe22e640c",
       "title": "Release Contract Sha256",
       "type": "string"
     },
@@ -558,6 +506,7 @@
     "benchmark_sha256",
     "release_contract_id",
     "release_contract_sha256",
+    "public_release_authority_state",
     "report_draft_ref",
     "report_content_hash",
     "report_audience",

@@ -8,7 +8,11 @@ from typing import Literal, Self
 from pydantic import Field, StrictFloat, StrictInt, ValidationError, field_validator, model_validator
 
 from bridge.tool_packages._publication_safety import validate_publication_text
-from bridge.toolkit.contracts import CellStateEvidenceProfile, FrozenModel
+from bridge.toolkit.contracts import (
+    CellStateEvidenceProfile,
+    FrozenModel,
+    QCReadinessProfile,
+)
 
 
 OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -42,6 +46,7 @@ class ProductCase(FrozenModel):
     case_version: str = Field(pattern=VERSION_PATTERN)
     product_definition_ref: VersionedObjectRef
     sample_or_preparation_ref: VersionedObjectRef
+    biological_unit_refs: list[VersionedObjectRef] = Field(default_factory=list)
     measurement_spec_ref: VersionedObjectRef
     assay: Literal["scRNA-seq", "snRNA-seq"]
     provenance_refs: list[VersionedObjectRef] = Field(min_length=1)
@@ -49,12 +54,12 @@ class ProductCase(FrozenModel):
 
     _created_at_utc = field_validator("created_at")(_aware_utc)
 
-    @field_validator("provenance_refs")
+    @field_validator("biological_unit_refs", "provenance_refs")
     @classmethod
     def provenance_is_unique(
         cls, value: list[VersionedObjectRef]
     ) -> list[VersionedObjectRef]:
-        _unique([item.ref for item in value], "provenance_refs")
+        _unique([item.ref for item in value], "versioned references")
         return value
 
     @property
@@ -185,3 +190,59 @@ def parse_composition(
     if len(identities) != len(set(identities)):
         raise ValueError("cell_state_composition_duplicate_record")
     return records
+
+
+def profile_lineage_reasons(
+    *,
+    product_case: ProductCase,
+    cell_state_profile: CellStateEvidenceProfile,
+    qc_profile: QCReadinessProfile,
+    input_sha256_by_role: dict[str, str],
+) -> list[str]:
+    """Validate the immutable P0-01 -> P0-02 -> ProductCase handoff."""
+
+    reasons: list[str] = []
+    qc_view = qc_profile.selected_data_view
+    cell_state_view = cell_state_profile.input_data_view
+    if qc_view is None:
+        reasons.append("qc_selected_data_view_required")
+    if cell_state_view is None:
+        reasons.append("cell_state_input_data_view_required")
+    if qc_view is not None and cell_state_view is not None:
+        if qc_view != cell_state_view:
+            reasons.append("cell_state_qc_data_view_mismatch")
+        if (
+            qc_view.sample_or_preparation_ref
+            != product_case.sample_or_preparation_ref.ref
+        ):
+            reasons.append("product_case_data_view_binding_mismatch")
+        if cell_state_profile.n_observations != cell_state_view.n_observations:
+            reasons.append("cell_state_observation_count_mismatch")
+
+    if cell_state_profile.upstream_qc_profile_ref != qc_profile.profile_id:
+        reasons.append("cell_state_qc_profile_ref_mismatch")
+    if (
+        cell_state_profile.upstream_qc_profile_sha256
+        != input_sha256_by_role.get("qc_readiness_profile")
+    ):
+        reasons.append("cell_state_qc_profile_checksum_mismatch")
+    if (
+        cell_state_profile.measurement_spec_id
+        != product_case.measurement_spec_ref.object_id
+        or cell_state_profile.measurement_spec_version
+        != product_case.measurement_spec_ref.object_version
+    ):
+        reasons.append("measurement_spec_binding_mismatch")
+
+    if cell_state_view is not None:
+        try:
+            records = parse_composition(cell_state_profile)
+        except ValueError:
+            records = []
+        if any(
+            record.label_level == "L1"
+            and record.denominator != cell_state_view.n_observations
+            for record in records
+        ):
+            reasons.append("cell_state_denominator_view_mismatch")
+    return reasons

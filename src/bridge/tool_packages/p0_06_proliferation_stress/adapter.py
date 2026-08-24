@@ -287,6 +287,14 @@ def _binding_reasons(
         reasons.append("program_evidence_product_case_mismatch")
     if evidence_bundle.product_definition_ref != product_definition.ref:
         reasons.append("program_evidence_product_definition_mismatch")
+    allowed_units = set(product_case.biological_unit_refs)
+    if not allowed_units:
+        reasons.append("product_case_biological_units_required")
+    if any(
+        observation.analysis_unit_ref not in allowed_units
+        for observation in evidence_bundle.observations
+    ):
+        reasons.append("program_observation_biological_unit_mismatch")
     if developmental_result.product_case_ref != product_case.ref:
         reasons.append("developmental_result_product_case_mismatch")
     if developmental_result.product_definition_ref != product_definition.ref:

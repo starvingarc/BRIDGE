@@ -46,6 +46,27 @@
       "severity": "missing"
     },
     {
+      "axis": "data",
+      "code": "measurement_evidence_missing",
+      "description": "A bound MeasurementResult declares that the expected evidence is missing.",
+      "remediation": "Provide the missing measurement or retain a not-assessed conclusion.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_evidence_unknown",
+      "description": "A bound MeasurementResult has an unknown evidence state.",
+      "remediation": "Resolve the unknown measurement state before sufficiency can be established.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_evidence_unavailable",
+      "description": "A bound MeasurementResult is unavailable for interpretation.",
+      "remediation": "Supply an available measurement or retain a not-assessed conclusion.",
+      "severity": "missing"
+    },
+    {
       "axis": "contract",
       "code": "task_validation_not_assessed",
       "description": "The domain task validation state has not been assessed.",

@@ -6,7 +6,7 @@
 | Version | `v0.1-draft` |
 | Date | 2026-08-07 |
 | Scope | 同阶段跨方案、真实时间序列及 batch/lot/preparation 稳定性 |
-| Primary unit | 独立 `sample/preparation` |
+| Primary unit | ProductCase 显式声明的独立 biological unit（通常为 preparation/replicate；由上游合同定义） |
 | Primary output | `ComparisonRecord` |
 | Current state | `candidate` |
 
@@ -25,14 +25,16 @@
 
 ### 当前可执行切片（2026-08-24）
 
-P0-07 v0.2 已先收口为窄的 pairwise descriptive runtime：输入一个
-`ComparisonSpec` 和一个 `ComparisonEvidenceBundle`，只比较两个明确绑定的
-ProductCase，并在 preparation 层报告均值、范围和 raw
+P0-07 v0.2 已先收口为窄的 pairwise descriptive runtime：输入两个
+`ProductCase`、一个 `ComparisonSpec` 和一个 `ComparisonEvidenceBundle`，只比较
+两个明确绑定的 ProductCase，并在 biological-unit 层报告均值、范围和 raw
 `candidate - baseline` 差值。
 
 以下内容全部来自版本化、带 checksum 的输入，而不是代码常量：需要相等
 的合同维度、assay/target/reference/prior/算法/预处理引用、metric ID、单位、
-可用证据状态、方向和最小独立 preparation 数。当前代码不包含具体产品、
+可用证据状态、方向和最小独立 biological-unit 数。每个 evidence summary 的
+unit 引用必须与对应 ProductCase 的 `biological_unit_refs` 完全一致，两个比较臂
+不得共享 unit；至少一个 metric 必须标为 required。当前代码不包含具体产品、
 状态、程序、基因、阶段、范围或生物阈值。
 
 该切片固定为 `descriptive_only`。效应量、区间、推断统计、时间序列、
@@ -248,7 +250,8 @@ flowchart LR
 - ProductDefinitionCard、目标阶段或 sample hierarchy 未确认：不运行正式比较。
 - 合同不相容：返回 `not_comparable`，只允许并列画像。
 - protocol、lab、batch 或 cell line 完全混杂：返回 `not_estimable`，不归因于产品或方案。
-- 每组只有一个独立 preparation：返回 `descriptive_only`。
+- 独立 biological unit 不足：保留 raw 描述性结果并返回相应 limitation；重复
+  measurement、technical replicate 或跨臂复用 unit 不得增加独立样本量。
 - Evidence Sufficiency 不足：保留可用 raw metrics，相应结论返回 `unavailable` 或 `shadow`。
 - mandatory domain 不完整：不生成 Pareto 方向结论。
 - 独立轨与联合轨冲突：返回 `integration_sensitive` 或 `unstable`。

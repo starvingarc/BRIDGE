@@ -26,14 +26,19 @@ P0-10 receipt，不自动上传文件，不处理原始单细胞数据，不执�
 ### 当前可执行切片（2026-08-24）
 
 P0-11 v0.2 先实现最小的 allowlist-first JSON 投影：输入一个 ReportDraft、
-一个 P0-10 eligible ClaimVerificationResult 和一个 PublicExportSpec，只输出
-一个新的 PublicSafeReport candidate。选择哪些 claim、允许哪些 claim/evidence
-状态、公开 claim ID、case label、精确别名替换、公开 accession 和禁止字面量
-全部来自版本化、带 checksum 的策略对象。
+一个 release state 为 `verified` 或 `verified_with_warnings`、但明确
+`public_release_authority_state=not_configured` 且 `public_export_eligibility=ineligible`
+的 P0-10 receipt，以及一个 PublicExportSpec，只输出一个新的
+PublicSafeReport review candidate。选择哪些 claim、允许哪些 claim/evidence 状态、
+公开 claim ID、case label、公开 accession 和禁止字面量全部来自版本化、带
+checksum 的策略对象。已经核验的 claim text 必须逐字保留；策略不能提供任意
+字符串替换。
 
 当前输出不会携带 source report/claim/ProductCase/Evidence/binding ID；未选中的
-claim 不会先复制再删除。P0-10 warning 会降级为 `review_required`，干净 receipt
-最多得到 `ready_for_confirmation`，永远不会自动变成 `exported`。
+claim 不会先复制再删除。由于当前没有可信 public-release authority，所有输出
+固定为 `review_required` 并携带 `public_release_authority_not_configured`；P0-10
+warning 另加独立 reason。当前切片不会产生 `ready_for_confirmation` 或
+`exported`。
 
 本切片不处理 CSV、Markdown、压缩包、图表、SVG/HTML、媒体 metadata、外部
 scanner、PII 匿名化、确认 receipt 或上传。下文这些内容仍是后续设计目标，
@@ -54,8 +59,10 @@ scanner、PII 匿名化、确认 receipt 或上传。下文这些内容仍是后
 ### 3.1 必要输入
 
 - 原始 `ReportDraft`。
-- `ClaimVerificationResult.public_export_eligibility=eligible`，且 receipt 中的
-  report ref/hash/audience 与原始 ReportDraft 一致，artifact checksum 与输入 ref 一致。
+- `ClaimVerificationResult` 的 release state 为 `verified` 或
+  `verified_with_warnings`，receipt 中的 report ref/hash/audience 与原始
+  ReportDraft 一致，artifact checksum 与输入 ref 一致；当前 authority state
+  必须是 `not_configured`，export eligibility 必须保持 `ineligible`。
 - 冻结的 `PublicExportPolicySpec` 和字段白名单。
 - 案例级 disclosure decision、公开别名和可公开 accession。
 - 允许公开的 `VisualizationArtifact` 及其机器可读 data payload。
@@ -94,14 +101,14 @@ export_state / manifest_ref / created_at
 | `not_assessed` | 尚未运行或缺少活动策略 | 不生成候选包 |
 | `export_blocked` | 白名单、文件或泄漏检查存在 blocker | 修正输入或策略后重新运行 |
 | `review_required` | 无确定性泄漏，但存在别名、自由文本或图表语义待确认 | 等待授权审核者 |
-| `ready_for_confirmation` | 候选包和 manifest 全部通过 | 展示候选 hash，等待用户确认 |
+| `ready_for_confirmation` | 未来只有可信授权源接入并升级合同时才可能出现 | 当前 v0.2 不输出 |
 | `exported` | 用户确认与候选 hash 一致，最终包复核通过 | 保存不可变公开包；不自动上传 |
 
 ## 4. 简化工作流
 
 ```mermaid
 flowchart LR
-    A["Eligible ReportDraft + P0-10 receipt"] --> B["Field allowlist projection"]
+    A["Verified ReportDraft + fail-closed P0-10 receipt"] --> B["Field allowlist projection"]
     B --> C["Public labels and approved summaries"]
     C --> D["Text, path and secret scan"]
     D --> E["Regenerate and inspect figures"]

@@ -16,7 +16,9 @@ from bridge.tool_packages._structured_runtime import (
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimVerificationResult,
     PublicExportEligibility,
+    PublicReleaseAuthorityState,
     ReleaseState,
+    ReportAudience,
     ReportDraft,
 )
 from bridge.tool_packages.p0_11_public_export.executor import (
@@ -226,15 +228,22 @@ def _binding_reasons(
         request, loaded, "public_export_spec", PublicExportSpec
     )
     reasons: list[str] = []
+    if report.audience is not ReportAudience.PUBLIC_CANDIDATE:
+        reasons.append("report_audience_not_public_candidate")
     if not verification.matches_report_draft(report):
         reasons.append("claim_verification_report_binding_mismatch")
+    if verification.release_state not in {
+        ReleaseState.VERIFIED,
+        ReleaseState.VERIFIED_WITH_WARNINGS,
+    }:
+        reasons.append("claim_verification_not_verified_for_review_candidate")
     if (
-        verification.public_export_eligibility
-        is not PublicExportEligibility.ELIGIBLE
-        or verification.release_state
-        not in {ReleaseState.VERIFIED, ReleaseState.VERIFIED_WITH_WARNINGS}
+        verification.public_release_authority_state
+        is not PublicReleaseAuthorityState.NOT_CONFIGURED
+        or verification.public_export_eligibility
+        is not PublicExportEligibility.INELIGIBLE
     ):
-        reasons.append("claim_verification_not_export_eligible")
+        reasons.append("claim_verification_authority_state_inconsistent")
     if (
         export_spec.source_report_ref != report.ref
         or export_spec.source_report_hash != report.content_hash
@@ -258,9 +267,6 @@ def _binding_reasons(
                 reasons.append("export_claim_requires_evidence_state")
         elif claim.reported_evidence_state not in export_spec.allowed_evidence_states:
             reasons.append("export_evidence_state_not_allowed")
-        for replacement in selection.replacements:
-            if replacement.source_literal not in claim.text:
-                reasons.append("public_alias_source_not_found")
     return reasons
 
 

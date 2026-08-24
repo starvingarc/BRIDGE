@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Produce a deterministic pairwise, preparation-level descriptive comparison
+Produce a deterministic pairwise, biological-unit-level descriptive comparison
 without embedding metric names, biological directions, assay choices or review
 thresholds in executable code.
 
@@ -39,8 +39,9 @@ seeds are refused.
 
 | Role | Schema | Required content |
 |---|---|---|
-| `comparison_spec` | `bridge://schemas/comparison-spec/v0.1` | Exactly one baseline and one candidate ProductCase; configurable equal-contract dimensions; mismatch policy; minimum independent preparations; metric IDs, publication-safe units, eligible evidence states, required flags and direction policies. |
-| `comparison_evidence_bundle` | `bridge://schemas/comparison-evidence-bundle/v0.1` | Exactly the same two ProductCases; versioned contract snapshots; P0-08 sufficiency state; preparation-level metric values, denominators, evidence states and Evidence references. |
+| `product_case` (two inputs) | `bridge://schemas/product-case/v0.1` | Exact baseline and candidate ProductCases, including their declared biological units and MeasurementSpec bindings. |
+| `comparison_spec` | `bridge://schemas/comparison-spec/v0.1` | Exactly one baseline and one candidate ProductCase; configurable equal-contract dimensions; mismatch policy; minimum biological units; metric IDs, publication-safe units, eligible evidence states, required flags and direction policies. At least one metric must be required. |
+| `comparison_evidence_bundle` | `bridge://schemas/comparison-evidence-bundle/v0.1` | Exactly the same two ProductCases; versioned contract snapshots; P0-08 sufficiency state; biological-unit metric values, denominators, evidence states and Evidence references. |
 
 The current input object version is `0.1.0` for both roles. Assay, target,
 sampling, reference, prior, MeasurementSpec, algorithm and preprocessing are
@@ -56,7 +57,7 @@ content-addressed run directory. It contains:
 - the ComparisonSpec and evidence-bundle references and role-level checksums;
 - every configured contract-dimension equality check;
 - baseline and candidate readiness summaries;
-- per-metric eligible preparation count, mean, minimum and maximum;
+- per-metric eligible biological-unit count, mean, minimum and maximum;
 - raw `candidate mean - baseline mean`, direction and input-configured interpretation;
 - explicit comparability and result states, evidence references and reason codes;
 - a `not_assessed` Pareto receipt, `overall_score=null` and `overall_rank=null`.
@@ -83,7 +84,9 @@ Contract-valid limitations degrade within the result:
 
 - a configured contract mismatch becomes `contextual_comparator` or
   `not_comparable` according to the input policy;
-- insufficient preparations or non-sufficient P0-08 evidence makes an otherwise
+- ProductCase/evidence unit mismatch or any unit shared across comparison arms
+  is a top-level binding failure;
+- insufficient biological units or non-sufficient P0-08 evidence makes an otherwise
   available comparison `partial`;
 - missing metric, unit mismatch or ineligible evidence state makes that metric
   `unavailable`;

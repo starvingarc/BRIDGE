@@ -18,6 +18,16 @@
       "title": "EvidenceDirection",
       "type": "string"
     },
+    "LineageRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "not_target",
+        "unresolved"
+      ],
+      "title": "LineageRole",
+      "type": "string"
+    },
     "OffTargetStateAssignment": {
       "additionalProperties": false,
       "allOf": [
@@ -161,6 +171,29 @@
       "title": "ProductRole",
       "type": "string"
     },
+    "ProductRoleLineageRule": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_lineage_roles": {
+          "items": {
+            "$ref": "#/$defs/LineageRole"
+          },
+          "minItems": 1,
+          "title": "Allowed Lineage Roles",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "product_role": {
+          "$ref": "#/$defs/ProductRole"
+        }
+      },
+      "required": [
+        "product_role",
+        "allowed_lineage_roles"
+      ],
+      "title": "ProductRoleLineageRule",
+      "type": "object"
+    },
     "RoleEvidenceClass": {
       "enum": [
         "clear_off_axis",
@@ -243,6 +276,14 @@
       "type": "array",
       "uniqueItems": true
     },
+    "lineage_role_rules": {
+      "items": {
+        "$ref": "#/$defs/ProductRoleLineageRule"
+      },
+      "minItems": 1,
+      "title": "Lineage Role Rules",
+      "type": "array"
+    },
     "object_version": {
       "const": "0.1.0",
       "title": "Object Version",
@@ -294,6 +335,9 @@
       "type": "array",
       "uniqueItems": true
     },
+    "state_role_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
     "unmapped_state_policy": {
       "const": "report_role_unresolved",
       "title": "Unmapped State Policy",
@@ -305,11 +349,13 @@
     "role_spec_id",
     "role_spec_version",
     "product_definition_ref",
+    "state_role_map_ref",
     "annotation_vocabulary_ref",
     "review_state",
     "composition_views",
     "included_label_levels",
     "required_denominator_view",
+    "lineage_role_rules",
     "assignments",
     "unmapped_state_policy",
     "ood_policy",

@@ -20,6 +20,9 @@ from bridge.tool_packages.p0_07_comparison.models import (
     MetricDirectionPolicy,
     ParetoAssessment,
 )
+from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
+    CaseEvidenceReadinessSummary,
+)
 from bridge.toolkit.contracts import ScoreState
 
 
@@ -29,6 +32,7 @@ def evaluate_comparison(
     tool_version: str,
     comparison_spec: ComparisonSpec,
     evidence_bundle: ComparisonEvidenceBundle,
+    readiness_summaries: list[CaseEvidenceReadinessSummary],
     input_sha256_by_role: dict[str, str],
 ) -> ComparisonRecord:
     evidence_by_ref = {
@@ -40,6 +44,15 @@ def evaluate_comparison(
     }
     baseline = cases[ComparisonRole.BASELINE]
     candidate = cases[ComparisonRole.CANDIDATE]
+    summaries_by_case = {
+        item.product_case_ref.ref: item
+        for item in readiness_summaries
+        if item.product_case_ref is not None
+    }
+    sufficiency_by_role = {
+        role: _sufficiency_state(summaries_by_case[case.product_case_ref.ref])
+        for role, case in cases.items()
+    }
     checks = [
         _dimension_check(dimension, baseline, candidate)
         for dimension in sorted(
@@ -56,16 +69,23 @@ def evaluate_comparison(
         )
 
     metric_results = [
-        _compare_metric(rule, baseline, candidate, comparability)
+        _compare_metric(
+            rule,
+            baseline,
+            candidate,
+            comparability,
+            sufficiency_by_role=sufficiency_by_role,
+            minimum_biological_units=comparison_spec.minimum_biological_units_per_case,
+        )
         for rule in sorted(comparison_spec.metrics, key=lambda item: item.metric_id)
     ]
     readiness = [
         CaseReadinessSummary(
             role=role,
             product_case_ref=case.product_case_ref,
-            sufficiency_profile_ref=case.sufficiency_profile_ref,
-            sufficiency_state=case.sufficiency_state,
-            independent_preparation_count=len(case.preparations),
+            sufficiency_summary_ref=case.sufficiency_summary_ref,
+            sufficiency_state=sufficiency_by_role[role],
+            declared_biological_unit_count=len(case.preparations),
         )
         for role, case in (
             (ComparisonRole.BASELINE, baseline),
@@ -79,15 +99,22 @@ def evaluate_comparison(
     }
     if not dimensions_match:
         reasons.add("required_contract_dimension_mismatch")
-    preparation_ready = all(
-        len(case.preparations)
-        >= comparison_spec.minimum_independent_preparations_per_case
-        for case in cases.values()
+    required_results = [
+        item
+        for item in metric_results
+        if next(rule for rule in comparison_spec.metrics if rule.metric_id == item.metric_id).required
+    ]
+    units_ready = all(
+        item.baseline.eligible_biological_unit_count
+        >= comparison_spec.minimum_biological_units_per_case
+        and item.candidate.eligible_biological_unit_count
+        >= comparison_spec.minimum_biological_units_per_case
+        for item in required_results
     )
-    if not preparation_ready:
-        reasons.add("independent_preparations_below_configured_minimum")
+    if not units_ready:
+        reasons.add("biological_units_below_configured_minimum")
     sufficiency_ready = all(
-        case.sufficiency_state == "sufficient" for case in cases.values()
+        state == "sufficient" for state in sufficiency_by_role.values()
     )
     if not sufficiency_ready:
         reasons.add("case_evidence_sufficiency_not_sufficient")
@@ -103,7 +130,7 @@ def evaluate_comparison(
     elif (
         required <= available
         and comparability is ComparabilityState.STRICTLY_COMPARABLE
-        and preparation_ready
+        and units_ready
         and sufficiency_ready
     ):
         result_state = "complete"
@@ -186,12 +213,26 @@ def _compare_metric(
     baseline_case: ComparisonCaseEvidence,
     candidate_case: ComparisonCaseEvidence,
     comparability: ComparabilityState,
+    *,
+    sufficiency_by_role: dict[ComparisonRole, str],
+    minimum_biological_units: int,
 ) -> MetricComparisonResult:
     baseline, baseline_reasons = _summarize_metric(baseline_case, rule)
     candidate, candidate_reasons = _summarize_metric(candidate_case, rule)
     reasons = {*baseline_reasons, *candidate_reasons}
     if comparability is ComparabilityState.NOT_COMPARABLE:
         reasons.add("comparison_not_comparable")
+    units_ready = (
+        baseline.eligible_biological_unit_count >= minimum_biological_units
+        and candidate.eligible_biological_unit_count >= minimum_biological_units
+    )
+    sufficiency_ready = all(
+        state == "sufficient" for state in sufficiency_by_role.values()
+    )
+    if not units_ready:
+        reasons.add("biological_units_below_configured_minimum")
+    if not sufficiency_ready:
+        reasons.add("case_evidence_sufficiency_not_sufficient")
     if (
         baseline.mean is None
         or candidate.mean is None
@@ -204,7 +245,13 @@ def _compare_metric(
     else:
         delta = float(candidate.mean) - float(baseline.mean)
         relation = _direction_relation(delta)
-        interpretation = _interpretation(rule.direction_policy, relation)
+        interpretation = (
+            _interpretation(rule.direction_policy, relation)
+            if comparability is ComparabilityState.STRICTLY_COMPARABLE
+            and units_ready
+            and sufficiency_ready
+            else ConfiguredInterpretation.NO_DIRECTIONAL_INTERPRETATION
+        )
         result_state = "available"
 
     evidence_refs = sorted(
@@ -254,7 +301,7 @@ def _summarize_metric(
     return (
         CaseMetricSummary(
             product_case_ref=case.product_case_ref,
-            eligible_preparation_count=len(values),
+            eligible_biological_unit_count=len(values),
             mean=fmean(values) if values else None,
             minimum=min(values) if values else None,
             maximum=max(values) if values else None,
@@ -262,6 +309,19 @@ def _summarize_metric(
         ),
         reasons,
     )
+
+
+def _sufficiency_state(
+    summary: CaseEvidenceReadinessSummary,
+) -> str:
+    counts = summary.evidence_sufficiency_counts
+    if summary.blocking_reasons or counts.insufficient:
+        return "insufficient"
+    if counts.not_assessed:
+        return "not_assessed"
+    if counts.limited:
+        return "limited"
+    return "sufficient"
 
 
 def _direction_relation(delta: float) -> DirectionRelation:

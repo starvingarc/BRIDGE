@@ -96,6 +96,10 @@ class PublicExportEligibility(StrEnum):
     NOT_ASSESSED = "not_assessed"
 
 
+class PublicReleaseAuthorityState(StrEnum):
+    NOT_CONFIGURED = "not_configured"
+
+
 class CheckSeverity(StrEnum):
     HARD_BLOCKER = "hard_blocker"
     REVIEW = "review"
@@ -350,6 +354,9 @@ class ClaimVerifierReleaseContract(FrozenModel):
     renderer_id: Literal["BRIDGE-REPORT-DRAFT-RENDERER-v0.1"]
     renderer_version: Literal["0.1.0"]
     measurement_language: Literal["en"]
+    public_release_authority_state: Literal[
+        PublicReleaseAuthorityState.NOT_CONFIGURED
+    ]
     claim_policy: ClaimPolicySpec
     statement_registry: StatementRegistry
 
@@ -473,7 +480,7 @@ def _claim_verification_json_schema(schema: dict[str, Any]) -> None:
                     "contains": _outcome_schema("blocked", "review_required")
                 },
             },
-            ["eligible", "ineligible"],
+            "ineligible",
         ),
         _state_rule(
             "verified",
@@ -484,40 +491,8 @@ def _claim_verification_json_schema(schema: dict[str, Any]) -> None:
                     )
                 }
             },
-            ["eligible", "ineligible"],
+            "ineligible",
         ),
-        {
-            "if": {
-                "properties": {
-                    "report_audience": {"const": "public_candidate"},
-                    "release_state": {
-                        "enum": ["verified", "verified_with_warnings"]
-                    },
-                },
-                "required": ["report_audience", "release_state"],
-            },
-            "then": {
-                "properties": {
-                    "public_export_eligibility": {"const": "eligible"}
-                }
-            },
-        },
-        {
-            "if": {
-                "properties": {
-                    "public_export_eligibility": {"const": "eligible"}
-                },
-                "required": ["public_export_eligibility"],
-            },
-            "then": {
-                "properties": {
-                    "report_audience": {"const": "public_candidate"},
-                    "release_state": {
-                        "enum": ["verified", "verified_with_warnings"]
-                    },
-                }
-            },
-        },
         {
             "if": {
                 "properties": {
@@ -547,7 +522,10 @@ class ClaimVerificationResult(FrozenModel):
     ]
     release_contract_id: Literal["P0-10-RELEASE-CONTRACT-v0.1"]
     release_contract_sha256: Literal[
-        "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8"
+        "ac0b6d8251ac2d7d73ae9e1247d9a7bca3a0676f64b9707a51a16ddfe22e640c"
+    ]
+    public_release_authority_state: Literal[
+        PublicReleaseAuthorityState.NOT_CONFIGURED
     ]
     report_draft_ref: str = Field(pattern=REPORT_REF_PATTERN)
     report_content_hash: str = Field(pattern=SHA256_PATTERN)
@@ -598,19 +576,8 @@ class ClaimVerificationResult(FrozenModel):
             raise ValueError("blocked or review-required results are not export eligible")
         if self.public_export_eligibility is PublicExportEligibility.NOT_ASSESSED:
             raise ValueError("assessed results cannot have not_assessed export eligibility")
-        eligible = self.release_state in {
-            ReleaseState.VERIFIED,
-            ReleaseState.VERIFIED_WITH_WARNINGS,
-        } and self.report_audience is ReportAudience.PUBLIC_CANDIDATE
-        expected_eligibility = (
-            PublicExportEligibility.ELIGIBLE
-            if eligible
-            else PublicExportEligibility.INELIGIBLE
-        )
-        if self.public_export_eligibility is not expected_eligibility:
-            raise ValueError(
-                "export eligibility does not match report audience and release state"
-            )
+        if self.public_export_eligibility is not PublicExportEligibility.INELIGIBLE:
+            raise ValueError("public release authority is not configured")
         return self
 
     def matches_report_draft(self, report: ReportDraft) -> bool:

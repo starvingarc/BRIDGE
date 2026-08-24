@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from statistics import fmean
 
 from bridge.tool_packages.p0_12_graft_assessment.models import (
@@ -7,6 +8,7 @@ from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftAnalysisMode,
     GraftAssessment,
     GraftAssessmentSpec,
+    GraftAnimalChannelSummary,
     GraftAvailability,
     GraftChannelRule,
     GraftChannelSummary,
@@ -43,7 +45,8 @@ def evaluate_graft_assessment(
             graft_availability=GraftAvailability.NOT_PROVIDED,
             linkage_state=GraftLinkageState.NOT_APPLICABLE,
             analysis_mode=GraftAnalysisMode.UNAVAILABLE,
-            independent_unit_count=0,
+            observation_unit_count=0,
+            independent_animal_count=0,
             design_constraint_refs=[],
             channel_summaries=[],
             preparation_linkages=[],
@@ -83,6 +86,7 @@ def evaluate_graft_assessment(
         [
             PreparationGraftLinkage(
                 unit_ref=unit.unit_ref,
+                animal_ref=unit.animal_ref,
                 originating_preparation_ref=unit.originating_preparation_ref,
                 evidence_refs=sorted(unit.linkage_evidence_refs),
             )
@@ -94,18 +98,19 @@ def evaluate_graft_assessment(
     all_units_linked = bool(evidence_bundle.units) and len(linkages) == len(
         evidence_bundle.units
     )
-    linkage_state = (
-        GraftLinkageState.PROVIDED_LINKED
-        if all_units_linked
-        else GraftLinkageState.PROVIDED_UNLINKED
-    )
+    if all_units_linked:
+        linkage_state = GraftLinkageState.DECLARED_WITH_EVIDENCE
+    elif linkages:
+        linkage_state = GraftLinkageState.PARTIALLY_DECLARED
+    else:
+        linkage_state = GraftLinkageState.NOT_DECLARED
 
     available = [item for item in summaries if item.result_state == "available"]
     required_ready = all(
         (not item.required)
         or (
             item.result_state == "available"
-            and item.eligible_unit_count >= item.minimum_independent_units
+            and item.eligible_animal_count >= item.minimum_independent_animals
         )
         for item in summaries
     )
@@ -126,10 +131,12 @@ def evaluate_graft_assessment(
         reasons.add("configured_design_constraints_present")
     if unmatched:
         reasons.add("unmatched_graft_observations")
+    if linkages:
+        reasons.add("preparation_linkage_declared_not_verified")
     if linkages and not all_units_linked:
-        reasons.add("partial_preparation_linkage")
+        reasons.add("partial_preparation_linkage_declaration")
     if not linkages:
-        reasons.add("preparation_linkage_not_provided")
+        reasons.add("preparation_linkage_not_declared")
     evidence_refs = sorted(
         {
             *(evidence for item in summaries for evidence in item.evidence_refs),
@@ -151,7 +158,10 @@ def evaluate_graft_assessment(
         graft_availability=GraftAvailability.PROVIDED,
         linkage_state=linkage_state,
         analysis_mode=GraftAnalysisMode.DESCRIPTIVE_ONLY,
-        independent_unit_count=len(evidence_bundle.units),
+        observation_unit_count=len(evidence_bundle.units),
+        independent_animal_count=len(
+            {unit.animal_ref.ref for unit in evidence_bundle.units}
+        ),
         design_constraint_refs=sorted(
             evidence_bundle.design_constraint_refs, key=lambda item: item.ref
         ),
@@ -171,8 +181,9 @@ def _summarize_channel(
     rule: GraftChannelRule,
     evidence_bundle: GraftEvidenceBundle,
 ) -> GraftChannelSummary:
-    values: list[float] = []
-    evidence_refs: set[str] = set()
+    values_by_animal: dict[str, list[float]] = defaultdict(list)
+    animal_refs = {}
+    evidence_by_animal: dict[str, set[str]] = defaultdict(set)
     reasons: set[str] = set()
     for unit in evidence_bundle.units:
         observation = next(
@@ -186,16 +197,23 @@ def _summarize_channel(
         if observation is None:
             reasons.add("graft_channel_missing_for_unit")
             continue
-        _collect_observation(rule, observation, values, evidence_refs, reasons)
+        value = _eligible_observation(rule, observation, reasons)
+        if value is None:
+            continue
+        animal_key = unit.animal_ref.ref
+        animal_refs[animal_key] = unit.animal_ref
+        values_by_animal[animal_key].append(value)
+        evidence_by_animal[animal_key].update(observation.evidence_refs)
 
-    if not values:
+    if not values_by_animal:
         reasons.add("graft_channel_unavailable")
         return GraftChannelSummary(
             channel_id=rule.channel_id,
             unit=rule.unit,
             required=rule.required,
-            minimum_independent_units=rule.minimum_independent_units,
-            eligible_unit_count=0,
+            minimum_independent_animals=rule.minimum_independent_animals,
+            eligible_animal_count=0,
+            animal_summaries=[],
             mean=None,
             minimum=None,
             maximum=None,
@@ -207,9 +225,21 @@ def _summarize_channel(
             reason_codes=sorted(reasons),
         )
 
-    mean = fmean(values)
-    if len(values) < rule.minimum_independent_units:
-        reasons.add("independent_units_below_configured_minimum")
+    animal_summaries = [
+        GraftAnimalChannelSummary(
+            animal_ref=animal_refs[animal_key],
+            eligible_observation_count=len(values),
+            mean=fmean(values),
+            evidence_refs=sorted(evidence_by_animal[animal_key]),
+        )
+        for animal_key, values in sorted(values_by_animal.items())
+    ]
+    if any(item.eligible_observation_count > 1 for item in animal_summaries):
+        reasons.add("repeated_observations_aggregated_within_animal")
+    animal_values = [float(item.mean) for item in animal_summaries]
+    mean = fmean(animal_values)
+    if len(animal_values) < rule.minimum_independent_animals:
+        reasons.add("independent_animals_below_configured_minimum")
     relation = _interval_relation(rule, mean)
     if relation in {
         ConfiguredIntervalRelation.BELOW_CONFIGURED_INTERVAL,
@@ -220,38 +250,42 @@ def _summarize_channel(
         channel_id=rule.channel_id,
         unit=rule.unit,
         required=rule.required,
-        minimum_independent_units=rule.minimum_independent_units,
-        eligible_unit_count=len(values),
+        minimum_independent_animals=rule.minimum_independent_animals,
+        eligible_animal_count=len(animal_values),
+        animal_summaries=animal_summaries,
         mean=mean,
-        minimum=min(values),
-        maximum=max(values),
+        minimum=min(animal_values),
+        maximum=max(animal_values),
         configured_lower_bound=rule.configured_lower_bound,
         configured_upper_bound=rule.configured_upper_bound,
         configured_interval_relation=relation,
         result_state="available",
-        evidence_refs=sorted(evidence_refs),
+        evidence_refs=sorted(
+            {
+                evidence
+                for animal_evidence in evidence_by_animal.values()
+                for evidence in animal_evidence
+            }
+        ),
         reason_codes=sorted(reasons),
     )
 
 
-def _collect_observation(
+def _eligible_observation(
     rule: GraftChannelRule,
     observation: GraftObservation,
-    values: list[float],
-    evidence_refs: set[str],
     reasons: set[str],
-) -> None:
+) -> float | None:
     if observation.unit != rule.unit:
         reasons.add("graft_channel_unit_mismatch")
-        return
+        return None
     if observation.evidence_state not in rule.eligible_evidence_states:
         reasons.add("graft_evidence_state_not_eligible")
-        return
+        return None
     if observation.value is None:
         reasons.add("graft_observation_value_unavailable")
-        return
-    values.append(float(observation.value))
-    evidence_refs.update(observation.evidence_refs)
+        return None
+    return float(observation.value)
 
 
 def _interval_relation(

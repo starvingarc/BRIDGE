@@ -75,7 +75,7 @@
       "$ref": "#/$defs/ContractValidationState"
     },
     "evidence_family_id": {
-      "minLength": 1,
+      "pattern": "^evidence-family:[A-Za-z0-9._:-]+$",
       "title": "Evidence Family Id",
       "type": "string"
     },

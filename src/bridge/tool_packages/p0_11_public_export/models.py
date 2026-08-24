@@ -55,47 +55,17 @@ def _unique(values: list[Any], field: str) -> list[Any]:
 
 
 class ExportState(StrEnum):
-    READY_FOR_CONFIRMATION = "ready_for_confirmation"
     REVIEW_REQUIRED = "review_required"
-
-
-class PublicAliasReplacement(FrozenModel):
-    source_literal: str = Field(min_length=1, max_length=500)
-    public_literal: PlainPublicText
-
-    _public_literal_is_plain = field_validator("public_literal")(_plain_public_text)
-
-    @model_validator(mode="after")
-    def replacement_changes_value(self) -> Self:
-        if self.source_literal == self.public_literal:
-            raise ValueError("public alias replacement must change the source literal")
-        return self
 
 
 class PublicClaimSelection(FrozenModel):
     source_claim_id: str = Field(pattern=r"^claim-block:[A-Za-z0-9._:-]+$")
     public_claim_id: PublicClaimId
     public_case_label: PlainPublicText
-    replacements: list[PublicAliasReplacement] = Field(default_factory=list)
 
     _public_case_label_is_plain = field_validator("public_case_label")(
         _plain_public_text
     )
-
-    @field_validator("replacements")
-    @classmethod
-    def replacement_sources_are_unambiguous(
-        cls, value: list[PublicAliasReplacement]
-    ) -> list[PublicAliasReplacement]:
-        sources = [item.source_literal for item in value]
-        _unique(sources, "replacement source literals")
-        if any(
-            left in right or right in left
-            for index, left in enumerate(sources)
-            for right in sources[index + 1 :]
-        ):
-            raise ValueError("replacement source literals cannot overlap")
-        return value
 
 
 class PublicExportSpec(FrozenModel):
@@ -255,14 +225,10 @@ class PublicSafeReport(FrozenModel):
 
     @model_validator(mode="after")
     def state_and_hash_are_coherent(self) -> Self:
-        warning = "p0_10_verified_with_warnings" in self.reason_codes
-        expected = (
-            ExportState.REVIEW_REQUIRED
-            if warning
-            else ExportState.READY_FOR_CONFIRMATION
-        )
-        if self.export_state is not expected:
-            raise ValueError("export state does not match reason codes")
+        if self.export_state is not ExportState.REVIEW_REQUIRED:
+            raise ValueError("public export requires review while authority is absent")
+        if "public_release_authority_not_configured" not in self.reason_codes:
+            raise ValueError("public export must disclose missing release authority")
         if contains_machine_reference(self.model_dump(mode="json")):
             raise ValueError("bounded machine reference remains")
         if self.candidate_hash != public_safe_report_hash(

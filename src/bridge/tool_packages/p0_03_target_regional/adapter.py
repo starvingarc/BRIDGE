@@ -14,7 +14,10 @@ from bridge.tool_packages._structured_runtime import (
     publish_single_json,
     single_object,
 )
-from bridge.tool_packages._configurable_contracts import parse_composition
+from bridge.tool_packages._configurable_contracts import (
+    parse_composition,
+    profile_lineage_reasons,
+)
 from bridge.tool_packages.p0_03_target_regional.executor import evaluate_target_regional
 from bridge.tool_packages.p0_03_target_regional.models import (
     ProductCase,
@@ -270,7 +273,14 @@ def _binding_reasons(
     qc_profile = single_object(
         request, loaded, "qc_readiness_profile", QCReadinessProfile
     )
-    reasons: list[str] = []
+    reasons = profile_lineage_reasons(
+        product_case=product_case,
+        cell_state_profile=cell_state_profile,
+        qc_profile=qc_profile,
+        input_sha256_by_role={
+            ref.role: ref.sha256 for ref in request.object_inputs
+        },
+    )
     if product_case.product_definition_ref != product_definition.ref:
         reasons.append("product_definition_binding_mismatch")
     if product_definition.state_role_map_ref != state_role_map.ref:
@@ -290,11 +300,6 @@ def _binding_reasons(
         reasons.append("cell_state_profile_assay_mismatch")
     if qc_profile.assay != product_case.assay:
         reasons.append("qc_profile_assay_mismatch")
-    if (
-        cell_state_profile.measurement_spec_id
-        != product_case.measurement_spec_ref.object_id
-    ):
-        reasons.append("measurement_spec_binding_mismatch")
     if qc_profile.readiness_state in {
         ReadinessState.BLOCKED,
         ReadinessState.NOT_ASSESSED,

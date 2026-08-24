@@ -18,11 +18,13 @@ from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
     parse_composition,
+    profile_lineage_reasons,
 )
 from bridge.tool_packages.p0_04_developmental.executor import (
     evaluate_developmental_compatibility,
 )
 from bridge.tool_packages.p0_04_developmental.models import DevelopmentWindowSpec
+from bridge.tool_packages.p0_03_target_regional.models import StateRoleMap
 from bridge.toolkit.contracts import (
     ArtifactManifest,
     CellStateEvidenceProfile,
@@ -47,6 +49,7 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         "bridge://schemas/product-definition-card/v0.1",
         ProductDefinitionCard,
     ),
+    "state_role_map": ("bridge://schemas/state-role-map/v0.1", StateRoleMap),
     "development_window_spec": (
         "bridge://schemas/development-window-spec/v0.1",
         DevelopmentWindowSpec,
@@ -103,6 +106,9 @@ class DevelopmentalCompatibilityAdapter:
         product_definition = single_object(
             request, loaded, "product_definition_card", ProductDefinitionCard
         )
+        state_role_map = single_object(
+            request, loaded, "state_role_map", StateRoleMap
+        )
         window_spec = single_object(
             request, loaded, "development_window_spec", DevelopmentWindowSpec
         )
@@ -123,6 +129,7 @@ class DevelopmentalCompatibilityAdapter:
                 tool_version=spec.version,
                 product_case=product_case,
                 product_definition=product_definition,
+                state_role_map=state_role_map,
                 window_spec=window_spec,
                 cell_state_profile=cell_state_profile,
                 cell_state_profile_version=_input_version(
@@ -247,6 +254,7 @@ def _binding_reasons(
     product_definition = single_object(
         request, loaded, "product_definition_card", ProductDefinitionCard
     )
+    state_role_map = single_object(request, loaded, "state_role_map", StateRoleMap)
     window_spec = single_object(
         request, loaded, "development_window_spec", DevelopmentWindowSpec
     )
@@ -259,13 +267,40 @@ def _binding_reasons(
     qc_profile = single_object(
         request, loaded, "qc_readiness_profile", QCReadinessProfile
     )
-    reasons: list[str] = []
+    reasons = profile_lineage_reasons(
+        product_case=product_case,
+        cell_state_profile=cell_state_profile,
+        qc_profile=qc_profile,
+        input_sha256_by_role={
+            ref.role: ref.sha256 for ref in request.object_inputs
+        },
+    )
     if product_case.product_definition_ref != product_definition.ref:
         reasons.append("product_definition_binding_mismatch")
+    if product_definition.state_role_map_ref != state_role_map.ref:
+        reasons.append("state_role_map_binding_mismatch")
+    if state_role_map.product_definition_ref != product_definition.ref:
+        reasons.append("state_role_map_product_definition_mismatch")
+    if window_spec.state_role_map_ref != state_role_map.ref:
+        reasons.append("development_window_state_role_map_mismatch")
     if window_spec.product_definition_ref != product_definition.ref:
         reasons.append("development_window_product_definition_mismatch")
     if window_spec.annotation_vocabulary_ref != cell_state_profile.annotation_vocabulary_ref:
         reasons.append("annotation_vocabulary_binding_mismatch")
+    if state_role_map.annotation_vocabulary_ref != cell_state_profile.annotation_vocabulary_ref:
+        reasons.append("state_role_map_vocabulary_binding_mismatch")
+    lineage_by_state = {
+        (item.label_level, item.state_id): item.lineage_role
+        for item in state_role_map.assignments
+    }
+    target_roles = set(window_spec.target_related_lineage_roles)
+    if any(
+        lineage_by_state.get((item.label_level, item.state_id)) is None
+        or item.target_related
+        != (lineage_by_state[(item.label_level, item.state_id)] in target_roles)
+        for item in window_spec.assignments
+    ):
+        reasons.append("development_target_role_binding_mismatch")
     if product_case.assay not in product_definition.supported_assays:
         reasons.append("product_case_assay_not_supported")
     if product_case.assay not in window_spec.applicable_assays:
@@ -274,8 +309,6 @@ def _binding_reasons(
         reasons.append("cell_state_profile_assay_mismatch")
     if qc_profile.assay != product_case.assay:
         reasons.append("qc_profile_assay_mismatch")
-    if cell_state_profile.measurement_spec_id != product_case.measurement_spec_ref.object_id:
-        reasons.append("measurement_spec_binding_mismatch")
     if qc_profile.readiness_state in {
         ReadinessState.BLOCKED,
         ReadinessState.NOT_ASSESSED,

@@ -16,6 +16,7 @@ from bridge.tool_packages._configurable_contracts import (
     VersionedObjectRef,
 )
 from bridge.tool_packages._publication_safety import validate_publication_text
+from bridge.tool_packages.p0_03_target_regional.models import LineageRole
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -60,6 +61,7 @@ class DevelopmentWindowSpec(FrozenModel):
     )
     window_spec_version: str = Field(pattern=VERSION_PATTERN)
     product_definition_ref: VersionedObjectRef
+    state_role_map_ref: VersionedObjectRef
     annotation_vocabulary_ref: str = Field(pattern=OBJECT_ID_PATTERN)
     review_state: Literal["draft", "reviewed", "frozen"]
     applicable_assays: list[Literal["scRNA-seq", "snRNA-seq"]] = Field(
@@ -78,6 +80,10 @@ class DevelopmentWindowSpec(FrozenModel):
         default_factory=list,
         json_schema_extra={"uniqueItems": True},
     )
+    target_related_lineage_roles: list[LineageRole] = Field(
+        min_length=1,
+        json_schema_extra={"uniqueItems": True},
+    )
     assignments: list[DevelopmentStateAssignment] = Field(min_length=1)
     unmapped_state_policy: Literal["report_unresolved"]
     timecourse_policy: Literal["static_without_timepoint_input"]
@@ -87,6 +93,7 @@ class DevelopmentWindowSpec(FrozenModel):
         "composition_views",
         "included_label_levels",
         "source_ids",
+        "target_related_lineage_roles",
     )
     @classmethod
     def configured_lists_are_unique(cls, value: list[object]) -> list[object]:
@@ -161,6 +168,7 @@ class TimecourseProfile(FrozenModel):
 class DevelopmentInputChecksums(FrozenModel):
     product_case: str = Field(pattern=SHA256_PATTERN)
     product_definition_card: str = Field(pattern=SHA256_PATTERN)
+    state_role_map: str = Field(pattern=SHA256_PATTERN)
     development_window_spec: str = Field(pattern=SHA256_PATTERN)
     cell_state_evidence_profile: str = Field(pattern=SHA256_PATTERN)
     qc_readiness_profile: str = Field(pattern=SHA256_PATTERN)
@@ -215,6 +223,7 @@ class DevelopmentalCompatibilityResult(FrozenModel):
     tool_version: str = Field(pattern=VERSION_PATTERN)
     product_case_ref: VersionedObjectRef
     product_definition_ref: VersionedObjectRef
+    state_role_map_ref: VersionedObjectRef
     development_window_ref: VersionedObjectRef
     cell_state_profile_ref: VersionedObjectRef
     qc_profile_ref: VersionedObjectRef

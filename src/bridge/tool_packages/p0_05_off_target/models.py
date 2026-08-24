@@ -14,6 +14,7 @@ from bridge.tool_packages._configurable_contracts import (
     VersionedObjectRef,
 )
 from bridge.tool_packages._publication_safety import validate_publication_text
+from bridge.tool_packages.p0_03_target_regional.models import LineageRole
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -65,6 +66,21 @@ class ProductRole(StrEnum):
     KNOWN_OFF_TARGET = "known_off_target"
     ROLE_UNRESOLVED = "role_unresolved"
     UNKNOWN = "unknown"
+
+
+class ProductRoleLineageRule(FrozenModel):
+    product_role: ProductRole
+    allowed_lineage_roles: list[LineageRole] = Field(
+        min_length=1,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("allowed_lineage_roles")
+    @classmethod
+    def lineage_roles_are_unique(
+        cls, value: list[LineageRole]
+    ) -> list[LineageRole]:
+        return _unique(value, "allowed_lineage_roles")
 
 
 class RoleEvidenceClass(StrEnum):
@@ -147,6 +163,7 @@ class OffTargetRoleSpec(FrozenModel):
     role_spec_id: str = Field(pattern=r"^off-target-role-spec:[A-Za-z0-9._:-]+$")
     role_spec_version: str = Field(pattern=VERSION_PATTERN)
     product_definition_ref: VersionedObjectRef
+    state_role_map_ref: VersionedObjectRef
     annotation_vocabulary_ref: str = Field(pattern=OBJECT_ID_PATTERN)
     review_state: Literal["draft", "reviewed", "frozen"]
     composition_views: list[CompositionView] = Field(
@@ -162,6 +179,7 @@ class OffTargetRoleSpec(FrozenModel):
         json_schema_extra={"uniqueItems": True},
     )
     required_denominator_view: str = Field(min_length=1)
+    lineage_role_rules: list[ProductRoleLineageRule] = Field(min_length=1)
     assignments: list[OffTargetStateAssignment] = Field(min_length=1)
     unmapped_state_policy: Literal["report_role_unresolved"]
     ood_policy: Literal["not_assessed_without_calibration"]
@@ -189,6 +207,17 @@ class OffTargetRoleSpec(FrozenModel):
             [(item.label_level, item.state_id) for item in value],
             "assignments",
         )
+        return value
+
+    @field_validator("lineage_role_rules")
+    @classmethod
+    def lineage_role_rules_are_complete(
+        cls, value: list[ProductRoleLineageRule]
+    ) -> list[ProductRoleLineageRule]:
+        roles = [item.product_role for item in value]
+        _unique(roles, "lineage_role_rules")
+        if set(roles) != set(ProductRole):
+            raise ValueError("lineage_role_rules must define every product role")
         return value
 
     @property
@@ -272,6 +301,7 @@ class RareStateDetectionProfile(FrozenModel):
 class OffTargetInputChecksums(FrozenModel):
     product_case: str = Field(pattern=SHA256_PATTERN)
     product_definition_card: str = Field(pattern=SHA256_PATTERN)
+    state_role_map: str = Field(pattern=SHA256_PATTERN)
     off_target_role_spec: str = Field(pattern=SHA256_PATTERN)
     cell_state_evidence_profile: str = Field(pattern=SHA256_PATTERN)
     qc_readiness_profile: str = Field(pattern=SHA256_PATTERN)
@@ -326,6 +356,7 @@ class OffTargetControlResult(FrozenModel):
     tool_version: str = Field(pattern=VERSION_PATTERN)
     product_case_ref: VersionedObjectRef
     product_definition_ref: VersionedObjectRef
+    state_role_map_ref: VersionedObjectRef
     role_spec_ref: VersionedObjectRef
     cell_state_profile_ref: VersionedObjectRef
     qc_profile_ref: VersionedObjectRef

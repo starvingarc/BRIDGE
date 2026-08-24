@@ -325,6 +325,23 @@ class ArtifactManifest(FrozenModel):
     evidence_ids: list[str] = Field(default_factory=list)
 
 
+class DataViewBinding(FrozenModel):
+    """Content-addressed expression view passed between scientific tools."""
+
+    view_id: str = Field(min_length=1)
+    view_kind: Literal["all_observations", "qc_selected_observations"]
+    artifact_id: str = Field(min_length=1)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    parent_asset_id: str = Field(min_length=1)
+    parent_asset_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    matrix_location: str = Field(min_length=1)
+    matrix_semantics: Literal["raw_counts", "normalized_expression"]
+    n_observations: int = Field(ge=0)
+    observation_ids_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    sample_or_preparation_ref: str | None = Field(default=None, min_length=1)
+    selection_spec_ref: str | None = Field(default=None, min_length=1)
+
+
 class VisualizationArtifact(FrozenModel):
     visualization_id: str
     component_id: str
@@ -341,6 +358,7 @@ class QCReadinessProfile(FrozenModel):
     input_level: str
     assay: str
     assay_spec_id: str | None = None
+    measurement_spec_version: str | None = None
     measurement_spec_status: str = "not_selected"
     readiness_state: ReadinessState
     schema_integrity: dict[str, Any]
@@ -352,6 +370,7 @@ class QCReadinessProfile(FrozenModel):
     cell_calling_assessment: dict[str, Any]
     ambient_assessment: dict[str, Any]
     data_views: dict[str, Any]
+    selected_data_view: DataViewBinding | None = None
     module_eligibility: dict[str, str]
     missing_inputs: list[str] = Field(default_factory=list)
     blocking_issues: list[str] = Field(default_factory=list)
@@ -852,7 +871,13 @@ class CellStateEvidenceProfile(FrozenModel):
     profile_id: str
     assay: str
     measurement_spec_id: str
+    measurement_spec_version: str | None = None
     measurement_spec_status: str
+    upstream_qc_profile_ref: str | None = None
+    upstream_qc_profile_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    input_data_view: DataViewBinding | None = None
     annotation_vocabulary_ref: str
     reference_snapshot_ref: str
     n_observations: int

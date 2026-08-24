@@ -27,16 +27,16 @@ DETAILED_CARD_IDS = {
 DETAILS = {
     "P0-01": {
         "input": "A declared h5ad, 10x H5, or 10x MTX asset; input level, assay, matrix semantics, sample/capture metadata, gene-identifier source, and output location.",
-        "output": "Raw structural and QC metrics, `QCReadinessProfile`, candidate data views when a candidate MeasurementSpec is selected, visualizations, and a checksummed artifact manifest.",
-        "reject": "Unreadable or ambiguous matrix, duplicate identifiers, invalid count semantics, missing assay, missing required sample/capture information, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input.",
+        "output": "Raw structural and QC metrics, `QCReadinessProfile`, physical candidate data views when a candidate MeasurementSpec is selected, visualizations, and a checksummed artifact manifest. Each published view has a `DataViewBinding` with its artifact checksum, matrix semantics, exact cell count and deterministic cell-index checksum; a QC-selected view is a real subset, not a renamed pointer to the all-cells matrix.",
+        "reject": "Unreadable or ambiguous matrix, duplicate identifiers, invalid count semantics, missing assay, inconsistent sample/capture/batch/preparation hierarchy, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input. Each capture must map to one declared parent value, and each preparation must map to one sample; one biological sample may legitimately have multiple preparations.",
         "visualization": "Per-sample QC distributions and counts-versus-detected-genes diagnostics with explicit denominators.",
         "validation": "Format fixtures, scRNA/snRNA contracts, matrix-semantic failures, deterministic reruns, input immutability, and optional Scrublet eligibility.",
         "details": "docs/bridge_spec_v0.1/input_audit_qc_task_card.md",
     },
     "P0-02": {
-        "input": "QC-qualified expression views, declared scRNA/snRNA modality, internal annotation vocabulary, frozen reference candidates, and provenance.",
-        "output": "Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, and product-level composition evidence.",
-        "reject": "Reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.",
+        "input": "A P0-01 `QCReadinessProfile` plus the exact checksummed expression artifact named by its selected `DataViewBinding`, declared scRNA/snRNA modality, internal annotation vocabulary, reference candidates, and provenance.",
+        "output": "Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, product-level composition evidence, and exact P0-01 profile/view/checksum lineage. Rows with no finite informative expression remain `unknown`; the implementation cannot assign a biological state to an all-zero or otherwise information-free row.",
+        "reject": "QC/view/checksum mismatch, reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.",
         "visualization": "Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.",
         "validation": "Source/lab/modality holdouts, leave-one-state-out, rare-state mixtures, calibration, OOD detection, and product-composition error.",
         "details": "docs/bridge_spec_v0.1/cell_state_annotation_task_card.md",

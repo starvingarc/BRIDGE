@@ -79,7 +79,8 @@ Before execution, the adapter verifies:
 3. ProductDefinitionCard to StateRoleMap binding in both directions;
 4. assessment-spec to ProductDefinitionCard and StateRoleMap to annotation-vocabulary binding;
 5. ProductCase, QC and Cell-State assay agreement;
-6. ProductCase MeasurementSpec identity against the P0-02 profile;
+6. ProductCase MeasurementSpec identity and exact P0-01 QC-selected
+   `DataViewBinding` lineage against the P0-02 profile;
 7. QC readiness is not blocked, not assessed or not applicable;
 8. every upstream composition row has a coherent nonnegative count,
    denominator and fraction, and its configured denominator label contains no

@@ -21,13 +21,22 @@
       "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     },
     {
+      "input_id": "roles",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/state_role_map.json",
+      "role": "state_role_map",
+      "schema_ref": "bridge://schemas/state-role-map/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
       "input_id": "window",
       "media_type": "application/json",
       "object_version": "0.1.0",
       "path": "/absolute/path/to/development_window_spec.json",
       "role": "development_window_spec",
       "schema_ref": "bridge://schemas/development-window-spec/v0.1",
-      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     },
     {
       "input_id": "cell-state",
@@ -36,7 +45,7 @@
       "path": "/absolute/path/to/cell_state_evidence_profile.json",
       "role": "cell_state_evidence_profile",
       "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.1",
-      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
     },
     {
       "input_id": "qc",
@@ -45,7 +54,7 @@
       "path": "/absolute/path/to/qc_readiness_profile.json",
       "role": "qc_readiness_profile",
       "schema_ref": "bridge://schemas/qc-readiness-profile/v0.1",
-      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     }
   ],
   "output_dir": "/absolute/path/to/output",

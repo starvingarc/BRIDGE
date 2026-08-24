@@ -72,6 +72,7 @@
   "contract_id": "P0-10-RELEASE-CONTRACT-v0.1",
   "contract_version": "0.1.0",
   "measurement_language": "en",
+  "public_release_authority_state": "not_configured",
   "renderer_id": "BRIDGE-REPORT-DRAFT-RENDERER-v0.1",
   "renderer_version": "0.1.0",
   "statement_registry": {

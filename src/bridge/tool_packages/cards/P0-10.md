@@ -55,7 +55,9 @@ The verifier runs these checks in a fixed order:
 
 1. Report hash, four-object binding and complete P0-09 graph integrity.
 2. Claim/ProductCase-to-Evidence and Statement references.
-3. Evidence lifecycle, applicability, tier and reported state.
+3. Graph-derived effective Evidence lifecycle, applicability, tier and reported
+   state; an immutable predecessor row cannot remain usable after a validated
+   successor supersedes or invalidates it.
 4. One-field/one-span identity `Decimal` bindings for each rendered value,
    unit, denominator or interval endpoint.
 5. Complete package-owned ClaimBlock reconstruction and
@@ -77,10 +79,16 @@ A successful verifier execution emits one checksummed
 - the immutable ReportDraft ref/hash and authoritative audience;
 - the P0-09 graph ID/version and manifest hash;
 - unique deterministic checks, public-export eligibility, packaged release
-  contract hash and exact benchmark ID/hash.
+  contract hash, exact benchmark ID/hash and package-owned public-release
+  authority state.
 
-P0-11 must receive the original ReportDraft and this receipt. P0-10 does not
-copy report text or claim objects into a second report representation.
+The current package declares `public_release_authority_state=not_configured`.
+Consequently every assessed receipt is fail-closed with
+`public_export_eligibility=ineligible`, including a `verified` receipt.
+`verified` means only deterministic report/evidence correspondence; it is not
+biological truth or permission to publish. P0-11 may receive the original
+ReportDraft and this receipt only to build a human-review candidate. P0-10 does
+not copy report text or claim objects into a second report representation.
 
 `release_blocked` is a successful verification finding, not an executor
 failure. A policy or Statement Registry that does not match the packaged
@@ -110,7 +118,7 @@ immutable.
 
 ## Refusal and scientific boundary
 
-Hard blockers include missing or invalid Evidence, inactive/superseded or
+Hard blockers include missing or invalid Evidence, graph-inactive/superseded or
 inapplicable Evidence used as public support, state substitution, numeric/unit/
 denominator/interval drift, non-identity numeric rendering, inferential wording in a
 descriptive comparison, prohibited clinical or ranking claims, graft leakage,
@@ -131,7 +139,7 @@ contract; two one-thread repetitions were byte-identical and produced no
 blocker, review item or warning. No private path, old score report or P0-02
 controlled data enters the benchmark. The selected default remains unset.
 
-Server evidence: [P0-10 candidate validation, 2026-08-14](https://github.com/starvingarc/BRIDGE/blob/main/docs/validation/p0_10_claim_verifier_20260814.md).
+Server evidence: [P0-10 candidate validation, 2026-08-14](https://github.com/starvingarc/BRIDGE/blob/main/docs/validation/p0_10_claim_verifier_20260814.md). The later stacked closeout record documents the fail-closed authority and effective-lifecycle revision.
 
 Detailed requirement:
 `docs/bridge_spec_v0.1/claim_verifier_task_card.md`.

@@ -21,6 +21,7 @@ P0 遵循以下原则：
 - 所有 count-based 方法必须确认矩阵为未归一化、非负、整数型 UMI counts。
 - 基因集合指标必须绑定 `var_names` 或显式声明的 `var` 基因符号列；未覆盖目标基因集合时返回 `unavailable`，不得写成比例为零。
 - `sample_id`、文件名或目录名不得被自动解释为 `capture_id`、library 或 biological replicate。
+- metadata 层级要求每个 capture 只映射到一个 sample/preparation/batch/timepoint，且每个 preparation 只映射到一个 sample；同一个 biological sample 可以有多个 preparation，不得用错误的一对一约束压平实验设计。
 
 ## 2. 输入级别
 

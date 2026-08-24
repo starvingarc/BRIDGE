@@ -848,6 +848,18 @@ class EvidenceGraphQueries:
 
         return self._record_set
 
+    @property
+    def effective_evidence_refs(self) -> frozenset[str]:
+        """Return graph-derived latest active evidence versions."""
+
+        return frozenset(
+            f"{node.object_id}@{node.object_version}"
+            for node in self._nodes.values()
+            if node.node_type is GraphNodeType.EVIDENCE_RECORD
+            and node.record_mode is GraphRecordMode.OWNED
+            and node.lifecycle_state == EvidenceLifecycleState.ACTIVE.value
+        )
+
     def get_claim_evidence(
         self,
         *,

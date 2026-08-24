@@ -66,10 +66,57 @@ def _preparation(case_slug: str, index: int, value: float) -> dict:
     }
 
 
+def _readiness_summary(case_slug: str, digest: str) -> dict:
+    return {
+        "summary_id": f"case-evidence-readiness-summary:{digest}",
+        "summary_version": "0.1.0",
+        "product_case_ref": _ref(f"product-case:{case_slug}"),
+        "profile_count": 5,
+        "evidence_sufficiency_counts": {
+            "sufficient": 5,
+            "limited": 0,
+            "insufficient": 0,
+            "not_assessed": 0,
+        },
+        "measurement_evidence_state_counts": {
+            "measured": 5,
+            "inferred": 0,
+            "prior_only": 0,
+            "negative": 0,
+            "missing": 0,
+            "unknown": 0,
+            "unavailable": 0,
+            "alert": 0,
+        },
+        "score_state_counts": {"unavailable": 5},
+        "blocking_reasons": [],
+    }
+
+
 def _payloads() -> dict[str, dict]:
     baseline_ref = _ref("product-case:baseline")
     candidate_ref = _ref("product-case:candidate")
     return {
+        "product_cases": [
+            {
+                "object_version": "0.1.0",
+                "product_case_id": f"product-case:{case_slug}",
+                "case_version": "1.0.0",
+                "product_definition_ref": _ref("product-definition:configured"),
+                "sample_or_preparation_ref": _ref(
+                    f"preparation:{case_slug}-parent"
+                ),
+                "biological_unit_refs": [
+                    _ref(f"preparation:{case_slug}-1"),
+                    _ref(f"preparation:{case_slug}-2"),
+                ],
+                "measurement_spec_ref": _ref("measurement-spec:configured"),
+                "assay": "scRNA-seq",
+                "provenance_refs": [_ref("source:fully-synthetic", "1")],
+                "created_at": "2026-08-24T00:00:00Z",
+            }
+            for case_slug in ("baseline", "candidate")
+        ],
         "comparison_spec": {
             "object_version": "0.1.0",
             "comparison_spec_id": "comparison-spec:configured",
@@ -91,7 +138,7 @@ def _payloads() -> dict[str, dict]:
             ],
             "dimension_mismatch_policy": "contextual_comparator",
             "comparison_mode": "descriptive_only",
-            "minimum_independent_preparations_per_case": 2,
+            "minimum_biological_units_per_case": 2,
             "metrics": [
                 {
                     "metric_id": "metric:configured-primary",
@@ -112,10 +159,9 @@ def _payloads() -> dict[str, dict]:
                 {
                     "product_case_ref": baseline_ref,
                     "contract_snapshot": _snapshot(),
-                    "sufficiency_profile_ref": _ref(
-                        "evidence-sufficiency-profile:baseline", "0.1.0"
+                    "sufficiency_summary_ref": _ref(
+                        "case-evidence-readiness-summary:1111111111111111", "0.1.0"
                     ),
-                    "sufficiency_state": "sufficient",
                     "preparations": [
                         _preparation("baseline", 1, 1.0),
                         _preparation("baseline", 2, 3.0),
@@ -124,10 +170,9 @@ def _payloads() -> dict[str, dict]:
                 {
                     "product_case_ref": candidate_ref,
                     "contract_snapshot": _snapshot(),
-                    "sufficiency_profile_ref": _ref(
-                        "evidence-sufficiency-profile:candidate", "0.1.0"
+                    "sufficiency_summary_ref": _ref(
+                        "case-evidence-readiness-summary:2222222222222222", "0.1.0"
                     ),
-                    "sufficiency_state": "sufficient",
                     "preparations": [
                         _preparation("candidate", 1, 2.0),
                         _preparation("candidate", 2, 4.0),
@@ -135,6 +180,10 @@ def _payloads() -> dict[str, dict]:
                 },
             ],
         },
+        "case_evidence_readiness_summaries": [
+            _readiness_summary("baseline", "1111111111111111"),
+            _readiness_summary("candidate", "2222222222222222"),
+        ],
     }
 
 
@@ -167,6 +216,38 @@ def _request(
                 input_id=f"{input_id_prefix}-{index}",
                 role=role,
                 schema_ref=ROLE_SCHEMAS[role],
+                object_version="0.1.0",
+                path=path,
+                sha256=digest,
+                media_type="application/json",
+            )
+        )
+    for product_case in values["product_cases"]:
+        offset = len(refs) + 1
+        path = input_root / f"product_case_{offset}.json"
+        digest = _write_json(path, product_case)
+        refs.append(
+            StructuredInputRef(
+                input_id=f"{input_id_prefix}-{offset}",
+                role="product_case",
+                schema_ref="bridge://schemas/product-case/v0.1",
+                object_version="0.1.0",
+                path=path,
+                sha256=digest,
+                media_type="application/json",
+            )
+        )
+    for offset, summary in enumerate(
+        values["case_evidence_readiness_summaries"],
+        start=len(refs) + 1,
+    ):
+        path = input_root / f"case_evidence_readiness_summary_{offset}.json"
+        digest = _write_json(path, summary)
+        refs.append(
+            StructuredInputRef(
+                input_id=f"{input_id_prefix}-{offset}",
+                role="case_evidence_readiness_summary",
+                schema_ref="bridge://schemas/case-evidence-readiness-summary/v0.1",
                 object_version="0.1.0",
                 path=path,
                 sha256=digest,
@@ -291,6 +372,9 @@ def test_contract_mismatch_can_be_contextual_without_hiding_raw_delta(
     assert run.result["metric_comparisons"][0][
         "raw_delta_candidate_minus_baseline"
     ] == 1.0
+    assert run.result["metric_comparisons"][0][
+        "configured_interpretation"
+    ] == "no_directional_interpretation"
     assert "required_contract_dimension_mismatch" in run.reason_codes
 
 
@@ -325,19 +409,23 @@ def test_unit_mismatch_is_unavailable(tmp_path: Path) -> None:
 
 def test_preparation_and_sufficiency_gates_are_descriptive(tmp_path: Path) -> None:
     payloads = _payloads()
-    payloads["comparison_spec"]["minimum_independent_preparations_per_case"] = 3
-    payloads["comparison_evidence_bundle"]["cases"][1]["sufficiency_state"] = (
-        "limited"
+    payloads["comparison_spec"]["minimum_biological_units_per_case"] = 3
+    candidate_summary = payloads["case_evidence_readiness_summaries"][1]
+    candidate_summary["evidence_sufficiency_counts"].update(
+        {"sufficient": 0, "limited": 5}
     )
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
     assert run.execution_state is ExecutionState.PARTIAL
     assert run.result["result_state"] == "partial"
-    assert "independent_preparations_below_configured_minimum" in run.reason_codes
+    assert "biological_units_below_configured_minimum" in run.reason_codes
     assert "case_evidence_sufficiency_not_sufficient" in run.reason_codes
     assert run.result["metric_comparisons"][0][
         "raw_delta_candidate_minus_baseline"
     ] == 1.0
+    assert run.result["metric_comparisons"][0][
+        "configured_interpretation"
+    ] == "no_directional_interpretation"
 
 
 def test_case_binding_mismatch_is_typed(tmp_path: Path) -> None:
@@ -351,6 +439,48 @@ def test_case_binding_mismatch_is_typed(tmp_path: Path) -> None:
     assert run.reason_codes == ["comparison_case_binding_mismatch"]
     assert run.result is None
     assert run.artifacts == []
+
+
+def test_all_non_score_comparability_dimensions_are_required(tmp_path: Path) -> None:
+    payloads = _payloads()
+    payloads["comparison_spec"]["required_equal_dimensions"].remove("algorithm")
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
+
+
+def test_biological_units_must_match_product_case_declaration(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    payloads["product_cases"][1]["biological_unit_refs"][1] = _ref(
+        "preparation:candidate-other"
+    )
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["comparison_biological_unit_binding_mismatch"]
+
+
+def test_cross_arm_biological_unit_overlap_is_rejected(tmp_path: Path) -> None:
+    payloads = _payloads()
+    shared = _ref("preparation:shared-1")
+    payloads["product_cases"][0]["biological_unit_refs"][0] = shared
+    payloads["product_cases"][1]["biological_unit_refs"][0] = shared
+    payloads["comparison_evidence_bundle"]["cases"][0]["preparations"][0][
+        "preparation_ref"
+    ] = shared
+    payloads["comparison_evidence_bundle"]["cases"][1]["preparations"][0][
+        "preparation_ref"
+    ] = shared
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["comparison_biological_unit_overlap"]
 
 
 def test_score_contract_is_refused_until_a_contract_exists(tmp_path: Path) -> None:

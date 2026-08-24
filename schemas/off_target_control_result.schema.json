@@ -130,11 +130,17 @@
           "pattern": "^[0-9a-f]{64}$",
           "title": "Qc Readiness Profile",
           "type": "string"
+        },
+        "state_role_map": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "State Role Map",
+          "type": "string"
         }
       },
       "required": [
         "product_case",
         "product_definition_card",
+        "state_role_map",
         "off_target_role_spec",
         "cell_state_evidence_profile",
         "qc_readiness_profile"
@@ -597,6 +603,9 @@
       "title": "Score State",
       "type": "string"
     },
+    "state_role_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
     "tool_id": {
       "const": "P0-05",
       "title": "Tool Id",
@@ -622,6 +631,7 @@
     "tool_version",
     "product_case_ref",
     "product_definition_ref",
+    "state_role_map_ref",
     "role_spec_ref",
     "cell_state_profile_ref",
     "qc_profile_ref",

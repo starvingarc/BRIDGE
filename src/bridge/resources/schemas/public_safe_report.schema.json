@@ -43,7 +43,6 @@
     },
     "ExportState": {
       "enum": [
-        "ready_for_confirmation",
         "review_required"
       ],
       "title": "ExportState",

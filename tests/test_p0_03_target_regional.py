@@ -248,6 +248,41 @@ def _write_json(path: Path, payload: dict) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _bind_upstream_profiles(payloads: dict[str, dict]) -> None:
+    view = {
+        "view_id": "data-view:demo:qc-selected",
+        "view_kind": "qc_selected_observations",
+        "artifact_id": "artifact:demo:candidate-view",
+        "sha256": "a" * 64,
+        "parent_asset_id": "asset:demo",
+        "parent_asset_sha256": "b" * 64,
+        "matrix_location": "X",
+        "matrix_semantics": "raw_counts",
+        "n_observations": 100,
+        "observation_ids_sha256": "c" * 64,
+        "sample_or_preparation_ref": "preparation:demo@1.0.0",
+        "selection_spec_ref": "QC-scRNA-candidate-v0.1@0.1.0",
+    }
+    qc = payloads["qc_readiness_profile"]
+    qc["selected_data_view"] = view
+    qc_raw = json.dumps(
+        qc,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    cell_state = payloads["cell_state_evidence_profile"]
+    cell_state.update(
+        {
+            "measurement_spec_version": "0.1.0",
+            "upstream_qc_profile_ref": qc["profile_id"],
+            "upstream_qc_profile_sha256": hashlib.sha256(qc_raw).hexdigest(),
+            "input_data_view": view,
+        }
+    )
+
+
 def _request(
     tmp_path: Path,
     *,
@@ -257,6 +292,7 @@ def _request(
     random_seed: int = 0,
 ) -> ToolRequestV2:
     values = deepcopy(payloads or _payloads())
+    _bind_upstream_profiles(values)
     input_root = tmp_path / f"objects-{input_id_prefix}"
     input_root.mkdir(parents=True)
     refs: list[StructuredInputRef] = []
