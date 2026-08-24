@@ -1,0 +1,640 @@
+{
+  "$defs": {
+    "CompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "CompositionView",
+      "type": "string"
+    },
+    "EvidenceDirection": {
+      "enum": [
+        "adverse_direction_supported",
+        "non_target_no_optimum_known",
+        "context_dependent",
+        "insufficient_evidence"
+      ],
+      "title": "EvidenceDirection",
+      "type": "string"
+    },
+    "OODAssessmentProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "const": "not_assessed",
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "reason_code": {
+          "const": "ood_calibration_not_supplied",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assessment_state",
+        "reason_code"
+      ],
+      "title": "OODAssessmentProfile",
+      "type": "object"
+    },
+    "OffTargetCompositionChannel": {
+      "additionalProperties": false,
+      "properties": {
+        "composition_view": {
+          "$ref": "#/$defs/CompositionView"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "denominator_view": {
+          "minLength": 1,
+          "title": "Denominator View",
+          "type": "string"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "role_fractions": {
+          "items": {
+            "$ref": "#/$defs/RoleFraction"
+          },
+          "title": "Role Fractions",
+          "type": "array"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "state_breakdown": {
+          "items": {
+            "$ref": "#/$defs/StateCompositionRecord"
+          },
+          "title": "State Breakdown",
+          "type": "array"
+        }
+      },
+      "required": [
+        "composition_view",
+        "label_level",
+        "denominator_view",
+        "denominator",
+        "role_fractions",
+        "state_breakdown"
+      ],
+      "title": "OffTargetCompositionChannel",
+      "type": "object"
+    },
+    "OffTargetInputChecksums": {
+      "additionalProperties": false,
+      "properties": {
+        "cell_state_evidence_profile": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cell State Evidence Profile",
+          "type": "string"
+        },
+        "off_target_role_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Off Target Role Spec",
+          "type": "string"
+        },
+        "product_case": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Case",
+          "type": "string"
+        },
+        "product_definition_card": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Definition Card",
+          "type": "string"
+        },
+        "qc_readiness_profile": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Qc Readiness Profile",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_case",
+        "product_definition_card",
+        "off_target_role_spec",
+        "cell_state_evidence_profile",
+        "qc_readiness_profile"
+      ],
+      "title": "OffTargetInputChecksums",
+      "type": "object"
+    },
+    "ProductRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved",
+        "unknown"
+      ],
+      "title": "ProductRole",
+      "type": "string"
+    },
+    "RareStateDetectionProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "const": "not_assessed",
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "reason_code": {
+          "const": "rare_state_calibration_not_supplied",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assessment_state",
+        "reason_code"
+      ],
+      "title": "RareStateDetectionProfile",
+      "type": "object"
+    },
+    "RoleEvidenceClass": {
+      "enum": [
+        "clear_off_axis",
+        "context_dependent_non_target",
+        "intended_accessory",
+        "insufficient_evidence"
+      ],
+      "title": "RoleEvidenceClass",
+      "type": "string"
+    },
+    "RoleFraction": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "role": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "numerator",
+        "denominator"
+      ],
+      "title": "RoleFraction",
+      "type": "object"
+    },
+    "StateCompositionRecord": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "unknown_reason": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "product_role": {
+                "const": "unknown"
+              }
+            },
+            "required": [
+              "product_role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence_direction": {
+                "type": "null"
+              },
+              "role_evidence_class": {
+                "type": "null"
+              },
+              "unknown_reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "unknown_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "product_role": {
+                "const": "known_off_target"
+              }
+            },
+            "required": [
+              "product_role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence_direction": {
+                "type": "string"
+              },
+              "role_evidence_class": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role_evidence_class",
+              "evidence_direction"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "evidence_direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceDirection"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "product_role": {
+          "$ref": "#/$defs/ProductRole"
+        },
+        "role_evidence_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoleEvidenceClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        },
+        "unknown_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnknownReason"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "state_id",
+        "product_role",
+        "count",
+        "denominator"
+      ],
+      "title": "StateCompositionRecord",
+      "type": "object"
+    },
+    "UnknownReason": {
+      "enum": [
+        "reference_gap",
+        "method_conflict",
+        "biological_unresolved",
+        "technical_shift",
+        "technical_unavailable"
+      ],
+      "title": "UnknownReason",
+      "type": "string"
+    },
+    "UnmappedOffTargetState": {
+      "additionalProperties": false,
+      "properties": {
+        "composition_view": {
+          "$ref": "#/$defs/CompositionView"
+        },
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "reason_code": {
+          "const": "product_role_not_configured",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "label_level",
+        "composition_view",
+        "count",
+        "denominator",
+        "reason_code"
+      ],
+      "title": "UnmappedOffTargetState",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/off-target-control-result/v0.1",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result_state": {
+            "const": "not_assessed"
+          }
+        },
+        "required": [
+          "result_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "composition_channels": {
+            "maxItems": 0
+          },
+          "score_state": {
+            "const": "unavailable"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "result_state": {
+            "enum": [
+              "complete",
+              "partial"
+            ]
+          }
+        },
+        "required": [
+          "result_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "composition_channels": {
+            "minItems": 1
+          },
+          "score_state": {
+            "const": "shadow"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "result_state": {
+            "const": "complete"
+          }
+        },
+        "required": [
+          "result_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "unmapped_states": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "cell_state_profile_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "composition_channels": {
+      "items": {
+        "$ref": "#/$defs/OffTargetCompositionChannel"
+      },
+      "title": "Composition Channels",
+      "type": "array"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/OffTargetInputChecksums"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "ood_assessment": {
+      "$ref": "#/$defs/OODAssessmentProfile"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "qc_profile_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "rare_state_detection": {
+      "$ref": "#/$defs/RareStateDetectionProfile"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "result_id": {
+      "pattern": "^off-target-result:[a-f0-9]{16}$",
+      "title": "Result Id",
+      "type": "string"
+    },
+    "result_state": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "Result State",
+      "type": "string"
+    },
+    "role_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "score_state": {
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-05",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "unmapped_states": {
+      "items": {
+        "$ref": "#/$defs/UnmappedOffTargetState"
+      },
+      "title": "Unmapped States",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "result_id",
+    "tool_id",
+    "tool_version",
+    "product_case_ref",
+    "product_definition_ref",
+    "role_spec_ref",
+    "cell_state_profile_ref",
+    "qc_profile_ref",
+    "input_sha256_by_role",
+    "result_state",
+    "composition_channels",
+    "unmapped_states",
+    "ood_assessment",
+    "rare_state_detection",
+    "evidence_refs",
+    "reason_codes",
+    "score_state"
+  ],
+  "title": "OffTargetControlResult",
+  "type": "object"
+}

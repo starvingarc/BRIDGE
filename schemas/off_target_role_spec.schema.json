@@ -1,0 +1,320 @@
+{
+  "$defs": {
+    "CompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "CompositionView",
+      "type": "string"
+    },
+    "EvidenceDirection": {
+      "enum": [
+        "adverse_direction_supported",
+        "non_target_no_optimum_known",
+        "context_dependent",
+        "insufficient_evidence"
+      ],
+      "title": "EvidenceDirection",
+      "type": "string"
+    },
+    "OffTargetStateAssignment": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "unknown_reason": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "product_role": {
+                "const": "unknown"
+              }
+            },
+            "required": [
+              "product_role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence_direction": {
+                "type": "null"
+              },
+              "role_evidence_class": {
+                "type": "null"
+              },
+              "unknown_reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "unknown_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "product_role": {
+                "const": "known_off_target"
+              }
+            },
+            "required": [
+              "product_role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence_direction": {
+                "type": "string"
+              },
+              "role_evidence_class": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role_evidence_class",
+              "evidence_direction"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "evidence_direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceDirection"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "product_role": {
+          "$ref": "#/$defs/ProductRole"
+        },
+        "provenance_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "role_evidence_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoleEvidenceClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        },
+        "unknown_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnknownReason"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "state_id",
+        "label_level",
+        "product_role"
+      ],
+      "title": "OffTargetStateAssignment",
+      "type": "object"
+    },
+    "ProductRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved",
+        "unknown"
+      ],
+      "title": "ProductRole",
+      "type": "string"
+    },
+    "RoleEvidenceClass": {
+      "enum": [
+        "clear_off_axis",
+        "context_dependent_non_target",
+        "intended_accessory",
+        "insufficient_evidence"
+      ],
+      "title": "RoleEvidenceClass",
+      "type": "string"
+    },
+    "UnknownReason": {
+      "enum": [
+        "reference_gap",
+        "method_conflict",
+        "biological_unresolved",
+        "technical_shift",
+        "technical_unavailable"
+      ],
+      "title": "UnknownReason",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/off-target-role-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "annotation_vocabulary_ref": {
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+      "title": "Annotation Vocabulary Ref",
+      "type": "string"
+    },
+    "assignments": {
+      "items": {
+        "$ref": "#/$defs/OffTargetStateAssignment"
+      },
+      "minItems": 1,
+      "title": "Assignments",
+      "type": "array"
+    },
+    "composition_views": {
+      "items": {
+        "$ref": "#/$defs/CompositionView"
+      },
+      "minItems": 1,
+      "title": "Composition Views",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "included_label_levels": {
+      "items": {
+        "enum": [
+          "L1",
+          "L2",
+          "L3"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Included Label Levels",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "ood_policy": {
+      "const": "not_assessed_without_calibration",
+      "title": "Ood Policy",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "rare_state_policy": {
+      "const": "not_assessed_without_calibration",
+      "title": "Rare State Policy",
+      "type": "string"
+    },
+    "required_denominator_view": {
+      "minLength": 1,
+      "title": "Required Denominator View",
+      "type": "string"
+    },
+    "review_state": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "Review State",
+      "type": "string"
+    },
+    "role_spec_id": {
+      "pattern": "^off-target-role-spec:[A-Za-z0-9._:-]+$",
+      "title": "Role Spec Id",
+      "type": "string"
+    },
+    "role_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Role Spec Version",
+      "type": "string"
+    },
+    "source_ids": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Source Ids",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "unmapped_state_policy": {
+      "const": "report_role_unresolved",
+      "title": "Unmapped State Policy",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "role_spec_id",
+    "role_spec_version",
+    "product_definition_ref",
+    "annotation_vocabulary_ref",
+    "review_state",
+    "composition_views",
+    "included_label_levels",
+    "required_denominator_view",
+    "assignments",
+    "unmapped_state_policy",
+    "ood_policy",
+    "rare_state_policy"
+  ],
+  "title": "OffTargetRoleSpec",
+  "type": "object"
+}
