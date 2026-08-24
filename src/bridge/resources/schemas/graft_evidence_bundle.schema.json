@@ -1,0 +1,388 @@
+{
+  "$defs": {
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "GraftAvailability": {
+      "enum": [
+        "not_provided",
+        "provided"
+      ],
+      "title": "GraftAvailability",
+      "type": "string"
+    },
+    "GraftObservation": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "value": {
+                "type": [
+                  "number",
+                  "integer"
+                ]
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "evidence_state": {
+                "enum": [
+                  "missing",
+                  "unknown",
+                  "unavailable"
+                ]
+              }
+            },
+            "required": [
+              "evidence_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "denominator": {
+                "type": "null"
+              },
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "channel_id": {
+          "pattern": "^graft-channel:[A-Za-z0-9._:-]+$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "denominator": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "observation_id": {
+          "pattern": "^graft-observation:[A-Za-z0-9._:-]+$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "observation_id",
+        "channel_id",
+        "unit",
+        "value",
+        "evidence_state",
+        "evidence_refs"
+      ],
+      "title": "GraftObservation",
+      "type": "object"
+    },
+    "GraftUnitEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "animal_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "graft_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "linkage_evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Linkage Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/GraftObservation"
+          },
+          "minItems": 1,
+          "title": "Observations",
+          "type": "array"
+        },
+        "originating_preparation_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "timepoint_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "unit_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "unit_ref",
+        "animal_ref",
+        "graft_ref",
+        "timepoint_ref",
+        "observations"
+      ],
+      "title": "GraftUnitEvidence",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-evidence-bundle/v0.1",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "algorithm_ref": {
+            "type": "object"
+          },
+          "assay_ref": {
+            "type": "object"
+          },
+          "graft_case_ref": {
+            "type": "object"
+          },
+          "measurement_spec_ref": {
+            "type": "object"
+          },
+          "reference_snapshot_ref": {
+            "type": "object"
+          },
+          "sampling_context_ref": {
+            "type": "object"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "graft_availability": {
+            "const": "not_provided"
+          }
+        },
+        "required": [
+          "graft_availability"
+        ]
+      },
+      "then": {
+        "properties": {
+          "algorithm_ref": {
+            "type": "null"
+          },
+          "assay_ref": {
+            "type": "null"
+          },
+          "design_constraint_refs": {
+            "maxItems": 0
+          },
+          "graft_case_ref": {
+            "type": "null"
+          },
+          "measurement_spec_ref": {
+            "type": "null"
+          },
+          "reference_snapshot_ref": {
+            "type": "null"
+          },
+          "sampling_context_ref": {
+            "type": "null"
+          },
+          "units": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "algorithm_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "assay_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "design_constraint_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "title": "Design Constraint Refs",
+      "type": "array"
+    },
+    "evidence_bundle_id": {
+      "pattern": "^graft-evidence-bundle:[A-Za-z0-9._:-]+$",
+      "title": "Evidence Bundle Id",
+      "type": "string"
+    },
+    "evidence_bundle_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Evidence Bundle Version",
+      "type": "string"
+    },
+    "graft_availability": {
+      "$ref": "#/$defs/GraftAvailability"
+    },
+    "graft_case_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "measurement_spec_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reference_snapshot_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "sampling_context_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "units": {
+      "items": {
+        "$ref": "#/$defs/GraftUnitEvidence"
+      },
+      "title": "Units",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "evidence_bundle_id",
+    "evidence_bundle_version",
+    "graft_availability",
+    "product_case_ref"
+  ],
+  "title": "GraftEvidenceBundle",
+  "type": "object"
+}

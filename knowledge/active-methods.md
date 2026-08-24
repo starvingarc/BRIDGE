@@ -1,6 +1,6 @@
 # Active BRIDGE Methods
 
-This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09, P0-11 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
+This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09, P0-11, P0-12 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
 
 ## P0-01: Input Audit & QC
 
@@ -69,3 +69,8 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 
 - `METHOD-BRIDGE-ALGORITHM-2AFBC8` — BRIDGE algorithm ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ALGORITHM-2AFBC8))
 - `METHOD-BRIDGE-RULE-ENGINE` — BRIDGE rule engine ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RULE-ENGINE))
+
+## P0-12: Optional Graft Assessment
+
+- `METHOD-BRIDGE-GRAFTCASE-VALIDATOR` — BRIDGE GraftCase Validator ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-GRAFTCASE-VALIDATOR))
+- `METHOD-BRIDGE-SOFT-COMPOSITION-404672` — BRIDGE soft composition ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SOFT-COMPOSITION-404672))

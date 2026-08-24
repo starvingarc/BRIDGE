@@ -1,0 +1,464 @@
+{
+  "$defs": {
+    "ConfiguredIntervalRelation": {
+      "enum": [
+        "below_configured_interval",
+        "within_configured_interval",
+        "above_configured_interval",
+        "no_interval_configured",
+        "unavailable"
+      ],
+      "title": "ConfiguredIntervalRelation",
+      "type": "string"
+    },
+    "GraftAnalysisMode": {
+      "enum": [
+        "unavailable",
+        "descriptive_only"
+      ],
+      "title": "GraftAnalysisMode",
+      "type": "string"
+    },
+    "GraftAvailability": {
+      "enum": [
+        "not_provided",
+        "provided"
+      ],
+      "title": "GraftAvailability",
+      "type": "string"
+    },
+    "GraftChannelSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_id": {
+          "pattern": "^graft-channel:[A-Za-z0-9._:-]+$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "configured_interval_relation": {
+          "$ref": "#/$defs/ConfiguredIntervalRelation"
+        },
+        "configured_lower_bound": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Configured Lower Bound"
+        },
+        "configured_upper_bound": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Configured Upper Bound"
+        },
+        "eligible_unit_count": {
+          "minimum": 0,
+          "title": "Eligible Unit Count",
+          "type": "integer"
+        },
+        "evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Maximum"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mean"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Minimum"
+        },
+        "minimum_independent_units": {
+          "exclusiveMinimum": 0,
+          "title": "Minimum Independent Units",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "result_state": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Result State",
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel_id",
+        "unit",
+        "required",
+        "minimum_independent_units",
+        "eligible_unit_count",
+        "mean",
+        "minimum",
+        "maximum",
+        "configured_lower_bound",
+        "configured_upper_bound",
+        "configured_interval_relation",
+        "result_state",
+        "evidence_refs",
+        "reason_codes"
+      ],
+      "title": "GraftChannelSummary",
+      "type": "object"
+    },
+    "GraftInputChecksums": {
+      "additionalProperties": false,
+      "properties": {
+        "graft_assessment_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Graft Assessment Spec",
+          "type": "string"
+        },
+        "graft_evidence_bundle": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Graft Evidence Bundle",
+          "type": "string"
+        }
+      },
+      "required": [
+        "graft_assessment_spec",
+        "graft_evidence_bundle"
+      ],
+      "title": "GraftInputChecksums",
+      "type": "object"
+    },
+    "GraftLinkageState": {
+      "enum": [
+        "not_applicable",
+        "provided_unlinked",
+        "provided_linked"
+      ],
+      "title": "GraftLinkageState",
+      "type": "string"
+    },
+    "PreparationGraftLinkage": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "originating_preparation_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "unit_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "unit_ref",
+        "originating_preparation_ref",
+        "evidence_refs"
+      ],
+      "title": "PreparationGraftLinkage",
+      "type": "object"
+    },
+    "UnmatchedGraftObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_id": {
+          "pattern": "^graft-channel:[A-Za-z0-9._:-]+$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "observation_id": {
+          "pattern": "^graft-observation:[A-Za-z0-9._:-]+$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "reason_code": {
+          "const": "graft_channel_not_configured",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "unit_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "unit_ref",
+        "observation_id",
+        "channel_id",
+        "reason_code"
+      ],
+      "title": "UnmatchedGraftObservation",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-assessment/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_mode": {
+      "$ref": "#/$defs/GraftAnalysisMode"
+    },
+    "assessment_id": {
+      "pattern": "^graft-assessment:[a-f0-9]{16}$",
+      "title": "Assessment Id",
+      "type": "string"
+    },
+    "assessment_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "channel_summaries": {
+      "items": {
+        "$ref": "#/$defs/GraftChannelSummary"
+      },
+      "title": "Channel Summaries",
+      "type": "array"
+    },
+    "design_constraint_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "title": "Design Constraint Refs",
+      "type": "array"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_bundle_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "evidence_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "graft_availability": {
+      "$ref": "#/$defs/GraftAvailability"
+    },
+    "graft_case_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "graft_score": {
+      "default": null,
+      "title": "Graft Score",
+      "type": "null"
+    },
+    "independent_unit_count": {
+      "minimum": 0,
+      "title": "Independent Unit Count",
+      "type": "integer"
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/GraftInputChecksums"
+    },
+    "linkage_state": {
+      "$ref": "#/$defs/GraftLinkageState"
+    },
+    "measurement_spec_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "preparation_linkages": {
+      "items": {
+        "$ref": "#/$defs/PreparationGraftLinkage"
+      },
+      "title": "Preparation Linkages",
+      "type": "array"
+    },
+    "product_backfill": {
+      "const": "not_performed",
+      "title": "Product Backfill",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "result_state": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed",
+        "not_provided"
+      ],
+      "title": "Result State",
+      "type": "string"
+    },
+    "score_state": {
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-12",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "unmatched_observations": {
+      "items": {
+        "$ref": "#/$defs/UnmatchedGraftObservation"
+      },
+      "title": "Unmatched Observations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "assessment_id",
+    "tool_id",
+    "tool_version",
+    "assessment_spec_ref",
+    "evidence_bundle_ref",
+    "product_case_ref",
+    "graft_case_ref",
+    "measurement_spec_ref",
+    "input_sha256_by_role",
+    "result_state",
+    "graft_availability",
+    "linkage_state",
+    "analysis_mode",
+    "independent_unit_count",
+    "design_constraint_refs",
+    "channel_summaries",
+    "preparation_linkages",
+    "unmatched_observations",
+    "evidence_refs",
+    "reason_codes",
+    "product_backfill",
+    "score_state"
+  ],
+  "title": "GraftAssessment",
+  "type": "object"
+}

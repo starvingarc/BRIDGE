@@ -1,0 +1,244 @@
+{
+  "$defs": {
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "GraftChannelRule": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "configured_lower_bound": {
+                "type": [
+                  "number",
+                  "integer"
+                ]
+              },
+              "configured_upper_bound": {
+                "type": [
+                  "number",
+                  "integer"
+                ]
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "interpretation_policy": {
+                "const": "descriptive_only"
+              }
+            },
+            "required": [
+              "interpretation_policy"
+            ]
+          },
+          "then": {
+            "properties": {
+              "configured_lower_bound": {
+                "type": "null"
+              },
+              "configured_upper_bound": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "channel_id": {
+          "pattern": "^graft-channel:[A-Za-z0-9._:-]+$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "configured_lower_bound": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Configured Lower Bound"
+        },
+        "configured_upper_bound": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Configured Upper Bound"
+        },
+        "eligible_evidence_states": {
+          "items": {
+            "$ref": "#/$defs/EvidenceState"
+          },
+          "minItems": 1,
+          "title": "Eligible Evidence States",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "interpretation_policy": {
+          "enum": [
+            "descriptive_only",
+            "configured_interval"
+          ],
+          "title": "Interpretation Policy",
+          "type": "string"
+        },
+        "minimum_independent_units": {
+          "exclusiveMinimum": 0,
+          "title": "Minimum Independent Units",
+          "type": "integer"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel_id",
+        "unit",
+        "required",
+        "eligible_evidence_states",
+        "minimum_independent_units",
+        "interpretation_policy"
+      ],
+      "title": "GraftChannelRule",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-assessment-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "algorithm_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "assay_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "assessment_spec_id": {
+      "pattern": "^graft-assessment-spec:[A-Za-z0-9._:-]+$",
+      "title": "Assessment Spec Id",
+      "type": "string"
+    },
+    "assessment_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Assessment Spec Version",
+      "type": "string"
+    },
+    "confounded_design_policy": {
+      "const": "descriptive_only",
+      "title": "Confounded Design Policy",
+      "type": "string"
+    },
+    "measurement_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "missing_observation_policy": {
+      "const": "report_unavailable",
+      "title": "Missing Observation Policy",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "preparation_linkage_policy": {
+      "const": "explicit_evidence_only",
+      "title": "Preparation Linkage Policy",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reference_snapshot_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/GraftChannelRule"
+      },
+      "minItems": 1,
+      "title": "Rules",
+      "type": "array"
+    },
+    "sampling_context_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "score_policy": {
+      "const": "unavailable",
+      "title": "Score Policy",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "assessment_spec_id",
+    "assessment_spec_version",
+    "product_case_ref",
+    "measurement_spec_ref",
+    "assay_ref",
+    "sampling_context_ref",
+    "reference_snapshot_ref",
+    "algorithm_ref",
+    "rules",
+    "missing_observation_policy",
+    "confounded_design_policy",
+    "preparation_linkage_policy",
+    "score_policy"
+  ],
+  "title": "GraftAssessmentSpec",
+  "type": "object"
+}
