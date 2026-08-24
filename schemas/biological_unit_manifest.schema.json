@@ -373,7 +373,8 @@
     "analysis_unit_kind",
     "independence_group_kind",
     "independence_scope_ref",
-    "lineage_state"
+    "lineage_state",
+    "unit_bindings"
   ],
   "title": "BiologicalUnitManifest",
   "type": "object"

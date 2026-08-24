@@ -11,8 +11,11 @@ from pydantic import ConfigDict, Field, StrictFloat, StrictInt, ValidationError,
 
 from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import (
+    BiologicalUnitKind,
     CellStateEvidenceProfileV2,
     FrozenModel,
+    IndependenceGroupKind,
+    MeasurementSpecV2,
     QCReadinessProfileV2,
 )
 
@@ -41,17 +44,6 @@ class VersionedObjectRef(FrozenModel):
     def ref(self) -> str:
         return f"{self.object_id}@{self.object_version}"
 
-
-class BiologicalUnitKind(StrEnum):
-    CAPTURE = "capture"
-    PREPARATION = "preparation"
-    SAMPLE = "sample"
-    DONOR = "donor"
-    ANIMAL = "animal"
-    GRAFT_UNIT = "graft_unit"
-
-
-IndependenceGroupKind = Literal["preparation", "sample", "donor", "animal"]
 
 
 class BiologicalUnitLineageState(StrEnum):
@@ -91,6 +83,72 @@ class BiologicalUnitBinding(FrozenModel):
                 "independence group must equal its typed hierarchy ref"
             )
         return self
+
+
+HIERARCHY_FIELDS = (
+    "capture_ref",
+    "preparation_ref",
+    "sample_ref",
+    "donor_ref",
+    "animal_ref",
+    "graft_unit_ref",
+)
+FUNCTIONAL_LINEAGE_RELATIONS = {
+    "capture_ref": (
+        "preparation_ref",
+        "sample_ref",
+        "donor_ref",
+        "animal_ref",
+        "graft_unit_ref",
+    ),
+    "preparation_ref": ("sample_ref", "donor_ref"),
+    "sample_ref": ("donor_ref",),
+    "graft_unit_ref": (
+        "preparation_ref",
+        "sample_ref",
+        "donor_ref",
+        "animal_ref",
+    ),
+}
+
+
+def _validate_binding_lineage(
+    bindings: list[BiologicalUnitBinding],
+) -> None:
+    for field in HIERARCHY_FIELDS:
+        version_by_identity: dict[str, str] = {}
+        for binding in bindings:
+            ref = getattr(binding, field)
+            if ref is None:
+                continue
+            previous = version_by_identity.setdefault(
+                ref.object_id,
+                ref.object_version,
+            )
+            if previous != ref.object_version:
+                raise ValueError(
+                    f"{field} biological identity cannot use multiple versions"
+                )
+
+    for source_field, parent_fields in FUNCTIONAL_LINEAGE_RELATIONS.items():
+        parents_by_source: dict[str, tuple[str | None, ...]] = {}
+        for binding in bindings:
+            source_ref = getattr(binding, source_field)
+            if source_ref is None:
+                continue
+            parents = tuple(
+                None if (ref := getattr(binding, field)) is None else ref.ref
+                for field in parent_fields
+            )
+            previous = parents_by_source.setdefault(
+                source_ref.object_id,
+                parents,
+            )
+            if previous != parents:
+                raise ValueError(
+                    f"{source_field} maps to conflicting lineage; "
+                    "pooling or multiplexing requires a separate explicit contract"
+                )
 
 
 class BiologicalUnitAssignment(FrozenModel):
@@ -228,14 +286,18 @@ class BiologicalUnitManifest(FrozenModel):
     lineage_state: BiologicalUnitLineageState
     review_gate_ref: VersionedObjectRef | None = None
     review_gate_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
-    unit_bindings: list[BiologicalUnitBinding] = Field(default_factory=list)
+    unit_bindings: list[BiologicalUnitBinding]
 
     @field_validator("unit_bindings")
     @classmethod
     def bindings_are_unique(
         cls, value: list[BiologicalUnitBinding]
     ) -> list[BiologicalUnitBinding]:
-        _unique([item.analysis_unit_ref.ref for item in value], "analysis units")
+        _unique(
+            [item.analysis_unit_ref.object_id for item in value],
+            "analysis unit biological identities",
+        )
+        _validate_binding_lineage(value)
         return value
 
     @model_validator(mode="after")
@@ -324,14 +386,6 @@ def biological_unit_assignment_reasons(
     }
     used_analysis_units: set[str] = set()
     used_independence_groups: set[str] = set()
-    hierarchy_fields = (
-        "capture_ref",
-        "preparation_ref",
-        "sample_ref",
-        "donor_ref",
-        "animal_ref",
-        "graft_unit_ref",
-    )
     for assignment in artifact.assignments:
         binding = bindings.get(assignment.analysis_unit_ref)
         if binding is None:
@@ -341,7 +395,7 @@ def biological_unit_assignment_reasons(
         used_independence_groups.add(assignment.independence_group_ref)
         if assignment.independence_group_ref != binding.independence_group_ref.ref:
             reasons.add("biological_unit_assignment_group_mismatch")
-        for field in hierarchy_fields:
+        for field in HIERARCHY_FIELDS:
             expected_ref = getattr(binding, field)
             expected = None if expected_ref is None else expected_ref.ref
             if getattr(assignment, field) != expected:
@@ -569,6 +623,7 @@ def profile_lineage_reasons(
     *,
     product_case: ProductCase,
     cell_state_profile: CellStateEvidenceProfileV2,
+    measurement_spec: MeasurementSpecV2,
     qc_profile: QCReadinessProfileV2,
     biological_unit_manifest: BiologicalUnitManifest,
     biological_unit_assignment_artifact: BiologicalUnitAssignmentArtifact,
@@ -587,12 +642,18 @@ def profile_lineage_reasons(
         )
     )
     source_ref_field = f"{product_case.source_unit_kind}_ref"
-    manifest_source_refs = {
-        source_ref.ref
+    manifest_source_refs = [
+        source_ref
         for binding in biological_unit_manifest.unit_bindings
         if (source_ref := getattr(binding, source_ref_field)) is not None
-    }
-    if product_case.sample_or_preparation_ref.ref not in manifest_source_refs:
+    ]
+    every_binding_has_source = len(manifest_source_refs) == len(
+        biological_unit_manifest.unit_bindings
+    )
+    if not every_binding_has_source or any(
+        source_ref != product_case.sample_or_preparation_ref
+        for source_ref in manifest_source_refs
+    ):
         reasons.append("product_case_source_unit_binding_mismatch")
 
     qc_view = qc_profile.selected_data_view
@@ -656,12 +717,23 @@ def profile_lineage_reasons(
     ):
         reasons.append("cell_state_qc_profile_checksum_mismatch")
     if (
-        cell_state_profile.measurement_spec_id
+        measurement_spec.measurement_spec_id
         != product_case.measurement_spec_ref.object_id
-        or cell_state_profile.measurement_spec_version
+        or measurement_spec.version
         != product_case.measurement_spec_ref.object_version
+        or cell_state_profile.measurement_spec_id
+        != measurement_spec.measurement_spec_id
+        or cell_state_profile.measurement_spec_version
+        != measurement_spec.version
     ):
         reasons.append("measurement_spec_binding_mismatch")
+    if (
+        measurement_spec.analysis_unit_kind
+        != biological_unit_manifest.analysis_unit_kind
+        or measurement_spec.independence_group_kind
+        != biological_unit_manifest.independence_group_kind
+    ):
+        reasons.append("measurement_spec_biological_unit_mismatch")
 
     if cell_state_view is not None:
         try:

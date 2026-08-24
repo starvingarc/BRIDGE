@@ -35,6 +35,10 @@ Independent P0 modules must exchange the same selected observations, product ins
   - `bridge://schemas/product-definition-card/v0.1`
 - P0-01 can produce only `declared` BiologicalUnit lineage.
 - Technical capture and graft units cannot satisfy independence assertions.
+- A biological identity cannot appear at multiple versions within one manifest,
+  and each declared lineage edge is functional.
+- A ProductCase is single-source in v0.1; pooling and multiplexing require a
+  separate future contract.
 
 ## Validation
 

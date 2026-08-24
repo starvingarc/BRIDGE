@@ -67,6 +67,22 @@ class InputLevel(StrEnum):
     DROPLET_READY = "droplet_ready"
 
 
+class BiologicalUnitKind(StrEnum):
+    CAPTURE = "capture"
+    PREPARATION = "preparation"
+    SAMPLE = "sample"
+    DONOR = "donor"
+    ANIMAL = "animal"
+    GRAFT_UNIT = "graft_unit"
+
+
+IndependenceGroupKind = Literal["preparation", "sample", "donor", "animal"]
+
+
+def _number_is_finite(value: int | float) -> bool:
+    return not isinstance(value, float) or math.isfinite(value)
+
+
 def _paired_optional_json_schema(first: str, second: str) -> dict[str, Any]:
     """Express an all-null/absent or all-present pair in public JSON Schema."""
 
@@ -335,7 +351,9 @@ class MeasurementSpec(FrozenModel):
 
 
 class MeasurementSpecV2(MeasurementSpec):
-    analysis_unit_kind: str | None = None
+    analysis_unit_kind: BiologicalUnitKind
+    independence_group_kind: IndependenceGroupKind
+    observation_unit_kind: Literal["cell", "nucleus"] | None = None
     applicable_contexts: list[str] = Field(default_factory=list)
 
 
@@ -382,11 +400,59 @@ class MeasurementResultV2(MeasurementResult):
                         }
                     },
                 },
+                {
+                    "if": {
+                        "properties": {"interval": {"type": "null"}},
+                    },
+                    "then": {
+                        "properties": {
+                            "interval_confidence_level": {"type": "null"},
+                            "interval_method_ref": {"type": "null"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidence_state": {"const": "unknown"}
+                        },
+                        "required": ["evidence_state"],
+                    },
+                    "then": {
+                        "required": ["unknown_scope"],
+                        "properties": {
+                            "unknown_scope": {"not": {"type": "null"}}
+                        },
+                    },
+                    "else": {
+                        "properties": {"unknown_scope": {"type": "null"}}
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidence_state": {"const": "unknown"},
+                            "unknown_scope": {"const": "measurement"},
+                        },
+                        "required": ["evidence_state", "unknown_scope"],
+                    },
+                    "then": {
+                        "properties": {
+                            name: {"type": "null"}
+                            for name in (
+                                "raw_value",
+                                "numerator",
+                                "denominator",
+                                "interval",
+                            )
+                        }
+                    },
+                },
             ]
         }
     )
 
-    measurement_spec_version: str | None = None
+    measurement_spec_version: str = Field(min_length=1)
     unit: str | None = None
     numerator: StrictInt | StrictFloat | None = None
     denominator: (
@@ -421,9 +487,19 @@ class MeasurementResultV2(MeasurementResult):
             raise ValueError("interval metadata requires interval bounds")
         if (self.numerator is None) != (self.denominator is None):
             raise ValueError("numerator and denominator must be supplied together")
+        for field_name, value in (
+            ("numerator", self.numerator),
+            ("denominator", self.denominator),
+        ):
+            if value is not None and not _number_is_finite(value):
+                raise ValueError(
+                    f"{field_name} must be finite when supplied"
+                )
+        if isinstance(self.raw_value, float) and not math.isfinite(self.raw_value):
+            raise ValueError("raw_value must be finite when numeric")
         if self.interval is not None:
             lower, upper = self.interval
-            if not math.isfinite(lower) or not math.isfinite(upper):
+            if not _number_is_finite(lower) or not _number_is_finite(upper):
                 raise ValueError("interval bounds must be finite")
             if lower > upper:
                 raise ValueError("interval lower bound cannot exceed upper bound")
@@ -443,6 +519,16 @@ class MeasurementResultV2(MeasurementResult):
         if self.evidence_state is EvidenceState.UNKNOWN:
             if self.unknown_scope is None:
                 raise ValueError("unknown evidence requires unknown_scope")
+            if self.unknown_scope == "measurement" and any(
+                value is not None
+                for value in (
+                    self.raw_value,
+                    self.numerator,
+                    self.denominator,
+                    self.interval,
+                )
+            ):
+                raise ValueError("unknown measurement cannot carry a value")
         elif self.unknown_scope is not None:
             raise ValueError("unknown_scope requires unknown evidence")
         return self

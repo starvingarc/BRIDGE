@@ -27,6 +27,7 @@ from bridge.toolkit.contracts import (
     ImplementationState,
     MeasurementResult,
     MeasurementResultV2,
+    MeasurementSpecV2,
     QCReadinessProfileV2,
     ScoreState,
     ToolRequestV2,
@@ -111,6 +112,7 @@ def _measurement_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "measurement_id": "measurement:demo",
         "measurement_spec_id": "measurement-spec:demo",
+        "measurement_spec_version": "1.0.0",
         "metric_name": "demo_fraction",
         "raw_value": 0.5,
         "domain_score": None,
@@ -119,6 +121,24 @@ def _measurement_payload(**overrides: object) -> dict[str, object]:
     }
     payload.update(overrides)
     return payload
+
+
+def _measurement_spec(**overrides: object) -> MeasurementSpecV2:
+    payload: dict[str, object] = {
+        "measurement_spec_id": "measurement-spec:demo",
+        "version": "1.0.0",
+        "scientific_question": "Demo-only structural contract question",
+        "assay": "scRNA-seq",
+        "status": "candidate",
+        "input_contract": {},
+        "analysis_unit": "preparation",
+        "analysis_unit_kind": "preparation",
+        "independence_group_kind": "sample",
+        "raw_metric_definition": {},
+        "missing_behavior": "return typed missing evidence",
+    }
+    payload.update(overrides)
+    return MeasurementSpecV2.model_validate(payload)
 
 
 def test_v2_run_accepts_v1_shaped_measurement_without_enabling_score(
@@ -172,6 +192,8 @@ def test_measurement_v2_requires_paired_source_and_interval_metadata() -> None:
     [
         ({"numerator": 1}, "numerator and denominator"),
         ({"numerator": 0, "denominator": 0}, "greater than 0"),
+        ({"numerator": 1, "denominator": float("inf")}, "finite"),
+        ({"raw_value": float("nan")}, "raw_value must be finite"),
         ({"interval": (1.0, 0.0)}, "lower bound"),
         ({"interval": (0.0, float("inf"))}, "finite"),
         ({"evidence_state": "missing", "raw_value": 0}, "cannot carry a value"),
@@ -180,6 +202,14 @@ def test_measurement_v2_requires_paired_source_and_interval_metadata() -> None:
             "cannot carry a value",
         ),
         ({"evidence_state": "unknown"}, "unknown_scope"),
+        (
+            {
+                "evidence_state": "unknown",
+                "unknown_scope": "measurement",
+                "raw_value": 0,
+            },
+            "unknown measurement cannot carry a value",
+        ),
     ],
 )
 def test_measurement_v2_rejects_ambiguous_numeric_states(
@@ -199,6 +229,40 @@ def test_measurement_v2_scopes_unknown_without_a_numeric_value() -> None:
         )
     )
     assert result.unknown_scope == "identity"
+
+def test_measurement_v2_retains_observed_value_for_identity_uncertainty() -> None:
+    result = MeasurementResultV2(
+        **_measurement_payload(
+            evidence_state="unknown",
+            unknown_scope="identity",
+            numerator=4,
+            denominator=8,
+        )
+    )
+    assert result.raw_value == 0.5
+    assert result.denominator == 8
+
+
+def test_measurement_v2_accepts_arbitrary_precision_finite_integers() -> None:
+    huge = 10**1000
+    result = MeasurementResultV2(
+        **_measurement_payload(
+            raw_value=huge,
+            numerator=huge,
+            denominator=huge,
+            interval=(huge, huge),
+        )
+    )
+    assert result.denominator == huge
+
+
+@pytest.mark.parametrize("analysis_unit_kind", ["cell", None])
+def test_measurement_spec_v2_requires_controlled_biological_analysis_unit(
+    analysis_unit_kind: object,
+) -> None:
+    with pytest.raises(ValidationError):
+        _measurement_spec(analysis_unit_kind=analysis_unit_kind)
+
 
 def test_p0_01_cannot_claim_reviewed_biological_lineage() -> None:
     with pytest.raises(ValidationError, match="P0-01 can only generate declared"):
@@ -230,6 +294,70 @@ def test_binding_rejects_independence_group_that_contradicts_hierarchy() -> None
             independence_group_kind="sample",
             preparation_ref=preparation,
             sample_ref=sample,
+        )
+
+
+def test_manifest_rejects_multiple_versions_of_one_biological_identity() -> None:
+    sample_v1 = _ref("sample:demo")
+    sample_v2 = VersionedObjectRef(
+        object_id="sample:demo",
+        object_version="2.0.0",
+    )
+    bindings = [
+        BiologicalUnitBinding(
+            analysis_unit_ref=_ref("capture:first"),
+            analysis_unit_kind="capture",
+            independence_group_ref=sample_v1,
+            independence_group_kind="sample",
+            capture_ref=_ref("capture:first"),
+            preparation_ref=_ref("preparation:first"),
+            sample_ref=sample_v1,
+        ),
+        BiologicalUnitBinding(
+            analysis_unit_ref=_ref("capture:second"),
+            analysis_unit_kind="capture",
+            independence_group_ref=sample_v2,
+            independence_group_kind="sample",
+            capture_ref=_ref("capture:second"),
+            preparation_ref=_ref("preparation:second"),
+            sample_ref=sample_v2,
+        ),
+    ]
+    with pytest.raises(ValidationError, match="cannot use multiple versions"):
+        _manifest(
+            analysis_unit_kind="capture",
+            independence_group_kind="sample",
+            unit_bindings=bindings,
+        )
+
+
+def test_manifest_rejects_one_preparation_mapped_to_multiple_samples() -> None:
+    preparation = _ref("preparation:demo")
+    bindings = [
+        BiologicalUnitBinding(
+            analysis_unit_ref=_ref("capture:first"),
+            analysis_unit_kind="capture",
+            independence_group_ref=_ref("sample:first"),
+            independence_group_kind="sample",
+            capture_ref=_ref("capture:first"),
+            preparation_ref=preparation,
+            sample_ref=_ref("sample:first"),
+        ),
+        BiologicalUnitBinding(
+            analysis_unit_ref=_ref("capture:second"),
+            analysis_unit_kind="capture",
+            independence_group_ref=_ref("sample:second"),
+            independence_group_kind="sample",
+            capture_ref=_ref("capture:second"),
+            preparation_ref=preparation,
+            sample_ref=_ref("sample:second"),
+        ),
+    ]
+    with pytest.raises(ValidationError, match="conflicting lineage"):
+        _manifest(
+            analysis_unit_kind="capture",
+            independence_group_kind="sample",
+            unit_bindings=bindings,
         )
 
 
@@ -362,9 +490,16 @@ def test_public_manifest_schema_enforces_structural_invariants() -> None:
     )
     empty_bindings = deepcopy(valid)
     empty_bindings["unit_bindings"] = []
+    omitted_bindings = deepcopy(valid)
+    del omitted_bindings["unit_bindings"]
     technical_group = deepcopy(valid)
     technical_group["independence_group_kind"] = "capture"
-    for payload in (invalid_review, empty_bindings, technical_group):
+    for payload in (
+        invalid_review,
+        empty_bindings,
+        omitted_bindings,
+        technical_group,
+    ):
         assert list(validator.iter_errors(payload))
 
 
@@ -429,8 +564,41 @@ def test_public_measurement_schema_rejects_false_numeric_evidence() -> None:
     missing_zero.update({"evidence_state": "missing", "raw_value": 0})
     unpaired_source = deepcopy(valid)
     unpaired_source["source_execution_state"] = "succeeded"
-    for payload in (zero_denominator, missing_zero, unpaired_source):
+    unknown_without_scope = deepcopy(valid)
+    unknown_without_scope.update(
+        {"evidence_state": "unknown", "unknown_scope": None}
+    )
+    interval_metadata_without_interval = deepcopy(valid)
+    interval_metadata_without_interval["interval_confidence_level"] = 0.95
+    unknown_measurement_zero = deepcopy(valid)
+    unknown_measurement_zero.update(
+        {
+            "evidence_state": "unknown",
+            "unknown_scope": "measurement",
+            "raw_value": 0,
+        }
+    )
+    for payload in (
+        zero_denominator,
+        missing_zero,
+        unpaired_source,
+        unknown_without_scope,
+        interval_metadata_without_interval,
+        unknown_measurement_zero,
+    ):
         assert list(validator.iter_errors(payload))
+
+
+def test_public_measurement_spec_schema_rejects_observation_as_analysis_unit() -> None:
+    validator = Draft202012Validator(
+        load_schema("bridge://schemas/measurement-spec/v0.2")
+    )
+    valid = _measurement_spec().model_dump(mode="json")
+    assert not list(validator.iter_errors(valid))
+
+    invalid = deepcopy(valid)
+    invalid["analysis_unit_kind"] = "cell"
+    assert list(validator.iter_errors(invalid))
 
 
 def _data_view_with_manifest() -> DataViewBinding:
@@ -572,6 +740,7 @@ def test_profile_lineage_rejects_unrelated_product_case_source_unit() -> None:
     reasons = profile_lineage_reasons(
         product_case=product_case,
         cell_state_profile=cell_state,
+        measurement_spec=_measurement_spec(),
         qc_profile=qc,
         biological_unit_manifest=manifest,
         biological_unit_assignment_artifact=_assignment_artifact(),
@@ -582,3 +751,90 @@ def test_profile_lineage_rejects_unrelated_product_case_source_unit() -> None:
         },
     )
     assert "product_case_source_unit_binding_mismatch" in reasons
+
+    incompatible_spec_reasons = profile_lineage_reasons(
+        product_case=product_case,
+        cell_state_profile=cell_state,
+        measurement_spec=_measurement_spec(analysis_unit_kind="sample"),
+        qc_profile=qc,
+        biological_unit_manifest=manifest,
+        biological_unit_assignment_artifact=_assignment_artifact(),
+        input_sha256_by_role={
+            "biological_unit_assignment": "c" * 64,
+            "biological_unit_manifest": "d" * 64,
+            "qc_readiness_profile": "e" * 64,
+        },
+    )
+    assert "measurement_spec_biological_unit_mismatch" in incompatible_spec_reasons
+
+    second_preparation = _ref("preparation:second")
+    mixed_manifest = _manifest(
+        unit_bindings=[
+            _binding(),
+            BiologicalUnitBinding(
+                analysis_unit_ref=second_preparation,
+                analysis_unit_kind="preparation",
+                independence_group_ref=_ref("sample:second"),
+                independence_group_kind="sample",
+                preparation_ref=second_preparation,
+                sample_ref=_ref("sample:second"),
+            ),
+        ]
+    )
+    single_source_case = product_case.model_copy(
+        update={"sample_or_preparation_ref": _ref("preparation:demo")}
+    )
+    mixed_source_reasons = profile_lineage_reasons(
+        product_case=single_source_case,
+        cell_state_profile=cell_state,
+        measurement_spec=_measurement_spec(),
+        qc_profile=qc,
+        biological_unit_manifest=mixed_manifest,
+        biological_unit_assignment_artifact=_assignment_artifact(),
+        input_sha256_by_role={
+            "biological_unit_assignment": "c" * 64,
+            "biological_unit_manifest": "d" * 64,
+            "qc_readiness_profile": "e" * 64,
+        },
+    )
+    assert "product_case_source_unit_binding_mismatch" in mixed_source_reasons
+
+    partially_bound_manifest = _manifest(
+        analysis_unit_kind="capture",
+        independence_group_kind="sample",
+        unit_bindings=[
+            BiologicalUnitBinding(
+                analysis_unit_ref=_ref("capture:first"),
+                analysis_unit_kind="capture",
+                independence_group_ref=_ref("sample:first"),
+                independence_group_kind="sample",
+                capture_ref=_ref("capture:first"),
+                preparation_ref=_ref("preparation:demo"),
+                sample_ref=_ref("sample:first"),
+            ),
+            BiologicalUnitBinding(
+                analysis_unit_ref=_ref("capture:second"),
+                analysis_unit_kind="capture",
+                independence_group_ref=_ref("sample:second"),
+                independence_group_kind="sample",
+                capture_ref=_ref("capture:second"),
+                sample_ref=_ref("sample:second"),
+            ),
+        ],
+    )
+    missing_source_reasons = profile_lineage_reasons(
+        product_case=single_source_case,
+        cell_state_profile=cell_state,
+        measurement_spec=_measurement_spec(
+            analysis_unit_kind="capture",
+        ),
+        qc_profile=qc,
+        biological_unit_manifest=partially_bound_manifest,
+        biological_unit_assignment_artifact=_assignment_artifact(),
+        input_sha256_by_role={
+            "biological_unit_assignment": "c" * 64,
+            "biological_unit_manifest": "d" * 64,
+            "qc_readiness_profile": "e" * 64,
+        },
+    )
+    assert "product_case_source_unit_binding_mismatch" in missing_source_reasons

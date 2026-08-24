@@ -112,6 +112,88 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "interval": {
+            "type": "null"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "interval_confidence_level": {
+            "type": "null"
+          },
+          "interval_method_ref": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "else": {
+        "properties": {
+          "unknown_scope": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "evidence_state": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "evidence_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "unknown_scope": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": [
+          "unknown_scope"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_state": {
+            "const": "unknown"
+          },
+          "unknown_scope": {
+            "const": "measurement"
+          }
+        },
+        "required": [
+          "evidence_state",
+          "unknown_scope"
+        ]
+      },
+      "then": {
+        "properties": {
+          "denominator": {
+            "type": "null"
+          },
+          "interval": {
+            "type": "null"
+          },
+          "numerator": {
+            "type": "null"
+          },
+          "raw_value": {
+            "type": "null"
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -211,16 +293,9 @@
       "type": "string"
     },
     "measurement_spec_version": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Measurement Spec Version"
+      "minLength": 1,
+      "title": "Measurement Spec Version",
+      "type": "string"
     },
     "metric_name": {
       "title": "Metric Name",
@@ -324,7 +399,8 @@
     "metric_name",
     "raw_value",
     "score_state",
-    "evidence_state"
+    "evidence_state",
+    "measurement_spec_version"
   ],
   "title": "MeasurementResultV2",
   "type": "object"

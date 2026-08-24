@@ -54,9 +54,10 @@ outputs and their checksum manifest. No private biological input is included.
 
 ## Boundary
 
-The contract records what a producer declared and whether an external,
-checksummed review receipt exists. It does not determine the correct donor,
-sample, preparation, animal, pairing structure or estimand for real data.
+The contract records a producer-declared review reference and checksum; it does
+not establish that the referenced receipt exists, is authentic, or grants
+authority. It does not determine the correct donor, sample, preparation, animal,
+pairing structure or estimand for real data.
 Mutable state roles, thresholds, developmental windows and assay decisions
 remain external versioned inputs. All tools retain their prior implementation
 and scientific states; `domain_score` remains null and formal methods remain 0.

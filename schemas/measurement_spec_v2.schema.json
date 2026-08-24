@@ -1,4 +1,18 @@
 {
+  "$defs": {
+    "BiologicalUnitKind": {
+      "enum": [
+        "capture",
+        "preparation",
+        "sample",
+        "donor",
+        "animal",
+        "graft_unit"
+      ],
+      "title": "BiologicalUnitKind",
+      "type": "string"
+    }
+  },
   "$id": "bridge://schemas/measurement-spec/v0.2",
   "additionalProperties": false,
   "properties": {
@@ -7,16 +21,7 @@
       "type": "string"
     },
     "analysis_unit_kind": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Analysis Unit Kind"
+      "$ref": "#/$defs/BiologicalUnitKind"
     },
     "applicable_contexts": {
       "items": {
@@ -65,6 +70,16 @@
       "title": "Exclusion Rules",
       "type": "object"
     },
+    "independence_group_kind": {
+      "enum": [
+        "preparation",
+        "sample",
+        "donor",
+        "animal"
+      ],
+      "title": "Independence Group Kind",
+      "type": "string"
+    },
     "input_contract": {
       "additionalProperties": true,
       "title": "Input Contract",
@@ -94,6 +109,22 @@
       ],
       "default": null,
       "title": "Numerator"
+    },
+    "observation_unit_kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "cell",
+            "nucleus"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observation Unit Kind"
     },
     "prior_refs": {
       "items": {
@@ -179,7 +210,9 @@
     "input_contract",
     "analysis_unit",
     "raw_metric_definition",
-    "missing_behavior"
+    "missing_behavior",
+    "analysis_unit_kind",
+    "independence_group_kind"
   ],
   "title": "MeasurementSpecV2",
   "type": "object"
