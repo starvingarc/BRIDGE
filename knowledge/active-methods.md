@@ -1,6 +1,6 @@
 # Active BRIDGE Methods
 
-This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-08, P0-09 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
+This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
 
 ## P0-01: Input Audit & QC
 
@@ -46,6 +46,11 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 ## P0-06: Proliferation & Stress Response
 
 - `METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION` — BRIDGE sample/state aggregation ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION))
+
+## P0-07: Product Comparison & Stability
+
+- `METHOD-BRIDGE-COMPARABILITY-GATE` — BRIDGE Comparability Gate ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-COMPARABILITY-GATE))
+- `METHOD-BRIDGE-RAW-METRIC-DELTA` — BRIDGE raw-metric delta ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RAW-METRIC-DELTA))
 
 ## P0-08: Evidence Sufficiency
 

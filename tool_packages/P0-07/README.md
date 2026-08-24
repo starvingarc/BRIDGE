@@ -2,46 +2,115 @@
 
 ## Purpose
 
-Compare products, timepoints and preparations under an explicit comparability contract.
+Produce a deterministic pairwise, preparation-level descriptive comparison
+without embedding metric names, biological directions, assay choices or review
+thresholds in executable code.
 
-## Contract
+## Package contract
 
 | Field | Value |
 |---|---|
-| Package version | `0.1.0` |
-| Runtime state | `scaffold` |
+| Package version | `0.2.0` |
+| Runtime state | `implemented` |
 | Scientific state | `candidate` |
-| Optional | `no` |
-| EnvironmentSpec | `ENV-P0-CORE-v0.1` |
-| Input schema | `bridge://schemas/tool-request/v0.1` |
-| Output schema | `bridge://schemas/tool-run/v0.1` |
+| EnvironmentSpec | `ENV-P0-CORE-v0.1` (`health_check_passed`) |
+| Input envelope | `bridge://schemas/tool-request/v0.2` |
+| Output envelope | `bridge://schemas/tool-run/v0.2` |
+| Result schema | `bridge://schemas/comparison-record/v0.1` |
+| Adapter | `bridge.tool_packages.p0_07_comparison.adapter:adapter` |
 
-**Input:** Version-matched ProductEvidenceObjects, comparability contract, independent preparation map, domain raw evidence, and Evidence Sufficiency states.
+The CLI entry points are:
 
-**Output:** Versioned ComparisonRecord with comparability mode, deltas, effect sizes, intervals, stability, Pareto state, and sensitivity evidence.
+```bash
+bridge-tool describe P0-07
+bridge-tool validate --request request.json
+bridge-tool run --request request.json
+```
 
-**Runtime behavior:** Discoverable contract only; `run` returns `not_implemented` without scientific results.
+The Python SDK accepts the same `ToolRequestV2` through
+`ToolRegistry.load_default().check_eligibility(request)` and `.run(request)`.
 
-**Method selection:** No method is selected while this package remains a scaffold.
+## Structured inputs
 
-## Refusal Conditions
+Every input is a canonical local JSON object with an absolute path, declared
+role, Schema URI, object version, media type and SHA-256 checksum. Inline
+scientific payloads, expression assets, free-form parameters and nonzero random
+seeds are refused.
 
-Contract mismatch, complete protocol/lab/batch confounding, absent independent preparation, or inferential claims from descriptive-only data.
+| Role | Schema | Required content |
+|---|---|---|
+| `comparison_spec` | `bridge://schemas/comparison-spec/v0.1` | Exactly one baseline and one candidate ProductCase; configurable equal-contract dimensions; mismatch policy; minimum independent preparations; metric IDs, units, eligible evidence states, required flags and direction policies. |
+| `comparison_evidence_bundle` | `bridge://schemas/comparison-evidence-bundle/v0.1` | Exactly the same two ProductCases; versioned contract snapshots; P0-08 sufficiency state; preparation-level metric values, denominators, evidence states and Evidence references. |
 
-Missing, unknown, unavailable, negative, and alert states remain distinct. No package may infer a clinical, safety, potency, GMP-release, or absolute product-ranking claim.
+The current input object version is `0.1.0` for both roles. Assay, target,
+sampling, reference, prior, MeasurementSpec, algorithm and preprocessing are
+versioned references supplied by the caller. The implementation contains no
+allowed assay list, metric catalogue, biological program, favorable direction,
+threshold or product identity.
 
-## Visualization Contract
+## Output
 
-Effect-size forest, composition differences, timelines, batch distances, program heatmaps, Pareto matrix, and integration sensitivity.
+One `ComparisonRecord` is written as `comparison_record.json` in an immutable,
+content-addressed run directory. It contains:
 
-Every formal chart must retain its data version, denominator, units, evidence references, and missing-state semantics.
+- the ComparisonSpec and evidence-bundle references and role-level checksums;
+- every configured contract-dimension equality check;
+- baseline and candidate readiness summaries;
+- per-metric eligible preparation count, mean, minimum and maximum;
+- raw `candidate mean - baseline mean`, direction and input-configured interpretation;
+- explicit comparability and result states, evidence references and reason codes;
+- a `not_assessed` Pareto receipt, `overall_score=null` and `overall_rank=null`.
 
-## Validation Before Freeze
+The output has no `MeasurementResult` or visualization. Missing, unknown or
+unavailable metric values stay null and never become zero. A contextual
+comparator may retain a descriptive raw delta, but a `not_comparable` pair does
+not emit a delta.
 
-Known shifts and nulls, paired/unpaired designs, insufficient replication, over-correction checks, and independent-versus-joint consistency.
+## Eligibility, refusal and degradation
 
-Method documentation and accessible sources do not constitute benchmark completion. No method is registered or selected until benchmark-bound execution exists.
+Top-level failures publish no result:
 
-## Detailed Scientific Requirement
+- missing, duplicate or unsupported input role;
+- Schema, object-version or checksum mismatch;
+- ComparisonSpec/ProductCase binding mismatch;
+- expression assets, MeasurementSpec envelope parameters, free-form parameters
+  or nonzero random seed;
+- any non-null ScoreContract, because no score contract is frozen;
+- unusable output path, input mutation or immutable-run collision;
+- a V1 request, returned as typed `tool_request_v2_required`.
 
-Repository document: `docs/bridge_spec_v0.1/product_comparison_stability_task_card.md`.
+Contract-valid limitations degrade within the result:
+
+- a configured contract mismatch becomes `contextual_comparator` or
+  `not_comparable` according to the input policy;
+- insufficient preparations or non-sufficient P0-08 evidence makes an otherwise
+  available comparison `partial`;
+- missing metric, unit mismatch or ineligible evidence state makes that metric
+  `unavailable`;
+- no available metric makes the record `not_assessed` with
+  `score_state=unavailable`.
+
+## Minimal example
+
+See `examples/requests/p0_07_product_comparison.json`. The referenced objects
+must exist at the declared absolute paths and match their checksums before
+validation.
+
+## Reproducibility and evidence boundary
+
+The runtime is deterministic and CPU-only for this slice. Input paths and
+caller-local input IDs are excluded from scientific identity; raw input
+checksums, Schema URIs, object versions, tool version and environment remain
+bound. Reusing the same content reuses the same run bytes.
+
+Registered methods are the deterministic comparability gate and raw-metric
+delta engine. The synthetic tests establish contract and packaging behavior,
+not biological validity. P0-07 remains `candidate`; it performs no inferential
+statistics, effect-size modelling, time-course modelling, integration,
+stability inference, Pareto analysis, score, rank, clinical, safety, potency or
+release decision.
+
+## Detailed requirement
+
+See `docs/bridge_spec_v0.1/product_comparison_stability_task_card.md` and
+`docs/validation/p0_07_product_comparison_20260824.md`.

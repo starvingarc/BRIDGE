@@ -1,0 +1,476 @@
+{
+  "$defs": {
+    "CaseMetricSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "eligible_preparation_count": {
+          "minimum": 0,
+          "title": "Eligible Preparation Count",
+          "type": "integer"
+        },
+        "evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Maximum"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mean"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Minimum"
+        },
+        "product_case_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "product_case_ref",
+        "eligible_preparation_count",
+        "mean",
+        "minimum",
+        "maximum",
+        "evidence_refs"
+      ],
+      "title": "CaseMetricSummary",
+      "type": "object"
+    },
+    "CaseReadinessSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "independent_preparation_count": {
+          "exclusiveMinimum": 0,
+          "title": "Independent Preparation Count",
+          "type": "integer"
+        },
+        "product_case_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "role": {
+          "$ref": "#/$defs/ComparisonRole"
+        },
+        "sufficiency_profile_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "sufficiency_state": {
+          "enum": [
+            "not_assessed",
+            "insufficient",
+            "limited",
+            "sufficient"
+          ],
+          "title": "Sufficiency State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "product_case_ref",
+        "sufficiency_profile_ref",
+        "sufficiency_state",
+        "independent_preparation_count"
+      ],
+      "title": "CaseReadinessSummary",
+      "type": "object"
+    },
+    "ComparabilityState": {
+      "enum": [
+        "strictly_comparable",
+        "contextual_comparator",
+        "not_comparable"
+      ],
+      "title": "ComparabilityState",
+      "type": "string"
+    },
+    "ComparisonInputChecksums": {
+      "additionalProperties": false,
+      "properties": {
+        "comparison_evidence_bundle": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Comparison Evidence Bundle",
+          "type": "string"
+        },
+        "comparison_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Comparison Spec",
+          "type": "string"
+        }
+      },
+      "required": [
+        "comparison_spec",
+        "comparison_evidence_bundle"
+      ],
+      "title": "ComparisonInputChecksums",
+      "type": "object"
+    },
+    "ComparisonRole": {
+      "enum": [
+        "baseline",
+        "candidate"
+      ],
+      "title": "ComparisonRole",
+      "type": "string"
+    },
+    "ConfiguredInterpretation": {
+      "enum": [
+        "configured_favorable_direction",
+        "configured_unfavorable_direction",
+        "no_directional_interpretation",
+        "no_observed_difference",
+        "unavailable"
+      ],
+      "title": "ConfiguredInterpretation",
+      "type": "string"
+    },
+    "ContractDimension": {
+      "enum": [
+        "product_definition",
+        "target_context",
+        "assay",
+        "sampling_context",
+        "reference_snapshot",
+        "prior_snapshot",
+        "measurement_spec",
+        "score_contract",
+        "algorithm",
+        "preprocessing"
+      ],
+      "title": "ContractDimension",
+      "type": "string"
+    },
+    "ContractDimensionCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_value": {
+          "minLength": 1,
+          "title": "Baseline Value",
+          "type": "string"
+        },
+        "candidate_value": {
+          "minLength": 1,
+          "title": "Candidate Value",
+          "type": "string"
+        },
+        "dimension": {
+          "$ref": "#/$defs/ContractDimension"
+        },
+        "matches": {
+          "title": "Matches",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "dimension",
+        "matches",
+        "baseline_value",
+        "candidate_value"
+      ],
+      "title": "ContractDimensionCheck",
+      "type": "object"
+    },
+    "DirectionRelation": {
+      "enum": [
+        "candidate_higher",
+        "candidate_lower",
+        "no_observed_difference",
+        "unavailable"
+      ],
+      "title": "DirectionRelation",
+      "type": "string"
+    },
+    "MetricComparisonResult": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "$ref": "#/$defs/CaseMetricSummary"
+        },
+        "candidate": {
+          "$ref": "#/$defs/CaseMetricSummary"
+        },
+        "configured_interpretation": {
+          "$ref": "#/$defs/ConfiguredInterpretation"
+        },
+        "direction_relation": {
+          "$ref": "#/$defs/DirectionRelation"
+        },
+        "evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "metric_id": {
+          "pattern": "^metric:[A-Za-z0-9._:-]+$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "raw_delta_candidate_minus_baseline": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Raw Delta Candidate Minus Baseline"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "result_state": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Result State",
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_id",
+        "unit",
+        "baseline",
+        "candidate",
+        "raw_delta_candidate_minus_baseline",
+        "direction_relation",
+        "configured_interpretation",
+        "result_state",
+        "evidence_refs",
+        "reason_codes"
+      ],
+      "title": "MetricComparisonResult",
+      "type": "object"
+    },
+    "ParetoAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "const": "not_assessed",
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "reason_code": {
+          "const": "score_contract_not_supplied",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assessment_state",
+        "reason_code"
+      ],
+      "title": "ParetoAssessment",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/comparison-record/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "case_readiness": {
+      "items": {
+        "$ref": "#/$defs/CaseReadinessSummary"
+      },
+      "title": "Case Readiness",
+      "type": "array"
+    },
+    "comparability_state": {
+      "$ref": "#/$defs/ComparabilityState"
+    },
+    "comparison_id": {
+      "pattern": "^comparison-record:[a-f0-9]{16}$",
+      "title": "Comparison Id",
+      "type": "string"
+    },
+    "comparison_mode": {
+      "const": "descriptive_only",
+      "title": "Comparison Mode",
+      "type": "string"
+    },
+    "comparison_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "contract_checks": {
+      "items": {
+        "$ref": "#/$defs/ContractDimensionCheck"
+      },
+      "title": "Contract Checks",
+      "type": "array"
+    },
+    "evidence_bundle_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "evidence_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/ComparisonInputChecksums"
+    },
+    "metric_comparisons": {
+      "items": {
+        "$ref": "#/$defs/MetricComparisonResult"
+      },
+      "title": "Metric Comparisons",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "overall_rank": {
+      "default": null,
+      "title": "Overall Rank",
+      "type": "null"
+    },
+    "overall_score": {
+      "default": null,
+      "title": "Overall Score",
+      "type": "null"
+    },
+    "pareto_assessment": {
+      "$ref": "#/$defs/ParetoAssessment"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "result_state": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "Result State",
+      "type": "string"
+    },
+    "score_state": {
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-07",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "comparison_id",
+    "tool_id",
+    "tool_version",
+    "comparison_spec_ref",
+    "evidence_bundle_ref",
+    "input_sha256_by_role",
+    "result_state",
+    "comparability_state",
+    "comparison_mode",
+    "contract_checks",
+    "case_readiness",
+    "metric_comparisons",
+    "pareto_assessment",
+    "evidence_refs",
+    "reason_codes",
+    "score_state"
+  ],
+  "title": "ComparisonRecord",
+  "type": "object"
+}

@@ -1,0 +1,296 @@
+{
+  "$defs": {
+    "ComparisonCaseEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_snapshot": {
+          "$ref": "#/$defs/ComparisonContractSnapshot"
+        },
+        "preparations": {
+          "items": {
+            "$ref": "#/$defs/PreparationEvidence"
+          },
+          "minItems": 1,
+          "title": "Preparations",
+          "type": "array"
+        },
+        "product_case_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "sufficiency_profile_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "sufficiency_state": {
+          "enum": [
+            "not_assessed",
+            "insufficient",
+            "limited",
+            "sufficient"
+          ],
+          "title": "Sufficiency State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_case_ref",
+        "contract_snapshot",
+        "sufficiency_profile_ref",
+        "sufficiency_state",
+        "preparations"
+      ],
+      "title": "ComparisonCaseEvidence",
+      "type": "object"
+    },
+    "ComparisonContractSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "assay_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "measurement_spec_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "preprocessing_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "prior_snapshot_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "product_definition_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "reference_snapshot_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "sampling_context_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "score_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_context_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "product_definition_ref",
+        "target_context_ref",
+        "assay_ref",
+        "sampling_context_ref",
+        "reference_snapshot_ref",
+        "prior_snapshot_ref",
+        "measurement_spec_ref",
+        "score_contract_ref",
+        "algorithm_ref",
+        "preprocessing_ref"
+      ],
+      "title": "ComparisonContractSnapshot",
+      "type": "object"
+    },
+    "MetricEvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable"
+      ],
+      "title": "MetricEvidenceState",
+      "type": "string"
+    },
+    "PreparationEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "metrics": {
+          "items": {
+            "$ref": "#/$defs/PreparationMetric"
+          },
+          "minItems": 1,
+          "title": "Metrics",
+          "type": "array"
+        },
+        "preparation_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "preparation_ref",
+        "metrics"
+      ],
+      "title": "PreparationEvidence",
+      "type": "object"
+    },
+    "PreparationMetric": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "value": {
+                "type": [
+                  "number",
+                  "integer"
+                ]
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "evidence_state": {
+                "enum": [
+                  "missing",
+                  "unknown",
+                  "unavailable"
+                ]
+              }
+            },
+            "required": [
+              "evidence_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "denominator": {
+                "type": "null"
+              },
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "denominator": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Refs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/MetricEvidenceState"
+        },
+        "metric_id": {
+          "pattern": "^metric:[A-Za-z0-9._:-]+$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "metric_id",
+        "unit",
+        "value",
+        "evidence_state",
+        "evidence_refs"
+      ],
+      "title": "PreparationMetric",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/comparison-evidence-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/ComparisonCaseEvidence"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Cases",
+      "type": "array"
+    },
+    "evidence_bundle_id": {
+      "pattern": "^comparison-evidence-bundle:[A-Za-z0-9._:-]+$",
+      "title": "Evidence Bundle Id",
+      "type": "string"
+    },
+    "evidence_bundle_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Evidence Bundle Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "evidence_bundle_id",
+    "evidence_bundle_version",
+    "cases"
+  ],
+  "title": "ComparisonEvidenceBundle",
+  "type": "object"
+}

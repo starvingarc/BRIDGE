@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "ComparisonCaseSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "product_case_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "role": {
+          "$ref": "#/$defs/ComparisonRole"
+        }
+      },
+      "required": [
+        "role",
+        "product_case_ref"
+      ],
+      "title": "ComparisonCaseSpec",
+      "type": "object"
+    },
+    "ComparisonRole": {
+      "enum": [
+        "baseline",
+        "candidate"
+      ],
+      "title": "ComparisonRole",
+      "type": "string"
+    },
+    "ContractDimension": {
+      "enum": [
+        "product_definition",
+        "target_context",
+        "assay",
+        "sampling_context",
+        "reference_snapshot",
+        "prior_snapshot",
+        "measurement_spec",
+        "score_contract",
+        "algorithm",
+        "preprocessing"
+      ],
+      "title": "ContractDimension",
+      "type": "string"
+    },
+    "MetricComparisonRule": {
+      "additionalProperties": false,
+      "properties": {
+        "direction_policy": {
+          "$ref": "#/$defs/MetricDirectionPolicy"
+        },
+        "eligible_evidence_states": {
+          "items": {
+            "$ref": "#/$defs/MetricEvidenceState"
+          },
+          "minItems": 1,
+          "title": "Eligible Evidence States",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "metric_id": {
+          "pattern": "^metric:[A-Za-z0-9._:-]+$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_id",
+        "unit",
+        "direction_policy",
+        "required",
+        "eligible_evidence_states"
+      ],
+      "title": "MetricComparisonRule",
+      "type": "object"
+    },
+    "MetricDirectionPolicy": {
+      "enum": [
+        "higher_is_favorable",
+        "lower_is_favorable",
+        "descriptive_only"
+      ],
+      "title": "MetricDirectionPolicy",
+      "type": "string"
+    },
+    "MetricEvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable"
+      ],
+      "title": "MetricEvidenceState",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/comparison-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/ComparisonCaseSpec"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Cases",
+      "type": "array"
+    },
+    "comparison_mode": {
+      "const": "descriptive_only",
+      "title": "Comparison Mode",
+      "type": "string"
+    },
+    "comparison_spec_id": {
+      "pattern": "^comparison-spec:[A-Za-z0-9._:-]+$",
+      "title": "Comparison Spec Id",
+      "type": "string"
+    },
+    "comparison_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Comparison Spec Version",
+      "type": "string"
+    },
+    "dimension_mismatch_policy": {
+      "enum": [
+        "contextual_comparator",
+        "not_comparable"
+      ],
+      "title": "Dimension Mismatch Policy",
+      "type": "string"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/MetricComparisonRule"
+      },
+      "minItems": 1,
+      "title": "Metrics",
+      "type": "array"
+    },
+    "minimum_independent_preparations_per_case": {
+      "exclusiveMinimum": 0,
+      "title": "Minimum Independent Preparations Per Case",
+      "type": "integer"
+    },
+    "missing_metric_policy": {
+      "const": "report_unavailable",
+      "title": "Missing Metric Policy",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "pareto_policy": {
+      "const": "not_assessed_without_score_contract",
+      "title": "Pareto Policy",
+      "type": "string"
+    },
+    "required_equal_dimensions": {
+      "items": {
+        "$ref": "#/$defs/ContractDimension"
+      },
+      "minItems": 1,
+      "title": "Required Equal Dimensions",
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "object_version",
+    "comparison_spec_id",
+    "comparison_spec_version",
+    "cases",
+    "required_equal_dimensions",
+    "dimension_mismatch_policy",
+    "comparison_mode",
+    "minimum_independent_preparations_per_case",
+    "metrics",
+    "missing_metric_policy",
+    "pareto_policy"
+  ],
+  "title": "ComparisonSpec",
+  "type": "object"
+}
