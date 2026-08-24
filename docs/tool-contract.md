@@ -22,6 +22,11 @@ Every package supports:
 | `ToolRequestV2` | v0.2 request retaining asset inputs while adding schema-bound structured-object references |
 | `ToolRunV2` | v0.2 run envelope binding successful or partial structured results to a declared result schema |
 | `MeasurementResult` | Raw metric, denominator, interval, evidence and score state |
+| `MeasurementResultV2` | Backward-compatible raw measurement plus spec version, unit, source run and typed interval metadata |
+| `DataViewBinding` | Content-addressed matrix view, observation set and optional BiologicalUnitManifest binding |
+| `BiologicalUnitManifest` | Checksummed observation-to-analysis-unit and independence-group lineage; P0-01 may only declare it |
+| `ProductCase` | Versioned product instance bound to one definition, measurement contract and optional exact biological-unit manifest |
+| `ProductDefinitionCard` | Versioned product definition and external StateRoleMap reference; it does not freeze state assignments in code |
 | `ArtifactManifest` | Immutable output files, media type, checksum and provenance |
 | `VisualizationArtifact` | Chart component, data binding, Evidence IDs and render files |
 | `KnowledgeHit` | Versioned method/source result returned by local retrieval |
@@ -36,6 +41,10 @@ Every package supports:
 Implemented Tool Packages retain at least one selected `method_id`. Scaffold packages keep `method_ids` empty until an executable, benchmark-bound method contract exists; candidate catalog entries do not imply implementation.
 
 The existing v0.1 models and schemas remain the contract for current P0-01 and P0-02 behavior. A v0.2 package declares `bridge://schemas/tool-request/v0.2` and `bridge://schemas/tool-run/v0.2`. Implemented v0.2 packages additionally bind a non-empty method set, one adapter under `bridge.tool_packages.*`, and a result schema. Scaffold v0.2 packages bind neither adapter nor result schema. The registry selects the request model after reading `tool_id`; the CLI command and Python SDK entrypoints do not change. A Python caller that manually supplies the wrong request-model generation receives a structured refusal before adapter or executor resolution: `tool_request_v2_required` for a v1 request sent to a v0.2 package, or `tool_request_v1_required` for the inverse. `validate_request` returns an ineligible `EligibilityResult`; `run_tool` returns a failed envelope matching the request object that actually arrived, so the refusal remains serializable.
+
+`ToolRunV2.measurements` accepts `MeasurementResultV2`. Existing v0.1-shaped measurement payloads remain valid because every v0.2 extension is optional; a populated source run or interval must carry its paired state or interval bounds. `domain_score` remains null and `score_state` remains unavailable.
+
+The shared P0 lineage spine separates observations, analysis units and independent groups. A capture or graft unit is a technical/within-subject unit and cannot be declared an independence group. P0-01 may generate only `declared` lineage. `reviewed` or `frozen` lineage requires a checksummed external review-gate reference and a dedicated review producer; a caller-supplied label alone never authorizes an effective biological N. ProductCase manifest reference, checksum and independence scope are all-or-none. These contracts record provenance and fail closed; they do not choose mutable biological roles, thresholds, markers or estimands.
 
 `StructuredInputRef` carries no inline payload. The supported runtime uses POSIX absolute paths, enforced in Python and public JSON Schema; Windows path syntax is not part of this contract. The checksum is exactly 64 lowercase hexadecimal characters. `application/json` is the only supported media type in v0.2 and is the default. The referenced object remains immutable and versioned outside the request envelope.
 

@@ -17,6 +17,7 @@ from bridge.toolkit.contracts import (
     KnowledgeHit,
     MarkerProgramCard,
     MeasurementResult,
+    MeasurementResultV2,
     MeasurementSpec,
     QCReadinessProfile,
     ReferenceManifest,
@@ -29,6 +30,12 @@ from bridge.toolkit.contracts import (
     ToolRun,
     ToolRunV2,
     VisualizationArtifact,
+)
+from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitAssignment,
+    BiologicalUnitManifest,
+    ProductCase,
+    ProductDefinitionCard,
 )
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS as P0_08_SCHEMA_MODELS,
@@ -46,6 +53,14 @@ MODELS = {
     "artifact_manifest": ("bridge://schemas/artifact-manifest/v0.1", ArtifactManifest),
     "benchmark_split_manifest": ("bridge://schemas/benchmark-split-manifest/v0.2", BenchmarkSplitManifest),
     "biological_review_record": ("bridge://schemas/biological-review-record/v0.1", BiologicalReviewRecord),
+    "biological_unit_assignment": (
+        "bridge://schemas/biological-unit-assignment/v0.1",
+        BiologicalUnitAssignment,
+    ),
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        BiologicalUnitManifest,
+    ),
     "cell_state_benchmark_spec": ("bridge://schemas/cell-state-benchmark-spec/v0.2", CellStateBenchmarkSpec),
     "cell_state_evidence_profile": ("bridge://schemas/cell-state-evidence-profile/v0.1", CellStateEvidenceProfile),
     "cell_state_release_manifest": ("bridge://schemas/cell-state-release-manifest/v0.1", CellStateReleaseManifest),
@@ -54,7 +69,16 @@ MODELS = {
     "knowledge_hit": ("bridge://schemas/knowledge-hit/v0.1", KnowledgeHit),
     "marker_program_card": ("bridge://schemas/marker-program-card/v0.1", MarkerProgramCard),
     "measurement_result": ("bridge://schemas/measurement-result/v0.1", MeasurementResult),
+    "measurement_result_v2": (
+        "bridge://schemas/measurement-result/v0.2",
+        MeasurementResultV2,
+    ),
     "measurement_spec": ("bridge://schemas/measurement-spec/v0.1", MeasurementSpec),
+    "product_case": ("bridge://schemas/product-case/v0.1", ProductCase),
+    "product_definition_card": (
+        "bridge://schemas/product-definition-card/v0.1",
+        ProductDefinitionCard,
+    ),
     "qc_readiness_profile": ("bridge://schemas/qc-readiness-profile/v0.1", QCReadinessProfile),
     "reference_manifest": ("bridge://schemas/reference-manifest/v0.1", ReferenceManifest),
     "reference_profile": ("bridge://schemas/reference-profile/v0.1", ReferenceProfile),
