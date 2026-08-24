@@ -65,7 +65,9 @@ directions and comparability requirements come from the input, while inference,
 Pareto, score and rank remain unavailable. P0-11 rebuilds only explicitly
 selected fields from a P0-10-eligible report and checksummed PublicExportSpec;
 it omits source identifiers and stops at a human-confirmation candidate. P0-12
-deliberately returns `not_implemented` without measurements. HTTP, MCP and queue adapters may wrap
+summarizes checksummed, precomputed graft observations under a caller-supplied
+versioned rule object; it never infers linkage, scores a graft or backfills the
+pre-transplant product. HTTP, MCP and queue adapters may wrap
 the same JSON contracts later without changing scientific semantics.
 
 Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.

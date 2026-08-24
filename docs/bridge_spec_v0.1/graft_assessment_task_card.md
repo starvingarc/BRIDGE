@@ -3,12 +3,12 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-GRAFT-ASSESSMENT-v0.1` |
-| 文档版本 | `0.1-draft` |
-| 日期 | 2026-08-08 |
+| 文档版本 | `0.2-candidate` |
+| 日期 | 2026-08-24 |
 | 状态 | `candidate` |
 | 适用范围 | 可选的移植后 graft scRNA-seq/snRNA-seq 独立评估 |
-| 上游输入 | `GraftCase`、`QCReadinessProfile`、graft-specific `MeasurementSpec`、reference snapshot |
-| 主要输出 | `GraftAssessment`；存在显式来源关系时可附加 `PreparationGraftAssociationRecord` |
+| 当前运行输入 | 一个 `GraftAssessmentSpec` 和一个 `GraftEvidenceBundle`；未来证据生产层仍可读取 `GraftCase`、QC、MeasurementSpec 与 reference snapshot |
+| 主要输出 | 当前可执行切片输出一个 `GraftAssessment`；显式 preparation linkage 作为内部记录嵌入，不另造第二个运行产物 |
 
 ## 1. 任务目标与边界
 
@@ -20,6 +20,29 @@
 - scRNA-seq 与 snRNA-seq 使用独立 `MeasurementSpec`，不得直接复用未验证的阈值、检出边界或分类校准。
 - 分析单位为独立 `animal/graft x post-transplant timepoint`。cell 或 nucleus 不能充当 biological replicate。
 - 时间、cell line、protocol、sorting 或 assay 完全混杂时，只能输出 `descriptive_only`。
+
+### 1.1 当前可执行切片
+
+P0-12 v0.2.0 不直接执行本任务卡后文列出的表达矩阵 QC、物种分配、
+reference mapping、cell-state、composition、maturation、trajectory 或
+communication 方法。它只封装这些上游流程已经形成的结构化观测：
+
+- 一个 checksummed `GraftAssessmentSpec` 提供 ProductCase/MeasurementSpec/
+  assay/sampling/reference/algorithm 绑定，以及 channel、单位、可接受
+  evidence state、最小独立单位数和可选解释区间；
+- 一个 checksummed `GraftEvidenceBundle` 提供显式 graft context、按
+  `animal/graft/timepoint` 组织的独立单位、预计算观测、design constraint
+  引用及可验证的 preparation linkage；
+- 代码只输出每个配置 channel 的 eligible unit 数、均值、范围和相对输入
+  区间的位置。它不含 state 名称、物种、月份、基因、程序或阈值常量；
+- `graft_availability=not_provided` 是显式输入状态，会产生可追溯的
+  `not_provided` 结果，不降低任何移植前证据；
+- `graft_score` 与 `domain_score` 固定为 `null`，`product_backfill` 固定为
+  `not_performed`。
+
+因此后文的生物学路线仍是候选研究要求，不是当前执行器已经完成的能力。
+未来调整状态、reference、宿主、时间设计或解释阈值时，应版本化输入对象，
+而不是修改本模块的确定性汇总代码。
 
 ## 2. 当前数据资产
 
@@ -170,6 +193,11 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 - 三类结果均为 `conditional/shadow`，不构成 graft 分数或移植前产品结论。
 
 ## 7. 输出合同
+
+当前 v0.2.0 只实现下表中的 availability、linkage、analysis mode、配置化
+channel summary、reason/provenance、null score 与 no-backfill 边界。composition、
+reference support、subtype、program、time 和 sensitivity 等丰富字段仍属于后续
+证据生产与合同扩展，不是当前运行结果中伪造的空壳。
 
 ### 7.1 `GraftAssessment`
 

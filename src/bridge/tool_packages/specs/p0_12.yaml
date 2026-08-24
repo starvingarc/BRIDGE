@@ -1,13 +1,16 @@
 tool_id: P0-12
 name: Optional Graft Assessment
-version: 0.1.0
-summary: Characterize optional post-transplant graft evidence without backfilling
-  product results.
-implementation_state: scaffold
+version: 0.2.0
+summary: Summarize configured post-transplant graft evidence without backfilling product results.
+implementation_state: implemented
 scientific_status: candidate
 optional: true
 environment_spec_id: ENV-P0-CORE-v0.1
-input_schema_ref: bridge://schemas/tool-request/v0.1
-output_schema_ref: bridge://schemas/tool-run/v0.1
-method_ids: []
+input_schema_ref: bridge://schemas/tool-request/v0.2
+output_schema_ref: bridge://schemas/tool-run/v0.2
+result_schema_ref: bridge://schemas/graft-assessment/v0.1
+adapter_ref: bridge.tool_packages.p0_12_graft_assessment.adapter:adapter
+method_ids:
+  - METHOD-BRIDGE-GRAFTCASE-VALIDATOR
+  - METHOD-BRIDGE-SOFT-COMPOSITION-404672
 card_ref: bridge://tool-cards/P0-12

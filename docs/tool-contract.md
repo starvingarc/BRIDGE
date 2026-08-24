@@ -44,6 +44,9 @@ Every package supports:
 | `ProgramAssessmentSpec` | Versioned ProductDefinition/window-bound program rules, reference intervals, coverage and review directions supplied as input |
 | `ProgramEvidenceBundle` | Versioned precomputed program observations with method, Evidence Family, independence group and evidence state |
 | `ProliferationStressResponseProfile` | Configured reference relations and shadow transcriptomic review flags with deferred ProtocolIR/LOD/CNV channels and null score |
+| `GraftAssessmentSpec` | Versioned channel, unit, eligible-state, independent-unit and optional interval policy supplied as input |
+| `GraftEvidenceBundle` | Versioned precomputed graft observations, explicit independent units, design constraints and preparation linkage |
+| `GraftAssessment` | Descriptive configured summaries with explicit absence/linkage state, null score and no ProductCase backfill |
 
 Implemented Tool Packages retain at least one selected `method_id`. Scaffold packages keep `method_ids` empty until an executable, benchmark-bound method contract exists; candidate catalog entries do not imply implementation.
 
@@ -88,7 +91,7 @@ Original inputs are read-only. Each run creates a new bundle containing a manife
 
 The versioned JSON contracts in `schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` are the Python source used to generate those schemas.
 
-For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability; P0-03 through P0-11 are separately reviewed deterministic candidates, while P0-12 stays a scaffold.
+For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability; P0-03 through P0-12 are separately reviewed deterministic candidates.
 
 P0-03 consumes exactly one ProductCase, ProductDefinitionCard, StateRoleMap,
 TargetRegionalAssessmentSpec, CellStateEvidenceProfile and QCReadinessProfile.
@@ -143,6 +146,16 @@ guard supplements the explicit prohibited-literal list but is not a universal
 secret scanner. The tool stops at `ready_for_confirmation` or
 `review_required`, does not upload, and does not handle arbitrary files. See the
 [P0-11 Tool Card](../tool_packages/P0-11/README.md).
+
+P0-12 consumes exactly one GraftAssessmentSpec and one GraftEvidenceBundle.
+The spec supplies channel IDs, units, eligible evidence states, minimum
+independent-unit counts and optional interpretation intervals; the bundle
+supplies precomputed observations and explicit preparation-linkage evidence.
+The executor only calculates deterministic per-channel mean/range and the
+configured interval relation. It does not read expression matrices, infer
+biology or linkage, emit a score, or write graft evidence back into a
+pre-transplant ProductCase. See the
+[P0-12 Tool Card](../tool_packages/P0-12/README.md).
 
 Only `implemented` packages execute. A scaffold returns `not_implemented` with `tool_package_not_implemented`; a deprecated package is ineligible and returns a failed run with `tool_package_deprecated`. Neither state resolves or invokes an adapter.
 

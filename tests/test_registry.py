@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bridge.toolkit.contracts import ExecutionState, ImplementationState, ToolRequest
+from bridge.toolkit.contracts import (
+    ExecutionState,
+    ImplementationState,
+    ToolPackageSpec,
+    ToolRequest,
+)
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.schemas import SCHEMA_REFS, load_schema
 
@@ -26,16 +31,13 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-09").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-10").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-11").implementation_state is ImplementationState.IMPLEMENTED
-    assert all(
-        registry.describe(tool_id).implementation_state is ImplementationState.SCAFFOLD
-        for tool_id in EXPECTED_IDS[11:]
-    )
+    assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
     assert proliferation_stress_response.version == "0.2.0"
 
 
 def test_scaffold_run_returns_not_implemented_without_measurements(tmp_path: Path) -> None:
-    registry = ToolRegistry.load_default()
+    registry = _registry_with_synthetic_scaffold()
     request = ToolRequest(
         request_id="request-scaffold",
         tool_id="P0-12",
@@ -66,7 +68,7 @@ def test_declared_tool_version_must_match_registry(tmp_path: Path) -> None:
 
 
 def test_scaffold_run_rejects_declared_version_mismatch(tmp_path: Path) -> None:
-    registry = ToolRegistry.load_default()
+    registry = _registry_with_synthetic_scaffold()
     request = ToolRequest(
         request_id="request-scaffold-version-mismatch",
         tool_id="P0-12",
@@ -107,7 +109,7 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 71
+    assert len(SCHEMA_REFS) == 74
     assert {
         "bridge://schemas/claim-verifier-run-result/v0.1",
         "bridge://schemas/verified-report/v0.1",
@@ -116,3 +118,22 @@ def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
         schema = load_schema(schema_ref)
         assert schema["$id"] == schema_ref
         assert schema["title"]
+
+
+def _registry_with_synthetic_scaffold() -> ToolRegistry:
+    registry = ToolRegistry.load_default()
+    source = registry.describe("P0-01").model_dump(mode="json")
+    scaffold = ToolPackageSpec.model_validate(
+        source
+        | {
+            "tool_id": "P0-12",
+            "name": "Synthetic scaffold",
+            "version": "0.1.0",
+            "implementation_state": "scaffold",
+            "method_ids": [],
+            "card_ref": "bridge://tool-cards/P0-12",
+        }
+    )
+    return ToolRegistry(
+        [scaffold if spec.tool_id == "P0-12" else spec for spec in registry.list()]
+    )

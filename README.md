@@ -54,7 +54,7 @@ provisional or unavailable.
 | P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
 | P0-10 Report Claim Verifier | Executable deterministic candidate; `verified` means evidence/package correspondence, not biological truth or public release |
 | P0-11 Public-safe Export | Executable allowlist-first JSON candidate; claims, aliases, evidence states and prohibited literals are policy inputs; human confirmation and file/media export remain unavailable |
-| P0-12 | Scientific contract only; executor pending |
+| P0-12 Optional Graft Assessment | Executable configurable descriptive candidate over precomputed independent-unit evidence; channels, units, eligible states, minimums and intervals are versioned inputs; no expression analysis, graft score or product backfill |
 
 ## Minimal usage
 
