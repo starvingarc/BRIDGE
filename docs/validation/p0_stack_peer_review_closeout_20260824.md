@@ -79,6 +79,29 @@ a private `/data1` exact-head evidence root. The Draft PR records the same
 exact SHA and evidence-manifest checksum after the final run. No project code
 is run on the local workstation.
 
+### Implementation-bearing pre-review run
+
+The literature-driven implementation revision was fixed at
+`9ec27b8c51ddd71d6e2c29361f62ae2d6d169416` and validated on `/data1` before
+the final documentation-only closeout and same-SHA peer review.
+
+| Gate | Result |
+|---|---|
+| Source archive SHA-256 | `5b37cb3f11ad00259cfdead0f461855c75a395e9debf285c293edb8384bb9646` |
+| Wheel SHA-256 | `153b963fca7c843ebd1d7208dec7b090a7ffeb3c1fa95653992503802f6808a0` |
+| Exact-source complete pytest | `1231 passed, 3 warnings` |
+| Clean-wheel complete pytest | `1231 passed, 3 warnings`; import resolved from the fresh Python 3.12 `site-packages`, outside the source tree |
+| Literature-closure adversarial selection | `12 passed` |
+| Tool discovery | exactly 12 |
+| Knowledge validation | valid; 354 methods, 396 bindings, no dangling refs, 0 formal-eligible methods |
+| Schema and Tool Card generation | byte-idempotent; public/packaged parity passed repository policy |
+| Repository and privacy checks | repository policy, private-path scan and committed diff check passed |
+
+The final branch head may differ from this implementation revision only by
+validation/review records. It still requires the same clean-wheel gates,
+GitHub `repository-gates`, and independent biology, single-cell-statistics and
+AI4S review before being presented for merge authorization.
+
 ## Release boundary
 
 All packages remain `candidate`; P0-02 remains

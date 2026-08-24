@@ -6,8 +6,11 @@ This review re-examined Draft PR #29 at pre-revision head
 `cade8a8c9484fb69e2e5895366f1a40a4b4c419d` from three independent lenses:
 cell-product biology, single-cell experimental design/statistics, and
 AI-for-science provenance/reproducibility. The initial verdict was **major
-revision**. Final exact-head acceptance remains pending server validation and
-same-SHA re-review.
+revision**. The implementation-bearing repair at
+`9ec27b8c51ddd71d6e2c29361f62ae2d6d169416` subsequently passed 1,231
+exact-source and 1,231 clean-wheel tests on `/data1`. Final acceptance still
+requires the documentation-complete head to pass the same gates and same-SHA
+re-review.
 
 Evidence was used in this order:
 
