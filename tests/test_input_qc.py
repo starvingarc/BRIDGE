@@ -464,6 +464,41 @@ def test_output_directory_cannot_be_nested_inside_directory_input(tmp_path: Path
     assert _sha256_tree(tenx) == before
 
 
+@pytest.mark.parametrize("target_kind", ["file", "symlink"])
+def test_unusable_output_path_returns_typed_failure_without_mutation(
+    tmp_path: Path, target_kind: str
+) -> None:
+    input_path = _write_h5ad(tmp_path / "counts.h5ad", counts=True)
+    output_path = tmp_path / "occupied-output"
+    if target_kind == "file":
+        output_path.write_text("preserve-me", encoding="utf-8")
+        expected = output_path.read_bytes()
+    else:
+        target = tmp_path / "symlink-target"
+        target.mkdir()
+        output_path.symlink_to(target, target_is_directory=True)
+        expected = output_path.readlink()
+    request = _request(
+        tmp_path,
+        input_path,
+        semantics="raw_counts",
+    ).model_copy(update={"output_dir": output_path})
+
+    registry = ToolRegistry.load_default()
+    eligibility = registry.check_eligibility(request)
+    run = registry.run(request)
+
+    assert eligibility.reason_codes == ["output_path_invalid"]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["output_path_invalid"]
+    if target_kind == "file":
+        assert output_path.read_bytes() == expected
+    else:
+        assert output_path.is_symlink()
+        assert output_path.readlink() == expected
+        assert list((tmp_path / "symlink-target").iterdir()) == []
+
+
 def test_scrna_measurement_spec_cannot_be_used_for_snrna(tmp_path: Path) -> None:
     input_path = _write_h5ad(tmp_path / "nuclei.h5ad", counts=True, assay="snRNA-seq")
 
