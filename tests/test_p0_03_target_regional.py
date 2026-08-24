@@ -503,6 +503,24 @@ def test_missing_explicit_source_is_partial(tmp_path: Path) -> None:
             ),
             "unsafe_evidence_reference",
         ),
+        (
+            lambda payloads: payloads["cell_state_evidence_profile"].update(
+                {"evidence_ids": ["clientSecret:demo-canary"]}
+            ),
+            "unsafe_evidence_reference",
+        ),
+        (
+            lambda payloads: payloads["cell_state_evidence_profile"].update(
+                {"profile_id": "not-a-cell-profile:demo"}
+            ),
+            "unsafe_profile_reference",
+        ),
+        (
+            lambda payloads: payloads["qc_readiness_profile"].update(
+                {"profile_id": "not-a-qc-profile:demo"}
+            ),
+            "unsafe_profile_reference",
+        ),
     ],
 )
 def test_cross_binding_and_publication_failures_are_typed(
@@ -516,6 +534,34 @@ def test_cross_binding_and_publication_failures_are_typed(
     assert reason in run.reason_codes
     assert run.result is None
     assert run.artifacts == []
+
+
+@pytest.mark.parametrize(
+    "unsafe_denominator",
+    [
+        "/data1/demo-private",
+        "/home/demo-user/private",
+        "~/demo-private",
+        "${HOME}/demo-private",
+        "file:/demo-private",
+        "token=demo-private",
+    ],
+)
+def test_machine_local_denominator_is_rejected_before_publication(
+    tmp_path: Path, unsafe_denominator: str
+) -> None:
+    payloads = _payloads()
+    payloads["cell_state_evidence_profile"]["composition"]["records"][0][
+        "denominator_view"
+    ] = unsafe_denominator
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["cell_state_composition_invalid"]
+    assert run.result is None
+    assert run.artifacts == []
+    assert unsafe_denominator not in json.dumps(run.model_dump(mode="json"))
 
 
 @pytest.mark.parametrize("field", ["count", "denominator", "fraction"])
