@@ -1,0 +1,489 @@
+{
+  "$defs": {
+    "CompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "CompositionView",
+      "type": "string"
+    },
+    "DevelopmentInputChecksums": {
+      "additionalProperties": false,
+      "properties": {
+        "cell_state_evidence_profile": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cell State Evidence Profile",
+          "type": "string"
+        },
+        "development_window_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Development Window Spec",
+          "type": "string"
+        },
+        "product_case": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Case",
+          "type": "string"
+        },
+        "product_definition_card": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Definition Card",
+          "type": "string"
+        },
+        "qc_readiness_profile": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Qc Readiness Profile",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_case",
+        "product_definition_card",
+        "development_window_spec",
+        "cell_state_evidence_profile",
+        "qc_readiness_profile"
+      ],
+      "title": "DevelopmentInputChecksums",
+      "type": "object"
+    },
+    "ReferenceStageSupportProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "const": "not_assessed",
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "reason_code": {
+          "const": "reference_stage_support_not_supplied",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assessment_state",
+        "reason_code"
+      ],
+      "title": "ReferenceStageSupportProfile",
+      "type": "object"
+    },
+    "RoleFraction": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "role": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "numerator",
+        "denominator"
+      ],
+      "title": "RoleFraction",
+      "type": "object"
+    },
+    "StageCompositionChannel": {
+      "additionalProperties": false,
+      "properties": {
+        "composition_view": {
+          "$ref": "#/$defs/CompositionView"
+        },
+        "denominator_view": {
+          "minLength": 1,
+          "title": "Denominator View",
+          "type": "string"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "target_related_denominator": {
+          "minimum": 0,
+          "title": "Target Related Denominator",
+          "type": "integer"
+        },
+        "target_related_stage_fractions": {
+          "items": {
+            "$ref": "#/$defs/RoleFraction"
+          },
+          "title": "Target Related Stage Fractions",
+          "type": "array"
+        },
+        "whole_product_denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Whole Product Denominator",
+          "type": "integer"
+        },
+        "whole_product_stage_fractions": {
+          "items": {
+            "$ref": "#/$defs/RoleFraction"
+          },
+          "title": "Whole Product Stage Fractions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "composition_view",
+        "label_level",
+        "denominator_view",
+        "whole_product_denominator",
+        "target_related_denominator",
+        "whole_product_stage_fractions",
+        "target_related_stage_fractions"
+      ],
+      "title": "StageCompositionChannel",
+      "type": "object"
+    },
+    "TimecourseProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_mode": {
+          "const": "static_profile",
+          "title": "Analysis Mode",
+          "type": "string"
+        },
+        "evidence_state": {
+          "const": "unavailable",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "reason_code": {
+          "const": "true_timepoint_input_not_supplied",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "analysis_mode",
+        "evidence_state",
+        "reason_code"
+      ],
+      "title": "TimecourseProfile",
+      "type": "object"
+    },
+    "UnmappedDevelopmentState": {
+      "additionalProperties": false,
+      "properties": {
+        "composition_view": {
+          "$ref": "#/$defs/CompositionView"
+        },
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "reason_code": {
+          "const": "development_role_not_configured",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "label_level",
+        "composition_view",
+        "count",
+        "denominator",
+        "reason_code"
+      ],
+      "title": "UnmappedDevelopmentState",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/developmental-compatibility-result/v0.1",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result_state": {
+            "const": "not_assessed"
+          }
+        },
+        "required": [
+          "result_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "score_state": {
+            "const": "unavailable"
+          },
+          "stage_composition_channels": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "result_state": {
+            "enum": [
+              "complete",
+              "partial"
+            ]
+          }
+        },
+        "required": [
+          "result_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "score_state": {
+            "const": "shadow"
+          },
+          "stage_composition_channels": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "result_state": {
+            "const": "complete"
+          }
+        },
+        "required": [
+          "result_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "unmapped_states": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "analysis_mode": {
+      "const": "static_profile",
+      "title": "Analysis Mode",
+      "type": "string"
+    },
+    "cell_state_profile_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "development_window_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/DevelopmentInputChecksums"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "qc_profile_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "reference_stage_support": {
+      "$ref": "#/$defs/ReferenceStageSupportProfile"
+    },
+    "result_id": {
+      "pattern": "^developmental-result:[a-f0-9]{16}$",
+      "title": "Result Id",
+      "type": "string"
+    },
+    "result_state": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "Result State",
+      "type": "string"
+    },
+    "score_state": {
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    },
+    "stage_composition_channels": {
+      "items": {
+        "$ref": "#/$defs/StageCompositionChannel"
+      },
+      "title": "Stage Composition Channels",
+      "type": "array"
+    },
+    "timecourse_profile": {
+      "$ref": "#/$defs/TimecourseProfile"
+    },
+    "tool_id": {
+      "const": "P0-04",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "unmapped_states": {
+      "items": {
+        "$ref": "#/$defs/UnmappedDevelopmentState"
+      },
+      "title": "Unmapped States",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "result_id",
+    "tool_id",
+    "tool_version",
+    "product_case_ref",
+    "product_definition_ref",
+    "development_window_ref",
+    "cell_state_profile_ref",
+    "qc_profile_ref",
+    "input_sha256_by_role",
+    "result_state",
+    "analysis_mode",
+    "stage_composition_channels",
+    "unmapped_states",
+    "reference_stage_support",
+    "timecourse_profile",
+    "evidence_refs",
+    "reason_codes",
+    "score_state"
+  ],
+  "title": "DevelopmentalCompatibilityResult",
+  "type": "object"
+}

@@ -1,0 +1,200 @@
+{
+  "$defs": {
+    "CompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "CompositionView",
+      "type": "string"
+    },
+    "DevelopmentRole": {
+      "enum": [
+        "earlier",
+        "within_window",
+        "later",
+        "branch_shift",
+        "unresolved"
+      ],
+      "title": "DevelopmentRole",
+      "type": "string"
+    },
+    "DevelopmentStateAssignment": {
+      "additionalProperties": false,
+      "properties": {
+        "development_role": {
+          "$ref": "#/$defs/DevelopmentRole"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "provenance_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        },
+        "target_related": {
+          "title": "Target Related",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state_id",
+        "label_level",
+        "development_role",
+        "target_related"
+      ],
+      "title": "DevelopmentStateAssignment",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/development-window-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "annotation_vocabulary_ref": {
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+      "title": "Annotation Vocabulary Ref",
+      "type": "string"
+    },
+    "applicable_assays": {
+      "items": {
+        "enum": [
+          "scRNA-seq",
+          "snRNA-seq"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Applicable Assays",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "assignments": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentStateAssignment"
+      },
+      "minItems": 1,
+      "title": "Assignments",
+      "type": "array"
+    },
+    "composition_views": {
+      "items": {
+        "$ref": "#/$defs/CompositionView"
+      },
+      "minItems": 1,
+      "title": "Composition Views",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "included_label_levels": {
+      "items": {
+        "enum": [
+          "L1",
+          "L2",
+          "L3"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Included Label Levels",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "review_state": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "Review State",
+      "type": "string"
+    },
+    "source_ids": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Source Ids",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "timecourse_policy": {
+      "const": "static_without_timepoint_input",
+      "title": "Timecourse Policy",
+      "type": "string"
+    },
+    "unmapped_state_policy": {
+      "const": "report_unresolved",
+      "title": "Unmapped State Policy",
+      "type": "string"
+    },
+    "window_spec_id": {
+      "pattern": "^development-window-spec:[A-Za-z0-9._:-]+$",
+      "title": "Window Spec Id",
+      "type": "string"
+    },
+    "window_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Window Spec Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "window_spec_id",
+    "window_spec_version",
+    "product_definition_ref",
+    "annotation_vocabulary_ref",
+    "review_state",
+    "applicable_assays",
+    "composition_views",
+    "included_label_levels",
+    "assignments",
+    "unmapped_state_policy",
+    "timecourse_policy"
+  ],
+  "title": "DevelopmentWindowSpec",
+  "type": "object"
+}
