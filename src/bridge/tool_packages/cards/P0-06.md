@@ -70,7 +70,7 @@ upstream methods; this package does not open H5AD or recompute expression.
 
 Each review rule has a unique `rule_id`, versioned `program_ref`, whole-product
 or state-specific scope, exact P0-04 `stage_context_ref`, assay list,
-`metric_name`, `unit`, inclusive reference bounds, coverage requirement,
+`metric_name`, publication-safe `unit`, inclusive reference bounds, coverage requirement,
 eligible evidence states, minimum independence-group count, review direction
 and optional follow-up assay references.
 

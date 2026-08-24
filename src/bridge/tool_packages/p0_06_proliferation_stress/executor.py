@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
     VersionedObjectRef,
