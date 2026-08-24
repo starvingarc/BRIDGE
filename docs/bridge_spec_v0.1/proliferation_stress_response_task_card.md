@@ -28,10 +28,11 @@ P0-06 的首个可调用 candidate 只装配上游已经计算好的程序观测
 它读取 checksummed `ProgramAssessmentSpec` 和 `ProgramEvidenceBundle`，按输入
 给出的 stage context、reference interval、gene coverage、eligible evidence
 state、independence group 和 review direction 做确定性比较与去重。
-BiologicalUnitManifest 的 analysis units 先在 group 内聚合；只有外部
-`reviewed`/`frozen` 且带 checksummed review gate 的 lineage 才可贡献独立组数。
-`declared` lineage 保留 provenance，但独立组数为 0，结果为
-`cannot_resolve`；P0-06 不能审核自己的重复结构。
+BiologicalUnitManifest 的 analysis units 先在 group 内聚合。仅有 caller
+提供的 `reviewed`/`frozen` 标签和 gate checksum 不能证明审核主体；当前版本
+尚无可信 receipt verifier，因此所有此类标签只作 trace，独立组数为 0，结果为
+`cannot_resolve`。测试可注入 verifier 结果以覆盖确定性汇总机制，但普通请求 JSON
+不能解锁该路径；P0-06 不能审核自己的重复结构。
 
 程序名称、基因、权重、阶段、reference/null、阈值、检测边界和复核方向均不
 写入代码。后续生物学审核通过创建新版本输入对象改变这些决定，无需修改执行器。

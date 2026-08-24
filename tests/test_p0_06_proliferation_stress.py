@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator
 import pytest
 
 import bridge.tool_packages.p0_06_proliferation_stress.adapter as adapter_module
+import bridge.tool_packages.p0_06_proliferation_stress.executor as executor_module
 from bridge.tool_packages.p0_06_proliferation_stress.adapter import adapter
 from bridge.tool_packages.p0_06_proliferation_stress.models import (
     PUBLIC_SCHEMA_MODELS,
@@ -25,6 +26,17 @@ from bridge.toolkit.contracts import (
 )
 from bridge.toolkit.registry import ToolRegistry
 from tests.p0_biological_units import bind_reviewed_biological_units
+
+
+@pytest.fixture(autouse=True)
+def _trusted_review_for_scientific_mechanics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        executor_module,
+        "_review_authority_verified",
+        lambda manifest: manifest.independence_is_reviewed,
+    )
 
 
 ROLE_SCHEMAS = {
@@ -455,6 +467,28 @@ def test_configured_program_evidence_runs(tmp_path: Path) -> None:
         ref.input_id in json.dumps(run.result, sort_keys=True)
         for ref in run.request.object_inputs
     )
+
+
+def test_caller_asserted_review_gate_cannot_unlock_without_trusted_verifier(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        executor_module,
+        "_review_authority_verified",
+        lambda manifest: False,
+    )
+
+    run = ToolRegistry.load_default().run(_request(tmp_path))
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    assert all(
+        result["included_biological_unit_count"] == 0
+        and result["triggering_biological_unit_count"] == 0
+        and result["review_flag_state"] == "cannot_resolve"
+        for result in run.result["program_results"]
+    )
+    assert "biological_unit_review_authority_not_configured" in run.reason_codes
 
 
 def test_result_schema_rejects_state_and_checksum_conflicts(tmp_path: Path) -> None:

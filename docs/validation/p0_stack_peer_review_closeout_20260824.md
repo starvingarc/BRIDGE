@@ -31,33 +31,43 @@ revised branch.
 - **P0-03/P0-04/P0-05:** each requires the exact ProductCase-owned manifest in
   addition to shared configurable biological objects. Ref, checksum,
   independence scope and unit/group membership drift are refused.
-- **P0-06:** observations are aggregated inside manifest independence groups.
-  Only an externally reviewed/frozen manifest with a checksummed review gate can
-  contribute independent groups; declared lineage yields `cannot_resolve`.
+- **P0-06:** observations are assigned through manifest independence groups.
+  Caller review labels and gate checksums are trace-only because no trusted
+  review-receipt verifier is configured; ordinary requests therefore contribute
+  zero eligible groups and yield `cannot_resolve`.
 - **P0-07:** consumes two full P0-08 run results and two exact manifests.
-  Repeated preparations aggregate inside reviewed groups and any group shared
-  across arms is refused.
+  Both arms must share an identity namespace and independence scope, while any
+  group shared across arms is refused. Repeated observations in one group are
+  unavailable until a within-group estimand is supplied; caller review labels
+  do not unlock eligible N or direction.
 - **P0-08/P0-09:** frozen MeasurementResult v0.1 remains for ToolRun v0.1;
   quantitative handoff uses MeasurementResult v0.2 with unit,
   MeasurementSpec-version, denominator/interval and producer-run fields. P0-08
   publishes exact Schema/source-checksum bindings. P0-09 requires those same
-  bytes, and `EvidenceCandidate` cannot restate the measurement.
+  bytes, requires the graph catalog hash for each MeasurementResult to match
+  those bytes, and `EvidenceCandidate` cannot restate the measurement.
 - **P0-10/P0-11:** P0-10 correspondence remains export-ineligible. P0-11 is an
   Internal Review Projection requiring the exact P0-10 ToolRun/result/artifact
   binding. Every successful projection declares producer authentication
   unavailable, release authority not configured, internal-review-only
   distribution and human review required.
-- **P0-12:** product and graft MeasurementSpecs are separate. A provided graft
-  requires exact external lineage review; declared lineage is not assessed.
-  Observations are grouped by disjoint graft/timepoint strata, aggregated within
-  animal according to configured denominator semantics, and never aggregated
-  across strata.
+- **P0-12:** product and graft MeasurementSpecs are separate, and the exact
+  ProductCase BiologicalUnitManifest owns source-preparation bindings. A
+  provided graft requires exact lineage bytes, but caller review labels remain
+  trace-only without a trusted receipt verifier, so animal summaries are not
+  assessed. Observations are grouped by disjoint graft/timepoint strata and are
+  never aggregated across strata. The current contract also reports graft
+  assay/specimen applicability as not assessed because it lacks a typed,
+  independently bound GraftCase.
 
-The stack handoff test now calls P0-08, passes its full result plus the same
-checksummed MeasurementResult into P0-09, uses the resulting graph in P0-10 and
-passes the exact P0-10 run/result into P0-11. No manual numeric or provenance
-translation layer exists between these tools, and the chain stops at the
-release-authority boundary.
+The stack contract-chain test calls P0-08 and passes its full result plus the
+same checksummed MeasurementResult into P0-09. It then uses the resulting graph
+with a deterministic synthetic ReportDraft fixture in P0-10 and passes the
+exact P0-10 run/result into P0-11, where the chain stops at the release-authority
+boundary. This proves callable contracts, checksum propagation and fail-closed
+release behavior. It does not prove a production end-to-end workflow: semantic
+ReportDraft authoring and orchestration between P0-09 and P0-10 remain external
+to the implemented P0 packages.
 
 ## Exact-head acceptance record
 

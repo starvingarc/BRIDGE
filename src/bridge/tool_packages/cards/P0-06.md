@@ -59,7 +59,7 @@ P0-06 accepts exactly seven immutable JSON objects:
 | `program_evidence_bundle` | `bridge://schemas/program-evidence-bundle/v0.1` | Precomputed program observations and evidence provenance |
 | `developmental_compatibility_result` | `bridge://schemas/developmental-compatibility-result/v0.1` | P0-04 product, window and Cell-State context |
 | `qc_readiness_profile` | `bridge://schemas/qc-readiness-profile/v0.1` | P0-01 assay/readiness and evidence references |
-| `biological_unit_manifest` | `bridge://schemas/biological-unit-manifest/v0.1` | Exact ProductCase-bound analysis units, independence groups, scope and externally reviewed/frozen lineage state |
+| `biological_unit_manifest` | `bridge://schemas/biological-unit-manifest/v0.1` | Exact ProductCase-bound analysis units, independence groups, scope and caller-declared review state; the label is trace-only until a trusted receipt verifier exists |
 
 Each `StructuredInputRef` declares an absolute regular-file path, Schema URI,
 object version, media type and SHA-256 checksum. Raw expression assets,
@@ -96,13 +96,15 @@ For every configured rule, P0-06:
 4. aggregates repeated analysis units inside the exact manifest-defined
    independence group, so captures, aliquots, methods or Evidence Families
    from one biological source do not become independent votes;
-5. emits a shadow `transcriptomic_review_flag` only when the manifest lineage
-   is externally `reviewed` or `frozen` and the configured direction is
+5. emits a shadow `transcriptomic_review_flag` only after a trusted review
+   authority verifies the independence mapping and the configured direction is
    supported by the configured minimum number of non-conflicting groups;
 6. otherwise returns `cannot_resolve` or `not_assessed` with stable reasons.
 
-`declared` lineage remains valid provenance but contributes zero independent
-groups and yields `cannot_resolve`; P0-06 cannot review its own lineage. An
+This package version has no trusted review-receipt verifier. Consequently,
+caller-supplied `reviewed`/`frozen` labels are trace-only, contribute zero
+independent groups and yield `cannot_resolve`, just like `declared` lineage.
+P0-06 cannot review its own lineage. An
 unconfigured rule ID or mismatched program reference is retained as an
 unmatched record and makes the run partial; it never enters a configured
 program result.
@@ -148,6 +150,7 @@ Result reasons include `configured_review_condition_met`,
 `gene_coverage_below_configured_minimum`,
 `program_evidence_not_eligible`, `validated_lod_not_supplied`,
 `developmental_context_not_assessed`, `unmatched_program_observations`,
+`biological_unit_review_authority_not_configured`,
 `protocol_ir_not_supplied`, `pluripotency_lod_not_supplied` and
 `transcriptomic_cnv_not_supplied`.
 
@@ -156,7 +159,8 @@ Result reasons include `configured_review_condition_met`,
 Tests cover public Schema validity, strict numeric inputs, rule-only biological
 changes, reference comparison, independence-group de-duplication, low coverage,
 missing evidence, unavailable developmental context, unmatched observations,
-cross-object bindings, deterministic reuse, immutable inputs, output failures,
+cross-object bindings, fail-closed caller-asserted review gates, deterministic
+reuse, immutable inputs, output failures,
 V1 refusal and source/installed-wheel SDK execution.
 
 Synthetic fixtures validate mechanics only. P0-06 does not validate a real

@@ -101,3 +101,10 @@ The combined closeout adds an exact ProductCase-bound
 The manifest currently preserves declared lineage only; it does not turn
 captures or preparations into reviewed independent replicates. Final exact-head
 whole-stack evidence is recorded in the stack closeout validation.
+
+Literature-driven re-review also identified a contract-level contradiction that
+did not require freezing any PD-mDA biology: a state could be declared
+`not_target` while simultaneously carrying `target_region`. The model now
+refuses that combination and requires `acceptable_adjacent_region` to be paired
+with `target` or `acceptable_adjacent` lineage. The invariant constrains only
+the meaning of the public axes; state assignments remain fully versioned input.

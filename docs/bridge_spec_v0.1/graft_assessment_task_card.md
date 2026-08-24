@@ -7,7 +7,7 @@
 | 日期 | 2026-08-24 |
 | 状态 | `candidate` |
 | 适用范围 | 可选的移植后 graft scRNA-seq/snRNA-seq 独立评估 |
-| 当前运行输入 | 必需 `ProductCase`、graft-specific `MeasurementSpec`、`GraftAssessmentSpec`、`GraftEvidenceBundle`；provided graft 另需 `GraftLineageManifest` |
+| 当前运行输入 | 必需 `ProductCase`、其 exact `BiologicalUnitManifest`、graft-specific `MeasurementSpec`、`GraftAssessmentSpec`、`GraftEvidenceBundle`；provided graft 另需 `GraftLineageManifest` |
 | 主要输出 | 当前可执行切片输出一个 `GraftAssessment`；显式 preparation linkage 作为内部记录嵌入，不另造第二个运行产物 |
 
 ## 1. 任务目标与边界
@@ -27,8 +27,10 @@ P0-12 v0.2.0 不直接执行本任务卡后文列出的表达矩阵 QC、物种�
 reference mapping、cell-state、composition、maturation、trajectory 或
 communication 方法。它只封装这些上游流程已经形成的结构化观测：
 
-- 一个 checksummed `ProductCase` 明确案例、MeasurementSpec 和允许的来源
-  biological preparation units；
+- 一个 checksummed `ProductCase` 明确案例和 product MeasurementSpec；其 exact
+  checksummed `BiologicalUnitManifest` 提供 analysis-unit 到实际 preparation 的
+  绑定。来源 preparation 只能从 manifest 的 `unit_bindings.preparation_ref`
+  解析，不能把 ProductCase 的 independence-group refs 当成 preparation refs；
 - 一个独立 checksummed graft `MeasurementSpec` 定义 graft assay、analysis-unit
   kind 和适用上下文；它与 ProductCase 的移植前 MeasurementSpec 分开绑定；
 - 一个 checksummed `GraftAssessmentSpec` 提供 ProductCase/product MeasurementSpec/
@@ -40,9 +42,11 @@ communication 方法。它只封装这些上游流程已经形成的结构化观
   `animal/graft/timepoint` 组织的观察单位、预计算观测、design constraint
   引用及显式声明的 preparation linkage evidence；
 - provided graft 必须同时提供 exact `GraftLineageManifest`。其 unit/animal/
-  graft/timepoint/preparation/evidence assignments 必须与 bundle 完全一致；只有
-  外部 `reviewed`/`frozen` 且带 checksummed review gate 的 lineage 可评估，
-  `declared` lineage 返回 `partial/not_assessed`，P0-12 不能自我审核；
+  graft/timepoint/preparation/evidence assignments 必须与 bundle 完全一致。
+  Caller 提供的 `reviewed`/`frozen` 标签和 gate checksum 不能证明审核主体；当前
+  尚无可信 receipt verifier，因此所有 lineage 状态都只作 trace，animal N 为 0，
+  channel 返回 `not_assessed`。测试可注入 verifier 结果验证确定性汇总机制，但普通
+  请求 JSON 不能解锁；P0-12 不能自我审核；
 - 代码按 channel 的精确 `graft_ref + timepoint_ref` 将观察放入互斥 strata，
   在每个 stratum 内先按配置的 `single_observation`、`mean` 或
   `pooled_numerator_denominator` 聚合到 animal，再对独立 animal 等权汇总；
@@ -54,6 +58,12 @@ communication 方法。它只封装这些上游流程已经形成的结构化观
   `not_provided` 结果，不降低任何移植前证据，并禁止提供 lineage manifest；
 - `graft_score` 与 `domain_score` 固定为 `null`，`product_backfill` 固定为
   `not_performed`。
+
+当前输入没有独立、类型化且与真实 specimen/assay metadata 绑定的 `GraftCase`。
+因此 ProductCase、spec 和 bundle 之间即使字符串自洽，也不能证明实际 specimen、
+sorting 或 assay 的生物学适用性；执行器显式返回
+`graft_assay_applicability_not_assessed`，且在可信 lineage verifier 缺失时不发布
+animal-level summary。
 
 因此后文的生物学路线仍是候选研究要求，不是当前执行器已经完成的能力。
 未来调整状态、reference、宿主、时间设计或解释阈值时，应版本化输入对象，

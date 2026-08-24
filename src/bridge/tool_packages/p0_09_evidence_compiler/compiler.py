@@ -874,6 +874,7 @@ def _compile_candidates(
             sufficiency_results_by_input_id=sufficiency_results_by_input_id,
             measurement_results_by_input_id=measurement_results_by_input_id,
             input_refs_by_id=input_refs_by_id,
+            catalog=catalog,
         )
         reasons.extend(source_reasons)
         if candidate is None:
@@ -1196,6 +1197,7 @@ def _resolve_candidate(
     sufficiency_results_by_input_id: Mapping[str, EvidenceSufficiencyRunResult],
     measurement_results_by_input_id: Mapping[str, MeasurementResult],
     input_refs_by_id: Mapping[str, StructuredInputRef],
+    catalog: Mapping[tuple[str, str], Any],
 ) -> tuple[ResolvedEvidenceCandidate | None, list[str]]:
     reasons: list[str] = []
     result = sufficiency_results_by_input_id.get(declared.sufficiency_result_input_id)
@@ -1248,6 +1250,16 @@ def _resolve_candidate(
             or binding.source_sha256 != measurement_ref.sha256
         ):
             reasons.append("measurement_result_checksum_mismatch")
+        else:
+            catalog_item = catalog.get((binding.object_id, binding.object_version))
+            if (
+                catalog_item is not None
+                and catalog_item.node_type is GraphNodeType.MEASUREMENT_RESULT
+                and catalog_item.schema_ref
+                == EXPECTED_CATALOG_SCHEMAS[GraphNodeType.MEASUREMENT_RESULT]
+                and catalog_item.content_hash != measurement_ref.sha256
+            ):
+                reasons.append("measurement_result_checksum_mismatch")
 
     raw_value = measurement.raw_value if measurement is not None else None
     if (

@@ -68,6 +68,23 @@ class StateRoleAssignment(FrozenModel):
         _unique([item.ref for item in value], "provenance_refs")
         return value
 
+    @model_validator(mode="after")
+    def lineage_and_regional_roles_are_coherent(self) -> Self:
+        if (
+            self.regional_role is RegionalRole.TARGET_REGION
+            and self.lineage_role is not LineageRole.TARGET
+        ):
+            raise ValueError("target_region requires target lineage")
+        if (
+            self.regional_role is RegionalRole.ACCEPTABLE_ADJACENT_REGION
+            and self.lineage_role
+            not in {LineageRole.TARGET, LineageRole.ACCEPTABLE_ADJACENT}
+        ):
+            raise ValueError(
+                "acceptable_adjacent_region requires target-related lineage"
+            )
+        return self
+
 
 class StateRoleMap(FrozenModel):
     object_version: Literal["0.1.0"]

@@ -30,6 +30,8 @@
 ## Validation Records
 
 - [Configurable runtime closeout validation, 2026-08-24](validation/runtime_single_json_closeout_20260824.md)
+- [P0 stack literature-grounded peer review, 2026-08-24](validation/p0_stack_literature_peer_review_20260824.md)
+- [P0 stack peer-review closeout validation, 2026-08-24](validation/p0_stack_peer_review_closeout_20260824.md)
 - [P0-12 configurable graft assessment candidate validation, 2026-08-24](validation/p0_12_graft_assessment_20260824.md)
 - [P0-11 internal review projection validation, 2026-08-24](validation/p0_11_internal_review_projection_20260824.md)
 - [P0-07 product comparison candidate validation, 2026-08-24](validation/p0_07_product_comparison_20260824.md)

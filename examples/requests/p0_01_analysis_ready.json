@@ -8,8 +8,14 @@
       "matrix_location": "X",
       "matrix_semantics": "normalized_expression",
       "metadata": {
+        "analysis_unit_kind": "preparation",
         "capture_id_column": "capture_id",
-        "sample_id_column": "sample_id"
+        "independence_group_kind": "sample",
+        "independence_scope_ref": "independence-scope:demo-upload@0.1.0",
+        "preparation_id_column": "preparation_id",
+        "sample_id_column": "sample_id",
+        "sample_or_preparation_ref": "preparation:demo-upload@0.1.0",
+        "unit_identity_namespace_ref": "biological-unit-namespace:demo-upload@0.1.0"
       },
       "path": "/tmp/bridge-example/reference-normalized.h5ad"
     }

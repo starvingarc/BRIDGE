@@ -25,6 +25,10 @@ OffTargetControlResult。
 BiologicalUnitManifest 必须与 ProductCase 的 ref、checksum、independence
 scope 和 unit/group 成员完全一致；它保留来源结构，但不把声明本身晋升为
 审核过的 biological replication。
+当输入 composition 分母大于所有已列状态之和时，差额没有可验证的状态身份，
+因此进入 `unknown` 并记录 `composition_residual_identity_unknown`；它不能进入
+`role_unresolved`，也不能由执行器猜测为 dropout、doublet、过滤损失或某个生物
+状态。只有身份已知但产品角色未定的状态才属于 `role_unresolved`。
 
 ## 1. 任务目标与边界
 

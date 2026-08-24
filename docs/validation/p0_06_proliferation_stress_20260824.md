@@ -13,8 +13,9 @@ conclusion.
 ## Candidate interface
 
 The candidate accepts ProductCase, ProductDefinitionCard,
-ProgramAssessmentSpec, ProgramEvidenceBundle, DevelopmentalCompatibilityResult
-and QCReadinessProfile through `ToolRequestV2`. It publishes one
+ProgramAssessmentSpec, ProgramEvidenceBundle, DevelopmentalCompatibilityResult,
+QCReadinessProfile and the exact BiologicalUnitManifest through
+`ToolRequestV2`. It publishes one
 ProliferationStressResponseProfile and no MeasurementResult or visualization.
 `domain_score` is always null.
 
@@ -67,8 +68,12 @@ potency, release or ranking.
 
 ## Peer-review closeout addendum
 
-The combined closeout now aggregates analysis units within exact manifest
-independence groups. Only externally reviewed/frozen lineage with a checksummed
-review gate can contribute independent group counts; declared lineage produces
-`cannot_resolve` and zero independent groups. P0-06 cannot self-review lineage.
-Final exact-head evidence is recorded in the stack closeout validation.
+The combined closeout maps analysis units to exact manifest independence groups.
+Methodological review showed that a caller-controlled `reviewed`/`frozen` label
+and checksum establish byte identity, not review authority. Because this package
+has no trusted review-receipt verifier, all caller labels remain trace-only:
+independent group count is zero and program flags return `cannot_resolve` with
+`biological_unit_review_authority_not_configured`. Test-only verifier injection
+covers the deterministic group-level mechanism, but ordinary request JSON
+cannot unlock it. Final exact-head evidence is recorded in the stack closeout
+validation.

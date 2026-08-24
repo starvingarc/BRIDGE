@@ -28,6 +28,10 @@ ProductDefinitionCard；P0-02 的 reconciliation-state 记录只作为上游诊�
 当前路径不运行表达分析或空间投射，不输出区间、分数、效力、安全或放行结论。
 清单的 ref、checksum、independence scope、analysis-unit 与 group 成员必须与
 ProductCase 完全一致；`declared` 只表示来源声明，不能被解释为已审核的独立重复。
+执行器只固化角色合同的逻辑非矛盾约束：`target_region` 必须同时具有 `target`
+lineage，`acceptable_adjacent_region` 必须属于 `target` 或
+`acceptable_adjacent` lineage。具体状态归属、区域生物学和例外仍只存在于版本化
+`StateRoleMap`，不会因该约束被硬编码。
 
 ## 1. 任务目标
 

@@ -795,7 +795,11 @@ def _catalog() -> list[dict[str, Any]]:
                 f"bridge://schemas/{schema}/"
                 f"{'v0.2' if schema == 'measurement-result' else 'v0.1'}"
             ),
-            "content_hash": hashlib.sha256(object_id.encode()).hexdigest(),
+            "content_hash": (
+                _payload_sha256(_measurement_result())
+                if node_type == "MeasurementResult"
+                else hashlib.sha256(object_id.encode()).hexdigest()
+            ),
         }
         for object_id, node_type, schema in [
             ("product-case:synthetic-001", "ProductCase", "product-case"),
@@ -973,13 +977,15 @@ def _request(
     output_name: str = "output",
     base_manifest_path: Path | None = None,
     source_case_manifest_paths: list[Path] | None = None,
+    sufficiency_result_paths: dict[str, Path] | None = None,
     measurement_result_paths: dict[str, Path] | None = None,
     measurement_result_versions: dict[str, str] | None = None,
 ) -> ToolRequestV2:
     inputs = tmp_path / f"inputs-{request_id}"
-    manifest_paths_by_input_id: dict[str, Path] = dict(
-        measurement_result_paths or {}
-    )
+    manifest_paths_by_input_id: dict[str, Path] = {
+        **(sufficiency_result_paths or {}),
+        **(measurement_result_paths or {}),
+    }
     profile_objects = json.loads(
         json.dumps(profiles or [("profile-target", profile or _profile())])
     )
@@ -1004,6 +1010,16 @@ def _request(
             )
             for input_id in sorted(declared_measurement_inputs)
         }
+        measurement_hashes = {
+            measurement["measurement_id"]: _payload_sha256(measurement)
+            for measurement in measurement_objects.values()
+        }
+        for item in effective_bundle["object_catalog"]:
+            if (
+                item["node_type"] == "MeasurementResult"
+                and item["object_id"] in measurement_hashes
+            ):
+                item["content_hash"] = measurement_hashes[item["object_id"]]
         catalog_object_ids = {
             item["object_id"] for item in effective_bundle["object_catalog"]
         }
@@ -1031,9 +1047,11 @@ def _request(
                                 f"bridge://schemas/{schema}/"
                                 f"{'v0.2' if schema == 'measurement-result' else 'v0.1'}"
                             ),
-                            "content_hash": hashlib.sha256(
-                                object_id.encode()
-                            ).hexdigest(),
+                            "content_hash": (
+                                measurement_hashes[object_id]
+                                if node_type == "MeasurementResult"
+                                else hashlib.sha256(object_id.encode()).hexdigest()
+                            ),
                         }
                     )
                     catalog_object_ids.add(object_id)
@@ -1383,6 +1401,45 @@ def test_profile_measurement_checksum_must_match_exact_input_bytes(
             "object_inputs": [
                 item.model_copy(update={"sha256": result_sha})
                 if item.input_id == result_ref.input_id
+                else item
+                for item in request.object_inputs
+            ]
+        }
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    rejected = json.loads(
+        (
+            run.request.output_dir / run.run_id / "rejected_records.json"
+        ).read_text()
+    )["records"]
+    assert rejected[0]["reason_codes"] == [
+        "measurement_result_checksum_mismatch"
+    ]
+
+
+def test_catalog_measurement_hash_must_match_exact_input_bytes(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    bundle_ref = next(
+        item for item in request.object_inputs if item.role == "compilation_bundle"
+    )
+    bundle = json.loads(bundle_ref.path.read_text())
+    catalog_item = next(
+        item
+        for item in bundle["object_catalog"]
+        if item["node_type"] == "MeasurementResult"
+    )
+    catalog_item["content_hash"] = "f" * 64
+    bundle_sha = _write(bundle_ref.path, bundle)
+    request = request.model_copy(
+        update={
+            "object_inputs": [
+                item.model_copy(update={"sha256": bundle_sha})
+                if item.input_id == bundle_ref.input_id
                 else item
                 for item in request.object_inputs
             ]

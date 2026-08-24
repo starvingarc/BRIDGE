@@ -161,20 +161,21 @@ unconfigured, so the tool always reports `internal_review_only` and
 `review_required`; it does not upload or authorize public distribution. See the
 [P0-11 Tool Card](../tool_packages/P0-11/README.md).
 
-P0-12 consumes exactly one ProductCase, one independent graft MeasurementSpec,
-one GraftAssessmentSpec and one GraftEvidenceBundle; provided grafts also
-require an exact GraftLineageManifest, while not-provided grafts forbid it. The
-spec supplies channel IDs, units, disjoint graft/timepoint strata,
-within-animal aggregation and denominator semantics, eligible evidence states,
-minimum independent-animal counts and optional interpretation intervals. Only
-externally reviewed/frozen lineage can support assessment. The executor first
-aggregates repeated observations within animal and stratum, forbids
-cross-stratum aggregation, then summarizes animals equally and reports the
-configured interval relation only when animal-count requirements permit. It
-validates lineage bindings and external review receipts but does not prove
-biological lineage truth. It does not read expression matrices, infer biology,
-emit a score, or write graft evidence back into a
-pre-transplant ProductCase. See the
+P0-12 consumes exactly one ProductCase, its exact BiologicalUnitManifest, one
+independent graft MeasurementSpec, one GraftAssessmentSpec and one
+GraftEvidenceBundle; provided grafts also require an exact
+GraftLineageManifest, while not-provided grafts forbid it. The spec supplies
+channel IDs, units, disjoint graft/timepoint strata, within-animal aggregation
+and denominator semantics, eligible evidence states, minimum independent-animal
+counts and optional interpretation intervals. Source preparation linkage is
+resolved from BiologicalUnitManifest bindings, not ProductCase independence
+groups. Caller lineage labels and checksums are trace-only because the current
+package has no trusted review-receipt verifier; animal-level summaries therefore
+remain not assessed. It also records graft assay/specimen applicability as not
+assessed until a typed real GraftCase exists. The test-only verifier seam checks
+configured within-animal aggregation and cross-stratum refusal. P0-12 does not
+read expression matrices, infer biology, emit a score, or write graft evidence
+back into a pre-transplant ProductCase. See the
 [P0-12 Tool Card](../tool_packages/P0-12/README.md).
 
 Only `implemented` packages execute. A scaffold returns `not_implemented` with `tool_package_not_implemented`; a deprecated package is ineligible and returns a failed run with `tool_package_deprecated`. Neither state resolves or invokes an adapter.

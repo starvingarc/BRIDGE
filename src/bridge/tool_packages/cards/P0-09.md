@@ -67,7 +67,7 @@ Successful or partial execution writes one immutable `<output_dir>/run-<digest>/
 - `shadow` and `exploratory` records remain visible for audit but never enter formal reconciliation.
 - Failed, skipped, or not-implemented upstream runs cannot become evidence.
 - Records sharing an EvidenceFamily retain provenance but contribute one family direction. Families in the same `independence_scope`, or joined by the symmetric/transitive closure of `known_dependencies`, count as one independent component. Opposite directions within a component remain unresolved; tools and records are never majority votes.
-- P0-08 v0.1 exposes exact versioned ProductCase and MeasurementSpec refs plus source-checksummed MeasurementResult bindings. P0-09 requires exact ID/version/Schema/source-checksum equality, resolves quantitative content only from the matching v0.2 MeasurementResult input and retains its producer ToolRun state. Formal reconciliation remains unavailable because the P0-08 contract is still a candidate and cannot authorize formal evidence-tier promotion.
+- P0-08 v0.1 exposes exact versioned ProductCase and MeasurementSpec refs plus source-checksummed MeasurementResult bindings. P0-09 requires exact ID/version/Schema/source-checksum equality, requires the matching object-catalog content hash to equal those exact input bytes, resolves quantitative content only from that v0.2 MeasurementResult and retains its producer ToolRun state. Formal reconciliation remains unavailable because the P0-08 contract is still a candidate and cannot authorize formal evidence-tier promotion.
 
 ## Refusal and degradation
 
@@ -113,7 +113,7 @@ Each `StructuredInputRef` requires `input_id:string`, exact `role:string`, regis
 | `case_graph_refs` | `BoundCaseGraphRef[]` | comparison | 2–5 distinct source graph ID/version/manifest hash/ProductCase refs plus unique `manifest_input_id`/`record_set_input_id` bindings |
 | `external_case_evidence_refs` | `ExternalCaseEvidenceRef[]` | comparison | At least one explicit source EvidenceRecord-to-Comparison Claim mapping; exact duplicates collapse idempotently, non-identical declarations for one Evidence ref conflict |
 | `base_graph_ref` | `AppendGraphRef \| null` | case append | Prior graph ID/version/manifest checksum plus unique base manifest/record/requirement input IDs |
-| `object_catalog` | `CompilationObjectRef[]` | yes | Unique object ID/version, node type, Schema URI and declared content hash |
+| `object_catalog` | `CompilationObjectRef[]` | yes | Unique object ID/version, node type, Schema URI and content hash; a MeasurementResult hash must equal its exact structured-input SHA-256 |
 | `candidate_records` | raw object array | case | Individually parsed `EvidenceCandidate`; siblings can fail independently |
 | `missing_observations` | raw object array | case | Individually parsed absence observations; never numeric placeholders |
 | `prior_evidence_records` | `EvidenceRecord[]` | case | Complete linear, hash-valid history used for N+1 revision |

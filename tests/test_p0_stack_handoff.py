@@ -16,7 +16,9 @@ def _helpers(filename: str) -> dict[str, Any]:
 
 
 def _p0_09_inputs(
-    profile: dict[str, Any], p0_09: dict[str, Any]
+    profile: dict[str, Any],
+    p0_09: dict[str, Any],
+    measurement_sha256: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     family_id = profile["deduplicated_evidence_family_ids"][0]
     family_registry = p0_09["_family_registry"]()
@@ -32,6 +34,7 @@ def _p0_09_inputs(
             item.update(profile["product_case_ref"])
         elif item["node_type"] == "MeasurementResult":
             item.update(profile["measurement_result_refs"][0])
+            item["content_hash"] = measurement_sha256
         elif item["node_type"] == "MeasurementSpec":
             item.update(profile["measurement_spec_ref"])
     return bundle, family_registry
@@ -97,7 +100,7 @@ def _report_draft(
     return payload
 
 
-def test_checksummed_p0_08_to_p0_11_handoff_stops_at_release_boundary(
+def test_checksummed_p0_08_to_p0_11_contract_chain_stops_at_release_boundary(
     tmp_path: Path,
 ) -> None:
     p0_08 = _helpers("test_p0_08_evidence_sufficiency.py")
@@ -126,13 +129,23 @@ def test_checksummed_p0_08_to_p0_11_handoff_stops_at_release_boundary(
     measurement_result = json.loads(
         measurement_input.path.read_text(encoding="utf-8")
     )
+    sufficiency_artifact = next(
+        artifact
+        for artifact in sufficiency_run.artifacts
+        if artifact.kind == "evidence_sufficiency_run_result"
+    )
 
-    bundle, family_registry = _p0_09_inputs(profile, p0_09)
+    bundle, family_registry = _p0_09_inputs(
+        profile, p0_09, measurement_input.sha256
+    )
     compiler_run = p0_09["_run"](
         tmp_path / "p0-09",
         profile=profile,
         bundle=bundle,
         family_registry=family_registry,
+        sufficiency_result_paths={
+            "profile-target": sufficiency_artifact.path,
+        },
         measurement_results={"measurement-target": measurement_result},
         measurement_result_paths={"measurement-target": measurement_input.path},
         measurement_result_versions={
@@ -176,6 +189,11 @@ def test_checksummed_p0_08_to_p0_11_handoff_stops_at_release_boundary(
     assert "nonformal_evidence_used_for_formal_claim" in {
         item["reason_code"] for item in verifier_run.result["check_records"]
     }
+    verification_artifact = next(
+        artifact
+        for artifact in verifier_run.artifacts
+        if artifact.kind == "claim_verification_result"
+    )
 
     review_projection_spec = {
         "object_version": "0.1.0",
@@ -207,6 +225,8 @@ def test_checksummed_p0_08_to_p0_11_handoff_stops_at_release_boundary(
                 "claim_verification_result": verifier_run.result,
                 "review_projection_spec": review_projection_spec,
             },
+            claim_verifier_run=verifier_run.model_dump(mode="json"),
+            claim_verification_result_path=verification_artifact.path,
         )
     )
     assert projection_run.execution_state is ExecutionState.FAILED

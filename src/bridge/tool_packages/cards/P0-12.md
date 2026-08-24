@@ -33,13 +33,14 @@ The Python SDK accepts the same `ToolRequestV2` through
 ## Structured inputs
 
 Inputs are immutable local JSON files with an absolute path, exact role,
-registered Schema URI, object version, media type and SHA-256 checksum. Four
-roles are always required; the lineage role is conditional. Module object
+registered Schema URI, object version, media type and SHA-256 checksum. Five
+roles are always required; the graft-lineage role is conditional. Module object
 version is `0.1.0`; the graft MeasurementSpec declares its own version.
 
 | Role | Schema | Required content |
 |---|---|---|
-| `product_case` | `bridge://schemas/product-case/v0.1` | Exact case, product MeasurementSpec and declared source biological-preparation units. |
+| `product_case` | `bridge://schemas/product-case/v0.1` | Exact case, product MeasurementSpec and independence-group references. |
+| `biological_unit_manifest` | `bridge://schemas/biological-unit-manifest/v0.1` | Exact ProductCase-bound product analysis-unit/preparation assignments, manifest checksum and independence scope. |
 | `graft_measurement_spec` | `bridge://schemas/measurement-spec/v0.1` | Independent graft assay, analysis-unit kind, applicable context and version. |
 | `graft_lineage_manifest` | `bridge://schemas/graft-lineage-manifest/v0.1` | At most one; required for `provided`, forbidden for `not_provided`; exact unit/animal/graft/timepoint/preparation assignments and external review state. |
 | `graft_assessment_spec` | `bridge://schemas/graft-assessment-spec/v0.1` | ProductCase, product/graft MeasurementSpecs, assay, sampling, reference and algorithm bindings; channel IDs, units, animal estimand, within-animal aggregation, denominator semantics, disjoint strata, minimum animals and optional intervals. |
@@ -55,10 +56,11 @@ value or explicit unavailable state, optional denominator and Evidence
 references. Missing, unknown and unavailable observations require null value and
 denominator. A preparation link exists only when both a versioned preparation
 reference and non-empty linkage Evidence are supplied, and that preparation
-must occur in the ProductCase's declared biological units. Bundle and manifest
+must occur in the product BiologicalUnitManifest's `unit_bindings`. Bundle and graft-lineage manifest
 assignments must be identical. A `declared` manifest is traceable but cannot
-support assessment; `reviewed`/`frozen` requires an external checksummed review
-gate, and P0-12 cannot assert that state for itself.
+support assessment. A checksummed caller-supplied `reviewed`/`frozen` gate is
+also trace-only in this version because no trusted receipt verifier is
+configured; P0-12 cannot assert or authenticate that state for itself.
 
 Expression assets, the request-envelope MeasurementSpec field, arbitrary
 parameters and nonzero random seeds are refused. P0-12 v0.2 does not accept
@@ -72,7 +74,8 @@ For every channel and configured stratum, the executor:
 2. accepts observations only from exact graft/timepoint stratum members, with
    the exact unit and an allowlisted evidence state;
 3. applies `single_observation`, `mean` or `pooled_numerator_denominator`
-   within each animal and stratum, then counts animals as independent units;
+   within each animal and stratum only after trusted lineage review, then
+   counts animals as independent units;
 4. reports each animal aggregate and the equal-animal mean, minimum and maximum,
    with cross-stratum aggregation forbidden;
 5. compares the mean with input bounds only when the rule selects
@@ -86,13 +89,21 @@ remain visible but the configured interval relation is `unavailable`.
 Changing a channel, unit, evidence-state allowlist, minimum or interval requires
 a new checksummed spec, not a code change.
 
+The standard adapter currently has no trusted graft-review verifier and no
+typed GraftCase assay/specimen binding. It therefore keeps eligible animal
+counts at zero, channel summaries `not_assessed`, and reports
+`graft_review_authority_not_configured` for caller-reviewed/frozen lineage (or
+`graft_lineage_not_reviewed` for declared lineage), plus
+`graft_assay_applicability_not_assessed`. Scientific-mechanics tests inject a
+test-only verifier result; ordinary input JSON cannot enable it.
+
 ## Output
 
 One `GraftAssessment` is written as `graft_assessment.json` in an immutable,
 content-addressed run directory. It contains:
 
 - spec, evidence-bundle, ProductCase and available graft-context references;
-- checksums for all four mandatory inputs and the lineage manifest when supplied;
+- checksums for all five always-required inputs and the graft-lineage manifest when supplied;
 - `complete`, `partial`, `not_assessed` or `not_provided`;
 - graft availability, explicit-only linkage state and descriptive analysis mode;
 - observation-unit and independent-animal counts plus declared design constraints;
@@ -112,8 +123,8 @@ Top-level failures publish nothing:
 
 - missing, duplicate or unsupported role;
 - Schema, object-version, checksum or media-type mismatch;
-- ProductCase, product/graft MeasurementSpec, lineage manifest, preparation or
-  provided-context mismatch;
+- ProductCase, product BiologicalUnitManifest, product/graft MeasurementSpec,
+  graft-lineage manifest, preparation or provided-context mismatch;
 - incomplete provided context or evidence in a `not_provided` bundle;
 - duplicate units, duplicate channels within a unit or implicit preparation
   linkage;
@@ -122,9 +133,9 @@ Top-level failures publish nothing:
 - unusable output, input mutation or immutable-run collision;
 - a V1 request, returned as typed `tool_request_v2_required`.
 
-Contract-valid limitations stay visible in the result. A `declared` lineage
-produces `partial/not_assessed` instead of pretending the assignments were
-reviewed. No eligible channel
+Contract-valid limitations stay visible in the result. Unverified lineage,
+including a caller-asserted reviewed/frozen label, produces
+`partial/not_assessed` instead of pretending the assignments were reviewed. No eligible channel
 returns `not_assessed`; incomplete required coverage or an unmatched channel
 returns `partial`; linkage state is explicitly `not_declared`,
 `partially_declared` or `declared_with_evidence`, and every declared linkage is
@@ -135,7 +146,7 @@ never turn missing evidence into zero or a product failure.
 ## Minimal example
 
 See `examples/requests/p0_12_graft_assessment.json`. Replace placeholder paths
-and checksums with five exact immutable JSON objects for a provided graft.
+and checksums with six exact immutable JSON objects for a provided graft.
 
 ## Reproducibility and scientific boundary
 

@@ -42,6 +42,13 @@ def evaluate_comparison(
     product_cases: list[ProductCase],
     input_sha256_by_role: dict[str, str],
 ) -> ComparisonRecord:
+    # The current package can validate the bytes of a review-gate reference but
+    # has no trusted verifier/receipt registry.  Caller-asserted reviewed or
+    # frozen labels therefore remain trace-only and never contribute eligible N.
+    independence_is_authorized = all(
+        _review_authority_verified(manifest)
+        for manifest in biological_unit_manifests
+    )
     evidence_by_ref = {
         item.product_case_ref.ref: item for item in evidence_bundle.cases
     }
@@ -94,6 +101,7 @@ def evaluate_comparison(
             candidate_manifest=manifest_by_case[candidate.product_case_ref.ref],
             sufficiency_by_role=sufficiency_by_role,
             minimum_biological_units=comparison_spec.minimum_biological_units_per_case,
+            independence_is_authorized=independence_is_authorized,
         )
         for rule in sorted(comparison_spec.metrics, key=lambda item: item.metric_id)
     ]
@@ -134,6 +142,8 @@ def evaluate_comparison(
     )
     if not units_ready:
         reasons.add("biological_units_below_configured_minimum")
+        if any(manifest.independence_is_reviewed for manifest in biological_unit_manifests):
+            reasons.add("biological_unit_review_authority_not_configured")
     sufficiency_ready = all(
         state == "sufficient" for state in sufficiency_by_role.values()
     )
@@ -239,12 +249,19 @@ def _compare_metric(
     candidate_manifest: BiologicalUnitManifest,
     sufficiency_by_role: dict[ComparisonRole, str],
     minimum_biological_units: int,
+    independence_is_authorized: bool,
 ) -> MetricComparisonResult:
     baseline, baseline_reasons = _summarize_metric(
-        baseline_case, rule, baseline_manifest
+        baseline_case,
+        rule,
+        baseline_manifest,
+        independence_is_authorized=independence_is_authorized,
     )
     candidate, candidate_reasons = _summarize_metric(
-        candidate_case, rule, candidate_manifest
+        candidate_case,
+        rule,
+        candidate_manifest,
+        independence_is_authorized=independence_is_authorized,
     )
     reasons = {*baseline_reasons, *candidate_reasons}
     if comparability is ComparabilityState.NOT_COMPARABLE:
@@ -302,6 +319,8 @@ def _summarize_metric(
     case: ComparisonCaseEvidence,
     rule: MetricComparisonRule,
     manifest: BiologicalUnitManifest,
+    *,
+    independence_is_authorized: bool,
 ) -> tuple[CaseMetricSummary, set[str]]:
     values_by_group: dict[str, list[float]] = {}
     evidence_refs: set[str] = set()
@@ -333,15 +352,20 @@ def _summarize_metric(
                     float(metric.value)
                 )
                 evidence_refs.update(metric.evidence_refs)
-    values = [fmean(items) for _, items in sorted(values_by_group.items())]
-    if any(len(items) > 1 for items in values_by_group.values()):
-        reasons.add("repeated_analysis_units_aggregated_within_independence_group")
+    repeated = any(len(items) > 1 for items in values_by_group.values())
+    if repeated:
+        # The rule contract does not yet declare a within-group estimand.  Do
+        # not silently choose arithmetic or denominator-weighted pooling.
+        reasons.add("within_group_aggregation_policy_not_supplied")
+        values: list[float] = []
+    else:
+        values = [items[0] for _, items in sorted(values_by_group.items())]
     return (
         CaseMetricSummary(
             product_case_ref=case.product_case_ref,
             descriptive_group_count=len(values),
             eligible_biological_unit_count=(
-                len(values) if manifest.independence_is_reviewed else 0
+                len(values) if independence_is_authorized else 0
             ),
             biological_unit_lineage_state=manifest.lineage_state,
             mean=fmean(values) if values else None,
@@ -364,6 +388,11 @@ def _sufficiency_state(
     if counts.limited:
         return "limited"
     return "sufficient"
+
+
+def _review_authority_verified(manifest: BiologicalUnitManifest) -> bool:
+    del manifest
+    return False
 
 
 def _direction_relation(delta: float) -> DirectionRelation:

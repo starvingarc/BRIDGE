@@ -39,6 +39,9 @@ P0-03 contains no cell-state name, marker list, target assignment, regional
 assignment, threshold or product pass/fail rule. The biological interpretation
 is supplied by a versioned, checksummed `StateRoleMap`. A changed decision is a
 new input-object version and checksum; it does not require a code change.
+The only executable ontology invariant is non-contradiction: `target_region`
+requires `target` lineage, while `acceptable_adjacent_region` requires target
+or acceptable-adjacent lineage. Concrete state assignments remain external.
 
 The assessment mechanics are separately supplied by a versioned
 `TargetRegionalAssessmentSpec`. It selects which upstream composition views
@@ -102,12 +105,14 @@ For every requested composition view, source and label level, the executor:
 
 1. reads P0-02 counts and their original denominator;
 2. joins each state to the supplied StateRoleMap;
-3. sums lineage roles over the whole-product denominator;
-4. builds the regional denominator from the lineage roles named by the
+3. rejects a role map that lets non-target or unresolved lineage contribute to
+   target-region or acceptable-adjacent-region support;
+4. sums lineage roles over the whole-product denominator;
+5. builds the regional denominator from the lineage roles named by the
    assessment spec;
-5. sums regional roles within that denominator;
-6. reports configured target-region support over the whole-product denominator;
-7. preserves unmapped states and unassigned composition residuals as unresolved.
+6. sums regional roles within that denominator;
+7. reports configured target-region support over the whole-product denominator;
+8. preserves unmapped states and unassigned composition residuals as unresolved.
 
 The engine never infers a role from a state ID or display name. It has no
 default biological mapping and no hidden fallback.

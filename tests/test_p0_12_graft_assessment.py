@@ -11,6 +11,7 @@ from pydantic import ValidationError
 import pytest
 
 import bridge.tool_packages.p0_12_graft_assessment.adapter as adapter_module
+import bridge.tool_packages.p0_12_graft_assessment.executor as executor_module
 from bridge.tool_packages.p0_12_graft_assessment.adapter import adapter
 from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftObservation,
@@ -25,10 +26,25 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
 )
 from bridge.toolkit.registry import ToolRegistry
+from tests.p0_biological_units import bind_reviewed_biological_units
+
+
+@pytest.fixture(autouse=True)
+def _trusted_review_for_scientific_mechanics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        executor_module,
+        "_review_authority_verified",
+        lambda manifest: manifest.lineage_state.value in {"reviewed", "frozen"},
+    )
 
 
 ROLE_SCHEMAS = {
     "product_case": "bridge://schemas/product-case/v0.1",
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1"
+    ),
     "graft_measurement_spec": "bridge://schemas/measurement-spec/v0.1",
     "graft_lineage_manifest": (
         "bridge://schemas/graft-lineage-manifest/v0.1"
@@ -73,7 +89,7 @@ def _payloads() -> dict[str, dict]:
             "timepoint_ref": _ref("timepoint:two"),
         },
     ]
-    return {
+    payloads = {
         "product_case": {
             "object_version": "0.1.0",
             "product_case_id": "product-case:configured",
@@ -249,6 +265,22 @@ def _payloads() -> dict[str, dict]:
             ],
         },
     }
+    bind_reviewed_biological_units(
+        payloads,
+        {
+            "view_id": "data-view:configured:qc-selected",
+            "sha256": "b" * 64,
+            "observation_ids_sha256": "c" * 64,
+            "n_observations": 2,
+        },
+        slug="configured",
+        units=[
+            ("preparation:one@1.0.0", "sample:one@1.0.0"),
+            ("preparation:two@1.0.0", "sample:two@1.0.0"),
+        ],
+        lineage_state="declared",
+    )
+    return payloads
 
 
 def _sync_lineage(payloads: dict[str, dict | None]) -> None:
@@ -271,9 +303,11 @@ def _sync_lineage(payloads: dict[str, dict | None]) -> None:
 
 
 def _write_json(path: Path, payload: dict) -> str:
-    encoded = (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode()
     path.write_bytes(encoded)
     return hashlib.sha256(encoded).hexdigest()
@@ -366,6 +400,30 @@ def test_configured_graft_summary_runs_without_backfill_or_score(
     assert run.result["score_state"] == "shadow"
     assert run.measurements == []
     assert len(run.artifacts) == 1
+
+
+def test_caller_asserted_graft_review_cannot_unlock_without_trusted_verifier(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        executor_module,
+        "_review_authority_verified",
+        lambda manifest: False,
+    )
+
+    run = ToolRegistry.load_default().run(_request(tmp_path))
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    assert run.result["result_state"] == "partial"
+    assert run.result["independent_animal_count"] == 0
+    assert all(
+        summary["eligible_animal_count"] == 0
+        and summary["result_state"] == "not_assessed"
+        for summary in run.result["channel_summaries"]
+    )
+    assert "graft_review_authority_not_configured" in run.reason_codes
+    assert "graft_assay_applicability_not_assessed" in run.reason_codes
 
 
 def test_repeated_timepoints_are_aggregated_within_animal_before_summary(
@@ -513,6 +571,7 @@ def test_declared_lineage_is_traceable_but_not_summarized(tmp_path: Path) -> Non
         summary["result_state"] == "not_assessed"
         and summary["animal_summaries"] == []
         and summary["mean"] is None
+        and summary["reason_codes"] == ["graft_lineage_not_reviewed"]
         for summary in run.result["channel_summaries"]
     )
     assert "graft_lineage_not_reviewed" in run.reason_codes

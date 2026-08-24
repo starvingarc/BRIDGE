@@ -83,10 +83,16 @@ def evaluate_graft_assessment(
         raise ValueError("graft measurement specification mismatch")
 
     rules = {item.channel_id: item for item in assessment_spec.rules}
-    lineage_reviewed = lineage_manifest.lineage_state in {
-        GraftLineageState.REVIEWED,
-        GraftLineageState.FROZEN,
-    }
+    # No trusted lineage-review receipt verifier is configured in this package
+    # version.  A caller-supplied gate hash proves byte consistency only, so the
+    # reviewed/frozen label remains trace-only and cannot unlock animal-level N.
+    lineage_reviewed = _review_authority_verified(lineage_manifest)
+    lineage_unavailable_reason = (
+        "graft_review_authority_not_configured"
+        if lineage_manifest.lineage_state
+        in {GraftLineageState.REVIEWED, GraftLineageState.FROZEN}
+        else "graft_lineage_not_reviewed"
+    )
     summaries = sorted(
         [
             _summarize_channel_stratum(
@@ -94,6 +100,7 @@ def evaluate_graft_assessment(
                 stratum,
                 evidence_bundle,
                 lineage_reviewed=lineage_reviewed,
+                lineage_unavailable_reason=lineage_unavailable_reason,
             )
             for rule in assessment_spec.rules
             for stratum in rule.strata
@@ -158,12 +165,13 @@ def evaluate_graft_assessment(
     reasons = {
         "analysis_limited_to_descriptive_summary",
         "cross_stratum_aggregation_forbidden",
+        "graft_assay_applicability_not_assessed",
         "graft_score_unavailable",
         "product_backfill_not_performed",
         *(reason for item in summaries for reason in item.reason_codes),
     }
     if not lineage_reviewed:
-        reasons.add("graft_lineage_not_reviewed")
+        reasons.add(lineage_unavailable_reason)
     if evidence_bundle.design_constraint_refs:
         reasons.add("configured_design_constraints_present")
     if unmatched:
@@ -199,8 +207,10 @@ def evaluate_graft_assessment(
         linkage_state=linkage_state,
         analysis_mode=GraftAnalysisMode.DESCRIPTIVE_ONLY,
         observation_unit_count=len(evidence_bundle.units),
-        independent_animal_count=len(
-            {unit.animal_ref.ref for unit in evidence_bundle.units}
+        independent_animal_count=(
+            len({unit.animal_ref.ref for unit in evidence_bundle.units})
+            if lineage_reviewed
+            else 0
         ),
         design_constraint_refs=sorted(
             evidence_bundle.design_constraint_refs, key=lambda item: item.ref
@@ -223,6 +233,7 @@ def _summarize_channel_stratum(
     evidence_bundle: GraftEvidenceBundle,
     *,
     lineage_reviewed: bool,
+    lineage_unavailable_reason: str,
 ) -> GraftChannelSummary:
     common = dict(
         channel_id=rule.channel_id,
@@ -249,7 +260,7 @@ def _summarize_channel_stratum(
             configured_interval_relation=ConfiguredIntervalRelation.UNAVAILABLE,
             result_state="not_assessed",
             evidence_refs=[],
-            reason_codes=["graft_lineage_not_reviewed"],
+            reason_codes=[lineage_unavailable_reason],
         )
 
     member_keys = {
@@ -325,6 +336,11 @@ def _summarize_channel_stratum(
         ),
         reason_codes=sorted(reasons),
     )
+
+
+def _review_authority_verified(manifest: GraftLineageManifest) -> bool:
+    del manifest
+    return False
 
 
 def _observation_is_eligible(

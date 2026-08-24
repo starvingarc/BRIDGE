@@ -348,6 +348,18 @@ def _binding_reasons(
         or bound_manifest_refs != set(manifests_by_ref)
     ):
         reasons.append("comparison_biological_unit_manifest_binding_mismatch")
+    if len(biological_unit_manifests) == 2:
+        if len(
+            {
+                item.unit_identity_namespace_ref.ref
+                for item in biological_unit_manifests
+            }
+        ) != 1:
+            reasons.append("comparison_biological_unit_namespace_mismatch")
+        if len(
+            {item.independence_scope_ref.ref for item in biological_unit_manifests}
+        ) != 1:
+            reasons.append("comparison_biological_unit_scope_mismatch")
     for case in evidence_bundle.cases:
         product_case = product_cases_by_ref.get(case.product_case_ref.ref)
         if product_case is not None:

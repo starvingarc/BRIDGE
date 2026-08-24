@@ -15,6 +15,15 @@
       "media_type": "application/json"
     },
     {
+      "input_id": "product-biological-units",
+      "role": "biological_unit_manifest",
+      "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-12-input/biological_unit_manifest.json",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "media_type": "application/json"
+    },
+    {
       "input_id": "graft-measurement-spec",
       "role": "graft_measurement_spec",
       "schema_ref": "bridge://schemas/measurement-spec/v0.1",

@@ -11,9 +11,12 @@ real graft rule, reference, measurement, biological conclusion or release.
 
 ## Candidate interface
 
-The tool accepts one GraftAssessmentSpec and one GraftEvidenceBundle through
-`ToolRequestV2`. It emits one GraftAssessment JSON result and no measurement,
-visualization, expression-derived object or pre-transplant update.
+The tool accepts ProductCase, its exact BiologicalUnitManifest, a separate graft
+MeasurementSpec, optional provided-graft GraftLineageManifest, one
+GraftAssessmentSpec and one GraftEvidenceBundle through `ToolRequestV2`. A
+provided graft therefore uses six structured objects. It emits one
+GraftAssessment JSON result and no measurement, visualization,
+expression-derived object or pre-transplant update.
 
 ## Controls
 
@@ -58,10 +61,20 @@ scoring or release. Real rule objects require independent biological review.
 ## Peer-review closeout addendum
 
 The combined closeout separates the graft MeasurementSpec from the product
-MeasurementSpec, requires exact provided-graft lineage, and makes lineage review
-authority external and checksummed. Channels define disjoint graft/timepoint
-strata, explicit within-animal aggregation and denominator semantics; animals
-remain the estimand and cross-stratum aggregation is forbidden. Declared
-lineage yields `partial/not_assessed`, and low animal count leaves interval
-relation unavailable. Final exact-head evidence is recorded in the stack
-closeout validation.
+MeasurementSpec, requires exact provided-graft lineage and requires the exact
+ProductCase-owned BiologicalUnitManifest. Source preparation linkage is checked
+against `unit_bindings.preparation_ref`, not against ProductCase independence
+groups. Channels define disjoint graft/timepoint strata, explicit within-animal
+aggregation and denominator semantics; animals remain the estimand and
+cross-stratum aggregation is forbidden.
+
+Literature-driven re-review found that a checksum cannot authenticate the party
+that marked lineage reviewed. Until a trusted review-receipt verifier exists,
+caller lineage labels are trace-only, independent animal count is zero and
+channels are `not_assessed` with `graft_review_authority_not_configured`.
+Moreover, the current inputs do not contain a typed, independently bound
+GraftCase for real specimen/assay applicability; the result therefore records
+`graft_assay_applicability_not_assessed`. Test-only verifier injection exercises
+the deterministic animal-level mechanism, but ordinary request JSON cannot
+unlock it. Final exact-head evidence is recorded in the stack closeout
+validation.

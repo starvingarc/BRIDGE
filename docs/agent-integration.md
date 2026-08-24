@@ -68,9 +68,12 @@ public-eligible, and the current public-release authority is explicitly
 `not_configured`.
 P0-07 reads two checksummed ProductCases, a ComparisonSpec, a biological-unit
 evidence bundle, two full P0-08 run results and two exact BiologicalUnitManifests.
-It aggregates preparations within reviewed independence groups, rejects
-manifest mismatch or cross-arm group overlap and performs only
-pairwise descriptive summaries and raw deltas; biological
+It requires a shared unit namespace and independence scope, rejects manifest
+mismatch or cross-arm group overlap, and refuses repeated values inside one
+group until an explicit within-group estimand exists. Caller review labels do
+not increase eligible N or unlock direction. It performs only pairwise
+descriptive summaries and raw deltas where the observation contract is
+unambiguous; biological
 directions and comparability requirements come from the input, while inference,
 Pareto, score and rank remain unavailable. P0-11 rebuilds only explicitly
 selected fields from a P0-10-verified report, exact producing ToolRun and
@@ -79,8 +82,10 @@ producer authentication and public-release authority are unavailable, P0-11
 can produce only an `internal_review_only`, `review_required` object; it omits
 source identifiers and never authorizes publication. P0-12 summarizes
 checksummed, precomputed graft observations under a caller-supplied versioned
-rule object and exact externally reviewed lineage manifest, aggregating within
-animal and stratum before across-animal summary; it never scores a graft or backfills the
+rule object, exact product BiologicalUnitManifest and exact graft-lineage bytes.
+It resolves source preparations from manifest bindings, but keeps animal
+summaries and assay applicability `not_assessed` until trusted lineage receipts
+and a typed real GraftCase exist; it never scores a graft or backfills the
 pre-transplant product. HTTP, MCP and queue adapters may wrap
 the same JSON contracts later without changing scientific semantics.
 

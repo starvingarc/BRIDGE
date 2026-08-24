@@ -23,6 +23,9 @@ def bind_reviewed_biological_units(
     preparation_ref: str = "preparation:demo@1.0.0",
     independence_group_ref: str = "sample:demo@1.0.0",
     units: list[tuple[str, str]] | None = None,
+    unit_identity_namespace_ref: str | None = None,
+    independence_scope_ref: str | None = None,
+    lineage_state: str = "reviewed",
 ) -> None:
     resolved_units = units or [(preparation_ref, independence_group_ref)]
     manifest_id = f"biological-unit-manifest:{slug}"
@@ -31,7 +34,11 @@ def bind_reviewed_biological_units(
         "manifest_id": manifest_id,
         "manifest_version": "1.0.0",
         "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
-        "generator_tool_id": "BRIDGE-BIOLOGICAL-UNIT-REVIEW",
+        "generator_tool_id": (
+            "P0-01"
+            if lineage_state == "declared"
+            else "BRIDGE-BIOLOGICAL-UNIT-REVIEW"
+        ),
         "generator_tool_version": "1.0.0",
         "data_view_ref": view["view_id"],
         "selected_artifact_sha256": view["sha256"],
@@ -43,21 +50,28 @@ def bind_reviewed_biological_units(
         "assignment_artifact_sha256": "d" * 64,
         "assignment_row_count": view["n_observations"],
         "unit_identity_namespace_ref": {
-            "object_id": f"biological-unit-namespace:{slug}",
+            "object_id": (
+                unit_identity_namespace_ref
+                or f"biological-unit-namespace:{slug}"
+            ),
             "object_version": "1.0.0",
         },
         "analysis_unit_kind": "preparation",
         "independence_group_kind": "sample",
         "independence_scope_ref": {
-            "object_id": f"independence-scope:{slug}",
+            "object_id": independence_scope_ref or f"independence-scope:{slug}",
             "object_version": "1.0.0",
         },
-        "lineage_state": "reviewed",
-        "review_gate_ref": {
-            "object_id": f"biological-unit-review:{slug}",
-            "object_version": "1.0.0",
-        },
-        "review_gate_sha256": "e" * 64,
+        "lineage_state": lineage_state,
+        "review_gate_ref": (
+            None
+            if lineage_state == "declared"
+            else {
+                "object_id": f"biological-unit-review:{slug}",
+                "object_version": "1.0.0",
+            }
+        ),
+        "review_gate_sha256": None if lineage_state == "declared" else "e" * 64,
         "unit_bindings": [
             {
                 "analysis_unit_ref": _ref(unit_ref),

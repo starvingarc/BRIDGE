@@ -104,8 +104,10 @@ def evaluate_off_target_control(
         if accounted > denominator:
             raise ValueError("cell_state_composition_channel_overfull")
         if residual := denominator - accounted:
-            role_counts[ProductRole.ROLE_UNRESOLVED] += residual
-            reasons.add("composition_residual_role_unresolved")
+            # A denominator residual has no resolved cell identity.  Keep it
+            # separate from a known identity whose product role is unresolved.
+            role_counts[ProductRole.UNKNOWN] += residual
+            reasons.add("composition_residual_identity_unknown")
 
         channels.append(
             OffTargetCompositionChannel(

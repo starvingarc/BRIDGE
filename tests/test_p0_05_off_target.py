@@ -529,6 +529,22 @@ def test_unmapped_identity_is_role_unresolved_not_unknown(tmp_path: Path) -> Non
     assert "product_role_mapping_incomplete" in run.reason_codes
 
 
+def test_denominator_residual_is_identity_unknown_not_role_unresolved(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    composition = payloads["cell_state_evidence_profile"]["composition"]
+    composition["records"] = composition["records"][:-1]
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    roles = _role_map(run.result["composition_channels"][0])
+    assert roles["role_unresolved"]["numerator"] == 0
+    assert roles["unknown"]["numerator"] == 10
+    assert "composition_residual_identity_unknown" in run.reason_codes
+
+
 def test_wrong_denominator_view_returns_not_assessed(tmp_path: Path) -> None:
     payloads = _payloads()
     payloads["off_target_role_spec"][

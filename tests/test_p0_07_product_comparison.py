@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator
 import pytest
 
 import bridge.tool_packages.p0_07_comparison.adapter as adapter_module
+import bridge.tool_packages.p0_07_comparison.executor as executor_module
 from bridge.tool_packages.p0_07_comparison.adapter import adapter
 from bridge.tool_packages.p0_07_comparison.models import PUBLIC_SCHEMA_MODELS
 from bridge.toolkit.contracts import (
@@ -25,6 +26,17 @@ from tests.p0_biological_units import (
     bind_reviewed_biological_units,
     canonical_sha256,
 )
+
+
+@pytest.fixture(autouse=True)
+def _trusted_review_for_scientific_mechanics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        executor_module,
+        "_review_authority_verified",
+        lambda manifest: manifest.independence_is_reviewed,
+    )
 
 
 ROLE_SCHEMAS = {
@@ -267,6 +279,8 @@ def _payloads() -> dict[str, dict]:
                 "n_observations": 2,
             },
             slug=case_slug,
+            unit_identity_namespace_ref="biological-unit-namespace:comparison",
+            independence_scope_ref="independence-scope:comparison",
             units=[
                 (
                     f"preparation:{case_slug}-1@1.0.0",
@@ -423,6 +437,26 @@ def test_configured_pairwise_comparison_runs(tmp_path: Path) -> None:
         ref.input_id in json.dumps(run.result, sort_keys=True)
         for ref in run.request.object_inputs
     )
+
+
+def test_caller_asserted_review_gate_cannot_unlock_without_trusted_verifier(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        executor_module,
+        "_review_authority_verified",
+        lambda manifest: False,
+    )
+
+    run = ToolRegistry.load_default().run(_request(tmp_path))
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    metric = run.result["metric_comparisons"][0]
+    assert metric["baseline"]["eligible_biological_unit_count"] == 0
+    assert metric["candidate"]["eligible_biological_unit_count"] == 0
+    assert metric["configured_interpretation"] == "no_directional_interpretation"
+    assert "biological_unit_review_authority_not_configured" in run.reason_codes
 
 
 def test_direction_is_controlled_only_by_comparison_spec(tmp_path: Path) -> None:
@@ -628,6 +662,58 @@ def test_cross_arm_biological_unit_overlap_is_rejected(tmp_path: Path) -> None:
 
     assert run.execution_state is ExecutionState.FAILED
     assert run.reason_codes == ["comparison_biological_unit_overlap"]
+
+
+@pytest.mark.parametrize(
+    ("field", "reason"),
+    [
+        (
+            "unit_identity_namespace_ref",
+            "comparison_biological_unit_namespace_mismatch",
+        ),
+        ("independence_scope_ref", "comparison_biological_unit_scope_mismatch"),
+    ],
+)
+def test_cross_arm_identity_contract_must_share_namespace_and_scope(
+    tmp_path: Path,
+    field: str,
+    reason: str,
+) -> None:
+    payloads = _payloads()
+    manifest = payloads["biological_unit_manifests"][1]
+    manifest[field] = _ref(f"{field}:other")
+    product_case = payloads["product_cases"][1]
+    product_case["biological_unit_manifest_sha256"] = canonical_sha256(manifest)
+    if field == "independence_scope_ref":
+        product_case["independence_scope_ref"] = manifest[field]
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == [reason]
+
+
+def test_repeated_units_require_an_explicit_within_group_aggregation_policy(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    manifest = payloads["biological_unit_manifests"][1]
+    shared_group = deepcopy(manifest["unit_bindings"][0]["independence_group_ref"])
+    manifest["unit_bindings"][1]["independence_group_ref"] = shared_group
+    manifest["unit_bindings"][1]["sample_ref"] = shared_group
+    product_case = payloads["product_cases"][1]
+    product_case["biological_unit_refs"] = [shared_group]
+    product_case["biological_unit_manifest_sha256"] = canonical_sha256(manifest)
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    metric = run.result["metric_comparisons"][0]
+    assert metric["candidate"]["descriptive_group_count"] == 0
+    assert metric["candidate"]["mean"] is None
+    assert metric["raw_delta_candidate_minus_baseline"] is None
+    assert "within_group_aggregation_policy_not_supplied" in metric[
+        "reason_codes"
+    ]
 
 
 def test_score_contract_is_refused_until_a_contract_exists(tmp_path: Path) -> None:

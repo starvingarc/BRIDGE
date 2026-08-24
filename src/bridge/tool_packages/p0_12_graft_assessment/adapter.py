@@ -15,7 +15,10 @@ from bridge.tool_packages._structured_runtime import (
     objects_for_role,
     single_object,
 )
-from bridge.tool_packages._configurable_contracts import ProductCase
+from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitManifest,
+    ProductCase,
+)
 from bridge.tool_packages.p0_12_graft_assessment.executor import (
     evaluate_graft_assessment,
 )
@@ -42,6 +45,10 @@ from bridge.toolkit.contracts import (
 RESULT_SCHEMA_REF = "bridge://schemas/graft-assessment/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "product_case": ("bridge://schemas/product-case/v0.1", ProductCase),
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        BiologicalUnitManifest,
+    ),
     "graft_measurement_spec": (
         "bridge://schemas/measurement-spec/v0.1",
         MeasurementSpec,
@@ -239,6 +246,12 @@ def _binding_reasons(
         request, loaded, "graft_assessment_spec", GraftAssessmentSpec
     )
     product_case = single_object(request, loaded, "product_case", ProductCase)
+    biological_unit_manifest = single_object(
+        request,
+        loaded,
+        "biological_unit_manifest",
+        BiologicalUnitManifest,
+    )
     evidence_bundle = single_object(
         request, loaded, "graft_evidence_bundle", GraftEvidenceBundle
     )
@@ -274,7 +287,22 @@ def _binding_reasons(
         not in graft_measurement_spec.applicable_contexts
     ):
         reasons.append("graft_measurement_spec_context_not_applicable")
-    declared_preparations = set(product_case.biological_unit_refs)
+    manifest_sha256 = _role_ref(request, "biological_unit_manifest").sha256
+    if (
+        product_case.biological_unit_manifest_ref
+        != biological_unit_manifest.ref
+        or product_case.biological_unit_manifest_sha256 != manifest_sha256
+        or product_case.independence_scope_ref
+        != biological_unit_manifest.independence_scope_ref
+        or set(product_case.biological_unit_refs)
+        != set(biological_unit_manifest.independence_group_refs)
+    ):
+        reasons.append("graft_biological_unit_manifest_binding_mismatch")
+    declared_preparations = {
+        item.preparation_ref
+        for item in biological_unit_manifest.unit_bindings
+        if item.preparation_ref is not None
+    }
     linked_preparations = {
         unit.originating_preparation_ref
         for unit in evidence_bundle.units
@@ -356,6 +384,10 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
         ],
     }
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+
+
+def _role_ref(request: ToolRequestV2, role: str) -> StructuredInputRef:
+    return next(ref for ref in request.object_inputs if ref.role == role)
 
 
 def _failed_run(

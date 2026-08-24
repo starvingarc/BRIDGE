@@ -296,6 +296,11 @@
     "GraftInputChecksums": {
       "additionalProperties": false,
       "properties": {
+        "biological_unit_manifest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Biological Unit Manifest",
+          "type": "string"
+        },
         "graft_assessment_spec": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Graft Assessment Spec",
@@ -332,6 +337,7 @@
       },
       "required": [
         "product_case",
+        "biological_unit_manifest",
         "graft_measurement_spec",
         "graft_assessment_spec",
         "graft_evidence_bundle"

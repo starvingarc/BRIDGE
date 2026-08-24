@@ -73,7 +73,10 @@ For every selected view, source and label level, P0-05:
 4. retains per-state role/evidence metadata for drill-down;
 5. maps unconfigured identities to `role_unresolved`, never to target or known
    off-target;
-6. preserves residual composition and missing requested sources as partial.
+6. puts denominator residuals with no resolved state identity in `unknown`,
+   while keeping known identities with no product-role assignment in
+   `role_unresolved`;
+7. preserves residual composition and missing requested sources as partial.
 
 P0-02 reconciliation-state rows are accepted upstream diagnostics but excluded
 from role-composition denominators.
@@ -116,7 +119,7 @@ Result reasons include `ood_calibration_not_supplied`,
 `rare_state_calibration_not_supplied`,
 `requested_full_product_channel_unavailable`,
 `product_role_mapping_incomplete`,
-`composition_residual_role_unresolved` and
+`composition_residual_identity_unknown` and
 `off_target_composition_not_assessed`.
 
 ## Validation boundary

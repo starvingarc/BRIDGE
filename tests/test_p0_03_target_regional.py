@@ -415,6 +415,9 @@ def test_biological_assignment_changes_only_through_role_map(
     )
     payloads = _payloads()
     payloads["state_role_map"]["assignments"][0]["lineage_role"] = "not_target"
+    payloads["state_role_map"]["assignments"][0]["regional_role"] = (
+        "regional_shift"
+    )
     changed = ToolRegistry.load_default().run(
         _request(
             tmp_path / "changed",
@@ -429,6 +432,18 @@ def test_biological_assignment_changes_only_through_role_map(
     assert changed_roles["target"]["numerator"] == 0
     assert changed_roles["not_target"]["numerator"] == 80
     assert baseline.run_id != changed.run_id
+
+
+def test_target_regional_support_cannot_contradict_lineage_role(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    payloads["state_role_map"]["assignments"][0]["lineage_role"] = "not_target"
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
 
 
 def test_unmapped_state_is_partial_and_not_guessed(tmp_path: Path) -> None:

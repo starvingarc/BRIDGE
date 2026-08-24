@@ -45,6 +45,13 @@ def evaluate_proliferation_stress_response(
     qc_profile_version: str,
     input_sha256_by_role: dict[str, str],
 ) -> ProliferationStressResponseProfile:
+    # A checksummed caller-supplied gate is content integrity, not proof that a
+    # trusted reviewer authorized the independence mapping.  No trusted receipt
+    # verifier is configured in this package version, so reviewed/frozen labels
+    # remain trace-only and cannot unlock biological-unit inference.
+    independence_is_authorized = _review_authority_verified(
+        biological_unit_manifest
+    )
     independence_group_by_analysis_unit = {
         item.analysis_unit_ref.ref: item.independence_group_ref
         for item in biological_unit_manifest.unit_bindings
@@ -86,6 +93,7 @@ def evaluate_proliferation_stress_response(
             biological_unit_lineage_state=(
                 biological_unit_manifest.lineage_state
             ),
+            independence_is_authorized=independence_is_authorized,
         )
         for rule in sorted(assessment_spec.rules, key=lambda item: item.rule_id)
     ]
@@ -113,7 +121,7 @@ def evaluate_proliferation_stress_response(
     elif (
         assessed_count != len(program_results)
         or unmatched
-        or not biological_unit_manifest.independence_is_reviewed
+        or not independence_is_authorized
     ):
         result_state = "partial"
     else:
@@ -127,8 +135,12 @@ def evaluate_proliferation_stress_response(
     }
     if unmatched:
         reasons.add("unmatched_program_observations")
-    if not biological_unit_manifest.independence_is_reviewed:
-        reasons.add("biological_unit_lineage_not_reviewed")
+    if not independence_is_authorized:
+        reasons.add(
+            "biological_unit_review_authority_not_configured"
+            if biological_unit_manifest.independence_is_reviewed
+            else "biological_unit_lineage_not_reviewed"
+        )
     evidence_refs = sorted(
         {
             *qc_profile.evidence_ids,
@@ -199,11 +211,8 @@ def _evaluate_rule(
     context_available: bool,
     independence_group_by_analysis_unit: dict[str, VersionedObjectRef],
     biological_unit_lineage_state: BiologicalUnitLineageState,
+    independence_is_authorized: bool,
 ) -> ProgramRuleResult:
-    independence_is_reviewed = biological_unit_lineage_state in {
-        BiologicalUnitLineageState.REVIEWED,
-        BiologicalUnitLineageState.FROZEN,
-    }
     assessments: list[ProgramObservationAssessment] = []
     for observation in sorted(observations, key=lambda item: item.observation_id):
         assessments.append(
@@ -248,9 +257,17 @@ def _evaluate_rule(
     elif not included:
         state = ReviewFlagState.NOT_ASSESSED
         reasons.add("program_evidence_not_eligible")
-    elif not independence_is_reviewed:
+    elif not independence_is_authorized:
         state = ReviewFlagState.CANNOT_RESOLVE
-        reasons.add("biological_unit_lineage_not_reviewed")
+        reasons.add(
+            "biological_unit_review_authority_not_configured"
+            if biological_unit_lineage_state
+            in {
+                BiologicalUnitLineageState.REVIEWED,
+                BiologicalUnitLineageState.FROZEN,
+            }
+            else "biological_unit_lineage_not_reviewed"
+        )
     elif len(groups) < rule.minimum_biological_units:
         state = ReviewFlagState.CANNOT_RESOLVE
         reasons.add("biological_unit_evidence_insufficient")
@@ -282,10 +299,10 @@ def _evaluate_rule(
         observations=assessments,
         descriptive_analysis_unit_count=len(analysis_units),
         included_biological_unit_count=(
-            len(groups) if independence_is_reviewed else 0
+            len(groups) if independence_is_authorized else 0
         ),
         triggering_biological_unit_count=(
-            len(triggering_groups) if independence_is_reviewed else 0
+            len(triggering_groups) if independence_is_authorized else 0
         ),
         biological_unit_lineage_state=biological_unit_lineage_state,
         review_flag_state=state,
@@ -294,6 +311,11 @@ def _evaluate_rule(
         ),
         reason_codes=sorted(reasons),
     )
+
+
+def _review_authority_verified(manifest: BiologicalUnitManifest) -> bool:
+    del manifest
+    return False
 
 
 def _assess_observation(

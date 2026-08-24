@@ -8,10 +8,12 @@
       "matrix_location": "layers/logcounts",
       "matrix_semantics": "normalized_expression",
       "metadata": {
+        "data_view_ref": "qc-view:replace-with-exact-p0-01-selected-view@0.1.0",
         "qc_profile_ref": "qc-profile:replace-with-validated-profile",
+        "sample_or_preparation_ref": "preparation:demo-upload@0.1.0",
         "source_family_id": "replace-with-query-source-family"
       },
-      "path": "/tmp/bridge-example/product-logcounts.h5ad"
+      "path": "/absolute/path/to/exact-p0-01-selected-view.h5ad"
     }
   ],
   "measurement_spec_ref": "CELLSTATE-scRNA-shadow-v0.1",

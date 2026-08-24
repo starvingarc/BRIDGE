@@ -225,6 +225,8 @@ def _request(
     tmp_path: Path,
     *,
     payloads: dict[str, dict] | None = None,
+    claim_verifier_run: dict[str, Any] | None = None,
+    claim_verification_result_path: Path | None = None,
     output_dir: Path | None = None,
     input_id_prefix: str = "input",
     random_seed: int = 0,
@@ -233,15 +235,25 @@ def _request(
     input_root = tmp_path / f"objects-{input_id_prefix}"
     input_root.mkdir(parents=True)
     paths = {role: input_root / f"{role}.json" for role in ROLE_SCHEMAS}
-    verification_sha = _write_json(
-        paths["claim_verification_result"],
-        values["claim_verification_result"],
-    )
-    values["claim_verifier_run"] = _claim_verifier_run(
-        root=tmp_path,
-        verification=values["claim_verification_result"],
-        verification_path=paths["claim_verification_result"],
-        verification_sha256=verification_sha,
+    if claim_verification_result_path is not None:
+        paths["claim_verification_result"] = claim_verification_result_path
+        verification_sha = hashlib.sha256(
+            claim_verification_result_path.read_bytes()
+        ).hexdigest()
+    else:
+        verification_sha = _write_json(
+            paths["claim_verification_result"],
+            values["claim_verification_result"],
+        )
+    values["claim_verifier_run"] = (
+        deepcopy(claim_verifier_run)
+        if claim_verifier_run is not None
+        else _claim_verifier_run(
+            root=tmp_path,
+            verification=values["claim_verification_result"],
+            verification_path=paths["claim_verification_result"],
+            verification_sha256=verification_sha,
+        )
     )
     refs: list[StructuredInputRef] = []
     versions = {

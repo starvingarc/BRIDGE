@@ -10,16 +10,19 @@ values do not validate a real comparison, assay, direction or conclusion.
 
 ## Candidate interface
 
-The candidate accepts a ComparisonSpec and ComparisonEvidenceBundle through
-`ToolRequestV2`. It publishes one ComparisonRecord and no MeasurementResult or
-visualization. `overall_score` and `overall_rank` are always null; Pareto is
-always `not_assessed` in this slice.
+The candidate accepts two ProductCases, two exact BiologicalUnitManifests, two
+full P0-08 run results, one ComparisonSpec and one ComparisonEvidenceBundle
+through `ToolRequestV2`. It publishes one ComparisonRecord and no
+MeasurementResult or visualization. `overall_score` and `overall_rank` are
+always null; Pareto is always `not_assessed` in this slice.
 
 ## Controls
 
 - exact role, Schema, version, checksum and two-ProductCase binding;
 - input-configured contract dimensions, mismatch policy and metric directions;
-- preparation-level mean/range and raw candidate-minus-baseline delta;
+- single-observation-per-group mean/range and raw candidate-minus-baseline
+  delta; repeated observations in one group fail closed until a within-group
+  estimand is part of the contract;
 - missing/unavailable, unit and evidence-state semantics without zero imputation;
 - strict numeric, deterministic reuse, input mutation and output-path tests;
 - V1 typed refusal and public Schema/Pydantic parity;
@@ -61,7 +64,18 @@ dominance or product superiority for real data.
 ## Peer-review closeout addendum
 
 The combined closeout replaces detached readiness summaries with two full
-P0-08 run results and adds two exact BiologicalUnitManifests. Repeated
-preparations are aggregated within reviewed independence groups, and any group
-shared across arms is a binding failure. Final exact-head evidence is recorded
-in the stack closeout validation.
+P0-08 run results and adds two exact BiologicalUnitManifests. Literature-driven
+re-review then closed three additional inference gaps:
+
+- both arms must share one unit-identity namespace and one independence scope;
+  no implicit crosswalk or pairing is inferred;
+- any independence group shared across arms is a binding failure;
+- because no within-group estimand is declared, repeated preparation
+  observations in one group return
+  `within_group_aggregation_policy_not_supplied` instead of a hidden arithmetic
+  mean.
+
+As in P0-06, caller review labels are trace-only until a trusted receipt
+verifier exists. They do not increase eligible N or unlock directional
+interpretation. Final exact-head evidence is recorded in the stack closeout
+validation.

@@ -43,7 +43,7 @@ seeds are refused.
 | `comparison_spec` | `bridge://schemas/comparison-spec/v0.1` | Exactly one baseline and one candidate ProductCase; configurable equal-contract dimensions; mismatch policy; minimum biological units; metric IDs, publication-safe units, eligible evidence states, required flags and direction policies. At least one metric must be required. |
 | `comparison_evidence_bundle` | `bridge://schemas/comparison-evidence-bundle/v0.1` | Exactly the same two ProductCases; versioned contract snapshots; P0-08 sufficiency state; biological-unit metric values, denominators, evidence states and Evidence references. |
 | `evidence_sufficiency_run_result` (two inputs) | `bridge://schemas/evidence-sufficiency-run-result/v0.1` | Full exact P0-08 results for baseline and candidate; readiness summaries cannot be supplied without their profiles and trace. |
-| `biological_unit_manifest` (two inputs) | `bridge://schemas/biological-unit-manifest/v0.1` | Exact ProductCase-bound unit-to-independence-group assignments and review states for both arms. |
+| `biological_unit_manifest` (two inputs) | `bridge://schemas/biological-unit-manifest/v0.1` | Exact ProductCase-bound unit-to-independence-group assignments for both arms, with one shared identity namespace and one shared independence scope. Review labels remain trace-only until a trusted receipt verifier exists. |
 
 The current object version is `0.1.0` for all structured module objects. Assay, target,
 sampling, reference, prior, MeasurementSpec, algorithm and preprocessing are
@@ -59,7 +59,9 @@ content-addressed run directory. It contains:
 - the ComparisonSpec and evidence-bundle references and role-level checksums;
 - every configured contract-dimension equality check;
 - baseline and candidate readiness summaries;
-- per-metric eligible reviewed/frozen independence-group count, mean, minimum and maximum after repeated preparations are aggregated within group;
+- per-metric descriptive group count, eligible independently verified group
+  count, mean, minimum and maximum; repeated preparations in one group are
+  unavailable until the rule declares a within-group estimand;
 - raw `candidate mean - baseline mean`, direction and input-configured interpretation;
 - explicit comparability and result states, evidence references and reason codes;
 - a `not_assessed` Pareto receipt, `overall_score=null` and `overall_rank=null`.
@@ -86,8 +88,12 @@ Contract-valid limitations degrade within the result:
 
 - a configured contract mismatch becomes `contextual_comparator` or
   `not_comparable` according to the input policy;
-- ProductCase/manifest/evidence unit mismatch, or any independence group shared across comparison arms,
+- ProductCase/manifest/evidence unit mismatch, different cross-arm identity
+  namespaces/scopes, or any independence group shared across comparison arms,
   is a top-level binding failure;
+- repeated observations inside one independence group emit
+  `within_group_aggregation_policy_not_supplied`; no arithmetic or
+  denominator-weighted pooling is chosen implicitly;
 - insufficient biological units or non-sufficient P0-08 evidence makes an otherwise
   available comparison `partial`;
 - missing metric, unit mismatch or ineligible evidence state makes that metric
@@ -107,6 +113,11 @@ The runtime is deterministic and CPU-only for this slice. Input paths and
 caller-local input IDs are excluded from scientific identity; raw input
 checksums, Schema URIs, object versions, tool version and environment remain
 bound. Reusing the same content reuses the same run bytes.
+
+No trusted biological-unit review receipt verifier is configured in this
+package version. Caller-supplied `reviewed`/`frozen` labels therefore contribute
+zero eligible units and cannot unlock configured directional interpretation;
+the raw descriptive delta may still be retained when otherwise comparable.
 
 Registered methods are the deterministic comparability gate and raw-metric
 delta engine. The synthetic tests establish contract and packaging behavior,

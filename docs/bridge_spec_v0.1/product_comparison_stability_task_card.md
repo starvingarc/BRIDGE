@@ -6,7 +6,7 @@
 | Version | `v0.1-draft` |
 | Date | 2026-08-07 |
 | Scope | 同阶段跨方案、真实时间序列及 batch/lot/preparation 稳定性 |
-| Primary unit | 经外部审核的 `BiologicalUnitManifest.independence_group`；preparation/capture 先在组内聚合 |
+| Primary unit | 由可信审核凭据确认的 `BiologicalUnitManifest.independence_group`；当前无凭据 verifier，caller 标签只作 trace |
 | Primary output | `ComparisonRecord` |
 | Current state | `candidate` |
 
@@ -28,17 +28,27 @@
 P0-07 v0.2 已先收口为窄的 pairwise descriptive runtime：输入两个
 `ProductCase`、一个 `ComparisonSpec`、一个 `ComparisonEvidenceBundle`、两个完整
 `EvidenceSufficiencyRunResult` 和两个 `BiologicalUnitManifest`，只比较
-两个明确绑定的 ProductCase，并在经审核 independence-group 层报告均值、范围和 raw
-`candidate - baseline` 差值。
+两个明确绑定的 ProductCase。两个 manifest 必须使用同一
+`unit_identity_namespace_ref` 与同一 `independence_scope_ref`；当前版本不实现
+namespace crosswalk、配对映射或跨 scope 推断。
 
 以下内容全部来自版本化、带 checksum 的输入，而不是代码常量：需要相等
 的合同维度、assay/target/reference/prior/算法/预处理引用、metric ID、单位、
 可用证据状态、方向和最小独立 biological-unit 数。每个 evidence summary 的
-unit 引用必须与对应 ProductCase/manifest 的 assignment 完全一致，同一 group 内
-的重复 preparations 先按合同聚合，两个比较臂不得共享 independence group；
+unit 引用必须与对应 ProductCase/manifest 的 assignment 完全一致；两个比较臂
+不得共享 independence group。当前 `MetricComparisonRule` 尚未声明组内估计量，
+所以同一 group 出现多个 preparation observation 时返回
+`within_group_aggregation_policy_not_supplied` 和不可用结果，不暗中采用算术平均或
+分母加权。只有每组恰有一个 observation 时才发布均值、范围和 raw
+`candidate - baseline` 描述量；
 至少一个 metric 必须标为 required。只接受完整 P0-08 结果，不能用脱离 profile
 和 gate trace 的 readiness summary 代替。当前代码不包含具体产品、
 状态、程序、基因、阶段、范围或生物阈值。
+
+Caller 提供的 `reviewed`/`frozen` 字段和 gate checksum 只能证明输入字节一致，
+不能证明审核主体。当前没有可信 receipt verifier，因此这些标签不增加 eligible
+biological-unit N，也不能解锁 configured favorable/unfavorable direction；测试可
+注入 verifier 结果验证确定性机制，但普通请求 JSON 不能触发该路径。
 
 该切片固定为 `descriptive_only`。效应量、区间、推断统计、时间序列、
 批次/联合分析、stability inference 和 Pareto 均仍未实现；没有冻结

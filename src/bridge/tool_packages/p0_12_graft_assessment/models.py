@@ -714,6 +714,7 @@ class UnmatchedGraftObservation(FrozenModel):
 
 class GraftInputChecksums(FrozenModel):
     product_case: str = Field(pattern=SHA256_PATTERN)
+    biological_unit_manifest: str = Field(pattern=SHA256_PATTERN)
     graft_measurement_spec: str = Field(pattern=SHA256_PATTERN)
     graft_lineage_manifest: str | None = Field(default=None, pattern=SHA256_PATTERN)
     graft_assessment_spec: str = Field(pattern=SHA256_PATTERN)
