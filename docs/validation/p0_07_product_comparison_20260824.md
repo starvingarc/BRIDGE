@@ -27,9 +27,23 @@ always `not_assessed` in this slice.
 
 ## Evidence status
 
-No local project code was run. Exact GitHub Actions run, installed-wheel focused
-count and complete-suite count will be recorded after the generated projections
-and final branch head pass `repository-gates`.
+No local project code was run. GitHub Actions run
+[`32688224306`](https://github.com/starvingarc/BRIDGE/actions/runs/32688224306)
+validated implementation head `4c3c436` through the PR merge ref on Ubuntu and
+Python 3.12. The installed package resolved from `site-packages`, outside the
+source checkout.
+
+| Gate | Current result |
+|---|---|
+| Installed-wheel focused chain | 132 P0-03/P0-04/P0-05/P0-06/P0-07 tests passed |
+| Complete pytest | 1,091 passed; 3 existing dependency warnings |
+| 12-tool discovery | passed; exactly 12 |
+| Public and packaged Schemas | 69 registered Schemas; generated copies packaged with the wheel |
+| Knowledge validation | passed; no dangling method/source refs; 0 formal-eligible methods |
+| Repository policy and committed diff | passed |
+
+The PR remains Draft. These results establish packaging and deterministic
+contract behavior, not approval of a ComparisonSpec or real-case conclusion.
 
 ## Scientific boundary
 
