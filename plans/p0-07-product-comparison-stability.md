@@ -41,3 +41,15 @@ comparisons remain descriptive; non-comparable cases do not emit a delta.
 All project execution occurs in GitHub Actions. The PR remains Draft after
 engineering gates. ComparisonSpec contents and real ProductCase evidence need
 separate scientific review and can change without implementation changes.
+
+## Current closure state
+
+- implementation, public Schemas, Tool Card, example and validation record are
+  complete; bounded closure implementation is `67076af`;
+- shared generic contracts replace the P0-03-private type dependency, and all
+  unit-bearing public models reject non-public machine-local text;
+- `/data1` source and clean-wheel validation passed 1,112 tests, with 153
+  focused P0-03 through P0-07 tests, discovery, knowledge and policy gates;
+- Draft PR #24 remains stacked on P0-06 and awaits the required GitHub check;
+- real comparability, metric-direction and preparation-independence review
+  remain separate from this descriptive candidate path.

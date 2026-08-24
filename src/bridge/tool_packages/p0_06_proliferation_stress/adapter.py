@@ -18,7 +18,7 @@ from bridge.tool_packages._structured_runtime import (
     read_regular_bytes,
     single_object,
 )
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
     VersionedObjectRef,

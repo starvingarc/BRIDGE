@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import ConfigDict, Field, StrictInt, field_validator, model_validator
 
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     CompositionView,
     OBJECT_ID_PATTERN,
     RoleFraction,
@@ -13,6 +13,7 @@ from bridge.tool_packages.p0_03_target_regional.models import (
     VERSION_PATTERN,
     VersionedObjectRef,
 )
+from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -166,6 +167,10 @@ class OffTargetRoleSpec(FrozenModel):
     ood_policy: Literal["not_assessed_without_calibration"]
     rare_state_policy: Literal["not_assessed_without_calibration"]
 
+    _required_denominator_is_publication_safe = field_validator(
+        "required_denominator_view"
+    )(validate_publication_text)
+
     @field_validator(
         "composition_views",
         "included_label_levels",
@@ -238,6 +243,10 @@ class OffTargetCompositionChannel(FrozenModel):
     denominator: StrictInt = Field(gt=0)
     role_fractions: list[RoleFraction]
     state_breakdown: list[StateCompositionRecord]
+
+    _denominator_is_publication_safe = field_validator("denominator_view")(
+        validate_publication_text
+    )
 
     @model_validator(mode="after")
     def roles_are_complete(self) -> Self:

@@ -65,7 +65,7 @@ parameters, top-level MeasurementSpec parameters and nonzero seeds are refused.
 
 For every selected view, source and label level, P0-05:
 
-1. accepts only the configured full-product `denominator_view`;
+1. accepts only the configured, publication-safe full-product `denominator_view`;
 2. joins states only through `OffTargetRoleSpec`;
 3. reports counts and fractions for all five roles;
 4. retains per-state role/evidence metadata for drill-down;
