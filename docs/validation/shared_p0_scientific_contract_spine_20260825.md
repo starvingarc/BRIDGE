@@ -51,11 +51,10 @@ matrix deprecation warnings in unrelated QC fixtures.
 
 ## Evidence location and integrity
 
-Private engineering evidence is retained under
-`/data1/yuxiao/BRIDGE/private/module-integration/shared-contract-spine/5ca05ede013694e57c037dfb15b94c10274b79ac/`.
-It contains the source archive, wheel, source/wheel logs, installed import path,
-Schema and Tool Card manifests, gate outputs and their checksum manifest. No
-private biological input is included.
+Private engineering evidence is retained on the authorized validation server,
+keyed by the validated commit SHA. It contains the source archive, wheel,
+source/wheel logs, installed import path, Schema and Tool Card manifests, gate
+outputs and their checksum manifest. No private biological input is included.
 
 ## Boundary
 
