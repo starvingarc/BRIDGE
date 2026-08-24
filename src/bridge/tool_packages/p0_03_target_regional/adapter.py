@@ -19,10 +19,8 @@ from bridge.tool_packages._structured_runtime import (
     read_regular_bytes,
     single_object,
 )
-from bridge.tool_packages.p0_03_target_regional.executor import (
-    evaluate_target_regional,
-    parse_composition,
-)
+from bridge.tool_packages._configurable_contracts import parse_composition
+from bridge.tool_packages.p0_03_target_regional.executor import evaluate_target_regional
 from bridge.tool_packages.p0_03_target_regional.models import (
     ProductCase,
     ProductDefinitionCard,
@@ -67,7 +65,9 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         QCReadinessProfile,
     ),
 }
-PUBLISHED_REF = re.compile(r"^[A-Za-z][A-Za-z0-9._:-]*$")
+EVIDENCE_REF = re.compile(r"^evidence:[A-Za-z0-9._:-]+$")
+CELL_STATE_PROFILE_REF = re.compile(r"^cell-state-profile:[A-Za-z0-9._:-]+$")
+QC_PROFILE_REF = re.compile(r"^qc-profile:[A-Za-z0-9._:-]+$")
 
 
 class PublicationError(ValueError):
@@ -316,13 +316,13 @@ def _binding_reasons(
     except ValueError as exc:
         reasons.append(str(exc))
     if any(
-        not PUBLISHED_REF.fullmatch(evidence_ref)
+        not EVIDENCE_REF.fullmatch(evidence_ref)
         for evidence_ref in [*cell_state_profile.evidence_ids, *qc_profile.evidence_ids]
     ):
         reasons.append("unsafe_evidence_reference")
-    if any(
-        not PUBLISHED_REF.fullmatch(profile_ref)
-        for profile_ref in [cell_state_profile.profile_id, qc_profile.profile_id]
+    if (
+        not CELL_STATE_PROFILE_REF.fullmatch(cell_state_profile.profile_id)
+        or not QC_PROFILE_REF.fullmatch(qc_profile.profile_id)
     ):
         reasons.append("unsafe_profile_reference")
     return reasons

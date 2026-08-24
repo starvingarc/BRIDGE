@@ -525,6 +525,34 @@ def test_cross_binding_and_publication_failures_are_typed(
     assert run.artifacts == []
 
 
+@pytest.mark.parametrize(
+    ("input_role", "unsafe_denominator", "reason"),
+    [
+        ("off_target_role_spec", "/home/demo-user/private", "structured_input_schema_invalid"),
+        ("cell_state_evidence_profile", "~/demo-private", "cell_state_composition_invalid"),
+        ("cell_state_evidence_profile", "${HOME}/demo-private", "cell_state_composition_invalid"),
+    ],
+)
+def test_machine_local_denominator_is_not_published(
+    tmp_path: Path, input_role: str, unsafe_denominator: str, reason: str
+) -> None:
+    payloads = _payloads()
+    if input_role == "off_target_role_spec":
+        payloads[input_role]["required_denominator_view"] = unsafe_denominator
+    else:
+        payloads[input_role]["composition"]["records"][0][
+            "denominator_view"
+        ] = unsafe_denominator
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == [reason]
+    assert run.result is None
+    assert run.artifacts == []
+    assert unsafe_denominator not in json.dumps(run.model_dump(mode="json"))
+
+
 @pytest.mark.parametrize("field", ["count", "denominator", "fraction"])
 def test_scientific_numeric_strings_are_rejected(tmp_path: Path, field: str) -> None:
     payloads = _payloads()

@@ -77,7 +77,7 @@ structured `not_assessed`.
 
 For every selected composition view, source and label level, P0-04:
 
-1. preserves the upstream denominator count and `denominator_view`;
+1. preserves the upstream denominator count and publication-safe `denominator_view`;
 2. joins states only through the supplied DevelopmentWindowSpec;
 3. reports five roles over the whole-product denominator;
 4. separately reports the same roles over states marked `target_related`;

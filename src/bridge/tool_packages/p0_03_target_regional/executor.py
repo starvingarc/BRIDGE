@@ -3,53 +3,31 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Iterable, Literal
 
-from pydantic import ValidationError
-
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     CompositionView,
-    LineageRole,
     ProductCase,
     ProductDefinitionCard,
+    RoleFraction,
+    UpstreamCompositionRecord,
+    VersionedObjectRef,
+    parse_composition,
+)
+from bridge.tool_packages.p0_03_target_regional.models import (
+    LineageRole,
     RegionalFidelityChannel,
     RegionalRole,
-    RoleFraction,
     SpatialReferenceProjectionProfile,
     StateRoleMap,
     TargetIdentityChannel,
     TargetRegionalAssessmentSpec,
     TargetRegionalEvidenceResult,
     UnmappedStateRecord,
-    UpstreamCompositionRecord,
-    VersionedObjectRef,
 )
 from bridge.toolkit.contracts import (
     CellStateEvidenceProfile,
     QCReadinessProfile,
     ScoreState,
 )
-
-
-def parse_composition(
-    profile: CellStateEvidenceProfile,
-) -> list[UpstreamCompositionRecord]:
-    raw_records = profile.composition.get("records")
-    if raw_records is None:
-        return []
-    if not isinstance(raw_records, list):
-        raise ValueError("cell_state_composition_invalid")
-    records: list[UpstreamCompositionRecord] = []
-    try:
-        records = [UpstreamCompositionRecord.model_validate(item) for item in raw_records]
-    except (ValidationError, TypeError, ValueError):
-        raise ValueError("cell_state_composition_invalid") from None
-    identities = [
-        (item.view, item.source_id, item.label_level, item.label)
-        for item in records
-    ]
-    if len(identities) != len(set(identities)):
-        raise ValueError("cell_state_composition_duplicate_record")
-    return records
-
 
 def evaluate_target_regional(
     *,

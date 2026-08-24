@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import ConfigDict, Field, StrictBool, StrictInt, field_validator, model_validator
 
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     CompositionView,
     OBJECT_ID_PATTERN,
     ProductCase,
@@ -15,6 +15,7 @@ from bridge.tool_packages.p0_03_target_regional.models import (
     VERSION_PATTERN,
     VersionedObjectRef,
 )
+from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -129,6 +130,10 @@ class StageCompositionChannel(FrozenModel):
     target_related_denominator: StrictInt = Field(ge=0)
     whole_product_stage_fractions: list[RoleFraction]
     target_related_stage_fractions: list[RoleFraction]
+
+    _denominator_is_publication_safe = field_validator("denominator_view")(
+        validate_publication_text
+    )
 
     @model_validator(mode="after")
     def stage_roles_are_complete(self) -> Self:
