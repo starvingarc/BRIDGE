@@ -29,7 +29,14 @@
 
 ## Validation Records
 
+- [Configurable runtime closeout validation, 2026-08-24](validation/runtime_single_json_closeout_20260824.md)
 - [P0-12 configurable graft assessment candidate validation, 2026-08-24](validation/p0_12_graft_assessment_20260824.md)
+- [P0-11 public-safe export candidate validation, 2026-08-24](validation/p0_11_public_safe_export_20260824.md)
+- [P0-07 product comparison candidate validation, 2026-08-24](validation/p0_07_product_comparison_20260824.md)
+- [P0-06 proliferation and stress response candidate validation, 2026-08-24](validation/p0_06_proliferation_stress_20260824.md)
+- [P0-05 off-target evidence candidate validation, 2026-08-24](validation/p0_05_off_target_20260824.md)
+- [P0-04 developmental compatibility candidate validation, 2026-08-24](validation/p0_04_developmental_20260824.md)
+- [P0-03 target and regional evidence candidate validation, 2026-08-24](validation/p0_03_target_regional_20260824.md)
 - [P0-10 Report Claim Verifier candidate validation, 2026-08-14](validation/p0_10_claim_verifier_20260814.md)
 - [P0-09 Evidence Compiler & Reconciler candidate validation, 2026-08-13](validation/p0_09_evidence_compiler_20260813.md)
 - [P0-08 Evidence Sufficiency candidate validation, 2026-08-13](validation/p0_08_evidence_sufficiency_20260813.md)
