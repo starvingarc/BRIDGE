@@ -6,6 +6,7 @@ from importlib.resources import files
 from importlib.util import find_spec
 import json
 from pathlib import Path
+import stat
 from typing import Any, Iterable
 from uuid import uuid4
 
@@ -36,6 +37,17 @@ ToolRunModel = ToolRun | ToolRunV2
 StructuredInputSnapshot = tuple[tuple[Path, str], ...]
 SUPPORTED_STRUCTURED_INPUT_MEDIA_TYPES = frozenset({"application/json"})
 STRUCTURED_OBJECT_VERSION_FIELDS = frozenset({"object_version", "version"})
+
+
+def _output_path_invalid(path: Path) -> bool:
+    """Reject an existing non-directory without following a final symlink."""
+
+    try:
+        return not stat.S_ISDIR(path.lstat().st_mode)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
 
 
 class _StrictJSONError(ValueError):
@@ -200,7 +212,10 @@ class ToolRegistry:
                 supported_levels = measurement_spec.input_contract.get("supported_levels", [])
                 if asset.input_level.value not in supported_levels:
                     reasons.append("measurement_spec_input_level_mismatch")
-        if asset.path.is_dir() and request.output_dir.resolve().is_relative_to(asset.path.resolve()):
+        output_path_invalid = _output_path_invalid(request.output_dir)
+        if output_path_invalid:
+            reasons.append("output_path_invalid")
+        elif asset.path.is_dir() and request.output_dir.resolve().is_relative_to(asset.path.resolve()):
             reasons.append("output_dir_overlaps_input_asset")
         return EligibilityResult(tool_id=request.tool_id, eligible=not reasons, reason_codes=reasons)
 
@@ -265,7 +280,10 @@ class ToolRegistry:
                         reasons.append("cell_state_release_reference_mismatch")
                 except ValueError as exc:
                     reasons.append(getattr(exc, "reason_code", "cell_state_release_invalid"))
-        if asset.path.is_dir() and request.output_dir.resolve().is_relative_to(asset.path.resolve()):
+        output_path_invalid = _output_path_invalid(request.output_dir)
+        if output_path_invalid:
+            reasons.append("output_path_invalid")
+        elif asset.path.is_dir() and request.output_dir.resolve().is_relative_to(asset.path.resolve()):
             reasons.append("output_dir_overlaps_input_asset")
         return EligibilityResult(tool_id=request.tool_id, eligible=not reasons, reason_codes=sorted(set(reasons)))
 

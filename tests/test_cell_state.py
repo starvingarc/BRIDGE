@@ -552,6 +552,28 @@ def test_modality_mismatch_is_rejected_before_execution(tmp_path: Path, monkeypa
     assert "measurement_spec_assay_mismatch" in eligibility.reason_codes
 
 
+def test_existing_file_at_output_path_returns_typed_failure_without_overwrite(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _build_snapshot(tmp_path, monkeypatch)
+    query = _write_query(tmp_path / "query.h5ad")
+    _configure_qc_catalog(tmp_path, monkeypatch, query)
+    output_path = tmp_path / "occupied-output"
+    output_path.write_text("preserve-me", encoding="utf-8")
+    request = _request(tmp_path, query).model_copy(
+        update={"output_dir": output_path}
+    )
+
+    registry = ToolRegistry.load_default()
+    eligibility = registry.check_eligibility(request)
+    run = registry.run(request)
+
+    assert eligibility.reason_codes == ["output_path_invalid"]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["output_path_invalid"]
+    assert output_path.read_text(encoding="utf-8") == "preserve-me"
+
+
 def test_low_gene_coverage_refuses_without_synthetic_measurement(tmp_path: Path, monkeypatch) -> None:
     _build_snapshot(tmp_path, monkeypatch)
     query = _write_query(tmp_path / "query-small.h5ad", genes=GENES[:20])
