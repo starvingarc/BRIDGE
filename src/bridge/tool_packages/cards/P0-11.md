@@ -83,6 +83,8 @@ prohibited literal remains, or if the bounded backstop sees a local server/user
 path, `file:` reference, internal BRIDGE object namespace or credential-like
 assignment. This is a narrow deterministic backstop, not a general secret/PII
 detector. The allowlist and disclosure policy remain the primary control.
+Every refusal returns a stable, non-sensitive reason code and publishes no
+candidate artifact.
 
 ## Minimal example
 

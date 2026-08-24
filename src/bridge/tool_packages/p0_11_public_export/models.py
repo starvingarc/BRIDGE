@@ -29,8 +29,9 @@ PublicClaimId = Annotated[
     str, Field(pattern=r"^public-claim:[A-Za-z0-9._:-]+$")
 ]
 PlainPublicText = Annotated[str, Field(min_length=1, max_length=4000)]
+LOCAL_USER_ROOT = "/" + "Users/"
 MACHINE_REFERENCE = re.compile(
-    r"(?i)(?:/Users/|/data[12]/|\\Users\\|file\s*:|"
+    r"(?i)(?:" + re.escape(LOCAL_USER_ROOT) + r"|/data[12]/|\\Users\\|file\s*:|"
     r"(?:report|claim|claim-block|evidence|product-case|sample|preparation):|"
     r"(?:password|passphrase|passwd|pwd|secret|token|credential)\s*[:=])"
 )
