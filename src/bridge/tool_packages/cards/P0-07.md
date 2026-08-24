@@ -39,7 +39,7 @@ seeds are refused.
 
 | Role | Schema | Required content |
 |---|---|---|
-| `comparison_spec` | `bridge://schemas/comparison-spec/v0.1` | Exactly one baseline and one candidate ProductCase; configurable equal-contract dimensions; mismatch policy; minimum independent preparations; metric IDs, units, eligible evidence states, required flags and direction policies. |
+| `comparison_spec` | `bridge://schemas/comparison-spec/v0.1` | Exactly one baseline and one candidate ProductCase; configurable equal-contract dimensions; mismatch policy; minimum independent preparations; metric IDs, publication-safe units, eligible evidence states, required flags and direction policies. |
 | `comparison_evidence_bundle` | `bridge://schemas/comparison-evidence-bundle/v0.1` | Exactly the same two ProductCases; versioned contract snapshots; P0-08 sufficiency state; preparation-level metric values, denominators, evidence states and Evidence references. |
 
 The current input object version is `0.1.0` for both roles. Assay, target,

@@ -19,10 +19,10 @@ from bridge.tool_packages._structured_runtime import (
     read_regular_bytes,
     single_object,
 )
-from bridge.tool_packages.p0_03_target_regional.executor import parse_composition
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
+    parse_composition,
 )
 from bridge.tool_packages.p0_05_off_target.executor import evaluate_off_target_control
 from bridge.tool_packages.p0_05_off_target.models import OffTargetRoleSpec

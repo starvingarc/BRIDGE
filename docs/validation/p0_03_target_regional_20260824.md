@@ -64,3 +64,32 @@ P0-03 remains `candidate`. Draft, reviewed or frozen configuration inputs can
 exercise the code, but code execution cannot approve those inputs. Upstream
 P0-02 shadow evidence remains shadow; missing spatial evidence is explicitly
 `not_assessed`; no score or release conclusion is created.
+
+## Independent closure hardening
+
+The independent review reproduced two publication-interface gaps: upstream
+profile references accepted the wrong object namespace, and a caller-controlled
+denominator label could copy a machine path into the result. Implementation
+commit `512ff6055bf6374c18192d83b9909352e1fcbf07` closes both without changing
+the six-input interface or any biological configuration.
+
+- evidence IDs now require `evidence:`; profile IDs require
+  `cell-state-profile:` and `qc-profile:` according to their roles;
+- denominator wording remains configurable but rejects absolute/home paths,
+  file URIs and credential-like assignments;
+- the pre-existing P0-09 publication guard is now the single shared fact source;
+- common ProductCase/composition contracts and parsing moved to a shared module
+  already used by P0-03 and prepared for the downstream stacked modules.
+
+| Closure gate | Result |
+|---|---|
+| P0-03/P0-09 source regression | `214 passed` |
+| Complete source suite | `995 passed, 3 warnings` |
+| Complete installed-wheel suite | `995 passed, 3 warnings` |
+| Wheel SHA-256 | `202939edebc6b9350ae1f09810f8bba6a7e4f3b35cb9e025f94bcb81a4a83482` |
+| Installed import | independent Python 3.12 `site-packages` |
+| Tool discovery | 12 packages; 6 implemented at this stacked head |
+| Knowledge and repository policy | valid; no dangling references; 0 formal-eligible methods; policy passed |
+
+No project code ran in the local checkout. The warnings are the same unrelated
+AnnData duplicate-name and SciPy sparse-matrix deprecation warnings.

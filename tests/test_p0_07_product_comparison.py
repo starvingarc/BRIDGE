@@ -365,6 +365,34 @@ def test_score_contract_is_refused_until_a_contract_exists(tmp_path: Path) -> No
 
 
 @pytest.mark.parametrize(
+    ("surface", "unsafe_unit"),
+    [
+        ("comparison_spec", "/home/demo-user/private"),
+        ("comparison_evidence_bundle", "~/demo-private"),
+        ("comparison_evidence_bundle", "${HOME}/demo-private"),
+    ],
+)
+def test_machine_local_unit_is_not_published(
+    tmp_path: Path, surface: str, unsafe_unit: str
+) -> None:
+    payloads = _payloads()
+    if surface == "comparison_spec":
+        payloads[surface]["metrics"][0]["unit"] = unsafe_unit
+    else:
+        payloads[surface]["cases"][0]["preparations"][0]["metrics"][0][
+            "unit"
+        ] = unsafe_unit
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
+    assert run.result is None
+    assert run.artifacts == []
+    assert unsafe_unit not in json.dumps(run.model_dump(mode="json"))
+
+
+@pytest.mark.parametrize(
     ("field", "value"),
     [
         ("value", "1.0"),

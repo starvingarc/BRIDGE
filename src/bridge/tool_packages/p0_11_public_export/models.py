@@ -8,11 +8,12 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import Field, StrictBool, StrictInt, field_validator, model_validator
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     SHA256_PATTERN,
     VERSION_PATTERN,
     VersionedObjectRef,
 )
+from bridge.tool_packages._publication_safety import contains_unsafe_reference
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimType,
     ComparisonMode,
@@ -32,7 +33,7 @@ PlainPublicText = Annotated[str, Field(min_length=1, max_length=4000)]
 LOCAL_USER_ROOT = "/" + "Users/"
 MACHINE_REFERENCE = re.compile(
     r"(?i)(?:" + re.escape(LOCAL_USER_ROOT) + r"|/data[12]/|\\Users\\|file\s*:|"
-    r"(?:report|claim|claim-block|evidence|product-case|sample|preparation):|"
+    r"(?<![A-Za-z0-9-])(?:report|claim|claim-block|evidence|product-case|sample|preparation):|"
     r"(?:password|passphrase|passwd|pwd|secret|token|credential)\s*[:=])"
 )
 
@@ -262,6 +263,8 @@ class PublicSafeReport(FrozenModel):
         )
         if self.export_state is not expected:
             raise ValueError("export state does not match reason codes")
+        if contains_machine_reference(self.model_dump(mode="json")):
+            raise ValueError("bounded machine reference remains")
         if self.candidate_hash != public_safe_report_hash(
             self.model_dump(mode="json")
         ):
@@ -275,8 +278,16 @@ def public_safe_report_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(canonical_json_bytes(content)).hexdigest()
 
 
-def contains_machine_reference(value: str) -> bool:
-    return bool(MACHINE_REFERENCE.search(value))
+def contains_machine_reference(value: Any) -> bool:
+    if contains_unsafe_reference(value):
+        return True
+    if isinstance(value, str):
+        return bool(MACHINE_REFERENCE.search(value))
+    if isinstance(value, dict):
+        return any(contains_machine_reference(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(contains_machine_reference(item) for item in value)
+    return False
 
 
 PUBLIC_SCHEMA_MODELS = {

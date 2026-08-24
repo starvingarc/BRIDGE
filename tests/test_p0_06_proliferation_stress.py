@@ -615,6 +615,25 @@ def test_cross_binding_failures_are_typed(
 
 
 @pytest.mark.parametrize(
+    "unsafe_unit",
+    ["/home/demo-user/private", "~/demo-private", "${HOME}/demo-private"],
+)
+def test_machine_local_unit_is_not_published(
+    tmp_path: Path, unsafe_unit: str
+) -> None:
+    payloads = _payloads()
+    payloads["program_assessment_spec"]["rules"][0]["unit"] = unsafe_unit
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
+    assert run.result is None
+    assert run.artifacts == []
+    assert unsafe_unit not in json.dumps(run.model_dump(mode="json"))
+
+
+@pytest.mark.parametrize(
     ("field", "value"),
     [
         ("value", "0.9"),
