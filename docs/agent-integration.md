@@ -26,7 +26,7 @@ The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Sc
 6. Use knowledge search for planning and explanation; never turn retrieval rank into scientific evidence weight.
 7. Declare `source_family_id` so the tool can exclude same-family references, and resolve logical QC/reference IDs through deployment-owned catalogs.
 
-P0-01 through P0-06, P0-08, P0-09 and P0-10 are executable
+P0-01 through P0-10 are executable
 candidate packages. P0-02 emits shadow Cell-State Evidence unless its
 `MeasurementSpec` names a signed `CellStateReleaseManifest`; draft review cards
 or benchmark results never become formal labels. P0-03 consumes a checksummed
@@ -59,7 +59,10 @@ entering the graph, while top-level contract failures publish nothing. P0-10
 checks a structured `ReportDraft` against one P0-09 graph manifest and packaged
 policy authority, then emits one receipt; internal correspondence does not make
 a report public-eligible, and public claims require cited formal Evidence.
-P0-07 and P0-11 through P0-12 deliberately return
+P0-07 reads a checksummed ComparisonSpec and preparation-level evidence bundle.
+It performs only pairwise descriptive summaries and raw deltas; biological
+directions and comparability requirements come from the input, while inference,
+Pareto, score and rank remain unavailable. P0-11 through P0-12 deliberately return
 `not_implemented` without measurements. HTTP, MCP and queue adapters may wrap
 the same JSON contracts later without changing scientific semantics.
 

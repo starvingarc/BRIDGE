@@ -1,0 +1,27 @@
+{
+  "request_id": "request-p0-07-demo",
+  "tool_id": "P0-07",
+  "tool_version": "0.2.0",
+  "output_dir": "/tmp/bridge-p0-07-output",
+  "random_seed": 0,
+  "object_inputs": [
+    {
+      "input_id": "comparison-spec",
+      "role": "comparison_spec",
+      "schema_ref": "bridge://schemas/comparison-spec/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-07-input/comparison_spec.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "media_type": "application/json"
+    },
+    {
+      "input_id": "comparison-evidence",
+      "role": "comparison_evidence_bundle",
+      "schema_ref": "bridge://schemas/comparison-evidence-bundle/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-07-input/comparison_evidence_bundle.json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "media_type": "application/json"
+    }
+  ]
+}

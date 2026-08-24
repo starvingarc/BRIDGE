@@ -49,10 +49,11 @@ provisional or unavailable.
 | P0-04 Developmental Compatibility | Executable configurable static candidate; developmental window and state roles are versioned inputs, while reference-stage/time-course evidence remains unavailable |
 | P0-05 Off-target Control | Executable configurable static candidate; product roles and denominator selection are versioned inputs, while OOD/rare-state calibration remains not assessed |
 | P0-06 Proliferation & Stress Response | Executable configurable candidate over precomputed program evidence; programs, reference intervals, coverage and review directions are versioned inputs, while ProtocolIR/LOD/CNV remain not assessed |
+| P0-07 Product Comparison & Stability | Executable pairwise descriptive candidate; contract dimensions, assays, metrics, units, directions and preparation requirements are versioned inputs; no inference, Pareto, score or rank |
 | P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
 | P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
 | P0-10 Report Claim Verifier | Executable deterministic candidate; `verified` means evidence/package correspondence, not biological truth or public release |
-| P0-07, P0-11–P0-12 | Scientific contracts only; executors pending |
+| P0-11–P0-12 | Scientific contracts only; executors pending |
 
 ## Minimal usage
 

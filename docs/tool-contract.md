@@ -88,7 +88,7 @@ Original inputs are read-only. Each run creates a new bundle containing a manife
 
 The versioned JSON contracts in `schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` are the Python source used to generate those schemas.
 
-For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability; P0-03 through P0-06, P0-08 and P0-09 are separately reviewed deterministic candidates, while the remaining unimplemented packages stay scaffolds.
+For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability; P0-03 through P0-10 are separately reviewed deterministic candidates, while P0-11 and P0-12 stay scaffolds.
 
 P0-03 consumes exactly one ProductCase, ProductDefinitionCard, StateRoleMap,
 TargetRegionalAssessmentSpec, CellStateEvidenceProfile and QCReadinessProfile.
@@ -122,6 +122,14 @@ groups. The implementation contains no program, gene, stage, range, coverage
 limit or biological threshold. Protocol attribution, residual-pluripotency LOD
 and transcriptomic CNV remain not assessed. See the
 [P0-06 Tool Card](../tool_packages/P0-06/README.md).
+
+P0-07 consumes exactly one ComparisonSpec and one ComparisonEvidenceBundle. It
+checks caller-selected contract dimensions, summarizes eligible preparation
+values and publishes only the raw candidate-minus-baseline delta. The
+implementation contains no assay allowlist, metric catalogue, biological
+direction or threshold. Inferential statistics, stability modelling, Pareto,
+score and rank remain unavailable. See the
+[P0-07 Tool Card](../tool_packages/P0-07/README.md).
 
 P0-08 consumes only versioned upstream evidence objects. It applies Data Readiness, Model Robustness and Prior Applicability before selecting `not_assessed`, `insufficient`, `limited` or `sufficient` in the registered precedence order. It never reruns scientific analysis, emits a `MeasurementResult`, or makes a domain score available. Its module-specific input/result schemas and complete field contract are documented in the [P0-08 Tool Card](../tool_packages/P0-08/README.md).
 

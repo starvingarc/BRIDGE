@@ -23,6 +23,23 @@
 
 本任务中的“稳定性”表示当前转录组测量和分析合同下的 preparation 间重复性，不代表 GMP 工艺能力、临床疗效、安全性或放行结论。
 
+### 当前可执行切片（2026-08-24）
+
+P0-07 v0.2 已先收口为窄的 pairwise descriptive runtime：输入一个
+`ComparisonSpec` 和一个 `ComparisonEvidenceBundle`，只比较两个明确绑定的
+ProductCase，并在 preparation 层报告均值、范围和 raw
+`candidate - baseline` 差值。
+
+以下内容全部来自版本化、带 checksum 的输入，而不是代码常量：需要相等
+的合同维度、assay/target/reference/prior/算法/预处理引用、metric ID、单位、
+可用证据状态、方向和最小独立 preparation 数。当前代码不包含具体产品、
+状态、程序、基因、阶段、范围或生物阈值。
+
+该切片固定为 `descriptive_only`。效应量、区间、推断统计、时间序列、
+批次/联合分析、stability inference 和 Pareto 均仍未实现；没有冻结
+ScoreContract 时 `overall_score/overall_rank=null`。下文保留为后续科学与
+方法开发目标，不表示这些能力已经可执行。
+
 ## 2. 比较合同
 
 ### 2.1 比较场景
