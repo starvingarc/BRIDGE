@@ -10,6 +10,18 @@
 | 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard` |
 | 主要输出 | `DevelopmentalCompatibilityProfile`；校准轨另存 `LineageCalibrationRecord` |
 
+## 0. 当前可执行候选
+
+P0-04 v0.2.0 实现静态双分母组成的最小确定性路径。它通过
+`ToolRequestV2` 读取带 checksum 的 ProductCase、ProductDefinitionCard、
+DevelopmentWindowSpec、CellStateEvidenceProfile 和 QCReadinessProfile，
+输出一个 DevelopmentalCompatibilityResult。
+
+代码不包含具体发育窗口、状态名称、状态到窗口角色的映射、胎龄换算或阈值。
+这些内容只来自版本化 DevelopmentWindowSpec。当前不运行 reference-stage
+模型、trajectory、pseudotime、真实时间序列统计或 lineage calibration；相关输出
+明确为 `not_assessed` 或 `unavailable`，而不是用占位算法代替。
+
 ## 1. 任务目标与边界
 
 本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。当前阶段只整理并验证数据、方法、环境和输出合同，不制定 0-100 分数。

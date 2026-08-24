@@ -1,12 +1,15 @@
 tool_id: P0-04
 name: Developmental Compatibility
-version: 0.1.0
+version: 0.2.0
 summary: Measure compatibility with a researcher-confirmed developmental window.
-implementation_state: scaffold
+implementation_state: implemented
 scientific_status: candidate
 optional: false
 environment_spec_id: ENV-P0-CORE-v0.1
-input_schema_ref: bridge://schemas/tool-request/v0.1
-output_schema_ref: bridge://schemas/tool-run/v0.1
-method_ids: []
+input_schema_ref: bridge://schemas/tool-request/v0.2
+output_schema_ref: bridge://schemas/tool-run/v0.2
+result_schema_ref: bridge://schemas/developmental-compatibility-result/v0.1
+adapter_ref: bridge.tool_packages.p0_04_developmental.adapter:adapter
+method_ids:
+  - METHOD-BRIDGE-DEVELOPMENTSTATEMAP
 card_ref: bridge://tool-cards/P0-04

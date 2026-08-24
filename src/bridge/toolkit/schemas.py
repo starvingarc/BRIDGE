@@ -38,6 +38,8 @@ SCHEMA_REFS = {
     "bridge://schemas/evidence-sufficiency-run-result/v0.1": "evidence_sufficiency_run_result.schema.json",
     "bridge://schemas/evidence-validation-record/v0.1": "evidence_validation_record.schema.json",
     "bridge://schemas/freeze-gate-spec/v0.2": "freeze_gate_spec.schema.json",
+    "bridge://schemas/development-window-spec/v0.1": "development_window_spec.schema.json",
+    "bridge://schemas/developmental-compatibility-result/v0.1": "developmental_compatibility_result.schema.json",
     "bridge://schemas/knowledge-hit/v0.1": "knowledge_hit.schema.json",
     "bridge://schemas/marker-program-card/v0.1": "marker_program_card.schema.json",
     "bridge://schemas/measurement-result/v0.1": "measurement_result.schema.json",
