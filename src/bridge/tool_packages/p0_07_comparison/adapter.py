@@ -3,10 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
-import os
-from pathlib import Path
-import shutil
-from uuid import uuid4
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
@@ -14,9 +10,8 @@ from bridge.tool_packages._structured_runtime import (
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
-    inputs_unchanged,
     load_structured_inputs,
-    read_regular_bytes,
+    publish_single_json,
     single_object,
 )
 from bridge.tool_packages.p0_07_comparison.executor import evaluate_comparison
@@ -49,12 +44,6 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         ComparisonEvidenceBundle,
     ),
 }
-
-
-class PublicationError(ValueError):
-    def __init__(self, reason_code: str) -> None:
-        super().__init__(reason_code)
-        self.reason_code = reason_code
 
 
 @dataclass(frozen=True)
@@ -120,8 +109,13 @@ class ComparisonAdapter:
             )
         payload = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
         try:
-            output_file = _publish_result(request=request, run_id=run_id, payload=payload)
-        except PublicationError as exc:
+            output_file = publish_single_json(
+                request=request,
+                run_id=run_id,
+                filename="comparison_record.json",
+                payload=payload,
+            )
+        except StructuredInputError as exc:
             return _failed_run(
                 request,
                 spec,
@@ -251,55 +245,6 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
         ],
     }
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
-
-
-def _publish_result(
-    *, request: ToolRequestV2, run_id: str, payload: bytes
-) -> Path:
-    output_root = request.output_dir
-    if directory_state(output_root) == "other":
-        raise PublicationError("output_path_invalid")
-    try:
-        output_root.mkdir(parents=True, exist_ok=True)
-    except (OSError, RuntimeError):
-        raise PublicationError("output_path_invalid") from None
-    if directory_state(output_root) != "directory":
-        raise PublicationError("output_path_invalid")
-    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    filename = "comparison_record.json"
-    try:
-        staging.mkdir(mode=0o700)
-        (staging / filename).write_bytes(payload)
-        if not inputs_unchanged(request.object_inputs):
-            raise PublicationError("structured_input_modified_during_run")
-        final = output_root / run_id
-        final_state = directory_state(final)
-        if final_state == "directory":
-            existing = final / filename
-            try:
-                matches = (
-                    read_regular_bytes(existing) == payload
-                    and {path.name for path in final.iterdir()} == {filename}
-                )
-            except (OSError, RuntimeError):
-                matches = False
-            if not matches:
-                raise PublicationError("existing_run_bundle_hash_mismatch")
-            shutil.rmtree(staging)
-        elif final_state == "missing":
-            os.replace(staging, final)
-        else:
-            raise PublicationError("existing_run_bundle_hash_mismatch")
-        published = final / filename
-        if read_regular_bytes(published) != payload:
-            raise PublicationError("published_result_hash_mismatch")
-        return published
-    except PublicationError:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    except (OSError, RuntimeError):
-        shutil.rmtree(staging, ignore_errors=True)
-        raise PublicationError("output_path_invalid") from None
 
 
 def _failed_run(

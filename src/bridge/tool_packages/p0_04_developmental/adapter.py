@@ -2,11 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
-import os
-from pathlib import Path
 import re
-import shutil
-from uuid import uuid4
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
@@ -14,9 +10,8 @@ from bridge.tool_packages._structured_runtime import (
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
-    inputs_unchanged,
     load_structured_inputs,
-    read_regular_bytes,
+    publish_single_json,
     single_object,
 )
 from bridge.tool_packages.p0_03_target_regional.executor import parse_composition
@@ -68,12 +63,6 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
 EVIDENCE_REF = re.compile(r"^evidence:[A-Za-z0-9._:-]+$")
 CELL_STATE_PROFILE_REF = re.compile(r"^cell-state-profile:[A-Za-z0-9._:-]+$")
 QC_PROFILE_REF = re.compile(r"^qc-profile:[A-Za-z0-9._:-]+$")
-
-
-class PublicationError(ValueError):
-    def __init__(self, reason_code: str) -> None:
-        super().__init__(reason_code)
-        self.reason_code = reason_code
 
 
 @dataclass(frozen=True)
@@ -153,12 +142,13 @@ class DevelopmentalCompatibilityAdapter:
 
         payload = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
         try:
-            output_file = _publish_result(
+            output_file = publish_single_json(
                 request=request,
                 run_id=run_id,
+                filename="developmental_compatibility_result.json",
                 payload=payload,
             )
-        except PublicationError as exc:
+        except StructuredInputError as exc:
             return _failed_run(
                 request,
                 spec,
@@ -329,55 +319,6 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
 
 def _input_version(request: ToolRequestV2, role: str) -> str:
     return next(ref.object_version for ref in request.object_inputs if ref.role == role)
-
-
-def _publish_result(
-    *, request: ToolRequestV2, run_id: str, payload: bytes
-) -> Path:
-    output_root = request.output_dir
-    if directory_state(output_root) == "other":
-        raise PublicationError("output_path_invalid")
-    try:
-        output_root.mkdir(parents=True, exist_ok=True)
-    except (OSError, RuntimeError):
-        raise PublicationError("output_path_invalid") from None
-    if directory_state(output_root) != "directory":
-        raise PublicationError("output_path_invalid")
-    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    filename = "developmental_compatibility_result.json"
-    try:
-        staging.mkdir(mode=0o700)
-        (staging / filename).write_bytes(payload)
-        if not inputs_unchanged(request.object_inputs):
-            raise PublicationError("structured_input_modified_during_run")
-        final = output_root / run_id
-        final_state = directory_state(final)
-        if final_state == "directory":
-            existing = final / filename
-            try:
-                matches = (
-                    read_regular_bytes(existing) == payload
-                    and {path.name for path in final.iterdir()} == {filename}
-                )
-            except (OSError, RuntimeError):
-                matches = False
-            if not matches:
-                raise PublicationError("existing_run_bundle_hash_mismatch")
-            shutil.rmtree(staging)
-        elif final_state == "missing":
-            os.replace(staging, final)
-        else:
-            raise PublicationError("existing_run_bundle_hash_mismatch")
-        published = final / filename
-        if read_regular_bytes(published) != payload:
-            raise PublicationError("published_result_hash_mismatch")
-        return published
-    except PublicationError:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    except (OSError, RuntimeError):
-        shutil.rmtree(staging, ignore_errors=True)
-        raise PublicationError("output_path_invalid") from None
 
 
 def _failed_run(
