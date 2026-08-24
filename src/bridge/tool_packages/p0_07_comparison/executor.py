@@ -240,13 +240,17 @@ def _summarize_metric(
             reasons.add("metric_missing_for_preparation")
         elif metric.unit != rule.unit:
             reasons.add("metric_unit_mismatch")
-        elif metric.evidence_state not in rule.eligible_evidence_states:
-            reasons.add("metric_evidence_state_not_eligible")
-        elif metric.value is None:
-            reasons.add("metric_value_unavailable")
         else:
-            values.append(float(metric.value))
-            evidence_refs.update(metric.evidence_refs)
+            eligible = True
+            if metric.evidence_state not in rule.eligible_evidence_states:
+                reasons.add("metric_evidence_state_not_eligible")
+                eligible = False
+            if metric.value is None:
+                reasons.add("metric_value_unavailable")
+                eligible = False
+            if eligible:
+                values.append(float(metric.value))
+                evidence_refs.update(metric.evidence_refs)
     return (
         CaseMetricSummary(
             product_case_ref=case.product_case_ref,
