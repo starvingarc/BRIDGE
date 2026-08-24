@@ -141,6 +141,9 @@ current package possesses identity, signature or public-release authority.
   required before those gates can be reopened.
 - Semantic ReportDraft authoring and P0-09-to-P0-10 orchestration are outside the
   implemented P0 package chain.
+- Clean-wheel installation and exact per-run wheel hashes are verified, but
+  byte-identical wheel reproduction across independent build contexts is not
+  currently a repository gate and is not claimed by this review.
 - P0-12 lacks a typed GraftCase binding actual specimen, assay, sorting and host
   metadata. Assay applicability therefore remains `not_assessed`.
 - StateRoleMap, DevelopmentWindowSpec, program definitions, reference choices,
