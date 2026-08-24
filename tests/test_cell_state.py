@@ -285,6 +285,14 @@ def _configure_qc_catalog(
                     "sample_id": "sample-test",
                     "capture_id": "capture-test",
                     "sample_or_preparation_ref": sample_or_preparation_ref,
+                    "analysis_unit_kind": "sample",
+                    "independence_group_kind": "sample",
+                    "unit_identity_namespace_ref": (
+                        "biological-unit-namespace:test@1.0.0"
+                    ),
+                    "independence_scope_ref": (
+                        "independence-scope:cell-state-test@1.0.0"
+                    ),
                 },
             )
         ],

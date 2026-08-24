@@ -24,9 +24,13 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
 )
 from bridge.toolkit.registry import ToolRegistry
+from tests.p0_biological_units import bind_reviewed_biological_units
 
 
 ROLE_SCHEMAS = {
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1"
+    ),
     "product_case": "bridge://schemas/product-case/v0.1",
     "product_definition_card": "bridge://schemas/product-definition-card/v0.1",
     "state_role_map": "bridge://schemas/state-role-map/v0.1",
@@ -263,6 +267,7 @@ def _bind_upstream_profiles(payloads: dict[str, dict]) -> None:
         "sample_or_preparation_ref": "preparation:demo@1.0.0",
         "selection_spec_ref": "QC-scRNA-candidate-v0.1@0.1.0",
     }
+    bind_reviewed_biological_units(payloads, view)
     qc = payloads["qc_readiness_profile"]
     qc["selected_data_view"] = view
     qc_raw = json.dumps(

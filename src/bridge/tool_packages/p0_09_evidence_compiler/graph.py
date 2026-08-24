@@ -367,7 +367,11 @@ def build_graph_rows(
             evidence_nodes[external.evidence_ref] = external_node_id
             claim = claims_by_ref[external.comparison_claim_ref.ref]
             family = families_by_ref[external.evidence_family_ref.ref]
-            profile = profiles_by_input_id[external.sufficiency_profile_input_id]
+            if external.resolved_sufficiency_profile_ref is None:
+                raise ValueError("graph_invariant_failed")
+            profile = profiles_by_input_id[
+                external.resolved_sufficiency_profile_ref.ref
+            ]
             claim_node = add_owned(
                 object_id=claim.claim_id,
                 object_version=claim.version,

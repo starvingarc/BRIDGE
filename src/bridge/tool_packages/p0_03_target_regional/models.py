@@ -12,6 +12,8 @@ from pydantic import (
 )
 
 from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitAssignment,
+    BiologicalUnitManifest,
     CompositionView,
     OBJECT_ID_PATTERN,
     ProductCase,
@@ -125,6 +127,23 @@ class TargetRegionalAssessmentSpec(FrozenModel):
         _unique(value, "configured list")
         return value
 
+    @model_validator(mode="after")
+    def role_ontology_is_fixed(self) -> Self:
+        if set(self.regional_denominator_lineage_roles) != {
+            LineageRole.TARGET,
+            LineageRole.ACCEPTABLE_ADJACENT,
+        }:
+            raise ValueError(
+                "regional denominator must be target plus acceptable_adjacent"
+            )
+        if set(self.whole_product_target_region_roles) != {
+            RegionalRole.TARGET_REGION
+        }:
+            raise ValueError(
+                "whole-product target-region numerator must use target_region"
+            )
+        return self
+
     @property
     def ref(self) -> VersionedObjectRef:
         return VersionedObjectRef(
@@ -183,6 +202,7 @@ class InputChecksumBindings(FrozenModel):
     target_regional_assessment_spec: str = Field(pattern=SHA256_PATTERN)
     cell_state_evidence_profile: str = Field(pattern=SHA256_PATTERN)
     qc_readiness_profile: str = Field(pattern=SHA256_PATTERN)
+    biological_unit_manifest: str = Field(pattern=SHA256_PATTERN)
 
 
 class TargetRegionalEvidenceResult(FrozenModel):
@@ -286,6 +306,10 @@ class TargetRegionalEvidenceResult(FrozenModel):
 
 
 PUBLIC_SCHEMA_MODELS = {
+    "bridge://schemas/biological-unit-assignment/v0.1": (
+        BiologicalUnitAssignment
+    ),
+    "bridge://schemas/biological-unit-manifest/v0.1": BiologicalUnitManifest,
     "bridge://schemas/product-case/v0.1": ProductCase,
     "bridge://schemas/product-definition-card/v0.1": ProductDefinitionCard,
     "bridge://schemas/state-role-map/v0.1": StateRoleMap,

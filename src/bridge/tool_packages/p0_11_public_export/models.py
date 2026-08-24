@@ -26,10 +26,10 @@ from bridge.toolkit.contracts import EvidenceState, FrozenModel
 
 
 ReasonCode = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
-PublicClaimId = Annotated[
-    str, Field(pattern=r"^public-claim:[A-Za-z0-9._:-]+$")
+ReviewClaimId = Annotated[
+    str, Field(pattern=r"^review-claim:[A-Za-z0-9._:-]+$")
 ]
-PlainPublicText = Annotated[str, Field(min_length=1, max_length=4000)]
+PlainReviewText = Annotated[str, Field(min_length=1, max_length=4000)]
 LOCAL_USER_ROOT = "/" + "Users/"
 MACHINE_REFERENCE = re.compile(
     r"(?i)(?:" + re.escape(LOCAL_USER_ROOT) + r"|/data[12]/|\\Users\\|file\s*:|"
@@ -38,13 +38,13 @@ MACHINE_REFERENCE = re.compile(
 )
 
 
-def _plain_public_text(value: str) -> str:
+def _plain_review_text(value: str) -> str:
     if (
         not value.strip()
         or any(marker in value for marker in ("\n", "\r", "\x00"))
         or FREE_MARKUP.search(value)
     ):
-        raise ValueError("public text must be one plain paragraph")
+        raise ValueError("review text must be one plain paragraph")
     return value
 
 
@@ -54,24 +54,26 @@ def _unique(values: list[Any], field: str) -> list[Any]:
     return values
 
 
-class ExportState(StrEnum):
+class ProjectionState(StrEnum):
     REVIEW_REQUIRED = "review_required"
 
 
-class PublicClaimSelection(FrozenModel):
+class ReviewClaimSelection(FrozenModel):
     source_claim_id: str = Field(pattern=r"^claim-block:[A-Za-z0-9._:-]+$")
-    public_claim_id: PublicClaimId
-    public_case_label: PlainPublicText
+    review_claim_id: ReviewClaimId
+    review_case_label: PlainReviewText
 
-    _public_case_label_is_plain = field_validator("public_case_label")(
-        _plain_public_text
+    _review_case_label_is_plain = field_validator("review_case_label")(
+        _plain_review_text
     )
 
 
-class PublicExportSpec(FrozenModel):
+class ReviewProjectionSpec(FrozenModel):
     object_version: Literal["0.1.0"]
-    export_spec_id: str = Field(pattern=r"^public-export-spec:[A-Za-z0-9._:-]+$")
-    export_spec_version: str = Field(pattern=VERSION_PATTERN)
+    projection_spec_id: str = Field(
+        pattern=r"^review-projection-spec:[A-Za-z0-9._:-]+$"
+    )
+    projection_spec_version: str = Field(pattern=VERSION_PATTERN)
     source_report_ref: str = Field(
         pattern=r"^report:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$"
     )
@@ -87,14 +89,14 @@ class PublicExportSpec(FrozenModel):
         min_length=1, json_schema_extra={"uniqueItems": True}
     )
     allow_claims_without_evidence_state: StrictBool
-    selections: list[PublicClaimSelection] = Field(min_length=1)
-    public_source_accessions: list[str] = Field(
+    selections: list[ReviewClaimSelection] = Field(min_length=1)
+    source_accessions: list[str] = Field(
         default_factory=list, json_schema_extra={"uniqueItems": True}
     )
     prohibited_literals: list[str] = Field(
         min_length=1, json_schema_extra={"uniqueItems": True}
     )
-    candidate_policy: Literal["human_confirmation_required"]
+    review_policy: Literal["human_review_required"]
 
     @field_validator("allowed_claim_types", "allowed_evidence_states")
     @classmethod
@@ -104,21 +106,21 @@ class PublicExportSpec(FrozenModel):
     @field_validator("selections")
     @classmethod
     def selections_are_unique(
-        cls, value: list[PublicClaimSelection]
-    ) -> list[PublicClaimSelection]:
+        cls, value: list[ReviewClaimSelection]
+    ) -> list[ReviewClaimSelection]:
         _unique([item.source_claim_id for item in value], "source claim IDs")
-        _unique([item.public_claim_id for item in value], "public claim IDs")
+        _unique([item.review_claim_id for item in value], "review claim IDs")
         return value
 
-    @field_validator("public_source_accessions")
+    @field_validator("source_accessions")
     @classmethod
     def accessions_are_public_identifiers(cls, value: list[str]) -> list[str]:
-        _unique(value, "public source accessions")
+        _unique(value, "source accessions")
         if any(
             not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/-]{1,159}", item)
             for item in value
         ):
-            raise ValueError("public source accessions must be explicit identifiers")
+            raise ValueError("source accessions must be explicit identifiers")
         return value
 
     @field_validator("prohibited_literals")
@@ -132,12 +134,12 @@ class PublicExportSpec(FrozenModel):
     @property
     def ref(self) -> VersionedObjectRef:
         return VersionedObjectRef(
-            object_id=self.export_spec_id,
-            object_version=self.export_spec_version,
+            object_id=self.projection_spec_id,
+            object_version=self.projection_spec_version,
         )
 
 
-class PublicValueBinding(FrozenModel):
+class ReviewValueBinding(FrozenModel):
     binding_index: StrictInt = Field(ge=0)
     source_field: Literal[
         "value", "numerator", "denominator", "interval_lower", "interval_upper"
@@ -146,44 +148,48 @@ class PublicValueBinding(FrozenModel):
     raw_unit: str | None = Field(default=None, pattern=PLAIN_UNIT_PATTERN)
 
 
-class PublicSafeClaim(FrozenModel):
-    public_claim_id: PublicClaimId
-    public_case_label: PlainPublicText
+class ReviewProjectedClaim(FrozenModel):
+    review_claim_id: ReviewClaimId
+    review_case_label: PlainReviewText
     claim_type: ClaimType
-    text: PlainPublicText
+    text: PlainReviewText
     language: ReportLanguage
     evidence_state: EvidenceState | None
     comparison_mode: ComparisonMode
-    value_bindings: list[PublicValueBinding]
+    value_bindings: list[ReviewValueBinding]
 
-    _public_case_label_is_plain = field_validator("public_case_label")(
-        _plain_public_text
+    _review_case_label_is_plain = field_validator("review_case_label")(
+        _plain_review_text
     )
-    _text_is_plain = field_validator("text")(_plain_public_text)
+    _text_is_plain = field_validator("text")(_plain_review_text)
 
 
-class PublicExportInputChecksums(FrozenModel):
+class ReviewProjectionInputChecksums(FrozenModel):
     report_draft: str = Field(pattern=SHA256_PATTERN)
     claim_verification_result: str = Field(pattern=SHA256_PATTERN)
-    public_export_spec: str = Field(pattern=SHA256_PATTERN)
+    claim_verifier_run: str = Field(pattern=SHA256_PATTERN)
+    review_projection_spec: str = Field(pattern=SHA256_PATTERN)
 
 
-class PublicSafeReport(FrozenModel):
+class ContractValidatedReviewProjection(FrozenModel):
     object_version: Literal["0.1.0"]
-    public_report_id: str = Field(pattern=r"^public-report:[a-f0-9]{16}$")
-    public_report_version: Literal["0.1.0"]
+    projection_id: str = Field(pattern=r"^review-projection:[a-f0-9]{16}$")
+    projection_version: Literal["0.1.0"]
     tool_id: Literal["P0-11"]
     tool_version: str = Field(pattern=VERSION_PATTERN)
     source_report_hash: str = Field(pattern=SHA256_PATTERN)
     claim_verification_sha256: str = Field(pattern=SHA256_PATTERN)
-    export_spec_ref: VersionedObjectRef
-    input_sha256_by_role: PublicExportInputChecksums
+    projection_spec_ref: VersionedObjectRef
+    input_sha256_by_role: ReviewProjectionInputChecksums
     language: ReportLanguage
-    public_source_accessions: list[str] = Field(
+    source_accessions: list[str] = Field(
         json_schema_extra={"uniqueItems": True}
     )
-    claims: list[PublicSafeClaim] = Field(min_length=1)
-    export_state: ExportState
+    claims: list[ReviewProjectedClaim] = Field(min_length=1)
+    producer_authentication_state: Literal["not_available"]
+    release_authority_state: Literal["not_configured"]
+    distribution_state: Literal["internal_review_only"]
+    projection_state: ProjectionState
     checks: list[
         Literal[
             "allowlist_projection_passed",
@@ -192,23 +198,23 @@ class PublicSafeReport(FrozenModel):
         ]
     ] = Field(min_length=3, max_length=3, json_schema_extra={"uniqueItems": True})
     reason_codes: list[ReasonCode] = Field(json_schema_extra={"uniqueItems": True})
-    candidate_hash: str = Field(pattern=SHA256_PATTERN)
+    projection_hash: str = Field(pattern=SHA256_PATTERN)
 
-    @field_validator("public_source_accessions", "reason_codes")
+    @field_validator("source_accessions", "reason_codes")
     @classmethod
     def string_lists_are_unique_sorted(cls, value: list[str]) -> list[str]:
         if value != sorted(set(value)):
-            raise ValueError("public report lists must be unique and sorted")
+            raise ValueError("review projection lists must be unique and sorted")
         return value
 
     @field_validator("claims")
     @classmethod
     def claims_are_unique_sorted(
-        cls, value: list[PublicSafeClaim]
-    ) -> list[PublicSafeClaim]:
-        ids = [item.public_claim_id for item in value]
+        cls, value: list[ReviewProjectedClaim]
+    ) -> list[ReviewProjectedClaim]:
+        ids = [item.review_claim_id for item in value]
         if ids != sorted(set(ids)):
-            raise ValueError("public claims must be unique and sorted")
+            raise ValueError("review claims must be unique and sorted")
         return value
 
     @field_validator("checks")
@@ -220,27 +226,31 @@ class PublicSafeReport(FrozenModel):
             "bounded_machine_reference_guard_passed",
         }
         if set(value) != expected:
-            raise ValueError("public report requires all deterministic checks")
+            raise ValueError("review projection requires all deterministic checks")
         return value
 
     @model_validator(mode="after")
     def state_and_hash_are_coherent(self) -> Self:
-        if self.export_state is not ExportState.REVIEW_REQUIRED:
-            raise ValueError("public export requires review while authority is absent")
-        if "public_release_authority_not_configured" not in self.reason_codes:
-            raise ValueError("public export must disclose missing release authority")
+        if self.projection_state is not ProjectionState.REVIEW_REQUIRED:
+            raise ValueError("projection requires review")
+        required_reasons = {
+            "producer_provenance_unverified",
+            "public_release_authority_not_configured",
+        }
+        if not required_reasons.issubset(self.reason_codes):
+            raise ValueError("projection must disclose unavailable producer and authority")
         if contains_machine_reference(self.model_dump(mode="json")):
             raise ValueError("bounded machine reference remains")
-        if self.candidate_hash != public_safe_report_hash(
+        if self.projection_hash != review_projection_hash(
             self.model_dump(mode="json")
         ):
-            raise ValueError("candidate_hash does not match public report")
+            raise ValueError("projection_hash does not match review projection")
         return self
 
 
-def public_safe_report_hash(payload: dict[str, Any]) -> str:
+def review_projection_hash(payload: dict[str, Any]) -> str:
     content = dict(payload)
-    content.pop("candidate_hash", None)
+    content.pop("projection_hash", None)
     return hashlib.sha256(canonical_json_bytes(content)).hexdigest()
 
 
@@ -257,6 +267,8 @@ def contains_machine_reference(value: Any) -> bool:
 
 
 PUBLIC_SCHEMA_MODELS = {
-    "bridge://schemas/public-export-spec/v0.1": PublicExportSpec,
-    "bridge://schemas/public-safe-report/v0.1": PublicSafeReport,
+    "bridge://schemas/review-projection-spec/v0.1": ReviewProjectionSpec,
+    "bridge://schemas/contract-validated-review-projection/v0.1": (
+        ContractValidatedReviewProjection
+    ),
 }

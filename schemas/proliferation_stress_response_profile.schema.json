@@ -8,6 +8,15 @@
       "title": "AnalysisScope",
       "type": "string"
     },
+    "BiologicalUnitLineageState": {
+      "enum": [
+        "declared",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "BiologicalUnitLineageState",
+      "type": "string"
+    },
     "DeferredAssessmentProfile": {
       "additionalProperties": false,
       "properties": {
@@ -45,6 +54,11 @@
     "ProgramInputChecksums": {
       "additionalProperties": false,
       "properties": {
+        "biological_unit_manifest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Biological Unit Manifest",
+          "type": "string"
+        },
         "developmental_compatibility_result": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Developmental Compatibility Result",
@@ -82,7 +96,8 @@
         "program_assessment_spec",
         "program_evidence_bundle",
         "developmental_compatibility_result",
-        "qc_readiness_profile"
+        "qc_readiness_profile",
+        "biological_unit_manifest"
       ],
       "title": "ProgramInputChecksums",
       "type": "object"
@@ -150,6 +165,9 @@
           "title": "Included",
           "type": "boolean"
         },
+        "independence_group_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
         "method_ref": {
           "$ref": "#/$defs/VersionedObjectRef"
         },
@@ -211,6 +229,7 @@
         "observation_id",
         "evidence_family_id",
         "analysis_unit_ref",
+        "independence_group_ref",
         "metric_name",
         "unit",
         "analysis_scope",
@@ -232,6 +251,14 @@
       "properties": {
         "analysis_scope": {
           "$ref": "#/$defs/AnalysisScope"
+        },
+        "biological_unit_lineage_state": {
+          "$ref": "#/$defs/BiologicalUnitLineageState"
+        },
+        "descriptive_analysis_unit_count": {
+          "minimum": 0,
+          "title": "Descriptive Analysis Unit Count",
+          "type": "integer"
         },
         "evidence_refs": {
           "items": {
@@ -337,8 +364,10 @@
         "reference_lower",
         "reference_upper",
         "observations",
+        "descriptive_analysis_unit_count",
         "included_biological_unit_count",
         "triggering_biological_unit_count",
+        "biological_unit_lineage_state",
         "review_flag_state",
         "evidence_refs",
         "reason_codes"
@@ -509,6 +538,12 @@
     "assessment_spec_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
     },
+    "biological_unit_lineage_state": {
+      "$ref": "#/$defs/BiologicalUnitLineageState"
+    },
+    "biological_unit_manifest_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
     "developmental_result_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
     },
@@ -629,6 +664,8 @@
     "evidence_bundle_ref",
     "developmental_result_ref",
     "qc_profile_ref",
+    "biological_unit_manifest_ref",
+    "biological_unit_lineage_state",
     "input_sha256_by_role",
     "result_state",
     "program_results",

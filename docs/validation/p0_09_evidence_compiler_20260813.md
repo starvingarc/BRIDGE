@@ -89,3 +89,12 @@ Module implementation:
 - documentation-only request `examples/requests/p0_09_evidence_compiler.json`
 
 The focused suite verifies fixed Parquet columns, canonical JSON, strict scientific numeric parsing, semantic object hashes, stable IDs, immutable staging/publication, content-addressed source/base graph reconstruction, authoritative artifact checksums, canonical fact-to-graph projection and deterministic query ordering. Public and packaged Schema copies are byte-identical; the exact final wheel passed the installed-runtime gates.
+
+## Peer-review closeout addendum
+
+The combined closeout requires full P0-08 run results and exact v0.2
+MeasurementResult inputs. `EvidenceCandidate` no longer carries caller-restated
+numeric/unit/denominator/interval or producer fields; the compiler resolves
+them from the checksummed measurement and verifies the P0-08 binding. Final
+exact-head counts and wheel evidence are recorded in the stack closeout
+validation.

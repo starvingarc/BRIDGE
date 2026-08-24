@@ -31,7 +31,7 @@
 
 - [Configurable runtime closeout validation, 2026-08-24](validation/runtime_single_json_closeout_20260824.md)
 - [P0-12 configurable graft assessment candidate validation, 2026-08-24](validation/p0_12_graft_assessment_20260824.md)
-- [P0-11 public-safe export candidate validation, 2026-08-24](validation/p0_11_public_safe_export_20260824.md)
+- [P0-11 internal review projection validation, 2026-08-24](validation/p0_11_internal_review_projection_20260824.md)
 - [P0-07 product comparison candidate validation, 2026-08-24](validation/p0_07_product_comparison_20260824.md)
 - [P0-06 proliferation and stress response candidate validation, 2026-08-24](validation/p0_06_proliferation_stress_20260824.md)
 - [P0-05 off-target evidence candidate validation, 2026-08-24](validation/p0_05_off_target_20260824.md)

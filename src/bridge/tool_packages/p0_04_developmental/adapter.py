@@ -15,6 +15,7 @@ from bridge.tool_packages._structured_runtime import (
     single_object,
 )
 from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitManifest,
     ProductCase,
     ProductDefinitionCard,
     parse_composition,
@@ -61,6 +62,10 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "qc_readiness_profile": (
         "bridge://schemas/qc-readiness-profile/v0.1",
         QCReadinessProfile,
+    ),
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        BiologicalUnitManifest,
     ),
 }
 EVIDENCE_REF = re.compile(r"^evidence:[A-Za-z0-9._:-]+$")
@@ -267,10 +272,17 @@ def _binding_reasons(
     qc_profile = single_object(
         request, loaded, "qc_readiness_profile", QCReadinessProfile
     )
+    biological_unit_manifest = single_object(
+        request,
+        loaded,
+        "biological_unit_manifest",
+        BiologicalUnitManifest,
+    )
     reasons = profile_lineage_reasons(
         product_case=product_case,
         cell_state_profile=cell_state_profile,
         qc_profile=qc_profile,
+        biological_unit_manifest=biological_unit_manifest,
         input_sha256_by_role={
             ref.role: ref.sha256 for ref in request.object_inputs
         },

@@ -53,7 +53,7 @@ scientific state, and all assessed outputs remain `shadow`.
 
 ## Structured inputs
 
-P0-03 accepts exactly six immutable `application/json` objects. Each
+P0-03 accepts exactly seven immutable `application/json` objects. Each
 `StructuredInputRef` requires a unique input ID, absolute regular-file path,
 matching Schema URI and object version, and exact lowercase SHA-256 checksum.
 
@@ -65,6 +65,7 @@ matching Schema URI and object version, and exact lowercase SHA-256 checksum.
 | `target_regional_assessment_spec` | `bridge://schemas/target-regional-assessment-spec/v0.1` | ProductDefinition-bound composition views, label levels and denominator mechanics |
 | `cell_state_evidence_profile` | `bridge://schemas/cell-state-evidence-profile/v0.1` | P0-02 composition records and shadow evidence references |
 | `qc_readiness_profile` | `bridge://schemas/qc-readiness-profile/v0.1` | P0-01 assay/readiness and evidence references |
+| `biological_unit_manifest` | `bridge://schemas/biological-unit-manifest/v0.1` | Exact analysis-unit assignments, independence groups, scope and review state bound by the ProductCase |
 
 Expression assets, top-level MeasurementSpec parameters, arbitrary request
 parameters and additional object roles are refused. The module does not rerun
@@ -74,20 +75,21 @@ cell annotation or read an H5AD file.
 
 Before execution, the adapter verifies:
 
-1. all six roles, Schemas, object versions and checksums;
+1. all seven roles, Schemas, object versions and checksums;
 2. ProductCase to ProductDefinitionCard binding;
 3. ProductDefinitionCard to StateRoleMap binding in both directions;
 4. assessment-spec to ProductDefinitionCard and StateRoleMap to annotation-vocabulary binding;
 5. ProductCase, QC and Cell-State assay agreement;
 6. ProductCase MeasurementSpec identity and exact P0-01 QC-selected
    `DataViewBinding` lineage against the P0-02 profile;
-7. QC readiness is not blocked, not assessed or not applicable;
-8. every upstream composition row has a coherent nonnegative count,
+7. ProductCase biological-unit manifest reference, checksum, scope and unit/group memberships exactly match the supplied manifest;
+8. QC readiness is not blocked, not assessed or not applicable;
+9. every upstream composition row has a coherent nonnegative count,
    denominator and fraction, and its configured denominator label contains no
    machine-local path or credential-like content;
-9. evidence IDs use the `evidence:` namespace, while upstream profiles use
+10. evidence IDs use the `evidence:` namespace, while upstream profiles use
    `cell-state-profile:` and `qc-profile:` respectively;
-10. the deterministic request uses the fixed zero random-seed value and a usable output directory.
+11. the deterministic request uses the fixed zero random-seed value and a usable output directory.
 
 A failed envelope or cross-binding returns a typed failed `ToolRunV2` with no
 result or artifacts. A complete contract with no requested composition channel
@@ -118,7 +120,7 @@ A successful or partial run publishes one immutable
 
 - ProductCase, ProductDefinitionCard, StateRoleMap, assessment-spec, P0-02 and
   QC references;
-- SHA-256 bindings for all six input roles without caller-local input IDs or
+- SHA-256 bindings for all seven input roles without caller-local input IDs or
   paths;
 - target-identity channels with role numerator, denominator view, denominator and fraction;
 - regional-fidelity channels with the original denominator view, explicit target-related denominator and

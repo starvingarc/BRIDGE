@@ -4,7 +4,9 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 from typing import Any
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
@@ -16,6 +18,10 @@ from bridge.tool_packages.p0_01_input_qc.io import (
     validate_expression_object,
 )
 from bridge.tool_packages.p0_02_cell_state.measurement_specs import load_measurement_spec
+from bridge.tool_packages.p0_02_cell_state.freeze import (
+    BenchmarkError,
+    validate_release_bundle,
+)
 from bridge.tool_packages.p0_02_cell_state.metrics import (
     composition_records,
     hierarchy_restricted_summary,
@@ -40,13 +46,21 @@ from bridge.tool_packages.p0_02_cell_state.visualization import (
     render_marker_evidence,
     render_reference_support,
 )
+from bridge.tool_packages._structured_runtime import (
+    directory_content_hashes,
+    directory_state,
+    read_regular_bytes,
+    snapshot_path,
+)
 from bridge.toolkit.contracts import (
     ArtifactManifest,
     CellStateEvidenceProfile,
     EvidenceState,
     ExecutionState,
     MeasurementResult,
+    MeasurementSpec,
     ScoreState,
+    CellStateReleaseManifest,
     ToolPackageSpec,
     ToolRequest,
     ToolRun,
@@ -56,51 +70,145 @@ from bridge.toolkit.contracts import (
 
 def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
     asset = request.assets[0]
-    input_hash = sha256_path(asset.path)
-    if asset.checksum is not None and asset.checksum != input_hash:
-        return _failed_run(request, spec, input_hash, "input_checksum_mismatch")
+    if _output_overlaps_input(asset.path, request.output_dir):
+        return _failed_run(request, spec, None, "output_dir_overlaps_input_asset")
+    output_root = request.output_dir.resolve()
+    if directory_state(output_root) == "other":
+        return _failed_run(request, spec, None, "output_path_invalid")
     try:
-        qc_binding = validate_upstream_qc(asset, input_hash)
-    except UpstreamQCError as exc:
-        return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
-    measurement_spec = load_measurement_spec(request.measurement_spec_ref)
-    if measurement_spec is None:
-        return _failed_run(request, spec, input_hash, "measurement_spec_not_found")
-    release = None
-    if measurement_spec.release_manifest_ref:
-        try:
-            from bridge.tool_packages.p0_02_cell_state.freeze import resolve_release_bundle
+        output_root.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return _failed_run(request, spec, None, "output_path_invalid")
+    if directory_state(output_root) != "directory":
+        return _failed_run(request, spec, None, "output_path_invalid")
 
-            release = resolve_release_bundle(measurement_spec.release_manifest_ref)
-            if release.measurement_spec_ref != measurement_spec.measurement_spec_id:
-                raise ReferenceError(
-                    "cell_state_release_measurement_spec_mismatch",
-                    release.release_manifest_id,
-                )
-            if release.reference_snapshot_ref != measurement_spec.reference_refs[0]:
-                raise ReferenceError(
-                    "cell_state_release_reference_mismatch",
-                    release.release_manifest_id,
-                )
-            if (
-                release.runtime_tool_version != spec.version
-                or release.environment_spec_ref != spec.environment_spec_id
-            ):
-                raise ReferenceError(
-                    "cell_state_release_runtime_mismatch", release.release_manifest_id
-                )
-        except ValueError as exc:
+    workspace = output_root / f".p0-02-work-{uuid4().hex}"
+    try:
+        workspace.mkdir(mode=0o700)
+        asset_snapshot = workspace / "input" / asset.path.name
+        snapshot_path(asset.path, asset_snapshot)
+        input_hash = sha256_path(asset_snapshot)
+        if asset.checksum is not None and asset.checksum != input_hash:
+            return _failed_run(request, spec, input_hash, "input_checksum_mismatch")
+
+        measurement_spec = load_measurement_spec(request.measurement_spec_ref)
+        if measurement_spec is None:
             return _failed_run(
                 request,
                 spec,
                 input_hash,
-                getattr(exc, "reason_code", "cell_state_release_invalid"),
-                str(exc),
+                "measurement_spec_not_found",
+            )
+        release = _snapshot_release_bundle(
+            measurement_spec,
+            workspace / "release",
+        )
+        qc_catalog_snapshot = _snapshot_qc_inputs(asset, workspace / "qc")
+        source_reference_root = resolve_reference_snapshot(
+            measurement_spec.reference_refs[0]
+        )
+        reference_snapshot_root = workspace / "reference"
+        snapshot_path(source_reference_root, reference_snapshot_root)
+        snapshot_request = request.model_copy(
+            update={
+                "assets": [asset.model_copy(update={"path": asset_snapshot})],
+                "output_dir": workspace / "output",
+            }
+        )
+        run = _run_snapshotted_cell_state_evidence(
+            snapshot_request,
+            spec,
+            qc_catalog_path=qc_catalog_snapshot,
+            reference_snapshot_root=reference_snapshot_root,
+            measurement_spec=measurement_spec,
+            release=release,
+        ).model_copy(update={"request": request})
+        if run.execution_state is not ExecutionState.SUCCEEDED:
+            return run
+        return _publish_snapshotted_run(
+            run=run,
+            request=request,
+            spec=spec,
+            staging_root=snapshot_request.output_dir / run.run_id,
+            output_root=output_root,
+        )
+    except (BenchmarkError, InputAuditError, ReferenceError, UpstreamQCError) as exc:
+        return _failed_run(
+            request,
+            spec,
+            None,
+            exc.reason_code,
+            str(exc),
+        )
+    except (
+        OSError,
+        RuntimeError,
+        KeyError,
+        IndexError,
+        TypeError,
+        json.JSONDecodeError,
+    ) as exc:
+        return _failed_run(
+            request,
+            spec,
+            None,
+            "input_snapshot_failed",
+            str(exc),
+        )
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
+def _run_snapshotted_cell_state_evidence(
+    request: ToolRequest,
+    spec: ToolPackageSpec,
+    *,
+    qc_catalog_path: Path,
+    reference_snapshot_root: Path,
+    measurement_spec: MeasurementSpec,
+    release: CellStateReleaseManifest | None,
+) -> ToolRun:
+    asset = request.assets[0]
+    input_hash = sha256_path(asset.path)
+    if asset.checksum is not None and asset.checksum != input_hash:
+        return _failed_run(request, spec, input_hash, "input_checksum_mismatch")
+    try:
+        qc_binding = validate_upstream_qc(
+            asset,
+            input_hash,
+            catalog_path=qc_catalog_path,
+        )
+    except UpstreamQCError as exc:
+        return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
+    if release is not None:
+        if release.measurement_spec_ref != measurement_spec.measurement_spec_id:
+            return _failed_run(
+                request,
+                spec,
+                input_hash,
+                "cell_state_release_measurement_spec_mismatch",
+            )
+        if release.reference_snapshot_ref != measurement_spec.reference_refs[0]:
+            return _failed_run(
+                request,
+                spec,
+                input_hash,
+                "cell_state_release_reference_mismatch",
+            )
+        if (
+            release.runtime_tool_version != spec.version
+            or release.environment_spec_ref != spec.environment_spec_id
+        ):
+            return _failed_run(
+                request,
+                spec,
+                input_hash,
+                "cell_state_release_runtime_mismatch",
             )
 
     try:
         snapshot_id = measurement_spec.reference_refs[0]
-        snapshot_root = resolve_reference_snapshot(snapshot_id)
+        snapshot_root = reference_snapshot_root
         manifest, vocabulary, marker_cards = load_snapshot_resources(snapshot_root)
         validate_runtime_reference(manifest)
         reference_manifest_hash = sha256_path(snapshot_root / "reference_manifest.json")
@@ -750,11 +858,25 @@ def _run_id(
     reference_hash: str,
     qc_profile_sha256: str,
 ) -> str:
+    asset = request.assets[0]
     payload = json.dumps(
         {
-            "request": request.model_dump(mode="json"),
+            "request_id": request.request_id,
+            "tool_id": request.tool_id,
             "tool_version": spec.version,
             "input_hash": input_hash,
+            "asset_contract": {
+                "asset_id": asset.asset_id,
+                "format": asset.format,
+                "input_level": asset.input_level.value,
+                "matrix_location": asset.matrix_location,
+                "matrix_semantics": asset.matrix_semantics,
+                "assay": asset.assay,
+                "metadata": asset.metadata,
+            },
+            "measurement_spec_ref": request.measurement_spec_ref,
+            "parameters": request.parameters,
+            "random_seed": request.random_seed,
             "reference_hash": reference_hash,
             "qc_profile_sha256": qc_profile_sha256,
         },
@@ -801,3 +923,162 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False, default=str) + "\n",
         encoding="utf-8",
     )
+
+
+def _snapshot_qc_inputs(asset, destination: Path) -> Path:
+    profile_ref = asset.metadata.get("qc_profile_ref")
+    catalog_value = os.environ.get("BRIDGE_QC_PROFILE_CATALOG")
+    if not profile_ref:
+        raise UpstreamQCError("qc_profile_ref_required", "qc_profile_ref")
+    if not catalog_value:
+        raise UpstreamQCError(
+            "qc_profile_catalog_not_configured",
+            str(profile_ref),
+        )
+    catalog_source = Path(catalog_value).expanduser().resolve()
+    catalog = json.loads(read_regular_bytes(catalog_source).decode("utf-8"))
+    record = catalog["profiles"][profile_ref]
+    profile_source = Path(record["path"]).expanduser().resolve()
+    bundle_root = destination / "bundle"
+    snapshot_path(profile_source, bundle_root / "qc_readiness_profile.json")
+    snapshot_path(
+        profile_source.parent / "biological_unit_manifest.json",
+        bundle_root / "biological_unit_manifest.json",
+    )
+    snapshot_path(
+        profile_source.parent / "biological_unit_assignments.parquet",
+        bundle_root / "biological_unit_assignments.parquet",
+    )
+    profile_snapshot = bundle_root / "qc_readiness_profile.json"
+    profile_sha256 = sha256_path(profile_snapshot)
+    if profile_sha256 != record.get("sha256"):
+        raise UpstreamQCError("qc_profile_artifact_invalid", str(profile_ref))
+    snapshot_catalog = {
+        "profiles": {
+            profile_ref: {
+                **record,
+                "path": str(profile_snapshot),
+                "sha256": profile_sha256,
+            }
+        }
+    }
+    destination.mkdir(parents=True, exist_ok=True)
+    catalog_path = destination / "qc_profile_catalog.json"
+    _write_json(catalog_path, snapshot_catalog)
+    return catalog_path
+
+
+def _snapshot_release_bundle(
+    measurement_spec: MeasurementSpec,
+    destination: Path,
+) -> CellStateReleaseManifest | None:
+    release_id = measurement_spec.release_manifest_ref
+    if release_id is None:
+        return None
+    root_value = os.environ.get("BRIDGE_CELLSTATE_RELEASE_ROOT")
+    if not root_value:
+        raise BenchmarkError("cell_state_release_root_not_configured")
+    identity = Path(release_id)
+    if (
+        identity.is_absolute()
+        or identity.name != release_id
+        or release_id in {".", ".."}
+    ):
+        raise BenchmarkError("cell_state_release_id_invalid")
+    base = Path(root_value).expanduser().resolve()
+    source_root = (base / identity).resolve()
+    if source_root.parent != base:
+        raise BenchmarkError("cell_state_release_id_invalid")
+    if directory_state(source_root) != "directory":
+        raise BenchmarkError("cell_state_release_not_found", release_id)
+
+    bundle_snapshot = destination / "bundle"
+    snapshot_path(source_root, bundle_snapshot)
+    reviewer_value = os.environ.get("BRIDGE_CELLSTATE_REVIEWER_REGISTRY")
+    if not reviewer_value:
+        raise BenchmarkError("trusted_reviewer_registry_not_configured")
+    reviewer_snapshot = destination / "reviewer_registry.json"
+    snapshot_path(Path(reviewer_value).expanduser().resolve(), reviewer_snapshot)
+    release = validate_release_bundle(
+        bundle_snapshot,
+        reviewer_registry_path=reviewer_snapshot,
+    )
+    if release.release_manifest_id != release_id:
+        raise BenchmarkError("cell_state_release_id_mismatch")
+    return release
+
+
+def _publish_snapshotted_run(
+    *,
+    run: ToolRun,
+    request: ToolRequest,
+    spec: ToolPackageSpec,
+    staging_root: Path,
+    output_root: Path,
+) -> ToolRun:
+    final_root = output_root / run.run_id
+    try:
+        published_artifacts = [
+            artifact.model_copy(
+                update={
+                    "path": final_root / artifact.path.relative_to(staging_root)
+                }
+            )
+            for artifact in run.artifacts
+            if artifact.kind != "manifest"
+        ]
+        manifest_path = staging_root / "artifact_manifest.json"
+        manifest_payload = json.loads(read_regular_bytes(manifest_path).decode("utf-8"))
+        manifest_payload["artifacts"] = [
+            item.model_dump(mode="json") for item in published_artifacts
+        ]
+        _write_json(manifest_path, manifest_payload)
+        manifest_artifact = _artifact(
+            f"artifact:{run.run_id}:manifest",
+            "manifest",
+            manifest_path,
+            run.result.get("evidence_ids", []) if run.result is not None else [],
+        ).model_copy(update={"path": final_root / "artifact_manifest.json"})
+        published_artifacts.append(manifest_artifact)
+
+        final_state = directory_state(final_root)
+        if final_state == "directory":
+            if directory_content_hashes(final_root) != directory_content_hashes(
+                staging_root
+            ):
+                return _failed_run(
+                    request,
+                    spec,
+                    run.input_hash,
+                    "existing_run_bundle_hash_mismatch",
+                )
+        elif final_state == "missing":
+            os.replace(staging_root, final_root)
+        else:
+            return _failed_run(
+                request,
+                spec,
+                run.input_hash,
+                "existing_run_bundle_hash_mismatch",
+            )
+        if directory_content_hashes(final_root) != {
+            artifact.path.relative_to(final_root).as_posix(): artifact.sha256
+            for artifact in published_artifacts
+        }:
+            return _failed_run(
+                request,
+                spec,
+                run.input_hash,
+                "published_result_hash_mismatch",
+            )
+        return run.model_copy(
+            update={"request": request, "artifacts": published_artifacts}
+        )
+    except (OSError, RuntimeError, ValueError):
+        return _failed_run(request, spec, run.input_hash, "output_path_invalid")
+
+
+def _output_overlaps_input(input_path: Path, output_dir: Path) -> bool:
+    resolved_input = input_path.resolve()
+    resolved_output = output_dir.resolve()
+    return resolved_input.is_dir() and resolved_output.is_relative_to(resolved_input)

@@ -53,7 +53,7 @@ provisional or unavailable.
 | P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
 | P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
 | P0-10 Report Claim Verifier | Executable deterministic candidate; `verified` means evidence/package correspondence, not biological truth or public release |
-| P0-11 Public-safe Export | Executable allowlist-first JSON candidate; claims, aliases, evidence states and prohibited literals are policy inputs; human confirmation and file/media export remain unavailable |
+| P0-11 Internal Review Projection | Executable contract-validated internal review projection bound to the exact P0-10 producer run; producer authentication and release authority remain unavailable, so no public export is authorized |
 | P0-12 Optional Graft Assessment | Executable configurable descriptive candidate over precomputed independent-unit evidence; channels, units, eligible states, minimums and intervals are versioned inputs; no expression analysis, graft score or product backfill |
 
 ## Minimal usage

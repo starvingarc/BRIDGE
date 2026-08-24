@@ -7,20 +7,23 @@
 | 日期 | 2026-08-06 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard` |
+| 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard`、`StateRoleMap`、`BiologicalUnitManifest` |
 | 主要输出 | `DevelopmentalCompatibilityProfile`；校准轨另存 `LineageCalibrationRecord` |
 
 ## 0. 当前可执行候选
 
 P0-04 v0.2.0 实现静态双分母组成的最小确定性路径。它通过
 `ToolRequestV2` 读取带 checksum 的 ProductCase、ProductDefinitionCard、
-DevelopmentWindowSpec、CellStateEvidenceProfile 和 QCReadinessProfile，
+StateRoleMap、DevelopmentWindowSpec、CellStateEvidenceProfile、QCReadinessProfile
+和 BiologicalUnitManifest，
 输出一个 DevelopmentalCompatibilityResult。
 
 代码不包含具体发育窗口、状态名称、状态到窗口角色的映射、胎龄换算或阈值。
 这些内容只来自版本化 DevelopmentWindowSpec。当前不运行 reference-stage
 模型、trajectory、pseudotime、真实时间序列统计或 lineage calibration；相关输出
 明确为 `not_assessed` 或 `unavailable`，而不是用占位算法代替。
+BiologicalUnitManifest 必须与 ProductCase 的 ref、checksum、independence
+scope 和 unit/group 成员完全一致；当前静态画像不把 captures 或 cells 当作独立重复。
 
 ## 1. 任务目标与边界
 

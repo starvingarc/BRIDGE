@@ -59,3 +59,11 @@ mechanics, not approval of any biological assignment or scientific release.
 P0-04 remains `candidate`. Static output remains shadow and cannot approve the
 input window, convert D to GW/PCW, infer a trajectory, or support efficacy,
 safety, potency, release or ranking claims.
+
+## Peer-review closeout addendum
+
+The combined closeout adds the exact ProductCase-bound
+`BiologicalUnitManifest` and its checksum/scope/unit/group binding. This change
+closes cross-module lineage ambiguity but does not alter any developmental
+window or promote declared units to biological replicates. Final exact-head
+evidence is recorded in the stack closeout validation.

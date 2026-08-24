@@ -400,7 +400,11 @@ class ExternalCaseEvidenceRef(FrozenModel):
     source_claim_ref: VersionedObjectRef
     comparison_claim_ref: VersionedObjectRef
     evidence_family_ref: VersionedObjectRef
-    sufficiency_profile_input_id: str = Field(min_length=1)
+    sufficiency_result_input_id: str = Field(min_length=1)
+    resolved_sufficiency_profile_ref: VersionedObjectRef | None = Field(
+        default=None,
+        exclude=True,
+    )
     relation: EvidenceRelation
     evidence_state: EvidenceState
     evidence_tier: EvidenceTier
@@ -809,6 +813,51 @@ class EvidenceCompilationBundle(FrozenModel):
 
 
 class EvidenceCandidate(FrozenModel):
+    """Caller-owned semantic mapping for one checksummed measurement.
+
+    Numeric values and producer provenance are deliberately absent.  The compiler
+    resolves those fields from the exact MeasurementResult bound by a full P0-08
+    EvidenceSufficiencyRunResult, so a caller cannot restate or alter scientific
+    observations in the compilation bundle.
+    """
+
+    candidate_id: str = Field(pattern=r"^evidence-candidate:[A-Za-z0-9._:-]+$")
+    product_case_ref: VersionedObjectRef
+    sample_or_preparation_ref: VersionedObjectRef
+    domain_id: P0DomainId
+    measurement_result_input_id: str = Field(min_length=1)
+    sufficiency_result_input_id: str = Field(min_length=1)
+    claim_ref: VersionedObjectRef
+    biological_context: BiologicalContext
+    relation: EvidenceRelation
+    evidence_tier: EvidenceTier
+    applicability: EvidenceApplicability
+    evidence_family_ref: VersionedObjectRef
+    reference_refs: list[VersionedObjectRef] = Field(default_factory=list)
+    prior_refs: list[VersionedObjectRef] = Field(default_factory=list)
+    revision_action: RevisionAction
+    predecessor_ref: str | None = Field(default=None, pattern=EVIDENCE_REF_PATTERN)
+    created_at: datetime
+
+    _created_at_utc = field_validator("created_at")(_aware_utc)
+
+    @field_validator("reference_refs", "prior_refs")
+    @classmethod
+    def unique_refs(cls, value: list[VersionedObjectRef]) -> list[VersionedObjectRef]:
+        return sorted(_unique(value, "reference list"), key=lambda item: item.ref)
+
+    @model_validator(mode="after")
+    def revision_is_coherent(self) -> Self:
+        if self.revision_action is RevisionAction.CREATE and self.predecessor_ref is not None:
+            raise ValueError("create cannot declare predecessor_ref")
+        if self.revision_action is not RevisionAction.CREATE and self.predecessor_ref is None:
+            raise ValueError("revision requires predecessor_ref")
+        return self
+
+
+class ResolvedEvidenceCandidate(FrozenModel):
+    """Compiler-owned candidate after exact source-object resolution."""
+
     model_config = ConfigDict(
         json_schema_extra={
             "allOf": [
@@ -850,7 +899,7 @@ class EvidenceCandidate(FrozenModel):
     measurement_spec_ref: VersionedObjectRef
     score_contract_ref: VersionedObjectRef | None = None
     metric_id: str = Field(min_length=1)
-    value: Any
+    value: StrictNumber
     unit: str | None = None
     numerator: StrictNumber | None = None
     denominator: PositiveStrictNumber | None = None
@@ -862,7 +911,7 @@ class EvidenceCandidate(FrozenModel):
     evidence_tier: EvidenceTier
     applicability: EvidenceApplicability
     evidence_family_ref: VersionedObjectRef
-    sufficiency_profile_input_id: str = Field(min_length=1)
+    sufficiency_result_input_id: str = Field(min_length=1)
     tool_run_ref: VersionedObjectRef
     tool_run_execution_state: Literal[
         "succeeded", "partial", "failed", "skipped", "not_implemented"

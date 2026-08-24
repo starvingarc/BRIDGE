@@ -17,6 +17,11 @@
 
 P0 不预设某一种注释方法更优。候选方法先按相同标签、reference、holdout 和输出合同进行 benchmark，再冻结可用于正式分析的方法组合。Cell-State 结果只表示转录组证据，不直接表示临床疗效、安全性、potency 或放行结论。
 
+当前执行器要求 P0-01 selected DataView 同时具有精确 checksummed
+`BiologicalUnitManifest` 与 assignment Parquet。P0-02 在运行包中原样携带这两份
+来源资产，并核对 view、细胞索引、artifact checksum 与 manifest 绑定；它不会把
+P0-01 的 `declared` lineage 晋升为 `reviewed`/`frozen`，也不会据此宣称独立重复。
+
 ## 2. 内部 Annotation
 
 ### 2.1 使用原则

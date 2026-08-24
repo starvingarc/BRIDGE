@@ -92,6 +92,72 @@ def read_regular_bytes(path: Path) -> bytes:
     return raw
 
 
+def snapshot_path(source: Path, destination: Path) -> None:
+    """Copy one immutable file/directory snapshot without following symlinks."""
+
+    before = source.lstat()
+    if source.is_symlink():
+        raise OSError("input snapshot cannot follow a symlink")
+    if stat.S_ISREG(before.st_mode):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        raw = read_regular_bytes(source)
+        destination.write_bytes(raw)
+        if read_regular_bytes(destination) != raw:
+            raise OSError("input file snapshot verification failed")
+        return
+    if not stat.S_ISDIR(before.st_mode):
+        raise OSError("input snapshot requires a regular file or directory")
+    before_signature = _directory_tree_signature(source)
+    destination.mkdir(parents=True)
+    for relative, identity in before_signature.items():
+        child = source / relative
+        target = destination / relative
+        if identity == "directory":
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(read_regular_bytes(child))
+    if (
+        _directory_tree_signature(source) != before_signature
+        or _directory_tree_signature(destination) != before_signature
+    ):
+        raise OSError("input directory changed while snapshotting")
+
+
+def _directory_tree_signature(root: Path) -> dict[Path, str]:
+    """Return a symlink-free signature including empty directory membership."""
+
+    result: dict[Path, str] = {}
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root)
+        path_stat = path.lstat()
+        if path.is_symlink():
+            raise OSError("input snapshot cannot contain symlinks")
+        if stat.S_ISDIR(path_stat.st_mode):
+            result[relative] = "directory"
+        elif stat.S_ISREG(path_stat.st_mode):
+            result[relative] = hashlib.sha256(read_regular_bytes(path)).hexdigest()
+        else:
+            raise OSError("input snapshot contains a non-regular entry")
+    return result
+
+
+def directory_content_hashes(root: Path) -> dict[str, str]:
+    """Return relative-path SHA-256 identities for a regular directory tree."""
+
+    result: dict[str, str] = {}
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root).as_posix()
+        path_stat = path.lstat()
+        if path.is_symlink() or not (
+            stat.S_ISDIR(path_stat.st_mode) or stat.S_ISREG(path_stat.st_mode)
+        ):
+            raise OSError("non-regular directory entry")
+        if stat.S_ISREG(path_stat.st_mode):
+            result[relative] = hashlib.sha256(read_regular_bytes(path)).hexdigest()
+    return result
+
+
 def directory_state(path: Path) -> Literal["missing", "directory", "other"]:
     """Classify one path without following a final symlink."""
 

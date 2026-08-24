@@ -5,7 +5,15 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal, Protocol, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 
 class ImplementationState(StrEnum):
@@ -288,6 +296,8 @@ class MeasurementSpec(FrozenModel):
     applicable_product_cards: list[str] = Field(default_factory=list)
     input_contract: dict[str, Any]
     analysis_unit: str
+    analysis_unit_kind: str | None = None
+    applicable_contexts: list[str] = Field(default_factory=list)
     raw_metric_definition: dict[str, Any]
     numerator: str | None = None
     denominator: str | None = None
@@ -316,6 +326,39 @@ class MeasurementResult(FrozenModel):
     evidence_state: EvidenceState
     provenance_refs: list[str] = Field(default_factory=list)
 
+
+class MeasurementResultV2(MeasurementResult):
+    measurement_spec_version: str | None = None
+    unit: str | None = None
+    numerator: StrictInt | StrictFloat | None = None
+    denominator: StrictInt | StrictFloat | None = None
+    interval: tuple[StrictInt | StrictFloat, StrictInt | StrictFloat] | None = None
+    interval_confidence_level: StrictFloat | None = Field(
+        default=None,
+        gt=0,
+        lt=1,
+    )
+    interval_method_ref: str | None = None
+    source_run_ref: str | None = Field(
+        default=None,
+        pattern=r"^tool-run:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+    )
+    source_execution_state: Literal["succeeded", "partial"] | None = None
+
+    @model_validator(mode="after")
+    def source_and_interval_metadata_are_coherent(self) -> "MeasurementResultV2":
+        if (self.source_run_ref is None) != (self.source_execution_state is None):
+            raise ValueError(
+                "source_run_ref and source_execution_state must be supplied together"
+            )
+        if self.interval is None and (
+            self.interval_confidence_level is not None
+            or self.interval_method_ref is not None
+        ):
+            raise ValueError("interval metadata requires interval bounds")
+        return self
+
+
 class ArtifactManifest(FrozenModel):
     artifact_id: str
     kind: str
@@ -340,6 +383,21 @@ class DataViewBinding(FrozenModel):
     observation_ids_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     sample_or_preparation_ref: str | None = Field(default=None, min_length=1)
     selection_spec_ref: str | None = Field(default=None, min_length=1)
+    biological_unit_manifest_ref: str | None = Field(default=None, min_length=1)
+    biological_unit_manifest_sha256: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{64}$",
+    )
+
+    @model_validator(mode="after")
+    def biological_unit_binding_is_coherent(self) -> "DataViewBinding":
+        if (self.biological_unit_manifest_ref is None) != (
+            self.biological_unit_manifest_sha256 is None
+        ):
+            raise ValueError(
+                "biological unit manifest reference and checksum must be paired"
+            )
+        return self
 
 
 class VisualizationArtifact(FrozenModel):
@@ -1044,7 +1102,7 @@ class ToolRunV2(FrozenModel):
     environment_spec_id: str
     input_hash: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    measurements: list[MeasurementResult] = Field(default_factory=list)
+    measurements: list[MeasurementResultV2] = Field(default_factory=list)
     artifacts: list[ArtifactManifest] = Field(default_factory=list)
     visualizations: list[VisualizationArtifact] = Field(default_factory=list)
     result_schema_ref: str | None = None

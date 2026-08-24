@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 
 from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitLineageState,
+    BiologicalUnitManifest,
     ProductCase,
     ProductDefinitionCard,
     VersionedObjectRef,
@@ -39,9 +41,14 @@ def evaluate_proliferation_stress_response(
     evidence_bundle: ProgramEvidenceBundle,
     developmental_result: DevelopmentalCompatibilityResult,
     qc_profile: QCReadinessProfile,
+    biological_unit_manifest: BiologicalUnitManifest,
     qc_profile_version: str,
     input_sha256_by_role: dict[str, str],
 ) -> ProliferationStressResponseProfile:
+    independence_group_by_analysis_unit = {
+        item.analysis_unit_ref.ref: item.independence_group_ref
+        for item in biological_unit_manifest.unit_bindings
+    }
     rules = {rule.rule_id: rule for rule in assessment_spec.rules}
     matched: dict[str, list[ProgramObservation]] = defaultdict(list)
     unmatched: list[UnmatchedProgramObservation] = []
@@ -73,6 +80,12 @@ def evaluate_proliferation_stress_response(
             matched.get(rule.rule_id, []),
             assay=product_case.assay,
             context_available=context_available,
+            independence_group_by_analysis_unit=(
+                independence_group_by_analysis_unit
+            ),
+            biological_unit_lineage_state=(
+                biological_unit_manifest.lineage_state
+            ),
         )
         for rule in sorted(assessment_spec.rules, key=lambda item: item.rule_id)
     ]
@@ -97,7 +110,11 @@ def evaluate_proliferation_stress_response(
     )
     if assessed_count == 0:
         result_state = "not_assessed"
-    elif assessed_count != len(program_results) or unmatched:
+    elif (
+        assessed_count != len(program_results)
+        or unmatched
+        or not biological_unit_manifest.independence_is_reviewed
+    ):
         result_state = "partial"
     else:
         result_state = "complete"
@@ -110,6 +127,8 @@ def evaluate_proliferation_stress_response(
     }
     if unmatched:
         reasons.add("unmatched_program_observations")
+    if not biological_unit_manifest.independence_is_reviewed:
+        reasons.add("biological_unit_lineage_not_reviewed")
     evidence_refs = sorted(
         {
             *qc_profile.evidence_ids,
@@ -139,6 +158,8 @@ def evaluate_proliferation_stress_response(
             object_id=qc_profile.profile_id,
             object_version=qc_profile_version,
         ),
+        biological_unit_manifest_ref=biological_unit_manifest.ref,
+        biological_unit_lineage_state=biological_unit_manifest.lineage_state,
         input_sha256_by_role=input_sha256_by_role,
         result_state=result_state,
         program_results=program_results,
@@ -176,7 +197,13 @@ def _evaluate_rule(
     *,
     assay: str,
     context_available: bool,
+    independence_group_by_analysis_unit: dict[str, VersionedObjectRef],
+    biological_unit_lineage_state: BiologicalUnitLineageState,
 ) -> ProgramRuleResult:
+    independence_is_reviewed = biological_unit_lineage_state in {
+        BiologicalUnitLineageState.REVIEWED,
+        BiologicalUnitLineageState.FROZEN,
+    }
     assessments: list[ProgramObservationAssessment] = []
     for observation in sorted(observations, key=lambda item: item.observation_id):
         assessments.append(
@@ -185,15 +212,21 @@ def _evaluate_rule(
                 observation,
                 assay=assay,
                 context_available=context_available,
+                independence_group_ref=(
+                    independence_group_by_analysis_unit[
+                        observation.analysis_unit_ref.ref
+                    ]
+                ),
             )
         )
 
     included = [item for item in assessments if item.included]
-    groups = {item.analysis_unit_ref.ref for item in included}
+    analysis_units = {item.analysis_unit_ref.ref for item in included}
+    groups = {item.independence_group_ref.ref for item in included}
     by_group: dict[str, list[ReferenceRelation]] = defaultdict(list)
     for item in included:
         assert item.reference_relation is not None
-        by_group[item.analysis_unit_ref.ref].append(item.reference_relation)
+        by_group[item.independence_group_ref.ref].append(item.reference_relation)
     triggering_groups = {
         group
         for group, relations in by_group.items()
@@ -215,6 +248,9 @@ def _evaluate_rule(
     elif not included:
         state = ReviewFlagState.NOT_ASSESSED
         reasons.add("program_evidence_not_eligible")
+    elif not independence_is_reviewed:
+        state = ReviewFlagState.CANNOT_RESOLVE
+        reasons.add("biological_unit_lineage_not_reviewed")
     elif len(groups) < rule.minimum_biological_units:
         state = ReviewFlagState.CANNOT_RESOLVE
         reasons.add("biological_unit_evidence_insufficient")
@@ -244,8 +280,14 @@ def _evaluate_rule(
         reference_lower=rule.reference_lower,
         reference_upper=rule.reference_upper,
         observations=assessments,
-        included_biological_unit_count=len(groups),
-        triggering_biological_unit_count=len(triggering_groups),
+        descriptive_analysis_unit_count=len(analysis_units),
+        included_biological_unit_count=(
+            len(groups) if independence_is_reviewed else 0
+        ),
+        triggering_biological_unit_count=(
+            len(triggering_groups) if independence_is_reviewed else 0
+        ),
+        biological_unit_lineage_state=biological_unit_lineage_state,
         review_flag_state=state,
         evidence_refs=sorted(
             {evidence for item in included for evidence in item.evidence_refs}
@@ -260,6 +302,7 @@ def _assess_observation(
     *,
     assay: str,
     context_available: bool,
+    independence_group_ref: VersionedObjectRef,
 ) -> ProgramObservationAssessment:
     exclusion: str | None = None
     relation: ReferenceRelation | None = None
@@ -283,6 +326,7 @@ def _assess_observation(
         observation_id=observation.observation_id,
         evidence_family_id=observation.evidence_family_id,
         analysis_unit_ref=observation.analysis_unit_ref,
+        independence_group_ref=independence_group_ref,
         metric_name=observation.metric_name,
         unit=observation.unit,
         analysis_scope=observation.analysis_scope,

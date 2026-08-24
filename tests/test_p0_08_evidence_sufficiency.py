@@ -286,9 +286,9 @@ def _fixture_request(
         (
             "target-result",
             "measurement_result",
-            "bridge://schemas/measurement-result/v0.1",
+            "bridge://schemas/measurement-result/v0.2",
             measurement if measurement is not None else _measurement(),
-            "0.1.0",
+            "0.2.0",
         ),
         (
             "target-validation",
@@ -420,7 +420,7 @@ def test_sufficient_raw_evidence_never_enables_a_domain_score(tmp_path: Path) ->
     assert profile.score_state.value == "unavailable"
     assert profile.score_reason_codes == ["p0_score_contract_unavailable"]
     assert [item.model_dump() for item in profile.measurement_result_refs] == [
-        {"object_id": "measurement:target-1", "object_version": "0.1.0"}
+        {"object_id": "measurement:target-1", "object_version": "0.2.0"}
     ]
 
 
@@ -1053,9 +1053,9 @@ def test_unbound_structured_input_and_legacy_contract_fail_closed(tmp_path: Path
     unbound = (
         "sealed-competitor-extra",
         "measurement_result",
-        "bridge://schemas/measurement-result/v0.1",
+        "bridge://schemas/measurement-result/v0.2",
         extra_payload,
-        "0.1.0",
+        "0.2.0",
     )
     request = _fixture_request(tmp_path, extras=[unbound])
     spec = ToolRegistry.load_default().describe("P0-08")
@@ -1601,9 +1601,9 @@ def test_request_local_binding_ids_may_contain_spaces(tmp_path: Path) -> None:
             (
                 "target result",
                 "measurement_result",
-                "bridge://schemas/measurement-result/v0.1",
+                "bridge://schemas/measurement-result/v0.2",
                 _measurement(),
-                "0.1.0",
+                "0.2.0",
             ),
             (
                 "target validation",
@@ -1789,7 +1789,7 @@ def test_duplicate_core_logical_object_ids_fail_even_when_fully_bound(
         input_id = "measurement-copy"
         second_domain["measurement_result_input_ids"] = [input_id]
         role = "measurement_result"
-        schema_ref = "bridge://schemas/measurement-result/v0.1"
+        schema_ref = "bridge://schemas/measurement-result/v0.2"
         payload = _measurement()
     else:  # pragma: no cover - protects future parameter edits
         raise AssertionError(duplicate_role)
@@ -1803,7 +1803,13 @@ def test_duplicate_core_logical_object_ids_fail_even_when_fully_bound(
                 second_domain,
                 "0.1.0",
             ),
-            (input_id, role, schema_ref, payload, "0.1.0"),
+            (
+                input_id,
+                role,
+                schema_ref,
+                payload,
+                "0.2.0" if role == "measurement_result" else "0.1.0",
+            ),
         ],
     )
 
@@ -1910,7 +1916,7 @@ def test_role_schema_and_unrecognized_role_fail_closed(tmp_path: Path) -> None:
     mismatched = _replace_ref(
         request,
         "target-domain",
-        schema_ref="bridge://schemas/measurement-result/v0.1",
+        schema_ref="bridge://schemas/measurement-result/v0.2",
     )
     assert "object_input_schema_mismatch" in adapter.check_eligibility(
         mismatched, spec
@@ -2361,11 +2367,9 @@ def test_set_like_input_list_order_does_not_change_run_identity_or_result_bytes(
                 ],
             ),
             (qc, ["missing_inputs", "blocking_issues", "warnings", "evidence_ids"]),
-            (measurement, ["provenance_refs"]),
             (validation, ["validation_refs", "evidence_refs", "provenance_refs"]),
             (prior, ["evidence_refs", "provenance_refs"]),
             (sensitivity, ["evidence_refs", "provenance_refs"]),
-            (second_measurement, ["provenance_refs"]),
             (
                 second_validation,
                 ["validation_refs", "evidence_refs", "provenance_refs"],
@@ -2397,9 +2401,9 @@ def test_set_like_input_list_order_does_not_change_run_identity_or_result_bytes(
             (
                 "target-result-2",
                 "measurement_result",
-                "bridge://schemas/measurement-result/v0.1",
+                "bridge://schemas/measurement-result/v0.2",
                 second_measurement,
-                "0.1.0",
+                "0.2.0",
             ),
             (
                 "target-validation-2",
@@ -2477,15 +2481,61 @@ def test_set_like_input_list_order_does_not_change_run_identity_or_result_bytes(
         (first_dir / "artifact_manifest.json").read_text(encoding="utf-8")
     )
     assert manifest["structured_input_provenance_policy"] == {
-        "bundle_identity": "canonical_semantic_sha256",
+        "bundle_identity": (
+            "canonical_semantic_sha256_with_measurement_source_binding"
+        ),
         "invocation_source_checksum": "ToolRunV2.request.object_inputs[].sha256",
+        "measurement_result_source_checksum": "identity_and_result_binding",
     }
-    assert all(
-        "semantic_sha256" in item and "sha256" not in item
+    assert all("semantic_sha256" in item for item in manifest["structured_inputs"])
+    assert {
+        item["role"]
         for item in manifest["structured_inputs"]
-    )
+        if "source_sha256" in item
+    } == {"measurement_result"}
     for artifact in second.artifacts:
         assert hashlib.sha256(artifact.path.read_bytes()).hexdigest() == artifact.sha256
+
+
+def test_measurement_source_bytes_are_bound_into_run_identity(tmp_path: Path) -> None:
+    first_measurement = _measurement()
+    second_measurement = _measurement()
+    second_measurement["provenance_refs"] = list(
+        reversed(second_measurement["provenance_refs"])
+    )
+    first_request = _fixture_request(
+        tmp_path / "first",
+        measurement=first_measurement,
+        request_id="measurement-source-first",
+    )
+    second_request = _fixture_request(
+        tmp_path / "second",
+        measurement=second_measurement,
+        request_id="measurement-source-second",
+    ).model_copy(update={"output_dir": first_request.output_dir})
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    first = adapter.run(first_request, spec)
+    second = adapter.run(second_request, spec)
+
+    assert first.execution_state is ExecutionState.SUCCEEDED
+    assert second.execution_state is ExecutionState.SUCCEEDED
+    assert first.run_id != second.run_id
+    first_ref = next(
+        ref for ref in first_request.object_inputs if ref.role == "measurement_result"
+    )
+    second_ref = next(
+        ref for ref in second_request.object_inputs if ref.role == "measurement_result"
+    )
+    first_result = EvidenceSufficiencyRunResult.model_validate(first.result)
+    second_result = EvidenceSufficiencyRunResult.model_validate(second.result)
+    assert first_result.profiles[0].measurement_result_bindings[0].source_sha256 == (
+        first_ref.sha256
+    )
+    assert second_result.profiles[0].measurement_result_bindings[0].source_sha256 == (
+        second_ref.sha256
+    )
+    assert first_ref.sha256 != second_ref.sha256
 
 
 def test_semantic_input_change_changes_run_identity(tmp_path: Path) -> None:

@@ -93,3 +93,11 @@ the six-input interface or any biological configuration.
 
 No project code ran in the local checkout. The warnings are the same unrelated
 AnnData duplicate-name and SciPy sparse-matrix deprecation warnings.
+
+## Peer-review closeout addendum
+
+The combined closeout adds an exact ProductCase-bound
+`BiologicalUnitManifest` input and rejects ref/checksum/scope/unit/group drift.
+The manifest currently preserves declared lineage only; it does not turn
+captures or preparations into reviewed independent replicates. Final exact-head
+whole-stack evidence is recorded in the stack closeout validation.

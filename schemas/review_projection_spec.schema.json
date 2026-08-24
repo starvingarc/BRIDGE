@@ -1,0 +1,179 @@
+{
+  "$defs": {
+    "ClaimType": {
+      "enum": [
+        "measurement_claim",
+        "domain_interpretation",
+        "descriptive_comparison",
+        "inferential_comparison",
+        "availability_claim",
+        "alert_claim",
+        "prior_or_literature_claim",
+        "method_claim",
+        "recommendation_hypothesis",
+        "graft_retrospective_claim",
+        "policy_or_boundary_statement",
+        "visualization_caption"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ReportLanguage": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed"
+      ],
+      "title": "ReportLanguage",
+      "type": "string"
+    },
+    "ReviewClaimSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "review_case_label": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Review Case Label",
+          "type": "string"
+        },
+        "review_claim_id": {
+          "pattern": "^review-claim:[A-Za-z0-9._:-]+$",
+          "title": "Review Claim Id",
+          "type": "string"
+        },
+        "source_claim_id": {
+          "pattern": "^claim-block:[A-Za-z0-9._:-]+$",
+          "title": "Source Claim Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_claim_id",
+        "review_claim_id",
+        "review_case_label"
+      ],
+      "title": "ReviewClaimSelection",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/review-projection-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "allow_claims_without_evidence_state": {
+      "title": "Allow Claims Without Evidence State",
+      "type": "boolean"
+    },
+    "allowed_claim_types": {
+      "items": {
+        "$ref": "#/$defs/ClaimType"
+      },
+      "minItems": 1,
+      "title": "Allowed Claim Types",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "allowed_evidence_states": {
+      "items": {
+        "$ref": "#/$defs/EvidenceState"
+      },
+      "minItems": 1,
+      "title": "Allowed Evidence States",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "claim_verification_id": {
+      "pattern": "^claim-verification:[a-f0-9]{16}$",
+      "title": "Claim Verification Id",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "prohibited_literals": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Prohibited Literals",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "projection_spec_id": {
+      "pattern": "^review-projection-spec:[A-Za-z0-9._:-]+$",
+      "title": "Projection Spec Id",
+      "type": "string"
+    },
+    "projection_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projection Spec Version",
+      "type": "string"
+    },
+    "review_policy": {
+      "const": "human_review_required",
+      "title": "Review Policy",
+      "type": "string"
+    },
+    "selections": {
+      "items": {
+        "$ref": "#/$defs/ReviewClaimSelection"
+      },
+      "minItems": 1,
+      "title": "Selections",
+      "type": "array"
+    },
+    "source_accessions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Accessions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "source_report_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Report Hash",
+      "type": "string"
+    },
+    "source_report_ref": {
+      "pattern": "^report:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+      "title": "Source Report Ref",
+      "type": "string"
+    },
+    "target_language": {
+      "$ref": "#/$defs/ReportLanguage"
+    }
+  },
+  "required": [
+    "object_version",
+    "projection_spec_id",
+    "projection_spec_version",
+    "source_report_ref",
+    "source_report_hash",
+    "claim_verification_id",
+    "target_language",
+    "allowed_claim_types",
+    "allowed_evidence_states",
+    "allow_claims_without_evidence_state",
+    "selections",
+    "prohibited_literals",
+    "review_policy"
+  ],
+  "title": "ReviewProjectionSpec",
+  "type": "object"
+}

@@ -18,7 +18,7 @@ Validate expression inputs and emit a QC readiness profile.
 
 **Input:** A declared h5ad, 10x H5, or 10x MTX asset; input level, assay, matrix semantics, sample/capture metadata, gene-identifier source, and output location.
 
-**Output:** Raw structural and QC metrics, `QCReadinessProfile`, physical candidate data views when a candidate MeasurementSpec is selected, visualizations, and a checksummed artifact manifest. Each published view has a `DataViewBinding` with its artifact checksum, matrix semantics, exact cell count and deterministic cell-index checksum; a QC-selected view is a real subset, not a renamed pointer to the all-cells matrix.
+**Output:** Raw structural and QC metrics, `QCReadinessProfile`, physical candidate data views, a `biological_unit_assignments.parquet` table and `BiologicalUnitManifest`, visualizations, and a checksummed artifact manifest. Each published view has a `DataViewBinding` with its artifact checksum, matrix semantics, exact cell count, deterministic cell-index checksum and exact BiologicalUnitManifest binding. P0-01 records only caller-declared lineage; it does not certify independent biological replicates.
 
 **Runtime behavior:** Executable candidate; it emits raw measurements and never emits a domain score.
 

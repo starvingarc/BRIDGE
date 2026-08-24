@@ -21,7 +21,10 @@ from bridge.tool_packages._structured_runtime import (
     strict_json_loads as _loads_json,
     write_json as _write_json,
 )
-from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSufficiencyProfile
+from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
+    EvidenceSufficiencyProfile,
+    EvidenceSufficiencyRunResult,
+)
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     CompilationInvariantError,
     canonical_input_hash,
@@ -67,6 +70,7 @@ from bridge.toolkit.contracts import (
     EligibilityResult,
     ExecutionState,
     FrozenModel,
+    MeasurementResultV2 as MeasurementResult,
     StructuredInputRef,
     ToolPackageSpecV2,
     ToolRequest,
@@ -78,7 +82,10 @@ from bridge.toolkit.contracts import (
 RESULT_SCHEMA_REF = "bridge://schemas/evidence-compiler-run-result/v0.1"
 ROLE_SCHEMAS = {
     "compilation_bundle": {"bridge://schemas/evidence-compilation-bundle/v0.1"},
-    "evidence_sufficiency_profile": {"bridge://schemas/evidence-sufficiency-profile/v0.1"},
+    "evidence_sufficiency_run_result": {
+        "bridge://schemas/evidence-sufficiency-run-result/v0.1"
+    },
+    "measurement_result": {"bridge://schemas/measurement-result/v0.2"},
     "evidence_family_registry": {"bridge://schemas/evidence-family-registry/v0.1"},
     "claim_registry": {"bridge://schemas/claim-registry/v0.1"},
     "reconciliation_spec_registry": {"bridge://schemas/reconciliation-spec-registry/v0.1"},
@@ -97,7 +104,8 @@ ROLE_SCHEMAS = {
 }
 ROLE_MODELS: dict[str, type[FrozenModel]] = {
     "compilation_bundle": EvidenceCompilationBundle,
-    "evidence_sufficiency_profile": EvidenceSufficiencyProfile,
+    "evidence_sufficiency_run_result": EvidenceSufficiencyRunResult,
+    "measurement_result": MeasurementResult,
     "evidence_family_registry": EvidenceFamilyRegistry,
     "claim_registry": ClaimRegistry,
     "reconciliation_spec_registry": ReconciliationSpecRegistry,
@@ -176,15 +184,33 @@ class EvidenceCompilerAdapter:
             "reconciliation_spec_registry",
             ReconciliationSpecRegistry,
         )
-        profiles = {
+        sufficiency_results = {
             ref.input_id: loaded.objects_by_input_id[ref.input_id]
             for ref in request.object_inputs
-            if ref.role == "evidence_sufficiency_profile"
+            if ref.role == "evidence_sufficiency_run_result"
         }
-        if not all(isinstance(item, EvidenceSufficiencyProfile) for item in profiles.values()):
+        measurement_results = {
+            ref.input_id: loaded.objects_by_input_id[ref.input_id]
+            for ref in request.object_inputs
+            if ref.role == "measurement_result"
+        }
+        if not all(
+            isinstance(item, EvidenceSufficiencyRunResult)
+            for item in sufficiency_results.values()
+        ) or not all(
+            isinstance(item, MeasurementResult)
+            for item in measurement_results.values()
+        ):
             return _failed_run(request, spec, ["structured_input_schema_invalid"])
-        typed_profiles: dict[str, EvidenceSufficiencyProfile] = {
-            key: value for key, value in profiles.items() if isinstance(value, EvidenceSufficiencyProfile)
+        typed_results: dict[str, EvidenceSufficiencyRunResult] = {
+            key: value
+            for key, value in sufficiency_results.items()
+            if isinstance(value, EvidenceSufficiencyRunResult)
+        }
+        typed_measurements: dict[str, MeasurementResult] = {
+            key: value
+            for key, value in measurement_results.items()
+            if isinstance(value, MeasurementResult)
         }
         try:
             verified_graph_inputs = _verify_graph_inputs(request, loaded, bundle)
@@ -201,7 +227,9 @@ class EvidenceCompilerAdapter:
                 request=request,
                 spec=spec,
                 bundle=bundle,
-                profiles_by_input_id=typed_profiles,
+                sufficiency_results_by_input_id=typed_results,
+                measurement_results_by_input_id=typed_measurements,
+                input_refs_by_id={ref.input_id: ref for ref in request.object_inputs},
                 family_registry=family_registry,
                 claim_registry=claim_registry,
                 reconciliation_registry=reconciliation_registry,
@@ -365,7 +393,8 @@ def _validate_input_payload(ref: StructuredInputRef, payload: Any) -> None:
         else payload
     )
     if (
-        ref.role != "evidence_sufficiency_profile"
+        ref.role
+        not in {"evidence_sufficiency_run_result", "measurement_result"}
         and _contains_legacy_contract(no_score_payload)
     ):
         raise StructuredInputError("legacy_evidence_contract_rejected")
@@ -380,9 +409,12 @@ def _validate_input_model(ref: StructuredInputRef, value: FrozenModel) -> None:
 
 
 def _validate_declared_version(ref: StructuredInputRef, value: FrozenModel) -> None:
+    if ref.role == "measurement_result":
+        return
     for field in (
         "object_version",
         "bundle_version",
+        "result_version",
         "profile_version",
         "registry_version",
         "record_set_version",
@@ -428,45 +460,69 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     if len(bundles) != 1:
         return ["exactly_one_compilation_bundle_required"]
     bundle = bundles[0]
-    profiles = {
+    sufficiency_results = {
         ref.input_id: loaded.objects_by_input_id[ref.input_id]
         for ref in request.object_inputs
-        if ref.role == "evidence_sufficiency_profile"
+        if ref.role == "evidence_sufficiency_run_result"
+    }
+    typed_results = {
+        input_id: result
+        for input_id, result in sufficiency_results.items()
+        if isinstance(result, EvidenceSufficiencyRunResult)
+    }
+    profiles = {
+        f"{profile.profile_id}@{profile.profile_version}": profile
+        for result in typed_results.values()
+        for profile in result.profiles
     }
     profile_count = len(profiles)
     if bundle.graph_kind is GraphKind.CASE:
         if not 1 <= profile_count <= 5:
             reasons.append("sufficiency_profile_cardinality_invalid")
-        bound_ids = {
-            item.get("sufficiency_profile_input_id")
+        bound_result_ids = {
+            item.get("sufficiency_result_input_id")
             for item in bundle.candidate_records
             if isinstance(item, dict)
-            and isinstance(item.get("sufficiency_profile_input_id"), str)
+            and isinstance(item.get("sufficiency_result_input_id"), str)
         }
-        profile_input_by_ref = {
+        result_input_by_profile_ref = {
             f"{profile.profile_id}@{profile.profile_version}": input_id
-            for input_id, profile in profiles.items()
-            if isinstance(profile, EvidenceSufficiencyProfile)
+            for input_id, result in typed_results.items()
+            for profile in result.profiles
         }
-        bound_ids.update(
-            profile_input_by_ref[record.sufficiency_profile_ref.ref]
+        bound_result_ids.update(
+            result_input_by_profile_ref[record.sufficiency_profile_ref.ref]
             for record in bundle.prior_evidence_records
-            if record.sufficiency_profile_ref.ref in profile_input_by_ref
+            if record.sufficiency_profile_ref.ref in result_input_by_profile_ref
         )
+        declared_measurement_ids = {
+            item.get("measurement_result_input_id")
+            for item in bundle.candidate_records
+            if isinstance(item, dict)
+            and isinstance(item.get("measurement_result_input_id"), str)
+        }
+        actual_measurement_ids = {
+            ref.input_id
+            for ref in request.object_inputs
+            if ref.role == "measurement_result"
+        }
+        if actual_measurement_ids != declared_measurement_ids:
+            reasons.append("unbound_measurement_result")
     else:
         if not 2 <= profile_count <= 25:
             reasons.append("sufficiency_profile_cardinality_invalid")
-        bound_ids = {
+        bound_result_ids = {
             value
             for item in bundle.external_case_evidence_refs
-            if isinstance(value := _external_profile_input_id(item), str)
+            if isinstance(value := _external_result_input_id(item), str)
         }
-    if set(profiles) != bound_ids:
+        if any(ref.role == "measurement_result" for ref in request.object_inputs):
+            reasons.append("comparison_measurement_results_forbidden")
+    if set(sufficiency_results) != bound_result_ids:
         reasons.append("unbound_sufficiency_profile")
     profile_ids = [
         item.profile_id
         for item in profiles.values()
-        if isinstance(item, EvidenceSufficiencyProfile)
     ]
     if len(profile_ids) != len(set(profile_ids)):
         reasons.append("duplicate_sufficiency_profile_id")
@@ -477,11 +533,7 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         )
         validate_prior_history(
             bundle,
-            profiles_by_input_id={
-                key: value
-                for key, value in profiles.items()
-                if isinstance(value, EvidenceSufficiencyProfile)
-            },
+            profiles_by_input_id=profiles,
             claims=(
                 {
                     (item.claim_id, item.version): item
@@ -710,12 +762,12 @@ def _preflight_graph_manifest(path: Path) -> None:
         ) from exc
 
 
-def _external_profile_input_id(
+def _external_result_input_id(
     item: ExternalCaseEvidenceRef | dict[str, Any],
 ) -> str | None:
     if isinstance(item, ExternalCaseEvidenceRef):
-        return item.sufficiency_profile_input_id
-    value = item.get("sufficiency_profile_input_id")
+        return item.sufficiency_result_input_id
+    value = item.get("sufficiency_result_input_id")
     return value if isinstance(value, str) else None
 
 
@@ -850,10 +902,7 @@ def _write_bundle(
                     source_claim_ref=item.source_claim_ref,
                     comparison_claim_ref=item.comparison_claim_ref,
                     evidence_family_ref=item.evidence_family_ref,
-                    sufficiency_profile_ref=VersionedObjectRef(
-                        object_id=profile.profile_id,
-                        object_version=profile.profile_version,
-                    ),
+                    sufficiency_profile_ref=item.resolved_sufficiency_profile_ref,
                     relation=item.relation,
                     evidence_state=item.evidence_state,
                     evidence_tier=item.evidence_tier,
@@ -863,8 +912,7 @@ def _write_bundle(
                 )
                 for item in compiled.external_case_evidence_refs
                 if (
-                    (profile := objects_by_input_id.get(item.sufficiency_profile_input_id))
-                    is not None
+                    item.resolved_sufficiency_profile_ref is not None
                     and any(
                         node.node_type is GraphNodeType.EVIDENCE_RECORD
                         and node.record_mode is GraphRecordMode.EXTERNAL_REF

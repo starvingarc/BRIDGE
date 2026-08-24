@@ -23,7 +23,8 @@ P0-09 读取已经完成且版本化的产品证据，回答：哪些原子记�
 | role | 数量 | Schema | 含义 |
 |---|---:|---|---|
 | `compilation_bundle` | 1 | `evidence-compilation-bundle/v0.1` | Case/Comparison scope、候选项、缺失观察、对象目录和可选历史 |
-| `evidence_sufficiency_profile` | Case 1–5；Comparison 2–25 | `evidence-sufficiency-profile/v0.1` | P0-08 的产品、域、MeasurementSpec、sufficiency 和 provenance |
+| `evidence_sufficiency_run_result` | Case 1–5；Comparison 2–25 | `evidence-sufficiency-run-result/v0.1` | P0-08 的完整 profiles、case summary、gate trace 与 checksummed MeasurementResult bindings |
+| `measurement_result` | Case 1–N；Comparison 禁止 | `measurement-result/v0.2` | 精确数值、unit、denominator/interval、MeasurementSpec version 与 producer ToolRun/state |
 | `evidence_family_registry` | 1 | `evidence-family-registry/v0.1` | family 类型、channel role、独立性范围和审核状态 |
 | `claim_registry` | 1 | `claim-registry/v0.1` | Claim、允许方向和 requirement template |
 | `reconciliation_spec_registry` | 1 | `reconciliation-spec-registry/v0.1` | required/optional channel、独立 family 数和冲突规则 |
@@ -32,7 +33,7 @@ P0-09 读取已经完成且版本化的产品证据，回答：哪些原子记�
 
 `assets=[]`、顶层 `measurement_spec_ref=null`、`parameters={}`。`random_seed` 仅为共享 envelope 兼容而保留，算法不使用随机数。输入期间发生任何字节变化都使整次运行失败。
 
-Case bundle 只拥有一个 ProductCase 及其记录历史；有历史时必须同时提供内容寻址的 base manifest、record set 和 requirement set，且三类事实与 bundle 历史完全一致。Comparison bundle 只引用至少两个 Case graph，不允许 base/prior/owned records，不复制案例值、区间或私有属性。每个 source manifest 会在原始目录中通过七查询层的 `open()` 完整验证五个 authoritative artifacts，再核对 raw manifest SHA、record-set SHA、确定性 graph ID、graph version 和 ProductCase。所有 Claim 映射、ProductCase、MeasurementSpec、EvidenceFamily 和 P0-08 profile 绑定必须显式声明，不能由 Agent 推断。
+Case bundle 只拥有一个 ProductCase 及其记录历史；有历史时必须同时提供内容寻址的 base manifest、record set 和 requirement set，且三类事实与 bundle 历史完全一致。Comparison bundle 只引用至少两个 Case graph，不允许 base/prior/owned records，不复制案例值、区间或私有属性。每个 source manifest 会在原始目录中通过七查询层的 `open()` 完整验证五个 authoritative artifacts，再核对 raw manifest SHA、record-set SHA、确定性 graph ID、graph version 和 ProductCase。所有 Claim 映射、ProductCase、MeasurementSpec、EvidenceFamily、P0-08 完整运行结果和 MeasurementResult 绑定必须显式声明，不能由 Agent 推断。
 
 ## 3. 原子 EvidenceRecord 与追加式修正
 
@@ -61,10 +62,11 @@ product case x sample/preparation x domain x metric x claim x context x Measurem
 - `negative`、`missing`、`unknown`、`unavailable`、`alert` 不互换。
 - `shadow`、`exploratory`、not-applicable 和 inactive 记录保留审计可见性，但不进入 formal reconciliation。
 - 上游 ToolRun 为 `failed`、`skipped` 或 `not_implemented` 时拒绝编译；`partial` 中已经验证的单条记录可以进入。
-- shadow/exploratory candidate 必须匹配 P0-08 profile 的 ProductCase ID、MeasurementSpec ID、MeasurementResult refs 和 retained family IDs。
-- P0-08 v0.1 未提供 ProductCase/MeasurementSpec 的版本化 ref，不能证明完整 formal binding；所以当前所有 formal candidate/external ref 均以 `sufficiency_profile_version_binding_unavailable` 保守拒绝，不静默降级，也不伪造用户自报版本。
+- `EvidenceCandidate` 只声明 `measurement_result_input_id`、`sufficiency_result_input_id`、Claim/context/relation/tier/applicability/family 与 revision metadata；不得重述 value、metric、unit、分母、区间、MeasurementSpec、evidence state 或 producer provenance。
+- 编译器从 exact v0.2 MeasurementResult 解析上述定量事实，并要求其 logical ref、Schema、source checksum 与 P0-08 `measurement_result_bindings` 完全一致，同时核对 ProductCase、domain、MeasurementSpec、EvidenceFamily 和 producer ToolRun state。
+- shadow/exploratory candidate 仍必须匹配选定 P0-08 profile；formal candidate 还受 frozen Claim/ReconciliationSpec、reviewed family、eligible state 和 sufficient profile 门禁，不由候选数量或数值大小晋升。
 
-三个公开 record 数组都严格要求 object 元素；非 object、extra field 或其他公开 Schema 失败在注册的 public registry 路径属于顶层失败。模块内部 direct-adapter seam 可将 object-shaped parse failure 保留到逐条 sanitized rejection，但不放宽导出的公开 Schema。Schema 合法但 provenance、版本/上下文绑定、source fact 或语义非法的 sibling candidate/missing/external item 才进入 `rejected_records.json`，其余合法项可发布 `partial` graph；被拒输出仅含稳定 ID/index/digest/reason，不回显原值。完全相同的同源 external declaration 按集合语义在身份计算前幂等去重；同一 Evidence ref 只要 content/source/Claim/profile/family/relation/lifecycle 等声明不同，就保留冲突证据并逐条 `duplicate_logical_key_conflict` 拒绝。候选的 numerator、denominator 与 interval 只接受有限 JSON number；numeric string 和 bool 不发生静默强转。顶层 bundle/registry/history/Schema/checksum 或 unsafe publication reference 错误则整次失败且不发布任何 artifact。publication guard 是路径、URI、环境变量、credential-like assignment/token、禁用结论 key 和 public-ref 形状的有界合同，不承诺通用 secret scanning。P0-08 合同内固定的 `domain_score=null` 仅作为上游 provenance 保存，不被 P0-09 填值或解释。
+三个公开 record 数组都严格要求 object 元素；非 object、extra field 或其他公开 Schema 失败在注册的 public registry 路径属于顶层失败。模块内部 direct-adapter seam 可将 object-shaped parse failure 保留到逐条 sanitized rejection，但不放宽导出的公开 Schema。Schema 合法但 provenance、版本/上下文绑定、source fact 或语义非法的 sibling candidate/missing/external item 才进入 `rejected_records.json`，其余合法项可发布 `partial` graph；被拒输出仅含稳定 ID/index/digest/reason，不回显原值。完全相同的同源 external declaration 按集合语义在身份计算前幂等去重；同一 Evidence ref 只要 content/source/Claim/profile/family/relation/lifecycle 等声明不同，就保留冲突证据并逐条 `duplicate_logical_key_conflict` 拒绝。MeasurementResult 的 numerator、denominator 与 interval 只接受有限 JSON number；numeric string 和 bool 不发生静默强转。顶层 bundle/registry/history/Schema/checksum 或 unsafe publication reference 错误则整次失败且不发布任何 artifact。publication guard 是路径、URI、环境变量、credential-like assignment/token、禁用结论 key 和 public-ref 形状的有界合同，不承诺通用 secret scanning。P0-08 合同内固定的 `domain_score=null` 仅作为上游 provenance 保存，不被 P0-09 填值或解释。
 
 ## 5. EvidenceFamily 去重与确定性协调
 

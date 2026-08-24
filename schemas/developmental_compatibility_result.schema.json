@@ -11,6 +11,11 @@
     "DevelopmentInputChecksums": {
       "additionalProperties": false,
       "properties": {
+        "biological_unit_manifest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Biological Unit Manifest",
+          "type": "string"
+        },
         "cell_state_evidence_profile": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Cell State Evidence Profile",
@@ -48,7 +53,8 @@
         "state_role_map",
         "development_window_spec",
         "cell_state_evidence_profile",
-        "qc_readiness_profile"
+        "qc_readiness_profile",
+        "biological_unit_manifest"
       ],
       "title": "DevelopmentInputChecksums",
       "type": "object"

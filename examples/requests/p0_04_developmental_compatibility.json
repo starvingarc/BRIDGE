@@ -55,6 +55,15 @@
       "role": "qc_readiness_profile",
       "schema_ref": "bridge://schemas/qc-readiness-profile/v0.1",
       "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "input_id": "biological-units",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/biological_unit_manifest.json",
+      "role": "biological_unit_manifest",
+      "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
     }
   ],
   "output_dir": "/absolute/path/to/output",

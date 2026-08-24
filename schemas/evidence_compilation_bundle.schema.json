@@ -905,15 +905,26 @@
         "relation": {
           "$ref": "#/$defs/EvidenceRelation"
         },
+        "resolved_sufficiency_profile_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "source_case_graph_ref": {
           "$ref": "#/$defs/CaseGraphRef"
         },
         "source_claim_ref": {
           "$ref": "#/$defs/VersionedObjectRef"
         },
-        "sufficiency_profile_input_id": {
+        "sufficiency_result_input_id": {
           "minLength": 1,
-          "title": "Sufficiency Profile Input Id",
+          "title": "Sufficiency Result Input Id",
           "type": "string"
         },
         "tool_run_execution_state": {
@@ -936,7 +947,7 @@
         "source_claim_ref",
         "comparison_claim_ref",
         "evidence_family_ref",
-        "sufficiency_profile_input_id",
+        "sufficiency_result_input_id",
         "relation",
         "evidence_state",
         "evidence_tier",

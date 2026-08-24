@@ -21,6 +21,10 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
 )
 from bridge.toolkit.registry import ToolRegistry
+from tests.p0_biological_units import (
+    bind_reviewed_biological_units,
+    canonical_sha256,
+)
 
 
 ROLE_SCHEMAS = {
@@ -66,37 +70,99 @@ def _preparation(case_slug: str, index: int, value: float) -> dict:
     }
 
 
-def _readiness_summary(case_slug: str, digest: str) -> dict:
-    return {
-        "summary_id": f"case-evidence-readiness-summary:{digest}",
-        "summary_version": "0.1.0",
-        "product_case_ref": _ref(f"product-case:{case_slug}"),
-        "profile_count": 5,
-        "evidence_sufficiency_counts": {
-            "sufficient": 5,
-            "limited": 0,
-            "insufficient": 0,
-            "not_assessed": 0,
-        },
-        "measurement_evidence_state_counts": {
-            "measured": 5,
-            "inferred": 0,
-            "prior_only": 0,
-            "negative": 0,
-            "missing": 0,
-            "unknown": 0,
-            "unavailable": 0,
-            "alert": 0,
-        },
-        "score_state_counts": {"unavailable": 5},
+def _sufficiency_result(case_slug: str, digest: str) -> dict:
+    case_ref = _ref(f"product-case:{case_slug}")
+    profile_id = f"evidence-sufficiency-profile:{digest}:target_identity"
+    profile = {
+        "profile_id": profile_id,
+        "profile_version": "0.1.0",
+        "gate_rule_spec_ref": "GATE-EVIDENCE-SUFFICIENCY-v0.1",
+        "gate_rule_version": "0.1.0",
+        "product_case_ref": case_ref,
+        "product_definition_ref": _ref("product-definition:configured"),
+        "domain_id": "target_identity",
+        "measurement_spec_ref": _ref("measurement-spec:configured"),
+        "score_contract_ref": None,
+        "data_readiness": "adequate",
+        "data_reason_codes": [],
+        "qc_profile_ref": _ref(f"qc-profile:{case_slug}", "0.1.0"),
+        "model_robustness": "validated_applicable",
+        "robustness_reason_codes": [],
+        "validation_refs": [],
+        "prior_applicability": "not_required",
+        "prior_reason_codes": [],
+        "snapshot_refs": [],
+        "evidence_sufficiency_state": "sufficient",
         "blocking_reasons": [],
+        "limiting_reasons": [],
+        "missing_requirements": [],
+        "domain_score": None,
+        "score_state": "unavailable",
+        "score_reason_codes": ["p0_score_contract_unavailable"],
+        "measurement_result_refs": [],
+        "measurement_result_bindings": [],
+        "measurement_evidence_state_counts": _empty_measurement_counts(),
+        "evidence_refs": [f"evidence:sufficiency-{case_slug}"],
+        "sensitivity_refs": [],
+        "deduplicated_evidence_family_ids": [],
+        "created_at": "2026-08-24T00:00:00Z",
+        "deterministic_run_ref": f"run-{digest}",
+    }
+    return {
+        "result_id": f"evidence-sufficiency-result:{digest}",
+        "result_version": "0.1.0",
+        "gate_rule_spec_ref": "GATE-EVIDENCE-SUFFICIENCY-v0.1",
+        "profiles": [profile],
+        "case_summary": {
+            "summary_id": f"case-evidence-readiness-summary:{digest}",
+            "summary_version": "0.1.0",
+            "product_case_ref": case_ref,
+            "profile_count": 1,
+            "evidence_sufficiency_counts": {
+                "sufficient": 1,
+                "limited": 0,
+                "insufficient": 0,
+                "not_assessed": 0,
+            },
+            "measurement_evidence_state_counts": _empty_measurement_counts(),
+            "score_state_counts": {"unavailable": 1},
+            "blocking_reasons": [],
+        },
+        "gate_trace": [
+            {
+                "profile_ref": profile_id,
+                "domain_gate_input_ref": f"domain-gate-input:{case_slug}",
+                "evaluated_precedence": [
+                    "not_assessed",
+                    "insufficient",
+                    "limited",
+                    "sufficient",
+                ],
+                "selected_state": "sufficient",
+                "selected_reason_codes": [],
+                "ignored_duplicate_input_refs": [],
+            }
+        ],
+    }
+
+
+def _empty_measurement_counts() -> dict[str, int]:
+    return {
+        "measured": 0,
+        "inferred": 0,
+        "prior_only": 0,
+        "negative": 0,
+        "missing": 0,
+        "unknown": 0,
+        "unavailable": 0,
+        "alert": 0,
     }
 
 
 def _payloads() -> dict[str, dict]:
     baseline_ref = _ref("product-case:baseline")
     candidate_ref = _ref("product-case:candidate")
-    return {
+    payloads = {
         "product_cases": [
             {
                 "object_version": "0.1.0",
@@ -180,17 +246,51 @@ def _payloads() -> dict[str, dict]:
                 },
             ],
         },
-        "case_evidence_readiness_summaries": [
-            _readiness_summary("baseline", "1111111111111111"),
-            _readiness_summary("candidate", "2222222222222222"),
+        "evidence_sufficiency_run_results": [
+            _sufficiency_result("baseline", "1111111111111111"),
+            _sufficiency_result("candidate", "2222222222222222"),
         ],
     }
+    payloads["biological_unit_manifests"] = []
+    for case_slug, product_case in zip(
+        ("baseline", "candidate"), payloads["product_cases"], strict=True
+    ):
+        holder = {"product_case": product_case}
+        bind_reviewed_biological_units(
+            holder,
+            {
+                "view_id": f"data-view:{case_slug}:qc-selected",
+                "sha256": ("b" if case_slug == "baseline" else "c") * 64,
+                "observation_ids_sha256": (
+                    "d" if case_slug == "baseline" else "e"
+                ) * 64,
+                "n_observations": 2,
+            },
+            slug=case_slug,
+            units=[
+                (
+                    f"preparation:{case_slug}-1@1.0.0",
+                    f"sample:{case_slug}-1@1.0.0",
+                ),
+                (
+                    f"preparation:{case_slug}-2@1.0.0",
+                    f"sample:{case_slug}-2@1.0.0",
+                ),
+            ],
+        )
+        payloads["biological_unit_manifests"].append(
+            holder["biological_unit_manifest"]
+        )
+    return payloads
 
 
 def _write_json(path: Path, payload: dict) -> str:
-    encoded = (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode()
     path.write_bytes(encoded)
     return hashlib.sha256(encoded).hexdigest()
@@ -237,17 +337,32 @@ def _request(
                 media_type="application/json",
             )
         )
-    for offset, summary in enumerate(
-        values["case_evidence_readiness_summaries"],
+    for offset, result in enumerate(
+        values["evidence_sufficiency_run_results"],
         start=len(refs) + 1,
     ):
-        path = input_root / f"case_evidence_readiness_summary_{offset}.json"
-        digest = _write_json(path, summary)
+        path = input_root / f"evidence_sufficiency_run_result_{offset}.json"
+        digest = _write_json(path, result)
         refs.append(
             StructuredInputRef(
                 input_id=f"{input_id_prefix}-{offset}",
-                role="case_evidence_readiness_summary",
-                schema_ref="bridge://schemas/case-evidence-readiness-summary/v0.1",
+                role="evidence_sufficiency_run_result",
+                schema_ref="bridge://schemas/evidence-sufficiency-run-result/v0.1",
+                object_version="0.1.0",
+                path=path,
+                sha256=digest,
+                media_type="application/json",
+            )
+        )
+    for manifest in values["biological_unit_manifests"]:
+        offset = len(refs) + 1
+        path = input_root / f"biological_unit_manifest_{offset}.json"
+        digest = _write_json(path, manifest)
+        refs.append(
+            StructuredInputRef(
+                input_id=f"{input_id_prefix}-{offset}",
+                role="biological_unit_manifest",
+                schema_ref="bridge://schemas/biological-unit-manifest/v0.1",
                 object_version="0.1.0",
                 path=path,
                 sha256=digest,
@@ -410,9 +525,24 @@ def test_unit_mismatch_is_unavailable(tmp_path: Path) -> None:
 def test_preparation_and_sufficiency_gates_are_descriptive(tmp_path: Path) -> None:
     payloads = _payloads()
     payloads["comparison_spec"]["minimum_biological_units_per_case"] = 3
-    candidate_summary = payloads["case_evidence_readiness_summaries"][1]
+    candidate_summary = payloads["evidence_sufficiency_run_results"][1][
+        "case_summary"
+    ]
     candidate_summary["evidence_sufficiency_counts"].update(
-        {"sufficient": 0, "limited": 5}
+        {"sufficient": 0, "limited": 1}
+    )
+    candidate_result = payloads["evidence_sufficiency_run_results"][1]
+    candidate_result["profiles"][0].update(
+        {
+            "evidence_sufficiency_state": "limited",
+            "limiting_reasons": ["data_readiness_limited"],
+        }
+    )
+    candidate_result["gate_trace"][0].update(
+        {
+            "selected_state": "limited",
+            "selected_reason_codes": ["data_readiness_limited"],
+        }
     )
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
@@ -462,20 +592,37 @@ def test_biological_units_must_match_product_case_declaration(
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
     assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == [
+        "comparison_biological_unit_manifest_binding_mismatch"
+    ]
+
+
+def test_preparation_must_be_declared_by_manifest(tmp_path: Path) -> None:
+    payloads = _payloads()
+    payloads["comparison_evidence_bundle"]["cases"][1]["preparations"][1][
+        "preparation_ref"
+    ] = _ref("preparation:candidate-other")
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.FAILED
     assert run.reason_codes == ["comparison_biological_unit_binding_mismatch"]
 
 
 def test_cross_arm_biological_unit_overlap_is_rejected(tmp_path: Path) -> None:
     payloads = _payloads()
-    shared = _ref("preparation:shared-1")
-    payloads["product_cases"][0]["biological_unit_refs"][0] = shared
-    payloads["product_cases"][1]["biological_unit_refs"][0] = shared
-    payloads["comparison_evidence_bundle"]["cases"][0]["preparations"][0][
-        "preparation_ref"
-    ] = shared
-    payloads["comparison_evidence_bundle"]["cases"][1]["preparations"][0][
-        "preparation_ref"
-    ] = shared
+    shared = _ref("sample:baseline-1")
+    candidate_manifest = payloads["biological_unit_manifests"][1]
+    candidate_manifest["unit_bindings"][0]["independence_group_ref"] = shared
+    candidate_manifest["unit_bindings"][0]["sample_ref"] = shared
+    candidate_case = payloads["product_cases"][1]
+    candidate_case["biological_unit_refs"] = [
+        shared,
+        _ref("sample:candidate-2"),
+    ]
+    candidate_case["biological_unit_manifest_sha256"] = canonical_sha256(
+        candidate_manifest
+    )
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 

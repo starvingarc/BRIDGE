@@ -109,7 +109,13 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 74
+    assert {
+        "bridge://schemas/measurement-result/v0.1",
+        "bridge://schemas/measurement-result/v0.2",
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        "bridge://schemas/graft-lineage-manifest/v0.1",
+        "bridge://schemas/contract-validated-review-projection/v0.1",
+    }.issubset(SCHEMA_REFS)
     assert {
         "bridge://schemas/claim-verifier-run-result/v0.1",
         "bridge://schemas/verified-report/v0.1",

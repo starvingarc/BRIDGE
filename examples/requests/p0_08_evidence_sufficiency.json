@@ -41,10 +41,10 @@
     {
       "input_id": "target-result",
       "media_type": "application/json",
-      "object_version": "0.1.0",
+      "object_version": "0.2.0",
       "path": "/tmp/bridge-example/p0-08/target_measurement_result.json",
       "role": "measurement_result",
-      "schema_ref": "bridge://schemas/measurement-result/v0.1",
+      "schema_ref": "bridge://schemas/measurement-result/v0.2",
       "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
     },
     {

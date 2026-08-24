@@ -16,52 +16,96 @@
     },
     "GraftChannelRule": {
       "additionalProperties": false,
-      "allOf": [
-        {
-          "else": {
-            "properties": {
-              "configured_lower_bound": {
-                "type": [
-                  "number",
-                  "integer"
-                ]
-              },
-              "configured_upper_bound": {
-                "type": [
-                  "number",
-                  "integer"
-                ]
-              }
-            }
-          },
-          "if": {
-            "properties": {
-              "interpretation_policy": {
-                "const": "descriptive_only"
-              }
-            },
-            "required": [
-              "interpretation_policy"
-            ]
-          },
-          "then": {
-            "properties": {
-              "configured_lower_bound": {
-                "type": "null"
-              },
-              "configured_upper_bound": {
-                "type": "null"
-              }
-            }
-          }
-        }
-      ],
       "properties": {
+        "animal_estimand": {
+          "const": "mean_of_independent_animal_values",
+          "title": "Animal Estimand",
+          "type": "string"
+        },
         "channel_id": {
           "pattern": "^graft-channel:[A-Za-z0-9._:-]+$",
           "title": "Channel Id",
           "type": "string"
         },
+        "cross_stratum_aggregation": {
+          "const": "forbidden",
+          "title": "Cross Stratum Aggregation",
+          "type": "string"
+        },
+        "denominator_semantics": {
+          "enum": [
+            "not_applicable",
+            "observation_denominator",
+            "pooled_denominator"
+          ],
+          "title": "Denominator Semantics",
+          "type": "string"
+        },
+        "eligible_evidence_states": {
+          "items": {
+            "$ref": "#/$defs/EvidenceState"
+          },
+          "minItems": 1,
+          "title": "Eligible Evidence States",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "strata": {
+          "items": {
+            "$ref": "#/$defs/GraftStratumRule"
+          },
+          "minItems": 1,
+          "title": "Strata",
+          "type": "array"
+        },
+        "unit": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "within_animal_aggregation": {
+          "$ref": "#/$defs/WithinAnimalAggregation"
+        }
+      },
+      "required": [
+        "channel_id",
+        "unit",
+        "required",
+        "eligible_evidence_states",
+        "animal_estimand",
+        "within_animal_aggregation",
+        "denominator_semantics",
+        "cross_stratum_aggregation",
+        "strata"
+      ],
+      "title": "GraftChannelRule",
+      "type": "object"
+    },
+    "GraftStratumMember": {
+      "additionalProperties": false,
+      "properties": {
+        "graft_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "timepoint_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "graft_ref",
+        "timepoint_ref"
+      ],
+      "title": "GraftStratumMember",
+      "type": "object"
+    },
+    "GraftStratumRule": {
+      "additionalProperties": false,
+      "properties": {
         "configured_lower_bound": {
           "anyOf": [
             {
@@ -92,15 +136,6 @@
           "default": null,
           "title": "Configured Upper Bound"
         },
-        "eligible_evidence_states": {
-          "items": {
-            "$ref": "#/$defs/EvidenceState"
-          },
-          "minItems": 1,
-          "title": "Eligible Evidence States",
-          "type": "array",
-          "uniqueItems": true
-        },
         "interpretation_policy": {
           "enum": [
             "descriptive_only",
@@ -109,31 +144,32 @@
           "title": "Interpretation Policy",
           "type": "string"
         },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/GraftStratumMember"
+          },
+          "minItems": 1,
+          "title": "Members",
+          "type": "array"
+        },
         "minimum_independent_animals": {
           "exclusiveMinimum": 0,
           "title": "Minimum Independent Animals",
           "type": "integer"
         },
-        "required": {
-          "title": "Required",
-          "type": "boolean"
-        },
-        "unit": {
-          "maxLength": 120,
-          "minLength": 1,
-          "title": "Unit",
+        "stratum_id": {
+          "pattern": "^graft-stratum:[A-Za-z0-9._:-]+$",
+          "title": "Stratum Id",
           "type": "string"
         }
       },
       "required": [
-        "channel_id",
-        "unit",
-        "required",
-        "eligible_evidence_states",
+        "stratum_id",
+        "members",
         "minimum_independent_animals",
         "interpretation_policy"
       ],
-      "title": "GraftChannelRule",
+      "title": "GraftStratumRule",
       "type": "object"
     },
     "VersionedObjectRef": {
@@ -156,6 +192,15 @@
       ],
       "title": "VersionedObjectRef",
       "type": "object"
+    },
+    "WithinAnimalAggregation": {
+      "enum": [
+        "single_observation",
+        "arithmetic_mean",
+        "pooled_numerator_denominator"
+      ],
+      "title": "WithinAnimalAggregation",
+      "type": "string"
     }
   },
   "$id": "bridge://schemas/graft-assessment-spec/v0.1",
@@ -163,6 +208,22 @@
   "properties": {
     "algorithm_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "allowed_graft_analysis_unit_kinds": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Allowed Graft Analysis Unit Kinds",
+      "type": "array"
+    },
+    "allowed_graft_assays": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Allowed Graft Assays",
+      "type": "array"
     },
     "assay_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
@@ -182,7 +243,7 @@
       "title": "Confounded Design Policy",
       "type": "string"
     },
-    "measurement_spec_ref": {
+    "graft_measurement_spec_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
     },
     "missing_observation_policy": {
@@ -203,8 +264,16 @@
     "product_case_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
     },
+    "product_measurement_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
     "reference_snapshot_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "required_graft_context": {
+      "minLength": 1,
+      "title": "Required Graft Context",
+      "type": "string"
     },
     "rules": {
       "items": {
@@ -228,7 +297,11 @@
     "assessment_spec_id",
     "assessment_spec_version",
     "product_case_ref",
-    "measurement_spec_ref",
+    "product_measurement_spec_ref",
+    "graft_measurement_spec_ref",
+    "allowed_graft_assays",
+    "allowed_graft_analysis_unit_kinds",
+    "required_graft_context",
     "assay_ref",
     "sampling_context_ref",
     "reference_snapshot_ref",

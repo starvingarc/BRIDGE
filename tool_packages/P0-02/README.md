@@ -35,9 +35,9 @@ Produce source-aware reference and marker-program evidence against the internal 
 | Input schema | `bridge://schemas/tool-request/v0.1` |
 | Output schema | `bridge://schemas/tool-run/v0.1` |
 
-**Input:** A P0-01 `QCReadinessProfile` plus the exact checksummed expression artifact named by its selected `DataViewBinding`, declared scRNA/snRNA modality, internal annotation vocabulary, reference candidates, and provenance.
+**Input:** A P0-01 `QCReadinessProfile` plus the exact checksummed expression artifact, BiologicalUnitManifest and assignment table named by its selected `DataViewBinding`, declared scRNA/snRNA modality, internal annotation vocabulary, reference candidates, and provenance.
 
-**Output:** Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, product-level composition evidence, and exact P0-01 profile/view/checksum lineage. Rows with no finite informative expression remain `unknown`; the implementation cannot assign a biological state to an all-zero or otherwise information-free row.
+**Output:** Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, product-level composition evidence, and exact P0-01 profile/view/biological-unit/checksum lineage. P0-02 carries the manifest without promoting its declared lineage state. Rows with no finite informative expression remain `unknown`; the implementation cannot assign a biological state to an all-zero or otherwise information-free row.
 
 **Runtime behavior:** Executable candidate; it emits raw measurements and never emits a domain score.
 

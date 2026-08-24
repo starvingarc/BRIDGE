@@ -110,6 +110,17 @@ class DevelopmentWindowSpec(FrozenModel):
         )
         return value
 
+    @model_validator(mode="after")
+    def target_related_ontology_is_fixed(self) -> Self:
+        if set(self.target_related_lineage_roles) != {
+            LineageRole.TARGET,
+            LineageRole.ACCEPTABLE_ADJACENT,
+        }:
+            raise ValueError(
+                "target-related roles must be target plus acceptable_adjacent"
+            )
+        return self
+
     @property
     def ref(self) -> VersionedObjectRef:
         return VersionedObjectRef(
@@ -172,6 +183,7 @@ class DevelopmentInputChecksums(FrozenModel):
     development_window_spec: str = Field(pattern=SHA256_PATTERN)
     cell_state_evidence_profile: str = Field(pattern=SHA256_PATTERN)
     qc_readiness_profile: str = Field(pattern=SHA256_PATTERN)
+    biological_unit_manifest: str = Field(pattern=SHA256_PATTERN)
 
 
 class DevelopmentalCompatibilityResult(FrozenModel):

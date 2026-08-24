@@ -218,6 +218,19 @@ class OffTargetRoleSpec(FrozenModel):
         _unique(roles, "lineage_role_rules")
         if set(roles) != set(ProductRole):
             raise ValueError("lineage_role_rules must define every product role")
+        expected = {
+            ProductRole.TARGET: {LineageRole.TARGET},
+            ProductRole.ACCEPTABLE_ADJACENT: {
+                LineageRole.ACCEPTABLE_ADJACENT
+            },
+            ProductRole.KNOWN_OFF_TARGET: {LineageRole.NOT_TARGET},
+            ProductRole.ROLE_UNRESOLVED: {LineageRole.UNRESOLVED},
+            ProductRole.UNKNOWN: {LineageRole.UNRESOLVED},
+        }
+        if {
+            item.product_role: set(item.allowed_lineage_roles) for item in value
+        } != expected:
+            raise ValueError("lineage_role_rules contradict the fixed role ontology")
         return value
 
     @property
@@ -305,6 +318,7 @@ class OffTargetInputChecksums(FrozenModel):
     off_target_role_spec: str = Field(pattern=SHA256_PATTERN)
     cell_state_evidence_profile: str = Field(pattern=SHA256_PATTERN)
     qc_readiness_profile: str = Field(pattern=SHA256_PATTERN)
+    biological_unit_manifest: str = Field(pattern=SHA256_PATTERN)
 
 
 class OffTargetControlResult(FrozenModel):

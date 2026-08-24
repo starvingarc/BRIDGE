@@ -1,22 +1,24 @@
-# P0-11 Public-safe Export
+# P0-11 Internal Review Projection
 
 ## Purpose
 
-Rebuild a minimal, human-review-only JSON candidate from a P0-10-verified report
-and an explicit, checksummed allowlist. The source report is never copied
-wholesale, and this package does not grant publication authority.
+Create a minimal, contract-validated JSON projection for **internal human
+review** from an exact P0-10 report, verification result and producer run. The
+module preserves verified claim text and selected numeric bindings, removes
+internal identifiers by reconstruction, and stops at a deliberate release
+boundary. It is not a public exporter.
 
 ## Package contract
 
 | Field | Value |
 |---|---|
-| Package version | `0.2.0` |
+| Package version | `0.3.0` |
 | Runtime state | `implemented` |
 | Scientific state | `candidate` |
 | EnvironmentSpec | `ENV-EVIDENCE-v0.1` (`health_check_passed`) |
 | Input envelope | `bridge://schemas/tool-request/v0.2` |
 | Output envelope | `bridge://schemas/tool-run/v0.2` |
-| Result schema | `bridge://schemas/public-safe-report/v0.1` |
+| Result schema | `bridge://schemas/contract-validated-review-projection/v0.1` |
 | Adapter | `bridge.tool_packages.p0_11_public_export.adapter:adapter` |
 
 ```bash
@@ -25,92 +27,119 @@ bridge-tool validate --request request.json
 bridge-tool run --request request.json
 ```
 
-The Python SDK accepts the same `ToolRequestV2` through the default
-`ToolRegistry` validate and run methods.
+The Python SDK accepts the same `ToolRequestV2` through
+`ToolRegistry.load_default().check_eligibility(request)` and `.run(request)`.
+The source package keeps its historical Python import path for compatibility;
+the callable contract and artifact are named Internal Review Projection.
 
 ## Structured inputs
 
-Each input is a canonical local JSON object with an absolute path, role, Schema
-URI, object version, media type and SHA-256 checksum.
+P0-11 accepts exactly four immutable local JSON objects. Every
+`StructuredInputRef` requires a unique request-local ID, exact role and Schema,
+declared object version, absolute regular-file path, `application/json` media
+type and lowercase SHA-256 checksum.
 
-| Role | Schema | Required content |
-|---|---|---|
-| `report_draft` | `bridge://schemas/report-draft/v0.1` | The original structured P0-10 ReportDraft; `audience` must be `public_candidate`. Internal-research reports cannot enter public projection. |
-| `claim_verification_result` | `bridge://schemas/claim-verification-result/v0.1` | A receipt bound to the same report/hash/audience with release state `verified` or `verified_with_warnings`, `public_release_authority_state=not_configured` and fail-closed `public_export_eligibility=ineligible`. |
-| `public_export_spec` | `bridge://schemas/public-export-spec/v0.1` | Source report and receipt binding, target language, allowed claim types/evidence states, selected claims, public IDs and case labels, public accessions, prohibited literals and mandatory human-confirmation policy. It contains no text-rewrite contract. |
+| Role | Cardinality | Schema | Required content |
+|---|---:|---|---|
+| `report_draft` | 1 | `bridge://schemas/report-draft/v0.1` | Original P0-10 input report with `audience=public_candidate` |
+| `claim_verification_result` | 1 | `bridge://schemas/claim-verification-result/v0.1` | Result bound to the same report/hash/audience and in `verified` or `verified_with_warnings` state |
+| `claim_verifier_run` | 1 | `bridge://schemas/tool-run/v0.2` | Exact P0-10 `ToolRunV2` that produced the checksummed verification artifact |
+| `review_projection_spec` | 1 | `bridge://schemas/review-projection-spec/v0.1` | Report/verification binding, language, allowlists, selections, review IDs, accessions, prohibited literals and mandatory review policy |
 
-All three object versions are `0.1.0`. File assets, arbitrary parameters,
-MeasurementSpec envelope fields and nonzero seeds are refused.
+The three module objects use object version `0.1.0`; the verifier run declares
+its own ToolRun version. Expression assets, request-level MeasurementSpec,
+arbitrary parameters, unsupported roles and nonzero random seeds are refused.
 
-## Projection rules
+## Exact producer and report binding
 
-The implementation creates a new object from selected fields only. For every
-selected source claim it emits:
+Eligibility requires all of the following:
 
-- a caller-approved public claim ID and public case label;
-- the exact P0-10-verified text, byte-for-byte at the string level;
+1. the verification result matches the report reference, content hash,
+   audience and every selected claim;
+2. the supplied ToolRun is a P0-10 v0.2 run whose `result` equals the supplied
+   verification result;
+3. exactly one ToolRun artifact is a `claim_verification_result` and its SHA-256
+   equals the `claim_verification_result` input checksum;
+4. report, verification and projection spec agree on report hash,
+   verification ID and language;
+5. package-owned P0-10 release authority remains `not_configured` and public
+   export eligibility remains `ineligible`.
+
+These checks prove internal object correspondence. They do not authenticate
+who operated P0-10, establish biological truth, or supply release authority.
+
+## Projection mechanics
+
+For every selected claim, P0-11 reconstructs a new object containing only:
+
+- caller-declared review claim ID and review case label;
+- the exact verified plain-paragraph claim text;
 - claim type, language, evidence state and comparison mode;
-- numeric strings, source-field semantics and units without source Evidence IDs.
+- canonical numeric strings, source-field semantics and plain units;
+- explicitly supplied public accession identifiers.
 
-It never emits source report, claim, ProductCase, Evidence or value-binding IDs.
-Unselected claims and their prose are not copied. Public accessions come only
-from the export spec.
+It never rewrites claim text and never copies the report wholesale. Report,
+Claim, ProductCase, Evidence and value-binding source IDs are not projected.
+Unselected claims are absent. Configured prohibited literals and a bounded
+machine-reference guard are evaluated recursively over the reconstructed
+payload. This guard is deterministic defense in depth, not a general secret or
+PII detector.
 
 ## Output
 
-One `PublicSafeReport` is written as `public_safe_report.json` in an immutable,
-content-addressed run directory. It binds source-report hash, receipt checksum,
-export spec, all three input checksums and candidate hash. Because no trusted
-public-release authority is configured, every current output is
-`review_required` with `public_release_authority_not_configured`; a P0-10
-warning adds its separate reason. The tool never emits a ready/exported state
-and never uploads.
+One `ContractValidatedReviewProjection` is written as
+`contract_validated_review_projection.json` in an immutable,
+content-addressed run directory. It includes:
 
-The result has no MeasurementResult, visualization, source Evidence ID, score
-or biological reinterpretation.
+- source report hash, verification checksum and all four input checksums;
+- projection-spec reference, language and sorted accessions;
+- sorted projected claims and numeric bindings;
+- the three deterministic projection checks;
+- `producer_authentication_state=not_available`;
+- `release_authority_state=not_configured`;
+- `distribution_state=internal_review_only`;
+- `projection_state=review_required`;
+- a semantic `projection_hash`.
 
-## Eligibility and refusal
+A valid run therefore has `execution_state=partial` and always includes
+`producer_provenance_unverified` plus
+`public_release_authority_not_configured`. A P0-10 warning remains separately
+visible. P0-11 never emits `ready`, `released`, `published` or `exported`, and
+never uploads an artifact.
 
-Top-level failures publish nothing:
+## Refusal and degradation
 
-- missing, duplicate or unsupported role; Schema/version/checksum mismatch;
-- a report whose audience is not `public_candidate`, receipt/report/hash/audience mismatch, non-verified P0-10 result or an
-  authority/eligibility state inconsistent with the current fail-closed contract;
-- export-spec/report/receipt/language mismatch;
-- missing selected claim, disallowed claim type or evidence state;
-- any legacy alias-replacement field, because verified claim text is immutable;
-- unusable output, immutable-run collision or input mutation;
-- V1 request (`tool_request_v2_required`).
+Top-level contract failures publish no result artifact. Stable failures cover
+missing/duplicate roles, Schema/version/checksum mismatch, V1 requests,
+P0-10/report/artifact mismatch, non-verified verification state, authority
+state inconsistency, spec/report mismatch, unavailable or disallowed selected
+claims, mutable input, unsafe output and immutable-run collision. A prohibited
+literal or machine-local reference also blocks publication of the projection.
+All refusals return stable reason codes without echoing rejected private
+content.
 
-During reconstruction the candidate is also rejected if a caller-supplied
-prohibited literal remains, or if the bounded backstop sees a local server/user
-path, home-relative reference, `file:` reference, internal BRIDGE object
-namespace or credential-like assignment anywhere in the reconstructed payload.
-This is a narrow deterministic backstop, not a general secret/PII
-detector. The allowlist and disclosure policy remain the primary control.
-Every refusal returns a stable, non-sensitive reason code and publishes no
-candidate artifact.
+There is no automatic degradation from an invalid producer binding to an
+unverified projection. The only successful state is a contract-valid object
+that explicitly requires internal review.
 
-## Minimal example
+## Minimal example and reproducibility
 
-See `examples/requests/p0_11_public_safe_export.json`. Referenced objects must
-exist and match their declared checksums before validation.
+See `examples/requests/p0_11_internal_review_projection.json`. Replace all
+placeholder absolute paths and checksums with four exact immutable objects.
+Paths and request-local input IDs do not define the scientific payload;
+tool/environment versions, Schema/object versions and raw input checksums do.
+Identical inputs reuse identical result bytes.
 
-## Reproducibility and scope
+This first callable slice deliberately excludes public distribution,
+authentication, confirmation receipts, redaction of arbitrary free text,
+PII/secret scanning, Markdown/CSV/archive generation, figures, media, upload
+and release decisions. Those capabilities require a separately configured and
+reviewed authority boundary.
 
-Paths and caller-local input IDs do not affect the candidate identity. The tool
-and environment version, Schema/version and raw input checksums do. Identical
-content reuses identical result bytes.
-
-This first callable slice deliberately excludes CSV, Markdown, archives,
-figures, media metadata, SVG/HTML, scanners external to the package, PII
-anonymization, confirmation receipts and publication upload. Those capabilities
-must be separately specified and tested rather than hidden in this adapter.
-
-P0-11 remains `candidate`. P0-10 correspondence is not biological truth, and a
-public-safe candidate is not approval to publish.
+P0-11 remains `candidate`. Contract validation is not biological validation,
+and an internal review projection is not permission to publish.
 
 ## Detailed requirement
 
-See `docs/bridge_spec_v0.1/public_safe_export_task_card.md` and
-`docs/validation/p0_11_public_safe_export_20260824.md`.
+See `docs/bridge_spec_v0.1/internal_review_projection_task_card.md` and
+`docs/validation/p0_11_internal_review_projection_20260824.md`.

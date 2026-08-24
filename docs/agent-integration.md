@@ -66,18 +66,21 @@ policy, using graph-derived effective lifecycle rather than predecessor row
 state. It emits one receipt; internal correspondence does not make a report
 public-eligible, and the current public-release authority is explicitly
 `not_configured`.
-P0-07 reads two checksummed ProductCases, a ComparisonSpec and biological-unit
-evidence bundle. It rejects unit mismatch or cross-arm overlap and performs only
+P0-07 reads two checksummed ProductCases, a ComparisonSpec, a biological-unit
+evidence bundle, two full P0-08 run results and two exact BiologicalUnitManifests.
+It aggregates preparations within reviewed independence groups, rejects
+manifest mismatch or cross-arm group overlap and performs only
 pairwise descriptive summaries and raw deltas; biological
 directions and comparability requirements come from the input, while inference,
 Pareto, score and rank remain unavailable. P0-11 rebuilds only explicitly
-selected fields from a P0-10-verified report and checksummed PublicExportSpec,
-preserving claim text exactly. Because P0-10 has no configured public-release
-authority, its receipt remains export-ineligible and P0-11 can produce only
-`review_required`; it omits source identifiers and never authorizes
-publication. P0-12 summarizes checksummed, precomputed graft observations under
-a caller-supplied versioned rule object, aggregating repeated timepoints within
-animal before across-animal summary; it never verifies linkage, scores a graft or backfills the
+selected fields from a P0-10-verified report, exact producing ToolRun and
+checksummed ReviewProjectionSpec, preserving claim text exactly. Because
+producer authentication and public-release authority are unavailable, P0-11
+can produce only an `internal_review_only`, `review_required` object; it omits
+source identifiers and never authorizes publication. P0-12 summarizes
+checksummed, precomputed graft observations under a caller-supplied versioned
+rule object and exact externally reviewed lineage manifest, aggregating within
+animal and stratum before across-animal summary; it never scores a graft or backfills the
 pre-transplant product. HTTP, MCP and queue adapters may wrap
 the same JSON contracts later without changing scientific semantics.
 

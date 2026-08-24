@@ -22,6 +22,11 @@ from bridge.tool_packages.p0_07_comparison.models import (
 )
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     CaseEvidenceReadinessSummary,
+    EvidenceSufficiencyRunResult,
+)
+from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitManifest,
+    ProductCase,
 )
 from bridge.toolkit.contracts import ScoreState
 
@@ -32,7 +37,9 @@ def evaluate_comparison(
     tool_version: str,
     comparison_spec: ComparisonSpec,
     evidence_bundle: ComparisonEvidenceBundle,
-    readiness_summaries: list[CaseEvidenceReadinessSummary],
+    sufficiency_results: list[EvidenceSufficiencyRunResult],
+    biological_unit_manifests: list[BiologicalUnitManifest],
+    product_cases: list[ProductCase],
     input_sha256_by_role: dict[str, str],
 ) -> ComparisonRecord:
     evidence_by_ref = {
@@ -45,9 +52,18 @@ def evaluate_comparison(
     baseline = cases[ComparisonRole.BASELINE]
     candidate = cases[ComparisonRole.CANDIDATE]
     summaries_by_case = {
-        item.product_case_ref.ref: item
-        for item in readiness_summaries
-        if item.product_case_ref is not None
+        item.case_summary.product_case_ref.ref: item.case_summary
+        for item in sufficiency_results
+        if item.case_summary.product_case_ref is not None
+    }
+    manifests_by_ref = {
+        manifest.ref.ref: manifest for manifest in biological_unit_manifests
+    }
+    manifest_by_case = {
+        product_case.ref.ref: manifests_by_ref[
+            product_case.biological_unit_manifest_ref.ref
+        ]
+        for product_case in product_cases
     }
     sufficiency_by_role = {
         role: _sufficiency_state(summaries_by_case[case.product_case_ref.ref])
@@ -74,6 +90,8 @@ def evaluate_comparison(
             baseline,
             candidate,
             comparability,
+            baseline_manifest=manifest_by_case[baseline.product_case_ref.ref],
+            candidate_manifest=manifest_by_case[candidate.product_case_ref.ref],
             sufficiency_by_role=sufficiency_by_role,
             minimum_biological_units=comparison_spec.minimum_biological_units_per_case,
         )
@@ -86,6 +104,9 @@ def evaluate_comparison(
             sufficiency_summary_ref=case.sufficiency_summary_ref,
             sufficiency_state=sufficiency_by_role[role],
             declared_biological_unit_count=len(case.preparations),
+            biological_unit_lineage_state=(
+                manifest_by_case[case.product_case_ref.ref].lineage_state
+            ),
         )
         for role, case in (
             (ComparisonRole.BASELINE, baseline),
@@ -214,11 +235,17 @@ def _compare_metric(
     candidate_case: ComparisonCaseEvidence,
     comparability: ComparabilityState,
     *,
+    baseline_manifest: BiologicalUnitManifest,
+    candidate_manifest: BiologicalUnitManifest,
     sufficiency_by_role: dict[ComparisonRole, str],
     minimum_biological_units: int,
 ) -> MetricComparisonResult:
-    baseline, baseline_reasons = _summarize_metric(baseline_case, rule)
-    candidate, candidate_reasons = _summarize_metric(candidate_case, rule)
+    baseline, baseline_reasons = _summarize_metric(
+        baseline_case, rule, baseline_manifest
+    )
+    candidate, candidate_reasons = _summarize_metric(
+        candidate_case, rule, candidate_manifest
+    )
     reasons = {*baseline_reasons, *candidate_reasons}
     if comparability is ComparabilityState.NOT_COMPARABLE:
         reasons.add("comparison_not_comparable")
@@ -274,8 +301,9 @@ def _compare_metric(
 def _summarize_metric(
     case: ComparisonCaseEvidence,
     rule: MetricComparisonRule,
+    manifest: BiologicalUnitManifest,
 ) -> tuple[CaseMetricSummary, set[str]]:
-    values: list[float] = []
+    values_by_group: dict[str, list[float]] = {}
     evidence_refs: set[str] = set()
     reasons: set[str] = set()
     for preparation in case.preparations:
@@ -296,12 +324,26 @@ def _summarize_metric(
                 reasons.add("metric_value_unavailable")
                 eligible = False
             if eligible:
-                values.append(float(metric.value))
+                group_ref = next(
+                    item.independence_group_ref.ref
+                    for item in manifest.unit_bindings
+                    if item.analysis_unit_ref == preparation.preparation_ref
+                )
+                values_by_group.setdefault(group_ref, []).append(
+                    float(metric.value)
+                )
                 evidence_refs.update(metric.evidence_refs)
+    values = [fmean(items) for _, items in sorted(values_by_group.items())]
+    if any(len(items) > 1 for items in values_by_group.values()):
+        reasons.add("repeated_analysis_units_aggregated_within_independence_group")
     return (
         CaseMetricSummary(
             product_case_ref=case.product_case_ref,
-            eligible_biological_unit_count=len(values),
+            descriptive_group_count=len(values),
+            eligible_biological_unit_count=(
+                len(values) if manifest.independence_is_reviewed else 0
+            ),
+            biological_unit_lineage_state=manifest.lineage_state,
             mean=fmean(values) if values else None,
             minimum=min(values) if values else None,
             maximum=max(values) if values else None,

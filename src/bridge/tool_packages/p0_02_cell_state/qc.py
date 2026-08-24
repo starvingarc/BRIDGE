@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from bridge.tool_packages.p0_01_input_qc.io import sha256_path
+from bridge.tool_packages._configurable_contracts import BiologicalUnitManifest
 from bridge.toolkit.contracts import DataViewBinding, InputAsset, QCReadinessProfile
 
 
@@ -20,18 +21,25 @@ class UpstreamQCBinding:
     profile: QCReadinessProfile
     profile_sha256: str
     selected_view: DataViewBinding
+    biological_unit_manifest: BiologicalUnitManifest
+    biological_unit_manifest_sha256: str
+    assignment_artifact_sha256: str
 
 
 def validate_upstream_qc(
-    asset: InputAsset, input_hash: str | None = None
+    asset: InputAsset,
+    input_hash: str | None = None,
+    *,
+    catalog_path: Path | None = None,
 ) -> UpstreamQCBinding:
     profile_ref = asset.metadata.get("qc_profile_ref")
     if not profile_ref:
         raise UpstreamQCError("qc_profile_ref_required", "qc_profile_ref")
-    catalog_value = os.environ.get("BRIDGE_QC_PROFILE_CATALOG")
-    if not catalog_value:
-        raise UpstreamQCError("qc_profile_catalog_not_configured", str(profile_ref))
-    catalog_path = Path(catalog_value).expanduser().resolve()
+    if catalog_path is None:
+        catalog_value = os.environ.get("BRIDGE_QC_PROFILE_CATALOG")
+        if not catalog_value:
+            raise UpstreamQCError("qc_profile_catalog_not_configured", str(profile_ref))
+        catalog_path = Path(catalog_value).expanduser().resolve()
     try:
         catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
         record = catalog["profiles"][profile_ref]
@@ -49,6 +57,40 @@ def validate_upstream_qc(
         raise UpstreamQCError(
             "sample_or_preparation_ref_required",
             selected.view_id,
+        )
+    if (
+        selected.biological_unit_manifest_ref is None
+        or selected.biological_unit_manifest_sha256 is None
+    ):
+        raise UpstreamQCError(
+            "biological_unit_manifest_required",
+            selected.view_id,
+        )
+    manifest_path = profile_path.parent / "biological_unit_manifest.json"
+    assignment_path = profile_path.parent / "biological_unit_assignments.parquet"
+    try:
+        manifest_sha256 = sha256_path(manifest_path)
+        manifest = BiologicalUnitManifest.model_validate_json(
+            manifest_path.read_text(encoding="utf-8")
+        )
+        assignment_sha256 = sha256_path(assignment_path)
+    except (OSError, ValueError) as exc:
+        raise UpstreamQCError(
+            "biological_unit_manifest_invalid",
+            selected.biological_unit_manifest_ref,
+        ) from exc
+    if (
+        manifest.ref.ref != selected.biological_unit_manifest_ref
+        or manifest_sha256 != selected.biological_unit_manifest_sha256
+        or manifest.data_view_ref != selected.view_id
+        or manifest.selected_artifact_sha256 != selected.sha256
+        or manifest.observation_ids_sha256 != selected.observation_ids_sha256
+        or manifest.n_observations != selected.n_observations
+        or assignment_sha256 != manifest.assignment_artifact_sha256
+    ):
+        raise UpstreamQCError(
+            "biological_unit_manifest_binding_mismatch",
+            selected.biological_unit_manifest_ref,
         )
     actual_hash = input_hash or sha256_path(asset.path)
     checks = {
@@ -71,4 +113,7 @@ def validate_upstream_qc(
         profile=profile,
         profile_sha256=profile_sha256,
         selected_view=selected,
+        biological_unit_manifest=manifest,
+        biological_unit_manifest_sha256=manifest_sha256,
+        assignment_artifact_sha256=assignment_sha256,
     )

@@ -55,6 +55,9 @@
               "denominator": {
                 "type": "null"
               },
+              "numerator": {
+                "type": "null"
+              },
               "value": {
                 "type": "null"
               }
@@ -93,6 +96,21 @@
         },
         "evidence_state": {
           "$ref": "#/$defs/EvidenceState"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
         },
         "observation_id": {
           "pattern": "^graft-observation:[A-Za-z0-9._:-]+$",
@@ -222,7 +240,10 @@
           "graft_case_ref": {
             "type": "object"
           },
-          "measurement_spec_ref": {
+          "graft_lineage_manifest_ref": {
+            "type": "object"
+          },
+          "graft_measurement_spec_ref": {
             "type": "object"
           },
           "reference_snapshot_ref": {
@@ -257,7 +278,10 @@
           "graft_case_ref": {
             "type": "null"
           },
-          "measurement_spec_ref": {
+          "graft_lineage_manifest_ref": {
+            "type": "null"
+          },
+          "graft_measurement_spec_ref": {
             "type": "null"
           },
           "reference_snapshot_ref": {
@@ -327,7 +351,18 @@
       ],
       "default": null
     },
-    "measurement_spec_ref": {
+    "graft_lineage_manifest_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "graft_measurement_spec_ref": {
       "anyOf": [
         {
           "$ref": "#/$defs/VersionedObjectRef"

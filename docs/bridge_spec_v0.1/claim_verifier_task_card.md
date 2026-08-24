@@ -290,7 +290,7 @@ public_export_eligibility
 工具结果和唯一 JSON artifact 都是这一份回执的相同 canonical bytes；artifact
 checksum 不从发布后的可变路径重新推导。
 
-当前 release contract 只允许 assessed receipt 为 `ineligible`；`not_assessed` receipt 保持 `not_assessed`。未来若接入独立、可信且版本化的公开发布授权源，必须升级 release contract 与 Schema，不能由调用方参数把当前 receipt 改成 eligible。Public-safe Export 同时读取原始 ReportDraft 和本回执，核对 ref/hash 后仅可生成 `review_required` 白名单候选；P0-10 不复制第二份报告。
+当前 release contract 只允许 assessed receipt 为 `ineligible`；`not_assessed` receipt 保持 `not_assessed`。未来若接入独立、可信且版本化的公开发布授权源，必须升级 release contract 与 Schema，不能由调用方参数把当前 receipt 改成 eligible。P0-11 Internal Review Projection 同时读取原始 ReportDraft、本回执和 exact P0-10 ToolRun，核对 report/result/artifact checksum 后仅可生成 `internal_review_only`、`review_required` 白名单对象；P0-10 不复制第二份报告。
 
 ## 9. 图表、比较与 Recommendation 核验
 
@@ -388,11 +388,14 @@ Playwright 和外部 factuality 方法只保留 benchmark 处置记录，若未�
 - 将报告文件存在或某个分数可用解释为验证通过。
 - 将 public-safe 检查和科学 claim 核验混为一个 validation state。
 
-Public-safe Export 同时接收原始 `ReportDraft` 和 release state 为 `verified` 或
+P0-11 Internal Review Projection 同时接收原始 `ReportDraft`、exact P0-10
+`ToolRunV2` 和 release state 为 `verified` 或
 `verified_with_warnings`、但因 `public_release_authority_state=not_configured` 而保持
 `public_export_eligibility=ineligible` 的 receipt。它必须核对 report ref/hash、audience、
 P0-09 graph manifest hash 和 P0-10 artifact checksum，再从字段白名单生成
-`review_required` 新对象。它不能回写、清洗、覆盖或字符串改写已经核验的 claim；详细合同在下一张独立任务卡中整理。
+`internal_review_only`、`review_required` 新对象。它明确披露 producer
+authentication unavailable 与 release authority not configured，不能回写、清洗、
+覆盖或字符串改写已经核验的 claim；详细合同在下一张独立任务卡中整理。
 
 ## 13. 主要官方来源
 

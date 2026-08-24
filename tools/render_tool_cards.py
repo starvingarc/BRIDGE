@@ -27,15 +27,15 @@ DETAILED_CARD_IDS = {
 DETAILS = {
     "P0-01": {
         "input": "A declared h5ad, 10x H5, or 10x MTX asset; input level, assay, matrix semantics, sample/capture metadata, gene-identifier source, and output location.",
-        "output": "Raw structural and QC metrics, `QCReadinessProfile`, physical candidate data views when a candidate MeasurementSpec is selected, visualizations, and a checksummed artifact manifest. Each published view has a `DataViewBinding` with its artifact checksum, matrix semantics, exact cell count and deterministic cell-index checksum; a QC-selected view is a real subset, not a renamed pointer to the all-cells matrix.",
+        "output": "Raw structural and QC metrics, `QCReadinessProfile`, physical candidate data views, a `biological_unit_assignments.parquet` table and `BiologicalUnitManifest`, visualizations, and a checksummed artifact manifest. Each published view has a `DataViewBinding` with its artifact checksum, matrix semantics, exact cell count, deterministic cell-index checksum and exact BiologicalUnitManifest binding. P0-01 records only caller-declared lineage; it does not certify independent biological replicates.",
         "reject": "Unreadable or ambiguous matrix, duplicate identifiers, invalid count semantics, missing assay, inconsistent sample/capture/batch/preparation hierarchy, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input. Each capture must map to one declared parent value, and each preparation must map to one sample; one biological sample may legitimately have multiple preparations.",
         "visualization": "Per-sample QC distributions and counts-versus-detected-genes diagnostics with explicit denominators.",
         "validation": "Format fixtures, scRNA/snRNA contracts, matrix-semantic failures, deterministic reruns, input immutability, and optional Scrublet eligibility.",
         "details": "docs/bridge_spec_v0.1/input_audit_qc_task_card.md",
     },
     "P0-02": {
-        "input": "A P0-01 `QCReadinessProfile` plus the exact checksummed expression artifact named by its selected `DataViewBinding`, declared scRNA/snRNA modality, internal annotation vocabulary, reference candidates, and provenance.",
-        "output": "Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, product-level composition evidence, and exact P0-01 profile/view/checksum lineage. Rows with no finite informative expression remain `unknown`; the implementation cannot assign a biological state to an all-zero or otherwise information-free row.",
+        "input": "A P0-01 `QCReadinessProfile` plus the exact checksummed expression artifact, BiologicalUnitManifest and assignment table named by its selected `DataViewBinding`, declared scRNA/snRNA modality, internal annotation vocabulary, reference candidates, and provenance.",
+        "output": "Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, product-level composition evidence, and exact P0-01 profile/view/biological-unit/checksum lineage. P0-02 carries the manifest without promoting its declared lineage state. Rows with no finite informative expression remain `unknown`; the implementation cannot assign a biological state to an all-zero or otherwise information-free row.",
         "reject": "QC/view/checksum mismatch, reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.",
         "visualization": "Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.",
         "validation": "Source/lab/modality holdouts, leave-one-state-out, rare-state mixtures, calibration, OOD detection, and product-composition error.",
@@ -90,12 +90,12 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/claim_verifier_task_card.md",
     },
     "P0-11": {
-        "input": "Original ReportDraft plus an eligible P0-10 ClaimVerificationResult receipt, field allowlist, public aliases and export policy version.",
-        "output": "New PublicSafeReport candidate, regenerated public figures, file manifest, checksums, scan results, and confirmation-bound package hash.",
-        "reject": "Any non-allowlisted field, private path or identifier, unsafe embedded content, unregistered file, hash drift, or missing user confirmation.",
-        "visualization": "Public-data payload only; figures are regenerated and checked for metadata, scripts, links, hidden text, and tooltip leakage.",
-        "validation": "Leakage canaries, public accession preservation, CSV injection, MIME mismatch, archive traversal, media metadata, and deterministic packaging.",
-        "details": "docs/bridge_spec_v0.1/public_safe_export_task_card.md",
+        "input": "Exact ReportDraft, ClaimVerificationResult, producing P0-10 ToolRunV2, and a checksummed ReviewProjectionSpec.",
+        "output": "ContractValidatedReviewProjection fixed to internal_review_only, review_required, producer authentication unavailable, and release authority not configured.",
+        "reject": "Any cross-binding/checksum drift, unverified P0-10 result, non-allowlisted claim, configured prohibited literal, or bounded machine reference.",
+        "visualization": "No visualization output in v0.3.0.",
+        "validation": "Exact producer-artifact binding, claim/numeric preservation, recursive guard, deterministic reuse, input replacement and V1 refusal.",
+        "details": "docs/bridge_spec_v0.1/internal_review_projection_task_card.md",
     },
     "P0-12": {
         "input": "Optional GraftCase with explicit host/model/animal/timepoint/species/preparation linkage plus modality-matched fetal references.",

@@ -29,6 +29,10 @@ from bridge.toolkit.registry import ToolRegistry
 
 ROLE_SCHEMAS = {
     "product_case": "bridge://schemas/product-case/v0.1",
+    "graft_measurement_spec": "bridge://schemas/measurement-spec/v0.1",
+    "graft_lineage_manifest": (
+        "bridge://schemas/graft-lineage-manifest/v0.1"
+    ),
     "graft_assessment_spec": "bridge://schemas/graft-assessment-spec/v0.1",
     "graft_evidence_bundle": "bridge://schemas/graft-evidence-bundle/v0.1",
 }
@@ -44,7 +48,6 @@ def _observation(unit: int, channel: str, value: float) -> dict:
         "channel_id": f"graft-channel:{channel}",
         "unit": "configured-unit",
         "value": value,
-        "denominator": 100,
         "evidence_state": "measured",
         "evidence_refs": [f"evidence:unit-{unit}-{channel}"],
     }
@@ -52,11 +55,24 @@ def _observation(unit: int, channel: str, value: float) -> dict:
 
 def _payloads() -> dict[str, dict]:
     product_case = _ref("product-case:configured")
-    measurement = _ref("measurement-spec:configured")
+    product_measurement = _ref("measurement-spec:product")
+    graft_measurement = _ref("measurement-spec:graft")
+    graft_case = _ref("graft-case:configured")
+    lineage = _ref("graft-lineage-manifest:configured")
     assay = _ref("assay:configured")
     sampling = _ref("sampling-context:configured")
     reference = _ref("reference-snapshot:configured")
     algorithm = _ref("algorithm:configured")
+    stratum_members = [
+        {
+            "graft_ref": _ref("graft:one"),
+            "timepoint_ref": _ref("timepoint:one"),
+        },
+        {
+            "graft_ref": _ref("graft:two"),
+            "timepoint_ref": _ref("timepoint:two"),
+        },
+    ]
     return {
         "product_case": {
             "object_version": "0.1.0",
@@ -68,17 +84,78 @@ def _payloads() -> dict[str, dict]:
                 _ref("preparation:one"),
                 _ref("preparation:two"),
             ],
-            "measurement_spec_ref": measurement,
+            "measurement_spec_ref": product_measurement,
             "assay": "scRNA-seq",
             "provenance_refs": [_ref("source:fully-synthetic")],
             "created_at": "2026-08-24T00:00:00Z",
+        },
+        "graft_measurement_spec": {
+            "measurement_spec_id": "measurement-spec:graft",
+            "version": "1.0.0",
+            "scientific_question": "Configured graft evidence summary.",
+            "assay": "configured-graft-assay",
+            "status": "candidate",
+            "applicable_product_cards": [],
+            "input_contract": {"required": "configured-graft-evidence"},
+            "analysis_unit": "independent animal",
+            "analysis_unit_kind": "independent_animal",
+            "applicable_contexts": ["configured-graft-context"],
+            "raw_metric_definition": {
+                "aggregation": "configured-by-assessment-spec"
+            },
+            "numerator": None,
+            "denominator": None,
+            "direction": None,
+            "uncertainty_method": None,
+            "minimum_data": {},
+            "missing_behavior": "report_unavailable",
+            "tool_refs": ["P0-12"],
+            "reference_refs": [],
+            "prior_refs": [],
+            "validation_ref": None,
+            "exclusion_rules": {},
+            "release_manifest_ref": None,
+        },
+        "graft_lineage_manifest": {
+            "object_version": "0.1.0",
+            "manifest_id": "graft-lineage-manifest:configured",
+            "manifest_version": "1.0.0",
+            "generator_id": "configured-lineage-reviewer",
+            "generator_version": "1.0.0",
+            "product_case_ref": product_case,
+            "graft_case_ref": graft_case,
+            "lineage_state": "reviewed",
+            "review_gate_ref": "review-gate:configured",
+            "review_gate_sha256": "a" * 64,
+            "unit_bindings": [
+                {
+                    "unit_ref": _ref("graft-unit:one"),
+                    "animal_ref": _ref("animal:one"),
+                    "graft_ref": _ref("graft:one"),
+                    "timepoint_ref": _ref("timepoint:one"),
+                    "originating_preparation_ref": _ref("preparation:one"),
+                    "lineage_evidence_refs": ["evidence:link-one"],
+                },
+                {
+                    "unit_ref": _ref("graft-unit:two"),
+                    "animal_ref": _ref("animal:two"),
+                    "graft_ref": _ref("graft:two"),
+                    "timepoint_ref": _ref("timepoint:two"),
+                    "originating_preparation_ref": _ref("preparation:two"),
+                    "lineage_evidence_refs": ["evidence:link-two"],
+                },
+            ],
         },
         "graft_assessment_spec": {
             "object_version": "0.1.0",
             "assessment_spec_id": "graft-assessment-spec:configured",
             "assessment_spec_version": "1.0.0",
             "product_case_ref": product_case,
-            "measurement_spec_ref": measurement,
+            "product_measurement_spec_ref": product_measurement,
+            "graft_measurement_spec_ref": graft_measurement,
+            "allowed_graft_assays": ["configured-graft-assay"],
+            "allowed_graft_analysis_unit_kinds": ["independent_animal"],
+            "required_graft_context": "configured-graft-context",
             "assay_ref": assay,
             "sampling_context_ref": sampling,
             "reference_snapshot_ref": reference,
@@ -89,20 +166,40 @@ def _payloads() -> dict[str, dict]:
                     "unit": "configured-unit",
                     "required": True,
                     "eligible_evidence_states": ["measured", "inferred"],
-                    "minimum_independent_animals": 2,
-                    "interpretation_policy": "configured_interval",
-                    "configured_lower_bound": 1.0,
-                    "configured_upper_bound": 4.0,
+                    "animal_estimand": "mean_of_independent_animal_values",
+                    "within_animal_aggregation": "arithmetic_mean",
+                    "denominator_semantics": "not_applicable",
+                    "cross_stratum_aggregation": "forbidden",
+                    "strata": [
+                        {
+                            "stratum_id": "graft-stratum:configured-primary",
+                            "members": deepcopy(stratum_members),
+                            "minimum_independent_animals": 2,
+                            "interpretation_policy": "configured_interval",
+                            "configured_lower_bound": 1.0,
+                            "configured_upper_bound": 4.0,
+                        }
+                    ],
                 },
                 {
                     "channel_id": "graft-channel:configured-secondary",
                     "unit": "configured-unit",
                     "required": False,
                     "eligible_evidence_states": ["measured"],
-                    "minimum_independent_animals": 1,
-                    "interpretation_policy": "descriptive_only",
-                    "configured_lower_bound": None,
-                    "configured_upper_bound": None,
+                    "animal_estimand": "mean_of_independent_animal_values",
+                    "within_animal_aggregation": "arithmetic_mean",
+                    "denominator_semantics": "not_applicable",
+                    "cross_stratum_aggregation": "forbidden",
+                    "strata": [
+                        {
+                            "stratum_id": "graft-stratum:configured-secondary",
+                            "members": deepcopy(stratum_members),
+                            "minimum_independent_animals": 1,
+                            "interpretation_policy": "descriptive_only",
+                            "configured_lower_bound": None,
+                            "configured_upper_bound": None,
+                        }
+                    ],
                 },
             ],
             "missing_observation_policy": "report_unavailable",
@@ -116,8 +213,9 @@ def _payloads() -> dict[str, dict]:
             "evidence_bundle_version": "1.0.0",
             "graft_availability": "provided",
             "product_case_ref": product_case,
-            "graft_case_ref": _ref("graft-case:configured"),
-            "measurement_spec_ref": measurement,
+            "graft_case_ref": graft_case,
+            "graft_measurement_spec_ref": graft_measurement,
+            "graft_lineage_manifest_ref": lineage,
             "assay_ref": assay,
             "sampling_context_ref": sampling,
             "reference_snapshot_ref": reference,
@@ -153,6 +251,25 @@ def _payloads() -> dict[str, dict]:
     }
 
 
+def _sync_lineage(payloads: dict[str, dict | None]) -> None:
+    bundle = payloads["graft_evidence_bundle"]
+    manifest = payloads["graft_lineage_manifest"]
+    assert isinstance(bundle, dict) and isinstance(manifest, dict)
+    manifest["unit_bindings"] = [
+        {
+            "unit_ref": deepcopy(unit["unit_ref"]),
+            "animal_ref": deepcopy(unit["animal_ref"]),
+            "graft_ref": deepcopy(unit["graft_ref"]),
+            "timepoint_ref": deepcopy(unit["timepoint_ref"]),
+            "originating_preparation_ref": deepcopy(
+                unit["originating_preparation_ref"]
+            ),
+            "lineage_evidence_refs": deepcopy(unit["linkage_evidence_refs"]),
+        }
+        for unit in bundle["units"]
+    ]
+
+
 def _write_json(path: Path, payload: dict) -> str:
     encoded = (
         json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -165,7 +282,7 @@ def _write_json(path: Path, payload: dict) -> str:
 def _request(
     tmp_path: Path,
     *,
-    payloads: dict[str, dict] | None = None,
+    payloads: dict[str, dict | None] | None = None,
     output_dir: Path | None = None,
     input_id_prefix: str = "input",
     random_seed: int = 0,
@@ -175,14 +292,21 @@ def _request(
     input_root.mkdir(parents=True)
     refs: list[StructuredInputRef] = []
     for index, role in enumerate(ROLE_SCHEMAS, start=1):
+        if values.get(role) is None:
+            continue
         path = input_root / f"{role}.json"
         digest = _write_json(path, values[role])
+        object_version = (
+            values[role]["version"]
+            if role == "graft_measurement_spec"
+            else values[role]["object_version"]
+        )
         refs.append(
             StructuredInputRef(
                 input_id=f"{input_id_prefix}-{index}",
                 role=role,
                 schema_ref=ROLE_SCHEMAS[role],
-                object_version="0.1.0",
+                object_version=object_version,
                 path=path,
                 sha256=digest,
                 media_type="application/json",
@@ -259,6 +383,15 @@ def test_repeated_timepoints_are_aggregated_within_animal_before_summary(
             "observations": [_observation(3, "configured-primary", 8.0)],
         }
     )
+    payloads["graft_assessment_spec"]["rules"][0]["strata"][0][
+        "members"
+    ].append(
+        {
+            "graft_ref": _ref("graft:one"),
+            "timepoint_ref": _ref("timepoint:later"),
+        }
+    )
+    _sync_lineage(payloads)
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
     primary = run.result["channel_summaries"][0]
@@ -279,9 +412,9 @@ def test_interval_interpretation_changes_only_with_versioned_spec(
 ) -> None:
     baseline = ToolRegistry.load_default().run(_request(tmp_path / "baseline"))
     payloads = _payloads()
-    rule = payloads["graft_assessment_spec"]["rules"][0]
-    rule["configured_lower_bound"] = 0.0
-    rule["configured_upper_bound"] = 2.0
+    stratum = payloads["graft_assessment_spec"]["rules"][0]["strata"][0]
+    stratum["configured_lower_bound"] = 0.0
+    stratum["configured_upper_bound"] = 2.0
     changed = ToolRegistry.load_default().run(
         _request(tmp_path / "changed", payloads=payloads)
     )
@@ -305,7 +438,8 @@ def test_explicit_not_provided_is_traceable_and_does_not_degrade_product(
         {
             "graft_availability": "not_provided",
             "graft_case_ref": None,
-            "measurement_spec_ref": None,
+            "graft_measurement_spec_ref": None,
+            "graft_lineage_manifest_ref": None,
             "assay_ref": None,
             "sampling_context_ref": None,
             "reference_snapshot_ref": None,
@@ -314,6 +448,7 @@ def test_explicit_not_provided_is_traceable_and_does_not_degrade_product(
             "units": [],
         }
     )
+    payloads["graft_lineage_manifest"] = None
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
@@ -330,9 +465,7 @@ def test_missing_observations_are_unavailable_not_zero(tmp_path: Path) -> None:
     payloads = _payloads()
     for unit in payloads["graft_evidence_bundle"]["units"]:
         observation = unit["observations"][0]
-        observation.update(
-            {"value": None, "denominator": None, "evidence_state": "missing"}
-        )
+        observation.update({"value": None, "evidence_state": "missing"})
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
     primary = run.result["channel_summaries"][0]
@@ -348,6 +481,7 @@ def test_missing_observations_are_unavailable_not_zero(tmp_path: Path) -> None:
 def test_provided_bundle_without_units_is_not_assessed(tmp_path: Path) -> None:
     payloads = _payloads()
     payloads["graft_evidence_bundle"]["units"] = []
+    _sync_lineage(payloads)
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
@@ -362,12 +496,44 @@ def test_provided_bundle_without_units_is_not_assessed(tmp_path: Path) -> None:
     )
 
 
+def test_declared_lineage_is_traceable_but_not_summarized(tmp_path: Path) -> None:
+    payloads = _payloads()
+    manifest = payloads["graft_lineage_manifest"]
+    manifest["lineage_state"] = "declared"
+    manifest["review_gate_ref"] = None
+    manifest["review_gate_sha256"] = None
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    assert run.result["result_state"] == "partial"
+    assert run.result["graft_lineage_state"] == "declared"
+    assert run.result["score_state"] == "unavailable"
+    assert all(
+        summary["result_state"] == "not_assessed"
+        and summary["animal_summaries"] == []
+        and summary["mean"] is None
+        for summary in run.result["channel_summaries"]
+    )
+    assert "graft_lineage_not_reviewed" in run.reason_codes
+
+
+def test_provided_bundle_requires_exact_lineage_manifest(tmp_path: Path) -> None:
+    payloads = _payloads()
+    payloads["graft_lineage_manifest"] = None
+
+    eligibility = ToolRegistry.load_default().check_eligibility(
+        _request(tmp_path, payloads=payloads)
+    )
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["graft_lineage_manifest_required"]
+
+
 def test_independent_unit_minimum_is_policy_input(tmp_path: Path) -> None:
     payloads = _payloads()
     observation = payloads["graft_evidence_bundle"]["units"][1]["observations"][0]
-    observation.update(
-        {"value": None, "denominator": None, "evidence_state": "unknown"}
-    )
+    observation.update({"value": None, "evidence_state": "unknown"})
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
     primary = run.result["channel_summaries"][0]
@@ -375,6 +541,110 @@ def test_independent_unit_minimum_is_policy_input(tmp_path: Path) -> None:
     assert run.execution_state is ExecutionState.PARTIAL
     assert primary["eligible_animal_count"] == 1
     assert "independent_animals_below_configured_minimum" in primary["reason_codes"]
+    assert primary["configured_interval_relation"] == "unavailable"
+
+
+def test_pooled_denominators_are_aggregated_within_animal(tmp_path: Path) -> None:
+    payloads = _payloads()
+    rule = payloads["graft_assessment_spec"]["rules"][0]
+    rule["within_animal_aggregation"] = "pooled_numerator_denominator"
+    rule["denominator_semantics"] = "pooled_denominator"
+    stratum = rule["strata"][0]
+    stratum["configured_lower_bound"] = 0.0
+    stratum["configured_upper_bound"] = 1.0
+    for observation, numerator, denominator in (
+        (
+            payloads["graft_evidence_bundle"]["units"][0]["observations"][0],
+            20.0,
+            100,
+        ),
+        (
+            payloads["graft_evidence_bundle"]["units"][1]["observations"][0],
+            40.0,
+            100,
+        ),
+    ):
+        observation.update(
+            {
+                "value": numerator / denominator,
+                "numerator": numerator,
+                "denominator": denominator,
+            }
+        )
+    later = {
+        "unit_ref": _ref("graft-unit:one-later"),
+        "animal_ref": _ref("animal:one"),
+        "graft_ref": _ref("graft:one"),
+        "timepoint_ref": _ref("timepoint:later"),
+        "originating_preparation_ref": _ref("preparation:one"),
+        "linkage_evidence_refs": ["evidence:link-one-later"],
+        "observations": [_observation(3, "configured-primary", 0.4)],
+    }
+    later["observations"][0].update({"numerator": 80.0, "denominator": 200})
+    payloads["graft_evidence_bundle"]["units"].append(later)
+    stratum["members"].append(
+        {
+            "graft_ref": _ref("graft:one"),
+            "timepoint_ref": _ref("timepoint:later"),
+        }
+    )
+    _sync_lineage(payloads)
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+    primary = run.result["channel_summaries"][0]
+    animal_one = primary["animal_summaries"][0]
+
+    assert animal_one["pooled_numerator"] == 100.0
+    assert animal_one["pooled_denominator"] == 300
+    assert animal_one["mean"] == pytest.approx(1 / 3)
+    assert primary["mean"] == pytest.approx(((1 / 3) + 0.4) / 2)
+
+
+def test_strata_remain_separate_without_cross_stratum_mean(tmp_path: Path) -> None:
+    payloads = _payloads()
+    rule = payloads["graft_assessment_spec"]["rules"][0]
+    rule["strata"] = [
+        {
+            "stratum_id": "graft-stratum:first",
+            "members": [
+                {
+                    "graft_ref": _ref("graft:one"),
+                    "timepoint_ref": _ref("timepoint:one"),
+                }
+            ],
+            "minimum_independent_animals": 1,
+            "interpretation_policy": "descriptive_only",
+            "configured_lower_bound": None,
+            "configured_upper_bound": None,
+        },
+        {
+            "stratum_id": "graft-stratum:second",
+            "members": [
+                {
+                    "graft_ref": _ref("graft:two"),
+                    "timepoint_ref": _ref("timepoint:two"),
+                }
+            ],
+            "minimum_independent_animals": 1,
+            "interpretation_policy": "descriptive_only",
+            "configured_lower_bound": None,
+            "configured_upper_bound": None,
+        },
+    ]
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
+    primary = [
+        summary
+        for summary in run.result["channel_summaries"]
+        if summary["channel_id"] == "graft-channel:configured-primary"
+    ]
+
+    assert [summary["mean"] for summary in primary] == [2.0, 4.0]
+    assert all(
+        summary["cross_stratum_aggregation"] == "forbidden"
+        for summary in primary
+    )
+    assert "cross_stratum_aggregation_forbidden" in run.reason_codes
 
 
 def test_unconfigured_channels_are_reported_not_silently_used(
@@ -400,6 +670,7 @@ def test_linkage_is_never_inferred_from_graft_metadata(tmp_path: Path) -> None:
     for unit in payloads["graft_evidence_bundle"]["units"]:
         unit["originating_preparation_ref"] = None
         unit["linkage_evidence_refs"] = []
+    _sync_lineage(payloads)
     payloads["graft_evidence_bundle"]["design_constraint_refs"] = [
         _ref("design-constraint:configured")
     ]
@@ -417,6 +688,7 @@ def test_partial_linkage_remains_unlinked(tmp_path: Path) -> None:
     second = payloads["graft_evidence_bundle"]["units"][1]
     second["originating_preparation_ref"] = None
     second["linkage_evidence_refs"] = []
+    _sync_lineage(payloads)
 
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
@@ -429,7 +701,7 @@ def test_partial_linkage_remains_unlinked(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("field", "reason"),
     [
-        ("measurement_spec_ref", "graft_context_binding_mismatch"),
+        ("graft_measurement_spec_ref", "graft_context_binding_mismatch"),
         ("assay_ref", "graft_context_binding_mismatch"),
         ("sampling_context_ref", "graft_context_binding_mismatch"),
         ("reference_snapshot_ref", "graft_context_binding_mismatch"),
@@ -471,6 +743,10 @@ def test_originating_preparation_must_belong_to_product_case(
     payloads["graft_evidence_bundle"]["units"][0][
         "originating_preparation_ref"
     ] = _ref("preparation:other")
+    payloads["graft_evidence_bundle"]["units"][0]["linkage_evidence_refs"] = [
+        "evidence:link-other"
+    ]
+    _sync_lineage(payloads)
 
     eligibility = ToolRegistry.load_default().check_eligibility(
         _request(tmp_path, payloads=payloads)

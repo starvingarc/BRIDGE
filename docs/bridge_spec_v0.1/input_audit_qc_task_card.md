@@ -22,6 +22,11 @@ P0 遵循以下原则：
 - 基因集合指标必须绑定 `var_names` 或显式声明的 `var` 基因符号列；未覆盖目标基因集合时返回 `unavailable`，不得写成比例为零。
 - `sample_id`、文件名或目录名不得被自动解释为 `capture_id`、library 或 biological replicate。
 - metadata 层级要求每个 capture 只映射到一个 sample/preparation/batch/timepoint，且每个 preparation 只映射到一个 sample；同一个 biological sample 可以有多个 preparation，不得用错误的一对一约束压平实验设计。
+- 当前执行器为每个发布数据视图写出
+  `biological_unit_assignments.parquet` 与 `BiologicalUnitManifest`，并把
+  manifest ref/checksum 绑定进 `DataViewBinding`。P0-01 只把用户明确声明的
+  capture/preparation/sample 层级规范化为 `lineage_state=declared`；它不审核
+  哪些单位可作为独立生物重复，也不允许下游把 cells/captures 自动当作 replicates。
 
 ## 2. 输入级别
 

@@ -7,7 +7,7 @@
 | 日期 | 2026-08-06 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA progenitor |
-| 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard` |
+| 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard`、`BiologicalUnitManifest` |
 | 主要输出 | `TargetIdentityProfile`、`RegionalFidelityProfile`、`SpatialReferenceProjectionProfile` |
 
 ## 0. 当前可执行候选
@@ -16,7 +16,8 @@ P0-03 v0.2.0 实现了组成解释的最小确定性路径。它通过
 `ToolRequestV2` 接收带 checksum 的 `ProductCase`、
 `ProductDefinitionCard`、`StateRoleMap`、
 `TargetRegionalAssessmentSpec`、`CellStateEvidenceProfile` 和
-`QCReadinessProfile`，输出一个 `TargetRegionalEvidenceResult`。
+`QCReadinessProfile`，以及 ProductCase 精确绑定的
+`BiologicalUnitManifest`，输出一个 `TargetRegionalEvidenceResult`。
 
 实现代码不包含任何具体状态到产品角色的映射。下文 PD-mDA 角色均为
 待审核候选内容；只有请求中版本化 `StateRoleMap` 的值参与本次运行。
@@ -25,6 +26,8 @@ P0-03 v0.2.0 实现了组成解释的最小确定性路径。它通过
 ProductDefinitionCard；P0-02 的 reconciliation-state 记录只作为上游诊断信息读取，
 不进入目标或区域组成分母。
 当前路径不运行表达分析或空间投射，不输出区间、分数、效力、安全或放行结论。
+清单的 ref、checksum、independence scope、analysis-unit 与 group 成员必须与
+ProductCase 完全一致；`declared` 只表示来源声明，不能被解释为已审核的独立重复。
 
 ## 1. 任务目标
 

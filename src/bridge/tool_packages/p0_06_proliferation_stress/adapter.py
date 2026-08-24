@@ -14,6 +14,7 @@ from bridge.tool_packages._structured_runtime import (
     single_object,
 )
 from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitManifest,
     ProductCase,
     ProductDefinitionCard,
     VersionedObjectRef,
@@ -66,6 +67,10 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "qc_readiness_profile": (
         "bridge://schemas/qc-readiness-profile/v0.1",
         QCReadinessProfile,
+    ),
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        BiologicalUnitManifest,
     ),
 }
 
@@ -123,6 +128,12 @@ class ProliferationStressAdapter:
         qc_profile = single_object(
             request, loaded, "qc_readiness_profile", QCReadinessProfile
         )
+        biological_unit_manifest = single_object(
+            request,
+            loaded,
+            "biological_unit_manifest",
+            BiologicalUnitManifest,
+        )
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
         try:
@@ -135,6 +146,7 @@ class ProliferationStressAdapter:
                 evidence_bundle=evidence_bundle,
                 developmental_result=developmental_result,
                 qc_profile=qc_profile,
+                biological_unit_manifest=biological_unit_manifest,
                 qc_profile_version=_input_version(request, "qc_readiness_profile"),
                 input_sha256_by_role={
                     ref.role: ref.sha256 for ref in request.object_inputs
@@ -270,6 +282,12 @@ def _binding_reasons(
     qc_profile = single_object(
         request, loaded, "qc_readiness_profile", QCReadinessProfile
     )
+    biological_unit_manifest = single_object(
+        request,
+        loaded,
+        "biological_unit_manifest",
+        BiologicalUnitManifest,
+    )
     reasons: list[str] = []
     developmental_ref = VersionedObjectRef(
         object_id=developmental_result.result_id,
@@ -287,7 +305,20 @@ def _binding_reasons(
         reasons.append("program_evidence_product_case_mismatch")
     if evidence_bundle.product_definition_ref != product_definition.ref:
         reasons.append("program_evidence_product_definition_mismatch")
-    allowed_units = set(product_case.biological_unit_refs)
+    manifest_groups = set(biological_unit_manifest.independence_group_refs)
+    if (
+        product_case.biological_unit_manifest_ref
+        != biological_unit_manifest.ref
+        or product_case.biological_unit_manifest_sha256
+        != _role_ref(request, "biological_unit_manifest").sha256
+        or product_case.independence_scope_ref
+        != biological_unit_manifest.independence_scope_ref
+        or set(product_case.biological_unit_refs) != manifest_groups
+    ):
+        reasons.append("program_biological_unit_manifest_binding_mismatch")
+    allowed_units = {
+        item.analysis_unit_ref for item in biological_unit_manifest.unit_bindings
+    }
     if not allowed_units:
         reasons.append("product_case_biological_units_required")
     if any(
@@ -348,6 +379,10 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
 
 def _input_version(request: ToolRequestV2, role: str) -> str:
     return next(ref.object_version for ref in request.object_inputs if ref.role == role)
+
+
+def _role_ref(request: ToolRequestV2, role: str) -> StructuredInputRef:
+    return next(ref for ref in request.object_inputs if ref.role == role)
 
 
 def _failed_run(

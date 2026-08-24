@@ -1,8 +1,25 @@
 {
   "$defs": {
+    "BiologicalUnitLineageState": {
+      "enum": [
+        "declared",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "BiologicalUnitLineageState",
+      "type": "string"
+    },
     "CaseMetricSummary": {
       "additionalProperties": false,
       "properties": {
+        "biological_unit_lineage_state": {
+          "$ref": "#/$defs/BiologicalUnitLineageState"
+        },
+        "descriptive_group_count": {
+          "minimum": 0,
+          "title": "Descriptive Group Count",
+          "type": "integer"
+        },
         "eligible_biological_unit_count": {
           "minimum": 0,
           "title": "Eligible Biological Unit Count",
@@ -65,7 +82,9 @@
       },
       "required": [
         "product_case_ref",
+        "descriptive_group_count",
         "eligible_biological_unit_count",
+        "biological_unit_lineage_state",
         "mean",
         "minimum",
         "maximum",
@@ -77,6 +96,9 @@
     "CaseReadinessSummary": {
       "additionalProperties": false,
       "properties": {
+        "biological_unit_lineage_state": {
+          "$ref": "#/$defs/BiologicalUnitLineageState"
+        },
         "declared_biological_unit_count": {
           "exclusiveMinimum": 0,
           "title": "Declared Biological Unit Count",
@@ -107,7 +129,8 @@
         "product_case_ref",
         "sufficiency_summary_ref",
         "sufficiency_state",
-        "declared_biological_unit_count"
+        "declared_biological_unit_count",
+        "biological_unit_lineage_state"
       ],
       "title": "CaseReadinessSummary",
       "type": "object"
@@ -124,13 +147,13 @@
     "ComparisonInputChecksums": {
       "additionalProperties": false,
       "properties": {
-        "case_evidence_readiness_summaries": {
+        "biological_unit_manifests": {
           "items": {
             "type": "string"
           },
           "maxItems": 2,
           "minItems": 2,
-          "title": "Case Evidence Readiness Summaries",
+          "title": "Biological Unit Manifests",
           "type": "array",
           "uniqueItems": true
         },
@@ -143,6 +166,16 @@
           "pattern": "^[0-9a-f]{64}$",
           "title": "Comparison Spec",
           "type": "string"
+        },
+        "evidence_sufficiency_run_results": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Evidence Sufficiency Run Results",
+          "type": "array",
+          "uniqueItems": true
         },
         "product_cases": {
           "items": {
@@ -159,7 +192,8 @@
         "comparison_spec",
         "comparison_evidence_bundle",
         "product_cases",
-        "case_evidence_readiness_summaries"
+        "evidence_sufficiency_run_results",
+        "biological_unit_manifests"
       ],
       "title": "ComparisonInputChecksums",
       "type": "object"

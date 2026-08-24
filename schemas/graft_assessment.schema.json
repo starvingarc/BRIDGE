@@ -49,6 +49,34 @@
             }
           ],
           "title": "Mean"
+        },
+        "pooled_denominator": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pooled Denominator"
+        },
+        "pooled_numerator": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pooled Numerator"
         }
       },
       "required": [
@@ -71,6 +99,11 @@
     "GraftChannelSummary": {
       "additionalProperties": false,
       "properties": {
+        "animal_estimand": {
+          "const": "mean_of_independent_animal_values",
+          "title": "Animal Estimand",
+          "type": "string"
+        },
         "animal_summaries": {
           "items": {
             "$ref": "#/$defs/GraftAnimalChannelSummary"
@@ -113,6 +146,20 @@
             }
           ],
           "title": "Configured Upper Bound"
+        },
+        "cross_stratum_aggregation": {
+          "const": "forbidden",
+          "title": "Cross Stratum Aggregation",
+          "type": "string"
+        },
+        "denominator_semantics": {
+          "enum": [
+            "not_applicable",
+            "observation_denominator",
+            "pooled_denominator"
+          ],
+          "title": "Denominator Semantics",
+          "type": "string"
         },
         "eligible_animal_count": {
           "minimum": 0,
@@ -191,22 +238,45 @@
         "result_state": {
           "enum": [
             "available",
-            "unavailable"
+            "unavailable",
+            "not_assessed"
           ],
           "title": "Result State",
           "type": "string"
+        },
+        "stratum_id": {
+          "pattern": "^graft-stratum:[A-Za-z0-9._:-]+$",
+          "title": "Stratum Id",
+          "type": "string"
+        },
+        "stratum_members": {
+          "items": {
+            "$ref": "#/$defs/GraftStratumMember"
+          },
+          "minItems": 1,
+          "title": "Stratum Members",
+          "type": "array"
         },
         "unit": {
           "maxLength": 120,
           "minLength": 1,
           "title": "Unit",
           "type": "string"
+        },
+        "within_animal_aggregation": {
+          "$ref": "#/$defs/WithinAnimalAggregation"
         }
       },
       "required": [
         "channel_id",
+        "stratum_id",
+        "stratum_members",
         "unit",
         "required",
+        "animal_estimand",
+        "within_animal_aggregation",
+        "denominator_semantics",
+        "cross_stratum_aggregation",
         "minimum_independent_animals",
         "eligible_animal_count",
         "animal_summaries",
@@ -236,6 +306,24 @@
           "title": "Graft Evidence Bundle",
           "type": "string"
         },
+        "graft_lineage_manifest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Graft Lineage Manifest"
+        },
+        "graft_measurement_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Graft Measurement Spec",
+          "type": "string"
+        },
         "product_case": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Product Case",
@@ -244,11 +332,21 @@
       },
       "required": [
         "product_case",
+        "graft_measurement_spec",
         "graft_assessment_spec",
         "graft_evidence_bundle"
       ],
       "title": "GraftInputChecksums",
       "type": "object"
+    },
+    "GraftLineageState": {
+      "enum": [
+        "declared",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "GraftLineageState",
+      "type": "string"
     },
     "GraftLinkageState": {
       "enum": [
@@ -259,6 +357,23 @@
       ],
       "title": "GraftLinkageState",
       "type": "string"
+    },
+    "GraftStratumMember": {
+      "additionalProperties": false,
+      "properties": {
+        "graft_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "timepoint_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "graft_ref",
+        "timepoint_ref"
+      ],
+      "title": "GraftStratumMember",
+      "type": "object"
     },
     "PreparationGraftLinkage": {
       "additionalProperties": false,
@@ -343,6 +458,15 @@
       ],
       "title": "VersionedObjectRef",
       "type": "object"
+    },
+    "WithinAnimalAggregation": {
+      "enum": [
+        "single_observation",
+        "arithmetic_mean",
+        "pooled_numerator_denominator"
+      ],
+      "title": "WithinAnimalAggregation",
+      "type": "string"
     }
   },
   "$id": "bridge://schemas/graft-assessment/v0.1",
@@ -403,6 +527,36 @@
         }
       ]
     },
+    "graft_lineage_manifest_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "graft_lineage_state": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GraftLineageState"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "graft_measurement_spec_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "graft_score": {
       "default": null,
       "title": "Graft Score",
@@ -418,16 +572,6 @@
     },
     "linkage_state": {
       "$ref": "#/$defs/GraftLinkageState"
-    },
-    "measurement_spec_ref": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/VersionedObjectRef"
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "object_version": {
       "const": "0.1.0",
@@ -452,6 +596,9 @@
       "type": "string"
     },
     "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_measurement_spec_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
     },
     "reason_codes": {
@@ -508,7 +655,10 @@
     "evidence_bundle_ref",
     "product_case_ref",
     "graft_case_ref",
-    "measurement_spec_ref",
+    "product_measurement_spec_ref",
+    "graft_measurement_spec_ref",
+    "graft_lineage_manifest_ref",
+    "graft_lineage_state",
     "input_sha256_by_role",
     "result_state",
     "graft_availability",

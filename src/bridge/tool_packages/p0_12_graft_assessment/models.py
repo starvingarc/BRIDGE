@@ -66,62 +66,41 @@ class ConfiguredIntervalRelation(StrEnum):
     UNAVAILABLE = "unavailable"
 
 
-class GraftChannelRule(FrozenModel):
-    model_config = ConfigDict(
-        frozen=True,
-        extra="forbid",
-        json_schema_extra={
-            "allOf": [
-                {
-                    "if": {
-                        "properties": {
-                            "interpretation_policy": {"const": "descriptive_only"}
-                        },
-                        "required": ["interpretation_policy"],
-                    },
-                    "then": {
-                        "properties": {
-                            "configured_lower_bound": {"type": "null"},
-                            "configured_upper_bound": {"type": "null"},
-                        }
-                    },
-                    "else": {
-                        "properties": {
-                            "configured_lower_bound": {
-                                "type": ["number", "integer"]
-                            },
-                            "configured_upper_bound": {
-                                "type": ["number", "integer"]
-                            },
-                        }
-                    },
-                }
-            ]
-        },
-    )
+class WithinAnimalAggregation(StrEnum):
+    SINGLE_OBSERVATION = "single_observation"
+    ARITHMETIC_MEAN = "arithmetic_mean"
+    POOLED_NUMERATOR_DENOMINATOR = "pooled_numerator_denominator"
 
-    channel_id: str = Field(pattern=r"^graft-channel:[A-Za-z0-9._:-]+$")
-    unit: str = Field(min_length=1, max_length=120)
-    required: StrictBool
-    eligible_evidence_states: list[EvidenceState] = Field(
-        min_length=1,
-        json_schema_extra={"uniqueItems": True},
-    )
+
+class GraftLineageState(StrEnum):
+    DECLARED = "declared"
+    REVIEWED = "reviewed"
+    FROZEN = "frozen"
+
+
+class GraftStratumMember(FrozenModel):
+    graft_ref: VersionedObjectRef
+    timepoint_ref: VersionedObjectRef
+
+
+class GraftStratumRule(FrozenModel):
+    stratum_id: str = Field(pattern=r"^graft-stratum:[A-Za-z0-9._:-]+$")
+    members: list[GraftStratumMember] = Field(min_length=1)
     minimum_independent_animals: StrictInt = Field(gt=0)
     interpretation_policy: Literal["descriptive_only", "configured_interval"]
     configured_lower_bound: FiniteNumber | None = None
     configured_upper_bound: FiniteNumber | None = None
 
-    _unit_is_publication_safe = field_validator("unit")(
-        validate_publication_text
-    )
-
-    @field_validator("eligible_evidence_states")
+    @field_validator("members")
     @classmethod
-    def evidence_states_are_unique(
-        cls, value: list[EvidenceState]
-    ) -> list[EvidenceState]:
-        return _unique(value, "eligible_evidence_states")
+    def members_are_unique(
+        cls, value: list[GraftStratumMember]
+    ) -> list[GraftStratumMember]:
+        _unique(
+            [(item.graft_ref.ref, item.timepoint_ref.ref) for item in value],
+            "graft stratum members",
+        )
+        return value
 
     @field_validator("configured_lower_bound", "configured_upper_bound")
     @classmethod
@@ -135,13 +114,64 @@ class GraftChannelRule(FrozenModel):
         bounds = (self.configured_lower_bound, self.configured_upper_bound)
         if self.interpretation_policy == "descriptive_only":
             if any(value is not None for value in bounds):
-                raise ValueError("descriptive_only rule cannot declare bounds")
+                raise ValueError("descriptive_only stratum cannot declare bounds")
         elif any(value is None for value in bounds):
-            raise ValueError("configured_interval rule requires both bounds")
+            raise ValueError("configured_interval stratum requires both bounds")
         elif float(self.configured_lower_bound) > float(
             self.configured_upper_bound
         ):
             raise ValueError("configured interval lower bound exceeds upper bound")
+        return self
+
+
+class GraftChannelRule(FrozenModel):
+    channel_id: str = Field(pattern=r"^graft-channel:[A-Za-z0-9._:-]+$")
+    unit: str = Field(min_length=1, max_length=120)
+    required: StrictBool
+    eligible_evidence_states: list[EvidenceState] = Field(
+        min_length=1,
+        json_schema_extra={"uniqueItems": True},
+    )
+    animal_estimand: Literal["mean_of_independent_animal_values"]
+    within_animal_aggregation: WithinAnimalAggregation
+    denominator_semantics: Literal[
+        "not_applicable", "observation_denominator", "pooled_denominator"
+    ]
+    cross_stratum_aggregation: Literal["forbidden"]
+    strata: list[GraftStratumRule] = Field(min_length=1)
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
+    )
+
+    @field_validator("eligible_evidence_states")
+    @classmethod
+    def evidence_states_are_unique(
+        cls, value: list[EvidenceState]
+    ) -> list[EvidenceState]:
+        return _unique(value, "eligible_evidence_states")
+
+    @field_validator("strata")
+    @classmethod
+    def strata_are_disjoint(cls, value: list[GraftStratumRule]) -> list[GraftStratumRule]:
+        _unique([item.stratum_id for item in value], "graft strata")
+        members = [
+            (member.graft_ref.ref, member.timepoint_ref.ref)
+            for stratum in value
+            for member in stratum.members
+        ]
+        _unique(members, "cross-stratum graft/timepoint members")
+        return value
+
+    @model_validator(mode="after")
+    def aggregation_is_coherent(self) -> Self:
+        if (
+            self.within_animal_aggregation
+            is WithinAnimalAggregation.POOLED_NUMERATOR_DENOMINATOR
+        ) != (self.denominator_semantics == "pooled_denominator"):
+            raise ValueError(
+                "pooled aggregation and pooled denominator semantics must agree"
+            )
         return self
 
 
@@ -152,7 +182,11 @@ class GraftAssessmentSpec(FrozenModel):
     )
     assessment_spec_version: str = Field(pattern=VERSION_PATTERN)
     product_case_ref: VersionedObjectRef
-    measurement_spec_ref: VersionedObjectRef
+    product_measurement_spec_ref: VersionedObjectRef
+    graft_measurement_spec_ref: VersionedObjectRef
+    allowed_graft_assays: list[str] = Field(min_length=1)
+    allowed_graft_analysis_unit_kinds: list[str] = Field(min_length=1)
+    required_graft_context: str = Field(min_length=1)
     assay_ref: VersionedObjectRef
     sampling_context_ref: VersionedObjectRef
     reference_snapshot_ref: VersionedObjectRef
@@ -170,6 +204,16 @@ class GraftAssessmentSpec(FrozenModel):
     ) -> list[GraftChannelRule]:
         _unique([item.channel_id for item in value], "graft channel rules")
         return value
+
+    @field_validator(
+        "allowed_graft_assays",
+        "allowed_graft_analysis_unit_kinds",
+    )
+    @classmethod
+    def configured_vocabularies_are_unique(cls, value: list[str]) -> list[str]:
+        if any(not item.strip() for item in value):
+            raise ValueError("configured graft vocabulary values must not be blank")
+        return _unique(value, "configured graft vocabulary")
 
     @property
     def ref(self) -> VersionedObjectRef:
@@ -197,6 +241,7 @@ class GraftObservation(FrozenModel):
                     "then": {
                         "properties": {
                             "value": {"type": "null"},
+                            "numerator": {"type": "null"},
                             "denominator": {"type": "null"},
                         }
                     },
@@ -214,6 +259,7 @@ class GraftObservation(FrozenModel):
     channel_id: str = Field(pattern=r"^graft-channel:[A-Za-z0-9._:-]+$")
     unit: str = Field(min_length=1, max_length=120)
     value: FiniteNumber | None
+    numerator: FiniteNumber | None = None
     denominator: StrictInt | None = Field(default=None, gt=0)
     evidence_state: EvidenceState
     evidence_refs: list[PublishedRef] = Field(
@@ -225,7 +271,7 @@ class GraftObservation(FrozenModel):
         validate_publication_text
     )
 
-    @field_validator("value")
+    @field_validator("value", "numerator")
     @classmethod
     def value_is_finite(cls, value: FiniteNumber | None) -> FiniteNumber | None:
         return _finite(value)
@@ -243,10 +289,26 @@ class GraftObservation(FrozenModel):
             EvidenceState.UNAVAILABLE,
         }
         if self.evidence_state in unavailable:
-            if self.value is not None or self.denominator is not None:
+            if (
+                self.value is not None
+                or self.numerator is not None
+                or self.denominator is not None
+            ):
                 raise ValueError("unavailable observation cannot carry a value")
         elif self.value is None:
             raise ValueError("available observation requires a value")
+        if (self.numerator is None) != (self.denominator is None):
+            raise ValueError("numerator and denominator must be supplied together")
+        if self.numerator is not None:
+            assert self.denominator is not None
+            assert self.value is not None
+            if not math.isclose(
+                float(self.value),
+                float(self.numerator) / float(self.denominator),
+                rel_tol=1e-9,
+                abs_tol=1e-12,
+            ):
+                raise ValueError("value must equal numerator divided by denominator")
         return self
 
 
@@ -287,6 +349,73 @@ class GraftUnitEvidence(FrozenModel):
         return self
 
 
+class GraftLineageBinding(FrozenModel):
+    unit_ref: VersionedObjectRef
+    animal_ref: VersionedObjectRef
+    graft_ref: VersionedObjectRef
+    timepoint_ref: VersionedObjectRef
+    originating_preparation_ref: VersionedObjectRef | None = None
+    lineage_evidence_refs: list[PublishedRef] = Field(
+        default_factory=list,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("lineage_evidence_refs")
+    @classmethod
+    def lineage_evidence_is_unique(cls, value: list[str]) -> list[str]:
+        return _unique(value, "lineage_evidence_refs")
+
+
+class GraftLineageManifest(FrozenModel):
+    object_version: Literal["0.1.0"]
+    manifest_id: str = Field(pattern=r"^graft-lineage-manifest:[A-Za-z0-9._:-]+$")
+    manifest_version: str = Field(pattern=VERSION_PATTERN)
+    generator_id: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9._:-]+$")
+    generator_version: str = Field(pattern=VERSION_PATTERN)
+    product_case_ref: VersionedObjectRef
+    graft_case_ref: VersionedObjectRef
+    lineage_state: GraftLineageState
+    review_gate_ref: PublishedRef | None = None
+    review_gate_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    unit_bindings: list[GraftLineageBinding] = Field(default_factory=list)
+
+    @field_validator("unit_bindings")
+    @classmethod
+    def bindings_are_unique(
+        cls, value: list[GraftLineageBinding]
+    ) -> list[GraftLineageBinding]:
+        _unique([item.unit_ref.ref for item in value], "graft lineage units")
+        _unique(
+            [
+                (item.animal_ref.ref, item.graft_ref.ref, item.timepoint_ref.ref)
+                for item in value
+            ],
+            "graft lineage animal/graft/timepoint assignments",
+        )
+        return value
+
+    @model_validator(mode="after")
+    def review_state_is_authoritative(self) -> Self:
+        reviewed = self.lineage_state in {
+            GraftLineageState.REVIEWED,
+            GraftLineageState.FROZEN,
+        }
+        if reviewed != (
+            self.review_gate_ref is not None and self.review_gate_sha256 is not None
+        ):
+            raise ValueError("reviewed graft lineage requires a checksummed review gate")
+        if reviewed and self.generator_id.startswith("P0-12"):
+            raise ValueError("P0-12 cannot self-assert reviewed graft lineage")
+        return self
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.manifest_id,
+            object_version=self.manifest_version,
+        )
+
+
 class GraftEvidenceBundle(FrozenModel):
     model_config = ConfigDict(
         frozen=True,
@@ -303,7 +432,8 @@ class GraftEvidenceBundle(FrozenModel):
                     "then": {
                         "properties": {
                             "graft_case_ref": {"type": "null"},
-                            "measurement_spec_ref": {"type": "null"},
+                            "graft_measurement_spec_ref": {"type": "null"},
+                            "graft_lineage_manifest_ref": {"type": "null"},
                             "assay_ref": {"type": "null"},
                             "sampling_context_ref": {"type": "null"},
                             "reference_snapshot_ref": {"type": "null"},
@@ -315,7 +445,8 @@ class GraftEvidenceBundle(FrozenModel):
                     "else": {
                         "properties": {
                             "graft_case_ref": {"type": "object"},
-                            "measurement_spec_ref": {"type": "object"},
+                            "graft_measurement_spec_ref": {"type": "object"},
+                            "graft_lineage_manifest_ref": {"type": "object"},
                             "assay_ref": {"type": "object"},
                             "sampling_context_ref": {"type": "object"},
                             "reference_snapshot_ref": {"type": "object"},
@@ -335,7 +466,8 @@ class GraftEvidenceBundle(FrozenModel):
     graft_availability: GraftAvailability
     product_case_ref: VersionedObjectRef
     graft_case_ref: VersionedObjectRef | None = None
-    measurement_spec_ref: VersionedObjectRef | None = None
+    graft_measurement_spec_ref: VersionedObjectRef | None = None
+    graft_lineage_manifest_ref: VersionedObjectRef | None = None
     assay_ref: VersionedObjectRef | None = None
     sampling_context_ref: VersionedObjectRef | None = None
     reference_snapshot_ref: VersionedObjectRef | None = None
@@ -370,7 +502,8 @@ class GraftEvidenceBundle(FrozenModel):
     def availability_is_coherent(self) -> Self:
         context = (
             self.graft_case_ref,
-            self.measurement_spec_ref,
+            self.graft_measurement_spec_ref,
+            self.graft_lineage_manifest_ref,
             self.assay_ref,
             self.sampling_context_ref,
             self.reference_snapshot_ref,
@@ -397,6 +530,8 @@ class GraftAnimalChannelSummary(FrozenModel):
     animal_ref: VersionedObjectRef
     eligible_observation_count: StrictInt = Field(gt=0)
     mean: FiniteNumber
+    pooled_numerator: FiniteNumber | None = None
+    pooled_denominator: StrictInt | None = Field(default=None, gt=0)
     evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
 
     @field_validator("mean")
@@ -413,11 +548,34 @@ class GraftAnimalChannelSummary(FrozenModel):
             raise ValueError("animal evidence must be unique and sorted")
         return value
 
+    @model_validator(mode="after")
+    def pooled_values_are_paired(self) -> Self:
+        if (self.pooled_numerator is None) != (self.pooled_denominator is None):
+            raise ValueError("pooled numerator and denominator must be paired")
+        if self.pooled_numerator is not None:
+            assert self.pooled_denominator is not None
+            if not math.isclose(
+                float(self.mean),
+                float(self.pooled_numerator) / float(self.pooled_denominator),
+                rel_tol=1e-9,
+                abs_tol=1e-12,
+            ):
+                raise ValueError("animal value must equal pooled numerator/denominator")
+        return self
+
 
 class GraftChannelSummary(FrozenModel):
     channel_id: str = Field(pattern=r"^graft-channel:[A-Za-z0-9._:-]+$")
+    stratum_id: str = Field(pattern=r"^graft-stratum:[A-Za-z0-9._:-]+$")
+    stratum_members: list[GraftStratumMember] = Field(min_length=1)
     unit: str = Field(min_length=1, max_length=120)
     required: StrictBool
+    animal_estimand: Literal["mean_of_independent_animal_values"]
+    within_animal_aggregation: WithinAnimalAggregation
+    denominator_semantics: Literal[
+        "not_applicable", "observation_denominator", "pooled_denominator"
+    ]
+    cross_stratum_aggregation: Literal["forbidden"]
     minimum_independent_animals: StrictInt = Field(gt=0)
     eligible_animal_count: StrictInt = Field(ge=0)
     animal_summaries: list[GraftAnimalChannelSummary]
@@ -427,7 +585,7 @@ class GraftChannelSummary(FrozenModel):
     configured_lower_bound: FiniteNumber | None
     configured_upper_bound: FiniteNumber | None
     configured_interval_relation: ConfiguredIntervalRelation
-    result_state: Literal["available", "unavailable"]
+    result_state: Literal["available", "unavailable", "not_assessed"]
     evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
     reason_codes: list[ReasonCode] = Field(json_schema_extra={"uniqueItems": True})
 
@@ -465,16 +623,27 @@ class GraftChannelSummary(FrozenModel):
             raise ValueError("animal summaries must be unique and sorted")
         return value
 
+    @field_validator("stratum_members")
+    @classmethod
+    def stratum_members_are_unique(
+        cls, value: list[GraftStratumMember]
+    ) -> list[GraftStratumMember]:
+        _unique(
+            [(item.graft_ref.ref, item.timepoint_ref.ref) for item in value],
+            "summary stratum members",
+        )
+        return value
+
     @model_validator(mode="after")
     def summary_is_coherent(self) -> Self:
         values = (self.mean, self.minimum, self.maximum)
-        if self.result_state == "unavailable":
+        if self.result_state in {"unavailable", "not_assessed"}:
             if self.eligible_animal_count != 0 or self.animal_summaries or any(
                 value is not None for value in values
             ):
-                raise ValueError("unavailable summary cannot contain values")
+                raise ValueError("unassessed summary cannot contain values")
             if self.configured_interval_relation is not ConfiguredIntervalRelation.UNAVAILABLE:
-                raise ValueError("unavailable summary requires unavailable relation")
+                raise ValueError("unassessed summary requires unavailable relation")
         else:
             if self.eligible_animal_count == 0 or any(
                 value is None for value in values
@@ -498,13 +667,24 @@ class GraftChannelSummary(FrozenModel):
                 raise ValueError("configured output interval requires both bounds")
             else:
                 assert self.mean is not None
-                expected = _configured_relation(
-                    float(self.mean),
-                    float(self.configured_lower_bound),
-                    float(self.configured_upper_bound),
-                )
-                if self.configured_interval_relation is not expected:
-                    raise ValueError("configured interval relation does not match mean")
+                if (
+                    self.configured_interval_relation
+                    is ConfiguredIntervalRelation.UNAVAILABLE
+                ):
+                    if "independent_animals_below_configured_minimum" not in self.reason_codes:
+                        raise ValueError(
+                            "unavailable interval relation requires low-animal reason"
+                        )
+                else:
+                    expected = _configured_relation(
+                        float(self.mean),
+                        float(self.configured_lower_bound),
+                        float(self.configured_upper_bound),
+                    )
+                    if self.configured_interval_relation is not expected:
+                        raise ValueError(
+                            "configured interval relation does not match mean"
+                        )
         return self
 
 
@@ -534,6 +714,8 @@ class UnmatchedGraftObservation(FrozenModel):
 
 class GraftInputChecksums(FrozenModel):
     product_case: str = Field(pattern=SHA256_PATTERN)
+    graft_measurement_spec: str = Field(pattern=SHA256_PATTERN)
+    graft_lineage_manifest: str | None = Field(default=None, pattern=SHA256_PATTERN)
     graft_assessment_spec: str = Field(pattern=SHA256_PATTERN)
     graft_evidence_bundle: str = Field(pattern=SHA256_PATTERN)
 
@@ -547,7 +729,10 @@ class GraftAssessment(FrozenModel):
     evidence_bundle_ref: VersionedObjectRef
     product_case_ref: VersionedObjectRef
     graft_case_ref: VersionedObjectRef | None
-    measurement_spec_ref: VersionedObjectRef | None
+    product_measurement_spec_ref: VersionedObjectRef
+    graft_measurement_spec_ref: VersionedObjectRef | None
+    graft_lineage_manifest_ref: VersionedObjectRef | None
+    graft_lineage_state: GraftLineageState | None
     input_sha256_by_role: GraftInputChecksums
     result_state: Literal["complete", "partial", "not_assessed", "not_provided"]
     graft_availability: GraftAvailability
@@ -581,9 +766,9 @@ class GraftAssessment(FrozenModel):
     def channel_summaries_are_sorted(
         cls, value: list[GraftChannelSummary]
     ) -> list[GraftChannelSummary]:
-        ids = [item.channel_id for item in value]
+        ids = [(item.channel_id, item.stratum_id) for item in value]
         if ids != sorted(set(ids)):
-            raise ValueError("channel summaries must be unique and sorted")
+            raise ValueError("channel/stratum summaries must be unique and sorted")
         return value
 
     @field_validator("evidence_refs", "reason_codes")
@@ -604,7 +789,9 @@ class GraftAssessment(FrozenModel):
             if any(
                 (
                     self.graft_case_ref is not None,
-                    self.measurement_spec_ref is not None,
+                    self.graft_measurement_spec_ref is not None,
+                    self.graft_lineage_manifest_ref is not None,
+                    self.graft_lineage_state is not None,
                     self.observation_unit_count != 0,
                     self.independent_animal_count != 0,
                     bool(self.channel_summaries),
@@ -618,7 +805,12 @@ class GraftAssessment(FrozenModel):
             if self.analysis_mode is not GraftAnalysisMode.UNAVAILABLE:
                 raise ValueError("not_provided result has unavailable analysis")
         else:
-            if self.graft_case_ref is None or self.measurement_spec_ref is None:
+            if (
+                self.graft_case_ref is None
+                or self.graft_measurement_spec_ref is None
+                or self.graft_lineage_manifest_ref is None
+                or self.graft_lineage_state is None
+            ):
                 raise ValueError("provided result requires graft context")
             if self.result_state == "not_provided":
                 raise ValueError("provided graft cannot return not_provided")
@@ -626,8 +818,16 @@ class GraftAssessment(FrozenModel):
                 raise ValueError("callable graft slice is descriptive only")
             if self.result_state == "not_assessed" and available:
                 raise ValueError("not_assessed result cannot contain available channels")
-            if self.result_state != "not_assessed" and not available:
+            if self.result_state not in {"not_assessed", "partial"} and not available:
                 raise ValueError("assessed result requires an available channel")
+            if self.graft_lineage_state is GraftLineageState.DECLARED:
+                if self.result_state != "partial" or any(
+                    item.result_state != "not_assessed"
+                    for item in self.channel_summaries
+                ):
+                    raise ValueError(
+                        "declared graft lineage permits descriptive partial output only"
+                    )
             if self.result_state == "complete" and (
                 self.unmatched_observations
                 or any(
@@ -675,5 +875,6 @@ def _configured_relation(
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/graft-assessment-spec/v0.1": GraftAssessmentSpec,
     "bridge://schemas/graft-evidence-bundle/v0.1": GraftEvidenceBundle,
+    "bridge://schemas/graft-lineage-manifest/v0.1": GraftLineageManifest,
     "bridge://schemas/graft-assessment/v0.1": GraftAssessment,
 }

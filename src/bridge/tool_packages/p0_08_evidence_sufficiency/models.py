@@ -326,6 +326,22 @@ class VersionedObjectPointer(FrozenModel):
         return list(_unique(cleaned, "provenance_refs"))
 
 
+class ChecksummedObjectBinding(FrozenModel):
+    object_id: str = Field(min_length=1)
+    object_version: str = Field(min_length=1)
+    schema_ref: str = Field(min_length=1)
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @field_validator("object_id")
+    @classmethod
+    def object_id_is_publishable(cls, value: str) -> str:
+        return published_ref(value)
+
+    @property
+    def ref(self) -> str:
+        return f"{self.object_id}@{self.object_version}"
+
+
 class DomainGateInput(FrozenModel):
     domain_gate_input_id: str = Field(pattern=r"^domain-gate-input:[A-Za-z0-9._:-]+$")
     object_version: Literal["0.1.0"]
@@ -571,6 +587,7 @@ class EvidenceSufficiencyProfile(FrozenModel):
     score_state: Literal[ScoreState.UNAVAILABLE] = ScoreState.UNAVAILABLE
     score_reason_codes: list[str]
     measurement_result_refs: list[VersionedObjectRef]
+    measurement_result_bindings: list[ChecksummedObjectBinding]
     measurement_evidence_state_counts: MeasurementEvidenceStateCount
     evidence_refs: list[str]
     sensitivity_refs: list[str]
@@ -623,6 +640,15 @@ class EvidenceSufficiencyProfile(FrozenModel):
             raise ValueError("measurement_result_refs must be unique")
         return value
 
+    @field_validator("measurement_result_bindings")
+    @classmethod
+    def measurement_bindings_are_unique(
+        cls, value: list[ChecksummedObjectBinding]
+    ) -> list[ChecksummedObjectBinding]:
+        if len({item.ref for item in value}) != len(value):
+            raise ValueError("measurement_result_bindings must be unique")
+        return value
+
     @model_validator(mode="after")
     def score_is_always_unavailable(self) -> Self:
         if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
@@ -650,6 +676,12 @@ class EvidenceSufficiencyProfile(FrozenModel):
         ):
             raise ValueError(
                 "measurement evidence-state counts must match result refs"
+            )
+        if {item.ref for item in self.measurement_result_refs} != {
+            item.ref for item in self.measurement_result_bindings
+        }:
+            raise ValueError(
+                "measurement result refs must match checksummed bindings"
             )
         if self.evidence_sufficiency_state is not EvidenceSufficiencyState.NOT_ASSESSED:
             required = (

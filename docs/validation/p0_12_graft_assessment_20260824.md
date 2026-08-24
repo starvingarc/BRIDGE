@@ -54,3 +54,14 @@ P0-12 remains `candidate`. Its first executable slice summarizes precomputed
 inputs; it does not perform matrix QC, state annotation, species separation,
 reference mapping, causal preparation attribution, efficacy/safety assessment,
 scoring or release. Real rule objects require independent biological review.
+
+## Peer-review closeout addendum
+
+The combined closeout separates the graft MeasurementSpec from the product
+MeasurementSpec, requires exact provided-graft lineage, and makes lineage review
+authority external and checksummed. Channels define disjoint graft/timepoint
+strata, explicit within-animal aggregation and denominator semantics; animals
+remain the estimand and cross-stratum aggregation is forbidden. Declared
+lineage yields `partial/not_assessed`, and low animal count leaves interval
+relation unavailable. Final exact-head evidence is recorded in the stack
+closeout validation.

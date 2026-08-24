@@ -138,9 +138,9 @@ direction or threshold. Inferential statistics, stability modelling, Pareto,
 score and rank remain unavailable. See the
 [P0-07 Tool Card](../tool_packages/P0-07/README.md).
 
-P0-08 consumes only versioned upstream evidence objects. Its profiles retain exact ProductCase, ProductDefinition, MeasurementSpec, QC and MeasurementResult object versions, and use the shared `evidence-family:<id>` namespace consumed by P0-09. It applies Data Readiness, Model Robustness and Prior Applicability before selecting `not_assessed`, `insufficient`, `limited` or `sufficient` in the registered precedence order. It never reruns scientific analysis, emits a `MeasurementResult`, or makes a domain score available. Its module-specific input/result schemas and complete field contract are documented in the [P0-08 Tool Card](../tool_packages/P0-08/README.md).
+P0-08 consumes only versioned upstream evidence objects. Its profiles retain exact ProductCase, ProductDefinition, MeasurementSpec and QC refs plus v0.2 MeasurementResult refs, Schema URIs and source-byte checksums in `measurement_result_bindings`; it uses the shared `evidence-family:<id>` namespace consumed by P0-09. It applies Data Readiness, Model Robustness and Prior Applicability before selecting `not_assessed`, `insufficient`, `limited` or `sufficient` in the registered precedence order. It never reruns scientific analysis, emits a new `MeasurementResult`, or makes a domain score available. Its module-specific input/result schemas and complete field contract are documented in the [P0-08 Tool Card](../tool_packages/P0-08/README.md).
 
-P0-09 consumes a compilation bundle, P0-08 profiles and versioned Evidence Family, Claim and reconciliation registries. It creates append-only `EvidenceRecord` and `EvidenceRequirement` facts, deterministic reconciliation records, Case or Comparison graph manifests, fixed-column Parquet node/edge tables and a Cytoscape projection. Missing evidence creates a requirement rather than a zero-valued record; shadow or exploratory evidence cannot become formal. JSON/Parquet remain authoritative, while NetworkX is limited to reconstruction, invariant checks and seven named read-only query helpers. LadybugDB is deferred shadow work and is not a release dependency. The complete interface and reason-code contract are documented in the [P0-09 Tool Card](../tool_packages/P0-09/README.md).
+P0-09 consumes a compilation bundle, full P0-08 run results, exact quantitative v0.2 MeasurementResults and versioned Evidence Family, Claim and reconciliation registries. `EvidenceCandidate` identifies the MeasurementResult and sufficiency-result inputs but cannot restate their numeric/unit/denominator/interval/provenance fields. It creates append-only `EvidenceRecord` and `EvidenceRequirement` facts, deterministic reconciliation records, Case or Comparison graph manifests, fixed-column Parquet node/edge tables and a Cytoscape projection. Missing evidence creates a requirement rather than a zero-valued record; shadow or exploratory evidence cannot become formal. JSON/Parquet remain authoritative, while NetworkX is limited to reconstruction, invariant checks and seven named read-only query helpers. LadybugDB is deferred shadow work and is not a release dependency. The complete interface and reason-code contract are documented in the [P0-09 Tool Card](../tool_packages/P0-09/README.md).
 
 P0-10 verifies a structured ReportDraft against a manifest-validated P0-09 Case
 graph, package-owned policy and statements. Evidence lifecycle is taken from the
@@ -150,23 +150,30 @@ every assessed receipt is fail-closed with
 `public_release_authority_state=not_configured` and
 `public_export_eligibility=ineligible`; `verified` means correspondence only.
 
-P0-11 consumes one ReportDraft, one P0-10 ClaimVerificationResult and one
-PublicExportSpec. It constructs a new JSON object from selected fields and
+P0-11 consumes one ReportDraft, one P0-10 ClaimVerificationResult, the exact
+producing P0-10 ToolRunV2 and one ReviewProjectionSpec. It constructs a new
+internal-review JSON object from selected fields and
 preserves selected verified claim text exactly; source report/claim/ProductCase/Evidence IDs and
 unselected prose are not projected. A bounded local-path/namespace/credential
 guard supplements the explicit prohibited-literal list but is not a universal
-secret scanner. With public authority unconfigured, the tool always stops at
-`review_required`, does not upload, and does not handle arbitrary files. See the
+secret scanner. Producer authentication is unavailable and public authority is
+unconfigured, so the tool always reports `internal_review_only` and
+`review_required`; it does not upload or authorize public distribution. See the
 [P0-11 Tool Card](../tool_packages/P0-11/README.md).
 
-P0-12 consumes exactly one ProductCase, one GraftAssessmentSpec and one GraftEvidenceBundle.
-The spec supplies channel IDs, units, eligible evidence states, minimum
-independent-animal counts and optional interpretation intervals; the bundle
-supplies precomputed observations and explicit preparation-linkage evidence.
-The executor first aggregates repeated graft/timepoint observations within an
-animal, then calculates deterministic equal-animal per-channel mean/range and the
-configured interval relation. It does not read expression matrices, infer
-biology or verify linkage, emit a score, or write graft evidence back into a
+P0-12 consumes exactly one ProductCase, one independent graft MeasurementSpec,
+one GraftAssessmentSpec and one GraftEvidenceBundle; provided grafts also
+require an exact GraftLineageManifest, while not-provided grafts forbid it. The
+spec supplies channel IDs, units, disjoint graft/timepoint strata,
+within-animal aggregation and denominator semantics, eligible evidence states,
+minimum independent-animal counts and optional interpretation intervals. Only
+externally reviewed/frozen lineage can support assessment. The executor first
+aggregates repeated observations within animal and stratum, forbids
+cross-stratum aggregation, then summarizes animals equally and reports the
+configured interval relation only when animal-count requirements permit. It
+validates lineage bindings and external review receipts but does not prove
+biological lineage truth. It does not read expression matrices, infer biology,
+emit a score, or write graft evidence back into a
 pre-transplant ProductCase. See the
 [P0-12 Tool Card](../tool_packages/P0-12/README.md).
 

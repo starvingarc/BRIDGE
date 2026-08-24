@@ -66,7 +66,7 @@
         "object_id": "claim:fixture-comparison",
         "object_version": "1.0.0"
       },
-      "sufficiency_profile_input_id": "profile-a",
+      "sufficiency_result_input_id": "profile-a",
       "tool_run_execution_state": "succeeded"
     },
     {
@@ -102,7 +102,7 @@
         "object_id": "claim:fixture-comparison",
         "object_version": "1.0.0"
       },
-      "sufficiency_profile_input_id": "profile-b",
+      "sufficiency_result_input_id": "profile-b",
       "tool_run_execution_state": "partial"
     }
   ],

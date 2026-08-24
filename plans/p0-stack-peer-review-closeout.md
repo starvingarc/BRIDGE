@@ -10,12 +10,15 @@ Independent biology, single-cell and AI-for-science reviews rated Draft PRs #20â
 
 ## Scope
 
-- Bind P0-01 and P0-02 through one checksummed, physically selected observation view and explicit sample/preparation lineage.
+- Bind P0-01 and P0-02 through one checksummed, physically selected observation view and a `declared` BiologicalUnitManifest; carrying lineage never certifies replication.
 - Reuse a single ProductDefinition-bound StateRoleMap when P0-04 and P0-05 interpret target-related states.
-- Bind observations to versioned metric, unit, biological unit and context definitions; aggregate repeated timepoints within biological units before between-unit summaries.
+- Bind P0-03â€“P0-07 to exact ProductCase-owned manifests; only externally reviewed/frozen independence groups can support P0-06/P0-07 group counts.
+- Bind P0-08 and P0-09 through source-checksummed MeasurementResult v0.2 objects; callers cannot restate numeric evidence in P0-09 candidates.
+- Bind observations to versioned metric, unit, biological unit and context definitions; aggregate repeated observations within independence group/animal/stratum before between-unit summaries.
 - Make missing, unknown, unavailable, negative and alert states remain distinct through P0-08â€“P0-10.
 - Derive effective evidence lifecycle from the graph and fail closed where no trusted release authority exists.
-- Disable free-text scientific rewrites in P0-11 v0.1 and permit only deterministic allowlisted projection.
+- Rename P0-11 semantics to Internal Review Projection, bind the exact producing P0-10 ToolRun and make unavailable authentication/release authority explicit.
+- Separate P0-12 product/graft MeasurementSpecs, require externally reviewed graft lineage for assessment and forbid cross-stratum aggregation.
 - Add a synthetic no-manual-glue handoff test for the implemented workflow.
 
 ## Non-goals
@@ -28,8 +31,9 @@ Independent biology, single-cell and AI-for-science reviews rated Draft PRs #20â
 
 All project execution, schema rendering, source tests, clean-wheel tests and adversarial checks run on `/data1`. Exact final SHAs receive parallel biology, single-cell and AI4S review. Draft PRs remain Draft and merging remains a separate explicit authorization.
 
-Implementation commit `b6607aee6ea6930fe5b1baf5c4fc7020d92460d3`
-passed 1,198 exact-source tests and 1,198 clean-wheel tests, including the
-direct P0-08 to P0-11 handoff. Detailed evidence is recorded in
-`docs/validation/p0_stack_peer_review_closeout_20260824.md`. Independent
-exact-head peer review remains the final stop.
+The earlier `b6607aee6ea6930fe5b1baf5c4fc7020d92460d3` snapshot passed its
+then-current gates but was reopened by cross-module peer review. It is not the
+final closure evidence. The revised exact head must pass clean-wheel `/data1`
+validation and independent biology, single-cell and AI4S re-review before the
+Draft PR can be presented for merge authorization. Detailed evidence is
+recorded in `docs/validation/p0_stack_peer_review_closeout_20260824.md`.

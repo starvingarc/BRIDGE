@@ -7,7 +7,7 @@
 | 日期 | 2026-08-24 |
 | 状态 | `candidate` |
 | 适用范围 | 可选的移植后 graft scRNA-seq/snRNA-seq 独立评估 |
-| 当前运行输入 | 一个 `ProductCase`、一个 `GraftAssessmentSpec` 和一个 `GraftEvidenceBundle`；未来证据生产层仍可读取 `GraftCase`、QC、MeasurementSpec 与 reference snapshot |
+| 当前运行输入 | 必需 `ProductCase`、graft-specific `MeasurementSpec`、`GraftAssessmentSpec`、`GraftEvidenceBundle`；provided graft 另需 `GraftLineageManifest` |
 | 主要输出 | 当前可执行切片输出一个 `GraftAssessment`；显式 preparation linkage 作为内部记录嵌入，不另造第二个运行产物 |
 
 ## 1. 任务目标与边界
@@ -29,17 +29,29 @@ communication 方法。它只封装这些上游流程已经形成的结构化观
 
 - 一个 checksummed `ProductCase` 明确案例、MeasurementSpec 和允许的来源
   biological preparation units；
-- 一个 checksummed `GraftAssessmentSpec` 提供 ProductCase/MeasurementSpec/
+- 一个独立 checksummed graft `MeasurementSpec` 定义 graft assay、analysis-unit
+  kind 和适用上下文；它与 ProductCase 的移植前 MeasurementSpec 分开绑定；
+- 一个 checksummed `GraftAssessmentSpec` 提供 ProductCase/product MeasurementSpec/
+  graft MeasurementSpec/
   assay/sampling/reference/algorithm 绑定，以及 channel、单位、可接受
-  evidence state、最小独立 animal 数和可选解释区间；
+  evidence state、animal estimand、组内聚合、分母语义、互斥 strata、
+  最小独立 animal 数和可选解释区间；
 - 一个 checksummed `GraftEvidenceBundle` 提供显式 graft context、按
   `animal/graft/timepoint` 组织的观察单位、预计算观测、design constraint
   引用及显式声明的 preparation linkage evidence；
-- 代码先在 animal 内聚合重复 graft/timepoint 观察，再以 animal 等权汇总；只输出
-  每个配置 channel 的 eligible animal 数、per-animal aggregate、均值、范围和相对输入
-  区间的位置。它不含 state 名称、物种、月份、基因、程序或阈值常量；
+- provided graft 必须同时提供 exact `GraftLineageManifest`。其 unit/animal/
+  graft/timepoint/preparation/evidence assignments 必须与 bundle 完全一致；只有
+  外部 `reviewed`/`frozen` 且带 checksummed review gate 的 lineage 可评估，
+  `declared` lineage 返回 `partial/not_assessed`，P0-12 不能自我审核；
+- 代码按 channel 的精确 `graft_ref + timepoint_ref` 将观察放入互斥 strata，
+  在每个 stratum 内先按配置的 `single_observation`、`mean` 或
+  `pooled_numerator_denominator` 聚合到 animal，再对独立 animal 等权汇总；
+  跨 stratum 聚合固定禁止；只输出 eligible animal 数、per-animal aggregate、
+  均值、范围和相对输入区间的位置。低于配置动物数时仍保留描述性值，但
+  interval relation 为 `unavailable`。它不含 state 名称、物种、月份、基因、
+  程序或阈值常量；
 - `graft_availability=not_provided` 是显式输入状态，会产生可追溯的
-  `not_provided` 结果，不降低任何移植前证据；
+  `not_provided` 结果，不降低任何移植前证据，并禁止提供 lineage manifest；
 - `graft_score` 与 `domain_score` 固定为 `null`，`product_backfill` 固定为
   `not_performed`。
 

@@ -43,7 +43,7 @@ Evidence Sufficiency 判断某个域的分析结果是否具有足够证据支�
 - reference、prior、ontology 和 knowledge snapshot 的版本与适用范围。
 - reference、preprocessing、annotation、assay、方法和下采样敏感性结果。
 
-系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本和 provenance。跨域复用的非空 ProductCase/ProductDefinition pointer 必须分别在对象 ID、对象版本和 provenance-reference 集合上完全一致；provenance 顺序不参与身份，但成员变化属于冲突。自身 Schema 无版本字段的 `QCReadinessProfile` 和 `MeasurementResult` 在本 adapter 中只接受 `StructuredInputRef.object_version=0.1.0`，不得由调用方伪造其他版本。
+系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本和 provenance。跨域复用的非空 ProductCase/ProductDefinition pointer 必须分别在对象 ID、对象版本和 provenance-reference 集合上完全一致；provenance 顺序不参与身份，但成员变化属于冲突。自身 Schema 无版本字段的 `QCReadinessProfile` 使用 adapter-owned `StructuredInputRef.object_version=0.1.0`；定量 `MeasurementResult` 使用 `bridge://schemas/measurement-result/v0.2` 与 `object_version=0.2.0`，并显式绑定 MeasurementSpec version、unit、denominator/interval 和 producer ToolRun。
 
 ## 3. 三轴证据合同
 
@@ -160,11 +160,11 @@ model_robustness / robustness_reason_codes / validation_refs
 prior_applicability / prior_reason_codes / snapshot_refs
 evidence_sufficiency_state / blocking_reasons / limiting_reasons
 domain_score / score_state
-measurement_result_refs / evidence_refs / sensitivity_refs
+measurement_result_refs / measurement_result_bindings / evidence_refs / sensitivity_refs
 created_at / deterministic_run_ref
 ```
 
-ProductCase、ProductDefinition、MeasurementSpec、QC profile 和 MeasurementResult 均保存精确版本化引用；Evidence Family ID 统一使用可直接交给 P0-09 的 `evidence-family:<id>` 命名空间。案例级 `CaseEvidenceReadinessSummary` 包含各域 `sufficient/limited/insufficient/not_assessed` 数量、八种 MeasurementResult evidence state 聚合数、`score_state` 数量和阻塞原因列表。`missing`、`unknown` 或 `unavailable` 的绑定 MeasurementResult 使 Data Readiness 为 `not_assessed`；`negative` 与 `alert` 保持独立、可观察状态，不自动等于缺失或失败。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
+ProductCase、ProductDefinition、MeasurementSpec、QC profile 和 MeasurementResult 均保存精确版本化引用；MeasurementResult 另保存 Schema URI 与 source-byte SHA-256 的 `measurement_result_bindings`，供 P0-09 精确核对。Evidence Family ID 统一使用可直接交给 P0-09 的 `evidence-family:<id>` 命名空间。案例级 `CaseEvidenceReadinessSummary` 包含各域 `sufficient/limited/insufficient/not_assessed` 数量、八种 MeasurementResult evidence state 聚合数、`score_state` 数量和阻塞原因列表。`missing`、`unknown` 或 `unavailable` 的绑定 MeasurementResult 使 Data Readiness 为 `not_assessed`；`negative` 与 `alert` 保持独立、可观察状态，不自动等于缺失或失败。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
 
 ## 8. 运行环境
 
@@ -219,7 +219,7 @@ ProductCase、ProductDefinition、MeasurementSpec、QC profile 和 MeasurementRe
 | sealed competitor | 对规则、阈值、reason code 和工具选择的数据流为零 |
 | set-like 字段重排并复用同一 output_dir | semantic input hash、run ID 与 bundle 字节一致；调用级原始 checksum 仍可追溯 |
 | 输入对象出现真实语义变化 | semantic input hash 与 run ID 改变，不与已有 bundle 碰撞 |
-| QC/MeasurementResult 声明非 `0.1.0` ref version | 技术资格失败且不发布输出 |
+| QC 声明非 `0.1.0`，或 MeasurementResult 声明非 v0.2/`0.2.0` | 技术资格失败且不发布输出 |
 | Agent/LLM 给出不同意见 | 数值、状态和 reason code 保持不变 |
 
 任务晋升为 `frozen` 前，需完成 schema、missing-input、source/modality holdout、OOD、下采样、reference/preprocessing swap、同源证据去重、版本迁移、隐私和 claim review。

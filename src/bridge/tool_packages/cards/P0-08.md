@@ -60,7 +60,7 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 | `input_id` | non-empty string | Request-local identifier used by domain bindings; unique across the request. |
 | `role` | exact role string | Selects the expected object model and cardinality. |
 | `schema_ref` | exact URI | Public schema governing the referenced JSON object. |
-| `object_version` | non-empty string | Must agree with the payload's declared object/legacy version. The versionless QCReadinessProfile and MeasurementResult schemas accept only the adapter-owned `0.1.0` contract version. |
+| `object_version` | non-empty string | Must agree with the payload's declared object/legacy version. Versionless QCReadinessProfile uses the adapter-owned `0.1.0` contract; checksummed quantitative MeasurementResult uses `0.2.0`. |
 | `path` | absolute local path | Read-only JSON file; no inline or network payload. |
 | `sha256` | lowercase 64-hex string | Hash of the exact immutable source bytes, checked before and after execution. |
 | `media_type` | `application/json` | Other media types fail eligibility. |
@@ -71,7 +71,7 @@ Every `StructuredInputRef` requires `input_id`, exact `role`, exact `schema_ref`
 | `domain_gate_input` | 1..5 | `bridge://schemas/domain-gate-input/v0.1` | One profile per object; non-null domains are unique. |
 | `measurement_spec` | 0..5 | `bridge://schemas/measurement-spec/v0.1` | Selected by `measurement_spec_input_id`. |
 | `qc_readiness_profile` | 0..5 | `bridge://schemas/qc-readiness-profile/v0.1` | Selected by `qc_profile_input_id`. |
-| `measurement_result` | 0..N | `bridge://schemas/measurement-result/v0.1` | Request-local IDs occur in `measurement_result_input_ids`; the profile retains each result ID together with its `StructuredInputRef.object_version`. |
+| `measurement_result` | 0..N | `bridge://schemas/measurement-result/v0.2` | Request-local IDs occur in `measurement_result_input_ids`; each result has exact MeasurementSpec version, unit, denominator/interval semantics and producer-run binding. |
 | `validation_record` | 0..N | `bridge://schemas/evidence-validation-record/v0.1` | IDs occur in `validation_record_input_ids`. |
 | `prior_applicability_record` | 0..N | `bridge://schemas/prior-applicability-record/v0.1` | IDs occur in `prior_record_input_ids`. |
 | `sensitivity_record` | 0..N | `bridge://schemas/evidence-sensitivity-record/v0.1` | IDs occur in `sensitivity_record_input_ids`. |
@@ -197,6 +197,7 @@ The deterministic scientific input hash sorts `object_inputs` and normalizes onl
 | `blocking_reasons`, `limiting_reasons`, `missing_requirements` | catalog-ordered unique arrays | Severity-separated trace: only catalog `blocking`, `limiting` and `missing` codes respectively. A missing code is never duplicated into `blocking_reasons`. |
 | `domain_score`, `score_state`, `score_reason_codes` | null/unavailable/list | Forced no-score release contract. |
 | `measurement_result_refs` | versioned-ref array | Exact MeasurementResult logical ID plus the checksummed input object's contract version; P0-09 must match both. |
+| `measurement_result_bindings` | checksummed-binding array | Each MeasurementResult logical ref plus v0.2 Schema URI and exact source-byte SHA-256; P0-09 must bind the same object bytes. |
 | `measurement_evidence_state_counts` | eight-state count object | Exact measured/inferred/prior-only/negative/missing/unknown/unavailable/alert counts for bound MeasurementResults. |
 | measurement, evidence, sensitivity and family refs | unique arrays | Upstream record identifiers and de-duplicated Evidence Families. |
 
@@ -212,7 +213,7 @@ Successful runs emit no `MeasurementResult` and no visualization. They publish e
 - `evidence_sufficiency_run_result.json`
 - `artifact_manifest.json`
 
-Scientific JSON contains no local path. The internal manifest binds tool/environment versions, the full input hash, per-object canonical semantic checksums and the first four artifact checksums; it has no circular self-hash. Raw source-byte checksums are invocation provenance in `ToolRunV2.request.object_inputs`, are checked before and after execution, and deliberately do not alter reusable bundle bytes. Reordering a declared set and running into the same output directory therefore reuses the byte-identical bundle, while any semantic object change produces a different full input hash and run directory. Mutated inputs or a drifted existing bundle fail without overwrite. Every returned `ArtifactManifest.sha256`, including the bundle manifest itself, verifies the bytes at its returned path.
+Scientific JSON contains no local path. The internal manifest binds tool/environment versions, the full input hash, per-object canonical semantic checksums and the first four artifact checksums; it has no circular self-hash. All raw source-byte checksums are checked before and after execution. For MeasurementResult specifically, the raw checksum also enters run identity and the published `measurement_result_bindings`, preventing a semantically reserialized observation from being substituted across the P0-08/P0-09 boundary. Other set-like structured objects retain semantic canonicalization. Reordering a declared set and running into the same output directory therefore reuses the byte-identical bundle, while a MeasurementResult byte change or any semantic object change produces a different full input hash and run directory. Mutated inputs or a drifted existing bundle fail without overwrite. Every returned `ArtifactManifest.sha256`, including the bundle manifest itself, verifies the bytes at its returned path.
 
 ## Eligibility, refusal and degradation
 

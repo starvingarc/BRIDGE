@@ -47,7 +47,7 @@ They cannot approve themselves, and every assessed P0-04 output remains
 
 ## Structured inputs
 
-P0-04 accepts exactly six immutable `application/json` objects:
+P0-04 accepts exactly seven immutable `application/json` objects:
 
 | Role | Schema | Required content |
 |---|---|---|
@@ -57,6 +57,7 @@ P0-04 accepts exactly six immutable `application/json` objects:
 | `development_window_spec` | `bridge://schemas/development-window-spec/v0.1` | Product/vocabulary-bound state roles and selected composition channels |
 | `cell_state_evidence_profile` | `bridge://schemas/cell-state-evidence-profile/v0.1` | P0-02 composition and shadow evidence references |
 | `qc_readiness_profile` | `bridge://schemas/qc-readiness-profile/v0.1` | P0-01 assay/readiness and evidence references |
+| `biological_unit_manifest` | `bridge://schemas/biological-unit-manifest/v0.1` | Exact ProductCase-bound analysis-unit assignments, independence groups, scope and review state |
 
 Every `StructuredInputRef` has an absolute regular-file path, exact Schema URI,
 object version and SHA-256 checksum. Expression assets, request parameters,
@@ -66,6 +67,7 @@ top-level MeasurementSpec parameters and nonzero random seeds are refused.
 
 The adapter verifies exact role cardinality, Schema/version/checksum bindings,
 ProductCase/ProductDefinition/StateRoleMap/DevelopmentWindow identity, exact
+BiologicalUnitManifest reference/checksum/scope/unit membership, exact
 P0-01 QC-selected `DataViewBinding` lineage, annotation vocabulary, assay,
 MeasurementSpec, QC readiness and publication-safe evidence and profile
 references. P0-02 `reconciliation_state` composition rows are
@@ -94,7 +96,7 @@ silently substituted.
 A successful or partial run publishes one immutable
 `developmental_compatibility_result.json` containing:
 
-- references and SHA-256 bindings for all six input roles;
+- references and SHA-256 bindings for all seven input roles;
 - `analysis_mode=static_profile`;
 - whole-product and target-related stage fractions with explicit denominator
   views;

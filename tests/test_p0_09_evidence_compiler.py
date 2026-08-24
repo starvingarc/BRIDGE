@@ -17,6 +17,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.adapter import (
 )
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
+    EvidenceSufficiencyRunResult,
     P0DomainId,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
@@ -41,6 +42,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceCandidate,
     ClaimRegistry,
     ReconciliationSpecRegistry,
+    is_prohibited_conclusion_key,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     canonical_json_bytes,
@@ -71,7 +73,10 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     GraphNodeType,
     GraphRecordMode,
 )
-from bridge.toolkit.contracts import EvidenceState
+from bridge.toolkit.contracts import (
+    EvidenceState,
+    MeasurementResultV2 as MeasurementResult,
+)
 from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
 from bridge.toolkit.contracts import (
     ExecutionState,
@@ -94,12 +99,25 @@ def _case_graph_id(product_case_id: str, version: str = "1.0.0") -> str:
 
 def _write(path: Path, payload: object) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, ensure_ascii=False, allow_nan=False, indent=2, sort_keys=True)
-        + "\n",
-        encoding="utf-8",
-    )
+    path.write_bytes(_encoded(payload))
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _encoded(payload: object) -> bytes:
+    return (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode()
+
+
+def _payload_sha256(payload: object) -> str:
+    return hashlib.sha256(_encoded(payload)).hexdigest()
 
 
 def _spec() -> ToolPackageSpecV2:
@@ -186,6 +204,14 @@ def _profile(
                 "object_version": "1.0.0",
             }
         ],
+        "measurement_result_bindings": [
+            {
+                "object_id": "measurement-result:target",
+                "object_version": "1.0.0",
+                "schema_ref": "bridge://schemas/measurement-result/v0.2",
+                "source_sha256": SHA,
+            }
+        ],
         "measurement_evidence_state_counts": {
             "measured": 1,
             "inferred": 0,
@@ -201,6 +227,54 @@ def _profile(
         "deduplicated_evidence_family_ids": ["evidence-family:transcriptomic"],
         "created_at": CREATED_AT,
         "deterministic_run_ref": "run-aaaaaaaaaaaaaaaa",
+    }
+
+
+def _sufficiency_result(profile: dict[str, Any]) -> dict[str, Any]:
+    digest = profile["profile_id"].split(":", 2)[1]
+    state = profile["evidence_sufficiency_state"]
+    counts = {
+        key: int(key == state)
+        for key in ("sufficient", "limited", "insufficient", "not_assessed")
+    }
+    selected_reason = {
+        "sufficient": "raw_evidence_gate_sufficient",
+        "limited": "raw_evidence_gate_limited",
+        "insufficient": "raw_evidence_gate_insufficient",
+        "not_assessed": "raw_evidence_gate_not_assessed",
+    }[state]
+    return {
+        "result_id": f"evidence-sufficiency-result:{digest}",
+        "result_version": "0.1.0",
+        "gate_rule_spec_ref": "GATE-EVIDENCE-SUFFICIENCY-v0.1",
+        "profiles": [profile],
+        "case_summary": {
+            "summary_id": f"case-evidence-readiness-summary:{digest}",
+            "summary_version": "0.1.0",
+            "product_case_ref": profile["product_case_ref"],
+            "profile_count": 1,
+            "evidence_sufficiency_counts": counts,
+            "measurement_evidence_state_counts": profile[
+                "measurement_evidence_state_counts"
+            ],
+            "score_state_counts": {"unavailable": 1},
+            "blocking_reasons": profile["blocking_reasons"],
+        },
+        "gate_trace": [
+            {
+                "profile_ref": profile["profile_id"],
+                "domain_gate_input_ref": f"domain-gate-input:{digest}",
+                "evaluated_precedence": [
+                    "not_assessed",
+                    "insufficient",
+                    "limited",
+                    "sufficient",
+                ],
+                "selected_state": state,
+                "selected_reason_codes": [selected_reason],
+                "ignored_duplicate_input_refs": [],
+            }
+        ],
     }
 
 
@@ -411,7 +485,7 @@ def _comparison_bundle(*, dangling: bool = False) -> dict[str, Any]:
                     "object_id": "evidence-family:transcriptomic",
                     "object_version": "1.0.0",
                 },
-                "sufficiency_profile_input_id": f"profile-{'a' if index == 0 else 'b'}",
+                "sufficiency_result_input_id": f"profile-{'a' if index == 0 else 'b'}",
                 "relation": relation,
                 "evidence_state": "measured",
                 "evidence_tier": "shadow",
@@ -559,7 +633,7 @@ def _materialize_comparison_sources(
             for item in bundle["external_case_evidence_refs"]
             if item["source_case_graph_ref"]["graph_id"] == case_ref["graph_id"]
         )
-        profile = profile_by_input[external["sufficiency_profile_input_id"]]
+        profile = profile_by_input[external["sufficiency_result_input_id"]]
         expected = _source_record_for_external(external, profile)
         placeholder_ref = f"evidence:{('a' if index == 0 else 'b') * 24}@1"
         if external["evidence_ref"] == placeholder_ref:
@@ -600,7 +674,10 @@ def _materialize_comparison_sources(
                 "object_id": object_id,
                 "object_version": "1.0.0",
                 "node_type": node_type,
-                "schema_ref": f"bridge://schemas/{schema}/v0.1",
+                "schema_ref": (
+                    f"bridge://schemas/{schema}/"
+                    f"{'v0.2' if schema == 'measurement-result' else 'v0.1'}"
+                ),
                 "content_hash": hashlib.sha256(object_id.encode()).hexdigest(),
             }
             for object_id, node_type, schema in [
@@ -638,7 +715,7 @@ def _materialize_comparison_sources(
             requirements=[],
             reconciliation_records=[],
             profiles_by_input_id={
-                external["sufficiency_profile_input_id"]: EvidenceSufficiencyProfile.model_validate(profile)
+                external["sufficiency_result_input_id"]: EvidenceSufficiencyProfile.model_validate(profile)
             },
             family_registry=EvidenceFamilyRegistry.model_validate(_family_registry()),
             claim_registry=ClaimRegistry.model_validate(_comparison_claim_registry()),
@@ -714,7 +791,10 @@ def _catalog() -> list[dict[str, Any]]:
             "object_id": object_id,
             "object_version": "1.0.0",
             "node_type": node_type,
-            "schema_ref": f"bridge://schemas/{schema}/v0.1",
+            "schema_ref": (
+                f"bridge://schemas/{schema}/"
+                f"{'v0.2' if schema == 'measurement-result' else 'v0.1'}"
+            ),
             "content_hash": hashlib.sha256(object_id.encode()).hexdigest(),
         }
         for object_id, node_type, schema in [
@@ -729,11 +809,43 @@ def _catalog() -> list[dict[str, Any]]:
     ]
 
 
+_UNSET = object()
+
+
+def _measurement_result(
+    input_id: str = "measurement-target",
+    *,
+    value: Any = 0.75,
+    evidence_state: str = "measured",
+) -> dict[str, Any]:
+    slug = input_id.removeprefix("measurement-")
+    return {
+        "measurement_id": f"measurement-result:{slug}",
+        "measurement_spec_id": "measurement-spec:target",
+        "measurement_spec_version": "1.0.0",
+        "metric_name": slug.replace("-", "_"),
+        "raw_value": value,
+        "unit": "fraction",
+        "numerator": 75,
+        "denominator": 100,
+        "interval": [0.65, 0.82],
+        "interval_confidence_level": 0.95,
+        "interval_method_ref": "interval-method:synthetic",
+        "source_run_ref": f"tool-run:{slug}@1.0.0",
+        "source_execution_state": "succeeded",
+        "domain_score": None,
+        "score_state": "unavailable",
+        "evidence_state": evidence_state,
+        "provenance_refs": ["provenance:two", "provenance:one"],
+    }
+
+
 def _candidate(
     *,
     candidate_id: str = "evidence-candidate:target",
     metric_id: str = "target_fraction",
-    value: Any = 0.75,
+    measurement_input_id: str | None = None,
+    value: Any = _UNSET,
     relation: str = "supports",
     tier: str = "shadow",
     family_id: str = "evidence-family:transcriptomic",
@@ -741,7 +853,14 @@ def _candidate(
     revision_action: str = "create",
     predecessor_ref: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    measurement_slug = (
+        "target"
+        if metric_id == "target_fraction"
+        else "-".join(
+            item for item in metric_id.replace("_", "-").split("-") if item
+        )
+    )
+    payload = {
         "candidate_id": candidate_id,
         "product_case_ref": {
             "object_id": "product-case:synthetic-001",
@@ -752,21 +871,10 @@ def _candidate(
             "object_version": "1.0.0",
         },
         "domain_id": "target_identity",
-        "measurement_result_ref": {
-            "object_id": "measurement-result:target",
-            "object_version": "1.0.0",
-        },
-        "measurement_spec_ref": {
-            "object_id": "measurement-spec:target",
-            "object_version": "1.0.0",
-        },
-        "score_contract_ref": None,
-        "metric_id": metric_id,
-        "value": value,
-        "unit": "fraction",
-        "numerator": 75,
-        "denominator": 100,
-        "interval": {"lower": 0.65, "upper": 0.82, "confidence_level": 0.95},
+        "measurement_result_input_id": (
+            measurement_input_id or f"measurement-{measurement_slug}"
+        ),
+        "sufficiency_result_input_id": "profile-target",
         "claim_ref": {"object_id": "claim:target-identity", "object_version": "1.0.0"},
         "biological_context": {
             "context_id": "context:synthetic",
@@ -776,24 +884,23 @@ def _candidate(
             "specimen": "synthetic cells",
         },
         "relation": relation,
-        "evidence_state": "measured",
         "evidence_tier": tier,
         "applicability": "applicable",
         "evidence_family_ref": {"object_id": family_id, "object_version": "1.0.0"},
-        "sufficiency_profile_input_id": "profile-target",
-        "tool_run_ref": {"object_id": "tool-run:target", "object_version": "1.0.0"},
-        "tool_run_execution_state": "succeeded",
         "reference_refs": [
             {"object_id": item, "object_version": "1.0.0"}
             for item in (references or ["reference:one", "reference:two"])
         ],
         "prior_refs": [],
-        "artifact_refs": [],
-        "provenance_refs": ["provenance:two", "provenance:one"],
         "revision_action": revision_action,
         "predecessor_ref": predecessor_ref,
         "created_at": CREATED_AT,
     }
+    if value is not _UNSET:
+        # Deliberate negative-test surface: caller-authored numeric observations
+        # are forbidden by EvidenceCandidate and must be rejected.
+        payload["value"] = value
+    return payload
 
 
 def _bundle(
@@ -858,6 +965,7 @@ def _request(
     bundle: dict[str, Any] | None = None,
     profile: dict[str, Any] | None = None,
     profiles: list[tuple[str, dict[str, Any]]] | None = None,
+    measurement_results: dict[str, dict[str, Any]] | None = None,
     family_registry: dict[str, Any] | None = None,
     claim_registry: dict[str, Any] | None = None,
     reconciliation_registry: dict[str, Any] | None = None,
@@ -865,11 +973,118 @@ def _request(
     output_name: str = "output",
     base_manifest_path: Path | None = None,
     source_case_manifest_paths: list[Path] | None = None,
+    measurement_result_paths: dict[str, Path] | None = None,
+    measurement_result_versions: dict[str, str] | None = None,
 ) -> ToolRequestV2:
     inputs = tmp_path / f"inputs-{request_id}"
-    manifest_paths_by_input_id: dict[str, Path] = {}
-    profile_objects = profiles or [("profile-target", profile or _profile())]
+    manifest_paths_by_input_id: dict[str, Path] = dict(
+        measurement_result_paths or {}
+    )
+    profile_objects = json.loads(
+        json.dumps(profiles or [("profile-target", profile or _profile())])
+    )
     effective_bundle = json.loads(json.dumps(bundle or _bundle()))
+    measurement_objects: dict[str, dict[str, Any]] = {}
+    if effective_bundle["graph_kind"] == "case":
+        declared_measurement_inputs = {
+            item.get("measurement_result_input_id")
+            for item in effective_bundle["candidate_records"]
+            if isinstance(item, dict)
+            and isinstance(item.get("measurement_result_input_id"), str)
+        }
+        supplied_measurements = measurement_results or {}
+        measurement_objects = {
+            input_id: json.loads(
+                json.dumps(
+                    supplied_measurements.get(
+                        input_id,
+                        _measurement_result(input_id),
+                    )
+                )
+            )
+            for input_id in sorted(declared_measurement_inputs)
+        }
+        catalog_object_ids = {
+            item["object_id"] for item in effective_bundle["object_catalog"]
+        }
+        for measurement in measurement_objects.values():
+            catalog_entries = [
+                (
+                    measurement["measurement_id"],
+                    "MeasurementResult",
+                    "measurement-result",
+                )
+            ]
+            source_run_ref = measurement.get("source_run_ref")
+            if isinstance(source_run_ref, str):
+                catalog_entries.append(
+                    (source_run_ref.rsplit("@", 1)[0], "ToolRun", "tool-run")
+                )
+            for object_id, node_type, schema in catalog_entries:
+                if object_id not in catalog_object_ids:
+                    effective_bundle["object_catalog"].append(
+                        {
+                            "object_id": object_id,
+                            "object_version": "1.0.0",
+                            "node_type": node_type,
+                            "schema_ref": (
+                                f"bridge://schemas/{schema}/"
+                                f"{'v0.2' if schema == 'measurement-result' else 'v0.1'}"
+                            ),
+                            "content_hash": hashlib.sha256(
+                                object_id.encode()
+                            ).hexdigest(),
+                        }
+                    )
+                    catalog_object_ids.add(object_id)
+        rebound_profiles: list[tuple[str, dict[str, Any]]] = []
+        for input_id, original_profile in profile_objects:
+            rebound = json.loads(json.dumps(original_profile))
+            declared_versions = {
+                item["object_id"]: item["object_version"]
+                for item in rebound.get("measurement_result_refs", [])
+            }
+            refs = []
+            bindings = []
+            evidence_counts = {
+                state: 0
+                for state in (
+                    "measured",
+                    "inferred",
+                    "prior_only",
+                    "negative",
+                    "missing",
+                    "unknown",
+                    "unavailable",
+                    "alert",
+                )
+            }
+            for measurement_input_id, measurement in sorted(
+                measurement_objects.items()
+            ):
+                version = declared_versions.get(
+                    measurement["measurement_id"], "1.0.0"
+                )
+                ref = {
+                    "object_id": measurement["measurement_id"],
+                    "object_version": version,
+                }
+                refs.append(ref)
+                bindings.append(
+                    {
+                        **ref,
+                        "schema_ref": (
+                            "bridge://schemas/measurement-result/v0.2"
+                        ),
+                        "source_sha256": _payload_sha256(measurement),
+                    }
+                )
+                evidence_counts[measurement["evidence_state"]] += 1
+            rebound["measurement_result_refs"] = refs
+            rebound["measurement_result_bindings"] = bindings
+            rebound["measurement_evidence_state_counts"] = evidence_counts
+            rebound_profiles.append((input_id, rebound))
+        profile_objects = rebound_profiles
     if (
         effective_bundle["graph_kind"] == "comparison"
         and source_case_manifest_paths is None
@@ -910,12 +1125,22 @@ def _request(
     objects[1:1] = [
         (
             input_id,
-            "evidence_sufficiency_profile",
-            "bridge://schemas/evidence-sufficiency-profile/v0.1",
-            payload,
+            "evidence_sufficiency_run_result",
+            "bridge://schemas/evidence-sufficiency-run-result/v0.1",
+            _sufficiency_result(payload),
             "0.1.0",
         )
         for input_id, payload in profile_objects
+    ]
+    objects[1:1] = [
+        (
+            input_id,
+            "measurement_result",
+            "bridge://schemas/measurement-result/v0.2",
+            payload,
+            (measurement_result_versions or {}).get(input_id, "1.0.0"),
+        )
+        for input_id, payload in sorted(measurement_objects.items())
     ]
     if base_manifest_path is not None:
         manifest_paths_by_input_id["base-manifest"] = base_manifest_path
@@ -1139,6 +1364,101 @@ def test_profile_measurement_result_version_must_match_candidate(
     ]
 
 
+def test_profile_measurement_checksum_must_match_exact_input_bytes(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    result_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "evidence_sufficiency_run_result"
+    )
+    result = json.loads(result_ref.path.read_text())
+    result["profiles"][0]["measurement_result_bindings"][0][
+        "source_sha256"
+    ] = "f" * 64
+    result_sha = _write(result_ref.path, result)
+    request = request.model_copy(
+        update={
+            "object_inputs": [
+                item.model_copy(update={"sha256": result_sha})
+                if item.input_id == result_ref.input_id
+                else item
+                for item in request.object_inputs
+            ]
+        }
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    rejected = json.loads(
+        (
+            run.request.output_dir / run.run_id / "rejected_records.json"
+        ).read_text()
+    )["records"]
+    assert rejected[0]["reason_codes"] == [
+        "measurement_result_checksum_mismatch"
+    ]
+
+
+def test_measurement_requires_bound_producer_run(tmp_path: Path) -> None:
+    measurement = _measurement_result()
+    measurement.update(
+        {"source_run_ref": None, "source_execution_state": None}
+    )
+
+    run = _run(
+        tmp_path,
+        measurement_results={"measurement-target": measurement},
+    )
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    rejected = json.loads(
+        (
+            run.request.output_dir / run.run_id / "rejected_records.json"
+        ).read_text()
+    )["records"]
+    assert rejected[0]["reason_codes"] == [
+        "measurement_result_source_binding_missing"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("profile", "reason"),
+    [
+        (
+            _profile(product_case_ref="product-case:other"),
+            "sufficiency_profile_case_mismatch",
+        ),
+        (
+            _profile(
+                profile_id=(
+                    "evidence-sufficiency-profile:aaaaaaaaaaaaaaaa:"
+                    "regional_fidelity"
+                ),
+                domain_id="regional_fidelity",
+            ),
+            "sufficiency_profile_domain_mismatch",
+        ),
+    ],
+)
+def test_full_sufficiency_result_must_match_candidate_case_and_domain(
+    tmp_path: Path,
+    profile: dict[str, Any],
+    reason: str,
+) -> None:
+    run = _run(tmp_path, profile=profile)
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    rejected = json.loads(
+        (
+            run.request.output_dir / run.run_id / "rejected_records.json"
+        ).read_text()
+    )["records"]
+    assert reason in rejected[0]["reason_codes"]
+
+
 def test_shadow_integration_role_cannot_create_integration_sensitive_conclusion(
     tmp_path: Path,
 ) -> None:
@@ -1285,9 +1605,28 @@ def test_duplicate_logical_key_is_rejected_instead_of_voted_or_overwritten(
 ) -> None:
     duplicate = _candidate(
         candidate_id="evidence-candidate:duplicate",
+        measurement_input_id="measurement-duplicate",
+    )
+    duplicate_measurement = _measurement_result(
+        "measurement-duplicate",
         value=0.9,
     )
-    run = _run(tmp_path, bundle=_bundle(candidates=[_candidate(), duplicate]))
+    duplicate_measurement.update(
+        {
+            "measurement_id": "measurement-result:duplicate",
+            "metric_name": "target",
+        }
+    )
+    primary_measurement = _measurement_result()
+    primary_measurement["metric_name"] = "target"
+    run = _run(
+        tmp_path,
+        bundle=_bundle(candidates=[_candidate(), duplicate]),
+        measurement_results={
+            "measurement-target": primary_measurement,
+            "measurement-duplicate": duplicate_measurement,
+        },
+    )
     assert run.execution_state is ExecutionState.PARTIAL
     rejected = json.loads(
         ((run.request.output_dir / run.run_id) / "rejected_records.json").read_text()
@@ -1319,7 +1658,6 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
     second_bundle = _bundle(
         candidates=[
             _candidate(
-                value=0.8,
                 revision_action="supersede",
                 predecessor_ref=predecessor,
             )
@@ -1332,6 +1670,9 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
         tmp_path / "second",
         bundle=second_bundle,
         base_manifest_path=manifest_path,
+        measurement_results={
+            "measurement-target": _measurement_result(value=0.8)
+        },
     )
     assert second.execution_state is ExecutionState.SUCCEEDED
     second_dir = second.request.output_dir / second.run_id
@@ -1365,7 +1706,6 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
     invalidate_bundle = _bundle(
         candidates=[
             _candidate(
-                value=0.8,
                 revision_action="invalidate",
                 predecessor_ref=f"{second_records[1]['evidence_id']}@2",
             )
@@ -1384,6 +1724,9 @@ def test_supersede_and_invalidate_append_versions_without_overwriting_history(
         tmp_path / "third",
         bundle=invalidate_bundle,
         base_manifest_path=second_manifest_path,
+        measurement_results={
+            "measurement-target": _measurement_result(value=0.8)
+        },
     )
     assert third.execution_state is ExecutionState.SUCCEEDED
     third_records = json.loads(
@@ -1446,9 +1789,6 @@ def test_reordered_raw_set_bytes_reuse_same_output_bundle_by_semantic_hash(
     raw["object_catalog"] = list(reversed(raw["object_catalog"]))
     raw["candidate_records"][0]["reference_refs"] = list(
         reversed(raw["candidate_records"][0]["reference_refs"])
-    )
-    raw["candidate_records"][0]["provenance_refs"] = list(
-        reversed(raw["candidate_records"][0]["provenance_refs"])
     )
     new_checksum = _write(bundle_ref.path, raw)
     second_request = request.model_copy(
@@ -1687,25 +2027,30 @@ def test_output_parent_with_hive_partition_basename_is_valid(tmp_path: Path) -> 
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("numerator", "75"),
-        ("denominator", "100"),
-        ("numerator", True),
-        ("denominator", True),
-        ("interval.lower", "0.65"),
-        ("interval.lower", True),
-        ("interval.confidence_level", "0.95"),
-        ("interval.confidence_level", True),
+        ("value", 0.75),
+        ("metric_id", "caller_metric"),
+        ("unit", "fraction"),
+        ("numerator", 75),
+        ("denominator", 100),
+        ("interval", {"lower": 0.65, "upper": 0.82}),
+        (
+            "measurement_result_ref",
+            {"object_id": "measurement-result:forged", "object_version": "1.0.0"},
+        ),
+        (
+            "measurement_spec_ref",
+            {"object_id": "measurement-spec:forged", "object_version": "1.0.0"},
+        ),
+        ("tool_run_execution_state", "succeeded"),
+        ("provenance_refs", ["provenance:forged"]),
+        ("evidence_state", "measured"),
     ],
 )
-def test_candidate_scientific_numbers_do_not_coerce_strings_or_booleans(
+def test_candidate_cannot_restate_measurement_or_producer_fields(
     tmp_path: Path, field: str, value: Any
 ) -> None:
     candidate = _candidate()
-    target = candidate
-    parts = field.split(".")
-    for part in parts[:-1]:
-        target = target[part]
-    target[parts[-1]] = value
+    candidate[field] = value
 
     with pytest.raises(ValueError):
         EvidenceCandidate.model_validate(candidate)
@@ -1715,11 +2060,52 @@ def test_candidate_scientific_numbers_do_not_coerce_strings_or_booleans(
     final = run.request.output_dir / run.run_id
     assert json.loads((final / "evidence_records.json").read_text())["records"] == []
     rejected = json.loads((final / "rejected_records.json").read_text())["records"]
-    assert set(rejected[0]["reason_codes"]) <= {
-        "individual_record_schema_invalid",
-        "invalid_denominator",
-    }
-    assert rejected[0]["reason_codes"]
+    assert rejected[0]["reason_codes"] == ["individual_record_schema_invalid"]
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "execution_state", "reason"),
+    [
+        ("raw_value", "0.75", ExecutionState.PARTIAL, "measurement_result_not_quantitative"),
+        ("raw_value", True, ExecutionState.PARTIAL, "measurement_result_not_quantitative"),
+        ("numerator", "75", ExecutionState.FAILED, "structured_input_schema_invalid"),
+        ("denominator", True, ExecutionState.FAILED, "structured_input_schema_invalid"),
+        ("interval", ["0.65", 0.82], ExecutionState.FAILED, "structured_input_schema_invalid"),
+        (
+            "interval_confidence_level",
+            "0.95",
+            ExecutionState.FAILED,
+            "structured_input_schema_invalid",
+        ),
+    ],
+)
+def test_measurement_numeric_fields_do_not_coerce_strings_or_booleans(
+    tmp_path: Path,
+    field: str,
+    value: Any,
+    execution_state: ExecutionState,
+    reason: str,
+) -> None:
+    measurement = _measurement_result()
+    measurement[field] = value
+
+    run = _run(
+        tmp_path,
+        measurement_results={"measurement-target": measurement},
+    )
+
+    assert run.execution_state is execution_state
+    assert reason in run.reason_codes or (
+        run.result is not None
+        and reason
+        in json.loads(
+            (
+                run.request.output_dir
+                / run.run_id
+                / "rejected_records.json"
+            ).read_text()
+        )["records"][0]["reason_codes"]
+    )
 
 
 @pytest.mark.parametrize(
@@ -1740,18 +2126,18 @@ def test_public_json_rejects_nonfinite_candidate_numbers_without_publication(
     tmp_path: Path, constant: str
 ) -> None:
     request = _request(tmp_path)
-    bundle_ref = next(
-        item for item in request.object_inputs if item.role == "compilation_bundle"
+    measurement_ref = next(
+        item for item in request.object_inputs if item.role == "measurement_result"
     )
-    raw = bundle_ref.path.read_text()
-    raw = raw.replace('"numerator": 75', f'"numerator": {constant}', 1)
-    bundle_ref.path.write_text(raw, encoding="utf-8")
-    checksum = hashlib.sha256(bundle_ref.path.read_bytes()).hexdigest()
+    raw = measurement_ref.path.read_text()
+    raw = raw.replace('"raw_value": 0.75', f'"raw_value": {constant}', 1)
+    measurement_ref.path.write_text(raw, encoding="utf-8")
+    checksum = hashlib.sha256(measurement_ref.path.read_bytes()).hexdigest()
     request = request.model_copy(
         update={
             "object_inputs": [
                 item.model_copy(update={"sha256": checksum})
-                if item.input_id == bundle_ref.input_id
+                    if item.input_id == measurement_ref.input_id
                 else item
                 for item in request.object_inputs
             ]
@@ -3171,18 +3557,14 @@ def test_no_score_conclusion_keys_are_normalized_and_rejected_per_candidate(
         {"gmp_like_transcriptional_program": "not-a-release-claim"},
     ],
 )
-def test_no_score_guard_allows_scientific_neighbor_keys(
+def test_no_score_guard_does_not_overmatch_scientific_neighbor_keys(
     tmp_path: Path, safe_payload: dict[str, Any]
 ) -> None:
-    candidate = _candidate(value=safe_payload)
+    assert not any(is_prohibited_conclusion_key(key) for key in safe_payload)
 
-    run = _run(tmp_path, bundle=_bundle(candidates=[candidate]))
+    run = _run(tmp_path)
 
     assert run.execution_state is ExecutionState.SUCCEEDED
-    records = json.loads(
-        (run.request.output_dir / run.run_id / "evidence_records.json").read_text()
-    )["records"]
-    assert records[0]["value"] == safe_payload
 
 
 @pytest.mark.parametrize("invalid", [0, -1, True, "1"])
@@ -3253,12 +3635,13 @@ def test_caller_input_id_rename_preserves_run_bundle_and_public_manifest(
         if isinstance(value, dict):
             return {
                 key: mapping.get(item, item)
-                if key in {
-                    "manifest_input_id",
-                    "record_set_input_id",
-                    "requirement_set_input_id",
-                    "sufficiency_profile_input_id",
-                }
+                    if key in {
+                        "manifest_input_id",
+                        "record_set_input_id",
+                        "requirement_set_input_id",
+                        "sufficiency_result_input_id",
+                        "measurement_result_input_id",
+                    }
                 and isinstance(item, str)
                 else rename(item)
                 for key, item in value.items()

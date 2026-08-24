@@ -15,6 +15,7 @@ from pydantic import (
 )
 
 from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitLineageState,
     OBJECT_ID_PATTERN,
     SHA256_PATTERN,
     VERSION_PATTERN,
@@ -298,6 +299,7 @@ class ProgramObservationAssessment(FrozenModel):
     observation_id: str = Field(pattern=r"^program-observation:[A-Za-z0-9._:-]+$")
     evidence_family_id: PublishedRef
     analysis_unit_ref: VersionedObjectRef
+    independence_group_ref: VersionedObjectRef
     metric_name: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9._:-]*$")
     unit: str = Field(min_length=1, max_length=120)
     analysis_scope: AnalysisScope
@@ -371,8 +373,10 @@ class ProgramRuleResult(FrozenModel):
     reference_lower: FiniteNumber
     reference_upper: FiniteNumber
     observations: list[ProgramObservationAssessment]
+    descriptive_analysis_unit_count: StrictInt = Field(ge=0)
     included_biological_unit_count: StrictInt = Field(ge=0)
     triggering_biological_unit_count: StrictInt = Field(ge=0)
+    biological_unit_lineage_state: BiologicalUnitLineageState
     review_flag_state: ReviewFlagState
     evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
     reason_codes: list[ReasonCode] = Field(json_schema_extra={"uniqueItems": True})
@@ -414,6 +418,7 @@ class ProgramInputChecksums(FrozenModel):
     program_evidence_bundle: str = Field(pattern=SHA256_PATTERN)
     developmental_compatibility_result: str = Field(pattern=SHA256_PATTERN)
     qc_readiness_profile: str = Field(pattern=SHA256_PATTERN)
+    biological_unit_manifest: str = Field(pattern=SHA256_PATTERN)
 
 
 class ProliferationStressResponseProfile(FrozenModel):
@@ -444,6 +449,8 @@ class ProliferationStressResponseProfile(FrozenModel):
     evidence_bundle_ref: VersionedObjectRef
     developmental_result_ref: VersionedObjectRef
     qc_profile_ref: VersionedObjectRef
+    biological_unit_manifest_ref: VersionedObjectRef
+    biological_unit_lineage_state: BiologicalUnitLineageState
     input_sha256_by_role: ProgramInputChecksums
     result_state: Literal["complete", "partial", "not_assessed"]
     program_results: list[ProgramRuleResult]

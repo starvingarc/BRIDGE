@@ -8,9 +8,9 @@ Public accessions, DOI metadata and approved aliases are allowed. Internal asset
 
 ## Runtime Records
 
-Internal runtime manifests may contain controlled artifact locations, but every object must also include a stable asset ID, version and checksum. Public-safe output is generated from an allowlist and never by editing the internal report in place.
+Internal runtime manifests may contain controlled artifact locations, but every object must also include a stable asset ID, version and checksum. P0-11 reconstructs an allowlisted internal review projection rather than editing the source report; that projection is not certified public-safe and grants no distribution permission.
 
-P0-09 graph facts contain logical object IDs, versions, content hashes and approved evidence/provenance references, not local input paths or raw rejected payloads. Runtime `ToolRunV2` artifact paths remain deployment-local retrieval metadata; Case/Comparison JSON and Parquet facts use checksummed filenames and graph manifests. A rejected sibling record is represented only by source kind, source ID or index, digest and reason codes. P0-09 output is still internal evidence infrastructure and is not a public-safe export; P0-11 must regenerate any future public package from its own allowlist.
+P0-09 graph facts contain logical object IDs, versions, content hashes and approved evidence/provenance references, not local input paths or raw rejected payloads. Runtime `ToolRunV2` artifact paths remain deployment-local retrieval metadata; Case/Comparison JSON and Parquet facts use checksummed filenames and graph manifests. A rejected sibling record is represented only by source kind, source ID or index, digest and reason codes. P0-09 output is internal evidence infrastructure. P0-11 may reconstruct an internal review projection from an allowlist, but any future public package needs a separate authenticated release authority and disclosure/privacy workflow.
 
 ## Knowledge Sources
 

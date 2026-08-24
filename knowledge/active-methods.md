@@ -65,7 +65,7 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 - `METHOD-COLUMNAR-STORAGE` — columnar storage ([catalog record](bridge://knowledge/methods/METHOD-COLUMNAR-STORAGE))
 - `METHOD-GRAPH-LIBRARY` — graph library ([catalog record](bridge://knowledge/methods/METHOD-GRAPH-LIBRARY))
 
-## P0-11: Public-safe Export
+## P0-11: Internal Review Projection
 
 - `METHOD-BRIDGE-ALGORITHM-2AFBC8` — BRIDGE algorithm ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ALGORITHM-2AFBC8))
 - `METHOD-BRIDGE-RULE-ENGINE` — BRIDGE rule engine ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RULE-ENGINE))

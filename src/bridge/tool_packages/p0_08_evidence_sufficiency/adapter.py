@@ -45,7 +45,7 @@ from bridge.toolkit.contracts import (
     EligibilityResult,
     ExecutionState,
     FrozenModel,
-    MeasurementResult,
+    MeasurementResultV2 as MeasurementResult,
     MeasurementSpec,
     QCReadinessProfile,
     StructuredInputRef,
@@ -62,7 +62,7 @@ ROLE_SCHEMAS = {
     "domain_gate_input": "bridge://schemas/domain-gate-input/v0.1",
     "measurement_spec": "bridge://schemas/measurement-spec/v0.1",
     "qc_readiness_profile": "bridge://schemas/qc-readiness-profile/v0.1",
-    "measurement_result": "bridge://schemas/measurement-result/v0.1",
+    "measurement_result": "bridge://schemas/measurement-result/v0.2",
     "validation_record": "bridge://schemas/evidence-validation-record/v0.1",
     "prior_applicability_record": "bridge://schemas/prior-applicability-record/v0.1",
     "sensitivity_record": "bridge://schemas/evidence-sensitivity-record/v0.1",
@@ -152,7 +152,7 @@ HOME_RELATIVE_PATH = re.compile(
 )
 VERSIONLESS_ROLE_OBJECT_VERSIONS = {
     "qc_readiness_profile": "0.1.0",
-    "measurement_result": "0.1.0",
+    "measurement_result": "0.2.0",
 }
 
 
@@ -788,8 +788,13 @@ def _manifest_payload(
         "result_schema_ref": spec.result_schema_ref,
         "input_hash": input_hash,
         "structured_input_provenance_policy": {
-            "bundle_identity": "canonical_semantic_sha256",
+            "bundle_identity": (
+                "canonical_semantic_sha256_with_measurement_source_binding"
+            ),
             "invocation_source_checksum": "ToolRunV2.request.object_inputs[].sha256",
+            "measurement_result_source_checksum": (
+                "identity_and_result_binding"
+            ),
         },
         "structured_inputs": [
             {
@@ -799,6 +804,11 @@ def _manifest_payload(
                 "object_version": ref.object_version,
                 "semantic_sha256": canonical_object_sha256(
                     objects_by_input_id[ref.input_id]
+                ),
+                **(
+                    {"source_sha256": ref.sha256}
+                    if ref.role == "measurement_result"
+                    else {}
                 ),
                 "media_type": ref.media_type,
             }

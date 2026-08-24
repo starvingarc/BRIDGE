@@ -24,9 +24,13 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
 )
 from bridge.toolkit.registry import ToolRegistry
+from tests.p0_biological_units import bind_reviewed_biological_units
 
 
 ROLE_SCHEMAS = {
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1"
+    ),
     "product_case": "bridge://schemas/product-case/v0.1",
     "product_definition_card": "bridge://schemas/product-definition-card/v0.1",
     "state_role_map": "bridge://schemas/state-role-map/v0.1",
@@ -341,6 +345,7 @@ def _bind_upstream_profiles(payloads: dict[str, dict]) -> None:
         "sample_or_preparation_ref": "preparation:demo@1.0.0",
         "selection_spec_ref": "QC-scRNA-candidate-v0.1@0.1.0",
     }
+    bind_reviewed_biological_units(payloads, view)
     qc = payloads["qc_readiness_profile"]
     qc["selected_data_view"] = view
     qc_raw = json.dumps(
@@ -474,12 +479,9 @@ def test_result_schema_rejects_state_and_checksum_conflicts(tmp_path: Path) -> N
     assert list(validator.iter_errors(unknown_without_reason))
 
 
-def test_biological_role_change_requires_explicit_lineage_compatibility(
+def test_fixed_lineage_ontology_cannot_be_reconfigured_by_request(
     tmp_path: Path,
 ) -> None:
-    baseline = ToolRegistry.load_default().run(
-        _request(tmp_path / "baseline", output_dir=tmp_path / "output")
-    )
     payloads = _payloads()
     payloads["off_target_role_spec"]["assignments"][2][
         "product_role"
@@ -490,20 +492,12 @@ def test_biological_role_change_requires_explicit_lineage_compatibility(
         if item["product_role"] == "role_unresolved"
     )
     unresolved_rule["allowed_lineage_roles"].append("not_target")
-    changed = ToolRegistry.load_default().run(
-        _request(
-            tmp_path / "changed",
-            payloads=payloads,
-            output_dir=tmp_path / "output",
-        )
+    run = ToolRegistry.load_default().run(
+        _request(tmp_path, payloads=payloads)
     )
 
-    before = _role_map(baseline.result["composition_channels"][0])
-    after = _role_map(changed.result["composition_channels"][0])
-    assert before["known_off_target"]["numerator"] == 20
-    assert after["known_off_target"]["numerator"] == 0
-    assert after["role_unresolved"]["numerator"] == 20
-    assert baseline.run_id != changed.run_id
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_schema_invalid"]
 
 
 def test_contradictory_lineage_and_off_target_roles_are_rejected(

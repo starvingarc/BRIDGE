@@ -22,9 +22,9 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ReportDraft,
 )
 from bridge.tool_packages.p0_11_public_export.executor import (
-    build_public_safe_report,
+    build_review_projection,
 )
-from bridge.tool_packages.p0_11_public_export.models import PublicExportSpec
+from bridge.tool_packages.p0_11_public_export.models import ReviewProjectionSpec
 from bridge.toolkit.contracts import (
     ArtifactManifest,
     EligibilityResult,
@@ -39,22 +39,26 @@ from bridge.toolkit.contracts import (
 )
 
 
-RESULT_SCHEMA_REF = "bridge://schemas/public-safe-report/v0.1"
+RESULT_SCHEMA_REF = "bridge://schemas/contract-validated-review-projection/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "report_draft": ("bridge://schemas/report-draft/v0.1", ReportDraft),
     "claim_verification_result": (
         "bridge://schemas/claim-verification-result/v0.1",
         ClaimVerificationResult,
     ),
-    "public_export_spec": (
-        "bridge://schemas/public-export-spec/v0.1",
-        PublicExportSpec,
+    "claim_verifier_run": (
+        "bridge://schemas/tool-run/v0.2",
+        ToolRunV2,
+    ),
+    "review_projection_spec": (
+        "bridge://schemas/review-projection-spec/v0.1",
+        ReviewProjectionSpec,
     ),
 }
 
 
 @dataclass(frozen=True)
-class PublicExportAdapter:
+class ReviewProjectionAdapter:
     def check_eligibility(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
     ) -> EligibilityResult:
@@ -93,19 +97,19 @@ class PublicExportAdapter:
             "claim_verification_result",
             ClaimVerificationResult,
         )
-        export_spec = single_object(
-            request, loaded, "public_export_spec", PublicExportSpec
+        projection_spec = single_object(
+            request, loaded, "review_projection_spec", ReviewProjectionSpec
         )
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
         verification_sha256 = _role_ref(request, "claim_verification_result").sha256
         try:
-            result = build_public_safe_report(
+            result = build_review_projection(
                 run_id=run_id,
                 tool_version=spec.version,
                 report=report,
                 verification=verification,
-                export_spec=export_spec,
+                projection_spec=projection_spec,
                 claim_verification_sha256=verification_sha256,
                 input_sha256_by_role={
                     ref.role: ref.sha256 for ref in request.object_inputs
@@ -115,7 +119,7 @@ class PublicExportAdapter:
             return _failed_run(
                 request,
                 spec,
-                ["public_projection_failed"],
+                ["review_projection_failed"],
                 input_hash=input_hash,
             )
         payload = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
@@ -123,7 +127,7 @@ class PublicExportAdapter:
             output_file = publish_single_json(
                 request=request,
                 run_id=run_id,
-                filename="public_safe_report.json",
+                filename="contract_validated_review_projection.json",
                 payload=payload,
             )
         except StructuredInputError as exc:
@@ -134,8 +138,8 @@ class PublicExportAdapter:
                 input_hash=input_hash,
             )
         artifact = ArtifactManifest(
-            artifact_id=f"artifact:{run_id}:public-safe-report",
-            kind="public_safe_report",
+            artifact_id=f"artifact:{run_id}:review-projection",
+            kind="contract_validated_review_projection",
             path=output_file,
             media_type="application/json",
             sha256=hashlib.sha256(payload).hexdigest(),
@@ -147,7 +151,7 @@ class PublicExportAdapter:
             implementation_state=ImplementationState.IMPLEMENTED,
             execution_state=(
                 ExecutionState.PARTIAL
-                if result.export_state == "review_required"
+                if result.projection_state == "review_required"
                 else ExecutionState.SUCCEEDED
             ),
             tool_version=spec.version,
@@ -164,7 +168,7 @@ class PublicExportAdapter:
         )
 
 
-adapter = PublicExportAdapter()
+adapter = ReviewProjectionAdapter()
 
 
 def _envelope_reasons(
@@ -191,7 +195,7 @@ def _envelope_reasons(
         contract = ROLE_MODELS.get(ref.role)
         if contract is not None and ref.schema_ref != contract[0]:
             reasons.append("object_input_schema_mismatch")
-        if ref.object_version != "0.1.0":
+        if ref.role != "claim_verifier_run" and ref.object_version != "0.1.0":
             reasons.append("object_input_version_mismatch")
     if directory_state(request.output_dir) == "other":
         reasons.append("output_dir_not_regular_directory")
@@ -209,6 +213,8 @@ def _load_inputs(
 
 
 def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> None:
+    if ref.role == "claim_verifier_run":
+        return
     if getattr(value, "object_version", None) != ref.object_version:
         raise StructuredInputError("object_input_version_mismatch")
 
@@ -224,8 +230,11 @@ def _binding_reasons(
         "claim_verification_result",
         ClaimVerificationResult,
     )
-    export_spec = single_object(
-        request, loaded, "public_export_spec", PublicExportSpec
+    verifier_run = single_object(
+        request, loaded, "claim_verifier_run", ToolRunV2
+    )
+    projection_spec = single_object(
+        request, loaded, "review_projection_spec", ReviewProjectionSpec
     )
     reasons: list[str] = []
     if report.audience is not ReportAudience.PUBLIC_CANDIDATE:
@@ -245,28 +254,46 @@ def _binding_reasons(
     ):
         reasons.append("claim_verification_authority_state_inconsistent")
     if (
-        export_spec.source_report_ref != report.ref
-        or export_spec.source_report_hash != report.content_hash
+        projection_spec.source_report_ref != report.ref
+        or projection_spec.source_report_hash != report.content_hash
     ):
-        reasons.append("export_spec_report_binding_mismatch")
-    if export_spec.claim_verification_id != verification.verification_id:
-        reasons.append("export_spec_verification_binding_mismatch")
-    if export_spec.target_language is not report.language:
-        reasons.append("export_language_mismatch")
+        reasons.append("projection_spec_report_binding_mismatch")
+    if projection_spec.claim_verification_id != verification.verification_id:
+        reasons.append("projection_spec_verification_binding_mismatch")
+    if projection_spec.target_language is not report.language:
+        reasons.append("projection_language_mismatch")
+
+    verification_ref = _role_ref(request, "claim_verification_result")
+    matching_artifacts = [
+        artifact
+        for artifact in verifier_run.artifacts
+        if artifact.kind == "claim_verification_result"
+    ]
+    if (
+        verifier_run.request.tool_id != "P0-10"
+        or verifier_run.implementation_state is not ImplementationState.IMPLEMENTED
+        or verifier_run.execution_state is not ExecutionState.SUCCEEDED
+        or verifier_run.result_schema_ref
+        != "bridge://schemas/claim-verification-result/v0.1"
+        or verifier_run.result != verification.model_dump(mode="json")
+        or len(matching_artifacts) != 1
+        or matching_artifacts[0].sha256 != verification_ref.sha256
+    ):
+        reasons.append("claim_verifier_run_binding_mismatch")
 
     claims = {claim.claim_id: claim for claim in report.claim_blocks}
-    for selection in export_spec.selections:
+    for selection in projection_spec.selections:
         claim = claims.get(selection.source_claim_id)
         if claim is None:
-            reasons.append("export_claim_not_found")
+            reasons.append("projection_claim_not_found")
             continue
-        if claim.claim_type not in export_spec.allowed_claim_types:
-            reasons.append("export_claim_type_not_allowed")
+        if claim.claim_type not in projection_spec.allowed_claim_types:
+            reasons.append("projection_claim_type_not_allowed")
         if claim.reported_evidence_state is None:
-            if not export_spec.allow_claims_without_evidence_state:
-                reasons.append("export_claim_requires_evidence_state")
-        elif claim.reported_evidence_state not in export_spec.allowed_evidence_states:
-            reasons.append("export_evidence_state_not_allowed")
+            if not projection_spec.allow_claims_without_evidence_state:
+                reasons.append("projection_claim_requires_evidence_state")
+        elif claim.reported_evidence_state not in projection_spec.allowed_evidence_states:
+            reasons.append("projection_evidence_state_not_allowed")
     return reasons
 
 

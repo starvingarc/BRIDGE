@@ -15,12 +15,30 @@
       "media_type": "application/json"
     },
     {
+      "input_id": "graft-measurement-spec",
+      "role": "graft_measurement_spec",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.1",
+      "object_version": "1.0.0",
+      "path": "/tmp/bridge-p0-12-input/graft_measurement_spec.json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "media_type": "application/json"
+    },
+    {
+      "input_id": "graft-lineage",
+      "role": "graft_lineage_manifest",
+      "schema_ref": "bridge://schemas/graft-lineage-manifest/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-12-input/graft_lineage_manifest.json",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "media_type": "application/json"
+    },
+    {
       "input_id": "graft-policy",
       "role": "graft_assessment_spec",
       "schema_ref": "bridge://schemas/graft-assessment-spec/v0.1",
       "object_version": "0.1.0",
       "path": "/tmp/bridge-p0-12-input/graft_assessment_spec.json",
-      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "media_type": "application/json"
     },
     {
@@ -29,7 +47,7 @@
       "schema_ref": "bridge://schemas/graft-evidence-bundle/v0.1",
       "object_version": "0.1.0",
       "path": "/tmp/bridge-p0-12-input/graft_evidence_bundle.json",
-      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
       "media_type": "application/json"
     }
   ]

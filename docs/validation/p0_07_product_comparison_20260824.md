@@ -57,3 +57,11 @@ contract behavior, not approval of a ComparisonSpec or real-case conclusion.
 P0-07 remains `candidate`. This slice is descriptive only and does not validate
 comparability, independence, metric direction, inferential design, Pareto
 dominance or product superiority for real data.
+
+## Peer-review closeout addendum
+
+The combined closeout replaces detached readiness summaries with two full
+P0-08 run results and adds two exact BiologicalUnitManifests. Repeated
+preparations are aggregated within reviewed independence groups, and any group
+shared across arms is a binding failure. Final exact-head evidence is recorded
+in the stack closeout validation.

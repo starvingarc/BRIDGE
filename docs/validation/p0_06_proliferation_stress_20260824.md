@@ -64,3 +64,11 @@ P0-06 remains `candidate`. All assessed review flags remain `shadow`.
 Protocol attribution, residual-pluripotency LOD and transcriptomic CNV remain
 `not_assessed`. The module establishes neither biological truth nor safety,
 potency, release or ranking.
+
+## Peer-review closeout addendum
+
+The combined closeout now aggregates analysis units within exact manifest
+independence groups. Only externally reviewed/frozen lineage with a checksummed
+review gate can contribute independent group counts; declared lineage produces
+`cannot_resolve` and zero independent groups. P0-06 cannot self-review lineage.
+Final exact-head evidence is recorded in the stack closeout validation.

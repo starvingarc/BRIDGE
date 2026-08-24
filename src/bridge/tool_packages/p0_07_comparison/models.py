@@ -16,6 +16,7 @@ from pydantic import (
 )
 
 from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitLineageState,
     OBJECT_ID_PATTERN,
     SHA256_PATTERN,
     VERSION_PATTERN,
@@ -323,7 +324,9 @@ class ContractDimensionCheck(FrozenModel):
 
 class CaseMetricSummary(FrozenModel):
     product_case_ref: VersionedObjectRef
+    descriptive_group_count: StrictInt = Field(ge=0)
     eligible_biological_unit_count: StrictInt = Field(ge=0)
+    biological_unit_lineage_state: BiologicalUnitLineageState
     mean: FiniteNumber | None
     minimum: FiniteNumber | None
     maximum: FiniteNumber | None
@@ -346,14 +349,20 @@ class CaseMetricSummary(FrozenModel):
     @model_validator(mode="after")
     def summary_is_coherent(self) -> Self:
         values = (self.mean, self.minimum, self.maximum)
-        if self.eligible_biological_unit_count == 0 and any(
+        if self.descriptive_group_count == 0 and any(
             value is not None for value in values
         ):
             raise ValueError("empty summary cannot contain numeric values")
-        if self.eligible_biological_unit_count > 0 and any(
+        if self.descriptive_group_count > 0 and any(
             value is None for value in values
         ):
             raise ValueError("nonempty summary requires mean and range")
+        if (
+            self.biological_unit_lineage_state
+            is BiologicalUnitLineageState.DECLARED
+            and self.eligible_biological_unit_count != 0
+        ):
+            raise ValueError("declared lineage cannot count independent units")
         return self
 
 
@@ -408,6 +417,7 @@ class CaseReadinessSummary(FrozenModel):
     sufficiency_summary_ref: VersionedObjectRef
     sufficiency_state: Literal["not_assessed", "insufficient", "limited", "sufficient"]
     declared_biological_unit_count: StrictInt = Field(gt=0)
+    biological_unit_lineage_state: BiologicalUnitLineageState
 
 
 class ParetoAssessment(FrozenModel):
@@ -423,13 +433,22 @@ class ComparisonInputChecksums(FrozenModel):
         max_length=2,
         json_schema_extra={"uniqueItems": True},
     )
-    case_evidence_readiness_summaries: list[str] = Field(
+    evidence_sufficiency_run_results: list[str] = Field(
+        min_length=2,
+        max_length=2,
+        json_schema_extra={"uniqueItems": True},
+    )
+    biological_unit_manifests: list[str] = Field(
         min_length=2,
         max_length=2,
         json_schema_extra={"uniqueItems": True},
     )
 
-    @field_validator("product_cases", "case_evidence_readiness_summaries")
+    @field_validator(
+        "product_cases",
+        "evidence_sufficiency_run_results",
+        "biological_unit_manifests",
+    )
     @classmethod
     def summary_checksums_are_unique(cls, value: list[str]) -> list[str]:
         _unique(value, "multi-object checksums")

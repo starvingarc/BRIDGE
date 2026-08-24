@@ -1,0 +1,355 @@
+{
+  "$defs": {
+    "ClaimType": {
+      "enum": [
+        "measurement_claim",
+        "domain_interpretation",
+        "descriptive_comparison",
+        "inferential_comparison",
+        "availability_claim",
+        "alert_claim",
+        "prior_or_literature_claim",
+        "method_claim",
+        "recommendation_hypothesis",
+        "graft_retrospective_claim",
+        "policy_or_boundary_statement",
+        "visualization_caption"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "ComparisonMode": {
+      "enum": [
+        "not_applicable",
+        "descriptive_only",
+        "inferential"
+      ],
+      "title": "ComparisonMode",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ProjectionState": {
+      "enum": [
+        "review_required"
+      ],
+      "title": "ProjectionState",
+      "type": "string"
+    },
+    "ReportLanguage": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed"
+      ],
+      "title": "ReportLanguage",
+      "type": "string"
+    },
+    "ReviewProjectedClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "comparison_mode": {
+          "$ref": "#/$defs/ComparisonMode"
+        },
+        "evidence_state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "language": {
+          "$ref": "#/$defs/ReportLanguage"
+        },
+        "review_case_label": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Review Case Label",
+          "type": "string"
+        },
+        "review_claim_id": {
+          "pattern": "^review-claim:[A-Za-z0-9._:-]+$",
+          "title": "Review Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "value_bindings": {
+          "items": {
+            "$ref": "#/$defs/ReviewValueBinding"
+          },
+          "title": "Value Bindings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "review_claim_id",
+        "review_case_label",
+        "claim_type",
+        "text",
+        "language",
+        "evidence_state",
+        "comparison_mode",
+        "value_bindings"
+      ],
+      "title": "ReviewProjectedClaim",
+      "type": "object"
+    },
+    "ReviewProjectionInputChecksums": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_verification_result": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Claim Verification Result",
+          "type": "string"
+        },
+        "claim_verifier_run": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Claim Verifier Run",
+          "type": "string"
+        },
+        "report_draft": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Report Draft",
+          "type": "string"
+        },
+        "review_projection_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Review Projection Spec",
+          "type": "string"
+        }
+      },
+      "required": [
+        "report_draft",
+        "claim_verification_result",
+        "claim_verifier_run",
+        "review_projection_spec"
+      ],
+      "title": "ReviewProjectionInputChecksums",
+      "type": "object"
+    },
+    "ReviewValueBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "binding_index": {
+          "minimum": 0,
+          "title": "Binding Index",
+          "type": "integer"
+        },
+        "canonical_numeric_string": {
+          "pattern": "^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$",
+          "title": "Canonical Numeric String",
+          "type": "string"
+        },
+        "raw_unit": {
+          "anyOf": [
+            {
+              "pattern": "^[^0-9\\s\\r\\n](?:[^0-9\\r\\n]*[^0-9\\s\\r\\n])?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Unit"
+        },
+        "source_field": {
+          "enum": [
+            "value",
+            "numerator",
+            "denominator",
+            "interval_lower",
+            "interval_upper"
+          ],
+          "title": "Source Field",
+          "type": "string"
+        }
+      },
+      "required": [
+        "binding_index",
+        "source_field",
+        "canonical_numeric_string"
+      ],
+      "title": "ReviewValueBinding",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/contract-validated-review-projection/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "checks": {
+      "items": {
+        "enum": [
+          "allowlist_projection_passed",
+          "configured_literals_absent",
+          "bounded_machine_reference_guard_passed"
+        ],
+        "type": "string"
+      },
+      "maxItems": 3,
+      "minItems": 3,
+      "title": "Checks",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "claim_verification_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Claim Verification Sha256",
+      "type": "string"
+    },
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/ReviewProjectedClaim"
+      },
+      "minItems": 1,
+      "title": "Claims",
+      "type": "array"
+    },
+    "distribution_state": {
+      "const": "internal_review_only",
+      "title": "Distribution State",
+      "type": "string"
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/ReviewProjectionInputChecksums"
+    },
+    "language": {
+      "$ref": "#/$defs/ReportLanguage"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "producer_authentication_state": {
+      "const": "not_available",
+      "title": "Producer Authentication State",
+      "type": "string"
+    },
+    "projection_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Projection Hash",
+      "type": "string"
+    },
+    "projection_id": {
+      "pattern": "^review-projection:[a-f0-9]{16}$",
+      "title": "Projection Id",
+      "type": "string"
+    },
+    "projection_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "projection_state": {
+      "$ref": "#/$defs/ProjectionState"
+    },
+    "projection_version": {
+      "const": "0.1.0",
+      "title": "Projection Version",
+      "type": "string"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "release_authority_state": {
+      "const": "not_configured",
+      "title": "Release Authority State",
+      "type": "string"
+    },
+    "source_accessions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Accessions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "source_report_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Report Hash",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-11",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "projection_id",
+    "projection_version",
+    "tool_id",
+    "tool_version",
+    "source_report_hash",
+    "claim_verification_sha256",
+    "projection_spec_ref",
+    "input_sha256_by_role",
+    "language",
+    "source_accessions",
+    "claims",
+    "producer_authentication_state",
+    "release_authority_state",
+    "distribution_state",
+    "projection_state",
+    "checks",
+    "reason_codes",
+    "projection_hash"
+  ],
+  "title": "ContractValidatedReviewProjection",
+  "type": "object"
+}

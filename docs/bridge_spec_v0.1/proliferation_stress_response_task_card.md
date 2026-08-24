@@ -7,7 +7,7 @@
 | 日期 | 2026-08-24 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | `ProductCase`、`QCReadinessProfile`、`CellStateEvidenceProfile`、`DevelopmentWindowSpec`、`ProtocolIR` |
+| 上游输入 | `ProductCase`、`QCReadinessProfile`、`DevelopmentalCompatibilityResult`、`ProgramAssessmentSpec`、`ProgramEvidenceBundle`、`BiologicalUnitManifest` |
 | 主要输出 | `ProliferationStressResponseProfile`、`TranscriptomicReviewFlag[]` |
 
 ## 1. 任务目标与边界
@@ -28,6 +28,10 @@ P0-06 的首个可调用 candidate 只装配上游已经计算好的程序观测
 它读取 checksummed `ProgramAssessmentSpec` 和 `ProgramEvidenceBundle`，按输入
 给出的 stage context、reference interval、gene coverage、eligible evidence
 state、independence group 和 review direction 做确定性比较与去重。
+BiologicalUnitManifest 的 analysis units 先在 group 内聚合；只有外部
+`reviewed`/`frozen` 且带 checksummed review gate 的 lineage 才可贡献独立组数。
+`declared` lineage 保留 provenance，但独立组数为 0，结果为
+`cannot_resolve`；P0-06 不能审核自己的重复结构。
 
 程序名称、基因、权重、阶段、reference/null、阈值、检测边界和复核方向均不
 写入代码。后续生物学审核通过创建新版本输入对象改变这些决定，无需修改执行器。

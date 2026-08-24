@@ -69,7 +69,17 @@ def _request(tmp_path: Path, input_path: Path, *, semantics: str, assay: str = "
                 matrix_location="X",
                 matrix_semantics=semantics,
                 assay=assay,
-                metadata={"sample_id_column": "sample_id", "capture_id_column": "capture_id"},
+                metadata={
+                    "sample_id_column": "sample_id",
+                    "capture_id_column": "capture_id",
+                    "sample_or_preparation_ref": "sample:sample-a@1.0.0",
+                    "analysis_unit_kind": "sample",
+                    "independence_group_kind": "sample",
+                    "unit_identity_namespace_ref": (
+                        "biological-unit-namespace:test@1.0.0"
+                    ),
+                    "independence_scope_ref": "independence-scope:test@1.0.0",
+                },
             )
         ],
         measurement_spec_ref=spec,

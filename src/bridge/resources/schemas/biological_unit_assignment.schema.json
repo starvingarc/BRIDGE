@@ -1,0 +1,68 @@
+{
+  "$id": "bridge://schemas/biological-unit-assignment/v0.1",
+  "additionalProperties": false,
+  "description": "Logical row contract for the checksummed assignment artifact.",
+  "properties": {
+    "analysis_unit_ref": {
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Analysis Unit Ref",
+      "type": "string"
+    },
+    "capture_ref": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Capture Ref"
+    },
+    "independence_group_ref": {
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Independence Group Ref",
+      "type": "string"
+    },
+    "observation_id": {
+      "minLength": 1,
+      "title": "Observation Id",
+      "type": "string"
+    },
+    "preparation_ref": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Preparation Ref"
+    },
+    "sample_ref": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*@[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sample Ref"
+    }
+  },
+  "required": [
+    "observation_id",
+    "analysis_unit_ref",
+    "independence_group_ref"
+  ],
+  "title": "BiologicalUnitAssignment",
+  "type": "object"
+}

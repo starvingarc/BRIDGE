@@ -10,6 +10,7 @@ from bridge.tool_packages._configurable_contracts import VersionedObjectRef
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     BLOCKING_REASON_CODES,
     CaseEvidenceReadinessSummary,
+    ChecksummedObjectBinding,
     ContractValidationState,
     ContextMatchState,
     ContextOfUseState,
@@ -42,10 +43,11 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
 from bridge.toolkit.contracts import (
     EvidenceState,
     FrozenModel,
-    MeasurementResult,
+    MeasurementResultV2 as MeasurementResult,
     MeasurementSpec,
     QCReadinessProfile,
     ReadinessState,
+    StructuredInputRef,
     ToolPackageSpecV2,
     ToolRequestV2,
 )
@@ -158,6 +160,11 @@ def canonical_input_hash(
                 "schema_ref": ref.schema_ref,
                 "object_version": ref.object_version,
                 "semantic_sha256": semantic_sha256,
+                **(
+                    {"source_sha256": ref.sha256}
+                    if ref.role == "measurement_result"
+                    else {}
+                ),
                 "media_type": ref.media_type,
             }
         )
@@ -212,6 +219,9 @@ def evaluate_evidence_sufficiency(
             object_versions_by_input_id={
                 ref.input_id: ref.object_version for ref in request.object_inputs
             },
+            object_input_refs_by_input_id={
+                ref.input_id: ref for ref in request.object_inputs
+            },
         )
         for domain_input in ordered_domains
     ]
@@ -257,6 +267,7 @@ def _evaluate_domain(
     gate_rule: GateRuleSpec,
     objects_by_input_id: Mapping[str, FrozenModel],
     object_versions_by_input_id: Mapping[str, str],
+    object_input_refs_by_input_id: Mapping[str, StructuredInputRef],
 ) -> DomainEvaluation:
     measurement_spec = _typed_object(
         objects_by_input_id, domain_input.measurement_spec_input_id, MeasurementSpec
@@ -276,6 +287,16 @@ def _evaluate_domain(
         VersionedObjectRef(
             object_id=result.measurement_id,
             object_version=object_versions_by_input_id[input_id],
+        )
+        for input_id, result in measurement_result_pairs
+        if isinstance(result, MeasurementResult)
+    ]
+    measurement_result_bindings = [
+        ChecksummedObjectBinding(
+            object_id=result.measurement_id,
+            object_version=object_versions_by_input_id[input_id],
+            schema_ref=object_input_refs_by_input_id[input_id].schema_ref,
+            source_sha256=object_input_refs_by_input_id[input_id].sha256,
         )
         for input_id, result in measurement_result_pairs
         if isinstance(result, MeasurementResult)
@@ -454,6 +475,9 @@ def _evaluate_domain(
         score_reason_codes=score_reasons,
         measurement_result_refs=sorted(
             measurement_result_refs, key=lambda item: item.ref
+        ),
+        measurement_result_bindings=sorted(
+            measurement_result_bindings, key=lambda item: item.ref
         ),
         measurement_evidence_state_counts=_measurement_state_counts(
             result.evidence_state.value for result in measurement_results

@@ -40,6 +40,42 @@
       "path": "/tmp/bridge-p0-07-input/comparison_evidence_bundle.json",
       "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "media_type": "application/json"
+    },
+    {
+      "input_id": "baseline-sufficiency",
+      "role": "evidence_sufficiency_run_result",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-07-input/baseline_evidence_sufficiency_run_result.json",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "media_type": "application/json"
+    },
+    {
+      "input_id": "candidate-sufficiency",
+      "role": "evidence_sufficiency_run_result",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-07-input/candidate_evidence_sufficiency_run_result.json",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "media_type": "application/json"
+    },
+    {
+      "input_id": "baseline-biological-units",
+      "role": "biological_unit_manifest",
+      "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-07-input/baseline_biological_unit_manifest.json",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "media_type": "application/json"
+    },
+    {
+      "input_id": "candidate-biological-units",
+      "role": "biological_unit_manifest",
+      "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-07-input/candidate_biological_unit_manifest.json",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "media_type": "application/json"
     }
   ]
 }

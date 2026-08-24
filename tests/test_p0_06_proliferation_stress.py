@@ -24,9 +24,13 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
 )
 from bridge.toolkit.registry import ToolRegistry
+from tests.p0_biological_units import bind_reviewed_biological_units
 
 
 ROLE_SCHEMAS = {
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1"
+    ),
     "product_case": "bridge://schemas/product-case/v0.1",
     "product_definition_card": "bridge://schemas/product-definition-card/v0.1",
     "program_assessment_spec": "bridge://schemas/program-assessment-spec/v0.1",
@@ -275,6 +279,7 @@ def _payloads() -> dict[str, dict]:
                 "development_window_spec": SHA,
                 "cell_state_evidence_profile": SHA,
                 "qc_readiness_profile": SHA,
+                "biological_unit_manifest": SHA,
             },
             "result_state": "complete",
             "analysis_mode": "static_profile",
@@ -356,6 +361,19 @@ def _request(
     random_seed: int = 0,
 ) -> ToolRequestV2:
     values = deepcopy(payloads or _payloads())
+    bind_reviewed_biological_units(
+        values,
+        {
+            "view_id": "data-view:demo:qc-selected",
+            "sha256": "b" * 64,
+            "observation_ids_sha256": "c" * 64,
+            "n_observations": 2,
+        },
+        units=[
+            ("preparation:demo-a@1.0.0", "sample:demo-a@1.0.0"),
+            ("preparation:demo-b@1.0.0", "sample:demo-b@1.0.0"),
+        ],
+    )
     input_root = tmp_path / f"objects-{input_id_prefix}"
     input_root.mkdir(parents=True)
     refs: list[StructuredInputRef] = []

@@ -186,15 +186,12 @@ def _project_evidence(
             evidence_ref=item.evidence_ref,
             claim_ref=item.comparison_claim_ref.ref,
             family_ref=item.evidence_family_ref.ref,
-            profile_input_id=item.sufficiency_profile_input_id,
-            profile_ref=(
-                VersionedObjectRef(
-                    object_id=profiles_by_input_id[item.sufficiency_profile_input_id].profile_id,
-                    object_version=profiles_by_input_id[item.sufficiency_profile_input_id].profile_version,
-                )
-                if item.sufficiency_profile_input_id in profiles_by_input_id
+            profile_input_id=(
+                item.resolved_sufficiency_profile_ref.ref
+                if item.resolved_sufficiency_profile_ref is not None
                 else None
             ),
+            profile_ref=item.resolved_sufficiency_profile_ref,
             relation=item.relation,
             evidence_state=item.evidence_state,
             evidence_tier=item.evidence_tier,

@@ -24,10 +24,6 @@ def _p0_09_inputs(
 
     candidate = p0_09["_candidate"](family_id=family_id)
     candidate["product_case_ref"] = profile["product_case_ref"]
-    candidate["measurement_result_ref"] = {
-        **profile["measurement_result_refs"][0],
-    }
-    candidate["measurement_spec_ref"] = profile["measurement_spec_ref"]
 
     bundle = p0_09["_bundle"](candidates=[candidate])
     bundle["product_case_ref"] = profile["product_case_ref"]
@@ -35,7 +31,7 @@ def _p0_09_inputs(
         if item["node_type"] == "ProductCase":
             item.update(profile["product_case_ref"])
         elif item["node_type"] == "MeasurementResult":
-            item.update(candidate["measurement_result_ref"])
+            item.update(profile["measurement_result_refs"][0])
         elif item["node_type"] == "MeasurementSpec":
             item.update(profile["measurement_spec_ref"])
     return bundle, family_registry
@@ -109,9 +105,27 @@ def test_checksummed_p0_08_to_p0_11_handoff_stops_at_release_boundary(
     p0_10 = _helpers("test_p0_10_claim_verifier.py")
     p0_11 = _helpers("test_p0_11_public_export.py")
 
-    sufficiency_run = p0_08["_run"](tmp_path / "p0-08")
+    handoff_measurement = p0_09["_measurement_result"]()
+    handoff_measurement.update(
+        {
+            "measurement_id": "measurement:target-1",
+            "measurement_spec_id": "MS-TARGET-v0.1",
+            "measurement_spec_version": "0.1.0",
+        }
+    )
+    sufficiency_run = p0_08["_run"](
+        tmp_path / "p0-08", measurement=handoff_measurement
+    )
     assert sufficiency_run.execution_state is ExecutionState.SUCCEEDED
     profile = sufficiency_run.result["profiles"][0]
+    measurement_input = next(
+        ref
+        for ref in sufficiency_run.request.object_inputs
+        if ref.role == "measurement_result"
+    )
+    measurement_result = json.loads(
+        measurement_input.path.read_text(encoding="utf-8")
+    )
 
     bundle, family_registry = _p0_09_inputs(profile, p0_09)
     compiler_run = p0_09["_run"](
@@ -119,6 +133,11 @@ def test_checksummed_p0_08_to_p0_11_handoff_stops_at_release_boundary(
         profile=profile,
         bundle=bundle,
         family_registry=family_registry,
+        measurement_results={"measurement-target": measurement_result},
+        measurement_result_paths={"measurement-target": measurement_input.path},
+        measurement_result_versions={
+            "measurement-target": measurement_input.object_version
+        },
     )
     assert compiler_run.execution_state is ExecutionState.SUCCEEDED
     compiler_output = Path(compiler_run.artifacts[0].path).parent
@@ -158,10 +177,10 @@ def test_checksummed_p0_08_to_p0_11_handoff_stops_at_release_boundary(
         item["reason_code"] for item in verifier_run.result["check_records"]
     }
 
-    export_spec = {
+    review_projection_spec = {
         "object_version": "0.1.0",
-        "export_spec_id": "public-export-spec:p0-stack-handoff",
-        "export_spec_version": "0.1.0",
+        "projection_spec_id": "review-projection-spec:p0-stack-handoff",
+        "projection_spec_version": "0.1.0",
         "source_report_ref": "report:p0-stack-handoff@0.1.0",
         "source_report_hash": report["content_hash"],
         "claim_verification_id": verifier_run.result["verification_id"],
@@ -172,27 +191,27 @@ def test_checksummed_p0_08_to_p0_11_handoff_stops_at_release_boundary(
         "selections": [
             {
                 "source_claim_id": "claim-block:p0-stack-handoff",
-                "public_claim_id": "public-claim:p0-stack-handoff",
-                "public_case_label": "Synthetic candidate",
+                "review_claim_id": "review-claim:p0-stack-handoff",
+                "review_case_label": "Synthetic candidate",
             }
         ],
-        "public_source_accessions": [],
+        "source_accessions": [],
         "prohibited_literals": ["private-canary"],
-        "candidate_policy": "human_confirmation_required",
+        "review_policy": "human_review_required",
     }
-    exporter_run = ToolRegistry.load_default().run(
+    projection_run = ToolRegistry.load_default().run(
         p0_11["_request"](
             tmp_path / "p0-11",
             payloads={
                 "report_draft": report,
                 "claim_verification_result": verifier_run.result,
-                "public_export_spec": export_spec,
+                "review_projection_spec": review_projection_spec,
             },
         )
     )
-    assert exporter_run.execution_state is ExecutionState.FAILED
-    assert exporter_run.reason_codes == [
+    assert projection_run.execution_state is ExecutionState.FAILED
+    assert projection_run.reason_codes == [
         "claim_verification_not_verified_for_review_candidate"
     ]
-    assert exporter_run.result is None
-    assert exporter_run.artifacts == []
+    assert projection_run.result is None
+    assert projection_run.artifacts == []

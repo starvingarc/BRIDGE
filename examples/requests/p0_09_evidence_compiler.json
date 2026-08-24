@@ -12,13 +12,22 @@
       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
-      "input_id": "target-profile",
+      "input_id": "target-sufficiency-result",
       "media_type": "application/json",
       "object_version": "0.1.0",
-      "path": "/absolute/path/to/evidence_sufficiency_profile.json",
-      "role": "evidence_sufficiency_profile",
-      "schema_ref": "bridge://schemas/evidence-sufficiency-profile/v0.1",
+      "path": "/absolute/path/to/evidence_sufficiency_run_result.json",
+      "role": "evidence_sufficiency_run_result",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.1",
       "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "target-measurement-result",
+      "media_type": "application/json",
+      "object_version": "0.2.0",
+      "path": "/absolute/path/to/measurement_result_v0.2.json",
+      "role": "measurement_result",
+      "schema_ref": "bridge://schemas/measurement-result/v0.2",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     },
     {
       "input_id": "families",
@@ -27,7 +36,7 @@
       "path": "/absolute/path/to/evidence_family_registry.json",
       "role": "evidence_family_registry",
       "schema_ref": "bridge://schemas/evidence-family-registry/v0.1",
-      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     },
     {
       "input_id": "claims",
@@ -36,7 +45,7 @@
       "path": "/absolute/path/to/claim_registry.json",
       "role": "claim_registry",
       "schema_ref": "bridge://schemas/claim-registry/v0.1",
-      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
     },
     {
       "input_id": "reconciliation",
@@ -45,7 +54,7 @@
       "path": "/absolute/path/to/reconciliation_spec_registry.json",
       "role": "reconciliation_spec_registry",
       "schema_ref": "bridge://schemas/reconciliation-spec-registry/v0.1",
-      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     }
   ],
   "output_dir": "/absolute/path/to/output",

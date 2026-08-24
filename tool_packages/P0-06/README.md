@@ -49,7 +49,7 @@ code edit.
 
 ## Structured inputs
 
-P0-06 accepts exactly six immutable JSON objects:
+P0-06 accepts exactly seven immutable JSON objects:
 
 | Role | Schema | Required content |
 |---|---|---|
@@ -59,6 +59,7 @@ P0-06 accepts exactly six immutable JSON objects:
 | `program_evidence_bundle` | `bridge://schemas/program-evidence-bundle/v0.1` | Precomputed program observations and evidence provenance |
 | `developmental_compatibility_result` | `bridge://schemas/developmental-compatibility-result/v0.1` | P0-04 product, window and Cell-State context |
 | `qc_readiness_profile` | `bridge://schemas/qc-readiness-profile/v0.1` | P0-01 assay/readiness and evidence references |
+| `biological_unit_manifest` | `bridge://schemas/biological-unit-manifest/v0.1` | Exact ProductCase-bound analysis units, independence groups, scope and externally reviewed/frozen lineage state |
 
 Each `StructuredInputRef` declares an absolute regular-file path, Schema URI,
 object version, media type and SHA-256 checksum. Raw expression assets,
@@ -92,15 +93,17 @@ For every configured rule, P0-06:
    inclusive reference interval;
 3. excludes observations with ineligible evidence states or insufficient
    configured gene coverage without replacing them with zero;
-4. counts unique ProductCase-declared biological analysis units, so repeated
-   observations, methods or Evidence Families from one unit do not become
-   independent votes;
-5. emits a shadow `transcriptomic_review_flag` only when the configured
-   direction is supported by the configured minimum number of non-conflicting
-   groups;
+4. aggregates repeated analysis units inside the exact manifest-defined
+   independence group, so captures, aliquots, methods or Evidence Families
+   from one biological source do not become independent votes;
+5. emits a shadow `transcriptomic_review_flag` only when the manifest lineage
+   is externally `reviewed` or `frozen` and the configured direction is
+   supported by the configured minimum number of non-conflicting groups;
 6. otherwise returns `cannot_resolve` or `not_assessed` with stable reasons.
 
-An unconfigured rule ID or mismatched program reference is retained as an
+`declared` lineage remains valid provenance but contributes zero independent
+groups and yields `cannot_resolve`; P0-06 cannot review its own lineage. An
+unconfigured rule ID or mismatched program reference is retained as an
 unmatched record and makes the run partial; it never enters a configured
 program result.
 
@@ -108,7 +111,7 @@ program result.
 
 One immutable `proliferation_stress_response_profile.json` contains:
 
-- all six versioned input references and role-specific checksums;
+- all seven versioned input references and role-specific checksums;
 - per-rule raw values, gene coverage, reference relation, inclusion and reason;
 - distinct included and triggering biological-unit counts;
 - one aligned `TranscriptomicReviewFlag` record per rule;

@@ -17,6 +17,7 @@ from bridge.toolkit.contracts import (
     KnowledgeHit,
     MarkerProgramCard,
     MeasurementResult,
+    MeasurementResultV2,
     MeasurementSpec,
     QCReadinessProfile,
     ReferenceManifest,
@@ -75,6 +76,10 @@ MODELS = {
     "knowledge_hit": ("bridge://schemas/knowledge-hit/v0.1", KnowledgeHit),
     "marker_program_card": ("bridge://schemas/marker-program-card/v0.1", MarkerProgramCard),
     "measurement_result": ("bridge://schemas/measurement-result/v0.1", MeasurementResult),
+    "measurement_result_v2": (
+        "bridge://schemas/measurement-result/v0.2",
+        MeasurementResultV2,
+    ),
     "measurement_spec": ("bridge://schemas/measurement-spec/v0.1", MeasurementSpec),
     "qc_readiness_profile": ("bridge://schemas/qc-readiness-profile/v0.1", QCReadinessProfile),
     "reference_manifest": ("bridge://schemas/reference-manifest/v0.1", ReferenceManifest),

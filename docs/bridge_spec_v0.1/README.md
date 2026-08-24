@@ -23,7 +23,7 @@
 | [P0-08 Evidence Sufficiency](evidence_sufficiency_task_card.md) | 数据、模型与 prior 充分性门禁 |
 | [P0-09 Evidence Compiler](evidence_compiler_task_card.md) | 原子证据、来源和冲突协调 |
 | [P0-10 Claim Verifier](claim_verifier_task_card.md) | 数字、主张和发布核验 |
-| [P0-11 Public-safe Export](public_safe_export_task_card.md) | 字段白名单和公开导出 |
+| [P0-11 Internal Review Projection](internal_review_projection_task_card.md) | P0-10 精确绑定、字段白名单与内部人工审阅边界；不授权公开导出 |
 | [P0-12 Graft Assessment](graft_assessment_task_card.md) | 独立后验 graft 证据边界 |
 | [公开 JSON Schema](../../schemas/) | Agent、证据、比较、可视化和运行对象合同 |
 | [Tool Package Cards](../../tool_packages/) | 当前可调用工具、输入输出和实现状态 |

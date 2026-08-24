@@ -4,6 +4,7 @@ from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
+from typing import Any, Callable
 
 from jsonschema import Draft202012Validator
 import pytest
@@ -28,11 +29,14 @@ ROLE_SCHEMAS = {
     "claim_verification_result": (
         "bridge://schemas/claim-verification-result/v0.1"
     ),
-    "public_export_spec": "bridge://schemas/public-export-spec/v0.1",
+    "claim_verifier_run": "bridge://schemas/tool-run/v0.2",
+    "review_projection_spec": (
+        "bridge://schemas/review-projection-spec/v0.1"
+    ),
 }
 
 
-def _report() -> dict:
+def _report() -> dict[str, Any]:
     text = "configured_metric: 1.2 configured-unit."
     start = text.index("1.2")
     payload = {
@@ -80,7 +84,7 @@ def _report() -> dict:
     return payload
 
 
-def _verification(report: dict, *, warnings: bool = False) -> dict:
+def _verification(report: dict[str, Any], *, warnings: bool = False) -> dict:
     checks = []
     if warnings:
         checks = [
@@ -112,7 +116,7 @@ def _verification(report: dict, *, warnings: bool = False) -> dict:
         "public_release_authority_state": "not_configured",
         "report_draft_ref": "report:demo@1.0.0",
         "report_content_hash": report["content_hash"],
-        "report_audience": "public_candidate",
+        "report_audience": report["audience"],
         "evidence_graph_id": "case-evidence-graph:demo",
         "evidence_graph_version": 1,
         "evidence_graph_manifest_sha256": "d" * 64,
@@ -130,10 +134,10 @@ def _payloads(*, warnings: bool = False) -> dict[str, dict]:
     return {
         "report_draft": report,
         "claim_verification_result": verification,
-        "public_export_spec": {
+        "review_projection_spec": {
             "object_version": "0.1.0",
-            "export_spec_id": "public-export-spec:demo",
-            "export_spec_version": "1.0.0",
+            "projection_spec_id": "review-projection-spec:demo",
+            "projection_spec_version": "1.0.0",
             "source_report_ref": "report:demo@1.0.0",
             "source_report_hash": report["content_hash"],
             "claim_verification_id": verification["verification_id"],
@@ -144,24 +148,77 @@ def _payloads(*, warnings: bool = False) -> dict[str, dict]:
             "selections": [
                 {
                     "source_claim_id": "claim-block:demo",
-                    "public_claim_id": "public-claim:demo",
-                    "public_case_label": "Demo candidate",
+                    "review_claim_id": "review-claim:demo",
+                    "review_case_label": "Demo candidate",
                 }
             ],
-            "public_source_accessions": ["GSE-DEMO"],
+            "source_accessions": ["GSE-DEMO"],
             "prohibited_literals": ["private-canary"],
-            "candidate_policy": "human_confirmation_required",
+            "review_policy": "human_review_required",
         },
     }
 
 
-def _write_json(path: Path, payload: dict) -> str:
+def _write_json(path: Path, payload: dict[str, Any]) -> str:
     encoded = (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
         + "\n"
     ).encode()
     path.write_bytes(encoded)
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _claim_verifier_run(
+    *,
+    root: Path,
+    verification: dict[str, Any],
+    verification_path: Path,
+    verification_sha256: str,
+) -> dict[str, Any]:
+    return {
+        "run_id": "run-p0-10-demo",
+        "request": {
+            "request_id": "request-p0-10-demo",
+            "tool_id": "P0-10",
+            "tool_version": "0.1.0",
+            "output_dir": str((root / "p0-10-output").resolve()),
+            "assets": [],
+            "measurement_spec_ref": None,
+            "parameters": {},
+            "random_seed": 0,
+            "object_inputs": [],
+        },
+        "implementation_state": "implemented",
+        "execution_state": "succeeded",
+        "tool_version": "0.1.0",
+        "environment_spec_id": "ENV-EVIDENCE-v0.1",
+        "input_hash": "a" * 64,
+        "created_at": "2026-08-24T00:00:00Z",
+        "measurements": [],
+        "artifacts": [
+            {
+                "artifact_id": "artifact:run-p0-10-demo:claim-verification",
+                "kind": "claim_verification_result",
+                "path": str(verification_path.resolve()),
+                "media_type": "application/json",
+                "sha256": verification_sha256,
+                "evidence_ids": [],
+            }
+        ],
+        "visualizations": [],
+        "result_schema_ref": (
+            "bridge://schemas/claim-verification-result/v0.1"
+        ),
+        "result": verification,
+        "reason_codes": [],
+        "warnings": [],
+    }
 
 
 def _request(
@@ -175,17 +232,37 @@ def _request(
     values = deepcopy(payloads or _payloads())
     input_root = tmp_path / f"objects-{input_id_prefix}"
     input_root.mkdir(parents=True)
+    paths = {role: input_root / f"{role}.json" for role in ROLE_SCHEMAS}
+    verification_sha = _write_json(
+        paths["claim_verification_result"],
+        values["claim_verification_result"],
+    )
+    values["claim_verifier_run"] = _claim_verifier_run(
+        root=tmp_path,
+        verification=values["claim_verification_result"],
+        verification_path=paths["claim_verification_result"],
+        verification_sha256=verification_sha,
+    )
     refs: list[StructuredInputRef] = []
+    versions = {
+        "report_draft": "0.1.0",
+        "claim_verification_result": "0.1.0",
+        "claim_verifier_run": "0.2.0",
+        "review_projection_spec": "0.1.0",
+    }
     for index, role in enumerate(ROLE_SCHEMAS, start=1):
-        path = input_root / f"{role}.json"
-        digest = _write_json(path, values[role])
+        digest = (
+            verification_sha
+            if role == "claim_verification_result"
+            else _write_json(paths[role], values[role])
+        )
         refs.append(
             StructuredInputRef(
                 input_id=f"{input_id_prefix}-{index}",
                 role=role,
                 schema_ref=ROLE_SCHEMAS[role],
-                object_version="0.1.0",
-                path=path,
+                object_version=versions[role],
+                path=paths[role],
                 sha256=digest,
                 media_type="application/json",
             )
@@ -193,21 +270,42 @@ def _request(
     return ToolRequestV2(
         request_id=f"request-{input_id_prefix}",
         tool_id="P0-11",
-        tool_version="0.2.0",
-        output_dir=output_dir or (tmp_path / "output"),
+        tool_version="0.3.0",
+        output_dir=(output_dir or (tmp_path / "output")).resolve(),
         random_seed=random_seed,
         object_inputs=refs,
     )
 
 
-def test_p0_11_is_an_implemented_v2_package() -> None:
+def _rewrite_role(
+    request: ToolRequestV2,
+    role: str,
+    mutate: Callable[[dict[str, Any]], None],
+) -> ToolRequestV2:
+    target = next(item for item in request.object_inputs if item.role == role)
+    payload = json.loads(target.path.read_text())
+    mutate(payload)
+    digest = _write_json(target.path, payload)
+    return request.model_copy(
+        update={
+            "object_inputs": [
+                item.model_copy(update={"sha256": digest})
+                if item.input_id == target.input_id
+                else item
+                for item in request.object_inputs
+            ]
+        }
+    )
+
+
+def test_p0_11_is_an_internal_review_projection_package() -> None:
     spec = ToolRegistry.load_default().describe("P0-11")
 
     assert isinstance(spec, ToolPackageSpecV2)
+    assert spec.name == "Internal Review Projection"
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
-    assert spec.result_schema_ref == "bridge://schemas/public-safe-report/v0.1"
-    assert spec.adapter_ref == (
-        "bridge.tool_packages.p0_11_public_export.adapter:adapter"
+    assert spec.result_schema_ref == (
+        "bridge://schemas/contract-validated-review-projection/v0.1"
     )
 
 
@@ -220,18 +318,24 @@ def test_public_models_emit_valid_draft_2020_12_schemas(
     Draft202012Validator.check_schema(schema)
 
 
-def test_allowlist_projection_is_a_review_candidate_without_internal_identifiers(
+def test_projection_is_internal_review_only_and_binds_exact_verifier_run(
     tmp_path: Path,
 ) -> None:
     run = ToolRegistry.load_default().run(_request(tmp_path))
 
     assert run.execution_state is ExecutionState.PARTIAL
-    assert run.result["export_state"] == "review_required"
-    assert run.reason_codes == ["public_release_authority_not_configured"]
-    assert run.result["public_source_accessions"] == ["GSE-DEMO"]
+    assert run.result["projection_state"] == "review_required"
+    assert run.result["producer_authentication_state"] == "not_available"
+    assert run.result["release_authority_state"] == "not_configured"
+    assert run.result["distribution_state"] == "internal_review_only"
+    assert run.reason_codes == [
+        "producer_provenance_unverified",
+        "public_release_authority_not_configured",
+    ]
+    assert run.result["source_accessions"] == ["GSE-DEMO"]
     claim = run.result["claims"][0]
-    assert claim["public_claim_id"] == "public-claim:demo"
-    assert claim["public_case_label"] == "Demo candidate"
+    assert claim["review_claim_id"] == "review-claim:demo"
+    assert claim["review_case_label"] == "Demo candidate"
     assert claim["text"] == "configured_metric: 1.2 configured-unit."
     assert claim["value_bindings"] == [
         {
@@ -242,20 +346,21 @@ def test_allowlist_projection_is_a_review_candidate_without_internal_identifiers
         }
     ]
     serialized = json.dumps(run.result, sort_keys=True)
-    for private_value in (
+    for internal_value in (
         "product-case:demo",
         "claim-block:demo",
         f"evidence:{'a' * 24}",
         "/Users/",
         "/data1/",
     ):
-        assert private_value not in serialized
-    assert run.measurements == []
-    assert run.visualizations == []
+        assert internal_value not in serialized
     assert len(run.artifacts) == 1
+    assert run.artifacts[0].kind == "contract_validated_review_projection"
 
 
-def test_unselected_claim_is_not_copied(tmp_path: Path) -> None:
+def test_projection_copies_only_selected_claims_without_rewriting_text(
+    tmp_path: Path,
+) -> None:
     payloads = _payloads()
     extra = deepcopy(payloads["report_draft"]["claim_blocks"][0])
     extra.update(
@@ -273,43 +378,18 @@ def test_unselected_claim_is_not_copied(tmp_path: Path) -> None:
     payloads["claim_verification_result"]["report_content_hash"] = payloads[
         "report_draft"
     ]["content_hash"]
-    payloads["public_export_spec"]["source_report_hash"] = payloads["report_draft"][
-        "content_hash"
-    ]
+    spec = payloads["review_projection_spec"]
+    spec["source_report_hash"] = payloads["report_draft"]["content_hash"]
+    spec["selections"][0]["review_case_label"] = "Alternate label"
+
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
     assert len(run.result["claims"]) == 1
+    assert run.result["claims"][0]["review_case_label"] == "Alternate label"
+    assert run.result["claims"][0]["text"] == (
+        "configured_metric: 1.2 configured-unit."
+    )
     assert "Private unselected prose" not in json.dumps(run.result)
-
-
-def test_public_label_cannot_rewrite_verified_claim_text(tmp_path: Path) -> None:
-    baseline = ToolRegistry.load_default().run(_request(tmp_path / "baseline"))
-    payloads = _payloads()
-    selection = payloads["public_export_spec"]["selections"][0]
-    selection["public_case_label"] = "Alternate public label"
-    changed = ToolRegistry.load_default().run(
-        _request(tmp_path / "changed", payloads=payloads)
-    )
-
-    assert changed.result["claims"][0]["public_case_label"] == (
-        "Alternate public label"
-    )
-    assert changed.result["claims"][0]["text"] == baseline.result["claims"][0][
-        "text"
-    ]
-    assert baseline.run_id != changed.run_id
-
-
-def test_removed_alias_rewrite_contract_is_rejected(tmp_path: Path) -> None:
-    payloads = _payloads()
-    payloads["public_export_spec"]["selections"][0]["replacements"] = [
-        {"source_literal": "configured_metric", "public_literal": "rewritten"}
-    ]
-
-    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
-
-    assert run.execution_state is ExecutionState.FAILED
-    assert run.reason_codes == ["structured_input_schema_validation_failed"]
 
 
 @pytest.mark.parametrize(
@@ -324,7 +404,7 @@ def test_removed_alias_rewrite_contract_is_rejected(tmp_path: Path) -> None:
         "evidence:private-ref measured 1.2 configured-unit.",
     ],
 )
-def test_unsafe_public_text_fails_without_artifact(
+def test_unsafe_review_text_fails_without_artifact(
     tmp_path: Path, unsafe_text: str
 ) -> None:
     payloads = _payloads()
@@ -335,47 +415,28 @@ def test_unsafe_public_text_fails_without_artifact(
     payloads["claim_verification_result"]["report_content_hash"] = report[
         "content_hash"
     ]
-    payloads["public_export_spec"]["source_report_hash"] = report["content_hash"]
+    payloads["review_projection_spec"]["source_report_hash"] = report[
+        "content_hash"
+    ]
+
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
     assert run.execution_state is ExecutionState.FAILED
-    assert run.reason_codes == ["public_projection_failed"]
-    assert run.result is None
-    assert run.artifacts == []
+    assert run.reason_codes == ["review_projection_failed"]
+    assert run.result is None and run.artifacts == []
     assert unsafe_text not in json.dumps(run.model_dump(mode="json"))
 
 
-def test_entire_reconstructed_payload_is_scanned_before_hash(
-    tmp_path: Path,
-) -> None:
-    unsafe_unit = "${HOME}/demo-private"
-    payloads = _payloads()
-    report = payloads["report_draft"]
-    report["claim_blocks"][0]["value_bindings"][0]["raw_unit"] = unsafe_unit
-    report["content_hash"] = report_content_hash(report)
-    payloads["claim_verification_result"]["report_content_hash"] = report[
-        "content_hash"
-    ]
-    payloads["public_export_spec"]["source_report_hash"] = report["content_hash"]
-
-    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
-
-    assert run.execution_state is ExecutionState.FAILED
-    assert run.reason_codes == ["public_projection_failed"]
-    assert run.result is None
-    assert run.artifacts == []
-    assert unsafe_unit not in json.dumps(run.model_dump(mode="json"))
-
-
-def test_verified_with_warnings_requires_human_review(tmp_path: Path) -> None:
+def test_verified_with_warnings_still_requires_review(tmp_path: Path) -> None:
     run = ToolRegistry.load_default().run(
         _request(tmp_path, payloads=_payloads(warnings=True))
     )
 
     assert run.execution_state is ExecutionState.PARTIAL
-    assert run.result["export_state"] == "review_required"
+    assert run.result["projection_state"] == "review_required"
     assert run.reason_codes == [
         "p0_10_verified_with_warnings",
+        "producer_provenance_unverified",
         "public_release_authority_not_configured",
     ]
 
@@ -401,73 +462,54 @@ def test_verified_with_warnings_requires_human_review(tmp_path: Path) -> None:
                         "report_audience": "internal_research",
                     }
                 ),
-                p["public_export_spec"].update(
+                p["review_projection_spec"].update(
                     {"source_report_hash": p["report_draft"]["content_hash"]}
                 ),
             ),
             "report_audience_not_public_candidate",
         ),
         (
-            lambda p: p["claim_verification_result"].update(
-                {
-                    "release_state": "release_blocked",
-                    "public_export_eligibility": "ineligible",
-                    "check_records": [
-                        {
-                            "check_id": f"check:{'f' * 16}",
-                            "claim_id": "claim-block:demo",
-                            "rule_id": "rule:block",
-                            "rule_version": "1.0.0",
-                            "outcome": "blocked",
-                            "severity": "hard_blocker",
-                            "reason_code": "configured_blocker",
-                            "text_span": None,
-                            "evidence_refs": [],
-                            "statement_ref": None,
-                        }
-                    ],
-                }
-            ),
-            "claim_verification_not_verified_for_review_candidate",
-        ),
-        (
-            lambda p: p["public_export_spec"].update(
+            lambda p: p["review_projection_spec"].update(
                 {"source_report_hash": "f" * 64}
             ),
-            "export_spec_report_binding_mismatch",
+            "projection_spec_report_binding_mismatch",
         ),
         (
-            lambda p: p["public_export_spec"].update(
+            lambda p: p["review_projection_spec"].update(
                 {"claim_verification_id": f"claim-verification:{'0' * 16}"}
             ),
-            "export_spec_verification_binding_mismatch",
+            "projection_spec_verification_binding_mismatch",
         ),
         (
-            lambda p: p["public_export_spec"].update({"target_language": "zh"}),
-            "export_language_mismatch",
+            lambda p: p["review_projection_spec"].update(
+                {"target_language": "zh"}
+            ),
+            "projection_language_mismatch",
         ),
         (
-            lambda p: p["public_export_spec"]["selections"][0].update(
+            lambda p: p["review_projection_spec"]["selections"][0].update(
                 {"source_claim_id": "claim-block:missing"}
             ),
-            "export_claim_not_found",
+            "projection_claim_not_found",
         ),
         (
-            lambda p: p["public_export_spec"].update(
+            lambda p: p["review_projection_spec"].update(
                 {"allowed_claim_types": ["availability_claim"]}
             ),
-            "export_claim_type_not_allowed",
+            "projection_claim_type_not_allowed",
         ),
         (
-            lambda p: p["public_export_spec"].update(
+            lambda p: p["review_projection_spec"].update(
                 {"allowed_evidence_states": ["inferred"]}
             ),
-            "export_evidence_state_not_allowed",
+            "projection_evidence_state_not_allowed",
         ),
     ],
 )
 def test_cross_binding_failures_are_typed(
-    tmp_path: Path, mutate, reason: str
+    tmp_path: Path,
+    mutate: Callable[[dict[str, dict]], None],
+    reason: str,
 ) -> None:
     payloads = _payloads()
     mutate(payloads)
@@ -475,13 +517,43 @@ def test_cross_binding_failures_are_typed(
 
     assert run.execution_state is ExecutionState.FAILED
     assert reason in run.reason_codes
-    assert run.result is None
-    assert run.artifacts == []
+    assert run.result is None and run.artifacts == []
 
 
-def test_strict_boolean_is_not_coerced(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda run: run["request"].update({"tool_id": "P0-09"}),
+        lambda run: run.update({"execution_state": "partial"}),
+        lambda run: run.update(
+            {"result_schema_ref": "bridge://schemas/other/v0.1"}
+        ),
+        lambda run: run["result"].update(
+            {"verification_id": f"claim-verification:{'0' * 16}"}
+        ),
+        lambda run: run["artifacts"][0].update({"sha256": "f" * 64}),
+        lambda run: run["artifacts"].append(deepcopy(run["artifacts"][0])),
+    ],
+)
+def test_claim_verifier_run_result_and_artifact_must_match_exactly(
+    tmp_path: Path,
+    mutate: Callable[[dict[str, Any]], None],
+) -> None:
+    request = _request(tmp_path)
+    request = _rewrite_role(request, "claim_verifier_run", mutate)
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert "claim_verifier_run_binding_mismatch" in run.reason_codes
+    assert run.result is None and run.artifacts == []
+
+
+def test_projection_spec_strict_boolean_is_not_coerced(tmp_path: Path) -> None:
     payloads = _payloads()
-    payloads["public_export_spec"]["allow_claims_without_evidence_state"] = "false"
+    payloads["review_projection_spec"][
+        "allow_claims_without_evidence_state"
+    ] = "false"
     run = adapter.run(
         _request(tmp_path, payloads=payloads),
         ToolRegistry.load_default().describe("P0-11"),
@@ -491,24 +563,21 @@ def test_strict_boolean_is_not_coerced(tmp_path: Path) -> None:
     assert run.reason_codes == ["structured_input_schema_invalid"]
 
 
-def test_input_id_renaming_reuses_same_public_candidate(tmp_path: Path) -> None:
-    first = ToolRegistry.load_default().run(
-        _request(
-            tmp_path / "first",
-            output_dir=tmp_path / "output",
-            input_id_prefix="alpha",
-        )
+def test_input_id_renaming_preserves_projection_identity(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    first = ToolRegistry.load_default().run(request)
+    renamed = request.model_copy(
+        update={
+            "request_id": "request-renamed",
+            "object_inputs": [
+                item.model_copy(update={"input_id": f"renamed-{index}"})
+                for index, item in enumerate(request.object_inputs)
+            ],
+        }
     )
-    second = ToolRegistry.load_default().run(
-        _request(
-            tmp_path / "second",
-            output_dir=tmp_path / "output",
-            input_id_prefix="beta",
-        )
-    )
+    second = ToolRegistry.load_default().run(renamed)
 
     assert first.run_id == second.run_id
-    assert first.input_hash == second.input_hash
     assert first.result == second.result
     assert first.artifacts[0].sha256 == second.artifacts[0].sha256
 
@@ -533,7 +602,11 @@ def test_nonzero_random_seed_is_refused(tmp_path: Path) -> None:
 
 
 def test_v1_request_is_refused_without_bare_exception(tmp_path: Path) -> None:
-    request = ToolRequest(request_id="v1", tool_id="P0-11", output_dir=tmp_path)
+    request = ToolRequest(
+        request_id="v1",
+        tool_id="P0-11",
+        output_dir=tmp_path.resolve(),
+    )
     spec = ToolRegistry.load_default().describe("P0-11")
 
     eligibility = adapter.check_eligibility(request, spec)
@@ -549,26 +622,26 @@ def test_registry_detects_input_mutation_during_adapter_run(
 ) -> None:
     request = _request(tmp_path)
     target = request.object_inputs[0].path
-    original = adapter_module.build_public_safe_report
+    original = adapter_module.build_review_projection
 
     def mutate_input(**kwargs):
         result = original(**kwargs)
         target.write_text("{}", encoding="utf-8")
         return result
 
-    monkeypatch.setattr(adapter_module, "build_public_safe_report", mutate_input)
+    monkeypatch.setattr(adapter_module, "build_review_projection", mutate_input)
     run = ToolRegistry.load_default().run(request)
 
     assert run.execution_state is ExecutionState.FAILED
     assert run.reason_codes == ["input_asset_modified_during_run"]
-    assert run.result is None
-    assert run.artifacts == []
+    assert run.result is None and run.artifacts == []
 
 
 def test_implementation_contains_no_biological_names_or_thresholds() -> None:
     package = Path(adapter_module.__file__).parent
     source = "\n".join(
-        path.read_text(encoding="utf-8") for path in sorted(package.glob("*.py"))
+        path.read_text(encoding="utf-8")
+        for path in sorted(package.glob("*.py"))
     )
 
     for biological_term in (

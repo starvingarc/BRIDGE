@@ -59,6 +59,39 @@
       "title": "CaseEvidenceReadinessSummary",
       "type": "object"
     },
+    "ChecksummedObjectBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "minLength": 1,
+          "title": "Object Version",
+          "type": "string"
+        },
+        "schema_ref": {
+          "minLength": 1,
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version",
+        "schema_ref",
+        "source_sha256"
+      ],
+      "title": "ChecksummedObjectBinding",
+      "type": "object"
+    },
     "DataReadinessState": {
       "enum": [
         "adequate",
@@ -152,6 +185,13 @@
         },
         "measurement_evidence_state_counts": {
           "$ref": "#/$defs/MeasurementEvidenceStateCount"
+        },
+        "measurement_result_bindings": {
+          "items": {
+            "$ref": "#/$defs/ChecksummedObjectBinding"
+          },
+          "title": "Measurement Result Bindings",
+          "type": "array"
         },
         "measurement_result_refs": {
           "items": {
@@ -307,6 +347,7 @@
         "missing_requirements",
         "score_reason_codes",
         "measurement_result_refs",
+        "measurement_result_bindings",
         "measurement_evidence_state_counts",
         "evidence_refs",
         "sensitivity_refs",

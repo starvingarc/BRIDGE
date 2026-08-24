@@ -1,0 +1,48 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "report",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-11-input/report_draft.json",
+      "role": "report_draft",
+      "schema_ref": "bridge://schemas/report-draft/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "verification",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-11-input/claim_verification_result.json",
+      "role": "claim_verification_result",
+      "schema_ref": "bridge://schemas/claim-verification-result/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "verifier-run",
+      "media_type": "application/json",
+      "object_version": "0.2.0",
+      "path": "/tmp/bridge-p0-11-input/claim_verifier_tool_run_v2.json",
+      "role": "claim_verifier_run",
+      "schema_ref": "bridge://schemas/tool-run/v0.2",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "review-policy",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/tmp/bridge-p0-11-input/review_projection_spec.json",
+      "role": "review_projection_spec",
+      "schema_ref": "bridge://schemas/review-projection-spec/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "output_dir": "/tmp/bridge-p0-11-output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "request-p0-11-demo",
+  "tool_id": "P0-11",
+  "tool_version": "0.3.0"
+}

@@ -27,7 +27,8 @@ Every object is an immutable local `application/json` file referenced by `Struct
 | Role | Cardinality | Schema | Required content |
 |---|---:|---|---|
 | `compilation_bundle` | exactly 1 | `evidence-compilation-bundle/v0.1` | Case or Comparison scope, object catalog, candidate/missing items, optional prior history |
-| `evidence_sufficiency_profile` | Case 1–5; Comparison 2–25 | `evidence-sufficiency-profile/v0.1` | ProductCase, domain, MeasurementSpec, sufficiency state and provenance |
+| `evidence_sufficiency_run_result` | Case 1–5; Comparison 2–25 | `evidence-sufficiency-run-result/v0.1` | Full P0-08 profiles, case summary, gate trace and exact checksummed MeasurementResult bindings |
+| `measurement_result` | Case 1–N; forbidden for Comparison | `measurement-result/v0.2` | Exact quantitative observation, unit, denominator/interval semantics, MeasurementSpec version and producer ToolRun binding |
 | `evidence_family_registry` | exactly 1 | `evidence-family-registry/v0.1` | Family version, channel role, independence scope, review state |
 | `claim_registry` | exactly 1 | `claim-registry/v0.1` | Claim version, domain, allowed relations and requirement templates |
 | `reconciliation_spec_registry` | exactly 1 | `reconciliation-spec-registry/v0.1` | Frozen channel/minimum/conflict rules; no weights or generic expressions |
@@ -66,7 +67,7 @@ Successful or partial execution writes one immutable `<output_dir>/run-<digest>/
 - `shadow` and `exploratory` records remain visible for audit but never enter formal reconciliation.
 - Failed, skipped, or not-implemented upstream runs cannot become evidence.
 - Records sharing an EvidenceFamily retain provenance but contribute one family direction. Families in the same `independence_scope`, or joined by the symmetric/transitive closure of `known_dependencies`, count as one independent component. Opposite directions within a component remain unresolved; tools and records are never majority votes.
-- P0-08 v0.1 exposes exact versioned ProductCase and MeasurementSpec refs. P0-09 requires exact ID-and-version equality, MeasurementResult membership and retained-family binding. Formal reconciliation remains unavailable because the P0-08 profile contract is still a candidate and cannot authorize formal evidence-tier promotion.
+- P0-08 v0.1 exposes exact versioned ProductCase and MeasurementSpec refs plus source-checksummed MeasurementResult bindings. P0-09 requires exact ID/version/Schema/source-checksum equality, resolves quantitative content only from the matching v0.2 MeasurementResult input and retains its producer ToolRun state. Formal reconciliation remains unavailable because the P0-08 contract is still a candidate and cannot authorize formal evidence-tier promotion.
 
 ## Refusal and degradation
 
@@ -128,27 +129,25 @@ Each `StructuredInputRef` requires `input_id:string`, exact `role:string`, regis
 |---|---|---:|---|
 | `candidate_id` | `evidence-candidate:*` | yes | Per-input disposition identity; unique in bundle |
 | `product_case_ref`, `sample_or_preparation_ref` | versioned refs | yes | Must resolve in scope/catalog |
-| `domain_id` | five-value P0 domain enum | yes | Must match Claim and P0-08 profile |
-| `measurement_result_ref`, `measurement_spec_ref` | versioned refs | yes | Catalog-resolved upstream result and contract |
-| `score_contract_ref` | versioned ref or null | no | Provenance only; no score is computed |
-| `metric_id` | string | yes | Atomic metric identity |
-| `value` | safe JSON value | yes | Preserved, not recomputed; booleans are not numeric evidence; null only for unknown/unavailable/alert |
-| `unit` | string or null | no | Preserved upstream unit |
-| `numerator`, `denominator` | finite JSON number or null | no | Integer and floating-point JSON numbers are accepted; numeric strings and booleans are rejected without coercion; denominator must be positive |
-| `interval` | lower/upper/confidence/method | no | Bounds/confidence are strict finite JSON numbers, never numeric strings or booleans; bounds are ordered and confidence is in `(0,1)` |
+| `domain_id` | five-value P0 domain enum | yes | Must match Claim and the selected profile inside the P0-08 run result |
+| `measurement_result_input_id` | string | yes | Exact request input ID of the checksummed v0.2 MeasurementResult |
+| `sufficiency_result_input_id` | string | yes | Exact request input ID of the full matching P0-08 run result |
 | `claim_ref`, `biological_context` | versioned ref/object | yes | Explicit Claim and context; never inferred from names/paths |
 | `relation` | `supports \| contradicts` | yes | Must be allowed by Claim |
-| `evidence_state` | EvidenceState | yes | `missing` forbidden here; use missing observation |
 | `evidence_tier` | `formal \| shadow \| exploratory` | yes | Only eligible formal evidence can reconcile |
 | `applicability` | `applicable \| not_applicable \| not_assessed` | yes | Non-applicable/unassessed remains audit-only |
 | `evidence_family_ref` | versioned ref | yes | Pre-registered family and channel binding |
-| `sufficiency_profile_input_id` | string | yes | Exact request input ID of matching P0-08 profile |
-| `tool_run_ref`, `tool_run_execution_state` | ref + enum | yes | Only succeeded/partial records compile |
-| `reference_refs`, `prior_refs`, `artifact_refs` | unique ref arrays | yes | Catalog-resolved, set semantics, content-hashed |
-| `provenance_refs` | unique string array | yes | Set semantics; no local path/token material |
+| `reference_refs`, `prior_refs` | unique versioned-ref arrays | no | Catalog-resolved scientific context with set semantics |
 | `revision_action` | `create \| supersede \| invalidate` | yes | Controls append-only lifecycle |
 | `predecessor_ref` | Evidence ref or null | conditional | Null for create; latest same-key version for revision |
-| `created_at` | timezone-aware datetime | yes | Upstream observation time, not compiler wall clock |
+| `created_at` | timezone-aware datetime | yes | Upstream mapping time, not compiler wall clock |
+
+Numeric value, metric ID, unit, numerator/denominator, interval,
+MeasurementSpec, evidence state and producer-run provenance are deliberately
+absent from `EvidenceCandidate`. The compiler resolves them from the exact
+MeasurementResult and rejects any checksum, ProductCase, domain, MeasurementSpec,
+Evidence Family or producer-state mismatch. Caller-restated numeric evidence is
+therefore neither accepted nor silently preferred.
 
 `MissingEvidenceObservation` requires `observation_id`, `product_case_ref`, `claim_ref`, registered `requirement_key`, one of `measurement_not_provided`, `measurement_unavailable`, `required_channel_not_provided`, `required_experiment_not_performed`, `source_contract_ref`, provenance and `observed_at`.
 
@@ -248,10 +247,11 @@ Reconciliation reasons include contract/spec not frozen or mismatched, sufficien
   "random_seed": 0,
   "object_inputs": [
     {"input_id":"bundle","role":"compilation_bundle","schema_ref":"bridge://schemas/evidence-compilation-bundle/v0.1","object_version":"0.1.0","path":"/absolute/bundle.json","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","media_type":"application/json"},
-    {"input_id":"profile","role":"evidence_sufficiency_profile","schema_ref":"bridge://schemas/evidence-sufficiency-profile/v0.1","object_version":"0.1.0","path":"/absolute/profile.json","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","media_type":"application/json"},
-    {"input_id":"families","role":"evidence_family_registry","schema_ref":"bridge://schemas/evidence-family-registry/v0.1","object_version":"0.1.0","path":"/absolute/families.json","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","media_type":"application/json"},
-    {"input_id":"claims","role":"claim_registry","schema_ref":"bridge://schemas/claim-registry/v0.1","object_version":"0.1.0","path":"/absolute/claims.json","sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","media_type":"application/json"},
-    {"input_id":"rules","role":"reconciliation_spec_registry","schema_ref":"bridge://schemas/reconciliation-spec-registry/v0.1","object_version":"0.1.0","path":"/absolute/rules.json","sha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","media_type":"application/json"}
+    {"input_id":"sufficiency","role":"evidence_sufficiency_run_result","schema_ref":"bridge://schemas/evidence-sufficiency-run-result/v0.1","object_version":"0.1.0","path":"/absolute/sufficiency.json","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","media_type":"application/json"},
+    {"input_id":"measurement","role":"measurement_result","schema_ref":"bridge://schemas/measurement-result/v0.2","object_version":"0.2.0","path":"/absolute/measurement.json","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","media_type":"application/json"},
+    {"input_id":"families","role":"evidence_family_registry","schema_ref":"bridge://schemas/evidence-family-registry/v0.1","object_version":"0.1.0","path":"/absolute/families.json","sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","media_type":"application/json"},
+    {"input_id":"claims","role":"claim_registry","schema_ref":"bridge://schemas/claim-registry/v0.1","object_version":"0.1.0","path":"/absolute/claims.json","sha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","media_type":"application/json"},
+    {"input_id":"rules","role":"reconciliation_spec_registry","schema_ref":"bridge://schemas/reconciliation-spec-registry/v0.1","object_version":"0.1.0","path":"/absolute/rules.json","sha256":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff","media_type":"application/json"}
   ]
 }
 ```

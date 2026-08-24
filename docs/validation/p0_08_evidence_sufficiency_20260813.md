@@ -31,3 +31,12 @@ Even the synthetic sufficient path emits `domain_score=null`, `score_state=unava
 ## Remaining uncertainty and next scientific action
 
 `ENV-EVIDENCE-v0.1` remains proposed, all selected method records remain `formal_eligible=false`, and no real upstream evidence bundle has been reviewed through this candidate. Next scientific work is to review/freeze the relevant MeasurementSpec-side requirements and upstream validation/prior/sensitivity records, then run a reproducible real ProductCase only after explicit scientific authorization. This validation does not freeze a gate, ScoreContract, threshold or release state.
+
+## Peer-review closeout addendum
+
+The combined closeout introduces `MeasurementResult` v0.2 while preserving the
+frozen v0.1 ToolRun contract. Each profile now publishes exact MeasurementResult
+Schema/source-checksum bindings, and the raw MeasurementResult checksum enters
+run identity. This prevents semantically reserialized numeric evidence from
+being substituted at the P0-08/P0-09 handoff. Final exact-head counts and wheel
+evidence are recorded in the stack closeout validation.

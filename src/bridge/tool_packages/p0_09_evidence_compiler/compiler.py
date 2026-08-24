@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime
 import hashlib
+import math
 import re
 from typing import Any, Iterable, Mapping
 
@@ -11,6 +12,7 @@ from pydantic import ValidationError
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
+    EvidenceSufficiencyRunResult,
     EvidenceSufficiencyState,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
@@ -27,6 +29,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceFamilyRegistry,
     EvidenceFamilySpec,
     EvidenceFamilyStatus,
+    EvidenceInterval,
     EvidenceLifecycleState,
     EvidenceRecord,
     EvidenceRecordDisposition,
@@ -45,6 +48,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     RegistryStatus,
     RejectedEvidenceRecord,
     RejectedEvidenceRecordList,
+    ResolvedEvidenceCandidate,
     RevisionAction,
     VersionedObjectRef,
     publication_ref,
@@ -52,7 +56,14 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     is_prohibited_conclusion_key,
     contains_unsafe_reference,
 )
-from bridge.toolkit.contracts import EvidenceState, FrozenModel, ToolPackageSpecV2, ToolRequestV2
+from bridge.toolkit.contracts import (
+    EvidenceState,
+    FrozenModel,
+    MeasurementResultV2 as MeasurementResult,
+    StructuredInputRef,
+    ToolPackageSpecV2,
+    ToolRequestV2,
+)
 
 
 INDIVIDUAL_REASON_CODES = (
@@ -66,6 +77,11 @@ INDIVIDUAL_REASON_CODES = (
     "evidence_family_not_registered",
     "evidence_family_version_mismatch",
     "sufficiency_profile_not_bound",
+    "sufficiency_result_not_bound",
+    "measurement_result_not_bound",
+    "measurement_result_checksum_mismatch",
+    "measurement_result_not_quantitative",
+    "measurement_result_source_binding_missing",
     "sufficiency_profile_case_mismatch",
     "sufficiency_profile_domain_mismatch",
     "sufficiency_profile_measurement_spec_mismatch",
@@ -139,6 +155,7 @@ CONTENT_ADDRESSED_GRAPH_ROLES = {
     "base_graph_manifest",
     "base_evidence_record_set",
     "base_evidence_requirement_set",
+    "measurement_result",
     "source_case_graph_manifest",
     "source_case_evidence_record_set",
 }
@@ -194,7 +211,8 @@ REQUEST_BINDING_FIELDS = frozenset(
         "manifest_input_id",
         "record_set_input_id",
         "requirement_set_input_id",
-        "sufficiency_profile_input_id",
+        "sufficiency_result_input_id",
+        "measurement_result_input_id",
     }
 )
 
@@ -290,7 +308,7 @@ def graph_identity_for_ref(kind: GraphKind, root_ref: VersionedObjectRef) -> str
     return f"{prefix}:{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:24]}"
 
 
-def evidence_logical_key(candidate: EvidenceCandidate) -> str:
+def evidence_logical_key(candidate: ResolvedEvidenceCandidate) -> str:
     return canonical_json_bytes(
         {
             "product_case_ref": candidate.product_case_ref.model_dump(mode="json"),
@@ -329,7 +347,7 @@ def evidence_identity(logical_key: str) -> str:
 
 
 def evidence_content_payload(
-    candidate: EvidenceCandidate,
+    candidate: ResolvedEvidenceCandidate,
     *,
     sufficiency_profile_ref: VersionedObjectRef,
     lifecycle_state: EvidenceLifecycleState,
@@ -457,7 +475,7 @@ EXPECTED_CATALOG_SCHEMAS: dict[GraphNodeType, str] = {
     GraphNodeType.MEASUREMENT_SPEC: "bridge://schemas/measurement-spec/v0.1",
     GraphNodeType.SCORE_CONTRACT: "bridge://schemas/score-contract/v0.1",
     GraphNodeType.TOOL_RUN: "bridge://schemas/tool-run/v0.1",
-    GraphNodeType.MEASUREMENT_RESULT: "bridge://schemas/measurement-result/v0.1",
+    GraphNodeType.MEASUREMENT_RESULT: "bridge://schemas/measurement-result/v0.2",
     GraphNodeType.REFERENCE_SNAPSHOT: "bridge://schemas/reference-snapshot/v0.1",
     GraphNodeType.PRIOR_SNAPSHOT: "bridge://schemas/prior-snapshot/v0.1",
     GraphNodeType.ARTIFACT: "bridge://schemas/artifact/v0.1",
@@ -620,13 +638,20 @@ def compile_evidence_graph(
     request: ToolRequestV2,
     spec: ToolPackageSpecV2,
     bundle: EvidenceCompilationBundle,
-    profiles_by_input_id: Mapping[str, EvidenceSufficiencyProfile],
+    sufficiency_results_by_input_id: Mapping[str, EvidenceSufficiencyRunResult],
+    measurement_results_by_input_id: Mapping[str, MeasurementResult],
+    input_refs_by_id: Mapping[str, StructuredInputRef],
     family_registry: EvidenceFamilyRegistry,
     claim_registry: ClaimRegistry,
     reconciliation_registry: ReconciliationSpecRegistry,
     verified_graph_inputs: Any,
     objects_by_input_id: Mapping[str, FrozenModel],
 ) -> CompiledEvidenceGraph:
+    profiles_by_input_id = {
+        f"{profile.profile_id}@{profile.profile_version}": profile
+        for result in sufficiency_results_by_input_id.values()
+        for profile in result.profiles
+    }
     claims = {(item.claim_id, item.version): item for item in claim_registry.claims}
     families = {
         (item.evidence_family_id, item.version): item for item in family_registry.families
@@ -655,7 +680,7 @@ def compile_evidence_graph(
     if bundle.graph_kind is GraphKind.COMPARISON:
         accepted_external, comparison_rejected = _validate_comparison_bindings(
             bundle=bundle,
-            profiles_by_input_id=profiles_by_input_id,
+            sufficiency_results_by_input_id=sufficiency_results_by_input_id,
             claims=claims,
             families=families,
             source_record_sets=verified_graph_inputs.source_record_sets,
@@ -667,7 +692,9 @@ def compile_evidence_graph(
 
     records, dispositions, rejected_candidates = _compile_candidates(
         bundle=comparison_bundle,
-        profiles_by_input_id=profiles_by_input_id,
+        sufficiency_results_by_input_id=sufficiency_results_by_input_id,
+        measurement_results_by_input_id=measurement_results_by_input_id,
+        input_refs_by_id=input_refs_by_id,
         family_registry=family_registry,
         claim_registry=claim_registry,
         reconciliation_registry=reconciliation_registry,
@@ -789,7 +816,9 @@ def compile_evidence_graph(
 def _compile_candidates(
     *,
     bundle: EvidenceCompilationBundle,
-    profiles_by_input_id: Mapping[str, EvidenceSufficiencyProfile],
+    sufficiency_results_by_input_id: Mapping[str, EvidenceSufficiencyRunResult],
+    measurement_results_by_input_id: Mapping[str, MeasurementResult],
+    input_refs_by_id: Mapping[str, StructuredInputRef],
     family_registry: EvidenceFamilyRegistry,
     claim_registry: ClaimRegistry,
     reconciliation_registry: ReconciliationSpecRegistry,
@@ -814,12 +843,12 @@ def _compile_candidates(
         source_id = _source_id(raw, "candidate_id", index, "candidate")
         early_reasons = _raw_candidate_reasons(raw)
         try:
-            candidate = EvidenceCandidate.model_validate(raw)
+            declared_candidate = EvidenceCandidate.model_validate(raw)
         except ValidationError:
-            candidate = None
+            declared_candidate = None
             if not early_reasons:
                 early_reasons.append("individual_record_schema_invalid")
-        if candidate is None:
+        if declared_candidate is None:
             reasons = _ordered_individual_reasons(early_reasons)
             rejected.append(
                 RejectedEvidenceRecord(
@@ -840,6 +869,32 @@ def _compile_candidates(
             continue
 
         reasons = list(early_reasons)
+        candidate, source_reasons = _resolve_candidate(
+            declared_candidate,
+            sufficiency_results_by_input_id=sufficiency_results_by_input_id,
+            measurement_results_by_input_id=measurement_results_by_input_id,
+            input_refs_by_id=input_refs_by_id,
+        )
+        reasons.extend(source_reasons)
+        if candidate is None:
+            ordered = _ordered_individual_reasons(reasons)
+            rejected.append(
+                RejectedEvidenceRecord(
+                    source_kind="candidate_record",
+                    source_id=declared_candidate.candidate_id,
+                    source_index=index,
+                    reason_codes=ordered,
+                    claim_ref=declared_candidate.claim_ref.ref,
+                )
+            )
+            dispositions.append(
+                EvidenceRecordDisposition(
+                    candidate_id=declared_candidate.candidate_id,
+                    disposition=CompilationDisposition.REJECTED,
+                    reason_codes=ordered,
+                )
+            )
+            continue
         if candidate.candidate_id in seen_candidate_ids:
             reasons.append("duplicate_candidate_id")
         seen_candidate_ids.add(candidate.candidate_id)
@@ -909,7 +964,18 @@ def _compile_candidates(
             else:
                 reasons.append("evidence_family_not_registered")
 
-        profile = profiles_by_input_id.get(candidate.sufficiency_profile_input_id)
+        result = sufficiency_results_by_input_id.get(
+            candidate.sufficiency_result_input_id
+        )
+        profile = (
+            _select_profile(
+                result,
+                product_case_ref=candidate.product_case_ref,
+                domain_id=candidate.domain_id,
+            )
+            if result is not None
+            else None
+        )
         if profile is None:
             reasons.append("sufficiency_profile_not_bound")
         else:
@@ -1108,6 +1174,164 @@ def _compile_candidates(
     return history, dispositions, rejected
 
 
+def _select_profile(
+    result: EvidenceSufficiencyRunResult,
+    *,
+    product_case_ref: VersionedObjectRef,
+    domain_id: Any,
+) -> EvidenceSufficiencyProfile | None:
+    matches = [
+        profile
+        for profile in result.profiles
+        if profile.product_case_ref is not None
+        and profile.product_case_ref.ref == product_case_ref.ref
+        and profile.domain_id is domain_id
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _resolve_candidate(
+    declared: EvidenceCandidate,
+    *,
+    sufficiency_results_by_input_id: Mapping[str, EvidenceSufficiencyRunResult],
+    measurement_results_by_input_id: Mapping[str, MeasurementResult],
+    input_refs_by_id: Mapping[str, StructuredInputRef],
+) -> tuple[ResolvedEvidenceCandidate | None, list[str]]:
+    reasons: list[str] = []
+    result = sufficiency_results_by_input_id.get(declared.sufficiency_result_input_id)
+    if result is None:
+        reasons.append("sufficiency_result_not_bound")
+        profile = None
+    else:
+        profile = _select_profile(
+            result,
+            product_case_ref=declared.product_case_ref,
+            domain_id=declared.domain_id,
+        )
+        if profile is None:
+            case_matches = any(
+                item.product_case_ref is not None
+                and item.product_case_ref.ref == declared.product_case_ref.ref
+                for item in result.profiles
+            )
+            domain_matches = any(
+                item.domain_id is declared.domain_id for item in result.profiles
+            )
+            if not case_matches:
+                reasons.append("sufficiency_profile_case_mismatch")
+            if not domain_matches:
+                reasons.append("sufficiency_profile_domain_mismatch")
+            if case_matches and domain_matches:
+                reasons.append("sufficiency_profile_not_bound")
+
+    measurement = measurement_results_by_input_id.get(
+        declared.measurement_result_input_id
+    )
+    measurement_ref = input_refs_by_id.get(declared.measurement_result_input_id)
+    if measurement is None or measurement_ref is None:
+        reasons.append("measurement_result_not_bound")
+        binding = None
+    elif profile is None:
+        binding = None
+    else:
+        matches = [
+            item
+            for item in profile.measurement_result_bindings
+            if item.object_id == measurement.measurement_id
+            and item.object_version == measurement_ref.object_version
+        ]
+        binding = matches[0] if len(matches) == 1 else None
+        if binding is None:
+            reasons.append("sufficiency_profile_measurement_result_mismatch")
+        elif (
+            binding.schema_ref != measurement_ref.schema_ref
+            or binding.source_sha256 != measurement_ref.sha256
+        ):
+            reasons.append("measurement_result_checksum_mismatch")
+
+    raw_value = measurement.raw_value if measurement is not None else None
+    if (
+        isinstance(raw_value, bool)
+        or not isinstance(raw_value, (int, float))
+        or not math.isfinite(float(raw_value))
+        or (measurement is not None and measurement.unit is None)
+    ):
+        reasons.append("measurement_result_not_quantitative")
+    if measurement is not None and (
+        measurement.measurement_spec_version is None
+        or measurement.source_run_ref is None
+        or measurement.source_execution_state is None
+    ):
+        reasons.append("measurement_result_source_binding_missing")
+    if profile is not None and measurement is not None and (
+        profile.measurement_spec_ref is None
+        or profile.measurement_spec_ref.object_id != measurement.measurement_spec_id
+        or profile.measurement_spec_ref.object_version
+        != measurement.measurement_spec_version
+    ):
+        reasons.append("sufficiency_profile_measurement_spec_mismatch")
+    if reasons or measurement is None or profile is None or binding is None:
+        return None, reasons
+
+    assert measurement.source_run_ref is not None
+    assert measurement.source_execution_state is not None
+    assert measurement.measurement_spec_version is not None
+    assert measurement.unit is not None
+    tool_run_id, tool_run_version = measurement.source_run_ref.rsplit("@", 1)
+    interval = (
+        EvidenceInterval(
+            lower=float(measurement.interval[0]),
+            upper=float(measurement.interval[1]),
+            confidence_level=measurement.interval_confidence_level,
+            method_ref=measurement.interval_method_ref,
+        )
+        if measurement.interval is not None
+        else None
+    )
+    resolved = ResolvedEvidenceCandidate(
+        candidate_id=declared.candidate_id,
+        product_case_ref=declared.product_case_ref,
+        sample_or_preparation_ref=declared.sample_or_preparation_ref,
+        domain_id=declared.domain_id,
+        measurement_result_ref=VersionedObjectRef(
+            object_id=binding.object_id,
+            object_version=binding.object_version,
+        ),
+        measurement_spec_ref=VersionedObjectRef(
+            object_id=measurement.measurement_spec_id,
+            object_version=measurement.measurement_spec_version,
+        ),
+        score_contract_ref=None,
+        metric_id=measurement.metric_name,
+        value=raw_value,
+        unit=measurement.unit,
+        numerator=measurement.numerator,
+        denominator=measurement.denominator,
+        interval=interval,
+        claim_ref=declared.claim_ref,
+        biological_context=declared.biological_context,
+        relation=declared.relation,
+        evidence_state=measurement.evidence_state,
+        evidence_tier=declared.evidence_tier,
+        applicability=declared.applicability,
+        evidence_family_ref=declared.evidence_family_ref,
+        sufficiency_result_input_id=declared.sufficiency_result_input_id,
+        tool_run_ref=VersionedObjectRef(
+            object_id=tool_run_id,
+            object_version=tool_run_version,
+        ),
+        tool_run_execution_state=measurement.source_execution_state,
+        reference_refs=declared.reference_refs,
+        prior_refs=declared.prior_refs,
+        artifact_refs=[],
+        provenance_refs=sorted(set(measurement.provenance_refs)),
+        revision_action=declared.revision_action,
+        predecessor_ref=declared.predecessor_ref,
+        created_at=declared.created_at,
+    )
+    return resolved, []
+
+
 def _raw_candidate_reasons(raw: Any) -> list[str]:
     if not isinstance(raw, dict):
         return ["individual_record_schema_invalid"]
@@ -1116,15 +1340,24 @@ def _raw_candidate_reasons(raw: Any) -> list[str]:
         reasons.append("individual_record_schema_invalid")
     if _contains_prohibited_conclusion_key(raw):
         reasons.append("individual_record_schema_invalid")
-    if raw.get("evidence_state") == EvidenceState.MISSING.value:
-        reasons.append("missing_state_requires_evidence_requirement")
-    if _contains_nonfinite(raw.get("value")):
-        reasons.append("nonfinite_numeric_value")
-    denominator = raw.get("denominator")
-    if isinstance(denominator, bool) or (
-        isinstance(denominator, (int, float)) and denominator <= 0
-    ):
-        reasons.append("invalid_denominator")
+    source_owned = {
+        "measurement_result_ref",
+        "measurement_spec_ref",
+        "score_contract_ref",
+        "metric_id",
+        "value",
+        "unit",
+        "numerator",
+        "denominator",
+        "interval",
+        "evidence_state",
+        "tool_run_ref",
+        "tool_run_execution_state",
+        "artifact_refs",
+        "provenance_refs",
+    }
+    if source_owned.intersection(raw):
+        reasons.append("individual_record_schema_invalid")
     return reasons
 
 
@@ -1344,7 +1577,7 @@ def effective_records(records: Iterable[EvidenceRecord]) -> list[EvidenceRecord]
 def _validate_comparison_bindings(
     *,
     bundle: EvidenceCompilationBundle,
-    profiles_by_input_id: Mapping[str, EvidenceSufficiencyProfile],
+    sufficiency_results_by_input_id: Mapping[str, EvidenceSufficiencyRunResult],
     claims: Mapping[tuple[str, str], ClaimSpec],
     families: Mapping[tuple[str, str], EvidenceFamilySpec],
     source_record_sets: Mapping[str, EvidenceRecordSet],
@@ -1372,7 +1605,7 @@ def _validate_comparison_bindings(
             else raw_external
         )
         if isinstance(raw, dict):
-            profile_input_id = raw.get("sufficiency_profile_input_id")
+            profile_input_id = raw.get("sufficiency_result_input_id")
             if (
                 isinstance(profile_input_id, str)
                 and profile_input_id
@@ -1380,6 +1613,8 @@ def _validate_comparison_bindings(
             ):
                 declared_inputs.add(profile_input_id)
         reasons: list[str] = []
+        if isinstance(raw, dict) and "resolved_sufficiency_profile_ref" in raw:
+            reasons.append("individual_record_schema_invalid")
         if contains_unsafe_reference(raw):
             reasons.append("individual_record_schema_invalid")
         try:
@@ -1458,7 +1693,18 @@ def _validate_comparison_bindings(
         family = families.get(
             (external.evidence_family_ref.object_id, external.evidence_family_ref.object_version)
         )
-        profile = profiles_by_input_id.get(external.sufficiency_profile_input_id)
+        sufficiency_result = sufficiency_results_by_input_id.get(
+            external.sufficiency_result_input_id
+        )
+        profile = (
+            _select_profile(
+                sufficiency_result,
+                product_case_ref=external.product_case_ref,
+                domain_id=comparison_claim.domain_id,
+            )
+            if sufficiency_result is not None and comparison_claim is not None
+            else None
+        )
         if source_claim is None or comparison_claim is None or family is None:
             reasons.append("declared_object_ref_not_found")
         elif (
@@ -1507,12 +1753,21 @@ def _validate_comparison_bindings(
                 )
             )
             continue
-        accepted.append(external)
-        bound_inputs.add(external.sufficiency_profile_input_id)
-    if set(profiles_by_input_id) != bound_inputs:
+        accepted.append(
+            external.model_copy(
+                update={
+                    "resolved_sufficiency_profile_ref": VersionedObjectRef(
+                        object_id=profile.profile_id,
+                        object_version=profile.profile_version,
+                    )
+                }
+            )
+        )
+        bound_inputs.add(external.sufficiency_result_input_id)
+    if set(sufficiency_results_by_input_id) != bound_inputs:
         # Completely unbound profiles remain a top-level ambiguity. A profile bound
         # only by a rejected external item is retained as rejection provenance.
-        if not set(profiles_by_input_id).issubset(declared_inputs):
+        if not set(sufficiency_results_by_input_id).issubset(declared_inputs):
             raise CompilationInvariantError("unbound_sufficiency_profile")
     return accepted, rejected
 

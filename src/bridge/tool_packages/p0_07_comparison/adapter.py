@@ -16,9 +16,10 @@ from bridge.tool_packages._structured_runtime import (
     single_object,
 )
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
-    CaseEvidenceReadinessSummary,
+    EvidenceSufficiencyRunResult,
 )
 from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitManifest,
     ProductCase,
     VersionedObjectRef,
 )
@@ -55,9 +56,13 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         "bridge://schemas/comparison-evidence-bundle/v0.1",
         ComparisonEvidenceBundle,
     ),
-    "case_evidence_readiness_summary": (
-        "bridge://schemas/case-evidence-readiness-summary/v0.1",
-        CaseEvidenceReadinessSummary,
+    "evidence_sufficiency_run_result": (
+        "bridge://schemas/evidence-sufficiency-run-result/v0.1",
+        EvidenceSufficiencyRunResult,
+    ),
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        BiologicalUnitManifest,
     ),
 }
 
@@ -104,11 +109,23 @@ class ComparisonAdapter:
             "comparison_evidence_bundle",
             ComparisonEvidenceBundle,
         )
-        readiness_summaries = objects_for_role(
+        sufficiency_results = objects_for_role(
             request,
             loaded,
-            "case_evidence_readiness_summary",
-            CaseEvidenceReadinessSummary,
+            "evidence_sufficiency_run_result",
+            EvidenceSufficiencyRunResult,
+        )
+        biological_unit_manifests = objects_for_role(
+            request,
+            loaded,
+            "biological_unit_manifest",
+            BiologicalUnitManifest,
+        )
+        product_cases = objects_for_role(
+            request,
+            loaded,
+            "product_case",
+            ProductCase,
         )
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
@@ -118,7 +135,9 @@ class ComparisonAdapter:
                 tool_version=spec.version,
                 comparison_spec=comparison_spec,
                 evidence_bundle=evidence_bundle,
-                readiness_summaries=readiness_summaries,
+                sufficiency_results=sufficiency_results,
+                biological_unit_manifests=biological_unit_manifests,
+                product_cases=product_cases,
                 input_sha256_by_role={
                     "comparison_spec": next(
                         ref.sha256
@@ -135,10 +154,15 @@ class ComparisonAdapter:
                         for ref in request.object_inputs
                         if ref.role == "product_case"
                     ),
-                    "case_evidence_readiness_summaries": sorted(
+                    "evidence_sufficiency_run_results": sorted(
                         ref.sha256
                         for ref in request.object_inputs
-                        if ref.role == "case_evidence_readiness_summary"
+                        if ref.role == "evidence_sufficiency_run_result"
+                    ),
+                    "biological_unit_manifests": sorted(
+                        ref.sha256
+                        for ref in request.object_inputs
+                        if ref.role == "biological_unit_manifest"
                     ),
                 },
             )
@@ -216,7 +240,12 @@ def _envelope_reasons(
     for role in ROLE_MODELS:
         expected = (
             2
-            if role in {"product_case", "case_evidence_readiness_summary"}
+            if role
+            in {
+                "product_case",
+                "evidence_sufficiency_run_result",
+                "biological_unit_manifest",
+            }
             else 1
         )
         if roles.count(role) != expected:
@@ -247,8 +276,8 @@ def _load_inputs(
 
 def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> None:
     version = getattr(value, "object_version", None)
-    if isinstance(value, CaseEvidenceReadinessSummary):
-        version = value.summary_version
+    if isinstance(value, EvidenceSufficiencyRunResult):
+        version = value.result_version
     if version != ref.object_version:
         raise StructuredInputError("object_input_version_mismatch")
 
@@ -266,11 +295,17 @@ def _binding_reasons(
         "comparison_evidence_bundle",
         ComparisonEvidenceBundle,
     )
-    readiness_summaries = objects_for_role(
+    sufficiency_results = objects_for_role(
         request,
         loaded,
-        "case_evidence_readiness_summary",
-        CaseEvidenceReadinessSummary,
+        "evidence_sufficiency_run_result",
+        EvidenceSufficiencyRunResult,
+    )
+    biological_unit_manifests = objects_for_role(
+        request,
+        loaded,
+        "biological_unit_manifest",
+        BiologicalUnitManifest,
     )
     product_cases = objects_for_role(
         request,
@@ -286,24 +321,63 @@ def _binding_reasons(
     product_cases_by_ref = {item.ref.ref: item for item in product_cases}
     if set(product_cases_by_ref) != evidence_refs:
         reasons.append("comparison_product_case_binding_mismatch")
-    summaries_by_case = {
-        item.product_case_ref.ref: item
-        for item in readiness_summaries
-        if item.product_case_ref is not None
+    results_by_case = {
+        item.case_summary.product_case_ref.ref: item
+        for item in sufficiency_results
+        if item.case_summary.product_case_ref is not None
     }
-    if set(summaries_by_case) != evidence_refs:
+    if set(results_by_case) != evidence_refs:
         reasons.append("comparison_sufficiency_case_binding_mismatch")
+    manifests_by_ref = {item.ref.ref: item for item in biological_unit_manifests}
+    manifest_sha_by_ref = {
+        manifests_by_ref_value.ref.ref: ref.sha256
+        for ref in request.object_inputs
+        if ref.role == "biological_unit_manifest"
+        for manifests_by_ref_value in [
+            loaded.objects_by_input_id.get(ref.input_id)
+        ]
+        if isinstance(manifests_by_ref_value, BiologicalUnitManifest)
+    }
+    bound_manifest_refs = {
+        product_case.biological_unit_manifest_ref.ref
+        for product_case in product_cases
+        if product_case.biological_unit_manifest_ref is not None
+    }
+    if (
+        len(bound_manifest_refs) != len(product_cases)
+        or bound_manifest_refs != set(manifests_by_ref)
+    ):
+        reasons.append("comparison_biological_unit_manifest_binding_mismatch")
     for case in evidence_bundle.cases:
         product_case = product_cases_by_ref.get(case.product_case_ref.ref)
         if product_case is not None:
-            declared_units = {
-                item.ref for item in product_case.biological_unit_refs
-            }
+            manifest_ref = product_case.biological_unit_manifest_ref
+            manifest = (
+                manifests_by_ref.get(manifest_ref.ref)
+                if manifest_ref is not None
+                else None
+            )
+            declared_units = (
+                {item.analysis_unit_ref.ref for item in manifest.unit_bindings}
+                if manifest is not None
+                else set()
+            )
             supplied_units = {
                 item.preparation_ref.ref for item in case.preparations
             }
-            if not declared_units or supplied_units != declared_units:
+            if not supplied_units or not supplied_units <= declared_units:
                 reasons.append("comparison_biological_unit_binding_mismatch")
+            if manifest is not None and (
+                product_case.biological_unit_manifest_sha256
+                != manifest_sha_by_ref.get(manifest.ref.ref)
+                or product_case.independence_scope_ref
+                != manifest.independence_scope_ref
+                or {item.ref for item in product_case.biological_unit_refs}
+                != {item.ref for item in manifest.independence_group_refs}
+            ):
+                reasons.append(
+                    "comparison_biological_unit_manifest_binding_mismatch"
+                )
             if (
                 case.contract_snapshot.product_definition_ref
                 != product_case.product_definition_ref
@@ -311,20 +385,41 @@ def _binding_reasons(
                 != product_case.measurement_spec_ref
             ):
                 reasons.append("comparison_product_case_contract_mismatch")
-        summary = summaries_by_case.get(case.product_case_ref.ref)
-        if summary is None:
+        sufficiency_result = results_by_case.get(case.product_case_ref.ref)
+        if sufficiency_result is None:
             continue
+        summary = sufficiency_result.case_summary
         expected_ref = VersionedObjectRef(
             object_id=summary.summary_id,
             object_version=summary.summary_version,
         )
         if case.sufficiency_summary_ref != expected_ref:
             reasons.append("comparison_sufficiency_summary_ref_mismatch")
-    preparation_sets = [
-        {item.preparation_ref.ref for item in case.preparations}
-        for case in evidence_bundle.cases
-    ]
-    if len(preparation_sets) == 2 and preparation_sets[0] & preparation_sets[1]:
+    independence_sets: list[set[str]] = []
+    for case in evidence_bundle.cases:
+        product_case = product_cases_by_ref.get(case.product_case_ref.ref)
+        manifest = (
+            manifests_by_ref.get(product_case.biological_unit_manifest_ref.ref)
+            if product_case is not None
+            and product_case.biological_unit_manifest_ref is not None
+            else None
+        )
+        by_analysis = (
+            {
+                item.analysis_unit_ref.ref: item.independence_group_ref.ref
+                for item in manifest.unit_bindings
+            }
+            if manifest is not None
+            else {}
+        )
+        independence_sets.append(
+            {
+                by_analysis[item.preparation_ref.ref]
+                for item in case.preparations
+                if item.preparation_ref.ref in by_analysis
+            }
+        )
+    if len(independence_sets) == 2 and independence_sets[0] & independence_sets[1]:
         reasons.append("comparison_biological_unit_overlap")
     if any(
         case.contract_snapshot.score_contract_ref is not None

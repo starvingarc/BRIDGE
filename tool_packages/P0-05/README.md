@@ -47,7 +47,7 @@ decision requires a new input object and checksum, not an implementation edit.
 
 ## Structured inputs
 
-P0-05 accepts exactly six immutable JSON objects:
+P0-05 accepts exactly seven immutable JSON objects:
 
 | Role | Schema | Required content |
 |---|---|---|
@@ -57,6 +57,7 @@ P0-05 accepts exactly six immutable JSON objects:
 | `off_target_role_spec` | `bridge://schemas/off-target-role-spec/v0.1` | Product/vocabulary-bound roles and denominator selection |
 | `cell_state_evidence_profile` | `bridge://schemas/cell-state-evidence-profile/v0.1` | P0-02 composition and evidence references |
 | `qc_readiness_profile` | `bridge://schemas/qc-readiness-profile/v0.1` | P0-01 assay/readiness and evidence references |
+| `biological_unit_manifest` | `bridge://schemas/biological-unit-manifest/v0.1` | Exact ProductCase-bound analysis-unit assignments, independence groups, scope and review state |
 
 Each `StructuredInputRef` declares an absolute regular-file path, Schema URI,
 object version, media type and SHA-256 checksum. Expression assets, request
@@ -100,7 +101,8 @@ claim.
 
 Eligibility checks exact role/Schema/version/checksum cardinality,
 ProductDefinition, StateRoleMap, vocabulary, exact P0-01 QC-selected
-`DataViewBinding`, assay, MeasurementSpec, QC readiness and publication-safe
+`DataViewBinding`, BiologicalUnitManifest reference/checksum/scope/membership,
+assay, MeasurementSpec, QC readiness and publication-safe
 references. Failures return a typed run with no result or artifact. Stable
 reasons include `tool_request_v2_required`,
 `object_input_schema_mismatch`, `product_definition_binding_mismatch`,

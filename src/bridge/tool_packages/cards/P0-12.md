@@ -32,27 +32,33 @@ The Python SDK accepts the same `ToolRequestV2` through
 
 ## Structured inputs
 
-All three inputs are immutable local JSON files with an absolute path, exact role,
-registered Schema URI, object version, media type and SHA-256 checksum. The
-current object version is `0.1.0`.
+Inputs are immutable local JSON files with an absolute path, exact role,
+registered Schema URI, object version, media type and SHA-256 checksum. Four
+roles are always required; the lineage role is conditional. Module object
+version is `0.1.0`; the graft MeasurementSpec declares its own version.
 
 | Role | Schema | Required content |
 |---|---|---|
-| `product_case` | `bridge://schemas/product-case/v0.1` | Exact case, MeasurementSpec and declared source biological-preparation units. |
-| `graft_assessment_spec` | `bridge://schemas/graft-assessment-spec/v0.1` | ProductCase, MeasurementSpec, assay, sampling, reference and algorithm bindings; channel IDs and publication-safe units; required flags; eligible evidence states; minimum independent-animal counts; optional configured intervals; explicit missing, confounding, linkage and score policies. |
-| `graft_evidence_bundle` | `bridge://schemas/graft-evidence-bundle/v0.1` | Explicit `provided` or `not_provided` state; matching context when provided; observation-unit, animal, graft and timepoint references; precomputed observations; declared design constraints; optional preparation references supported by linkage Evidence. |
+| `product_case` | `bridge://schemas/product-case/v0.1` | Exact case, product MeasurementSpec and declared source biological-preparation units. |
+| `graft_measurement_spec` | `bridge://schemas/measurement-spec/v0.1` | Independent graft assay, analysis-unit kind, applicable context and version. |
+| `graft_lineage_manifest` | `bridge://schemas/graft-lineage-manifest/v0.1` | At most one; required for `provided`, forbidden for `not_provided`; exact unit/animal/graft/timepoint/preparation assignments and external review state. |
+| `graft_assessment_spec` | `bridge://schemas/graft-assessment-spec/v0.1` | ProductCase, product/graft MeasurementSpecs, assay, sampling, reference and algorithm bindings; channel IDs, units, animal estimand, within-animal aggregation, denominator semantics, disjoint strata, minimum animals and optional intervals. |
+| `graft_evidence_bundle` | `bridge://schemas/graft-evidence-bundle/v0.1` | Explicit `provided` or `not_provided` state; matching context when provided; observation units, design constraints and exact lineage-manifest reference. |
 
 A `not_provided` bundle must contain no graft context, units, constraints or
-observations. A provided bundle may contain no usable observations; that is a
-valid `not_assessed` scientific result rather than a technical failure.
+observations, and the request must omit the lineage manifest. A provided bundle
+requires one exact lineage manifest but may contain no usable observations;
+that is a valid `not_assessed` scientific result rather than a technical failure.
 
 Every observation declares its own ID, configured channel, unit, finite numeric
 value or explicit unavailable state, optional denominator and Evidence
 references. Missing, unknown and unavailable observations require null value and
 denominator. A preparation link exists only when both a versioned preparation
 reference and non-empty linkage Evidence are supplied, and that preparation
-must occur in the ProductCase's declared biological units. Such a record is a
-declared association with evidence, not verified lineage.
+must occur in the ProductCase's declared biological units. Bundle and manifest
+assignments must be identical. A `declared` manifest is traceable but cannot
+support assessment; `reviewed`/`frozen` requires an external checksummed review
+gate, and P0-12 cannot assert that state for itself.
 
 Expression assets, the request-envelope MeasurementSpec field, arbitrary
 parameters and nonzero random seeds are refused. P0-12 v0.2 does not accept
@@ -60,20 +66,23 @@ inline scientific payloads.
 
 ## Deterministic evaluation
 
-For every rule, the executor:
+For every channel and configured stratum, the executor:
 
 1. matches observations only by the caller-supplied channel ID;
-2. includes only exact-unit observations whose evidence state is allowlisted;
-3. groups eligible repeated graft/timepoint observations within each animal,
-   then counts animals as the independent units—never cells, profiles or
-   repeated timepoints;
-4. reports each animal aggregate and the equal-animal mean, minimum and maximum;
+2. accepts observations only from exact graft/timepoint stratum members, with
+   the exact unit and an allowlisted evidence state;
+3. applies `single_observation`, `mean` or `pooled_numerator_denominator`
+   within each animal and stratum, then counts animals as independent units;
+4. reports each animal aggregate and the equal-animal mean, minimum and maximum,
+   with cross-stratum aggregation forbidden;
 5. compares the mean with input bounds only when the rule selects
    `configured_interval`;
 6. reports unmatched channels, missing observations and insufficient independent animals
    with stable reason codes.
 
 `descriptive_only` rules have no bounds or directional interpretation.
+When eligible animals are below the configured minimum, descriptive values
+remain visible but the configured interval relation is `unavailable`.
 Changing a channel, unit, evidence-state allowlist, minimum or interval requires
 a new checksummed spec, not a code change.
 
@@ -83,12 +92,13 @@ One `GraftAssessment` is written as `graft_assessment.json` in an immutable,
 content-addressed run directory. It contains:
 
 - spec, evidence-bundle, ProductCase and available graft-context references;
-- all three input checksums;
+- checksums for all four mandatory inputs and the lineage manifest when supplied;
 - `complete`, `partial`, `not_assessed` or `not_provided`;
 - graft availability, explicit-only linkage state and descriptive analysis mode;
 - observation-unit and independent-animal counts plus declared design constraints;
-- configured per-channel animal count, per-animal aggregates, equal-animal
-  mean/range, interval relation, Evidence and reason codes;
+- configured per-channel-and-stratum members and denominator semantics,
+  animal count, per-animal aggregates, equal-animal mean/range, interval
+  relation, Evidence and reason codes;
 - explicit preparation-linkage records and unmatched observations;
 - `product_backfill=not_performed`, `graft_score=null`,
   `domain_score=null` and `score_state=shadow|unavailable`.
@@ -102,8 +112,8 @@ Top-level failures publish nothing:
 
 - missing, duplicate or unsupported role;
 - Schema, object-version, checksum or media-type mismatch;
-- ProductCase, MeasurementSpec, preparation lineage or provided context mismatch
-  across the three inputs;
+- ProductCase, product/graft MeasurementSpec, lineage manifest, preparation or
+  provided-context mismatch;
 - incomplete provided context or evidence in a `not_provided` bundle;
 - duplicate units, duplicate channels within a unit or implicit preparation
   linkage;
@@ -112,7 +122,9 @@ Top-level failures publish nothing:
 - unusable output, input mutation or immutable-run collision;
 - a V1 request, returned as typed `tool_request_v2_required`.
 
-Contract-valid limitations stay visible in the result. No eligible channel
+Contract-valid limitations stay visible in the result. A `declared` lineage
+produces `partial/not_assessed` instead of pretending the assignments were
+reviewed. No eligible channel
 returns `not_assessed`; incomplete required coverage or an unmatched channel
 returns `partial`; linkage state is explicitly `not_declared`,
 `partially_declared` or `declared_with_evidence`, and every declared linkage is
@@ -123,7 +135,7 @@ never turn missing evidence into zero or a product failure.
 ## Minimal example
 
 See `examples/requests/p0_12_graft_assessment.json`. Replace placeholder paths
-and checksums with three real immutable JSON objects before validation.
+and checksums with five exact immutable JSON objects for a provided graft.
 
 ## Reproducibility and scientific boundary
 
