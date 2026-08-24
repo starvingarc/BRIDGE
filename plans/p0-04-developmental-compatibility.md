@@ -44,3 +44,14 @@ knowledge validation, repository policy, projection parity and diff checks.
 P0-04 remains `candidate`, emits no MeasurementResult or visualization, keeps
 `domain_score=null`, and cannot approve a window, infer fetal age from an
 in-vitro day, or claim efficacy, safety, potency or release readiness.
+
+## Current closure state
+
+- implementation, public Schemas, Tool Card, example and validation record are
+  complete on implementation head `7028955`;
+- GitHub Actions run `32683980747` passed 53 installed-wheel focused tests and
+  1,012 complete-suite tests, plus discovery, knowledge, policy and diff gates;
+- Draft PR #21 remains stacked on P0-03 and awaits one bounded independent
+  closure review;
+- biological review of any DevelopmentWindowSpec remains separate and is not a
+  prerequisite for exercising this candidate engineering path.

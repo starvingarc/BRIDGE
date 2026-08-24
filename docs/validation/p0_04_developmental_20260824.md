@@ -28,17 +28,23 @@ MeasurementResult or visualization. `domain_score` is always null.
 
 ## Evidence status
 
-No local project code is run. GitHub CI and installed-wheel counts remain
-pending until the final Draft head is available.
+No local project code was run. GitHub Actions run
+[`32683980747`](https://github.com/starvingarc/BRIDGE/actions/runs/32683980747)
+validated implementation head `7028955` through the PR merge ref on Ubuntu and
+Python 3.12. The installed package resolved from `site-packages`, outside the
+source checkout.
 
 | Gate | Current result |
 |---|---|
-| Installed-wheel focused suite | pending GitHub CI |
-| Complete pytest | pending GitHub CI |
-| 12-tool discovery | pending GitHub CI |
-| Knowledge validation | pending GitHub CI |
-| Repository policy | pending GitHub CI |
-| Schema/Card projection parity | pending GitHub CI |
+| Installed-wheel focused suite | 53 P0-03/P0-04 tests passed |
+| Complete pytest | 1,012 passed; 3 existing dependency warnings |
+| 12-tool discovery | passed; exactly 12 |
+| Knowledge validation | passed; no dangling method/source refs; 0 formal-eligible methods |
+| Repository policy | passed |
+| Schema/Card projection parity and diff check | passed |
+
+The PR remains Draft. These results demonstrate packaging and deterministic
+mechanics, not approval of any biological assignment or scientific release.
 
 ## Scientific boundary
 
