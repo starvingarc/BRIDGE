@@ -38,7 +38,7 @@ current object version is `0.1.0`.
 
 | Role | Schema | Required content |
 |---|---|---|
-| `graft_assessment_spec` | `bridge://schemas/graft-assessment-spec/v0.1` | ProductCase, MeasurementSpec, assay, sampling, reference and algorithm bindings; channel IDs and units; required flags; eligible evidence states; minimum independent-unit counts; optional configured intervals; explicit missing, confounding, linkage and score policies. |
+| `graft_assessment_spec` | `bridge://schemas/graft-assessment-spec/v0.1` | ProductCase, MeasurementSpec, assay, sampling, reference and algorithm bindings; channel IDs and publication-safe units; required flags; eligible evidence states; minimum independent-unit counts; optional configured intervals; explicit missing, confounding, linkage and score policies. |
 | `graft_evidence_bundle` | `bridge://schemas/graft-evidence-bundle/v0.1` | Explicit `provided` or `not_provided` state; matching context when provided; independent unit, animal, graft and timepoint references; precomputed observations; declared design constraints; optional preparation references supported by linkage Evidence. |
 
 A `not_provided` bundle must contain no graft context, units, constraints or

@@ -14,12 +14,13 @@ from pydantic import (
     model_validator,
 )
 
-from bridge.tool_packages.p0_03_target_regional.models import (
+from bridge.tool_packages._configurable_contracts import (
     OBJECT_ID_PATTERN,
     SHA256_PATTERN,
     VERSION_PATTERN,
     VersionedObjectRef,
 )
+from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import EvidenceState, FrozenModel, ScoreState
 
 
@@ -109,6 +110,10 @@ class GraftChannelRule(FrozenModel):
     interpretation_policy: Literal["descriptive_only", "configured_interval"]
     configured_lower_bound: FiniteNumber | None = None
     configured_upper_bound: FiniteNumber | None = None
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
+    )
 
     @field_validator("eligible_evidence_states")
     @classmethod
@@ -213,6 +218,10 @@ class GraftObservation(FrozenModel):
     evidence_refs: list[PublishedRef] = Field(
         min_length=1,
         json_schema_extra={"uniqueItems": True},
+    )
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
     )
 
     @field_validator("value")
@@ -398,6 +407,10 @@ class GraftChannelSummary(FrozenModel):
     result_state: Literal["available", "unavailable"]
     evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
     reason_codes: list[ReasonCode] = Field(json_schema_extra={"uniqueItems": True})
+
+    _unit_is_publication_safe = field_validator("unit")(
+        validate_publication_text
+    )
 
     @field_validator(
         "mean",
