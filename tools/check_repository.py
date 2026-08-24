@@ -36,6 +36,10 @@ COMPLETED_PLAN_NAME = re.compile(r"(?:^|[-_])(?:complete(?:d)?|done)(?:[-_.]|$)"
 TRACKED_FILE_BASELINE = 314
 IMPLEMENTED_TOOL_BASELINE = 5
 MAX_FILES_PER_NEW_IMPLEMENTED_TOOL = 18
+SHARED_CONFIGURABLE_INFRASTRUCTURE = (
+    Path("src/bridge/tool_packages/_configurable_contracts.py"),
+    Path("src/bridge/tool_packages/_publication_safety.py"),
+)
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
 )
@@ -112,7 +116,15 @@ def _tracked_file_budget() -> int:
         payload = yaml.safe_load(path.read_text(encoding="utf-8"))
         implemented += payload.get("implementation_state") == "implemented"
     added_tools = max(0, implemented - IMPLEMENTED_TOOL_BASELINE)
-    return TRACKED_FILE_BASELINE + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
+    shared_files = sum(
+        (ROOT / relative).is_file()
+        for relative in SHARED_CONFIGURABLE_INFRASTRUCTURE
+    )
+    return (
+        TRACKED_FILE_BASELINE
+        + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
+        + shared_files
+    )
 
 
 def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> None:
