@@ -1,0 +1,381 @@
+{
+  "$defs": {
+    "BiologicalUnitBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_kind": {
+          "$ref": "#/$defs/BiologicalUnitKind"
+        },
+        "analysis_unit_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "animal_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "capture_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "donor_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "graft_unit_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "independence_group_kind": {
+          "enum": [
+            "preparation",
+            "sample",
+            "donor",
+            "animal"
+          ],
+          "title": "Independence Group Kind",
+          "type": "string"
+        },
+        "independence_group_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "preparation_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sample_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "analysis_unit_kind",
+        "independence_group_ref",
+        "independence_group_kind"
+      ],
+      "title": "BiologicalUnitBinding",
+      "type": "object"
+    },
+    "BiologicalUnitKind": {
+      "enum": [
+        "capture",
+        "preparation",
+        "sample",
+        "donor",
+        "animal",
+        "graft_unit"
+      ],
+      "title": "BiologicalUnitKind",
+      "type": "string"
+    },
+    "BiologicalUnitLineageState": {
+      "enum": [
+        "declared",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "BiologicalUnitLineageState",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/biological-unit-manifest/v0.1",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "generator_tool_id": {
+            "const": "P0-01"
+          }
+        },
+        "required": [
+          "generator_tool_id"
+        ]
+      },
+      "then": {
+        "properties": {
+          "lineage_state": {
+            "const": "declared"
+          },
+          "review_gate_ref": {
+            "type": "null"
+          },
+          "review_gate_sha256": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "generator_tool_id": {
+            "const": "BRIDGE-BIOLOGICAL-UNIT-REVIEW"
+          }
+        },
+        "required": [
+          "generator_tool_id"
+        ]
+      },
+      "then": {
+        "properties": {
+          "lineage_state": {
+            "enum": [
+              "reviewed",
+              "frozen"
+            ]
+          },
+          "review_gate_ref": {
+            "not": {
+              "type": "null"
+            }
+          },
+          "review_gate_sha256": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": [
+          "review_gate_ref",
+          "review_gate_sha256"
+        ]
+      }
+    },
+    {
+      "else": {
+        "properties": {
+          "unit_bindings": {
+            "minItems": 1
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "n_observations": {
+            "const": 0
+          }
+        },
+        "required": [
+          "n_observations"
+        ]
+      },
+      "then": {
+        "properties": {
+          "unit_bindings": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "analysis_unit_kind": {
+      "$ref": "#/$defs/BiologicalUnitKind"
+    },
+    "assignment_artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Assignment Artifact Sha256",
+      "type": "string"
+    },
+    "assignment_row_count": {
+      "minimum": 0,
+      "title": "Assignment Row Count",
+      "type": "integer"
+    },
+    "assignment_schema_ref": {
+      "const": "bridge://schemas/biological-unit-assignment/v0.1",
+      "title": "Assignment Schema Ref",
+      "type": "string"
+    },
+    "data_view_ref": {
+      "minLength": 1,
+      "title": "Data View Ref",
+      "type": "string"
+    },
+    "generator_tool_id": {
+      "enum": [
+        "P0-01",
+        "BRIDGE-BIOLOGICAL-UNIT-REVIEW"
+      ],
+      "title": "Generator Tool Id",
+      "type": "string"
+    },
+    "generator_tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Generator Tool Version",
+      "type": "string"
+    },
+    "independence_group_kind": {
+      "enum": [
+        "preparation",
+        "sample",
+        "donor",
+        "animal"
+      ],
+      "title": "Independence Group Kind",
+      "type": "string"
+    },
+    "independence_scope_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "lineage_state": {
+      "$ref": "#/$defs/BiologicalUnitLineageState"
+    },
+    "manifest_id": {
+      "pattern": "^biological-unit-manifest:[A-Za-z0-9._:-]+$",
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "manifest_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Manifest Version",
+      "type": "string"
+    },
+    "n_observations": {
+      "minimum": 0,
+      "title": "N Observations",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observation_ids_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Observation Ids Sha256",
+      "type": "string"
+    },
+    "review_gate_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "review_gate_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Review Gate Sha256"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/biological-unit-manifest/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "selected_artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Selected Artifact Sha256",
+      "type": "string"
+    },
+    "unit_bindings": {
+      "items": {
+        "$ref": "#/$defs/BiologicalUnitBinding"
+      },
+      "title": "Unit Bindings",
+      "type": "array"
+    },
+    "unit_identity_namespace_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    }
+  },
+  "required": [
+    "object_version",
+    "manifest_id",
+    "manifest_version",
+    "schema_ref",
+    "generator_tool_id",
+    "generator_tool_version",
+    "data_view_ref",
+    "selected_artifact_sha256",
+    "observation_ids_sha256",
+    "n_observations",
+    "assignment_schema_ref",
+    "assignment_artifact_sha256",
+    "assignment_row_count",
+    "unit_identity_namespace_ref",
+    "analysis_unit_kind",
+    "independence_group_kind",
+    "independence_scope_ref",
+    "lineage_state",
+    "unit_bindings"
+  ],
+  "title": "BiologicalUnitManifest",
+  "type": "object"
+}

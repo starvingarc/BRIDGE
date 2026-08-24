@@ -2,10 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import StrEnum
+import math
 from pathlib import Path
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Annotated, Any, Literal, Protocol, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 
 class ImplementationState(StrEnum):
@@ -56,6 +65,44 @@ class InputLevel(StrEnum):
     ANALYSIS_READY = "analysis_ready"
     COUNT_READY = "count_ready"
     DROPLET_READY = "droplet_ready"
+
+
+class BiologicalUnitKind(StrEnum):
+    CAPTURE = "capture"
+    PREPARATION = "preparation"
+    SAMPLE = "sample"
+    DONOR = "donor"
+    ANIMAL = "animal"
+    GRAFT_UNIT = "graft_unit"
+
+
+IndependenceGroupKind = Literal["preparation", "sample", "donor", "animal"]
+
+
+def _number_is_finite(value: int | float) -> bool:
+    return not isinstance(value, float) or math.isfinite(value)
+
+
+def _paired_optional_json_schema(first: str, second: str) -> dict[str, Any]:
+    """Express an all-null/absent or all-present pair in public JSON Schema."""
+
+    return {
+        "oneOf": [
+            {
+                "properties": {
+                    first: {"type": "null"},
+                    second: {"type": "null"},
+                }
+            },
+            {
+                "required": [first, second],
+                "properties": {
+                    first: {"not": {"type": "null"}},
+                    second: {"not": {"type": "null"}},
+                },
+            },
+        ]
+    }
 
 
 class FrozenModel(BaseModel):
@@ -303,6 +350,13 @@ class MeasurementSpec(FrozenModel):
     release_manifest_ref: str | None = None
 
 
+class MeasurementSpecV2(MeasurementSpec):
+    analysis_unit_kind: BiologicalUnitKind
+    independence_group_kind: IndependenceGroupKind
+    observation_unit_kind: Literal["cell", "nucleus"] | None = None
+    applicable_contexts: list[str] = Field(default_factory=list)
+
+
 class MeasurementResult(FrozenModel):
     measurement_id: str
     measurement_spec_id: str
@@ -316,6 +370,170 @@ class MeasurementResult(FrozenModel):
     evidence_state: EvidenceState
     provenance_refs: list[str] = Field(default_factory=list)
 
+
+class MeasurementResultV2(MeasurementResult):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                _paired_optional_json_schema(
+                    "source_run_ref", "source_execution_state"
+                ),
+                _paired_optional_json_schema("numerator", "denominator"),
+                {
+                    "if": {
+                        "properties": {
+                            "evidence_state": {
+                                "enum": ["missing", "unavailable"]
+                            }
+                        },
+                        "required": ["evidence_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            name: {"type": "null"}
+                            for name in (
+                                "raw_value",
+                                "numerator",
+                                "denominator",
+                                "interval",
+                            )
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"interval": {"type": "null"}},
+                    },
+                    "then": {
+                        "properties": {
+                            "interval_confidence_level": {"type": "null"},
+                            "interval_method_ref": {"type": "null"},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidence_state": {"const": "unknown"}
+                        },
+                        "required": ["evidence_state"],
+                    },
+                    "then": {
+                        "required": ["unknown_scope"],
+                        "properties": {
+                            "unknown_scope": {"not": {"type": "null"}}
+                        },
+                    },
+                    "else": {
+                        "properties": {"unknown_scope": {"type": "null"}}
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidence_state": {"const": "unknown"},
+                            "unknown_scope": {"const": "measurement"},
+                        },
+                        "required": ["evidence_state", "unknown_scope"],
+                    },
+                    "then": {
+                        "properties": {
+                            name: {"type": "null"}
+                            for name in (
+                                "raw_value",
+                                "numerator",
+                                "denominator",
+                                "interval",
+                            )
+                        }
+                    },
+                },
+            ]
+        }
+    )
+
+    measurement_spec_version: str = Field(min_length=1)
+    unit: str | None = None
+    numerator: StrictInt | StrictFloat | None = None
+    denominator: (
+        Annotated[StrictInt, Field(gt=0)]
+        | Annotated[StrictFloat, Field(gt=0)]
+        | None
+    ) = None
+    interval: tuple[StrictInt | StrictFloat, StrictInt | StrictFloat] | None = None
+    interval_confidence_level: StrictFloat | None = Field(
+        default=None,
+        gt=0,
+        lt=1,
+    )
+    interval_method_ref: str | None = None
+    source_run_ref: str | None = Field(
+        default=None,
+        pattern=r"^tool-run:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+    )
+    source_execution_state: Literal["succeeded", "partial"] | None = None
+    unknown_scope: Literal["identity", "role", "measurement"] | None = None
+
+    @model_validator(mode="after")
+    def source_and_interval_metadata_are_coherent(self) -> "MeasurementResultV2":
+        if (self.source_run_ref is None) != (self.source_execution_state is None):
+            raise ValueError(
+                "source_run_ref and source_execution_state must be supplied together"
+            )
+        if self.interval is None and (
+            self.interval_confidence_level is not None
+            or self.interval_method_ref is not None
+        ):
+            raise ValueError("interval metadata requires interval bounds")
+        if (self.numerator is None) != (self.denominator is None):
+            raise ValueError("numerator and denominator must be supplied together")
+        for field_name, value in (
+            ("numerator", self.numerator),
+            ("denominator", self.denominator),
+        ):
+            if value is not None and not _number_is_finite(value):
+                raise ValueError(
+                    f"{field_name} must be finite when supplied"
+                )
+        if isinstance(self.raw_value, float) and not math.isfinite(self.raw_value):
+            raise ValueError("raw_value must be finite when numeric")
+        if self.interval is not None:
+            lower, upper = self.interval
+            if not _number_is_finite(lower) or not _number_is_finite(upper):
+                raise ValueError("interval bounds must be finite")
+            if lower > upper:
+                raise ValueError("interval lower bound cannot exceed upper bound")
+        if self.evidence_state in {
+            EvidenceState.MISSING,
+            EvidenceState.UNAVAILABLE,
+        } and any(
+            value is not None
+            for value in (
+                self.raw_value,
+                self.numerator,
+                self.denominator,
+                self.interval,
+            )
+        ):
+            raise ValueError("missing or unavailable evidence cannot carry a value")
+        if self.evidence_state is EvidenceState.UNKNOWN:
+            if self.unknown_scope is None:
+                raise ValueError("unknown evidence requires unknown_scope")
+            if self.unknown_scope == "measurement" and any(
+                value is not None
+                for value in (
+                    self.raw_value,
+                    self.numerator,
+                    self.denominator,
+                    self.interval,
+                )
+            ):
+                raise ValueError("unknown measurement cannot carry a value")
+        elif self.unknown_scope is not None:
+            raise ValueError("unknown_scope requires unknown evidence")
+        return self
+
+
 class ArtifactManifest(FrozenModel):
     artifact_id: str
     kind: str
@@ -323,6 +541,49 @@ class ArtifactManifest(FrozenModel):
     media_type: str
     sha256: str
     evidence_ids: list[str] = Field(default_factory=list)
+
+
+class DataViewBinding(FrozenModel):
+    """Content-addressed expression view passed between scientific tools."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                _paired_optional_json_schema(
+                    "biological_unit_manifest_ref",
+                    "biological_unit_manifest_sha256",
+                )
+            ]
+        }
+    )
+
+    view_id: str = Field(min_length=1)
+    view_kind: Literal["all_observations", "qc_selected_observations"]
+    artifact_id: str = Field(min_length=1)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    parent_asset_id: str = Field(min_length=1)
+    parent_asset_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    matrix_location: str = Field(min_length=1)
+    matrix_semantics: Literal["raw_counts", "normalized_expression"]
+    n_observations: int = Field(ge=0)
+    observation_ids_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    sample_or_preparation_ref: str | None = Field(default=None, min_length=1)
+    selection_spec_ref: str | None = Field(default=None, min_length=1)
+    biological_unit_manifest_ref: str | None = Field(default=None, min_length=1)
+    biological_unit_manifest_sha256: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{64}$",
+    )
+
+    @model_validator(mode="after")
+    def biological_unit_binding_is_coherent(self) -> "DataViewBinding":
+        if (self.biological_unit_manifest_ref is None) != (
+            self.biological_unit_manifest_sha256 is None
+        ):
+            raise ValueError(
+                "biological unit manifest reference and checksum must be paired"
+            )
+        return self
 
 
 class VisualizationArtifact(FrozenModel):
@@ -359,6 +620,11 @@ class QCReadinessProfile(FrozenModel):
     evidence_ids: list[str] = Field(default_factory=list)
     score_state: CurrentScoreState = ScoreState.UNAVAILABLE
     domain_score: None = None
+
+
+class QCReadinessProfileV2(QCReadinessProfile):
+    measurement_spec_version: str | None = None
+    selected_data_view: DataViewBinding | None = None
 
 
 class AnnotationLabel(FrozenModel):
@@ -876,6 +1142,35 @@ class CellStateEvidenceProfile(FrozenModel):
     evidence_ids: list[str] = Field(default_factory=list)
     score_state: CurrentScoreState = ScoreState.SHADOW
     domain_score: None = None
+
+
+class CellStateEvidenceProfileV2(CellStateEvidenceProfile):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                _paired_optional_json_schema(
+                    "upstream_qc_profile_ref", "upstream_qc_profile_sha256"
+                )
+            ]
+        }
+    )
+
+    measurement_spec_version: str | None = None
+    upstream_qc_profile_ref: str | None = None
+    upstream_qc_profile_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    input_data_view: DataViewBinding | None = None
+
+    @model_validator(mode="after")
+    def upstream_qc_binding_is_coherent(self) -> "CellStateEvidenceProfileV2":
+        if (self.upstream_qc_profile_ref is None) != (
+            self.upstream_qc_profile_sha256 is None
+        ):
+            raise ValueError(
+                "upstream QC profile reference and checksum must be paired"
+            )
+        return self
 
 
 class EligibilityResult(FrozenModel):

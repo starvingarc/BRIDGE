@@ -1,0 +1,219 @@
+{
+  "$defs": {
+    "BiologicalUnitKind": {
+      "enum": [
+        "capture",
+        "preparation",
+        "sample",
+        "donor",
+        "animal",
+        "graft_unit"
+      ],
+      "title": "BiologicalUnitKind",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/measurement-spec/v0.2",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_unit": {
+      "title": "Analysis Unit",
+      "type": "string"
+    },
+    "analysis_unit_kind": {
+      "$ref": "#/$defs/BiologicalUnitKind"
+    },
+    "applicable_contexts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Applicable Contexts",
+      "type": "array"
+    },
+    "applicable_product_cards": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Applicable Product Cards",
+      "type": "array"
+    },
+    "assay": {
+      "title": "Assay",
+      "type": "string"
+    },
+    "denominator": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Denominator"
+    },
+    "direction": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Direction"
+    },
+    "exclusion_rules": {
+      "additionalProperties": true,
+      "title": "Exclusion Rules",
+      "type": "object"
+    },
+    "independence_group_kind": {
+      "enum": [
+        "preparation",
+        "sample",
+        "donor",
+        "animal"
+      ],
+      "title": "Independence Group Kind",
+      "type": "string"
+    },
+    "input_contract": {
+      "additionalProperties": true,
+      "title": "Input Contract",
+      "type": "object"
+    },
+    "measurement_spec_id": {
+      "title": "Measurement Spec Id",
+      "type": "string"
+    },
+    "minimum_data": {
+      "additionalProperties": true,
+      "title": "Minimum Data",
+      "type": "object"
+    },
+    "missing_behavior": {
+      "title": "Missing Behavior",
+      "type": "string"
+    },
+    "numerator": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Numerator"
+    },
+    "observation_unit_kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "cell",
+            "nucleus"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observation Unit Kind"
+    },
+    "prior_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Prior Refs",
+      "type": "array"
+    },
+    "raw_metric_definition": {
+      "additionalProperties": true,
+      "title": "Raw Metric Definition",
+      "type": "object"
+    },
+    "reference_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reference Refs",
+      "type": "array"
+    },
+    "release_manifest_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Release Manifest Ref"
+    },
+    "scientific_question": {
+      "title": "Scientific Question",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "tool_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tool Refs",
+      "type": "array"
+    },
+    "uncertainty_method": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uncertainty Method"
+    },
+    "validation_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Validation Ref"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "measurement_spec_id",
+    "version",
+    "scientific_question",
+    "assay",
+    "status",
+    "input_contract",
+    "analysis_unit",
+    "raw_metric_definition",
+    "missing_behavior",
+    "analysis_unit_kind",
+    "independence_group_kind"
+  ],
+  "title": "MeasurementSpecV2",
+  "type": "object"
+}
