@@ -6,28 +6,28 @@ from pathlib import Path
 import yaml
 
 
-# P0-09 and P0-10 keep field-level interface cards as their maintained
+# P0-08 through P0-11 keep field-level interface cards as their maintained
 # source. The generic renderer is intentionally too small for their structured
 # object contracts, so regeneration validates those cards instead of replacing
 # them with scaffold summaries.
-DETAILED_CARD_IDS = {"P0-09", "P0-10"}
+DETAILED_CARD_IDS = {"P0-08", "P0-09", "P0-10", "P0-11", "P0-12"}
 
 
 DETAILS = {
     "P0-01": {
-        "input": "A declared h5ad, 10x H5, or 10x MTX asset; input level, assay, matrix semantics, sample/capture metadata, gene-identifier source, and output location.",
-        "output": "Raw structural and QC metrics, `QCReadinessProfile`, candidate data views when a candidate MeasurementSpec is selected, visualizations, and a checksummed artifact manifest.",
-        "reject": "Unreadable or ambiguous matrix, duplicate identifiers, invalid count semantics, missing assay, missing required sample/capture information, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input.",
-        "visualization": "Per-sample QC distributions and counts-versus-detected-genes diagnostics with explicit denominators.",
-        "validation": "Format fixtures, scRNA/snRNA contracts, matrix-semantic failures, deterministic reruns, input immutability, and optional Scrublet eligibility.",
+        "input": "A declared h5ad, 10x H5, or 10x MTX asset; input level, assay, matrix semantics, complete sample/capture metadata, gene-identifier source, and output location. Three-column 10x MTX uses only explicit Gene Expression rows; legacy two-column feature files remain readable under a recorded all-gene-expression compatibility assumption.",
+        "output": "Raw structural and QC metrics, the backward-compatible `QCReadinessProfile`, an additive `QCReadinessProfileV2` bound to an immutable input snapshot, candidate data views, visualizations, a checksummed artifact manifest, and a versioned P0-01 structured-output index. Complete caller-declared lineage metadata additionally produces biological-unit assignment and manifest artifacts; one analysis unit may span captures only under one coherent independence contract. For count-ready data, typed capture refs must define the same bidirectional observation partition as the row-complete caller-declared capture IDs used by QC/Scrublet, although labels may differ. Invalid, absent, split, or merged lineage remains explicitly unavailable without changing a valid v0.1 result. Declared lineage is not reviewed/frozen authority or proof of biological independence.",
+        "reject": "Unreadable or ambiguous matrix, unsafe directory entry, duplicate identifiers, invalid count semantics, incomplete/ambiguous feature types in a three-column 10x file, no explicit Gene Expression features in a three-column file, missing assay, incomplete sample values, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input. Incomplete caller-declared capture values instead disable capture-dependent summaries, doublet evidence, and typed lineage with stable unavailable/reason-code outputs; they do not invalidate an otherwise readable v0.1 QC result.",
+        "visualization": "Per-capture QC distributions and counts-versus-detected-genes diagnostics with explicit denominators; incomplete capture metadata produces no pooled capture summary.",
+        "validation": "Format and mixed-feature fixtures, zero-count semantics, scRNA/snRNA contracts, matrix-semantic failures, snapshot/replacement adversaries, atomic publication and deterministic reuse, declared-lineage fail-soft, multi-capture, and split/merge partition cases, exact data-view/checksum bindings, and optional per-capture Scrublet eligibility.",
         "details": "docs/bridge_spec_v0.1/input_audit_qc_task_card.md",
     },
     "P0-02": {
-        "input": "QC-qualified expression views, declared scRNA/snRNA modality, internal annotation vocabulary, frozen reference candidates, and provenance.",
-        "output": "Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, and product-level composition evidence.",
-        "reject": "Reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.",
+        "input": "QC-qualified expression views, declared scRNA/snRNA modality, annotation vocabulary, reference candidates and provenance. The optional V3 handoff also consumes a deployment-catalogued P0-01 structured-output index with checksummed QC V2, biological-unit assignment and manifest artifacts.",
+        "output": "Backward-compatible Cell-State evidence plus an optional candidate-only V3 profile bound to the selected data view, MeasurementSpec, vocabulary, reference, QC bytes, typed biological-unit lineage, producer and environment. V3 emits explicit evidence states and denominators; it never emits assigned states or a domain score.",
+        "reject": "Reference, vocabulary, MeasurementSpec, assay, data-view or checksum mismatch fails closed. Missing structured-index or typed-lineage inputs leave the legacy run successful but V3 unavailable; no lineage or positive composition is inferred.",
         "visualization": "Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.",
-        "validation": "Source/lab/modality holdouts, leave-one-state-out, rare-state mixtures, calibration, OOD detection, and product-composition error.",
+        "validation": "Real P0-01-to-P0-02 typed handoff, checksum and replacement adversaries, selected-view/observation lineage, legacy compatibility, source/lab/modality holdouts, calibration and OOD behavior.",
         "details": "docs/bridge_spec_v0.1/cell_state_annotation_task_card.md",
     },
     "P0-03": {
@@ -70,14 +70,6 @@ DETAILS = {
         "validation": "Known shifts and nulls, paired/unpaired designs, insufficient replication, over-correction checks, and independent-versus-joint consistency.",
         "details": "docs/bridge_spec_v0.1/product_comparison_stability_task_card.md",
     },
-    "P0-08": {
-        "input": "A `ToolRequestV2` with empty assets and parameters, one checksummed candidate GateRuleSpec v0.2 bound to ReasonCodeCatalog v0.2, one to five DomainGateInput v0.1 bindings, MeasurementSpecV2/QCReadinessProfileV2/MeasurementResultV2 objects, and their versioned validation, prior and sensitivity records.",
-        "output": "One canonical `EvidenceSufficiencyRunResultV2` (`bridge://schemas/evidence-sufficiency-run-result/v0.2`) with a path-free exact checksum/version/Schema binding for every structured input, versioned per-domain references, eight-state MeasurementResult counts, gate trace and case summary. Convenience profile/summary files are noncanonical projections, not independent structured contracts.",
-        "reject": "Wrong roles, Schema IDs, object versions, logical bindings, checksums, candidate gate bytes, unsafe references, changed inputs or drifted bundles fail with stable reason codes and no scientific result. A bound MeasurementResult whose MeasurementSpec version disagrees, or a populated QC MeasurementSpec version that disagrees, is ineligible. Missing, unknown or unavailable measurement states, or absent paired upstream ToolRun provenance, instead execute as `not_assessed`; negative and alert remain distinct and never become pass/fail.",
-        "visualization": "No visualization output. The canonical downstream object is `evidence_sufficiency_run_result.json`; profile, summary and gate-trace files are review conveniences only.",
-        "validation": "Synthetic fixtures exercise all 49 scientific reason codes, all eight evidence states, exact-source identity for every input role, version mismatch refusals, deterministic object-input ordering, TOCTOU checks and immutable publication. The executable example uses placeholders; focused tests exercise the same adapter reached by `bridge-tool validate --request` and `bridge-tool run --request`.",
-        "details": "docs/bridge_spec_v0.1/evidence_sufficiency_task_card.md",
-    },
     "P0-10": {
         "input": "Structured ReportDraft, a verified P0-09 Case graph manifest, ClaimBlocks, one-field numeric spans, statement references, and policy versions.",
         "output": "One ClaimVerificationResult receipt binding the ReportDraft, P0-09 graph manifest, checks, audience, export eligibility and release state.",
@@ -87,11 +79,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/claim_verifier_task_card.md",
     },
     "P0-11": {
-        "input": "Original ReportDraft plus an eligible P0-10 ClaimVerificationResult receipt, field allowlist, public aliases and export policy version.",
-        "output": "New PublicSafeReport candidate, regenerated public figures, file manifest, checksums, scan results, and confirmation-bound package hash.",
-        "reject": "Any non-allowlisted field, private path or identifier, unsafe embedded content, unregistered file, hash drift, or missing user confirmation.",
-        "visualization": "Public-data payload only; figures are regenerated and checked for metadata, scripts, links, hidden text, and tooltip leakage.",
-        "validation": "Leakage canaries, public accession preservation, CSV injection, MIME mismatch, archive traversal, media metadata, and deterministic packaging.",
+        "input": "Exactly four checksummed JSON objects: ReportDraft v0.1, eligible ClaimVerificationResult v0.1, PublicExportPolicySpec v0.1 and PublicExportRequest v0.1.",
+        "output": "Three checksummed JSON artifacts: an allowlist-rebuilt PublicSafeReport, PublicExportManifest and PublicExportResult with a confirmation-bound candidate hash.",
+        "reject": "Receipt, report, audience, policy or channel mismatch; missing public alias; non-allowlisted statement; checksum drift; leak canary; confirmation mismatch; or unsafe output path.",
+        "visualization": "None in v0.2.0. This first implementation is JSON-only and does not copy or regenerate figures.",
+        "validation": "Candidate and confirmed reruns, exact input bindings, allowlist projection, path/credential/email/internal-ref canaries, deterministic reuse and V1 refusal.",
         "details": "docs/bridge_spec_v0.1/public_safe_export_task_card.md",
     },
     "P0-12": {
@@ -192,12 +184,6 @@ definitions and marker cards, followed by locked external-source and OOD testing
         if spec["method_ids"]
         else "Method documentation and accessible sources do not constitute benchmark completion. No method is registered or selected until benchmark-bound execution exists."
     )
-    result_rows = ""
-    if spec.get("result_schema_ref"):
-        result_rows = (
-            f"| Result schema | `{spec['result_schema_ref']}` |\n"
-            f"| Adapter | `{spec['adapter_ref']}` |\n"
-        )
     return f"""# {spec['tool_id']} {spec['name']}
 
 {biology}{purpose_heading}
@@ -215,7 +201,7 @@ definitions and marker cards, followed by locked external-source and OOD testing
 | EnvironmentSpec | `{spec['environment_spec_id']}` |
 | Input schema | `{spec['input_schema_ref']}` |
 | Output schema | `{spec['output_schema_ref']}` |
-{result_rows}
+
 **Input:** {detail['input']}
 
 **Output:** {detail['output']}

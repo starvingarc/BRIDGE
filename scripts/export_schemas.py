@@ -12,6 +12,7 @@ from bridge.toolkit.contracts import (
     CellStateBenchmarkSpec,
     CellStateEvidenceProfile,
     CellStateEvidenceProfileV2,
+    CellStateEvidenceProfileV3,
     CellStateReleaseManifest,
     EligibilityResult,
     FreezeGateSpec,
@@ -40,6 +41,7 @@ from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
 )
+from bridge.tool_packages.p0_01_input_qc.io import P001StructuredOutputIndex
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS as P0_08_SCHEMA_MODELS,
 )
@@ -48,6 +50,12 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
 )
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     PUBLIC_SCHEMA_MODELS as P0_10_SCHEMA_MODELS,
+)
+from bridge.tool_packages.p0_12_graft_assessment.models import (
+    PUBLIC_SCHEMA_MODELS as P0_12_SCHEMA_MODELS,
+)
+from bridge.tool_packages.p0_11_public_safe_export.models import (
+    PUBLIC_SCHEMA_MODELS as P0_11_SCHEMA_MODELS,
 )
 
 
@@ -70,6 +78,10 @@ MODELS = {
         "bridge://schemas/cell-state-evidence-profile/v0.2",
         CellStateEvidenceProfileV2,
     ),
+    "cell_state_evidence_profile_v3": (
+        "bridge://schemas/cell-state-evidence-profile/v0.3",
+        CellStateEvidenceProfileV3,
+    ),
     "cell_state_release_manifest": ("bridge://schemas/cell-state-release-manifest/v0.1", CellStateReleaseManifest),
     "eligibility_result": ("bridge://schemas/eligibility-result/v0.1", EligibilityResult),
     "freeze_gate_spec": ("bridge://schemas/freeze-gate-spec/v0.2", FreezeGateSpec),
@@ -90,6 +102,10 @@ MODELS = {
         "bridge://schemas/product-definition-card/v0.1",
         ProductDefinitionCard,
     ),
+    "p0_01_structured_output_index": (
+        "bridge://schemas/p0-01-structured-output-index/v0.1",
+        P001StructuredOutputIndex,
+    ),
     "qc_readiness_profile": ("bridge://schemas/qc-readiness-profile/v0.1", QCReadinessProfile),
     "qc_readiness_profile_v2": (
         "bridge://schemas/qc-readiness-profile/v0.2",
@@ -109,26 +125,22 @@ MODELS = {
 
 
 def _schema_filename(schema_id: str) -> str:
-    slug, version = schema_id.removeprefix("bridge://schemas/").rsplit("/v", 1)
-    stem = slug.replace("-", "_")
-    if version == "0.1":
-        return stem
-    major, minor = version.split(".", 1)
-    suffix = minor if major == "0" else major
-    return f"{stem}_v{suffix}"
+    slug = schema_id.removeprefix("bridge://schemas/").rsplit("/v", 1)[0]
+    return slug.replace("-", "_")
 
 
 for schema_models in (
     P0_08_SCHEMA_MODELS,
     P0_09_SCHEMA_MODELS,
     P0_10_SCHEMA_MODELS,
+    P0_11_SCHEMA_MODELS,
+    P0_12_SCHEMA_MODELS,
 ):
     for schema_id, model in schema_models.items():
         filename = _schema_filename(schema_id)
         if filename in MODELS:
             raise ValueError(f"duplicate public schema filename: {filename}")
         MODELS[filename] = (schema_id, model)
-
 
 def main() -> int:
     repo = Path(__file__).resolve().parents[1]

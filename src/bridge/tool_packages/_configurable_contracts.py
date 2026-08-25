@@ -12,6 +12,7 @@ from pydantic import ConfigDict, Field, StrictFloat, StrictInt, ValidationError,
 from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import (
     BiologicalUnitKind,
+    CellStateComposition,
     CellStateEvidenceProfileV2,
     FrozenModel,
     IndependenceGroupKind,
@@ -293,10 +294,24 @@ class BiologicalUnitManifest(FrozenModel):
     def bindings_are_unique(
         cls, value: list[BiologicalUnitBinding]
     ) -> list[BiologicalUnitBinding]:
-        _unique(
-            [item.analysis_unit_ref.object_id for item in value],
-            "analysis unit biological identities",
-        )
+        binding_keys = [_biological_unit_binding_key(item) for item in value]
+        _unique(binding_keys, "full biological unit bindings")
+        analysis_contracts: dict[str, tuple[str, str, str, str]] = {}
+        for item in value:
+            contract = (
+                item.analysis_unit_ref.ref,
+                item.analysis_unit_kind.value,
+                item.independence_group_ref.ref,
+                item.independence_group_kind,
+            )
+            previous = analysis_contracts.setdefault(
+                item.analysis_unit_ref.object_id,
+                contract,
+            )
+            if previous != contract:
+                raise ValueError(
+                    "one analysis unit must use one analysis and independence contract"
+                )
         _validate_binding_lineage(value)
         return value
 
@@ -382,16 +397,29 @@ def biological_unit_assignment_reasons(
         reasons.add("biological_unit_assignment_observation_set_mismatch")
 
     bindings = {
-        item.analysis_unit_ref.ref: item for item in manifest.unit_bindings
+        _biological_unit_binding_key(item): item for item in manifest.unit_bindings
     }
-    used_analysis_units: set[str] = set()
+    bindings_by_analysis: dict[str, list[BiologicalUnitBinding]] = {}
+    for item in manifest.unit_bindings:
+        bindings_by_analysis.setdefault(item.analysis_unit_ref.ref, []).append(item)
+    used_bindings: set[tuple[str | None, ...]] = set()
     used_independence_groups: set[str] = set()
     for assignment in artifact.assignments:
-        binding = bindings.get(assignment.analysis_unit_ref)
+        assignment_key = _biological_unit_assignment_key(assignment)
+        binding = bindings.get(assignment_key)
         if binding is None:
-            reasons.add("biological_unit_assignment_unknown_analysis_unit")
+            candidates = bindings_by_analysis.get(assignment.analysis_unit_ref, [])
+            if not candidates:
+                reasons.add("biological_unit_assignment_unknown_analysis_unit")
+            elif not any(
+                item.independence_group_ref.ref == assignment.independence_group_ref
+                for item in candidates
+            ):
+                reasons.add("biological_unit_assignment_group_mismatch")
+            else:
+                reasons.add("biological_unit_assignment_hierarchy_mismatch")
             continue
-        used_analysis_units.add(assignment.analysis_unit_ref)
+        used_bindings.add(assignment_key)
         used_independence_groups.add(assignment.independence_group_ref)
         if assignment.independence_group_ref != binding.independence_group_ref.ref:
             reasons.add("biological_unit_assignment_group_mismatch")
@@ -401,13 +429,36 @@ def biological_unit_assignment_reasons(
             if getattr(assignment, field) != expected:
                 reasons.add("biological_unit_assignment_hierarchy_mismatch")
 
-    if used_analysis_units != set(bindings):
+    if used_bindings != set(bindings):
         reasons.add("biological_unit_assignment_unused_analysis_unit")
     if used_independence_groups != {
         item.ref for item in manifest.independence_group_refs
     }:
         reasons.add("biological_unit_assignment_unused_independence_group")
     return sorted(reasons)
+
+
+def _biological_unit_binding_key(
+    binding: BiologicalUnitBinding,
+) -> tuple[str | None, ...]:
+    return (
+        binding.analysis_unit_ref.ref,
+        binding.independence_group_ref.ref,
+        *(
+            None if (ref := getattr(binding, field)) is None else ref.ref
+            for field in HIERARCHY_FIELDS
+        ),
+    )
+
+
+def _biological_unit_assignment_key(
+    assignment: BiologicalUnitAssignment,
+) -> tuple[str | None, ...]:
+    return (
+        assignment.analysis_unit_ref,
+        assignment.independence_group_ref,
+        *(getattr(assignment, field) for field in HIERARCHY_FIELDS),
+    )
 
 
 class ProductCase(FrozenModel):
@@ -599,7 +650,15 @@ class RoleFraction(FrozenModel):
 def parse_composition(
     profile: CellStateEvidenceProfileV2,
 ) -> list[UpstreamCompositionRecord]:
-    raw_records = profile.composition.get("records")
+    composition = profile.composition
+    if isinstance(composition, CellStateComposition):
+        if composition.state != "shadow":
+            return []
+        raw_records = [
+            item.model_dump(mode="python") for item in composition.records
+        ]
+    else:
+        raw_records = composition.get("records")
     if raw_records is None:
         return []
     if not isinstance(raw_records, list):

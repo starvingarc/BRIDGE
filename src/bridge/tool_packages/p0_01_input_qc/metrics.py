@@ -29,13 +29,13 @@ def calculate_count_metrics(
     ribo_mask = np.asarray(upper_names.str.startswith(ribo_prefixes), dtype=bool)
     mt_counts = np.asarray(csr[:, mt_mask].sum(axis=1)).ravel() if mt_mask.any() else None
     ribo_counts = np.asarray(csr[:, ribo_mask].sum(axis=1)).ravel() if ribo_mask.any() else None
-    denominator = np.where(total_counts > 0, total_counts, 1.0)
+    positive_totals = total_counts > 0
     frame = pd.DataFrame(
         {
             "total_counts": total_counts,
             "detected_genes": detected_genes,
-            "mitochondrial_fraction": mt_counts / denominator if mt_counts is not None else np.nan,
-            "ribosomal_fraction": ribo_counts / denominator if ribo_counts is not None else np.nan,
+            "mitochondrial_fraction": _defined_fraction(mt_counts, total_counts, positive_totals),
+            "ribosomal_fraction": _defined_fraction(ribo_counts, total_counts, positive_totals),
             "top_20_gene_fraction": _top_n_fraction(csr, total_counts, n=20),
         }
     )
@@ -49,6 +49,7 @@ def calculate_count_metrics(
 
 def apply_candidate_rules(metrics: pd.DataFrame, rules: dict) -> pd.DataFrame:
     flags = pd.DataFrame(index=metrics.index)
+    flags["flag_zero_total_counts"] = metrics["total_counts"] <= 0
     flags["flag_low_detected_genes"] = metrics["detected_genes"] < int(rules["min_detected_genes"])
     flags["flag_high_detected_genes"] = metrics["detected_genes"] > int(rules["max_detected_genes"])
     flags["flag_high_mitochondrial_fraction"] = (
@@ -82,7 +83,7 @@ def _optional_float(value) -> float | None:
 
 
 def _top_n_fraction(matrix: sparse.csr_matrix, totals: np.ndarray, n: int) -> np.ndarray:
-    fractions = np.zeros(matrix.shape[0], dtype=float)
+    fractions = np.full(matrix.shape[0], np.nan, dtype=float)
     for row in range(matrix.shape[0]):
         start, end = matrix.indptr[row], matrix.indptr[row + 1]
         values = matrix.data[start:end]
@@ -90,4 +91,15 @@ def _top_n_fraction(matrix: sparse.csr_matrix, totals: np.ndarray, n: int) -> np
             count = min(n, values.size)
             top = np.partition(values, values.size - count)[-count:]
             fractions[row] = float(top.sum() / totals[row])
+    return fractions
+
+
+def _defined_fraction(
+    numerators: np.ndarray | None,
+    totals: np.ndarray,
+    positive_totals: np.ndarray,
+) -> np.ndarray:
+    fractions = np.full(len(totals), np.nan, dtype=float)
+    if numerators is not None:
+        fractions[positive_totals] = numerators[positive_totals] / totals[positive_totals]
     return fractions

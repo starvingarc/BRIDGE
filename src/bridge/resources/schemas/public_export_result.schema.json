@@ -1,0 +1,101 @@
+{
+  "$defs": {
+    "PublicExportState": {
+      "enum": [
+        "ready_for_confirmation",
+        "exported"
+      ],
+      "title": "PublicExportState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-export-result/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_count": {
+      "const": 3,
+      "title": "Artifact Count",
+      "type": "integer"
+    },
+    "candidate_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Candidate Hash",
+      "type": "string"
+    },
+    "confirmation_hash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confirmation Hash"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "export_id": {
+      "pattern": "^public-export:[a-f0-9]{16}$",
+      "title": "Export Id",
+      "type": "string"
+    },
+    "export_state": {
+      "$ref": "#/$defs/PublicExportState"
+    },
+    "leak_scan_state": {
+      "const": "passed",
+      "title": "Leak Scan State",
+      "type": "string"
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifest Sha256",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "public_report_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Public Report Sha256",
+      "type": "string"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-11",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "export_id",
+    "tool_id",
+    "tool_version",
+    "export_state",
+    "candidate_hash",
+    "public_report_sha256",
+    "manifest_sha256",
+    "leak_scan_state",
+    "artifact_count",
+    "score_state"
+  ],
+  "title": "PublicExportResult",
+  "type": "object"
+}
