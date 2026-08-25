@@ -9,11 +9,23 @@ import h5py
 import numpy as np
 import pandas as pd
 import pytest
+from jsonschema import Draft202012Validator
 from scipy import sparse
 from scipy.io import mmwrite
 
-from bridge.toolkit.contracts import ExecutionState, InputAsset, ToolRequest
+from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitAssignmentArtifact,
+    BiologicalUnitManifest,
+    biological_unit_assignment_reasons,
+)
+from bridge.toolkit.contracts import (
+    ExecutionState,
+    InputAsset,
+    QCReadinessProfileV2,
+    ToolRequest,
+)
 from bridge.toolkit.registry import ToolRegistry
+from bridge.toolkit.schemas import load_schema
 
 
 def _sha256(path: Path) -> str:
@@ -76,6 +88,31 @@ def _request(tmp_path: Path, input_path: Path, *, semantics: str, assay: str = "
     )
 
 
+def _lineage_metadata(*, source_ref: str = "preparation:product-a@1.0.0") -> dict:
+    return {
+        "source_unit_kind": "preparation",
+        "source_unit_ref": _versioned_ref(source_ref),
+        "unit_identity_namespace_ref": _versioned_ref("unit-namespace:study-a@1.0.0"),
+        "analysis_unit_kind": "preparation",
+        "independence_group_kind": "donor",
+        "independence_scope_ref": _versioned_ref("independence-scope:study-a@1.0.0"),
+        "observation_ref_columns": {
+            "preparation": "preparation_ref",
+            "donor": "donor_ref",
+        },
+    }
+
+
+def _versioned_ref(value: str) -> dict[str, str]:
+    object_id, object_version = value.rsplit("@", 1)
+    return {"object_id": object_id, "object_version": object_version}
+
+
+def _artifact_json(run, kind: str) -> tuple[Path, dict]:
+    artifact = next(item for item in run.artifacts if item.kind == kind)
+    return artifact.path, json.loads(artifact.path.read_text(encoding="utf-8"))
+
+
 def test_analysis_ready_h5ad_emits_raw_structure_without_count_flags(tmp_path: Path) -> None:
     input_path = _write_h5ad(tmp_path / "analysis.h5ad", counts=False)
 
@@ -127,6 +164,167 @@ def test_count_ready_h5ad_writes_immutable_artifacts_and_visualizations(tmp_path
     assert all(artifact.path.is_file() for artifact in run.artifacts)
 
 
+@pytest.mark.parametrize("reference_source", ["columns", "constants"])
+def test_v2_profile_binds_exact_input_and_declared_lineage(
+    tmp_path: Path,
+    reference_source: str,
+) -> None:
+    input_path = _write_h5ad(tmp_path / f"counts-{reference_source}.h5ad", counts=True)
+    declaration = _lineage_metadata()
+    if reference_source == "columns":
+        adata = ad.read_h5ad(input_path)
+        adata.obs["preparation_ref"] = "preparation:product-a@1.0.0"
+        adata.obs["donor_ref"] = "donor:donor-a@1.0.0"
+        adata.write_h5ad(input_path)
+    else:
+        declaration["observation_ref_columns"] = {}
+        declaration["constant_unit_refs"] = {
+            "preparation": _versioned_ref("preparation:product-a@1.0.0"),
+            "donor": _versioned_ref("donor:donor-a@1.0.0"),
+        }
+    before = _sha256(input_path)
+    request = _request(
+        tmp_path,
+        input_path,
+        semantics="raw_counts",
+        spec="QC-scRNA-candidate-v0.1",
+    )
+    request = request.model_copy(
+        update={
+            "assets": [
+                request.assets[0].model_copy(
+                    update={
+                        "metadata": {
+                            **request.assets[0].metadata,
+                            "biological_unit_lineage": declaration,
+                        }
+                    }
+                )
+            ]
+        }
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert _sha256(input_path) == before == run.input_hash
+    assert "selected_data_view" not in run.result
+    _, v1_payload = _artifact_json(run, "qc_profile")
+    assert v1_payload == run.result
+
+    v2_path, v2_payload = _artifact_json(run, "qc_profile_v2")
+    profile_v2 = QCReadinessProfileV2.model_validate(v2_payload)
+    assignment_path, assignment_payload = _artifact_json(run, "biological_unit_assignment")
+    manifest_path, manifest_payload = _artifact_json(run, "biological_unit_manifest")
+    assignment = BiologicalUnitAssignmentArtifact.model_validate(assignment_payload)
+    manifest = BiologicalUnitManifest.model_validate(manifest_payload)
+    for payload, schema_ref in (
+        (v2_payload, "bridge://schemas/qc-readiness-profile/v0.2"),
+        (assignment_payload, "bridge://schemas/biological-unit-assignment/v0.1"),
+        (manifest_payload, "bridge://schemas/biological-unit-manifest/v0.1"),
+    ):
+        assert not list(Draft202012Validator(load_schema(schema_ref)).iter_errors(payload))
+    assignment_artifact = next(
+        item for item in run.artifacts if item.kind == "biological_unit_assignment"
+    )
+    manifest_artifact = next(
+        item for item in run.artifacts if item.kind == "biological_unit_manifest"
+    )
+
+    assert _sha256(v2_path) == next(
+        item.sha256 for item in run.artifacts if item.kind == "qc_profile_v2"
+    )
+    assert _sha256(assignment_path) == assignment_artifact.sha256
+    assert _sha256(manifest_path) == manifest_artifact.sha256
+    assert manifest.assignment_artifact_sha256 == assignment_artifact.sha256
+    assert manifest.lineage_state.value == "declared"
+    assert manifest.review_gate_ref is None
+    assert manifest.review_gate_sha256 is None
+    assert manifest.assignment_row_count == manifest.n_observations == 6
+    assert manifest.analysis_unit_kind.value == "preparation"
+    assert manifest.independence_group_kind == "donor"
+    assert profile_v2.measurement_spec_version == "0.1.0"
+    assert profile_v2.selected_data_view is not None
+    assert profile_v2.selected_data_view.view_kind == "all_observations"
+    assert profile_v2.selected_data_view.sha256 == before
+    assert profile_v2.selected_data_view.parent_asset_sha256 == before
+    assert profile_v2.selected_data_view.n_observations == 6
+    assert profile_v2.selected_data_view.biological_unit_manifest_ref == manifest.ref.ref
+    assert (
+        profile_v2.selected_data_view.biological_unit_manifest_sha256
+        == manifest_artifact.sha256
+    )
+    assert profile_v2.data_views["biological_unit_lineage"]["state"] == "declared"
+    assert "biological_unit_lineage_is_declared_not_reviewed" in profile_v2.warnings
+    assert {
+        item.observation_id for item in assignment.assignments
+    } == {f"cell-{index}" for index in range(6)}
+    assert not biological_unit_assignment_reasons(
+        manifest=manifest,
+        artifact=assignment,
+        artifact_sha256=assignment_artifact.sha256,
+    )
+
+
+@pytest.mark.parametrize(
+    ("case", "expected_reason"),
+    [
+        ("missing_metadata", "biological_unit_lineage_metadata_missing"),
+        ("missing_column", "biological_unit_lineage_column_missing"),
+        ("source_mismatch", "biological_unit_lineage_source_mismatch"),
+        ("capture_as_independence", "biological_unit_lineage_metadata_invalid"),
+    ],
+)
+def test_lineage_metadata_failure_is_explicit_without_blocking_v1(
+    tmp_path: Path,
+    case: str,
+    expected_reason: str,
+) -> None:
+    input_path = _write_h5ad(tmp_path / f"counts-{case}.h5ad", counts=True)
+    request = _request(tmp_path, input_path, semantics="raw_counts")
+    metadata = dict(request.assets[0].metadata)
+    if case != "missing_metadata":
+        declaration = _lineage_metadata()
+        if case == "missing_column":
+            declaration["observation_ref_columns"]["preparation"] = "missing_preparation_ref"
+        elif case == "source_mismatch":
+            declaration["observation_ref_columns"] = {}
+            declaration["constant_unit_refs"] = {
+                "preparation": _versioned_ref("preparation:other@1.0.0"),
+                "donor": _versioned_ref("donor:donor-a@1.0.0"),
+            }
+        else:
+            declaration["independence_group_kind"] = "capture"
+            declaration["observation_ref_columns"] = {}
+            declaration["constant_unit_refs"] = {
+                "preparation": _versioned_ref("preparation:product-a@1.0.0"),
+                "capture": _versioned_ref("capture:capture-a@1.0.0"),
+            }
+        metadata["biological_unit_lineage"] = declaration
+    request = request.model_copy(
+        update={"assets": [request.assets[0].model_copy(update={"metadata": metadata})]}
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert "selected_data_view" not in run.result
+    assert not {
+        "biological_unit_assignment",
+        "biological_unit_manifest",
+    } & {item.kind for item in run.artifacts}
+    _, payload = _artifact_json(run, "qc_profile_v2")
+    profile_v2 = QCReadinessProfileV2.model_validate(payload)
+    assert profile_v2.selected_data_view is not None
+    assert profile_v2.selected_data_view.biological_unit_manifest_ref is None
+    assert profile_v2.data_views["biological_unit_lineage"] == {
+        "state": "unavailable",
+        "reason_codes": [expected_reason],
+    }
+    assert expected_reason in profile_v2.missing_inputs
+    assert all(not item.startswith("biological_unit_lineage") for item in run.warnings)
+
+
 def test_identical_request_produces_stable_artifact_hashes(tmp_path: Path) -> None:
     input_path = _write_h5ad(tmp_path / "counts.h5ad", counts=True)
     request = _request(
@@ -134,6 +332,21 @@ def test_identical_request_produces_stable_artifact_hashes(tmp_path: Path) -> No
         input_path,
         semantics="raw_counts",
         spec="QC-scRNA-candidate-v0.1",
+    )
+    declaration = _lineage_metadata()
+    declaration["observation_ref_columns"] = {}
+    declaration["constant_unit_refs"] = {
+        "preparation": _versioned_ref("preparation:product-a@1.0.0"),
+        "donor": _versioned_ref("donor:donor-a@1.0.0"),
+    }
+    request = request.model_copy(
+        update={
+            "assets": [
+                request.assets[0].model_copy(
+                    update={"metadata": {**request.assets[0].metadata, "biological_unit_lineage": declaration}}
+                )
+            ]
+        }
     )
 
     first = ToolRegistry.load_default().run(request)
@@ -386,6 +599,13 @@ def test_droplet_ready_audits_contract_without_treating_barcodes_as_cells(tmp_pa
     assert run.result["module_eligibility"]["cell_calling"] == "not_implemented"
     assert run.result["module_eligibility"]["ambient_rna"] == "not_implemented"
     assert {measurement.metric_name for measurement in run.measurements} == {"n_barcodes", "n_genes"}
+    _, v2_payload = _artifact_json(run, "qc_profile_v2")
+    profile_v2 = QCReadinessProfileV2.model_validate(v2_payload)
+    assert profile_v2.selected_data_view is None
+    assert profile_v2.data_views["biological_unit_lineage"] == {
+        "state": "unavailable",
+        "reason_codes": ["biological_unit_lineage_unavailable:droplet_observations_are_not_cells"],
+    }
 
 
 def test_droplet_ready_rejects_cell_level_measurement_spec(tmp_path: Path) -> None:

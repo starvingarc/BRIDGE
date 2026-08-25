@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
 from bridge.tool_packages.p0_01_input_qc.io import (
     InputAuditError,
+    build_declared_lineage,
+    canonical_json_bytes,
     read_expression_asset,
     sha256_path,
     validate_expression_object,
@@ -31,6 +35,7 @@ from bridge.toolkit.contracts import (
     MeasurementResult,
     MeasurementSpec,
     QCReadinessProfile,
+    QCReadinessProfileV2,
     ReadinessState,
     ScoreState,
     ToolPackageSpec,
@@ -260,6 +265,82 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
     profile_path = run_dir / "qc_readiness_profile.json"
     _write_json(profile_path, profile.model_dump(mode="json"))
     artifacts.append(_artifact(f"artifact:{run_id}:profile", "qc_profile", profile_path, evidence_ids))
+
+    lineage = build_declared_lineage(
+        asset=asset,
+        observations=adata.obs,
+        input_hash=input_hash,
+        run_id=run_id,
+        tool_version=spec.version,
+        input_level=input_level,
+    )
+    v2_data_views = deepcopy(profile.data_views)
+    v2_missing_inputs = list(profile.missing_inputs)
+    v2_warnings = list(profile.warnings)
+    v2_evidence_ids = list(profile.evidence_ids)
+    if lineage.lineage_is_available:
+        lineage_evidence_id = f"evidence:{run_id}:declared-biological-unit-lineage"
+        v2_evidence_ids.append(lineage_evidence_id)
+        v2_warnings.append("biological_unit_lineage_is_declared_not_reviewed")
+        v2_data_views["biological_unit_lineage"] = {
+            "state": "declared",
+            "assignment_artifact_id": f"artifact:{run_id}:biological-unit-assignment",
+            "manifest_ref": lineage.manifest.ref.ref,
+        }
+        assignment_path = run_dir / "biological_unit_assignment.json"
+        _write_json(
+            assignment_path,
+            lineage.assignment_artifact.model_dump(mode="json"),
+        )
+        artifacts.append(
+            _artifact(
+                f"artifact:{run_id}:biological-unit-assignment",
+                "biological_unit_assignment",
+                assignment_path,
+                [lineage_evidence_id],
+            )
+        )
+        biological_manifest_path = run_dir / "biological_unit_manifest.json"
+        _write_json(
+            biological_manifest_path,
+            lineage.manifest.model_dump(mode="json"),
+        )
+        artifacts.append(
+            _artifact(
+                f"artifact:{run_id}:biological-unit-manifest",
+                "biological_unit_manifest",
+                biological_manifest_path,
+                [lineage_evidence_id],
+            )
+        )
+    else:
+        v2_missing_inputs.extend(lineage.reason_codes)
+        v2_data_views["biological_unit_lineage"] = {
+            "state": "unavailable",
+            "reason_codes": list(lineage.reason_codes),
+        }
+
+    profile_v2 = QCReadinessProfileV2.model_validate(
+        {
+            **profile.model_dump(mode="json"),
+            "measurement_spec_version": measurement_spec.version if measurement_spec else None,
+            "selected_data_view": lineage.selected_data_view,
+            "data_views": v2_data_views,
+            "missing_inputs": sorted(set(v2_missing_inputs)),
+            "warnings": sorted(set(v2_warnings)),
+            "evidence_ids": sorted(set(v2_evidence_ids)),
+        }
+    )
+    profile_v2_path = run_dir / "qc_readiness_profile_v2.json"
+    _write_json(profile_v2_path, profile_v2.model_dump(mode="json"))
+    artifacts.append(
+        _artifact(
+            f"artifact:{run_id}:profile-v2",
+            "qc_profile_v2",
+            profile_v2_path,
+            v2_evidence_ids,
+        )
+    )
 
     manifest_path = run_dir / "artifact_manifest.json"
     _write_json(
@@ -545,18 +626,7 @@ def _artifact(artifact_id: str, kind: str, path: Path, evidence_ids: list[str]) 
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(
-        json.dumps(
-            payload,
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-            default=str,
-            allow_nan=False,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    path.write_bytes(canonical_json_bytes(payload))
 
 
 def _output_overlaps_input(input_path: Path, output_dir: Path) -> bool:

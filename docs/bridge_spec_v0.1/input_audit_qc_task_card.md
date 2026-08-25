@@ -170,6 +170,27 @@ QC 只绑定与数据解释直接相关的版本化资源：
 - scDblFinder、DropletUtils、SoupX、miQC 和 CellBender 仍是待独立环境与 benchmark 的条件方法。
 - counts 语义、capture mapping 或基因符号来源未确认时，只保留不依赖该字段的结果。
 
+### 11.1 V2 数据视图与生物单位谱系
+
+P0-01 保持 v0.1 `ToolRequest`、`ToolRun.result` 与 `qc_readiness_profile.json` 的既有语义，并额外写出 `qc_readiness_profile_v2.json`。对 `analysis_ready` 与 `count_ready` 输入，v2 profile 的 `selected_data_view` 绑定原始不可变资产、matrix location/semantics、完整 observation 数量与排序无关的 observation-ID digest；当前不会把仅添加候选 flags、但没有实际删行的 `candidate_qc_view.h5ad` 声称为筛选后视图。`droplet_ready` 的 barcode 尚未完成 cell calling，因此 `selected_data_view=null`。
+
+可选的 `asset.metadata.biological_unit_lineage` 只接受显式且带版本的声明：
+
+| 字段 | 最低语义 |
+| --- | --- |
+| `source_unit_kind` / `source_unit_ref` | 单一 `sample` 或 `preparation` 来源及其 `object_id@object_version`；不得从文件名或 sample/capture 标签推断 |
+| `unit_identity_namespace_ref` | 本次 unit identity 命名空间的版本化引用 |
+| `analysis_unit_kind` | 当前测量采用的显式分析单位；不是 cell 数量的同义词 |
+| `independence_group_kind` / `independence_scope_ref` | 显式独立组类型与适用范围；只允许 preparation/sample/donor/animal |
+| `observation_ref_columns` | unit kind 到 h5ad `obs` 列的映射；列值必须已经是完整版本化引用 |
+| `constant_unit_refs` | 明确声明应用于视图中每个 observation 的版本化 unit；不得与同 kind 的列映射并用 |
+
+谱系闭合时额外写出 checksummed `biological_unit_assignment.json` 与 `biological_unit_manifest.json`，并由 v2 `DataViewBinding` 绑定 manifest ref/hash。任何缺列、缺值、无版本引用、单一来源不一致、冲突 lineage 或非法 independence kind 都只令新增 lineage 输出变为 `unavailable`，不阻断仍合法的 v0.1 QC 结果，也不留下未登记的部分 lineage 产物。
+
+P0-01 的 `generator_tool_id` 固定为 `P0-01`，`lineage_state` 只能是 `declared`，review gate 必须为空。该声明不证明 preparation/sample/donor/animal 的生物学真实性、不授予 `reviewed`/`frozen` 权限，也不证明任何组在统计上独立。真实数据与人工科学审核仍需验证 unit mapping、pooling/multiplexing、独立重复和后续 estimand。
+
+旧 `sample_id`、`capture_id`、列名、文件名、目录名、cell 数或 capture 数均不得自动生成 preparation、donor、animal 或 independence group。技术 capture 和 graft unit 不可作为 independence group；P0-01 不据此做效力、安全、放行或产品质量结论。
+
 ## 12. 运行环境与协作方式
 
 整套任务不建议塞入单一环境。P0 采用三个冻结计算环境，Agent runtime 只负责编排，不在自身进程中混装全部分析依赖。
