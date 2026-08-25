@@ -1,0 +1,586 @@
+{
+  "$defs": {
+    "MetricEvidenceState": {
+      "enum": [
+        "shadow",
+        "measured",
+        "inferred",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "MetricEvidenceState",
+      "type": "string"
+    },
+    "ProductCase": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "biological_unit_manifest_ref": {
+              "type": "null"
+            },
+            "biological_unit_manifest_sha256": {
+              "type": "null"
+            },
+            "independence_group_refs": {
+              "maxItems": 0
+            },
+            "independence_scope_ref": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "biological_unit_manifest_ref": {
+              "not": {
+                "type": "null"
+              }
+            },
+            "biological_unit_manifest_sha256": {
+              "not": {
+                "type": "null"
+              }
+            },
+            "independence_scope_ref": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "biological_unit_manifest_ref",
+            "biological_unit_manifest_sha256",
+            "independence_scope_ref"
+          ]
+        }
+      ],
+      "properties": {
+        "assay": {
+          "enum": [
+            "scRNA-seq",
+            "snRNA-seq"
+          ],
+          "title": "Assay",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
+        "case_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "independence_group_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "title": "Independence Group Refs",
+          "type": "array"
+        },
+        "independence_scope_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "measurement_spec_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "product_case_id": {
+          "pattern": "^product-case:[A-Za-z0-9._:-]+$",
+          "title": "Product Case Id",
+          "type": "string"
+        },
+        "product_definition_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "provenance_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "minItems": 1,
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "sample_or_preparation_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "source_unit_kind": {
+          "enum": [
+            "sample",
+            "preparation"
+          ],
+          "title": "Source Unit Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "product_case_id",
+        "case_version",
+        "product_definition_ref",
+        "source_unit_kind",
+        "sample_or_preparation_ref",
+        "measurement_spec_ref",
+        "assay",
+        "provenance_refs",
+        "created_at"
+      ],
+      "title": "ProductCase",
+      "type": "object"
+    },
+    "ProductDefinitionCard": {
+      "additionalProperties": false,
+      "properties": {
+        "definition_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Definition Version",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "product_definition_id": {
+          "pattern": "^product-definition:[A-Za-z0-9._:-]+$",
+          "title": "Product Definition Id",
+          "type": "string"
+        },
+        "provenance_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "minItems": 1,
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "review_state": {
+          "const": "draft",
+          "title": "Review State",
+          "type": "string"
+        },
+        "state_role_map_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "supported_assays": {
+          "items": {
+            "enum": [
+              "scRNA-seq",
+              "snRNA-seq"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Supported Assays",
+          "type": "array"
+        }
+      },
+      "required": [
+        "object_version",
+        "product_definition_id",
+        "definition_version",
+        "state_role_map_ref",
+        "supported_assays",
+        "review_state",
+        "provenance_refs"
+      ],
+      "title": "ProductDefinitionCard",
+      "type": "object"
+    },
+    "ProductMetricEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator_kind": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "denominator_value": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "gt": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Value"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/MetricEvidenceState"
+        },
+        "interval": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval"
+        },
+        "measurement_spec_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "provenance_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "minItems": 1,
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "raw_value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Value"
+        },
+        "score_state": {
+          "const": "unavailable",
+          "default": "unavailable",
+          "title": "Score State",
+          "type": "string"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_id",
+        "measurement_spec_ref",
+        "unit",
+        "denominator_kind",
+        "evidence_state",
+        "provenance_refs"
+      ],
+      "title": "ProductMetricEvidence",
+      "type": "object"
+    },
+    "TimepointBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "enum": [
+            "in_vitro_day",
+            "declared_stage",
+            "not_applicable"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "order": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Order"
+        }
+      },
+      "required": [
+        "basis",
+        "label"
+      ],
+      "title": "TimepointBinding",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/product-evidence-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "algorithm_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "batch_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "title": "Batch Refs",
+      "type": "array"
+    },
+    "bundle_id": {
+      "pattern": "^product-evidence-bundle:[A-Za-z0-9._:-]+$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "bundle_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Bundle Version",
+      "type": "string"
+    },
+    "cell_line_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "title": "Cell Line Refs",
+      "type": "array"
+    },
+    "comparison_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "data_view_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "group_id": {
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+      "title": "Group Id",
+      "type": "string"
+    },
+    "lab_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "title": "Lab Refs",
+      "type": "array"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/ProductMetricEvidence"
+      },
+      "minItems": 1,
+      "title": "Metrics",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "preprocessing_snapshot_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_case": {
+      "$ref": "#/$defs/ProductCase"
+    },
+    "product_definition": {
+      "$ref": "#/$defs/ProductDefinitionCard"
+    },
+    "protocol_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "title": "Protocol Refs",
+      "type": "array"
+    },
+    "provenance_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "reference_snapshot_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "sufficiency_state": {
+      "anyOf": [
+        {
+          "enum": [
+            "sufficient",
+            "limited",
+            "insufficient",
+            "not_assessed"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sufficiency State"
+    },
+    "sufficiency_summary_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sufficiency Summary Ref"
+    },
+    "target_stage_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "timepoint": {
+      "$ref": "#/$defs/TimepointBinding"
+    }
+  },
+  "required": [
+    "object_version",
+    "bundle_id",
+    "bundle_version",
+    "comparison_ref",
+    "group_id",
+    "product_case",
+    "product_definition",
+    "target_stage_ref",
+    "data_view_ref",
+    "timepoint",
+    "batch_refs",
+    "protocol_refs",
+    "lab_refs",
+    "cell_line_refs",
+    "reference_snapshot_ref",
+    "preprocessing_snapshot_ref",
+    "algorithm_ref",
+    "metrics",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "ProductEvidenceBundle",
+  "type": "object"
+}

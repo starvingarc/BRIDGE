@@ -10,7 +10,7 @@ import yaml
 # source. The generic renderer is intentionally too small for their structured
 # object contracts, so regeneration validates those cards instead of replacing
 # them with scaffold summaries.
-DETAILED_CARD_IDS = {"P0-08", "P0-09", "P0-10", "P0-11"}
+DETAILED_CARD_IDS = {"P0-07", "P0-08", "P0-09", "P0-10", "P0-11"}
 
 
 DETAILS = {

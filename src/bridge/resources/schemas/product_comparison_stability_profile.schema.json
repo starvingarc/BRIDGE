@@ -1,0 +1,572 @@
+{
+  "$defs": {
+    "ConfoundingFactor": {
+      "enum": [
+        "protocol",
+        "lab",
+        "batch",
+        "cell_line"
+      ],
+      "title": "ConfoundingFactor",
+      "type": "string"
+    },
+    "GroupMetricSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator_kind": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "expected_count": {
+          "minimum": 1,
+          "title": "Expected Count",
+          "type": "integer"
+        },
+        "group_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Group Id",
+          "type": "string"
+        },
+        "mean_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Value"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "observed_count": {
+          "minimum": 0,
+          "title": "Observed Count",
+          "type": "integer"
+        },
+        "observed_range": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Range"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value_state": {
+          "enum": [
+            "shadow",
+            "missing",
+            "unknown",
+            "unavailable",
+            "alert"
+          ],
+          "title": "Value State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "group_id",
+        "metric_id",
+        "value_state",
+        "observed_count",
+        "expected_count",
+        "unit",
+        "denominator_kind",
+        "reason_codes"
+      ],
+      "title": "GroupMetricSummary",
+      "type": "object"
+    },
+    "GroupStability": {
+      "additionalProperties": false,
+      "properties": {
+        "batch_count": {
+          "minimum": 0,
+          "title": "Batch Count",
+          "type": "integer"
+        },
+        "group_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Group Id",
+          "type": "string"
+        },
+        "independent_preparation_count": {
+          "minimum": 1,
+          "title": "Independent Preparation Count",
+          "type": "integer"
+        },
+        "metric_stability": {
+          "items": {
+            "$ref": "#/$defs/MetricStability"
+          },
+          "minItems": 1,
+          "title": "Metric Stability",
+          "type": "array"
+        }
+      },
+      "required": [
+        "group_id",
+        "independent_preparation_count",
+        "batch_count",
+        "metric_stability"
+      ],
+      "title": "GroupStability",
+      "type": "object"
+    },
+    "InputChecksumBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "comparison_stability_spec",
+            "comparison_case_manifest",
+            "product_evidence_bundle"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "sha256"
+      ],
+      "title": "InputChecksumBinding",
+      "type": "object"
+    },
+    "MetricContrast": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_group_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Baseline Group Id",
+          "type": "string"
+        },
+        "baseline_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Value"
+        },
+        "comparator_group_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Comparator Group Id",
+          "type": "string"
+        },
+        "comparator_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comparator Value"
+        },
+        "contrast_state": {
+          "enum": [
+            "shadow",
+            "missing",
+            "unknown",
+            "unavailable",
+            "alert",
+            "not_comparable"
+          ],
+          "title": "Contrast State",
+          "type": "string"
+        },
+        "delta_comparator_minus_baseline": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta Comparator Minus Baseline"
+        },
+        "denominator_kind": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "increase",
+            "decrease",
+            "no_change",
+            "not_assessed"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "interval_state": {
+          "enum": [
+            "descriptive_only",
+            "not_assessed"
+          ],
+          "title": "Interval State",
+          "type": "string"
+        },
+        "measurement_spec_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_id",
+        "measurement_spec_ref",
+        "baseline_group_id",
+        "comparator_group_id",
+        "contrast_state",
+        "direction",
+        "interval_state",
+        "unit",
+        "denominator_kind",
+        "reason_codes"
+      ],
+      "title": "MetricContrast",
+      "type": "object"
+    },
+    "MetricStability": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_preparation_count": {
+          "minimum": 1,
+          "title": "Expected Preparation Count",
+          "type": "integer"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "observed_preparation_count": {
+          "minimum": 0,
+          "title": "Observed Preparation Count",
+          "type": "integer"
+        },
+        "observed_range": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Range"
+        },
+        "range_width": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Range Width"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "replicated_descriptive",
+            "single_preparation",
+            "incomplete",
+            "unavailable"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_id",
+        "state",
+        "observed_preparation_count",
+        "expected_preparation_count",
+        "reason_codes"
+      ],
+      "title": "MetricStability",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/product-comparison-stability-profile/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "comparison_eligibility": {
+      "enum": [
+        "strictly_comparable",
+        "contextual_comparator",
+        "reference_or_ood",
+        "not_comparable",
+        "not_estimable"
+      ],
+      "title": "Comparison Eligibility",
+      "type": "string"
+    },
+    "comparison_mode": {
+      "const": "descriptive_only",
+      "title": "Comparison Mode",
+      "type": "string"
+    },
+    "comparison_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "confounded_factors": {
+      "items": {
+        "$ref": "#/$defs/ConfoundingFactor"
+      },
+      "title": "Confounded Factors",
+      "type": "array"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "group_summaries": {
+      "items": {
+        "$ref": "#/$defs/GroupMetricSummary"
+      },
+      "minItems": 2,
+      "title": "Group Summaries",
+      "type": "array"
+    },
+    "input_bindings": {
+      "items": {
+        "$ref": "#/$defs/InputChecksumBinding"
+      },
+      "minItems": 4,
+      "title": "Input Bindings",
+      "type": "array"
+    },
+    "metric_contrasts": {
+      "items": {
+        "$ref": "#/$defs/MetricContrast"
+      },
+      "title": "Metric Contrasts",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "overall_rank": {
+      "default": null,
+      "title": "Overall Rank",
+      "type": "null"
+    },
+    "overall_score": {
+      "default": null,
+      "title": "Overall Score",
+      "type": "null"
+    },
+    "profile_state": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "Profile State",
+      "type": "string"
+    },
+    "reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "result_id": {
+      "pattern": "^product-comparison-stability:[a-f0-9]{16}$",
+      "title": "Result Id",
+      "type": "string"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "stability_results": {
+      "items": {
+        "$ref": "#/$defs/GroupStability"
+      },
+      "minItems": 2,
+      "title": "Stability Results",
+      "type": "array"
+    },
+    "tool_id": {
+      "const": "P0-07",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "result_id",
+    "tool_id",
+    "tool_version",
+    "comparison_ref",
+    "spec_ref",
+    "input_bindings",
+    "comparison_eligibility",
+    "comparison_mode",
+    "profile_state",
+    "group_summaries",
+    "metric_contrasts",
+    "stability_results",
+    "confounded_factors",
+    "evidence_refs",
+    "reason_codes"
+  ],
+  "title": "ProductComparisonStabilityProfile",
+  "type": "object"
+}
