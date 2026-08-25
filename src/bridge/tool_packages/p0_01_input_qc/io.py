@@ -247,6 +247,14 @@ def build_declared_lineage(
             except (ValidationError, ValueError):
                 return _lineage_unavailable(base_view, "biological_unit_lineage_reference_invalid")
 
+        required_kinds = {
+            BiologicalUnitKind(declaration.source_unit_kind),
+            declaration.analysis_unit_kind,
+            BiologicalUnitKind(declaration.independence_group_kind),
+        }
+        if not required_kinds.issubset(refs):
+            return _lineage_unavailable(base_view, "biological_unit_lineage_required_reference_missing")
+
         source_kind = BiologicalUnitKind(declaration.source_unit_kind)
         if refs[source_kind] != declaration.source_unit_ref:
             return _lineage_unavailable(base_view, "biological_unit_lineage_source_mismatch")

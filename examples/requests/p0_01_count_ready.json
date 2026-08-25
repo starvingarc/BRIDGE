@@ -15,9 +15,15 @@
             "object_id": "independence-scope:example-product",
             "object_version": "1.0.0"
           },
-          "observation_ref_columns": {
-            "donor": "donor_ref",
-            "preparation": "preparation_ref"
+          "constant_unit_refs": {
+            "donor": {
+              "object_id": "donor:example-donor",
+              "object_version": "1.0.0"
+            },
+            "preparation": {
+              "object_id": "preparation:example-product",
+              "object_version": "1.0.0"
+            }
           },
           "source_unit_kind": "preparation",
           "source_unit_ref": {

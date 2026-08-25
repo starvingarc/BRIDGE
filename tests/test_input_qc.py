@@ -17,6 +17,7 @@ from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitAssignmentArtifact,
     BiologicalUnitManifest,
     biological_unit_assignment_reasons,
+    observation_ids_sha256,
 )
 from bridge.toolkit.contracts import (
     ExecutionState,
@@ -243,12 +244,26 @@ def test_v2_profile_binds_exact_input_and_declared_lineage(
     assert manifest.assignment_row_count == manifest.n_observations == 6
     assert manifest.analysis_unit_kind.value == "preparation"
     assert manifest.independence_group_kind == "donor"
+    assert manifest.selected_artifact_sha256 == before
     assert profile_v2.measurement_spec_version == "0.1.0"
     assert profile_v2.selected_data_view is not None
+    expected_observation_digest = observation_ids_sha256(
+        [f"cell-{index}" for index in range(6)]
+    )
     assert profile_v2.selected_data_view.view_kind == "all_observations"
+    assert profile_v2.selected_data_view.artifact_id == "input-asset:asset-1"
+    assert profile_v2.selected_data_view.parent_asset_id == "asset-1"
     assert profile_v2.selected_data_view.sha256 == before
     assert profile_v2.selected_data_view.parent_asset_sha256 == before
+    assert profile_v2.selected_data_view.matrix_location == "X"
+    assert profile_v2.selected_data_view.matrix_semantics == "raw_counts"
     assert profile_v2.selected_data_view.n_observations == 6
+    assert (
+        profile_v2.selected_data_view.observation_ids_sha256
+        == expected_observation_digest
+    )
+    assert assignment.observation_ids_sha256 == expected_observation_digest
+    assert manifest.observation_ids_sha256 == expected_observation_digest
     assert profile_v2.selected_data_view.biological_unit_manifest_ref == manifest.ref.ref
     assert (
         profile_v2.selected_data_view.biological_unit_manifest_sha256
@@ -273,6 +288,9 @@ def test_v2_profile_binds_exact_input_and_declared_lineage(
         ("missing_column", "biological_unit_lineage_column_missing"),
         ("source_mismatch", "biological_unit_lineage_source_mismatch"),
         ("capture_as_independence", "biological_unit_lineage_metadata_invalid"),
+        ("source_ref_unmapped", "biological_unit_lineage_metadata_invalid"),
+        ("analysis_ref_unmapped", "biological_unit_lineage_metadata_invalid"),
+        ("independence_ref_unmapped", "biological_unit_lineage_metadata_invalid"),
     ],
 )
 def test_lineage_metadata_failure_is_explicit_without_blocking_v1(
@@ -293,7 +311,28 @@ def test_lineage_metadata_failure_is_explicit_without_blocking_v1(
                 "preparation": _versioned_ref("preparation:other@1.0.0"),
                 "donor": _versioned_ref("donor:donor-a@1.0.0"),
             }
-        else:
+        elif case == "source_ref_unmapped":
+            declaration["source_unit_kind"] = "sample"
+            declaration["source_unit_ref"] = _versioned_ref("sample:sample-a@1.0.0")
+            declaration["observation_ref_columns"] = {}
+            declaration["constant_unit_refs"] = {
+                "preparation": _versioned_ref("preparation:product-a@1.0.0"),
+                "donor": _versioned_ref("donor:donor-a@1.0.0"),
+            }
+        elif case == "analysis_ref_unmapped":
+            declaration["source_unit_kind"] = "sample"
+            declaration["source_unit_ref"] = _versioned_ref("sample:sample-a@1.0.0")
+            declaration["observation_ref_columns"] = {}
+            declaration["constant_unit_refs"] = {
+                "sample": _versioned_ref("sample:sample-a@1.0.0"),
+                "donor": _versioned_ref("donor:donor-a@1.0.0"),
+            }
+        elif case == "independence_ref_unmapped":
+            declaration["observation_ref_columns"] = {}
+            declaration["constant_unit_refs"] = {
+                "preparation": _versioned_ref("preparation:product-a@1.0.0"),
+            }
+        elif case == "capture_as_independence":
             declaration["independence_group_kind"] = "capture"
             declaration["observation_ref_columns"] = {}
             declaration["constant_unit_refs"] = {

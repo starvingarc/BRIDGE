@@ -24,11 +24,11 @@ When `asset.metadata.biological_unit_lineage` supplies a complete versioned decl
 
 Validation at the final source state:
 
-- P0-01 plus shared scientific-contract tests: `66 passed, 3 warnings`.
-- Full source suite: `1010 passed, 3 warnings`.
+- P0-01 plus shared scientific-contract tests: `69 passed, 3 warnings`.
+- Full source suite after merging current `main`: `1010 passed, 3 warnings`.
 - The generated v2 profile, assignment and manifest payloads passed their packaged Draft 2020-12 JSON Schemas.
 - Deterministic reruns matched checksums for the full artifact set, including declared lineage artifacts.
-- Parameterized failure cases covered absent metadata, absent mapped columns, source mismatch and an illegal capture independence group; all preserved the v0.1 result and emitted only v2 `unavailable` lineage.
+- Parameterized failure cases covered absent metadata, absent mapped columns, missing source/analysis/independence reference sources, source mismatch and an illegal capture independence group; all preserved the v0.1 result and emitted only v2 `unavailable` lineage.
 - Input checksums were unchanged before and after successful lineage generation.
 
 The three warnings are the pre-existing duplicate-gene fixture warning and two SciPy sparse-matrix deprecations. No catalog, shared runtime, shared contract, schema registry or exporter file changed.
