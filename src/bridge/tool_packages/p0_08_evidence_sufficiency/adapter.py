@@ -32,11 +32,11 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.executor import (
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     DomainGateInput,
     EvidenceSensitivityRecord,
-    EvidenceSufficiencyRunResult,
+    EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
     EvidenceValidationRecord,
-    GateRuleSpec,
+    GateRuleSpecV2 as GateRuleSpec,
     PriorApplicabilityRecord,
-    ReasonCodeCatalog,
+    ReasonCodeCatalogV2 as ReasonCodeCatalog,
     VersionedObjectPointer,
     published_ref,
 )
@@ -45,9 +45,9 @@ from bridge.toolkit.contracts import (
     EligibilityResult,
     ExecutionState,
     FrozenModel,
-    MeasurementResult,
-    MeasurementSpec,
-    QCReadinessProfile,
+    MeasurementResultV2 as MeasurementResult,
+    MeasurementSpecV2 as MeasurementSpec,
+    QCReadinessProfileV2 as QCReadinessProfile,
     StructuredInputRef,
     ToolPackageSpecV2,
     ToolRequest,
@@ -56,13 +56,13 @@ from bridge.toolkit.contracts import (
 )
 
 
-RESULT_SCHEMA_REF = "bridge://schemas/evidence-sufficiency-run-result/v0.1"
+RESULT_SCHEMA_REF = "bridge://schemas/evidence-sufficiency-run-result/v0.2"
 ROLE_SCHEMAS = {
-    "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+    "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
     "domain_gate_input": "bridge://schemas/domain-gate-input/v0.1",
-    "measurement_spec": "bridge://schemas/measurement-spec/v0.1",
-    "qc_readiness_profile": "bridge://schemas/qc-readiness-profile/v0.1",
-    "measurement_result": "bridge://schemas/measurement-result/v0.1",
+    "measurement_spec": "bridge://schemas/measurement-spec/v0.2",
+    "qc_readiness_profile": "bridge://schemas/qc-readiness-profile/v0.2",
+    "measurement_result": "bridge://schemas/measurement-result/v0.2",
     "validation_record": "bridge://schemas/evidence-validation-record/v0.1",
     "prior_applicability_record": "bridge://schemas/prior-applicability-record/v0.1",
     "sensitivity_record": "bridge://schemas/evidence-sensitivity-record/v0.1",
@@ -151,8 +151,8 @@ HOME_RELATIVE_PATH = re.compile(
     re.IGNORECASE,
 )
 VERSIONLESS_ROLE_OBJECT_VERSIONS = {
-    "qc_readiness_profile": "0.1.0",
-    "measurement_result": "0.1.0",
+    "qc_readiness_profile": "0.2.0",
+    "measurement_result": "0.2.0",
 }
 
 
@@ -314,12 +314,12 @@ adapter = EvidenceSufficiencyAdapter()
 
 
 def load_gate_rule() -> GateRuleSpec:
-    payload = _resource_bytes("gate_rule_spec_v0.1.json")
+    payload = _resource_bytes("gate_rule_spec_v0.2.json")
     return GateRuleSpec.model_validate(_loads_json(payload))
 
 
 def load_reason_catalog() -> ReasonCodeCatalog:
-    payload = _resource_bytes("reason_code_catalog_v0.1.json")
+    payload = _resource_bytes("reason_code_catalog_v0.2.json")
     catalog = ReasonCodeCatalog.model_validate(_loads_json(payload))
     if tuple(reason.code for reason in catalog.reasons) != REASON_CODES:
         raise ValueError("packaged P0-08 reason catalog order differs from the executor")
@@ -327,7 +327,7 @@ def load_reason_catalog() -> ReasonCodeCatalog:
 
 
 def gate_rule_sha256() -> str:
-    return hashlib.sha256(_resource_bytes("gate_rule_spec_v0.1.json")).hexdigest()
+    return hashlib.sha256(_resource_bytes("gate_rule_spec_v0.2.json")).hexdigest()
 
 
 def _resource_bytes(filename: str) -> bytes:
@@ -448,7 +448,7 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         if (
             gate_ref.sha256 != gate_rule_sha256()
             or loaded.bytes_by_input_id[gate_ref.input_id]
-            != _resource_bytes("gate_rule_spec_v0.1.json")
+            != _resource_bytes("gate_rule_spec_v0.2.json")
         ):
             reasons.append("unsupported_gate_rule_spec")
     domains = _objects_for_role(request, loaded, "domain_gate_input", DomainGateInput)
@@ -497,26 +497,102 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
                 reasons.append("domain_input_product_definition_mismatch")
             if domain.qc_profile_input_id is not None:
                 qc_profile = loaded.objects_by_input_id.get(domain.qc_profile_input_id)
-                if isinstance(qc_profile, QCReadinessProfile) and (
-                    qc_profile.assay != measurement_spec.assay
-                    or qc_profile.measurement_spec_status != measurement_spec.status
-                ):
-                    reasons.append("domain_input_measurement_spec_mismatch")
+                if isinstance(qc_profile, QCReadinessProfile):
+                    qc_keys = {
+                        "downstream_scientific_modules",
+                        *measurement_spec.tool_refs,
+                    }
+                    qc_blocks_bound_tool = any(
+                        qc_profile.module_eligibility.get(key, "")
+                        .strip()
+                        .casefold()
+                        in {"ineligible", "not_implemented", "blocked"}
+                        for key in qc_keys
+                    )
+                    if (
+                        qc_profile.assay != measurement_spec.assay
+                        or qc_profile.measurement_spec_status
+                        != measurement_spec.status
+                        or (
+                            qc_profile.measurement_spec_version is not None
+                            and qc_profile.measurement_spec_version
+                            != measurement_spec.version
+                        )
+                        or qc_blocks_bound_tool
+                    ):
+                        reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in domain.measurement_result_input_ids:
                 value = loaded.objects_by_input_id.get(input_id)
                 if (
                     isinstance(value, MeasurementResult)
-                    and value.measurement_spec_id != measurement_spec.measurement_spec_id
+                    and (
+                        value.measurement_spec_id
+                        != measurement_spec.measurement_spec_id
+                        or value.measurement_spec_version
+                        != measurement_spec.version
+                    )
                 ):
                     reasons.append("domain_input_measurement_spec_mismatch")
+            validation_records: list[EvidenceValidationRecord] = []
             for input_id in domain.validation_record_input_ids:
                 value = loaded.objects_by_input_id.get(input_id)
-                if isinstance(value, EvidenceValidationRecord) and (
-                    value.modality != measurement_spec.assay
-                    or not measurement_spec.tool_refs
-                    or value.tool_ref not in measurement_spec.tool_refs
-                ):
-                    reasons.append("domain_input_measurement_spec_mismatch")
+                if isinstance(value, EvidenceValidationRecord):
+                    validation_records.append(value)
+                    if (
+                        value.modality != measurement_spec.assay
+                        or not measurement_spec.tool_refs
+                        or value.tool_ref not in measurement_spec.tool_refs
+                    ):
+                        reasons.append("domain_input_measurement_spec_mismatch")
+            required_validation = [
+                record
+                for record in validation_records
+                if record.required_for_interpretation
+            ]
+            if required_validation and (
+                measurement_spec.validation_ref is None
+                or measurement_spec.validation_ref
+                not in {record.validation_record_id for record in required_validation}
+                or any(
+                    record.context_of_use_ref
+                    not in measurement_spec.applicable_contexts
+                    for record in required_validation
+                )
+            ):
+                reasons.append("domain_input_measurement_spec_mismatch")
+            prior_records = [
+                value
+                for input_id in domain.prior_record_input_ids
+                if isinstance(
+                    (value := loaded.objects_by_input_id.get(input_id)),
+                    PriorApplicabilityRecord,
+                )
+            ]
+            required_priors = [
+                record for record in prior_records if record.required_for_interpretation
+            ]
+            declared_prior_refs = {
+                *measurement_spec.prior_refs,
+                *measurement_spec.reference_refs,
+            }
+            if any(
+                record.prior_ref not in declared_prior_refs
+                for record in required_priors
+            ):
+                reasons.append("domain_input_measurement_spec_mismatch")
+            if domain.prior_requirement.value == "not_required" and required_priors:
+                reasons.append("domain_input_measurement_spec_mismatch")
+            required_sensitivity_kinds = set(domain.required_sensitivity_kinds)
+            if any(
+                isinstance(
+                    (value := loaded.objects_by_input_id.get(input_id)),
+                    EvidenceSensitivityRecord,
+                )
+                and value.required_for_interpretation
+                and value.sensitivity_kind not in required_sensitivity_kinds
+                for input_id in domain.sensitivity_record_input_ids
+            ):
+                reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in [
                 *domain.validation_record_input_ids,
                 *domain.prior_record_input_ids,
@@ -731,7 +807,8 @@ def _write_scientific_payloads(
         "evidence_sufficiency_profiles.json": (
             "evidence_sufficiency_profiles",
             {
-                "schema_ref": "bridge://schemas/evidence-sufficiency-profile/v0.1",
+                "projection_kind": "noncanonical_convenience_projection",
+                "canonical_result_ref": result.result_id,
                 "profiles": [profile.model_dump(mode="json") for profile in result.profiles],
             },
         ),
@@ -788,8 +865,9 @@ def _manifest_payload(
         "result_schema_ref": spec.result_schema_ref,
         "input_hash": input_hash,
         "structured_input_provenance_policy": {
-            "bundle_identity": "canonical_semantic_sha256",
+            "bundle_identity": "canonical_semantic_sha256_with_exact_source_sha256",
             "invocation_source_checksum": "ToolRunV2.request.object_inputs[].sha256",
+            "result_source_checksum": "source_object_bindings[].source_sha256",
         },
         "structured_inputs": [
             {
@@ -800,6 +878,7 @@ def _manifest_payload(
                 "semantic_sha256": canonical_object_sha256(
                     objects_by_input_id[ref.input_id]
                 ),
+                "source_sha256": ref.sha256,
                 "media_type": ref.media_type,
             }
             for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id))
