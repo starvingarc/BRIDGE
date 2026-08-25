@@ -1,0 +1,132 @@
+{
+  "$defs": {
+    "DevelopmentStageRole": {
+      "enum": [
+        "earlier",
+        "within_window",
+        "later",
+        "branch_shift",
+        "unresolved"
+      ],
+      "title": "DevelopmentStageRole",
+      "type": "string"
+    },
+    "DevelopmentStateAssignment": {
+      "additionalProperties": false,
+      "properties": {
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "provenance_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "stage_role": {
+          "$ref": "#/$defs/DevelopmentStageRole"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        },
+        "target_related": {
+          "title": "Target Related",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state_id",
+        "label_level",
+        "stage_role",
+        "target_related"
+      ],
+      "title": "DevelopmentStateAssignment",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/development-state-map/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "annotation_vocabulary_ref": {
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+      "title": "Annotation Vocabulary Ref",
+      "type": "string"
+    },
+    "assignments": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentStateAssignment"
+      },
+      "minItems": 1,
+      "title": "Assignments",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "review_state": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "Review State",
+      "type": "string"
+    },
+    "state_map_id": {
+      "pattern": "^development-state-map:[A-Za-z0-9._:-]+$",
+      "title": "State Map Id",
+      "type": "string"
+    },
+    "state_map_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "State Map Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "state_map_id",
+    "state_map_version",
+    "product_definition_ref",
+    "annotation_vocabulary_ref",
+    "review_state",
+    "assignments"
+  ],
+  "title": "DevelopmentStateMap",
+  "type": "object"
+}

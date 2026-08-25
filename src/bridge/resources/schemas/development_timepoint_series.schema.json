@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "DevelopmentTimepointRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "independence_group_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "minItems": 1,
+          "title": "Independence Group Refs",
+          "type": "array"
+        },
+        "state_counts": {
+          "items": {
+            "$ref": "#/$defs/DevelopmentTimepointStateCount"
+          },
+          "title": "State Counts",
+          "type": "array"
+        },
+        "timepoint_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Timepoint Id",
+          "type": "string"
+        },
+        "timepoint_label": {
+          "minLength": 1,
+          "title": "Timepoint Label",
+          "type": "string"
+        },
+        "timepoint_order": {
+          "minimum": 0,
+          "title": "Timepoint Order",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "timepoint_id",
+        "timepoint_order",
+        "timepoint_label",
+        "independence_group_refs",
+        "denominator",
+        "state_counts"
+      ],
+      "title": "DevelopmentTimepointRecord",
+      "type": "object"
+    },
+    "DevelopmentTimepointStateCount": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "label_level",
+        "count"
+      ],
+      "title": "DevelopmentTimepointStateCount",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/development-timepoint-series/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentTimepointRecord"
+      },
+      "minItems": 1,
+      "title": "Records",
+      "type": "array"
+    },
+    "series_id": {
+      "pattern": "^development-timepoint-series:[A-Za-z0-9._:-]+$",
+      "title": "Series Id",
+      "type": "string"
+    },
+    "series_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Series Version",
+      "type": "string"
+    },
+    "state_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "time_basis": {
+      "enum": [
+        "in_vitro_day",
+        "declared_stage"
+      ],
+      "title": "Time Basis",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "series_id",
+    "series_version",
+    "product_case_ref",
+    "state_map_ref",
+    "time_basis",
+    "records"
+  ],
+  "title": "DevelopmentTimepointSeries",
+  "type": "object"
+}
