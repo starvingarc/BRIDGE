@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -20,7 +21,10 @@ from bridge.tool_packages._configurable_contracts import (
     profile_lineage_reasons,
 )
 from bridge.toolkit.contracts import (
+    CellStateComposition,
+    CellStateCompositionRecord,
     CellStateEvidenceProfileV2,
+    CellStateEvidenceProfileV3,
     DataViewBinding,
     EvidenceState,
     ExecutionState,
@@ -678,6 +682,134 @@ def test_public_profile_schemas_require_paired_lineage_references() -> None:
     assert list(profile_validator.iter_errors(profile))
 
 
+def test_published_cell_state_v2_schema_bytes_are_unchanged() -> None:
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "bridge"
+        / "resources"
+        / "schemas"
+        / "cell_state_evidence_profile_v2.schema.json"
+    )
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "1249a80c8e4a909efa7bd7770a5fcef93602ed2bd663719a34bf49b7dc0fe102"
+    )
+
+
+def test_cell_state_v3_is_candidate_only_and_preserves_denominators() -> None:
+    with pytest.raises(ValidationError, match="positive composition views"):
+        CellStateCompositionRecord(
+            view="source_specific",
+            source_id="REF-CHEN-SC",
+            label="L1:Neuron_DA",
+            label_level="L1",
+            state_evidence_state="unknown",
+            denominator_scope="selected_data_view",
+            count=1,
+            fraction=0.125,
+            denominator=8,
+        )
+
+    with pytest.raises(ValidationError, match="state_evidence_state"):
+        CellStateCompositionRecord(
+            view="source_specific",
+            source_id="REF-CHEN-SC",
+            label="L1:Neuron_DA",
+            label_level="L1",
+            state_evidence_state="assigned",
+            denominator_scope="selected_data_view",
+            count=8,
+            fraction=1.0,
+            denominator=8,
+        )
+
+    with pytest.raises(ValidationError, match="partition"):
+        CellStateComposition(
+            state="shadow",
+            records=[
+                {
+                    "view": "reconciliation_state",
+                    "source_id": None,
+                    "label": "source_conflict",
+                    "label_level": "L1",
+                    "state_evidence_state": "unresolved",
+                    "denominator_scope": "selected_data_view",
+                    "count": 7,
+                    "fraction": 0.875,
+                    "denominator": 8,
+                }
+            ],
+        )
+
+    payload = {
+        "profile_id": "cell-state-profile:demo",
+        "assay": "scRNA-seq",
+        "measurement_spec_id": "measurement-spec:demo",
+        "measurement_spec_version": "1.0.0",
+        "measurement_spec_sha256": "2" * 64,
+        "measurement_spec_status": "candidate",
+        "annotation_vocabulary_ref": "annotation-vocabulary:demo",
+        "annotation_vocabulary_version": "1.0.0",
+        "annotation_vocabulary_sha256": "f" * 64,
+        "reference_snapshot_ref": "reference-manifest:demo",
+        "reference_manifest_version": "1.0.0",
+        "reference_manifest_sha256": "1" * 64,
+        "n_observations": 8,
+        "n_genes": 100,
+        "denominator": "selected_data_view",
+        "label_levels": {},
+        "source_support": {},
+        "marker_program_evidence": {},
+        "prediction_sets": {},
+        "composition": {
+            "state": "shadow",
+            "records": [
+                {
+                    "view": "source_specific",
+                    "source_id": "REF-CHEN-SC",
+                    "label": "L1:Neuron_DA",
+                    "label_level": "L1",
+                    "state_evidence_state": "candidate",
+                    "denominator_scope": "selected_data_view",
+                    "count": 8,
+                    "fraction": 1.0,
+                    "denominator": 8,
+                },
+                {
+                    "view": "reconciliation_state",
+                    "source_id": None,
+                    "label": "single_source_supported",
+                    "label_level": "L1",
+                    "state_evidence_state": "candidate",
+                    "denominator_scope": "selected_data_view",
+                    "count": 8,
+                    "fraction": 1.0,
+                    "denominator": 8,
+                },
+            ],
+        },
+        "gene_coverage": {},
+        "modality_sensitivity": {},
+        "upstream_qc_profile_ref": "qc-profile:demo",
+        "upstream_qc_profile_sha256": "e" * 64,
+        "input_data_view": _data_view_with_manifest(),
+        "open_set_state": "not_assessed",
+        "calibration_state": "not_assessed",
+        "producer_run_ref": "demo",
+        "producer_tool_id": "P0-02",
+        "producer_tool_version": "0.4.9",
+        "environment_spec_ref": "bridge-p0-02-cell-state-v1",
+    }
+    profile = CellStateEvidenceProfileV3.model_validate(payload).model_dump(
+        mode="json"
+    )
+    validator = Draft202012Validator(
+        load_schema("bridge://schemas/cell-state-evidence-profile/v0.3")
+    )
+    assert not list(validator.iter_errors(profile))
+
+
 def test_profile_lineage_rejects_unrelated_product_case_source_unit() -> None:
     manifest = _manifest()
     view = _data_view_with_manifest()
@@ -698,27 +830,38 @@ def test_profile_lineage_rejects_unrelated_product_case_source_unit() -> None:
         module_eligibility={},
         selected_data_view=view,
     )
-    cell_state = CellStateEvidenceProfileV2(
+    cell_state = CellStateEvidenceProfileV3(
         profile_id="cell-state-profile:demo",
         assay="scRNA-seq",
         measurement_spec_id="measurement-spec:demo",
         measurement_spec_version="1.0.0",
+        measurement_spec_sha256="2" * 64,
         measurement_spec_status="candidate",
-        annotation_vocabulary_ref="annotation-vocabulary:demo@1.0.0",
-        reference_snapshot_ref="reference-manifest:demo@1.0.0",
+        annotation_vocabulary_ref="annotation-vocabulary:demo",
+        annotation_vocabulary_version="1.0.0",
+        annotation_vocabulary_sha256="f" * 64,
+        reference_snapshot_ref="reference-manifest:demo",
+        reference_manifest_version="1.0.0",
+        reference_manifest_sha256="1" * 64,
         n_observations=8,
         n_genes=100,
-        denominator="qc_selected_observations",
+        denominator="selected_data_view",
         label_levels={},
         source_support={},
         marker_program_evidence={},
         prediction_sets={},
-        composition={"records": []},
+        composition={"state": "not_assessed", "records": []},
         gene_coverage={},
         modality_sensitivity={},
         upstream_qc_profile_ref=qc.profile_id,
         upstream_qc_profile_sha256="e" * 64,
         input_data_view=view,
+        open_set_state="not_assessed",
+        calibration_state="not_assessed",
+        producer_run_ref="demo",
+        producer_tool_id="P0-02",
+        producer_tool_version="0.4.9",
+        environment_spec_ref="bridge-p0-02-cell-state-v1",
     )
     product_case = ProductCase(
         object_version="0.1.0",

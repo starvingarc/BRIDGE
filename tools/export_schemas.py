@@ -12,6 +12,7 @@ from bridge.toolkit.contracts import (
     CellStateBenchmarkSpec,
     CellStateEvidenceProfile,
     CellStateEvidenceProfileV2,
+    CellStateEvidenceProfileV3,
     CellStateReleaseManifest,
     EligibilityResult,
     FreezeGateSpec,
@@ -69,6 +70,10 @@ MODELS = {
     "cell_state_evidence_profile_v2": (
         "bridge://schemas/cell-state-evidence-profile/v0.2",
         CellStateEvidenceProfileV2,
+    ),
+    "cell_state_evidence_profile_v3": (
+        "bridge://schemas/cell-state-evidence-profile/v0.3",
+        CellStateEvidenceProfileV3,
     ),
     "cell_state_release_manifest": ("bridge://schemas/cell-state-release-manifest/v0.1", CellStateReleaseManifest),
     "eligibility_result": ("bridge://schemas/eligibility-result/v0.1", EligibilityResult),

@@ -9,7 +9,7 @@
 | 适用范围 | 移植前 scRNA-seq / snRNA-seq；PD hPSC-mDA 为首个实例 |
 | Annotation snapshot | `BRIDGE-PD-vMB-ANNOTATION-v0.1-draft` |
 | 主要输出 | `CellStateEvidenceProfile` |
-| 当前实现 | P0-02 v0.4 可执行 shadow baseline；科学冻结合同与 pilot harness 已建立 |
+| 当前实现 | P0-02 v0.4.9 可执行 shadow baseline；科学冻结合同与 pilot harness 已建立 |
 
 ## 1. 任务目标
 
@@ -142,6 +142,34 @@ BRIDGE 的方法和评测合同冻结后，Track A 才能作为署名的外部 b
 | `composition` | target、adjacent、off-target、unknown 的比例、分母和区间 |
 | `hybrid_identity` | 连续权重、残差及 discrete/hybrid/transitioning 候选；验证前为 `shadow` |
 | `provenance` | tool、reference、annotation、environment、parameter 和 Evidence ID |
+
+### 7.3 Additive V3 handoff
+
+`CellStateEvidenceProfileV3` 是实际 P0-02 run 的附加 sidecar，不替换
+v0.1 result。deployment-owned `BRIDGE_QC_PROFILE_CATALOG` 必须保留
+`path`/`sha256` 指向 QC v1，并以 `v2_path`/`v2_sha256` 指向
+P0-01 的 `qc_readiness_profile_v2.json`。P0-02 读取同一份 checksummed
+QC V2 bytes，核验其中 selected DataView 的 artifact checksum、矩阵语义、
+observation 数量及 observation-ID digest 后，才生成 V3 sidecar。
+
+V3 composition 当前只晋升 L1，因为 L2 的分母是层级 eligible subset，
+尚无独立 content-addressed DataView。每行必须显式记录
+`state_evidence_state`；source-specific 与 consensus-supported 正向行
+在 v0.3 只能是 `candidate`，`assigned` 不属于本版枚举。
+`source_conflict` 保持 `unresolved`，`unavailable` 保持
+`unavailable`，不得作为正向组成证据。reconciliation 行必须完整分割
+selected-view 分母，consensus 行必须与 reconciliation 的
+`consensus_supported` 计数一致。
+
+V3 另绑定 canonical MeasurementSpec model bytes 的 SHA-256。现有
+artifact manifest 必须收录 V3 artifact 的 kind、SHA-256 与 byte size。
+P0-02 在发布前和写出后都复核 QC v1/V2 artifact checksum；运行中替换
+任一 upstream profile 均 fail closed。
+
+若 catalog 没有两个 V2 字段，v0.1 运行保持成功，但 ToolRun warning
+明确报告 V3 handoff unavailable；不得从 v1 profile、文件名或上传
+metadata 猜测 DataViewBinding。若 V2 字段不完整、checksum 错误或
+DataView 不匹配，则 fail closed。
 
 ## 8. 运行环境
 
