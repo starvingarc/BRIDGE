@@ -2,9 +2,26 @@
 
 ## Purpose
 
-BRIDGE organizes reproducible transcriptomic evidence for cell-therapy product characterization. PD hPSC-mDA is the first complete application; the same high-level contract may later support other products after their definitions, references, priors and measurement specifications are replaced and validated.
+BRIDGE is an evidence-grounded scientific Agent for cell-therapy product
+evaluation. It is intended to work with researchers to define a case, plan and
+orchestrate analyses, retrieve governed knowledge, reconcile evidence, explain
+uncertainty and prepare reviewable reports and next-step hypotheses.
 
-## Current Outputs
+PD hPSC-mDA is the first biological use case. The same product architecture may
+later support other products after their definitions, references, priors and
+measurement specifications are replaced and validated.
+
+## Implementation Stage
+
+The current `main` branch implements the deterministic P0 tool and contract
+layer that the Agent will call. The conversational Coordinator, AnalysisPlan and
+task-graph runtime, Web application, product-evidence database, Visualization
+Composer and interactive interpretation/recommendation workflow remain target
+product capabilities rather than integrated runtime behavior.
+
+## Current Tool-layer Outputs
+
+![The current P0 tool layer connects developmental references and a pre-transplant cell product to five evidence domains and traceable outputs.](assets/bridge-biological-workflow.svg)
 
 - Input readiness and explicit evidence gaps.
 - Cell-state, identity, developmental, composition, proliferation and stress-response measurements as their modules become validated.
@@ -29,4 +46,13 @@ No P0 `ScoreContract` is frozen in the current release. All domain outputs there
 
 ## Agent Boundary
 
-The Agent may collect requirements, choose registered high-level tools, retrieve frozen knowledge and explain returned evidence. It cannot invent missing metadata, choose a favorable method after seeing results, modify numerical output, promote a candidate method or approve public release.
+The Agent may collect requirements, construct an analysis plan, choose and
+orchestrate registered high-level tools, retrieve frozen knowledge, reconcile
+returned evidence and explain it to researchers. Deterministic tools—not the
+language model—own numerical values, denominators, thresholds, evidence states,
+versions and Evidence IDs.
+
+The Agent cannot invent missing metadata, choose a favorable method after seeing
+results, modify tool output, promote a candidate method or approve public
+release. Human confirmation remains required at consequential scientific and
+release boundaries.
