@@ -25,7 +25,7 @@
 - [Documentation guide](documentation-guide.md)
 - [Decision log](decision-log.md)
 - [Repository handbook](../AGENTS.md)
-- [Active plans](../PLANS.md)
+- [Active plans](../plans/README.md)
 
 ## Validation Records
 

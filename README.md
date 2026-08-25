@@ -69,6 +69,8 @@ Each run preserves the input and records the applicable measurement, reference, 
 | `src/bridge/tool_packages/` | The 12 biological analysis and evidence packages, their specifications, Tool Cards, and package-owned resources |
 | `src/bridge/resources/schemas/` | Packaged public JSON Schemas used by Python and non-Python Agent clients |
 | `docs/` | Product, scientific, integration, and validation documentation |
+| `knowledge/` | Curated method/source inputs and the human-readable active-method shortlist |
+| `scripts/` | Repository maintenance and deterministic resource generation; not Agent tools |
 | `tests/` | Executable behavior and scientific-boundary checks |
 
 ## Scientific boundaries

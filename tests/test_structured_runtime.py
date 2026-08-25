@@ -29,7 +29,7 @@ from bridge.toolkit.contracts import (
 )
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.schemas import load_schema
-from tools import check_repository as repository_policy
+from scripts import check_repository as repository_policy
 
 
 RESULT_SCHEMA_REF = "bridge://schemas/eligibility-result/v0.1"
@@ -1446,6 +1446,9 @@ def test_repository_policy_rejects_root_contract_projections() -> None:
         [
             Path("schemas/example.schema.json"),
             Path("tool_packages/P0-01/README.md"),
+            Path("catalog_seed/source_verification.json"),
+            Path("tools/check_repository.py"),
+            Path("PLANS.md"),
         ],
         problems,
     )
@@ -1453,6 +1456,9 @@ def test_repository_policy_rejects_root_contract_projections() -> None:
     assert problems == [
         "duplicate root projection: schemas/example.schema.json",
         "duplicate root projection: tool_packages/P0-01/README.md",
+        "obsolete root directory: catalog_seed/source_verification.json",
+        "obsolete root directory: tools/check_repository.py",
+        "obsolete root plan index: PLANS.md",
     ]
 
 

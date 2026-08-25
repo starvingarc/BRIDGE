@@ -142,6 +142,10 @@ def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> Non
     for relative_path in tracked_files:
         if relative_path.parts and relative_path.parts[0] in {"schemas", "tool_packages"}:
             problems.append(f"duplicate root projection: {relative_path}")
+        if relative_path.parts and relative_path.parts[0] in {"catalog_seed", "tools"}:
+            problems.append(f"obsolete root directory: {relative_path}")
+        if relative_path == Path("PLANS.md"):
+            problems.append("obsolete root plan index: PLANS.md")
         if "legacy" in {part.casefold() for part in relative_path.parts}:
             problems.append(f"active legacy directory: {relative_path}")
         if (

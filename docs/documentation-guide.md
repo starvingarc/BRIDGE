@@ -8,7 +8,7 @@ Every stable document must be linked from `docs/index.md` or another indexed doc
 
 ## Plans
 
-`plans/` contains branch-scoped implementation state: motivation, scope, non-goals, tasks, decisions, risks and acceptance evidence. Plan paths are idempotent task identities and appear once in `PLANS.md`. Draft PRs may retain an active plan; ready-to-merge work records final evidence and resolves or explicitly carries forward every remaining item. Plans do not override stable contracts and do not serve as user documentation.
+`plans/` contains its active-plan index and branch-scoped implementation state: motivation, scope, non-goals, tasks, decisions, risks and acceptance evidence. Plan paths are idempotent task identities and appear once in `plans/README.md`. Draft PRs may retain an active plan; ready-to-merge work records final evidence and resolves or explicitly carries forward every remaining item. Plans do not override stable contracts and do not serve as user documentation.
 
 ## Biology-first Progress
 
@@ -24,7 +24,7 @@ responsibility has been explicitly agreed.
 
 ## Knowledge Catalog
 
-Catalog curation and source-verification inputs live under `catalog_seed/`. Runtime retrieval uses the packaged gzip snapshot, while `knowledge/active-methods.md` is the compact human shortlist. Exploded Method Cards, Source Cards and retrieval indexes are not tracked. A missing paper, license or version is represented explicitly rather than inferred.
+Catalog curation and source-verification inputs live under `knowledge/catalog/`. Runtime retrieval uses the packaged gzip snapshot, while `knowledge/active-methods.md` is the compact human shortlist. Exploded Method Cards, Source Cards and retrieval indexes are not tracked. A missing paper, license or version is represented explicitly rather than inferred.
 
 ## Historical Material
 
