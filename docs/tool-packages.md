@@ -4,6 +4,18 @@ BRIDGE exposes 12 high-level P0 tools. All are implemented and callable; all
 remain scientific candidates, and P0-02 and downstream domain evidence remain
 shadow unless their versioned scientific authorities are approved.
 
+**Jump to:** [P0-01–P0-02 intake and state evidence](#intake-and-state-evidence) ·
+[P0-03–P0-06 product-domain evidence](#product-domain-evidence) ·
+[P0-07/P0-12 comparison and graft context](#comparison-and-graft-context) ·
+[P0-08–P0-11 evidence governance and export](#evidence-governance-and-export)
+
+```text
+upload → audit → state evidence → domain evidence → sufficiency → graph → verify → export
+          P0-01      P0-02          P0-03–06        P0-08      P0-09   P0-10   P0-11
+
+P0-07 compares eligible product bundles. P0-12 keeps graft evidence independent.
+```
+
 ## Which document is authoritative?
 
 Each package has four deliberately different documentation layers:

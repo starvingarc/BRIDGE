@@ -4,7 +4,7 @@
 
 `docs/` contains approved scientific and engineering facts. Update the relevant stable document in the same change when code, Schema, privacy behavior, Tool IDs or claim boundaries change.
 
-Every stable document must be linked from `docs/index.md` or another indexed document. Proposed capabilities are labelled `candidate`, `proposed`, `shadow` or `not_implemented`.
+Every stable document must be linked from `docs/README.md` or another indexed document. Proposed capabilities are labelled `candidate`, `proposed`, `shadow` or `not_implemented`.
 
 ## Plans
 

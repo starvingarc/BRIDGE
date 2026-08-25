@@ -2,7 +2,7 @@
 
 BRIDGE accepts focused changes that preserve traceable evidence and honest
 scientific status. Read the [Agent handbook](AGENTS.md),
-[documentation index](docs/index.md) and [active plans](plans/README.md) before
+[documentation home](docs/README.md) and [active plans](plans/README.md) before
 starting work.
 
 ## Development setup
