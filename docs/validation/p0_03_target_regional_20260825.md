@@ -18,9 +18,11 @@ AnnotationVocabulary and ReferenceManifest. Every file has a real SHA-256; no
 private data, server path, laboratory identifier, gene list or product state is
 used.
 
-The StateRoleMap and assessment spec own all role assignments, requested
-channels and numerator/denominator role sets. Changing those objects changes the
-result without changing Python.
+P0-03 consumes the single StateRoleMap contract owned with P0-05 rather than
+publishing another model under the same Schema URI. That map owns product roles;
+the assessment spec binds its exact checksum and owns requested channels,
+target-role membership and regional state-ID numerator/denominator sets.
+Changing those objects changes the result without changing Python.
 
 ## Observed behavior
 
@@ -36,8 +38,8 @@ integer numerators and denominators. Repeated inputs reuse the same run ID and
 artifact bytes.
 
 MeasurementSpec, vocabulary, reference and QC checksum drift fails eligibility.
-ProductDefinition, DataView, assignment hierarchy, QC module eligibility,
-vocabulary labels and reference-source drift also fail closed. Upstream
+StateRoleMap checksum, ProductDefinition, DataView, assignment hierarchy, QC
+module eligibility, vocabulary labels and reference-source drift fail closed. Upstream
 `unknown` or `ood` produces `not_assessed`; all three metric values, numerators
 and denominators are null. A zero target-related denominator produces an
 `unavailable` regional metric rather than numeric zero. A changed existing
@@ -47,8 +49,9 @@ metric artifact prevents bundle reuse.
 
 - Focused P0-03 and registry suite: 31 passed.
 - Exactly 12 high-level Tool Packages remain discoverable.
-- Three public P0-03 Schemas and the detailed Tool Card were byte-identical
-  across two consecutive generator runs.
+- Two module-owned P0-03 Schemas, the shared P0-05 StateRoleMap Schema and the
+  detailed Tool Card were byte-identical across two consecutive generator
+  runs.
 - Knowledge validation passed with 354 methods, 396 bindings, no dangling
   method/source references and zero formally eligible methods.
 - Repository policy and staged diff checks passed.

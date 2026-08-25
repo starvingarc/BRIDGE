@@ -10,6 +10,9 @@ import pytest
 
 from bridge.tool_packages.p0_03_target_regional.adapter import ROLE_MODELS, adapter
 from bridge.tool_packages.p0_03_target_regional.models import PUBLIC_SCHEMA_MODELS
+from bridge.tool_packages.p0_05_off_target_control.models import (
+    StateRoleMap as SharedStateRoleMap,
+)
 from bridge.toolkit.contracts import (
     ExecutionState,
     ImplementationState,
@@ -93,36 +96,38 @@ def _base_payloads() -> dict[str, dict]:
         },
         "state_role_map": {
             "object_version": "0.1.0",
-            "role_map_id": "state-role-map:demo",
-            "role_map_version": "1.0.0",
+            "state_role_map_id": "state-role-map:demo",
+            "map_version": "1.0.0",
             "product_definition_ref": {
                 "object_id": "product-definition:demo",
                 "object_version": "1.0.0",
             },
-            "annotation_vocabulary_ref": "annotation-vocabulary:demo",
             "review_state": "draft",
             "assignments": [
                 {
                     "state_id": "state:alpha",
-                    "label_level": "L1",
-                    "lineage_role": "target",
-                    "regional_role": "target_region",
-                    "provenance_refs": [],
+                    "product_role": "target",
+                    "role_evidence_class": "synthetic",
+                    "evidence_direction": "supports",
+                    "source_refs": ["source:fully-synthetic"],
                 },
                 {
                     "state_id": "state:beta",
-                    "label_level": "L1",
-                    "lineage_role": "acceptable_adjacent",
-                    "regional_role": "acceptable_adjacent_region",
-                    "provenance_refs": [],
+                    "product_role": "acceptable_adjacent",
+                    "role_evidence_class": "synthetic",
+                    "evidence_direction": "supports",
+                    "source_refs": ["source:fully-synthetic"],
                 },
                 {
                     "state_id": "state:gamma",
-                    "label_level": "L1",
-                    "lineage_role": "not_target",
-                    "regional_role": "regional_shift",
-                    "provenance_refs": [],
+                    "product_role": "known_off_target",
+                    "role_evidence_class": "synthetic",
+                    "evidence_direction": "supports",
+                    "source_refs": ["source:fully-synthetic"],
                 },
+            ],
+            "provenance_refs": [
+                {"object_id": "source:fully-synthetic", "object_version": "1"}
             ],
         },
         "target_regional_assessment_spec": {
@@ -133,17 +138,22 @@ def _base_payloads() -> dict[str, dict]:
                 "object_id": "product-definition:demo",
                 "object_version": "1.0.0",
             },
+            "state_role_map_ref": {
+                "object_id": "state-role-map:demo",
+                "object_version": "1.0.0",
+            },
+            "state_role_map_sha256": "0" * 64,
             "status": "candidate",
             "composition_views": ["consensus_supported_only"],
             "included_label_levels": ["L1"],
             "source_ids": [],
-            "target_identity_numerator_lineage_roles": ["target"],
-            "regional_denominator_lineage_roles": [
-                "target",
-                "acceptable_adjacent",
+            "target_identity_numerator_product_roles": ["target"],
+            "regional_denominator_state_ids": [
+                "state:alpha",
+                "state:beta",
             ],
-            "regional_target_numerator_roles": ["target_region"],
-            "whole_product_target_region_roles": ["target_region"],
+            "regional_target_numerator_state_ids": ["state:alpha"],
+            "whole_product_target_region_state_ids": ["state:alpha"],
             "unmapped_state_policy": "not_assessed",
             "ambiguous_state_policy": "not_assessed",
             "spatial_policy": "not_assessed_without_projection",
@@ -284,6 +294,10 @@ def _prepare(payloads: dict[str, dict]) -> None:
     bind_reviewed_biological_units(payloads, view)
     qc = payloads["qc_readiness_profile"]
     qc["selected_data_view"] = deepcopy(view)
+    assessment = payloads["target_regional_assessment_spec"]
+    assessment["state_role_map_sha256"] = _sha(
+        payloads["state_role_map"]
+    )
     vocabulary = payloads["annotation_vocabulary"]
     reference = payloads["reference_manifest"]
     reference["vocabulary_sha256"] = _sha(vocabulary)
@@ -405,6 +419,8 @@ def test_p0_03_declares_the_eleven_object_v2_contract() -> None:
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert len(ROLE_MODELS) == 11
     assert ROLE_SCHEMAS["cell_state_evidence_profile"].endswith("/v0.3")
+    assert ROLE_MODELS["state_role_map"][1] is SharedStateRoleMap
+    assert "bridge://schemas/state-role-map/v0.1" not in PUBLIC_SCHEMA_MODELS
 
 
 @pytest.mark.parametrize("schema_ref,model", PUBLIC_SCHEMA_MODELS.items())
@@ -482,6 +498,21 @@ def test_upstream_object_checksum_bindings_fail_closed(
     assert not result.eligible
     assert expected in result.reason_codes
 
+
+def test_assessment_spec_binds_exact_shared_state_role_map_bytes(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    request = _mutate(
+        request,
+        "state_role_map",
+        lambda payload: payload["assignments"][0].update(
+            {"evidence_direction": "changed"}
+        ),
+    )
+    result = ToolRegistry.load_default().check_eligibility(request)
+    assert not result.eligible
+    assert "state_role_map_checksum_mismatch" in result.reason_codes
 
 @pytest.mark.parametrize(
     "case,expected",
@@ -618,14 +649,21 @@ def test_zero_target_related_denominator_is_unavailable_not_zero(
 ) -> None:
     request = _request(tmp_path)
 
-    def remove_target_roles(payload: dict) -> None:
-        for assignment in payload["assignments"]:
-            assignment.update(
-                {"lineage_role": "not_target", "regional_role": "regional_shift"}
+    def remove_target_observations(payload: dict) -> None:
+        for record in payload["composition"]["records"]:
+            if record["view"] == "reconciliation_state":
+                continue
+            count = 100 if record["label"] == "state:gamma" else 0
+            record.update(
+                {"count": count, "fraction": count / 100, "denominator": 100}
             )
 
     run = ToolRegistry.load_default().run(
-        _mutate(request, "state_role_map", remove_target_roles)
+        _mutate(
+            request,
+            "cell_state_evidence_profile",
+            remove_target_observations,
+        )
     )
     assert run.result["result_state"] == "partial"
     channel = run.result["channels"][0]
@@ -645,11 +683,9 @@ def test_external_spec_changes_all_three_ratio_definitions(tmp_path: Path) -> No
         "target_regional_assessment_spec",
         lambda payload: payload.update(
             {
-                "target_identity_numerator_lineage_roles": ["acceptable_adjacent"],
-                "regional_target_numerator_roles": ["acceptable_adjacent_region"],
-                "whole_product_target_region_roles": [
-                    "acceptable_adjacent_region"
-                ],
+                "target_identity_numerator_product_roles": ["acceptable_adjacent"],
+                "regional_target_numerator_state_ids": ["state:beta"],
+                "whole_product_target_region_state_ids": ["state:beta"],
             }
         ),
     )

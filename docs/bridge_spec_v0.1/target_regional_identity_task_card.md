@@ -22,8 +22,8 @@ P0-03 v0.2.0 实现组成解释的最小确定性路径。它通过
 
 实现代码不包含具体状态名、marker、状态到产品角色的映射、阈值或固定的
 正向角色集合。下文 PD-mDA 内容仍是待审核科学候选；一次运行实际采用的状态
-角色、composition view、source、label level，以及三类比率的 numerator 与
-denominator role sets 全部来自版本化、带 checksum 的输入。因此生物学决定变化
+product role、composition view、source、label level，以及区域 numerator 与
+denominator state-ID sets 全部来自版本化、带 checksum 的输入。因此生物学决定变化
 时替换对象版本即可，不需要修改执行器。
 
 “外部可配置”不等于可以重新解释 unknown。执行合同只固化不可变的安全约束：
@@ -35,8 +35,8 @@ denominator role sets 全部来自版本化、带 checksum 的输入。因此生
 
 11 对象脊柱要求 ProductCase、MeasurementSpec、P0-01 data view、P0-02 input
 view、manifest 和 assignment 的 observation set、analysis unit、independence group、
-hierarchy、ref 与 checksum 全部闭合；同时严格绑定 P0-02 V3 中的
-MeasurementSpec、AnnotationVocabulary、ReferenceManifest 与 QC SHA。assignment
+hierarchy、ref 与 checksum 全部闭合；同时严格绑定共享 StateRoleMap 和 P0-02 V3
+中的 MeasurementSpec、AnnotationVocabulary、ReferenceManifest 与 QC SHA。assignment
 不参与生物学角色求和，只证明观测对应的实验单位。`declared` 仍不能被解释为
 已审核的独立生物重复。
 
@@ -57,7 +57,7 @@ MeasurementSpec、AnnotationVocabulary、ReferenceManifest 与 QC SHA。assignme
 
 - Cell-State 模块负责生成 prediction set、连续权重、方法分歧和 unknown；本模块负责依据 ProductDefinitionCard 解释这些证据。
 - Target Identity 分母来自所选 P0-02 composition channel，并由输入记录显式携带。
-- Regional Fidelity 分母由 `TargetRegionalAssessmentSpec` 指定的 lineage roles 组成；同时单列完整制剂中的区域支持比例。
+- Regional Fidelity 分母由 `TargetRegionalAssessmentSpec` 指定的 state-ID 集合组成；同时单列完整制剂中的区域支持比例。
 - 区域身份、细胞谱系和发育阶段分别判断。体外分化日不能自动换算为 GW/PCW。
 - 体外产品 scRNA 投射到人胚空间参考称为 **Spatial Reference Projection**，不表示产品具有真实组织空间结构。
 - 非目标细胞和异常状态传递给 Off-target Control 与 Proliferation & Stress Response，不在本模块重复定义。
@@ -78,16 +78,17 @@ MeasurementSpec、AnnotationVocabulary、ReferenceManifest 与 QC SHA。assignme
 
 `REF-SPATIAL-HEB58-ANNOT-v0.1-draft` 的最终 `cell_type` 覆盖中脑 FP/BP/AP/RP、MHB、后脑、前脑/间脑及非神经状态。对象同时保留两套模型初注释和人工空间修订标签；正式冻结前需补齐标签定义、人工修订记录、切片方向、ROI、处理版本和 checksum。
 
-## 4. ProductDefinitionCard 与状态角色
+## 4. ProductDefinitionCard、共享 StateRoleMap 与区域集合
 
-每个内部状态都要按多个轴建立 `StateRoleMap`，不能用一个“好/坏标签”代替：
+P0-03 复用 P0-05 唯一的 `StateRoleMap` Schema，不在本模块重复定义同 URI
+合同。产品角色与区域归属仍是两个外部审核轴：
 
-| 轴 | 候选角色 |
+| 外部对象 | 责任 |
 | --- | --- |
-| `lineage_role` | `target` / `acceptable_adjacent` / `not_target` / `unresolved` |
-| `regional_role` | `target_region` / `acceptable_adjacent_region` / `regional_shift` / `not_applicable` / `unresolved` |
-| `stage_role` | 交给 Developmental Compatibility 单独判断 |
-| `process_role` | 交给 Proliferation & Stress Response 单独判断 |
+| `StateRoleMap.product_role` | `target` / `acceptable_adjacent` / `known_off_target` / `role_unresolved` |
+| `TargetRegionalAssessmentSpec` | 绑定 StateRoleMap ref/checksum，并显式列出区域分子、区域分母与 whole-product 区域 state IDs |
+| Developmental Compatibility | 单独判断 stage，不写入 StateRoleMap |
+| Proliferation & Stress Response | 单独判断 process，不写入 StateRoleMap |
 
 首张 Card 的候选逻辑为：`RG_mFP`、`Nb_mFP` 和早期/成熟 `Neuron_DA` 分别报告，不合并成一个目标比例；mFP progenitor 提供主要 target/region 支持，`Nb_mFP` 和早期 DA 状态是否属于 target 或 `acceptable_adjacent` 由研究者确认。`mBMP/mBIP`、AP、MHB、前脑、间脑和后脑先作为待核实的区域状态或偏移方向，不依据标签名称直接冻结角色。所有映射必须经生物学审核，文献 marker 不能单独决定角色。
 
@@ -95,7 +96,7 @@ MeasurementSpec、AnnotationVocabulary、ReferenceManifest 与 QC SHA。assignme
 
 ```mermaid
 flowchart LR
-    A["QC 合格的产品与样本层级"] --> B["确认 ProductDefinitionCard 与 StateRoleMap"]
+    A["QC 合格的产品与样本层级"] --> B["确认 ProductDefinitionCard、StateRoleMap 与 assessment spec"]
     B --> C["读取冻结的 Cell-State evidence"]
     C --> D["Target Identity：完整制剂 soft composition"]
     C --> E["Regional Fidelity：target-related 区域证据"]
@@ -113,7 +114,7 @@ flowchart LR
 
 | 分析需求 | 推荐方法 | 正式输出候选 |
 | --- | --- | --- |
-| 状态角色解释 | BRIDGE `StateRoleMap` | 每个 prediction set/连续权重对应的 lineage role |
+| 状态角色解释 | BRIDGE `StateRoleMap` + assessment spec | product role 与区域 state-ID membership |
 | 完整制剂组成 | soft composition + sample-preserving bootstrap | target、acceptable adjacent、unresolved 比例和区间 |
 | marker/program 校验 | 内部 program + UCell/decoupler；AUCell sensitivity | program coverage、方向一致性和冲突 |
 | 独立 reference 校验 | sample/state pseudobulk correlation；SingleR/scmap sensitivity | correlation、margin、reference sensitivity |

@@ -37,10 +37,13 @@ independence-group lineage before execution.
 
 ## External biology
 
-`StateRoleMap` provides all lineage/regional assignments.
-`TargetRegionalAssessmentSpec` provides every requested channel and every role
-set used in a numerator or denominator. Replacing a biological decision means
-supplying a new versioned object, not changing Python.
+P0-03 consumes the same `StateRoleMap` contract as P0-05; it does not define a
+second model for that Schema URI. The shared map provides externally reviewed
+product roles. `TargetRegionalAssessmentSpec` binds the exact map checksum and
+provides every requested channel, the target-identity product-role set and the
+explicit state-ID sets used for regional numerator/denominator membership.
+Replacing a biological decision means supplying a new versioned object, not
+changing Python.
 
 The only normalized metric names are:
 

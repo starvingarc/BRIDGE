@@ -13,6 +13,7 @@ from bridge.tool_packages._configurable_contracts import (
     VERSION_PATTERN,
     VersionedObjectRef,
 )
+from bridge.tool_packages.p0_05_off_target_control.models import ProductRole
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -25,82 +26,6 @@ def _unique(values: list[object], field: str) -> None:
         raise ValueError(f"{field} must contain unique values")
 
 
-class LineageRole(StrEnum):
-    TARGET = "target"
-    ACCEPTABLE_ADJACENT = "acceptable_adjacent"
-    NOT_TARGET = "not_target"
-    UNRESOLVED = "unresolved"
-
-
-class RegionalRole(StrEnum):
-    TARGET_REGION = "target_region"
-    ACCEPTABLE_ADJACENT_REGION = "acceptable_adjacent_region"
-    REGIONAL_SHIFT = "regional_shift"
-    NOT_APPLICABLE = "not_applicable"
-    UNRESOLVED = "unresolved"
-
-
-class StateRoleAssignment(FrozenModel):
-    state_id: str = Field(pattern=OBJECT_ID_PATTERN)
-    label_level: Literal["L1", "L2", "L3"]
-    lineage_role: LineageRole
-    regional_role: RegionalRole
-    provenance_refs: list[VersionedObjectRef] = Field(default_factory=list)
-
-    @field_validator("provenance_refs")
-    @classmethod
-    def provenance_is_unique(
-        cls, value: list[VersionedObjectRef]
-    ) -> list[VersionedObjectRef]:
-        _unique([item.ref for item in value], "provenance_refs")
-        return value
-
-    @model_validator(mode="after")
-    def roles_are_coherent(self) -> Self:
-        if (
-            self.regional_role is RegionalRole.TARGET_REGION
-            and self.lineage_role is not LineageRole.TARGET
-        ):
-            raise ValueError("target_region requires target lineage")
-        if (
-            self.regional_role is RegionalRole.ACCEPTABLE_ADJACENT_REGION
-            and self.lineage_role
-            not in {LineageRole.TARGET, LineageRole.ACCEPTABLE_ADJACENT}
-        ):
-            raise ValueError(
-                "acceptable_adjacent_region requires target-related lineage"
-            )
-        return self
-
-
-class StateRoleMap(FrozenModel):
-    object_version: Literal["0.1.0"]
-    role_map_id: str = Field(pattern=r"^state-role-map:[A-Za-z0-9._:-]+$")
-    role_map_version: str = Field(pattern=VERSION_PATTERN)
-    product_definition_ref: VersionedObjectRef
-    annotation_vocabulary_ref: str = Field(pattern=OBJECT_ID_PATTERN)
-    review_state: Literal["draft", "reviewed", "frozen"]
-    assignments: list[StateRoleAssignment] = Field(min_length=1)
-
-    @field_validator("assignments")
-    @classmethod
-    def assignments_are_unique(
-        cls, value: list[StateRoleAssignment]
-    ) -> list[StateRoleAssignment]:
-        _unique(
-            [(item.label_level, item.state_id) for item in value],
-            "assignments",
-        )
-        return value
-
-    @property
-    def ref(self) -> VersionedObjectRef:
-        return VersionedObjectRef(
-            object_id=self.role_map_id,
-            object_version=self.role_map_version,
-        )
-
-
 class TargetRegionalAssessmentSpec(FrozenModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -110,18 +35,20 @@ class TargetRegionalAssessmentSpec(FrozenModel):
     )
     assessment_spec_version: str = Field(pattern=VERSION_PATTERN)
     product_definition_ref: VersionedObjectRef
+    state_role_map_ref: VersionedObjectRef
+    state_role_map_sha256: str = Field(pattern=SHA256_PATTERN)
     status: Literal["candidate", "frozen"]
     composition_views: list[CompositionView] = Field(min_length=1)
     included_label_levels: list[Literal["L1", "L2", "L3"]] = Field(
         min_length=1
     )
     source_ids: list[PublishedRef] = Field(default_factory=list)
-    target_identity_numerator_lineage_roles: list[LineageRole] = Field(
+    target_identity_numerator_product_roles: list[ProductRole] = Field(
         min_length=1
     )
-    regional_denominator_lineage_roles: list[LineageRole] = Field(min_length=1)
-    regional_target_numerator_roles: list[RegionalRole] = Field(min_length=1)
-    whole_product_target_region_roles: list[RegionalRole] = Field(min_length=1)
+    regional_denominator_state_ids: list[PublishedRef] = Field(min_length=1)
+    regional_target_numerator_state_ids: list[PublishedRef] = Field(min_length=1)
+    whole_product_target_region_state_ids: list[PublishedRef] = Field(min_length=1)
     unmapped_state_policy: Literal["not_assessed"]
     ambiguous_state_policy: Literal["not_assessed"]
     spatial_policy: Literal["not_assessed_without_projection"]
@@ -130,10 +57,10 @@ class TargetRegionalAssessmentSpec(FrozenModel):
         "composition_views",
         "included_label_levels",
         "source_ids",
-        "target_identity_numerator_lineage_roles",
-        "regional_denominator_lineage_roles",
-        "regional_target_numerator_roles",
-        "whole_product_target_region_roles",
+        "target_identity_numerator_product_roles",
+        "regional_denominator_state_ids",
+        "regional_target_numerator_state_ids",
+        "whole_product_target_region_state_ids",
     )
     @classmethod
     def configured_values_are_unique(cls, value: list[object]) -> list[object]:
@@ -147,16 +74,16 @@ class TargetRegionalAssessmentSpec(FrozenModel):
             raise ValueError(
                 "source_specific view and non-empty source_ids are required together"
             )
-        if LineageRole.UNRESOLVED in (
-            self.target_identity_numerator_lineage_roles
-            + self.regional_denominator_lineage_roles
+        if ProductRole.ROLE_UNRESOLVED in (
+            self.target_identity_numerator_product_roles
         ):
-            raise ValueError("unresolved lineage cannot enter a configured ratio")
-        if RegionalRole.UNRESOLVED in (
-            self.regional_target_numerator_roles
-            + self.whole_product_target_region_roles
+            raise ValueError(
+                "unresolved product role cannot enter a configured ratio"
+            )
+        if not set(self.regional_target_numerator_state_ids).issubset(
+            self.regional_denominator_state_ids
         ):
-            raise ValueError("unresolved region cannot enter a configured ratio")
+            raise ValueError("regional numerator states must be in its denominator")
         return self
 
     @property
@@ -350,7 +277,6 @@ class TargetRegionalEvidenceResult(FrozenModel):
 
 
 PUBLIC_SCHEMA_MODELS = {
-    "bridge://schemas/state-role-map/v0.1": StateRoleMap,
     "bridge://schemas/target-regional-assessment-spec/v0.1": (
         TargetRegionalAssessmentSpec
     ),

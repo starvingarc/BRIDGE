@@ -1,0 +1,351 @@
+{
+  "catalog_id": "BRIDGE-REASON-CODE-CATALOG-v0.2",
+  "created_at": "2026-08-13T00:00:00Z",
+  "object_version": "0.2.0",
+  "reasons": [
+    {
+      "axis": "contract",
+      "code": "product_case_not_declared",
+      "description": "The domain binding does not identify a versioned ProductCase.",
+      "remediation": "Provide a reviewed ProductCase pointer with provenance.",
+      "severity": "missing"
+    },
+    {
+      "axis": "contract",
+      "code": "product_definition_not_declared",
+      "description": "The domain binding does not identify a versioned ProductDefinition.",
+      "remediation": "Provide a reviewed ProductDefinition pointer with provenance.",
+      "severity": "missing"
+    },
+    {
+      "axis": "contract",
+      "code": "domain_not_declared",
+      "description": "The evidence domain is not declared.",
+      "remediation": "Bind the record to one supported P0 domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "contract",
+      "code": "measurement_spec_not_provided",
+      "description": "No immutable MeasurementSpec is bound to this domain.",
+      "remediation": "Provide and bind the reviewed MeasurementSpec object.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "qc_profile_not_provided",
+      "description": "No QCReadinessProfile is bound to this domain.",
+      "remediation": "Provide the upstream QC readiness record.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_result_not_provided",
+      "description": "No MeasurementResult is bound to this domain.",
+      "remediation": "Provide at least one versioned upstream measurement result.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_state_missing",
+      "description": "A bound MeasurementResult declares that the measurement is missing.",
+      "remediation": "Produce the declared measurement before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_state_unknown",
+      "description": "A bound MeasurementResult declares an unresolved identity, role, or measurement.",
+      "remediation": "Resolve the declared unknown scope before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_state_unavailable",
+      "description": "A bound MeasurementResult declares that the measurement is unavailable.",
+      "remediation": "Provide an available versioned result before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "provenance",
+      "code": "measurement_source_run_not_provided",
+      "description": "A bound MeasurementResult lacks its paired upstream ToolRun identity and execution state.",
+      "remediation": "Bind the succeeded or partial upstream ToolRun before interpreting this result.",
+      "severity": "missing"
+    },
+    {
+      "axis": "contract",
+      "code": "task_validation_not_assessed",
+      "description": "The domain task validation state has not been assessed.",
+      "remediation": "Record the reviewed task validation state.",
+      "severity": "missing"
+    },
+    {
+      "axis": "model",
+      "code": "method_requirement_not_assessed",
+      "description": "The MeasurementSpec-side method requirement is not assessed.",
+      "remediation": "Declare whether a validated method path is required.",
+      "severity": "missing"
+    },
+    {
+      "axis": "model",
+      "code": "validation_record_not_provided",
+      "description": "A required method validation record is absent.",
+      "remediation": "Provide the applicable immutable validation record.",
+      "severity": "missing"
+    },
+    {
+      "axis": "model",
+      "code": "validation_check_not_assessed",
+      "description": "A required validation, environment, holdout, calibration, OOD, or context check is not assessed.",
+      "remediation": "Complete and version the missing validation check.",
+      "severity": "missing"
+    },
+    {
+      "axis": "model",
+      "code": "required_sensitivity_record_missing",
+      "description": "A required sensitivity kind has no bound record.",
+      "remediation": "Provide the required versioned sensitivity record.",
+      "severity": "missing"
+    },
+    {
+      "axis": "model",
+      "code": "sensitivity_not_assessed",
+      "description": "A required sensitivity record has not been assessed.",
+      "remediation": "Complete the upstream sensitivity assessment.",
+      "severity": "missing"
+    },
+    {
+      "axis": "prior",
+      "code": "prior_requirement_not_assessed",
+      "description": "The MeasurementSpec-side prior requirement is not assessed.",
+      "remediation": "Declare whether a prior is required for interpretation.",
+      "severity": "missing"
+    },
+    {
+      "axis": "prior",
+      "code": "required_prior_record_missing",
+      "description": "A required prior-applicability record is absent.",
+      "remediation": "Provide the required immutable prior-applicability record.",
+      "severity": "missing"
+    },
+    {
+      "axis": "prior",
+      "code": "prior_match_not_assessed",
+      "description": "A required prior context dimension has not been assessed.",
+      "remediation": "Complete the missing context match assessment.",
+      "severity": "missing"
+    },
+    {
+      "axis": "provenance",
+      "code": "evidence_family_conflict_requires_review",
+      "description": "Non-identical records in one evidence family have no reviewed supersession decision.",
+      "remediation": "Reconcile or version the conflicting family records before gating.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "qc_readiness_not_assessed",
+      "description": "The upstream QC readiness state is not assessed.",
+      "remediation": "Complete the upstream QC readiness evaluation.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "data_readiness_insufficient",
+      "description": "The declared input is insufficient for the bound MeasurementSpec.",
+      "remediation": "Address the upstream QC blockers or use an applicable MeasurementSpec.",
+      "severity": "blocking"
+    },
+    {
+      "axis": "data",
+      "code": "data_readiness_not_applicable",
+      "description": "The upstream QC contract is not applicable to this measurement path.",
+      "remediation": "Select an applicable input and MeasurementSpec contract.",
+      "severity": "blocking"
+    },
+    {
+      "axis": "model",
+      "code": "sensitivity_unstable",
+      "description": "A required upstream sensitivity assessment reports an unstable conclusion.",
+      "remediation": "Resolve the sensitivity failure before interpreting this domain.",
+      "severity": "blocking"
+    },
+    {
+      "axis": "model",
+      "code": "method_context_not_applicable",
+      "description": "A required method is outside its reviewed context of use.",
+      "remediation": "Use a validated applicable method or extend the validation scope.",
+      "severity": "blocking"
+    },
+    {
+      "axis": "model",
+      "code": "calibration_validation_failed",
+      "description": "A required upstream calibration validation check failed.",
+      "remediation": "Resolve and revalidate the calibration failure upstream.",
+      "severity": "blocking"
+    },
+    {
+      "axis": "model",
+      "code": "ood_validation_failed",
+      "description": "A required upstream OOD validation check failed.",
+      "remediation": "Resolve and revalidate the OOD failure upstream.",
+      "severity": "blocking"
+    },
+    {
+      "axis": "prior",
+      "code": "required_prior_inapplicable",
+      "description": "A required prior mismatches at least one declared context dimension.",
+      "remediation": "Use an applicable prior or revise the reviewed requirement.",
+      "severity": "blocking"
+    },
+    {
+      "axis": "data",
+      "code": "data_readiness_limited",
+      "description": "The upstream QC readiness record declares a documented limitation.",
+      "remediation": "Retain the limitation beside any raw-evidence interpretation.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "contract",
+      "code": "measurement_spec_not_frozen",
+      "description": "The bound MeasurementSpec is not frozen.",
+      "remediation": "Complete MeasurementSpec review before formal use.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "contract",
+      "code": "task_validation_candidate",
+      "description": "The domain task validation remains candidate.",
+      "remediation": "Complete task validation before formal use.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "model",
+      "code": "method_validation_candidate",
+      "description": "A required method validation record remains candidate.",
+      "remediation": "Complete and freeze the method validation record.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "model",
+      "code": "environment_validation_candidate",
+      "description": "A required environment validation record remains candidate.",
+      "remediation": "Complete and freeze the environment validation record.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "model",
+      "code": "source_holdout_not_covered",
+      "description": "Required validation does not cover the declared source family.",
+      "remediation": "Add source-family holdout evidence or retain candidate interpretation.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "model",
+      "code": "modality_holdout_not_covered",
+      "description": "Required validation does not cover the declared modality.",
+      "remediation": "Add modality holdout evidence or retain candidate interpretation.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "model",
+      "code": "sensitivity_limited",
+      "description": "A required upstream sensitivity assessment reports a limitation.",
+      "remediation": "Retain the sensitivity limitation beside interpretation.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "prior",
+      "code": "prior_partially_applicable",
+      "description": "A required prior has a documented partial context match.",
+      "remediation": "Retain the context limitation or supply a fully applicable prior.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "data",
+      "code": "data_readiness_adequate",
+      "description": "The upstream QC record declares the input adequate for the measurement path.",
+      "remediation": "No data-readiness remediation is required by this gate.",
+      "severity": "info"
+    },
+    {
+      "axis": "model",
+      "code": "method_validated_applicable",
+      "description": "Required method records are frozen and applicable within their declared scope.",
+      "remediation": "Retain the versioned validation provenance.",
+      "severity": "info"
+    },
+    {
+      "axis": "model",
+      "code": "deterministic_method_path_validated",
+      "description": "A frozen deterministic path satisfies an explicit no-learned-model requirement.",
+      "remediation": "Retain the deterministic validation provenance.",
+      "severity": "info"
+    },
+    {
+      "axis": "prior",
+      "code": "prior_applicable",
+      "description": "All required prior context dimensions match or are not required.",
+      "remediation": "Retain the versioned prior and snapshot provenance.",
+      "severity": "info"
+    },
+    {
+      "axis": "prior",
+      "code": "prior_not_required",
+      "description": "The reviewed contract explicitly does not require a prior.",
+      "remediation": "Retain the reviewed requirement declaration.",
+      "severity": "info"
+    },
+    {
+      "axis": "gate",
+      "code": "raw_evidence_gate_sufficient",
+      "description": "The supplied raw-evidence records satisfy the deterministic gate.",
+      "remediation": "Do not interpret this state as a product score or validation claim.",
+      "severity": "info"
+    },
+    {
+      "axis": "gate",
+      "code": "raw_evidence_gate_limited",
+      "description": "The supplied raw-evidence records are usable only with explicit limitations.",
+      "remediation": "Keep every limiting reason beside the raw evidence.",
+      "severity": "limiting"
+    },
+    {
+      "axis": "gate",
+      "code": "raw_evidence_gate_insufficient",
+      "description": "The supplied records do not support interpretation under the current gate.",
+      "remediation": "Resolve the listed evidence blocker before interpretation.",
+      "severity": "blocking"
+    },
+    {
+      "axis": "gate",
+      "code": "raw_evidence_gate_not_assessed",
+      "description": "Required records are absent, unassessed, or unresolved.",
+      "remediation": "Provide or reconcile the listed records before interpretation.",
+      "severity": "missing"
+    },
+    {
+      "axis": "score",
+      "code": "p0_score_contract_unavailable",
+      "description": "No frozen P0 ScoreContract is available in this release.",
+      "remediation": "Keep domain_score null and score_state unavailable.",
+      "severity": "info"
+    },
+    {
+      "axis": "score",
+      "code": "score_contract_ignored_current_release",
+      "description": "A score reference is retained only as provenance and cannot enable scoring.",
+      "remediation": "Do not interpret or publish a domain score from this run.",
+      "severity": "warning"
+    },
+    {
+      "axis": "provenance",
+      "code": "evidence_family_duplicate_collapsed",
+      "description": "Byte-identical records in one evidence family were collapsed deterministically.",
+      "remediation": "Use the retained family record and do not count duplicates as votes.",
+      "severity": "warning"
+    }
+  ],
+  "status": "candidate"
+}

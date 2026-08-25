@@ -8,25 +8,14 @@
       "title": "CompositionView",
       "type": "string"
     },
-    "LineageRole": {
+    "ProductRole": {
       "enum": [
         "target",
         "acceptable_adjacent",
-        "not_target",
-        "unresolved"
+        "known_off_target",
+        "role_unresolved"
       ],
-      "title": "LineageRole",
-      "type": "string"
-    },
-    "RegionalRole": {
-      "enum": [
-        "target_region",
-        "acceptable_adjacent_region",
-        "regional_shift",
-        "not_applicable",
-        "unresolved"
-      ],
-      "title": "RegionalRole",
+      "title": "ProductRole",
       "type": "string"
     },
     "VersionedObjectRef": {
@@ -98,20 +87,22 @@
     "product_definition_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
     },
-    "regional_denominator_lineage_roles": {
+    "regional_denominator_state_ids": {
       "items": {
-        "$ref": "#/$defs/LineageRole"
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
       },
       "minItems": 1,
-      "title": "Regional Denominator Lineage Roles",
+      "title": "Regional Denominator State Ids",
       "type": "array"
     },
-    "regional_target_numerator_roles": {
+    "regional_target_numerator_state_ids": {
       "items": {
-        "$ref": "#/$defs/RegionalRole"
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
       },
       "minItems": 1,
-      "title": "Regional Target Numerator Roles",
+      "title": "Regional Target Numerator State Ids",
       "type": "array"
     },
     "source_ids": {
@@ -127,6 +118,14 @@
       "title": "Spatial Policy",
       "type": "string"
     },
+    "state_role_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "state_role_map_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "State Role Map Sha256",
+      "type": "string"
+    },
     "status": {
       "enum": [
         "candidate",
@@ -135,12 +134,12 @@
       "title": "Status",
       "type": "string"
     },
-    "target_identity_numerator_lineage_roles": {
+    "target_identity_numerator_product_roles": {
       "items": {
-        "$ref": "#/$defs/LineageRole"
+        "$ref": "#/$defs/ProductRole"
       },
       "minItems": 1,
-      "title": "Target Identity Numerator Lineage Roles",
+      "title": "Target Identity Numerator Product Roles",
       "type": "array"
     },
     "unmapped_state_policy": {
@@ -148,12 +147,13 @@
       "title": "Unmapped State Policy",
       "type": "string"
     },
-    "whole_product_target_region_roles": {
+    "whole_product_target_region_state_ids": {
       "items": {
-        "$ref": "#/$defs/RegionalRole"
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
       },
       "minItems": 1,
-      "title": "Whole Product Target Region Roles",
+      "title": "Whole Product Target Region State Ids",
       "type": "array"
     }
   },
@@ -162,13 +162,15 @@
     "assessment_spec_id",
     "assessment_spec_version",
     "product_definition_ref",
+    "state_role_map_ref",
+    "state_role_map_sha256",
     "status",
     "composition_views",
     "included_label_levels",
-    "target_identity_numerator_lineage_roles",
-    "regional_denominator_lineage_roles",
-    "regional_target_numerator_roles",
-    "whole_product_target_region_roles",
+    "target_identity_numerator_product_roles",
+    "regional_denominator_state_ids",
+    "regional_target_numerator_state_ids",
+    "whole_product_target_region_state_ids",
     "unmapped_state_policy",
     "ambiguous_state_policy",
     "spatial_policy"

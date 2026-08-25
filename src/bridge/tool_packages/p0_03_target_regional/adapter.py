@@ -30,9 +30,9 @@ from bridge.tool_packages.p0_03_target_regional.executor import (
     evaluate_target_regional,
 )
 from bridge.tool_packages.p0_03_target_regional.models import (
-    StateRoleMap,
     TargetRegionalAssessmentSpec,
 )
+from bridge.tool_packages.p0_05_off_target_control.models import StateRoleMap
 from bridge.toolkit.contracts import (
     AnnotationVocabulary,
     ArtifactManifest,
@@ -401,6 +401,13 @@ def _binding_reasons(
         reasons.append("state_role_map_product_definition_mismatch")
     if assessment_spec.product_definition_ref != product_definition.ref:
         reasons.append("assessment_spec_product_definition_mismatch")
+    if assessment_spec.state_role_map_ref != state_role_map.ref:
+        reasons.append("state_role_map_binding_mismatch")
+    if (
+        assessment_spec.state_role_map_sha256
+        != input_sha256_by_role["state_role_map"]
+    ):
+        reasons.append("state_role_map_checksum_mismatch")
     if product_case.assay not in product_definition.supported_assays:
         reasons.append("product_case_assay_not_supported")
     if measurement_spec.assay != product_case.assay:
@@ -433,8 +440,6 @@ def _binding_reasons(
         != annotation_vocabulary.vocabulary_id
         or cell_state_profile.annotation_vocabulary_version
         != annotation_vocabulary.version
-        or state_role_map.annotation_vocabulary_ref
-        != annotation_vocabulary.vocabulary_id
     ):
         reasons.append("annotation_vocabulary_binding_mismatch")
     if (
@@ -468,11 +473,17 @@ def _binding_reasons(
     vocabulary_labels = {
         (item.level, item.state_id) for item in annotation_vocabulary.labels
     }
-    if any(
-        (item.label_level, item.state_id) not in vocabulary_labels
-        for item in state_role_map.assignments
-    ):
+    vocabulary_state_ids = {item.state_id for item in annotation_vocabulary.labels}
+    role_map_state_ids = {item.state_id for item in state_role_map.assignments}
+    if role_map_state_ids - vocabulary_state_ids:
         reasons.append("state_role_map_vocabulary_label_mismatch")
+    configured_region_state_ids = {
+        *assessment_spec.regional_denominator_state_ids,
+        *assessment_spec.regional_target_numerator_state_ids,
+        *assessment_spec.whole_product_target_region_state_ids,
+    }
+    if configured_region_state_ids - role_map_state_ids:
+        reasons.append("state_role_map_binding_mismatch")
     if any(
         item.view is not CellStateCompositionView.RECONCILIATION_STATE
         and (item.label_level, item.label) not in vocabulary_labels

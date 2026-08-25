@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "RareStateRule": {
+      "additionalProperties": false,
+      "properties": {
+        "max_false_positive_fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Max False Positive Fraction",
+          "type": "number"
+        },
+        "max_validated_detection_limit_fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Max Validated Detection Limit Fraction",
+          "type": "number"
+        },
+        "missing_calibration_state": {
+          "enum": [
+            "cannot_exclude",
+            "not_assessed"
+          ],
+          "title": "Missing Calibration State",
+          "type": "string"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "max_validated_detection_limit_fraction",
+        "max_false_positive_fraction",
+        "missing_calibration_state"
+      ],
+      "title": "RareStateRule",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/off-target-assessment-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "active": {
+      "title": "Active",
+      "type": "boolean"
+    },
+    "allowed_unknown_reason_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Unknown Reason Ids",
+      "type": "array"
+    },
+    "assessment_spec_id": {
+      "pattern": "^off-target-assessment-spec:[A-Za-z0-9._:-]+$",
+      "title": "Assessment Spec Id",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "primary_denominator_id": {
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+      "title": "Primary Denominator Id",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "rare_state_rules": {
+      "items": {
+        "$ref": "#/$defs/RareStateRule"
+      },
+      "title": "Rare State Rules",
+      "type": "array"
+    },
+    "spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Spec Version",
+      "type": "string"
+    },
+    "state_role_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "state_role_map_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "State Role Map Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "assessment_spec_id",
+    "spec_version",
+    "product_definition_ref",
+    "state_role_map_ref",
+    "state_role_map_sha256",
+    "primary_denominator_id",
+    "allowed_unknown_reason_ids",
+    "rare_state_rules",
+    "active"
+  ],
+  "title": "OffTargetAssessmentSpec",
+  "type": "object"
+}

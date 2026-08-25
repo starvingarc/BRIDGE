@@ -15,14 +15,15 @@ from bridge.tool_packages._configurable_contracts import (
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_03_target_regional.models import (
     ChannelAssessmentState,
-    LineageRole,
     MetricArtifactBinding,
     NormalizedMetricName,
-    RegionalRole,
-    StateRoleMap,
     TargetRegionalAssessmentSpec,
     TargetRegionalChannelResult,
     TargetRegionalEvidenceResult,
+)
+from bridge.tool_packages.p0_05_off_target_control.models import (
+    ProductRole,
+    StateRoleMap,
 )
 from bridge.toolkit.contracts import (
     AnnotationVocabulary,
@@ -78,10 +79,7 @@ def evaluate_target_regional(
     reference_manifest: ReferenceManifest,
     input_sha256_by_role: dict[str, str],
 ) -> EvaluationBundle:
-    assignments = {
-        (item.label_level, item.state_id): item
-        for item in state_role_map.assignments
-    }
+    assignments = {item.state_id: item for item in state_role_map.assignments}
     records = cell_state_profile.composition.records
     blocking_reason, blocking_state = _composition_block(records)
     if cell_state_profile.composition.state != "shadow":
@@ -122,7 +120,7 @@ def evaluate_target_regional(
             )
             continue
         channel_assignments = [
-            assignments.get((item.label_level, item.label)) for item in selected
+            assignments.get(item.label) for item in selected
         ]
         if any(item is None for item in channel_assignments):
             drafts.append(
@@ -134,11 +132,7 @@ def evaluate_target_regional(
             )
             continue
         resolved = [item for item in channel_assignments if item is not None]
-        if any(
-            item.lineage_role is LineageRole.UNRESOLVED
-            or item.regional_role is RegionalRole.UNRESOLVED
-            for item in resolved
-        ):
+        if any(item.product_role is ProductRole.ROLE_UNRESOLVED for item in resolved):
             drafts.append(
                 _not_assessed_draft(
                     key,
@@ -366,24 +360,23 @@ def _numeric_draft(
     target_count = sum(
         record.count
         for record, assignment in zip(records, assignments, strict=True)
-        if assignment.lineage_role
-        in spec.target_identity_numerator_lineage_roles
+        if assignment.product_role
+        in spec.target_identity_numerator_product_roles
     )
     target_related_count = sum(
         record.count
-        for record, assignment in zip(records, assignments, strict=True)
-        if assignment.lineage_role in spec.regional_denominator_lineage_roles
+        for record in records
+        if record.label in spec.regional_denominator_state_ids
     )
     regional_target_count = sum(
         record.count
-        for record, assignment in zip(records, assignments, strict=True)
-        if assignment.lineage_role in spec.regional_denominator_lineage_roles
-        and assignment.regional_role in spec.regional_target_numerator_roles
+        for record in records
+        if record.label in spec.regional_target_numerator_state_ids
     )
     whole_region_count = sum(
         record.count
-        for record, assignment in zip(records, assignments, strict=True)
-        if assignment.regional_role in spec.whole_product_target_region_roles
+        for record in records
+        if record.label in spec.whole_product_target_region_state_ids
     )
     target_fraction = _fraction(
         "configured_target_identity", target_count, denominator
