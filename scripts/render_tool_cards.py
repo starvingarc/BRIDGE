@@ -6,11 +6,11 @@ from pathlib import Path
 import yaml
 
 
-# P0-08 through P0-10 keep field-level interface cards as their maintained
+# P0-05 and P0-08 through P0-10 keep field-level interface cards as maintained
 # source. The generic renderer is intentionally too small for their structured
 # object contracts, so regeneration validates those cards instead of replacing
 # them with scaffold summaries.
-DETAILED_CARD_IDS = {"P0-08", "P0-09", "P0-10"}
+DETAILED_CARD_IDS = {"P0-05", "P0-08", "P0-09", "P0-10"}
 
 
 DETAILS = {
@@ -47,11 +47,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/developmental_compatibility_task_card.md",
     },
     "P0-05": {
-        "input": "Frozen Cell-State prediction sets, ProductDefinitionCard role table, eligible-cell denominator, and rare-state/OOD calibration records.",
-        "output": "Whole-product soft composition, role-resolved non-target evidence, unknown reasons, rare-state detection limits, and sensitivity.",
-        "reject": "Missing full-product denominator, unresolved product role, uncalibrated OOD method, or a zero observation presented as biological absence.",
-        "visualization": "Whole-product composition, off-axis drill-down, unknown reasons, OOD calibration, rare-state LOD/UCB, and method sensitivity.",
-        "validation": "Real OOD panels, source-family holdouts, known mixtures, rare-state spike-ins, downsampling, and reference/preprocessing swaps.",
+        "input": "Six checksummed JSON objects: ProductCase, ProductDefinitionCard, external StateRoleMap, external OffTargetAssessmentSpec, CellStateEvidenceProfileV2 and a precomputed OffTargetEvidenceBundle.",
+        "output": "One checksummed shadow OffTargetControlProfile with role composition, unknown reasons, rare-state detection states and no domain score.",
+        "reject": "Any Schema, version, checksum, object binding, denominator, state mapping, unknown allowlist or calibration-declaration mismatch.",
+        "visualization": "No visualization output in v0.2; the single JSON profile preserves denominators, limitation states and provenance.",
+        "validation": "Synthetic external-role swaps, complete/partial denominators, unknown and rare-state fail-closed cases, checksum drift, deterministic reuse and tamper refusal.",
         "details": "docs/bridge_spec_v0.1/off_target_control_task_card.md",
     },
     "P0-06": {
