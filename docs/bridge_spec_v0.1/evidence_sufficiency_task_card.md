@@ -11,7 +11,7 @@
 
 ## 0. 当前实现绑定（候选）
 
-P0-08 `v0.2.0` 已实现为确定性候选工具，使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同为 `bridge://schemas/evidence-sufficiency-run-result/v0.1`；候选 gate rule 与 reason-code catalog 均为 `object_version=0.1.0`。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析、不生成 `MeasurementResult` 或可视化。
+P0-08 `v0.3.0` 已实现为确定性候选工具，使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同为 `bridge://schemas/evidence-sufficiency-run-result/v0.2`；候选 gate rule 与 reason-code catalog 使用 additive `object_version=0.2.0`，历史 v0.1 资源和 Schema 保持字节不变。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析、不生成 `MeasurementResult` 或可视化。
 
 这是一项工程可执行性进展，不是科学确认。`ENV-EVIDENCE-v0.1` 已通过服务器工程健康检查，所有已选内部方法记录仍为 `formal_eligible=false`；真实 ProductCase 的三轴状态尚未由此实现得到验证。当前没有批准的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
 
@@ -36,14 +36,18 @@ Evidence Sufficiency 判断某个域的分析结果是否具有足够证据支�
 每次门控至少读取：
 
 - 已确认的 `ProductCase`、`ProductDefinitionCard`、assay、sampling context 和数据角色。
-- 对应域和版本的 `MeasurementSpec`，以及存在时的 `ScoreContract`。
-- `QCReadinessProfile`、输入数据视图、分母、基因覆盖和检出能力记录。
-- 域级 `MeasurementResult`、uncertainty、missing behavior 和 Evidence IDs。
+- 对应域和版本的 `MeasurementSpecV2`，以及存在时的 `ScoreContract`。
+- `QCReadinessProfileV2`、输入数据视图、分母、基因覆盖和检出能力记录。
+- 域级 `MeasurementResultV2`、uncertainty、missing behavior、上游 ToolRun provenance 和 Evidence IDs。
 - Tool/Environment/Task Card 状态及 benchmark、source holdout、modality holdout 和校准记录。
 - reference、prior、ontology 和 knowledge snapshot 的版本与适用范围。
 - reference、preprocessing、annotation、assay、方法和下采样敏感性结果。
 
-系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本和 provenance。跨域复用的非空 ProductCase/ProductDefinition pointer 必须分别在对象 ID、对象版本和 provenance-reference 集合上完全一致；provenance 顺序不参与身份，但成员变化属于冲突。自身 Schema 无版本字段的 `QCReadinessProfile` 和 `MeasurementResult` 在本 adapter 中只接受 `StructuredInputRef.object_version=0.1.0`，不得由调用方伪造其他版本。
+系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本、Schema、精确源字节 SHA-256 和 provenance；这些字段在顶层 `source_object_bindings` 中无路径重现，并全部进入 deterministic run identity。跨域复用的非空 ProductCase/ProductDefinition 只是在 DomainGateInput 内声明的 versioned pointer；P0-08 不接收或验证其对象内容。pointer 必须分别在对象 ID、对象版本和 provenance-reference 集合上完全一致，且 DomainGateInput 的精确源 SHA 绑定这些声明。自身 Schema 无版本字段的 `QCReadinessProfileV2` 和 `MeasurementResultV2` 在本 adapter 中只接受 `StructuredInputRef.object_version=0.2.0`。MeasurementResultV2 的 `measurement_spec_version` 必须等于 MeasurementSpecV2 `version`；QCReadinessProfileV2 的同名字段在非空时也必须相等。
+
+资格检查还必须把对象内部声明交叉绑定：QC 对 MeasurementSpec 所列工具或通用下游模块的显式 `ineligible`、`not_implemented`、`blocked` 会拒绝运行；required validation 必须由 `validation_ref` 指向并落在 `applicable_contexts`；required prior 的 `prior_ref` 必须出现在 MeasurementSpec 的 `prior_refs` 或 `reference_refs`。`prior_requirement=not_required` 不得同时绑定 required prior，required sensitivity record 的 kind 也必须出现在 `required_sensitivity_kinds`。这些矛盾复用 `domain_input_measurement_spec_mismatch` 并在生成科学 profile 前 fail closed。
+
+学习方法不能把 source/modality holdout、calibration 或 OOD 标为 `not_required` 后获得 `validated_applicable`；四项分别必须为 `covered`、`covered`、`passed`、`passed`。确定性方法继续允许合同明确的 `not_required` 路径。
 
 ## 3. 三轴证据合同
 
@@ -56,7 +60,7 @@ Data Readiness 针对具体域判断数据是否足以支持相应测量，不�
 | `adequate` | 输入级别、分析单位、分母、assay、基因覆盖和检出能力满足冻结 MeasurementSpec |
 | `limited` | 结果仍可解释，但覆盖、独立重复、精度、LOD 或 metadata 存在明确限制 |
 | `insufficient` | 关键矩阵、样本层级、分母、基因覆盖或检测能力不满足测量要求 |
-| `not_assessed` | `QCReadinessProfile`、MeasurementSpec 或必要资格记录尚未生成 |
+| `not_assessed` | `QCReadinessProfileV2`、MeasurementSpecV2、必要资格记录、可解释 MeasurementResultV2 或其上游 ToolRun provenance 尚未生成 |
 
 必须逐域检查。一个数据集可以对 Target Identity 为 `adequate`，同时对 rare off-target detection 为 `limited` 或 `insufficient`。
 
@@ -160,10 +164,11 @@ prior_applicability / prior_reason_codes / snapshot_refs
 evidence_sufficiency_state / blocking_reasons / limiting_reasons
 domain_score / score_state
 measurement_result_refs / evidence_refs / sensitivity_refs
+measurement_evidence_state_counts
 created_at / deterministic_run_ref
 ```
 
-案例级 `CaseEvidenceReadinessSummary` 只包含各域 `sufficient/limited/insufficient/not_assessed` 数量、`score_state` 数量和阻塞原因列表。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
+顶层 `EvidenceSufficiencyRunResultV2.source_object_bindings` 对本次每个 `StructuredInputRef` 恰有一个 path-free binding：request-local input ID、role、logical object ID、object version、Schema ID 和 exact source SHA-256。Profile/Summary 仅为 RunResult v0.2 的嵌套类型，不另注册公开 Schema。案例级 `CaseEvidenceReadinessSummaryV2` 包含各域 `sufficient/limited/insufficient/not_assessed` 数量、八种 MeasurementResult evidence-state 的 domain-profile reference 数量、`score_state` 数量和阻塞原因列表。同一个 MeasurementResult 跨域复用时会在每个 profile 各计一次，不能解释为独立证据数、投票或权重。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
 
 ## 8. 运行环境
 
@@ -191,12 +196,14 @@ created_at / deterministic_run_ref
 ## 10. 拒答与失败规则
 
 - 缺 ProductCase、domain 或 MeasurementSpec：返回 `not_assessed`。
+- 任一绑定 MeasurementResultV2 为 `missing`、`unknown` 或 `unavailable`，或缺少 paired `source_run_ref/source_execution_state`：返回 `not_assessed` 并保留不同 reason code；`negative` 和 `alert` 只保留状态与计数，不解释为零、通过或失败。
 - 缺关键矩阵、分母或样本层级：Data Readiness=`insufficient`。
 - benchmark 未覆盖当前 source/modality：不得写 `validated_applicable`。
 - reference gap 或 OOD 使结果不可解释：Model Robustness=`not_applicable` 或 `unstable`。
 - required prior 不适用：Prior Applicability=`inapplicable`。
 - 同源数据库或相关方法数量增加：不得提高 sufficiency。
 - ProductDefinition 不在 MeasurementSpec 适用卡中、QC assay/MeasurementSpec 状态不一致，或 validation modality/tool 与 MeasurementSpec 不一致：技术资格失败，不生成科学 profile。
+- QC 下游资格、validation context/ref、prior ref 或 requirement/sensitivity 声明之间存在上述交叉合同矛盾：技术资格失败，不生成科学 profile；学习方法的 required 验证维度不得用 `not_required` 绕过。
 - DomainGateInput、MeasurementSpec、QC profile、MeasurementResult 出现歧义逻辑 ID，或 validation/prior/sensitivity 的同一逻辑 ID 跨 evidence family：技术资格失败。
 - 结构化科学 JSON 的任意深度 key 或 value 中出现绝对路径，或使用 `~`/`~user`/HOME/USERPROFILE/HOMEPATH 的 home-relative 路径、任意位置的 `file:` scheme（含 opaque 与 slash 形式）、带凭据 URL、非空 credential-named JSON key/value、`<credential-name>[:=]<single-token>`、bearer credential 或常见访问令牌形式：返回 `unsafe_scientific_reference`，不回显原字符串且不发布输出 bundle。同一个语义 credential-name 规则用于 JSON key、URL query key、赋值左值和所有 scientific/source 字符串（包括通过 published-ref shape 的字符串）：去除大小写和 separator 差异后，名称若精确为 `auth`/`authorization`，以 `password`/`passphrase`/`passwd`/`pwd`/`secret`/`token`/`credential(s)`/`passcode`/`pincode` 结尾，或以 `key` 结尾且 stem 以 database/DB/webhook/master/service/account/signing/encryption/decryption/private/SSH/API/access/client/consumer/secret 敏感 qualifier 开头或结尾，则视为凭据；`pin` 仅在 stem 带 auth/authorization/account/access/security/login/user/credential/verification/device 明确上下文时拒绝。该规则覆盖 `databasePassphrase`、`servicePasswd`、`accountPwd`、`databaseKey`、`dbKey`、`webhookKey` 和 `accountPin`，同时保持 `pin`、`cellPin`、`publicKey`、`capillaryKey`、`monkey` 等已记录邻近词合法。这是一份有限、明确的 publication-safety vocabulary，不是任意秘密检测器，也不声称识别所有秘密；未声明的新别名本身不构成当前合同违约，新增别名必须显式修订 vocabulary、文档和回归测试。正常 `bridge://`/无凭据 HTTP(S) 引用和含空格的科学自然语言仍可使用。
 - 实际会复制到公开 profile 的 MeasurementSpec/QC/measurement/record/snapshot/Evidence Family/evidence 等引用必须在 eligibility 阶段通过 scheme-shaped 或 identifier-shaped 检查；不合法时统一返回 `structured_input_schema_invalid`，直接 adapter 与公共 SDK 都返回失败 `ToolRunV2` 且不落盘。request-local `*_input_ids` 不受此发布引用约束，未复制到公开结果的源字段继续只服从其源 Schema。
@@ -216,9 +223,9 @@ created_at / deterministic_run_ref
 | 同 evidence family 多工具一致 | 去重后保留一致性，不进行多数投票 |
 | reference/preprocessing swap 反转结论 | `unstable`，阻塞定向结论 |
 | sealed competitor | 对规则、阈值、reason code 和工具选择的数据流为零 |
-| set-like 字段重排并复用同一 output_dir | semantic input hash、run ID 与 bundle 字节一致；调用级原始 checksum 仍可追溯 |
-| 输入对象出现真实语义变化 | semantic input hash 与 run ID 改变，不与已有 bundle 碰撞 |
-| QC/MeasurementResult 声明非 `0.1.0` ref version | 技术资格失败且不发布输出 |
+| `object_inputs` 排序变化但每个输入字节不变 | input hash、run ID 与 bundle 字节一致 |
+| 任一输入源字节或语义变化 | exact-source-bound input hash 与 run ID 改变，不与已有 bundle 碰撞；semantic checksum 仍单独记录 |
+| QC/MeasurementResult 声明非 `0.2.0` ref version，或其 MeasurementSpec 版本不匹配 | 技术资格失败且不发布输出 |
 | Agent/LLM 给出不同意见 | 数值、状态和 reason code 保持不变 |
 
 任务晋升为 `frozen` 前，需完成 schema、missing-input、source/modality holdout、OOD、下采样、reference/preprocessing swap、同源证据去重、版本迁移、隐私和 claim review。

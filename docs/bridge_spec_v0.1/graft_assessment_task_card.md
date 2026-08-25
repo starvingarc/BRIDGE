@@ -3,12 +3,24 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-GRAFT-ASSESSMENT-v0.1` |
-| 文档版本 | `0.1-draft` |
-| 日期 | 2026-08-08 |
+| 文档版本 | `0.2-candidate` |
+| 日期 | 2026-08-25 |
 | 状态 | `candidate` |
 | 适用范围 | 可选的移植后 graft scRNA-seq/snRNA-seq 独立评估 |
-| 上游输入 | `GraftCase`、`QCReadinessProfile`、graft-specific `MeasurementSpec`、reference snapshot |
-| 主要输出 | `GraftAssessment`；存在显式来源关系时可附加 `PreparationGraftAssociationRecord` |
+| 上游输入 | 可选空输入，或 checksummed `GraftCase`、外部 `GraftAssessmentSpec`、预计算 `GraftEvidenceBundle` |
+| 主要输出 | `GraftAssessmentResult` 与 checksummed JSON artifacts |
+
+## 0. 当前可执行候选
+
+P0-12 `0.2.0` 已提供 `ToolRequestV2` 的 `validate/run`。本版本刻意只收口两条成功路径：
+
+- `object_inputs=[]` 合法返回 `state=not_provided`，且
+  `pretransplant_evidence_effect=none`；
+- 提供 graft 时必须一次提交三个 checksummed JSON 对象：
+  `GraftCase`、外部版本化 `GraftAssessmentSpec` 和
+  `GraftEvidenceBundle`。
+
+当前 executor 只做 metadata/lineage 绑定、缺失与混杂记录、外部规则校验和确定性聚合；不读取表达矩阵、不重跑 scRNA/snRNA、不从隐式信息推断 preparation linkage。所有角色、状态和允许指标由外部 spec 管理。结果固定为 `candidate/shadow`、`descriptive_only`、`domain_score=null`，绝不回填移植前证据。下文其余分析与验证流程是后续科学冻结目标，不代表当前已实现能力。
 
 ## 1. 任务目标与边界
 

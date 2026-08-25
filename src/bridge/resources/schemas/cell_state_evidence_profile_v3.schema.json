@@ -1,0 +1,586 @@
+{
+  "$defs": {
+    "CellStateComposition": {
+      "additionalProperties": false,
+      "properties": {
+        "records": {
+          "items": {
+            "$ref": "#/$defs/CellStateCompositionRecord"
+          },
+          "title": "Records",
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "shadow",
+            "not_assessed",
+            "unavailable",
+            "unknown",
+            "missing"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "records"
+      ],
+      "title": "CellStateComposition",
+      "type": "object"
+    },
+    "CellStateCompositionDenominatorScope": {
+      "enum": [
+        "selected_data_view"
+      ],
+      "title": "CellStateCompositionDenominatorScope",
+      "type": "string"
+    },
+    "CellStateCompositionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "denominator_scope": {
+          "$ref": "#/$defs/CellStateCompositionDenominatorScope"
+        },
+        "fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "label": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Label",
+          "type": "string"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "state_evidence_state": {
+          "$ref": "#/$defs/CellStateCompositionRecordState"
+        },
+        "view": {
+          "$ref": "#/$defs/CellStateCompositionView"
+        }
+      },
+      "required": [
+        "view",
+        "label",
+        "label_level",
+        "state_evidence_state",
+        "denominator_scope",
+        "count",
+        "fraction",
+        "denominator"
+      ],
+      "title": "CellStateCompositionRecord",
+      "type": "object"
+    },
+    "CellStateCompositionRecordState": {
+      "enum": [
+        "candidate",
+        "unknown",
+        "ood",
+        "unresolved",
+        "unavailable"
+      ],
+      "title": "CellStateCompositionRecordState",
+      "type": "string"
+    },
+    "CellStateCompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific",
+        "reconciliation_state"
+      ],
+      "title": "CellStateCompositionView",
+      "type": "string"
+    },
+    "DataViewBinding": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "type": "null"
+                },
+                "biological_unit_manifest_sha256": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "biological_unit_manifest_sha256": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "biological_unit_manifest_ref",
+                "biological_unit_manifest_sha256"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Content-addressed expression view passed between scientific tools.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Ref"
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
+        "matrix_location": {
+          "minLength": 1,
+          "title": "Matrix Location",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "enum": [
+            "raw_counts",
+            "normalized_expression"
+          ],
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_ids_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Ids Sha256",
+          "type": "string"
+        },
+        "parent_asset_id": {
+          "minLength": 1,
+          "title": "Parent Asset Id",
+          "type": "string"
+        },
+        "parent_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Parent Asset Sha256",
+          "type": "string"
+        },
+        "sample_or_preparation_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Or Preparation Ref"
+        },
+        "selection_spec_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Spec Ref"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "view_id": {
+          "minLength": 1,
+          "title": "View Id",
+          "type": "string"
+        },
+        "view_kind": {
+          "enum": [
+            "all_observations",
+            "qc_selected_observations"
+          ],
+          "title": "View Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "view_kind",
+        "artifact_id",
+        "sha256",
+        "parent_asset_id",
+        "parent_asset_sha256",
+        "matrix_location",
+        "matrix_semantics",
+        "n_observations",
+        "observation_ids_sha256"
+      ],
+      "title": "DataViewBinding",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/cell-state-evidence-profile/v0.3",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "upstream_qc_profile_ref": {
+              "type": "null"
+            },
+            "upstream_qc_profile_sha256": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "upstream_qc_profile_ref": {
+              "not": {
+                "type": "null"
+              }
+            },
+            "upstream_qc_profile_sha256": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "upstream_qc_profile_ref",
+            "upstream_qc_profile_sha256"
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "annotation_vocabulary_ref": {
+      "title": "Annotation Vocabulary Ref",
+      "type": "string"
+    },
+    "annotation_vocabulary_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Annotation Vocabulary Sha256",
+      "type": "string"
+    },
+    "annotation_vocabulary_version": {
+      "minLength": 1,
+      "title": "Annotation Vocabulary Version",
+      "type": "string"
+    },
+    "assay": {
+      "enum": [
+        "scRNA-seq",
+        "snRNA-seq"
+      ],
+      "title": "Assay",
+      "type": "string"
+    },
+    "assignment_state": {
+      "additionalProperties": true,
+      "title": "Assignment State",
+      "type": "object"
+    },
+    "calibration": {
+      "additionalProperties": true,
+      "title": "Calibration",
+      "type": "object"
+    },
+    "calibration_state": {
+      "enum": [
+        "not_assessed",
+        "candidate",
+        "calibrated"
+      ],
+      "title": "Calibration State",
+      "type": "string"
+    },
+    "composition": {
+      "$ref": "#/$defs/CellStateComposition"
+    },
+    "denominator": {
+      "const": "selected_data_view",
+      "title": "Denominator",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "environment_spec_ref": {
+      "minLength": 1,
+      "title": "Environment Spec Ref",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "gene_coverage": {
+      "additionalProperties": true,
+      "title": "Gene Coverage",
+      "type": "object"
+    },
+    "input_data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "label_levels": {
+      "additionalProperties": true,
+      "title": "Label Levels",
+      "type": "object"
+    },
+    "marker_program_evidence": {
+      "additionalProperties": true,
+      "title": "Marker Program Evidence",
+      "type": "object"
+    },
+    "measurement_spec_id": {
+      "title": "Measurement Spec Id",
+      "type": "string"
+    },
+    "measurement_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Measurement Spec Sha256",
+      "type": "string"
+    },
+    "measurement_spec_status": {
+      "title": "Measurement Spec Status",
+      "type": "string"
+    },
+    "measurement_spec_version": {
+      "minLength": 1,
+      "title": "Measurement Spec Version",
+      "type": "string"
+    },
+    "method_disagreement": {
+      "additionalProperties": true,
+      "title": "Method Disagreement",
+      "type": "object"
+    },
+    "method_outputs": {
+      "additionalProperties": true,
+      "title": "Method Outputs",
+      "type": "object"
+    },
+    "modality_sensitivity": {
+      "additionalProperties": true,
+      "title": "Modality Sensitivity",
+      "type": "object"
+    },
+    "n_genes": {
+      "title": "N Genes",
+      "type": "integer"
+    },
+    "n_observations": {
+      "title": "N Observations",
+      "type": "integer"
+    },
+    "open_set_state": {
+      "enum": [
+        "not_assessed",
+        "candidate",
+        "calibrated"
+      ],
+      "title": "Open Set State",
+      "type": "string"
+    },
+    "per_state_release": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Per State Release",
+      "type": "object"
+    },
+    "prediction_sets": {
+      "additionalProperties": true,
+      "title": "Prediction Sets",
+      "type": "object"
+    },
+    "producer_run_ref": {
+      "minLength": 1,
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_id": {
+      "const": "P0-02",
+      "title": "Producer Tool Id",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "minLength": 1,
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "reference_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Reference Manifest Sha256",
+      "type": "string"
+    },
+    "reference_manifest_version": {
+      "minLength": 1,
+      "title": "Reference Manifest Version",
+      "type": "string"
+    },
+    "reference_snapshot_ref": {
+      "title": "Reference Snapshot Ref",
+      "type": "string"
+    },
+    "score_state": {
+      "default": "shadow",
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    },
+    "source_support": {
+      "additionalProperties": true,
+      "title": "Source Support",
+      "type": "object"
+    },
+    "unknown_reason": {
+      "additionalProperties": true,
+      "title": "Unknown Reason",
+      "type": "object"
+    },
+    "unresolved_labels": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved Labels",
+      "type": "array"
+    },
+    "upstream_qc_profile_ref": {
+      "minLength": 1,
+      "title": "Upstream Qc Profile Ref",
+      "type": "string"
+    },
+    "upstream_qc_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Upstream Qc Profile Sha256",
+      "type": "string"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "profile_id",
+    "assay",
+    "measurement_spec_id",
+    "measurement_spec_status",
+    "annotation_vocabulary_ref",
+    "reference_snapshot_ref",
+    "n_observations",
+    "n_genes",
+    "denominator",
+    "label_levels",
+    "source_support",
+    "marker_program_evidence",
+    "prediction_sets",
+    "composition",
+    "gene_coverage",
+    "modality_sensitivity",
+    "measurement_spec_version",
+    "upstream_qc_profile_ref",
+    "upstream_qc_profile_sha256",
+    "input_data_view",
+    "measurement_spec_sha256",
+    "annotation_vocabulary_version",
+    "annotation_vocabulary_sha256",
+    "reference_manifest_version",
+    "reference_manifest_sha256",
+    "open_set_state",
+    "calibration_state",
+    "producer_run_ref",
+    "producer_tool_id",
+    "producer_tool_version",
+    "environment_spec_ref"
+  ],
+  "title": "CellStateEvidenceProfileV3",
+  "type": "object"
+}
