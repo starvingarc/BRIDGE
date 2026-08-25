@@ -1,0 +1,115 @@
+{
+  "$defs": {
+    "EvidenceStateClass": {
+      "enum": [
+        "usable",
+        "limited",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceStateClass",
+      "type": "string"
+    },
+    "GraftEvidenceRoleRule": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_metric_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Metric Ids",
+          "type": "array"
+        },
+        "allowed_states": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed States",
+          "type": "array"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "role_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role_id",
+        "required",
+        "allowed_metric_ids",
+        "allowed_states"
+      ],
+      "title": "GraftEvidenceRoleRule",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-assessment-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assessment_spec_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Assessment Spec Id",
+      "type": "string"
+    },
+    "method_ids": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Method Ids",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "role_rules": {
+      "items": {
+        "$ref": "#/$defs/GraftEvidenceRoleRule"
+      },
+      "minItems": 1,
+      "title": "Role Rules",
+      "type": "array"
+    },
+    "state_classes": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._:-]*$": {
+          "$ref": "#/$defs/EvidenceStateClass"
+        }
+      },
+      "title": "State Classes",
+      "type": "object"
+    }
+  },
+  "required": [
+    "object_version",
+    "assessment_spec_id",
+    "role_rules",
+    "state_classes",
+    "method_ids",
+    "provenance_refs"
+  ],
+  "title": "GraftAssessmentSpec",
+  "type": "object"
+}

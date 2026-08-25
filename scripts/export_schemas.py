@@ -50,6 +50,9 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     PUBLIC_SCHEMA_MODELS as P0_10_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_12_graft_assessment.models import (
+    PUBLIC_SCHEMA_MODELS as P0_12_SCHEMA_MODELS,
+)
 
 
 MODELS = {
@@ -118,7 +121,12 @@ def _schema_filename(schema_id: str) -> str:
     return slug.replace("-", "_")
 
 
-for schema_models in (P0_08_SCHEMA_MODELS, P0_09_SCHEMA_MODELS, P0_10_SCHEMA_MODELS):
+for schema_models in (
+    P0_08_SCHEMA_MODELS,
+    P0_09_SCHEMA_MODELS,
+    P0_10_SCHEMA_MODELS,
+    P0_12_SCHEMA_MODELS,
+):
     for schema_id, model in schema_models.items():
         filename = _schema_filename(schema_id)
         if filename in MODELS:

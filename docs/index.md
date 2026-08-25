@@ -31,6 +31,7 @@
 
 - [Shared P0 scientific contract spine, 2026-08-25](validation/shared_p0_scientific_contract_spine_20260825.md)
 - [V1 output-path hardening validation, 2026-08-24](validation/runtime_output_path_hardening_20260824.md)
+- [P0-12 graft assessment candidate validation, 2026-08-25](validation/p0_12_graft_assessment_20260825.md)
 - [P0-10 Report Claim Verifier candidate validation, 2026-08-14](validation/p0_10_claim_verifier_20260814.md)
 - [P0-09 Evidence Compiler & Reconciler candidate validation, 2026-08-13](validation/p0_09_evidence_compiler_20260813.md)
 - [P0-08 Evidence Sufficiency candidate validation, 2026-08-13](validation/p0_08_evidence_sufficiency_20260813.md)
