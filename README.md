@@ -44,15 +44,16 @@ or run. Unresolved Nb boundaries remain provisional or unavailable.
 |---|---|
 | P0-01 Input Audit & QC | Executable candidate |
 | P0-02 Cell-State Evidence | Executable shadow; no state or method frozen |
+| P0-03 Target Identity & Regional Fidelity | Executable deterministic shadow candidate over eleven checksummed objects; three descriptive ratios only, no spatial or score claim |
 | P0-04 Developmental Compatibility | Executable deterministic shadow candidate over external window and state specifications; no score or maturation claim |
 | P0-05 Off-target Control | Executable deterministic shadow candidate over six checksummed JSON objects; roles and thresholds remain external, no score or safety conclusion |
+| P0-06 Proliferation & Stress Response | Executable deterministic shadow candidate over external program and process contracts; no safety or unsupported process-attribution claim |
 | P0-07 Product Comparison & Stability | Executable deterministic shadow candidate over external comparison contracts and precomputed evidence; descriptive deltas only, no winner or score |
 | P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
 | P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
 | P0-10 Report Claim Verifier | Executable deterministic candidate receipt; verification is correspondence, not biological truth or release authority |
 | P0-11 Public-safe Export | Executable deterministic JSON candidate; no upload, scientific validation or domain score |
 | P0-12 Optional Graft Assessment | Executable independent descriptive candidate; never backfills pre-transplant evidence |
-| P0-03, P0-06 | Scientific contracts only; executors pending |
 
 ## Minimal usage
 
