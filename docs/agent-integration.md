@@ -26,7 +26,7 @@ The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Sc
 6. Use knowledge search for planning and explanation; never turn retrieval rank into scientific evidence weight.
 7. Declare `source_family_id` so the tool can exclude same-family references, and resolve logical QC/reference IDs through deployment-owned catalogs.
 
-P0-01, P0-02, P0-04, P0-05, P0-07, P0-08, P0-09, P0-10, P0-11 and P0-12 are
+P0-01, P0-02, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09, P0-10, P0-11 and P0-12 are
 executable candidate packages. P0-02 emits shadow Cell-State Evidence unless its
 `MeasurementSpec` names a signed `CellStateReleaseManifest`; draft review cards
 or benchmark results never become formal labels. P0-07 compares precomputed
@@ -51,7 +51,7 @@ confirmation before reporting `exported`; it writes locally and never uploads.
 P0-12 accepts either no graft objects or exactly one checksummed GraftCase,
 external GraftAssessmentSpec and precomputed GraftEvidenceBundle; it returns
 independent `not_provided` or descriptive candidate/shadow evidence and never
-backfills pretransplant domains. P0-03 and P0-06 deliberately return
+backfills pretransplant domains. P0-03 deliberately returns
 `not_implemented` without measurements. HTTP, MCP and queue adapters may wrap
 the same JSON contracts later without changing scientific semantics.
 
@@ -61,6 +61,9 @@ never infers product roles from labels or embeds biological thresholds;
 incomplete coverage withholds fractions, zero observations do not establish
 absence, and missing rare-state calibration returns `cannot_exclude` or
 `not_assessed`.
+
+
+P0-06 accepts seven checksummed structured objects and applies only external ProgramSpec stage, coverage, LOD and review rules to precomputed records. It returns descriptive shadow evidence; unresolved process metadata remains cannot_attribute, and an untriggered flag is not evidence of safety.
 
 Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.
 

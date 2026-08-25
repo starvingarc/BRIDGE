@@ -1,0 +1,75 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "product-case",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_case.json",
+      "role": "product_case",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "product-definition",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_definition_card.json",
+      "role": "product_definition_card",
+      "schema_ref": "bridge://schemas/product-definition-card/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "development-window",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/development_window_spec.json",
+      "role": "development_window_spec",
+      "schema_ref": "bridge://schemas/development-window-spec/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "program-spec",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/program_spec.json",
+      "role": "program_spec",
+      "schema_ref": "bridge://schemas/program-spec/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "input_id": "cell-state-profile",
+      "media_type": "application/json",
+      "object_version": "0.2.0",
+      "path": "/absolute/path/to/cell_state_evidence_profile.json",
+      "role": "cell_state_evidence_profile",
+      "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.2",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "input_id": "protocol",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/protocol_ir.json",
+      "role": "protocol_ir",
+      "schema_ref": "bridge://schemas/protocol-ir/v0.1",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "input_id": "program-evidence",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/program_evidence_bundle.json",
+      "role": "program_evidence_bundle",
+      "schema_ref": "bridge://schemas/program-evidence-bundle/v0.1",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-06-documentation-only",
+  "tool_id": "P0-06",
+  "tool_version": "0.2.0"
+}

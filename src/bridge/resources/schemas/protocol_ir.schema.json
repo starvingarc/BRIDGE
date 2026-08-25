@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "BatchConfoundingState": {
+      "enum": [
+        "not_confounded",
+        "fully_confounded",
+        "not_assessed"
+      ],
+      "title": "BatchConfoundingState",
+      "type": "string"
+    },
+    "ProtocolMetadataState": {
+      "enum": [
+        "complete",
+        "incomplete",
+        "not_provided"
+      ],
+      "title": "ProtocolMetadataState",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/protocol-ir/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "batch_confounding_state": {
+      "$ref": "#/$defs/BatchConfoundingState"
+    },
+    "comparable_group_count": {
+      "minimum": 0,
+      "title": "Comparable Group Count",
+      "type": "integer"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "declared_process_step_ids": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Declared Process Step Ids",
+      "type": "array"
+    },
+    "independent_replicate_count": {
+      "minimum": 0,
+      "title": "Independent Replicate Count",
+      "type": "integer"
+    },
+    "metadata_state": {
+      "$ref": "#/$defs/ProtocolMetadataState"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "protocol_context_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Protocol Context Id",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "protocol_context_id",
+    "product_case_ref",
+    "metadata_state",
+    "batch_confounding_state",
+    "independent_replicate_count",
+    "comparable_group_count",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "ProtocolIR",
+  "type": "object"
+}
