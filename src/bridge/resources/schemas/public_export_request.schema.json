@@ -1,0 +1,66 @@
+{
+  "$defs": {
+    "PublicExportChannel": {
+      "enum": [
+        "public_json"
+      ],
+      "title": "PublicExportChannel",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-export-request/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "confirmation_hash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confirmation Hash"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "export_request_id": {
+      "pattern": "^public-export-request:[A-Za-z0-9._:-]+$",
+      "title": "Export Request Id",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "policy_ref": {
+      "pattern": "^public-export-policy:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+      "title": "Policy Ref",
+      "type": "string"
+    },
+    "report_draft_ref": {
+      "pattern": "^report:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+      "title": "Report Draft Ref",
+      "type": "string"
+    },
+    "target_channel": {
+      "$ref": "#/$defs/PublicExportChannel"
+    }
+  },
+  "required": [
+    "object_version",
+    "export_request_id",
+    "report_draft_ref",
+    "policy_ref",
+    "target_channel",
+    "created_at"
+  ],
+  "title": "PublicExportRequest",
+  "type": "object"
+}
