@@ -27,10 +27,8 @@ from bridge.tool_packages.p0_02_cell_state.reference import (
     validate_reference_snapshot,
 )
 from bridge.toolkit.contracts import (
-    DataViewBinding,
     ExecutionState,
     InputAsset,
-    QCReadinessProfileV2,
     ReferenceManifest,
     ToolRequest,
 )
@@ -226,6 +224,10 @@ def _configure_qc_catalog(
     assay: str = "scRNA-seq",
     include_v2: bool = True,
 ) -> tuple[Path, Path | None]:
+    def versioned_ref(object_id: str) -> dict[str, str]:
+        return {"object_id": object_id, "object_version": "1.0.0"}
+
+    preparation_ref = versioned_ref("preparation:demo")
     qc_request = ToolRequest(
         request_id=f"qc-{query.stem}",
         tool_id="P0-01",
@@ -239,11 +241,33 @@ def _configure_qc_catalog(
                 matrix_location="X",
                 matrix_semantics="raw_counts",
                 assay=assay,
-                metadata={"sample_id": "sample-test", "capture_id": "capture-test"},
+                metadata={
+                    "sample_id": "sample-test",
+                    "capture_id": "capture-test",
+                    "biological_unit_lineage": {
+                        "source_unit_kind": "preparation",
+                        "source_unit_ref": preparation_ref,
+                        "unit_identity_namespace_ref": versioned_ref(
+                            "unit-namespace:demo"
+                        ),
+                        "analysis_unit_kind": "preparation",
+                        "independence_group_kind": "sample",
+                        "independence_scope_ref": versioned_ref(
+                            "independence-scope:demo"
+                        ),
+                        "observation_ref_columns": {},
+                        "constant_unit_refs": {
+                            "capture": versioned_ref("capture:demo"),
+                            "preparation": preparation_ref,
+                            "sample": versioned_ref("sample:demo"),
+                        },
+                    },
+                },
             )
         ],
     )
     run = ToolRegistry.load_default().run(qc_request)
+    assert run.execution_state is ExecutionState.SUCCEEDED
     profile_artifact = next(item for item in run.artifacts if item.kind == "qc_profile")
     profile_ref = run.result["profile_id"]
     record = {
@@ -252,43 +276,27 @@ def _configure_qc_catalog(
     }
     profile_v2_path = None
     if include_v2:
-        query_adata = ad.read_h5ad(query)
-        selected_view = DataViewBinding(
-            view_id=f"data-view:{profile_ref}:all-observations",
-            view_kind="all_observations",
-            artifact_id="input-asset:query-product",
-            sha256=_sha256(query),
-            parent_asset_id="query-product",
-            parent_asset_sha256=_sha256(query),
-            matrix_location="X",
-            matrix_semantics="raw_counts",
-            n_observations=int(query_adata.n_obs),
-            observation_ids_sha256=observation_ids_sha256(
-                query_adata.obs_names.astype(str).tolist()
-            ),
+        structured_index = next(
+            item
+            for item in run.artifacts
+            if item.kind
+            == "bridge://schemas/p0-01-structured-output-index/v0.1"
         )
-        profile_v2 = QCReadinessProfileV2.model_validate(
-            {
-                **run.result,
-                "measurement_spec_version": None,
-                "selected_data_view": selected_view,
-            }
+        index_payload = json.loads(
+            structured_index.path.read_text(encoding="utf-8")
         )
-        profile_v2_path = tmp_path / f"qc-profile-v2-{query.stem}.json"
-        profile_v2_path.write_text(
-            json.dumps(
-                profile_v2.model_dump(mode="json"),
-                ensure_ascii=False,
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n",
-            encoding="utf-8",
+        profile_v2_record = next(
+            item
+            for item in index_payload["outputs"]
+            if item["role"] == "qc_readiness_profile_v2"
         )
+        profile_v2_path = structured_index.path.parent / profile_v2_record[
+            "relative_filename"
+        ]
         record.update(
             {
-                "v2_path": str(profile_v2_path),
-                "v2_sha256": _sha256(profile_v2_path),
+                "structured_output_index_path": str(structured_index.path),
+                "structured_output_index_sha256": structured_index.sha256,
             }
         )
     catalog_path = tmp_path / f"qc-catalog-{query.stem}.json"
@@ -299,6 +307,27 @@ def _configure_qc_catalog(
     monkeypatch.setenv("BRIDGE_QC_PROFILE_CATALOG", str(catalog_path))
     monkeypatch.setenv("BRIDGE_TEST_QC_PROFILE_REF", profile_ref)
     return catalog_path, profile_v2_path
+
+
+def _refresh_indexed_artifact_checksum(
+    catalog_path: Path,
+    *,
+    role: str,
+    artifact_path: Path,
+) -> None:
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    profile_ref = next(iter(catalog["profiles"]))
+    record = catalog["profiles"][profile_ref]
+    index_path = Path(record["structured_output_index_path"])
+    index_payload = json.loads(index_path.read_text(encoding="utf-8"))
+    indexed = next(item for item in index_payload["outputs"] if item["role"] == role)
+    indexed["sha256"] = _sha256(artifact_path)
+    index_path.write_text(
+        json.dumps(index_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    record["structured_output_index_sha256"] = _sha256(index_path)
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
 
 
 def test_vocabulary_has_fixed_hierarchy_alias_and_unresolved_conflict() -> None:
@@ -356,24 +385,23 @@ def test_source_aware_run_emits_shadow_support_and_preserves_input(tmp_path: Pat
         item for item in run.artifacts if item.kind == "cell_state_profile_v3"
     )
     profile_v3 = json.loads(profile_v3_artifact.path.read_text(encoding="utf-8"))
-    assert profile_v3["input_data_view"] == {
-        "view_id": profile_v3["input_data_view"]["view_id"],
-        "view_kind": "all_observations",
-        "artifact_id": "input-asset:query-product",
-        "sha256": _sha256(query),
-        "parent_asset_id": "query-product",
-        "parent_asset_sha256": _sha256(query),
-        "matrix_location": "X",
-        "matrix_semantics": "raw_counts",
-        "n_observations": 4,
-        "observation_ids_sha256": observation_ids_sha256(
-            [f"query-{index}" for index in range(4)]
-        ),
-        "sample_or_preparation_ref": None,
-        "selection_spec_ref": None,
-        "biological_unit_manifest_ref": None,
-        "biological_unit_manifest_sha256": None,
-    }
+    input_view = profile_v3["input_data_view"]
+    assert input_view["view_kind"] == "all_observations"
+    assert input_view["artifact_id"] == "input-asset:query-product"
+    assert input_view["sha256"] == _sha256(query)
+    assert input_view["parent_asset_id"] == "query-product"
+    assert input_view["parent_asset_sha256"] == _sha256(query)
+    assert input_view["matrix_location"] == "X"
+    assert input_view["matrix_semantics"] == "raw_counts"
+    assert input_view["n_observations"] == 4
+    assert input_view["observation_ids_sha256"] == observation_ids_sha256(
+        [f"query-{index}" for index in range(4)]
+    )
+    assert input_view["sample_or_preparation_ref"] == "preparation:demo@1.0.0"
+    assert input_view["biological_unit_manifest_ref"].startswith(
+        "biological-unit-manifest:"
+    )
+    assert len(input_view["biological_unit_manifest_sha256"]) == 64
     assert profile_v3["n_observations"] == profile_v3["input_data_view"]["n_observations"]
     assert profile_v3["denominator"] == "selected_data_view"
     assert profile_v3["measurement_spec_version"] == "0.1.0"
@@ -608,7 +636,8 @@ def test_missing_qc_v2_keeps_v01_run_and_reports_handoff_unavailable(
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert "cell_state_profile_v3" not in {item.kind for item in run.artifacts}
     assert (
-        "cell_state_evidence_profile_v3_unavailable:qc_profile_v2_not_resolved"
+        "cell_state_evidence_profile_v3_unavailable:"
+        "p0_01_structured_output_index_not_resolved"
         in run.warnings
     )
     assert run.result["measurement_spec_id"] == "CELLSTATE-scRNA-shadow-v0.1"
@@ -657,24 +686,31 @@ def test_qc_v2_checksum_tampering_fails_closed(tmp_path: Path, monkeypatch) -> N
 
 
 @pytest.mark.parametrize(
-    ("catalog_field", "reason_code"),
+    ("artifact_role", "reason_code"),
     [
         ("path", "qc_profile_modified_during_run"),
-        ("v2_path", "qc_profile_v2_modified_during_run"),
+        ("profile_v2", "qc_profile_v2_modified_during_run"),
     ],
 )
 def test_qc_profile_replacement_during_run_fails_closed(
     tmp_path: Path,
     monkeypatch,
-    catalog_field: str,
+    artifact_role: str,
     reason_code: str,
 ) -> None:
     _build_snapshot(tmp_path, monkeypatch)
     query = _write_query(tmp_path / "query.h5ad")
-    catalog_path, _ = _configure_qc_catalog(tmp_path, monkeypatch, query)
+    catalog_path, profile_v2_path = _configure_qc_catalog(
+        tmp_path, monkeypatch, query
+    )
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     profile_ref = next(iter(catalog["profiles"]))
-    artifact_path = Path(catalog["profiles"][profile_ref][catalog_field])
+    artifact_path = (
+        Path(catalog["profiles"][profile_ref]["path"])
+        if artifact_role == "path"
+        else profile_v2_path
+    )
+    assert artifact_path is not None
     original_write_outputs = cell_state_executor._write_outputs
 
     def write_outputs_then_replace_qc(*args, **kwargs):
@@ -709,15 +745,16 @@ def test_qc_v2_observation_digest_mismatch_fails_closed(
         json.dumps(profile_v2, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-    profile_ref = next(iter(catalog["profiles"]))
-    catalog["profiles"][profile_ref]["v2_sha256"] = _sha256(profile_v2_path)
-    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    _refresh_indexed_artifact_checksum(
+        catalog_path,
+        role="qc_readiness_profile_v2",
+        artifact_path=profile_v2_path,
+    )
 
     run = ToolRegistry.load_default().run(_request(tmp_path, query))
 
     assert run.execution_state is ExecutionState.FAILED
-    assert run.reason_codes == ["qc_profile_v2_data_view_mismatch"]
+    assert run.reason_codes == ["p0_01_typed_lineage_binding_mismatch"]
 
 
 @pytest.mark.parametrize(
@@ -746,10 +783,11 @@ def test_qc_v2_selected_view_must_be_the_exact_input_asset(
         json.dumps(profile_v2, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-    profile_ref = next(iter(catalog["profiles"]))
-    catalog["profiles"][profile_ref]["v2_sha256"] = _sha256(profile_v2_path)
-    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    _refresh_indexed_artifact_checksum(
+        catalog_path,
+        role="qc_readiness_profile_v2",
+        artifact_path=profile_v2_path,
+    )
 
     run = ToolRegistry.load_default().run(_request(tmp_path, query))
 

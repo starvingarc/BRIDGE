@@ -146,11 +146,13 @@ BRIDGE 的方法和评测合同冻结后，Track A 才能作为署名的外部 b
 ### 7.3 Additive V3 handoff
 
 `CellStateEvidenceProfileV3` 是实际 P0-02 run 的附加 sidecar，不替换
-v0.1 result。deployment-owned `BRIDGE_QC_PROFILE_CATALOG` 必须保留
-`path`/`sha256` 指向 QC v1，并以 `v2_path`/`v2_sha256` 指向
-P0-01 的 `qc_readiness_profile_v2.json`。P0-02 读取同一份 checksummed
-QC V2 bytes，核验其中 selected DataView 的 artifact checksum、矩阵语义、
-observation 数量及 observation-ID digest 后，才生成 V3 sidecar。
+v0.1 result。deployment-owned `BRIDGE_QC_PROFILE_CATALOG` 保留
+`path`/`sha256` 指向 QC v1，并以 `structured_output_index_path` /
+`structured_output_index_sha256` 指向一个真实 P0-01 run 的
+`structured_output_index.json`。P0-02 从 index 解析并校验 QC V2、
+biological-unit assignment 与 manifest，再核验 selected DataView 的
+artifact checksum、矩阵语义、observation 数量、observation-ID digest
+及 typed lineage 绑定，才生成 V3 sidecar。
 
 V3 composition 当前只晋升 L1，因为 L2 的分母是层级 eligible subset，
 尚无独立 content-addressed DataView。每行必须显式记录
@@ -163,13 +165,14 @@ selected-view 分母，consensus 行必须与 reconciliation 的
 
 V3 另绑定 canonical MeasurementSpec model bytes 的 SHA-256。现有
 artifact manifest 必须收录 V3 artifact 的 kind、SHA-256 与 byte size。
-P0-02 在发布前和写出后都复核 QC v1/V2 artifact checksum；运行中替换
-任一 upstream profile 均 fail closed。
+P0-02 在发布前和写出后都复核 QC v1、indexed QC v2、assignment 与
+manifest checksum；运行中替换任一 upstream artifact 均 fail closed。
 
-若 catalog 没有两个 V2 字段，v0.1 运行保持成功，但 ToolRun warning
-明确报告 V3 handoff unavailable；不得从 v1 profile、文件名或上传
-metadata 猜测 DataViewBinding。若 V2 字段不完整、checksum 错误或
-DataView 不匹配，则 fail closed。
+若 catalog 没有 structured-index 字段，或 P0-01 合法输出中没有 typed
+lineage，v0.1 运行保持成功，但 ToolRun warning 明确报告 V3 handoff
+unavailable；不得从 v1 profile、文件名或上传 metadata 猜测
+DataViewBinding。index 字段不完整、checksum 错误或 lineage/DataView
+不匹配则 fail closed。P0-01 lineage 仅表示调用方声明，未获得生物学审核。
 
 ## 8. 运行环境
 

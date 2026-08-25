@@ -136,7 +136,10 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     query = normalize_query(adata.X, asset.matrix_semantics or "")
     observation_ids = adata.obs_names.astype(str).to_numpy()
     selected_data_view = None
-    if upstream_qc.profile_v2 is not None:
+    if (
+        upstream_qc.profile_v2 is not None
+        and upstream_qc.typed_lineage is not None
+    ):
         try:
             selected_data_view = validate_selected_data_view(
                 upstream_qc.profile_v2,
@@ -451,7 +454,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     if profile_v3 is None:
         run_warnings.append(
             "cell_state_evidence_profile_v3_unavailable:"
-            f"{upstream_qc.v2_unavailable_reason}"
+            f"{upstream_qc.v3_unavailable_reason}"
         )
     return ToolRun(
         run_id=run_id,
