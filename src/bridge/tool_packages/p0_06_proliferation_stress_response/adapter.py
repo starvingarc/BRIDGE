@@ -22,11 +22,12 @@ from bridge.tool_packages._structured_runtime import (
     read_regular_bytes,
     single_object,
 )
+from bridge.tool_packages.p0_04_developmental_compatibility.models import (
+    DevelopmentWindowSpec,
+)
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     AnalysisScope,
     BatchConfoundingState,
-    DevelopmentWindowSpec,
-    DevelopmentWindowState,
     ProcessAttributionState,
     ProgramApplicabilityState,
     ProgramAvailabilityState,
@@ -296,6 +297,7 @@ def _binding_reasons(
         product_case.product_definition_ref != product_definition.ref
         or product_case.assay not in product_definition.supported_assays
         or window.product_definition_ref != product_definition.ref
+        or product_case.assay not in window.applicable_assays
         or program_spec.product_definition_ref != product_definition.ref
     ):
         reasons.append("product_context_binding_mismatch")
@@ -454,11 +456,10 @@ def _build_result(
         rule = rules[record.program_id]
         reasons: list[str] = []
         stage_applicable = (
-            window.window_state is DevelopmentWindowState.CONFIRMED
-            and record.stage_id in window.applicable_stage_ids
+            window.review_state == "confirmed"
             and record.stage_id in rule.allowed_stage_ids
         )
-        if window.window_state is not DevelopmentWindowState.CONFIRMED:
+        if window.review_state != "confirmed":
             reasons.append("development_window_unconfirmed")
         elif not stage_applicable:
             reasons.append("program_stage_not_applicable")

@@ -67,7 +67,7 @@ def _payloads() -> dict[str, dict[str, Any]]:
         "object_version": "1.0.0",
     }
     window_ref = {
-        "object_id": "development-window:demo",
+        "object_id": "development-window-spec:demo",
         "object_version": "1.0.0",
     }
     program_spec_ref = {
@@ -120,12 +120,25 @@ def _payloads() -> dict[str, dict[str, Any]]:
     }
     window = {
         "object_version": "0.1.0",
-        "development_window_id": window_ref["object_id"],
-        "development_window_version": window_ref["object_version"],
+        "window_spec_id": window_ref["object_id"],
+        "window_spec_version": window_ref["object_version"],
         "product_definition_ref": product_definition_ref,
-        "window_state": "confirmed",
-        "applicable_stage_ids": ["stage:target"],
-        "provenance_refs": ["provenance:development-window"],
+        "state_map_ref": product_definition["state_role_map_ref"],
+        "review_state": "confirmed",
+        "reviewer_ref": {
+            "object_id": "reviewer:demo",
+            "object_version": "1.0.0",
+        },
+        "confirmed_at": CREATED_AT,
+        "applicable_assays": ["scRNA-seq"],
+        "composition_view": "consensus_supported_only",
+        "label_level": "L2",
+        "rationale_refs": [
+            {
+                "object_id": "provenance:development-window",
+                "object_version": "1.0.0",
+            }
+        ],
     }
     program_spec = {
         "object_version": "0.1.0",
@@ -335,8 +348,8 @@ def _request(
             },
             "product_definition_sha256": refs["product_definition_card"].sha256,
             "development_window_ref": {
-                "object_id": window["development_window_id"],
-                "object_version": window["development_window_version"],
+                "object_id": window["window_spec_id"],
+                "object_version": window["window_spec_version"],
             },
             "development_window_sha256": refs["development_window_spec"].sha256,
             "program_spec_ref": {
@@ -501,7 +514,9 @@ def test_stage_not_applicable_is_unavailable(
 ) -> None:
     payloads = _payloads()
     if change == "window":
-        payloads["development_window_spec"]["window_state"] = "unconfirmed"
+        payloads["development_window_spec"]["review_state"] = "candidate"
+        payloads["development_window_spec"]["reviewer_ref"] = None
+        payloads["development_window_spec"]["confirmed_at"] = None
     else:
         payloads["program_evidence_bundle"]["records"][0][
             "stage_id"
@@ -529,8 +544,6 @@ def test_program_stage_metric_and_review_vocabulary_is_external(
     tmp_path: Path,
 ) -> None:
     payloads = _payloads()
-    window = payloads["development_window_spec"]
-    window["applicable_stage_ids"] = ["future-stage"]
     spec = payloads["program_spec"]
     spec["program_rules"] = [
         {

@@ -6,11 +6,11 @@ from pathlib import Path
 import yaml
 
 
-# P0-06 and P0-09 through P0-12 keep detailed interface cards as maintained
+# P0-04, P0-06 and P0-09 through P0-12 keep detailed interface cards as maintained
 # source. The generic renderer is intentionally too small for their structured
 # object contracts, so regeneration validates those cards instead of replacing
 # them with scaffold summaries.
-DETAILED_CARD_IDS = {"P0-06", "P0-09", "P0-10", "P0-11", "P0-12"}
+DETAILED_CARD_IDS = {"P0-04", "P0-06", "P0-09", "P0-10", "P0-11", "P0-12"}
 
 
 DETAILS = {

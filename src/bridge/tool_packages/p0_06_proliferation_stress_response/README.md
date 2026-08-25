@@ -24,7 +24,7 @@ Exactly seven checksummed local JSON objects are required:
 |---|---|---|
 | `product_case` | `bridge://schemas/product-case/v0.1` | Product, assay, source unit and MeasurementSpec lineage |
 | `product_definition_card` | `bridge://schemas/product-definition-card/v0.1` | Product definition and supported assay |
-| `development_window_spec` | `bridge://schemas/development-window-spec/v0.1` | External versioned stage window |
+| `development_window_spec` | `bridge://schemas/development-window-spec/v0.1` | P0-04-owned candidate/confirmed window and assay/context binding |
 | `program_spec` | `bridge://schemas/program-spec/v0.1` | External program, gene-set checksum, stage/state/scope, coverage/LOD and review rules |
 | `cell_state_evidence_profile` | `bridge://schemas/cell-state-evidence-profile/v0.2` | Upstream state evidence and MeasurementSpec binding |
 | `protocol_ir` | `bridge://schemas/protocol-ir/v0.1` | Process metadata completeness, batch confounding, replication and declared steps |
@@ -45,7 +45,7 @@ gene or threshold list.
 P0-06 binds all seven inputs to the same ProductCase and ProductDefinition. It
 then evaluates each precomputed record in this order:
 
-1. development-window and state applicability;
+1. confirmed development-window, assay, and program-declared stage/state applicability;
 2. gene coverage against the external threshold;
 3. LOD state against the external resolvable-state list;
 4. review outcome through the external state-to-outcome map;

@@ -1,13 +1,5 @@
 {
   "$defs": {
-    "DevelopmentWindowState": {
-      "enum": [
-        "unconfirmed",
-        "confirmed"
-      ],
-      "title": "DevelopmentWindowState",
-      "type": "string"
-    },
     "VersionedObjectRef": {
       "additionalProperties": false,
       "properties": {
@@ -33,23 +25,46 @@
   "$id": "bridge://schemas/development-window-spec/v0.1",
   "additionalProperties": false,
   "properties": {
-    "applicable_stage_ids": {
+    "applicable_assays": {
       "items": {
-        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "enum": [
+          "scRNA-seq",
+          "snRNA-seq"
+        ],
         "type": "string"
       },
       "minItems": 1,
-      "title": "Applicable Stage Ids",
+      "title": "Applicable Assays",
       "type": "array"
     },
-    "development_window_id": {
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Development Window Id",
+    "composition_view": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "Composition View",
       "type": "string"
     },
-    "development_window_version": {
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Development Window Version",
+    "confirmed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confirmed At"
+    },
+    "label_level": {
+      "enum": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "title": "Label Level",
       "type": "string"
     },
     "object_version": {
@@ -60,27 +75,71 @@
     "product_definition_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
     },
-    "provenance_refs": {
+    "rationale_refs": {
       "items": {
-        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
-        "type": "string"
+        "$ref": "#/$defs/VersionedObjectRef"
       },
       "minItems": 1,
-      "title": "Provenance Refs",
+      "title": "Rationale Refs",
       "type": "array"
     },
-    "window_state": {
-      "$ref": "#/$defs/DevelopmentWindowState"
+    "review_state": {
+      "enum": [
+        "candidate",
+        "confirmed"
+      ],
+      "title": "Review State",
+      "type": "string"
+    },
+    "reviewer_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "source_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Id"
+    },
+    "state_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "window_spec_id": {
+      "pattern": "^development-window-spec:[A-Za-z0-9._:-]+$",
+      "title": "Window Spec Id",
+      "type": "string"
+    },
+    "window_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Window Spec Version",
+      "type": "string"
     }
   },
   "required": [
     "object_version",
-    "development_window_id",
-    "development_window_version",
+    "window_spec_id",
+    "window_spec_version",
     "product_definition_ref",
-    "window_state",
-    "applicable_stage_ids",
-    "provenance_refs"
+    "state_map_ref",
+    "review_state",
+    "applicable_assays",
+    "composition_view",
+    "label_level",
+    "rationale_refs"
   ],
   "title": "DevelopmentWindowSpec",
   "type": "object"

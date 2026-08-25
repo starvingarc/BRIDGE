@@ -12,7 +12,7 @@
 
 ## 0. 当前可执行候选
 
-P0-06 `0.2.0` 已提供 `ToolRequestV2 validate/run`，固定接收七个 checksummed JSON 对象。ProductCase、ProductDefinitionCard 与 CellStateEvidenceProfileV2 复用共享合同；DevelopmentWindowSpec、ProgramSpec、ProtocolIR 和 ProgramEvidenceBundle 为模块本地公开合同。
+P0-06 `0.2.0` 已提供 `ToolRequestV2 validate/run`，固定接收七个 checksummed JSON 对象。ProductCase、ProductDefinitionCard 与 CellStateEvidenceProfileV2 复用共享合同；DevelopmentWindowSpec 由 P0-04 唯一拥有，P0-06 只消费；ProgramSpec、ProtocolIR 和 ProgramEvidenceBundle 为模块本地公开合同。
 
 ProgramSpec 外置管理全部 program、gene-set ref/checksum、适用 stage/state/scope、metric、gene-coverage 阈值、LOD 状态、review mapping 和 process-attribution 计数要求。executor 只做 lineage/checksum 绑定、适用性、coverage/LOD、process metadata/confounding 判定与确定性聚合。结果固定为 `descriptive_only`、`candidate/shadow`、`domain_score=null`；未触发 review rule 明确不是安全证据。下文的表达矩阵分析、方法 benchmark 和生物学冻结仍是后续目标，不代表本版本已实现。
 

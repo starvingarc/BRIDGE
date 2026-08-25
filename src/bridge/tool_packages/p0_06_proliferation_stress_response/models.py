@@ -31,11 +31,6 @@ def _unique(values: list[object], field_name: str) -> list[object]:
     return values
 
 
-class DevelopmentWindowState(StrEnum):
-    UNCONFIRMED = "unconfirmed"
-    CONFIRMED = "confirmed"
-
-
 class AnalysisScope(StrEnum):
     WHOLE_PRODUCT = "whole_product"
     STATE_SPECIFIC = "state_specific"
@@ -75,28 +70,6 @@ class ProcessAttributionState(StrEnum):
     CONDITIONAL_ASSOCIATION = "conditional_association"
     CANNOT_ATTRIBUTE = "cannot_attribute"
     NOT_REQUESTED = "not_requested"
-
-
-class DevelopmentWindowSpec(FrozenModel):
-    object_version: Literal["0.1.0"]
-    development_window_id: SafeId
-    development_window_version: SafeId
-    product_definition_ref: VersionedObjectRef
-    window_state: DevelopmentWindowState
-    applicable_stage_ids: list[SafeId] = Field(min_length=1)
-    provenance_refs: list[PublishedRef] = Field(min_length=1)
-
-    @field_validator("applicable_stage_ids", "provenance_refs")
-    @classmethod
-    def lists_are_unique(cls, value: list[str], info: object) -> list[str]:
-        return _unique(value, getattr(info, "field_name", "values"))
-
-    @property
-    def ref(self) -> VersionedObjectRef:
-        return VersionedObjectRef(
-            object_id=self.development_window_id,
-            object_version=self.development_window_version,
-        )
 
 
 class ProcessAttributionRule(FrozenModel):
@@ -367,7 +340,6 @@ class ProliferationStressResponseProfile(FrozenModel):
 
 
 PUBLIC_SCHEMA_MODELS = {
-    "bridge://schemas/development-window-spec/v0.1": DevelopmentWindowSpec,
     "bridge://schemas/program-spec/v0.1": ProgramSpec,
     "bridge://schemas/protocol-ir/v0.1": ProtocolIR,
     "bridge://schemas/program-evidence-bundle/v0.1": ProgramEvidenceBundle,

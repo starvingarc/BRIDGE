@@ -17,6 +17,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.ids() == EXPECTED_IDS
     assert registry.describe("P0-01").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-02").implementation_state is ImplementationState.IMPLEMENTED
+    assert registry.describe("P0-04").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-06").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-08").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-09").implementation_state is ImplementationState.IMPLEMENTED
@@ -25,7 +26,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
     assert all(
         registry.describe(tool_id).implementation_state is ImplementationState.SCAFFOLD
-        for tool_id in ["P0-03", "P0-04", "P0-05", "P0-07"]
+        for tool_id in ["P0-03", "P0-05", "P0-07"]
     )
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
     assert proliferation_stress_response.version == "0.2.0"
@@ -104,7 +105,7 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 82
+    assert len(SCHEMA_REFS) == 85
     assert {
         "bridge://schemas/claim-verifier-run-result/v0.1",
         "bridge://schemas/verified-report/v0.1",

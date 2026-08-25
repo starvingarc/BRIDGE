@@ -14,6 +14,8 @@ DevelopmentWindowSpec, ProgramSpec, CellStateEvidenceProfileV2, ProtocolIR and
 ProgramEvidenceBundle. No real cell, sample, protocol, gene list or private
 metadata is used.
 
+DevelopmentWindowSpec is uniquely owned by P0-04 and consumed unchanged by P0-06.
+
 The ProgramSpec owns synthetic program IDs, gene-set references and checksums,
 allowed stages/states/scopes/metrics, coverage threshold, allowed and resolvable
 LOD states, review mappings and attribution-count requirements. One control
@@ -48,7 +50,7 @@ byte-identical artifacts.
 
 - Focused P0-06 and registry suite: 35 passed.
 - Exactly 12 high-level Tool Packages remain discoverable.
-- Six public P0-06 Schemas are generated, packaged and byte-identical across
+- Five module-local public P0-06 Schemas are generated, packaged and byte-identical across
   two consecutive generator runs.
 - Knowledge validation passed with 354 methods, 396 bindings, no dangling
   method or source references and zero formally eligible methods.
