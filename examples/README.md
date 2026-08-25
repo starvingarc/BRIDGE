@@ -5,6 +5,7 @@ The request files demonstrate the stable JSON shape used by the Python SDK and `
 - `requests/p0_01_count_ready.json`: executable count-level input audit and QC.
 - `requests/p0_01_analysis_ready.json`: structure-only audit of normalized expression.
 - `requests/p0_02_cell_state.json`: executable shadow Cell-State Evidence request. The deployment must resolve its `qc_profile_ref` and the frozen reference snapshot.
+- `requests/p0_03_target_regional_evidence.json`: eleven-object P0-03 candidate request shape. It consumes the shared P0-05 StateRoleMap and a P0-02 V3 profile with exact measurement, vocabulary, reference, QC and lineage bindings; all paths and checksums are placeholders.
 - `requests/p0_05_off_target_control.json`: six-object P0-05 candidate request for externally defined roles, thresholds and precomputed state evidence. Paths and checksums are placeholders.
 - `requests/p0_06_proliferation_stress_response.json`: structured P0-06 candidate request shape for seven checksummed objects. Paths and checksums are placeholders; all program vocabulary, applicability, thresholds and review rules come from external versioned specifications.
 - `requests/p0_07_product_comparison_stability.json`: four-or-more-object P0-07 candidate request for an external comparison contract, case manifest and precomputed product evidence bundles. Paths and checksums are placeholders.

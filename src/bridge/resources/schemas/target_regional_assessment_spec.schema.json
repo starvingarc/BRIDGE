@@ -1,0 +1,180 @@
+{
+  "$defs": {
+    "CompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "CompositionView",
+      "type": "string"
+    },
+    "ProductRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved"
+      ],
+      "title": "ProductRole",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/target-regional-assessment-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "ambiguous_state_policy": {
+      "const": "not_assessed",
+      "title": "Ambiguous State Policy",
+      "type": "string"
+    },
+    "assessment_spec_id": {
+      "pattern": "^target-regional-assessment-spec:[A-Za-z0-9._:-]+$",
+      "title": "Assessment Spec Id",
+      "type": "string"
+    },
+    "assessment_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Assessment Spec Version",
+      "type": "string"
+    },
+    "composition_views": {
+      "items": {
+        "$ref": "#/$defs/CompositionView"
+      },
+      "minItems": 1,
+      "title": "Composition Views",
+      "type": "array"
+    },
+    "included_label_levels": {
+      "items": {
+        "enum": [
+          "L1",
+          "L2",
+          "L3"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Included Label Levels",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "regional_denominator_state_ids": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Regional Denominator State Ids",
+      "type": "array"
+    },
+    "regional_target_numerator_state_ids": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Regional Target Numerator State Ids",
+      "type": "array"
+    },
+    "source_ids": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Source Ids",
+      "type": "array"
+    },
+    "spatial_policy": {
+      "const": "not_assessed_without_projection",
+      "title": "Spatial Policy",
+      "type": "string"
+    },
+    "state_role_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "state_role_map_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "State Role Map Sha256",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "candidate",
+        "frozen"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "target_identity_numerator_product_roles": {
+      "items": {
+        "$ref": "#/$defs/ProductRole"
+      },
+      "minItems": 1,
+      "title": "Target Identity Numerator Product Roles",
+      "type": "array"
+    },
+    "unmapped_state_policy": {
+      "const": "not_assessed",
+      "title": "Unmapped State Policy",
+      "type": "string"
+    },
+    "whole_product_target_region_state_ids": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Whole Product Target Region State Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "assessment_spec_id",
+    "assessment_spec_version",
+    "product_definition_ref",
+    "state_role_map_ref",
+    "state_role_map_sha256",
+    "status",
+    "composition_views",
+    "included_label_levels",
+    "target_identity_numerator_product_roles",
+    "regional_denominator_state_ids",
+    "regional_target_numerator_state_ids",
+    "whole_product_target_region_state_ids",
+    "unmapped_state_policy",
+    "ambiguous_state_policy",
+    "spatial_policy"
+  ],
+  "title": "TargetRegionalAssessmentSpec",
+  "type": "object"
+}

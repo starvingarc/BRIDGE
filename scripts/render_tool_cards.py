@@ -6,12 +6,13 @@ from pathlib import Path
 import yaml
 
 
-# P0-04 through P0-07 and the downstream evidence tools keep detailed
+# P0-03 through P0-07 and the downstream evidence tools keep detailed
 # interface cards as maintained
 # source. The generic renderer is intentionally too small for their structured
 # object contracts, so regeneration validates those cards instead of replacing
 # them with scaffold summaries.
 DETAILED_CARD_IDS = {
+    "P0-03",
     "P0-04",
     "P0-05",
     "P0-06",

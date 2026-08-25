@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bridge.toolkit.contracts import ExecutionState, ImplementationState, ToolRequest
+from bridge.toolkit.contracts import ImplementationState, ToolRequest
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.schemas import SCHEMA_REFS, load_schema
 
@@ -18,6 +18,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-01").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-02").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-04").implementation_state is ImplementationState.IMPLEMENTED
+    assert registry.describe("P0-03").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-05").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-06").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-07").implementation_state is ImplementationState.IMPLEMENTED
@@ -26,28 +27,9 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-10").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-11").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
-    assert all(
-        registry.describe(tool_id).implementation_state is ImplementationState.SCAFFOLD
-        for tool_id in ["P0-03"]
-    )
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
     assert proliferation_stress_response.version == "0.2.0"
 
-
-def test_scaffold_run_returns_not_implemented_without_measurements(tmp_path: Path) -> None:
-    registry = ToolRegistry.load_default()
-    request = ToolRequest(
-        request_id="request-scaffold",
-        tool_id="P0-03",
-        output_dir=tmp_path,
-    )
-
-    run = registry.run(request)
-
-    assert run.execution_state is ExecutionState.NOT_IMPLEMENTED
-    assert run.measurements == []
-    assert run.artifacts == []
-    assert run.reason_codes == ["tool_package_not_implemented"]
 
 
 def test_declared_tool_version_must_match_registry(tmp_path: Path) -> None:
@@ -64,21 +46,6 @@ def test_declared_tool_version_must_match_registry(tmp_path: Path) -> None:
     assert eligibility.eligible is False
     assert eligibility.reason_codes == ["tool_version_mismatch"]
 
-
-def test_scaffold_run_rejects_declared_version_mismatch(tmp_path: Path) -> None:
-    registry = ToolRegistry.load_default()
-    request = ToolRequest(
-        request_id="request-scaffold-version-mismatch",
-        tool_id="P0-03",
-        tool_version="9.9.9",
-        output_dir=tmp_path,
-    )
-
-    run = registry.run(request)
-
-    assert run.execution_state is ExecutionState.FAILED
-    assert run.measurements == []
-    assert run.reason_codes == ["tool_version_mismatch"]
 
 
 def test_every_tool_package_has_resolvable_contract_files() -> None:
@@ -107,7 +74,7 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 93
+    assert len(SCHEMA_REFS) == 95
     assert {
         "bridge://schemas/claim-verifier-run-result/v0.1",
         "bridge://schemas/verified-report/v0.1",

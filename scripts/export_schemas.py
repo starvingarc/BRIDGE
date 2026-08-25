@@ -42,6 +42,9 @@ from bridge.tool_packages._configurable_contracts import (
     ProductDefinitionCard,
 )
 from bridge.tool_packages.p0_01_input_qc.io import P001StructuredOutputIndex
+from bridge.tool_packages.p0_03_target_regional.models import (
+    PUBLIC_SCHEMA_MODELS as P0_03_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     PUBLIC_SCHEMA_MODELS as P0_07_SCHEMA_MODELS,
 )
@@ -147,6 +150,7 @@ def _schema_filename(schema_id: str) -> str:
 
 
 for schema_models in (
+    P0_03_SCHEMA_MODELS,
     P0_04_SCHEMA_MODELS,
     P0_05_SCHEMA_MODELS,
     P0_06_SCHEMA_MODELS,

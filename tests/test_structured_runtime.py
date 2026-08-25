@@ -177,6 +177,29 @@ def _registry_with_adapter(
     return _mixed_registry(spec or _v2_spec())
 
 
+def _v1_spec(
+    *,
+    state: ImplementationState = ImplementationState.IMPLEMENTED,
+) -> ToolPackageSpec:
+    return ToolPackageSpec(
+        tool_id="P0-01",
+        name="Synthetic legacy package",
+        version="0.1.0",
+        summary="Synthetic V1 contract fixture.",
+        implementation_state=state,
+        scientific_status="candidate",
+        environment_spec_id="ENV-SYNTHETIC-v0.1",
+        input_schema_ref="bridge://schemas/tool-request/v0.1",
+        output_schema_ref="bridge://schemas/tool-run/v0.1",
+        method_ids=(
+            ["METHOD-SYNTHETIC"]
+            if state is ImplementationState.IMPLEMENTED
+            else []
+        ),
+        card_ref="bridge://tool-cards/P0-01",
+    )
+
+
 def _v2_spec(
     *,
     state: ImplementationState = ImplementationState.IMPLEMENTED,
@@ -507,9 +530,7 @@ def test_versioned_schema_requires_object_version_binding(
 def test_established_top_level_version_binds_to_reference(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    package_payload = ToolRegistry.load_default().describe("P0-03").model_dump(
-        mode="json"
-    )
+    package_payload = _v1_spec().model_dump(mode="json")
     input_ref = _write_structured_input(
         tmp_path,
         payload=package_payload,
@@ -936,16 +957,15 @@ def test_registry_loads_mixed_contract_versions_and_selects_request_model(
 
 
 def test_deprecated_v1_package_is_ineligible_and_non_executable(tmp_path: Path) -> None:
-    specs = ToolRegistry.load_default().list()
-    deprecated = ToolPackageSpec.model_validate(
-        specs[2].model_dump(mode="json")
-        | {"implementation_state": ImplementationState.DEPRECATED}
-    )
-    specs[2] = deprecated
+    deprecated = _v1_spec(state=ImplementationState.DEPRECATED)
+    specs = [
+        deprecated if spec.tool_id == deprecated.tool_id else spec
+        for spec in ToolRegistry.load_default().list()
+    ]
     registry = ToolRegistry(specs)
     request = ToolRequest(
         request_id="request-deprecated-v1",
-        tool_id="P0-03",
+        tool_id=deprecated.tool_id,
         output_dir=tmp_path,
     )
 

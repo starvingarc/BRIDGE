@@ -1,0 +1,111 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "case",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_case.json",
+      "role": "product_case",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "definition",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_definition_card.json",
+      "role": "product_definition_card",
+      "schema_ref": "bridge://schemas/product-definition-card/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "roles",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/state_role_map.json",
+      "role": "state_role_map",
+      "schema_ref": "bridge://schemas/state-role-map/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "assessment",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/target_regional_assessment_spec.json",
+      "role": "target_regional_assessment_spec",
+      "schema_ref": "bridge://schemas/target-regional-assessment-spec/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "input_id": "measurement",
+      "media_type": "application/json",
+      "object_version": "1.0.0",
+      "path": "/absolute/path/to/measurement_spec.json",
+      "role": "measurement_spec",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.2",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "input_id": "cell-state",
+      "media_type": "application/json",
+      "object_version": "0.3.0",
+      "path": "/absolute/path/to/cell_state_evidence_profile.json",
+      "role": "cell_state_evidence_profile",
+      "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.3",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "input_id": "qc",
+      "media_type": "application/json",
+      "object_version": "0.2.0",
+      "path": "/absolute/path/to/qc_readiness_profile.json",
+      "role": "qc_readiness_profile",
+      "schema_ref": "bridge://schemas/qc-readiness-profile/v0.2",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "input_id": "biological-units",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/biological_unit_manifest.json",
+      "role": "biological_unit_manifest",
+      "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "input_id": "biological-unit-assignments",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/biological_unit_assignment.json",
+      "role": "biological_unit_assignment",
+      "schema_ref": "bridge://schemas/biological-unit-assignment/v0.1",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "input_id": "annotation-vocabulary",
+      "media_type": "application/json",
+      "object_version": "1.0.0",
+      "path": "/absolute/path/to/annotation_vocabulary.json",
+      "role": "annotation_vocabulary",
+      "schema_ref": "bridge://schemas/annotation-vocabulary/v0.1",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
+      "input_id": "reference-manifest",
+      "media_type": "application/json",
+      "object_version": "1.0.0",
+      "path": "/absolute/path/to/reference_manifest.json",
+      "role": "reference_manifest",
+      "schema_ref": "bridge://schemas/reference-manifest/v0.1",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-03-documentation-only",
+  "tool_id": "P0-03",
+  "tool_version": "0.2.0"
+}
