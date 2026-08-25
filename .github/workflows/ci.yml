@@ -68,7 +68,7 @@ jobs:
         run: python -m bridge.toolkit.cli knowledge validate
 
       - name: Check repository policy
-        run: python tools/check_repository.py
+        run: python scripts/check_repository.py
 
       - name: Check committed whitespace
         env:

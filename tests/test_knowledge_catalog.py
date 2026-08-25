@@ -12,7 +12,7 @@ def test_catalog_preserves_all_capability_bindings_and_resolves_methods() -> Non
     summary = registry.validation_summary()
     repo = Path(__file__).resolve().parents[1]
     seed = json.loads(
-        (repo / "catalog_seed" / "tool_registry_rows.json").read_text(encoding="utf-8")
+        (repo / "knowledge/catalog/tool_registry_rows.json").read_text(encoding="utf-8")
     )
     p0_06_rows = [row for row in seed["rows"] if row["module_id"] == "P0-06"]
 
@@ -207,7 +207,7 @@ def test_get_record_hides_known_competitor_isolated_method_and_sources() -> None
 
 
 def test_active_shortlist_matches_specs_and_packaged_snapshot() -> None:
-    from tools.build_knowledge_catalog import _active_methods_markdown
+    from scripts.build_knowledge_catalog import _active_methods_markdown
 
     repo = Path(__file__).resolve().parents[1]
     knowledge = KnowledgeRegistry.load_default()

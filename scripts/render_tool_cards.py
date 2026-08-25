@@ -6,10 +6,10 @@ from pathlib import Path
 import yaml
 
 
-# P0-08 and P0-09 keep field-level interface cards as the maintained source for
-# both public projections. The generic renderer is intentionally too small for
-# their structured-object contracts, so regeneration validates and mirrors each
-# source instead of replacing it with a scaffold-era summary.
+# P0-08 through P0-10 keep field-level interface cards as their maintained
+# source. The generic renderer is intentionally too small for their structured
+# object contracts, so regeneration validates those cards instead of replacing
+# them with scaffold summaries.
 DETAILED_CARD_IDS = {"P0-03", "P0-08", "P0-09", "P0-10"}
 
 
@@ -116,21 +116,8 @@ def main() -> int:
             _validate_detailed_card(text, spec, environment_state)
         else:
             text = render(spec, DETAILS[tool_id])
-        package_dir = repo / "tool_packages" / tool_id
-        package_dir.mkdir(parents=True, exist_ok=True)
-        _write_card_pair(
-            text,
-            card_path,
-            package_dir / "README.md",
-        )
+        card_path.write_text(text, encoding="utf-8")
     return 0
-
-
-def _write_card_pair(text: str, public_path: Path, packaged_path: Path) -> None:
-    """Write the one rendered projection as identical bytes in both locations."""
-    encoded = text.encode("utf-8")
-    public_path.write_bytes(encoded)
-    packaged_path.write_bytes(encoded)
 
 
 def _validate_detailed_card(text: str, spec: dict, environment_state: str) -> None:

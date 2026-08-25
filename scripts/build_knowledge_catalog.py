@@ -28,7 +28,7 @@ def main() -> int:
     parser.add_argument("--overrides", type=Path)
     args = parser.parse_args()
 
-    verification_path = args.verification or args.repo / "catalog_seed" / "source_verification.json"
+    verification_path = args.verification or args.repo / "knowledge/catalog/source_verification.json"
     verification = _load_json(verification_path) if verification_path.exists() else {}
     rows, source_hash = _read_registry(args.registry)
     if len(rows) != 396:
@@ -46,7 +46,7 @@ def main() -> int:
         sum(bool(PUBLIC_URL.match(token)) for token in _split(row["official_url"]))
         for row in rows
     )
-    override_path = args.overrides or args.repo / "catalog_seed" / "curation_overrides.yaml"
+    override_path = args.overrides or args.repo / "knowledge/catalog/curation_overrides.yaml"
     overrides = _load_yaml(override_path) if override_path.exists() else {}
     rows = _apply_overrides(rows, overrides)
 

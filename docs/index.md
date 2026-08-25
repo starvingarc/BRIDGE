@@ -8,9 +8,9 @@
 - [Agent team integration](agent-integration.md)
 - [Privacy and provenance](privacy-and-provenance.md)
 - [Quality baseline](quality-baseline.md)
-- [Public JSON Schemas](../schemas/)
+- [Public JSON Schemas](../src/bridge/resources/schemas/)
 - [Conda environment contracts](../environments/README.md)
-- [Tool Package cards](../tool_packages/)
+- [Tool Package cards](../src/bridge/tool_packages/cards/)
 - [Method and source knowledge](../knowledge/README.md)
 
 ## P0 Scientific Specifications
@@ -25,7 +25,7 @@
 - [Documentation guide](documentation-guide.md)
 - [Decision log](decision-log.md)
 - [Repository handbook](../AGENTS.md)
-- [Active plans](../PLANS.md)
+- [Active plans](../plans/README.md)
 
 ## Validation Records
 
