@@ -6,11 +6,11 @@ from pathlib import Path
 import yaml
 
 
-# P0-08 through P0-10 keep field-level interface cards as their maintained
+# P0-08 through P0-11 keep field-level interface cards as their maintained
 # source. The generic renderer is intentionally too small for their structured
 # object contracts, so regeneration validates those cards instead of replacing
 # them with scaffold summaries.
-DETAILED_CARD_IDS = {"P0-08", "P0-09", "P0-10"}
+DETAILED_CARD_IDS = {"P0-08", "P0-09", "P0-10", "P0-11"}
 
 
 DETAILS = {
@@ -79,11 +79,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/claim_verifier_task_card.md",
     },
     "P0-11": {
-        "input": "Original ReportDraft plus an eligible P0-10 ClaimVerificationResult receipt, field allowlist, public aliases and export policy version.",
-        "output": "New PublicSafeReport candidate, regenerated public figures, file manifest, checksums, scan results, and confirmation-bound package hash.",
-        "reject": "Any non-allowlisted field, private path or identifier, unsafe embedded content, unregistered file, hash drift, or missing user confirmation.",
-        "visualization": "Public-data payload only; figures are regenerated and checked for metadata, scripts, links, hidden text, and tooltip leakage.",
-        "validation": "Leakage canaries, public accession preservation, CSV injection, MIME mismatch, archive traversal, media metadata, and deterministic packaging.",
+        "input": "Exactly four checksummed JSON objects: ReportDraft v0.1, eligible ClaimVerificationResult v0.1, PublicExportPolicySpec v0.1 and PublicExportRequest v0.1.",
+        "output": "Three checksummed JSON artifacts: an allowlist-rebuilt PublicSafeReport, PublicExportManifest and PublicExportResult with a confirmation-bound candidate hash.",
+        "reject": "Receipt, report, audience, policy or channel mismatch; missing public alias; non-allowlisted statement; checksum drift; leak canary; confirmation mismatch; or unsafe output path.",
+        "visualization": "None in v0.2.0. This first implementation is JSON-only and does not copy or regenerate figures.",
+        "validation": "Candidate and confirmed reruns, exact input bindings, allowlist projection, path/credential/email/internal-ref canaries, deterministic reuse and V1 refusal.",
         "details": "docs/bridge_spec_v0.1/public_safe_export_task_card.md",
     },
     "P0-12": {

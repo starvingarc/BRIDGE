@@ -47,7 +47,8 @@ or run. Unresolved Nb boundaries remain provisional or unavailable.
 | P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
 | P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
 | P0-10 Report Claim Verifier | Draft PR under review; public/synthetic and anonymous internal engineering runs completed; default remains unset |
-| P0-03–P0-07, P0-11–P0-12 | Scientific contracts only; executors pending |
+| P0-11 Public-safe Export | Executable deterministic JSON candidate; no upload, scientific validation or domain score |
+| P0-03–P0-07, P0-12 | Scientific contracts only; executors pending |
 
 ## Minimal usage
 
