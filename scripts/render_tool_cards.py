@@ -23,11 +23,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/input_audit_qc_task_card.md",
     },
     "P0-02": {
-        "input": "QC-qualified expression views, declared scRNA/snRNA modality, internal annotation vocabulary, frozen reference candidates, and provenance.",
-        "output": "Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, and product-level composition evidence.",
-        "reject": "Reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.",
+        "input": "QC-qualified expression views, declared scRNA/snRNA modality, annotation vocabulary, reference candidates and provenance. The optional V3 handoff also consumes a deployment-catalogued P0-01 structured-output index with checksummed QC V2, biological-unit assignment and manifest artifacts.",
+        "output": "Backward-compatible Cell-State evidence plus an optional candidate-only V3 profile bound to the selected data view, MeasurementSpec, vocabulary, reference, QC bytes, typed biological-unit lineage, producer and environment. V3 emits explicit evidence states and denominators; it never emits assigned states or a domain score.",
+        "reject": "Reference, vocabulary, MeasurementSpec, assay, data-view or checksum mismatch fails closed. Missing structured-index or typed-lineage inputs leave the legacy run successful but V3 unavailable; no lineage or positive composition is inferred.",
         "visualization": "Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.",
-        "validation": "Source/lab/modality holdouts, leave-one-state-out, rare-state mixtures, calibration, OOD detection, and product-composition error.",
+        "validation": "Real P0-01-to-P0-02 typed handoff, checksum and replacement adversaries, selected-view/observation lineage, legacy compatibility, source/lab/modality holdouts, calibration and OOD behavior.",
         "details": "docs/bridge_spec_v0.1/cell_state_annotation_task_card.md",
     },
     "P0-03": {
