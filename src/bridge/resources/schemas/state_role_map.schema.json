@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "ProductRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved"
+      ],
+      "title": "ProductRole",
+      "type": "string"
+    },
+    "StateRoleAssignment": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_direction": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Evidence Direction",
+          "type": "string"
+        },
+        "product_role": {
+          "$ref": "#/$defs/ProductRole"
+        },
+        "role_evidence_class": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Role Evidence Class",
+          "type": "string"
+        },
+        "source_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "product_role",
+        "role_evidence_class",
+        "evidence_direction"
+      ],
+      "title": "StateRoleAssignment",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/state-role-map/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assignments": {
+      "items": {
+        "$ref": "#/$defs/StateRoleAssignment"
+      },
+      "minItems": 1,
+      "title": "Assignments",
+      "type": "array"
+    },
+    "map_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Map Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "provenance_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "review_state": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "Review State",
+      "type": "string"
+    },
+    "state_role_map_id": {
+      "pattern": "^state-role-map:[A-Za-z0-9._:-]+$",
+      "title": "State Role Map Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "state_role_map_id",
+    "map_version",
+    "product_definition_ref",
+    "review_state",
+    "assignments",
+    "provenance_refs"
+  ],
+  "title": "StateRoleMap",
+  "type": "object"
+}

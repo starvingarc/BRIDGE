@@ -17,7 +17,7 @@
 | [P0-02 Cell-State Evidence](cell_state_annotation_task_card.md) | 状态证据、方法 benchmark 与释放边界 |
 | [P0-03 目标与区域身份](target_regional_identity_task_card.md) | 目标谱系与区域支持合同 |
 | [P0-04 发育兼容性](developmental_compatibility_task_card.md) | 发育窗口与比较合同 |
-| [P0-05 Off-target Control](off_target_control_task_card.md) | 全制剂组成、OOD 与稀有状态边界 |
+| [P0-05 Off-target Control](off_target_control_task_card.md) | 外部角色/阈值驱动的全制剂组成、unknown 与稀有状态边界 |
 | [P0-06 Proliferation & Stress Response](proliferation_stress_response_task_card.md) | 增殖、应激反应程序和复核信号合同 |
 | [P0-07 产品比较与稳定性](product_comparison_stability_task_card.md) | 可比性、分析单位与敏感性合同 |
 | [P0-08 Evidence Sufficiency](evidence_sufficiency_task_card.md) | 数据、模型与 prior 充分性门禁 |
@@ -27,7 +27,7 @@
 | [P0-12 Graft Assessment](graft_assessment_task_card.md) | 独立后验 graft 证据边界 |
 | [公开 JSON Schema](../../src/bridge/resources/schemas/) | Agent、证据、比较、可视化和运行对象合同 |
 | [Tool Package Cards](../../src/bridge/tool_packages/cards/) | 当前可调用工具、输入输出和实现状态 |
-| [Active Methods](../../knowledge/active-methods.md) | P0-01、P0-02、P0-03、P0-08 与 P0-09 当前选定方法 |
+| [Active Methods](../../knowledge/active-methods.md) | P0-01、P0-02、P0-03、P0-04、P0-07、P0-08 与 P0-09 当前选定方法 |
 | [Conda 环境合同](../../environments/README.md) | 当前运行能力所需的最小环境与待建环境 |
 
 ## 状态词
