@@ -5,10 +5,10 @@
     {
       "input_id": "gate-rules",
       "media_type": "application/json",
-      "object_version": "0.1.0",
-      "path": "/tmp/bridge-example/p0-08/gate_rule_spec_v0.1.json",
+      "object_version": "0.2.0",
+      "path": "/tmp/bridge-example/p0-08/gate_rule_spec_v0.2.json",
       "role": "gate_rule_spec",
-      "schema_ref": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {

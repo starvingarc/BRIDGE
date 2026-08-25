@@ -1,7 +1,7 @@
 {
-  "catalog_id": "BRIDGE-REASON-CODE-CATALOG-v0.1",
+  "catalog_id": "BRIDGE-REASON-CODE-CATALOG-v0.2",
   "created_at": "2026-08-13T00:00:00Z",
-  "object_version": "0.1.0",
+  "object_version": "0.2.0",
   "reasons": [
     {
       "axis": "contract",
@@ -43,6 +43,34 @@
       "code": "measurement_result_not_provided",
       "description": "No MeasurementResult is bound to this domain.",
       "remediation": "Provide at least one versioned upstream measurement result.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_state_missing",
+      "description": "A bound MeasurementResult declares that the measurement is missing.",
+      "remediation": "Produce the declared measurement before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_state_unknown",
+      "description": "A bound MeasurementResult declares an unresolved identity, role, or measurement.",
+      "remediation": "Resolve the declared unknown scope before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_state_unavailable",
+      "description": "A bound MeasurementResult declares that the measurement is unavailable.",
+      "remediation": "Provide an available versioned result before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "provenance",
+      "code": "measurement_source_run_not_provided",
+      "description": "A bound MeasurementResult lacks its paired upstream ToolRun identity and execution state.",
+      "remediation": "Bind the succeeded or partial upstream ToolRun before interpreting this result.",
       "severity": "missing"
     },
     {

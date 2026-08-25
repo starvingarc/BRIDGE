@@ -20,11 +20,11 @@ Even the synthetic sufficient path emits `domain_score=null`, `score_state=unava
 
 ## Engineering evidence
 
-- Focused exact-head validation is recorded after the closure commit; the immediately preceding post-main run passed 435 P0-08 tests.
+- Focused validation of the closure tree passed 445 P0-08 and packaged-schema tests; the integrator must rerun this focused set against the resulting exact commit.
 - The tests cover model schemas, 49 scientific reason codes, candidate resources, axis/gate states, severity-separated missing/blocking/limiting fields, score-null behavior, supporting/required family reconciliation, pointer/logical-ID/cross-binding eligibility, MeasurementSpec-version binding, recursive unsafe-reference rejection without echo, top-level exact-source bindings, all eight evidence-state counts, artifacts, deterministic identity and fail-closed mutation/drift behavior.
 - The committed example request intentionally uses placeholder absolute paths and checksums. Executable CLI/SDK tests construct temporary immutable fixtures and calculate real checksums.
-- The additive public surface is one packaged `evidence-sufficiency-run-result/v0.2` Schema. ProfileV2 and SummaryV2 appear only as its `$defs`; the nine pre-existing P0-08 v0.1 Schema files remain byte-identical.
-- Full source, clean-wheel, knowledge, repository-policy and diff validation are rerun only after the exact closure commit; no pre-merge count is reused as exact-head evidence.
+- The additive public surface comprises packaged `evidence-sufficiency-run-result/v0.2`, `evidence-sufficiency-gate-rule-spec/v0.2` and `evidence-sufficiency-reason-code-catalog/v0.2` Schemas. ProfileV2 and SummaryV2 appear only as RunResult `$defs`; the nine pre-existing P0-08 v0.1 Schema files and both v0.1 candidate resources remain byte-identical.
+- Full source, clean-wheel and cross-repository validation remain pending on the resulting exact commit and are delegated to the integrator; no earlier count is reused as exact-head evidence.
 
 ## Remaining uncertainty and next scientific action
 

@@ -34,9 +34,9 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSensitivityRecord,
     EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
     EvidenceValidationRecord,
-    GateRuleSpec,
+    GateRuleSpecV2 as GateRuleSpec,
     PriorApplicabilityRecord,
-    ReasonCodeCatalog,
+    ReasonCodeCatalogV2 as ReasonCodeCatalog,
     VersionedObjectPointer,
     published_ref,
 )
@@ -58,7 +58,7 @@ from bridge.toolkit.contracts import (
 
 RESULT_SCHEMA_REF = "bridge://schemas/evidence-sufficiency-run-result/v0.2"
 ROLE_SCHEMAS = {
-    "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+    "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
     "domain_gate_input": "bridge://schemas/domain-gate-input/v0.1",
     "measurement_spec": "bridge://schemas/measurement-spec/v0.2",
     "qc_readiness_profile": "bridge://schemas/qc-readiness-profile/v0.2",
@@ -314,12 +314,12 @@ adapter = EvidenceSufficiencyAdapter()
 
 
 def load_gate_rule() -> GateRuleSpec:
-    payload = _resource_bytes("gate_rule_spec_v0.1.json")
+    payload = _resource_bytes("gate_rule_spec_v0.2.json")
     return GateRuleSpec.model_validate(_loads_json(payload))
 
 
 def load_reason_catalog() -> ReasonCodeCatalog:
-    payload = _resource_bytes("reason_code_catalog_v0.1.json")
+    payload = _resource_bytes("reason_code_catalog_v0.2.json")
     catalog = ReasonCodeCatalog.model_validate(_loads_json(payload))
     if tuple(reason.code for reason in catalog.reasons) != REASON_CODES:
         raise ValueError("packaged P0-08 reason catalog order differs from the executor")
@@ -327,7 +327,7 @@ def load_reason_catalog() -> ReasonCodeCatalog:
 
 
 def gate_rule_sha256() -> str:
-    return hashlib.sha256(_resource_bytes("gate_rule_spec_v0.1.json")).hexdigest()
+    return hashlib.sha256(_resource_bytes("gate_rule_spec_v0.2.json")).hexdigest()
 
 
 def _resource_bytes(filename: str) -> bytes:
@@ -448,7 +448,7 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         if (
             gate_ref.sha256 != gate_rule_sha256()
             or loaded.bytes_by_input_id[gate_ref.input_id]
-            != _resource_bytes("gate_rule_spec_v0.1.json")
+            != _resource_bytes("gate_rule_spec_v0.2.json")
         ):
             reasons.append("unsupported_gate_rule_spec")
     domains = _objects_for_role(request, loaded, "domain_gate_input", DomainGateInput)

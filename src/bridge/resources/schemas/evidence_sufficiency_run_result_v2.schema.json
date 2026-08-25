@@ -134,12 +134,12 @@
           "$ref": "#/$defs/EvidenceSufficiencyState"
         },
         "gate_rule_spec_ref": {
-          "const": "GATE-EVIDENCE-SUFFICIENCY-v0.1",
+          "const": "GATE-EVIDENCE-SUFFICIENCY-v0.2",
           "title": "Gate Rule Spec Ref",
           "type": "string"
         },
         "gate_rule_version": {
-          "const": "0.1.0",
+          "const": "0.2.0",
           "title": "Gate Rule Version",
           "type": "string"
         },
@@ -330,7 +330,7 @@
       "title": "EvidenceSufficiencyState",
       "type": "string"
     },
-    "GateTraceEntry": {
+    "GateTraceEntryV2": {
       "additionalProperties": false,
       "properties": {
         "domain_gate_input_ref": {
@@ -391,7 +391,7 @@
         "selected_reason_codes",
         "ignored_duplicate_input_refs"
       ],
-      "title": "GateTraceEntry",
+      "title": "GateTraceEntryV2",
       "type": "object"
     },
     "MeasurementEvidenceStateCount": {
@@ -535,7 +535,7 @@
         },
         "schema_ref": {
           "enum": [
-            "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+            "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
             "bridge://schemas/domain-gate-input/v0.1",
             "bridge://schemas/measurement-spec/v0.2",
             "bridge://schemas/qc-readiness-profile/v0.2",
@@ -626,13 +626,13 @@
       "$ref": "#/$defs/CaseEvidenceReadinessSummaryV2"
     },
     "gate_rule_spec_ref": {
-      "const": "GATE-EVIDENCE-SUFFICIENCY-v0.1",
+      "const": "GATE-EVIDENCE-SUFFICIENCY-v0.2",
       "title": "Gate Rule Spec Ref",
       "type": "string"
     },
     "gate_trace": {
       "items": {
-        "$ref": "#/$defs/GateTraceEntry"
+        "$ref": "#/$defs/GateTraceEntryV2"
       },
       "maxItems": 5,
       "minItems": 1,

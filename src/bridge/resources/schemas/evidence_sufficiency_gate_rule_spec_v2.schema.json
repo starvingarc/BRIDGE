@@ -1,0 +1,124 @@
+{
+  "$defs": {
+    "GateRuleStatus": {
+      "enum": [
+        "candidate",
+        "frozen"
+      ],
+      "title": "GateRuleStatus",
+      "type": "string"
+    },
+    "P0DomainId": {
+      "enum": [
+        "target_identity",
+        "regional_fidelity",
+        "developmental_compatibility",
+        "off_target_control",
+        "proliferation_stress_response"
+      ],
+      "title": "P0DomainId",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
+  "additionalProperties": false,
+  "properties": {
+    "applicable_domains": {
+      "items": {
+        "$ref": "#/$defs/P0DomainId"
+      },
+      "maxItems": 5,
+      "minItems": 5,
+      "title": "Applicable Domains",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "engine_method_id": {
+      "const": "METHOD-BRIDGE-ALGORITHM-A0908D",
+      "title": "Engine Method Id",
+      "type": "string"
+    },
+    "gate_rule_spec_id": {
+      "const": "GATE-EVIDENCE-SUFFICIENCY-v0.2",
+      "title": "Gate Rule Spec Id",
+      "type": "string"
+    },
+    "legacy_checker_method_id": {
+      "const": "METHOD-BRIDGE-VALIDATOR",
+      "title": "Legacy Checker Method Id",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.2.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "precedence": {
+      "maxItems": 4,
+      "minItems": 4,
+      "prefixItems": [
+        {
+          "const": "not_assessed",
+          "type": "string"
+        },
+        {
+          "const": "insufficient",
+          "type": "string"
+        },
+        {
+          "const": "limited",
+          "type": "string"
+        },
+        {
+          "const": "sufficient",
+          "type": "string"
+        }
+      ],
+      "title": "Precedence",
+      "type": "array"
+    },
+    "prior_matcher_method_id": {
+      "const": "METHOD-BRIDGE-ALGORITHM-A0908D",
+      "title": "Prior Matcher Method Id",
+      "type": "string"
+    },
+    "reason_catalog_method_id": {
+      "const": "METHOD-BRIDGE-REGISTRY",
+      "title": "Reason Catalog Method Id",
+      "type": "string"
+    },
+    "reason_code_catalog_ref": {
+      "const": "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.2",
+      "title": "Reason Code Catalog Ref",
+      "type": "string"
+    },
+    "score_policy": {
+      "const": "domain_score_null_score_state_unavailable",
+      "title": "Score Policy",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/GateRuleStatus"
+    }
+  },
+  "required": [
+    "gate_rule_spec_id",
+    "object_version",
+    "status",
+    "created_at",
+    "engine_method_id",
+    "prior_matcher_method_id",
+    "reason_catalog_method_id",
+    "legacy_checker_method_id",
+    "reason_code_catalog_ref",
+    "applicable_domains",
+    "precedence",
+    "score_policy"
+  ],
+  "title": "GateRuleSpecV2",
+  "type": "object"
+}

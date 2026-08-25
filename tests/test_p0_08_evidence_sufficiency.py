@@ -21,7 +21,12 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.executor import REASON_CODE
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS,
     DomainGateInput,
+    EvidenceSufficiencyProfile,
     EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
+    GateRuleSpec,
+    GateRuleSpecV2,
+    ReasonCodeCatalog,
+    ReasonCodeCatalogV2,
 )
 from bridge.toolkit.api import run_tool, validate_request
 from bridge.toolkit.contracts import ExecutionState, ToolRequest, ToolRequestV2
@@ -256,18 +261,18 @@ def _fixture_request(
 ) -> ToolRequestV2:
     input_root = tmp_path / f"inputs-{request_id}"
     input_root.mkdir(parents=True, exist_ok=True)
-    gate_path = input_root / "gate_rule_spec_v0.1.json"
+    gate_path = input_root / "gate_rule_spec_v0.2.json"
     gate_path.write_bytes(
         files("bridge.tool_packages.p0_08_evidence_sufficiency.resources")
-        .joinpath("gate_rule_spec_v0.1.json")
+        .joinpath("gate_rule_spec_v0.2.json")
         .read_bytes()
     )
     refs: list[dict[str, Any]] = [
         {
             "input_id": "gate-rules",
             "role": "gate_rule_spec",
-            "schema_ref": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
-            "object_version": "0.1.0",
+            "schema_ref": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
+            "object_version": "0.2.0",
             "path": gate_path,
             "sha256": gate_rule_sha256(),
             "media_type": "application/json",
@@ -404,10 +409,117 @@ def test_packaged_rule_and_reason_catalog_are_exact_candidate_resources() -> Non
     gate = load_gate_rule()
     catalog = load_reason_catalog()
 
+    assert gate.gate_rule_spec_id == "GATE-EVIDENCE-SUFFICIENCY-v0.2"
+    assert gate.object_version == "0.2.0"
+    assert gate.reason_code_catalog_ref.endswith("/v0.2")
+    assert catalog.catalog_id == "BRIDGE-REASON-CODE-CATALOG-v0.2"
+    assert catalog.object_version == "0.2.0"
     assert gate.status.value == "candidate"
     assert gate.precedence == ("not_assessed", "insufficient", "limited", "sufficient")
     assert tuple(reason.code for reason in catalog.reasons) == REASON_CODES
     assert len(catalog.reasons) == 49
+
+
+@pytest.mark.parametrize(
+    ("package", "filename", "expected_sha256"),
+    [
+        (
+            "bridge.tool_packages.p0_08_evidence_sufficiency.resources",
+            "gate_rule_spec_v0.1.json",
+            "733c47448edb80af564d0631c236466b930aa64e92c03e3f655e447a5aa7f445",
+        ),
+        (
+            "bridge.tool_packages.p0_08_evidence_sufficiency.resources",
+            "reason_code_catalog_v0.1.json",
+            "53a53bfb95b7fc40aa8d3e1a8b3f7abf2c1dcbe7de7051a8a71c15bccdfbf9c6",
+        ),
+        (
+            "bridge.resources.schemas",
+            "evidence_sufficiency_gate_rule_spec.schema.json",
+            "5d9459a4f5875ff85273518dc86fe667392ebeb8594554c83747f824b10439df",
+        ),
+        (
+            "bridge.resources.schemas",
+            "evidence_sufficiency_reason_code_catalog.schema.json",
+            "77ef221d96425de6069f0c117d3a69805523fad1e7db81cca5cd922a6b4f3562",
+        ),
+    ],
+)
+def test_v01_gate_resources_and_schemas_remain_byte_identical(
+    package: str, filename: str, expected_sha256: str
+) -> None:
+    raw = files(package).joinpath(filename).read_bytes()
+
+    assert hashlib.sha256(raw).hexdigest() == expected_sha256
+
+
+def test_v01_gate_contracts_do_not_validate_as_v02() -> None:
+    resources = files("bridge.tool_packages.p0_08_evidence_sufficiency.resources")
+    gate_v1 = json.loads(resources.joinpath("gate_rule_spec_v0.1.json").read_bytes())
+    catalog_v1 = json.loads(
+        resources.joinpath("reason_code_catalog_v0.1.json").read_bytes()
+    )
+
+    GateRuleSpec.model_validate(gate_v1)
+    ReasonCodeCatalog.model_validate(catalog_v1)
+    with pytest.raises(ValueError):
+        GateRuleSpecV2.model_validate(gate_v1)
+    with pytest.raises(ValueError):
+        ReasonCodeCatalogV2.model_validate(catalog_v1)
+
+
+def test_p0_08_v03_rejects_v01_gate_binding(tmp_path: Path) -> None:
+    request = _fixture_request(tmp_path)
+    legacy_path = tmp_path / "legacy_gate_rule_spec_v0.1.json"
+    legacy_bytes = (
+        files("bridge.tool_packages.p0_08_evidence_sufficiency.resources")
+        .joinpath("gate_rule_spec_v0.1.json")
+        .read_bytes()
+    )
+    legacy_path.write_bytes(legacy_bytes)
+    legacy_request = _replace_ref(
+        request,
+        "gate-rules",
+        schema_ref="bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+        object_version="0.1.0",
+        path=legacy_path,
+        sha256=hashlib.sha256(legacy_bytes).hexdigest(),
+    )
+
+    _assert_failed_without_publication(
+        legacy_request, "object_input_schema_mismatch"
+    )
+
+def test_v01_profile_model_rejects_v02_reason_codes(tmp_path: Path) -> None:
+    run = _run(tmp_path)
+    profile_v2 = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+    payload = profile_v2.model_dump(mode="json")
+    payload["profile_version"] = "0.1.0"
+    payload["gate_rule_spec_ref"] = "GATE-EVIDENCE-SUFFICIENCY-v0.1"
+    payload["gate_rule_version"] = "0.1.0"
+    for field in (
+        "product_case_ref",
+        "product_definition_ref",
+        "measurement_spec_ref",
+        "qc_profile_ref",
+    ):
+        pointer = payload[field]
+        payload[field] = (
+            None
+            if pointer is None
+            else pointer["object_id"]
+        )
+    payload["measurement_result_refs"] = [
+        item["object_id"]
+        for item in payload["measurement_result_refs"]
+    ]
+    payload.pop("measurement_evidence_state_counts")
+
+    EvidenceSufficiencyProfile.model_validate(payload)
+    payload["data_reason_codes"] = ["measurement_state_missing"]
+    with pytest.raises(ValueError, match="unknown P0-08 reason code"):
+        EvidenceSufficiencyProfile.model_validate(payload)
+
 
 
 @pytest.mark.parametrize("schema_ref,model", PUBLIC_SCHEMA_MODELS.items())

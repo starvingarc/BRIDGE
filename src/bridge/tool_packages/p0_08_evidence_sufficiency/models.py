@@ -5,7 +5,7 @@ from enum import StrEnum
 import re
 from typing import Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 
 from bridge.tool_packages._configurable_contracts import VersionedObjectRef
 from bridge.toolkit.contracts import FrozenModel, ScoreState
@@ -182,6 +182,21 @@ SCIENTIFIC_REASON_CODES = (
     "score_contract_ignored_current_release",
     "evidence_family_duplicate_collapsed",
 )
+SCIENTIFIC_REASON_CODES_V1 = (
+    SCIENTIFIC_REASON_CODES[:6] + SCIENTIFIC_REASON_CODES[10:]
+)
+SCIENTIFIC_REASON_ORDER_V1 = {
+    code: position for position, code in enumerate(SCIENTIFIC_REASON_CODES_V1)
+}
+MISSING_REASON_CODES_V1 = frozenset(SCIENTIFIC_REASON_CODES_V1[:17]) | {
+    "raw_evidence_gate_not_assessed"
+}
+BLOCKING_REASON_CODES_V1 = frozenset(SCIENTIFIC_REASON_CODES_V1[17:24]) | {
+    "raw_evidence_gate_insufficient"
+}
+LIMITING_REASON_CODES_V1 = frozenset(SCIENTIFIC_REASON_CODES_V1[24:33]) | {
+    "raw_evidence_gate_limited"
+}
 SCIENTIFIC_REASON_ORDER = {
     code: position for position, code in enumerate(SCIENTIFIC_REASON_CODES)
 }
@@ -227,11 +242,15 @@ def published_ref(value: str) -> str:
     return stripped
 
 
-def _reason_codes_in_catalog_order(values: list[str]) -> list[str]:
+def _reason_codes_in_catalog_order(
+    values: list[str],
+    *,
+    order: dict[str, int] = SCIENTIFIC_REASON_ORDER_V1,
+) -> list[str]:
     cleaned = [_strip(value) for value in values]
     _unique(cleaned, "reason-code list")
     try:
-        positions = [SCIENTIFIC_REASON_ORDER[value] for value in cleaned]
+        positions = [order[value] for value in cleaned]
     except KeyError as exc:
         raise ValueError(f"unknown P0-08 reason code: {exc.args[0]}") from exc
     if positions != sorted(positions):
@@ -268,6 +287,11 @@ class ReasonCodeCatalog(FrozenModel):
         return value
 
 
+class ReasonCodeCatalogV2(ReasonCodeCatalog):
+    catalog_id: Literal["BRIDGE-REASON-CODE-CATALOG-v0.2"]
+    object_version: Literal["0.2.0"]
+
+
 class GateRuleSpec(FrozenModel):
     gate_rule_spec_id: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.1"]
     object_version: Literal["0.1.0"]
@@ -298,6 +322,14 @@ class GateRuleSpec(FrozenModel):
         if self.precedence != ("not_assessed", "insufficient", "limited", "sufficient"):
             raise ValueError("unsupported evidence-sufficiency precedence")
         return self
+
+
+class GateRuleSpecV2(GateRuleSpec):
+    gate_rule_spec_id: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.2"]
+    object_version: Literal["0.2.0"]
+    reason_code_catalog_ref: Literal[
+        "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.2"
+    ]
 
 
 class VersionedObjectPointer(FrozenModel):
@@ -583,8 +615,15 @@ class EvidenceSufficiencyProfile(FrozenModel):
         "score_reason_codes",
     )
     @classmethod
-    def reason_lists_follow_catalog_order(cls, value: list[str]) -> list[str]:
-        return _reason_codes_in_catalog_order(value)
+    def reason_lists_follow_catalog_order(
+        cls, value: list[str], info: ValidationInfo
+    ) -> list[str]:
+        order = (
+            SCIENTIFIC_REASON_ORDER_V1
+            if info.data.get("profile_version") == "0.1.0"
+            else SCIENTIFIC_REASON_ORDER
+        )
+        return _reason_codes_in_catalog_order(value, order=order)
 
     @field_validator(
         "validation_refs",
@@ -601,11 +640,19 @@ class EvidenceSufficiencyProfile(FrozenModel):
 
     @model_validator(mode="after")
     def score_is_always_unavailable(self) -> Self:
-        if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
+        if self.profile_version == "0.1.0":
+            blocking_codes = BLOCKING_REASON_CODES_V1
+            limiting_codes = LIMITING_REASON_CODES_V1
+            missing_codes = MISSING_REASON_CODES_V1
+        else:
+            blocking_codes = BLOCKING_REASON_CODES
+            limiting_codes = LIMITING_REASON_CODES
+            missing_codes = MISSING_REASON_CODES
+        if not set(self.blocking_reasons) <= blocking_codes:
             raise ValueError("blocking_reasons may contain only blocking catalog codes")
-        if not set(self.limiting_reasons) <= LIMITING_REASON_CODES:
+        if not set(self.limiting_reasons) <= limiting_codes:
             raise ValueError("limiting_reasons may contain only limiting catalog codes")
-        if not set(self.missing_requirements) <= MISSING_REASON_CODES:
+        if not set(self.missing_requirements) <= missing_codes:
             raise ValueError("missing_requirements may contain only missing catalog codes")
         if self.domain_score is not None or self.score_state is not ScoreState.UNAVAILABLE:
             raise ValueError("P0-08 cannot emit a domain score in the current release")
@@ -646,8 +693,15 @@ class CaseEvidenceReadinessSummary(FrozenModel):
 
     @field_validator("blocking_reasons")
     @classmethod
-    def unique_reasons(cls, value: list[str]) -> list[str]:
-        return _reason_codes_in_catalog_order(value)
+    def unique_reasons(
+        cls, value: list[str], info: ValidationInfo
+    ) -> list[str]:
+        order = (
+            SCIENTIFIC_REASON_ORDER_V1
+            if info.data.get("summary_version") == "0.1.0"
+            else SCIENTIFIC_REASON_ORDER
+        )
+        return _reason_codes_in_catalog_order(value, order=order)
 
     @field_validator("product_case_ref")
     @classmethod
@@ -656,7 +710,12 @@ class CaseEvidenceReadinessSummary(FrozenModel):
 
     @model_validator(mode="after")
     def count_totals_match(self) -> Self:
-        if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
+        blocking_codes = (
+            BLOCKING_REASON_CODES_V1
+            if self.summary_version == "0.1.0"
+            else BLOCKING_REASON_CODES
+        )
+        if not set(self.blocking_reasons) <= blocking_codes:
             raise ValueError("case blocking_reasons may contain only blocking catalog codes")
         counts = self.evidence_sufficiency_counts
         total = counts.sufficient + counts.limited + counts.insufficient + counts.not_assessed
@@ -694,6 +753,15 @@ class GateTraceEntry(FrozenModel):
     @classmethod
     def reasons_follow_catalog_order(cls, value: list[str]) -> list[str]:
         return _reason_codes_in_catalog_order(value)
+
+
+class GateTraceEntryV2(GateTraceEntry):
+    @field_validator("selected_reason_codes")
+    @classmethod
+    def reasons_follow_catalog_order(cls, value: list[str]) -> list[str]:
+        return _reason_codes_in_catalog_order(
+            value, order=SCIENTIFIC_REASON_ORDER
+        )
 
 
 class EvidenceSufficiencyRunResult(FrozenModel):
@@ -739,13 +807,18 @@ class EvidenceSufficiencyRunResult(FrozenModel):
         }
         if self.case_summary.evidence_sufficiency_counts.model_dump() != actual_counts:
             raise ValueError("case summary state counts must match profiles")
+        reason_order = (
+            SCIENTIFIC_REASON_ORDER_V1
+            if self.result_version == "0.1.0"
+            else SCIENTIFIC_REASON_ORDER
+        )
         expected_blocking = sorted(
             {
                 reason
                 for profile in self.profiles
                 for reason in profile.blocking_reasons
             },
-            key=SCIENTIFIC_REASON_ORDER.__getitem__,
+            key=reason_order.__getitem__,
         )
         if self.case_summary.blocking_reasons != expected_blocking:
             raise ValueError("case summary blocking reasons must match profiles")
@@ -765,7 +838,7 @@ class EvidenceSufficiencyRunResult(FrozenModel):
 
 
 SOURCE_OBJECT_SCHEMA_BY_ROLE = {
-    "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+    "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
     "domain_gate_input": "bridge://schemas/domain-gate-input/v0.1",
     "measurement_spec": "bridge://schemas/measurement-spec/v0.2",
     "qc_readiness_profile": "bridge://schemas/qc-readiness-profile/v0.2",
@@ -795,7 +868,7 @@ class SourceObjectBinding(FrozenModel):
     logical_object_id: str = Field(min_length=1)
     object_version: str = Field(min_length=1)
     schema_ref: Literal[
-        "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+        "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
         "bridge://schemas/domain-gate-input/v0.1",
         "bridge://schemas/measurement-spec/v0.2",
         "bridge://schemas/qc-readiness-profile/v0.2",
@@ -843,6 +916,8 @@ class MeasurementEvidenceStateCount(FrozenModel):
 
 
 class EvidenceSufficiencyProfileV2(EvidenceSufficiencyProfile):
+    gate_rule_spec_ref: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.2"]
+    gate_rule_version: Literal["0.2.0"]
     profile_version: Literal["0.2.0"]
     product_case_ref: VersionedObjectRef | None = Field(
         default=None,
@@ -938,6 +1013,7 @@ class CaseEvidenceReadinessSummaryV2(CaseEvidenceReadinessSummary):
 
 
 class EvidenceSufficiencyRunResultV2(EvidenceSufficiencyRunResult):
+    gate_rule_spec_ref: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.2"]
     result_version: Literal["0.2.0"]
     source_object_bindings: list[SourceObjectBinding] = Field(
         min_length=2,
@@ -949,6 +1025,7 @@ class EvidenceSufficiencyRunResultV2(EvidenceSufficiencyRunResult):
         min_length=1, max_length=5
     )
     case_summary: CaseEvidenceReadinessSummaryV2
+    gate_trace: list[GateTraceEntryV2] = Field(min_length=1, max_length=5)
 
     @model_validator(mode="after")
     def validate_v2_source_bindings(self) -> Self:
@@ -1030,7 +1107,11 @@ class EvidenceSufficiencyRunResultV2(EvidenceSufficiencyRunResult):
 
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.1": ReasonCodeCatalog,
+    "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.2": (
+        ReasonCodeCatalogV2
+    ),
     "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1": GateRuleSpec,
+    "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2": GateRuleSpecV2,
     "bridge://schemas/domain-gate-input/v0.1": DomainGateInput,
     "bridge://schemas/evidence-validation-record/v0.1": EvidenceValidationRecord,
     "bridge://schemas/prior-applicability-record/v0.1": PriorApplicabilityRecord,
