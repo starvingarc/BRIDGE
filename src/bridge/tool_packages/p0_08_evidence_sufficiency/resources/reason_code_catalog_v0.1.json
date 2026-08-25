@@ -46,6 +46,34 @@
       "severity": "missing"
     },
     {
+      "axis": "data",
+      "code": "measurement_state_missing",
+      "description": "A bound MeasurementResult declares that the measurement is missing.",
+      "remediation": "Produce the declared measurement before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_state_unknown",
+      "description": "A bound MeasurementResult declares an unresolved identity, role, or measurement.",
+      "remediation": "Resolve the declared unknown scope before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "data",
+      "code": "measurement_state_unavailable",
+      "description": "A bound MeasurementResult declares that the measurement is unavailable.",
+      "remediation": "Provide an available versioned result before interpreting this domain.",
+      "severity": "missing"
+    },
+    {
+      "axis": "provenance",
+      "code": "measurement_source_run_not_provided",
+      "description": "A bound MeasurementResult lacks its paired upstream ToolRun identity and execution state.",
+      "remediation": "Bind the succeeded or partial upstream ToolRun before interpreting this result.",
+      "severity": "missing"
+    },
+    {
       "axis": "contract",
       "code": "task_validation_not_assessed",
       "description": "The domain task validation state has not been assessed.",

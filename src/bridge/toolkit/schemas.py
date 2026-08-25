@@ -39,6 +39,7 @@ SCHEMA_REFS = {
     "bridge://schemas/evidence-sufficiency-profile/v0.1": "evidence_sufficiency_profile.schema.json",
     "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.1": "evidence_sufficiency_reason_code_catalog.schema.json",
     "bridge://schemas/evidence-sufficiency-run-result/v0.1": "evidence_sufficiency_run_result.schema.json",
+    "bridge://schemas/evidence-sufficiency-run-result/v0.2": "evidence_sufficiency_run_result_v2.schema.json",
     "bridge://schemas/evidence-validation-record/v0.1": "evidence_validation_record.schema.json",
     "bridge://schemas/freeze-gate-spec/v0.2": "freeze_gate_spec.schema.json",
     "bridge://schemas/knowledge-hit/v0.1": "knowledge_hit.schema.json",

@@ -32,7 +32,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.executor import (
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     DomainGateInput,
     EvidenceSensitivityRecord,
-    EvidenceSufficiencyRunResult,
+    EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
     EvidenceValidationRecord,
     GateRuleSpec,
     PriorApplicabilityRecord,
@@ -45,9 +45,9 @@ from bridge.toolkit.contracts import (
     EligibilityResult,
     ExecutionState,
     FrozenModel,
-    MeasurementResult,
-    MeasurementSpec,
-    QCReadinessProfile,
+    MeasurementResultV2 as MeasurementResult,
+    MeasurementSpecV2 as MeasurementSpec,
+    QCReadinessProfileV2 as QCReadinessProfile,
     StructuredInputRef,
     ToolPackageSpecV2,
     ToolRequest,
@@ -56,13 +56,13 @@ from bridge.toolkit.contracts import (
 )
 
 
-RESULT_SCHEMA_REF = "bridge://schemas/evidence-sufficiency-run-result/v0.1"
+RESULT_SCHEMA_REF = "bridge://schemas/evidence-sufficiency-run-result/v0.2"
 ROLE_SCHEMAS = {
     "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
     "domain_gate_input": "bridge://schemas/domain-gate-input/v0.1",
-    "measurement_spec": "bridge://schemas/measurement-spec/v0.1",
-    "qc_readiness_profile": "bridge://schemas/qc-readiness-profile/v0.1",
-    "measurement_result": "bridge://schemas/measurement-result/v0.1",
+    "measurement_spec": "bridge://schemas/measurement-spec/v0.2",
+    "qc_readiness_profile": "bridge://schemas/qc-readiness-profile/v0.2",
+    "measurement_result": "bridge://schemas/measurement-result/v0.2",
     "validation_record": "bridge://schemas/evidence-validation-record/v0.1",
     "prior_applicability_record": "bridge://schemas/prior-applicability-record/v0.1",
     "sensitivity_record": "bridge://schemas/evidence-sensitivity-record/v0.1",
@@ -151,8 +151,8 @@ HOME_RELATIVE_PATH = re.compile(
     re.IGNORECASE,
 )
 VERSIONLESS_ROLE_OBJECT_VERSIONS = {
-    "qc_readiness_profile": "0.1.0",
-    "measurement_result": "0.1.0",
+    "qc_readiness_profile": "0.2.0",
+    "measurement_result": "0.2.0",
 }
 
 
@@ -731,7 +731,8 @@ def _write_scientific_payloads(
         "evidence_sufficiency_profiles.json": (
             "evidence_sufficiency_profiles",
             {
-                "schema_ref": "bridge://schemas/evidence-sufficiency-profile/v0.1",
+                "projection_kind": "noncanonical_convenience_projection",
+                "canonical_result_ref": result.result_id,
                 "profiles": [profile.model_dump(mode="json") for profile in result.profiles],
             },
         ),
@@ -788,8 +789,9 @@ def _manifest_payload(
         "result_schema_ref": spec.result_schema_ref,
         "input_hash": input_hash,
         "structured_input_provenance_policy": {
-            "bundle_identity": "canonical_semantic_sha256",
+            "bundle_identity": "canonical_semantic_sha256_with_exact_source_sha256",
             "invocation_source_checksum": "ToolRunV2.request.object_inputs[].sha256",
+            "result_source_checksum": "source_object_bindings[].source_sha256",
         },
         "structured_inputs": [
             {
@@ -800,6 +802,7 @@ def _manifest_payload(
                 "semantic_sha256": canonical_object_sha256(
                     objects_by_input_id[ref.input_id]
                 ),
+                "source_sha256": ref.sha256,
                 "media_type": ref.media_type,
             }
             for ref in sorted(request.object_inputs, key=lambda item: (item.role, item.input_id))

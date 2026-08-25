@@ -109,16 +109,26 @@ MODELS = {
 
 
 def _schema_filename(schema_id: str) -> str:
-    slug = schema_id.removeprefix("bridge://schemas/").rsplit("/v", 1)[0]
-    return slug.replace("-", "_")
+    slug, version = schema_id.removeprefix("bridge://schemas/").rsplit("/v", 1)
+    stem = slug.replace("-", "_")
+    if version == "0.1":
+        return stem
+    major, minor = version.split(".", 1)
+    suffix = minor if major == "0" else major
+    return f"{stem}_v{suffix}"
 
 
-for schema_models in (P0_08_SCHEMA_MODELS, P0_09_SCHEMA_MODELS, P0_10_SCHEMA_MODELS):
+for schema_models in (
+    P0_08_SCHEMA_MODELS,
+    P0_09_SCHEMA_MODELS,
+    P0_10_SCHEMA_MODELS,
+):
     for schema_id, model in schema_models.items():
         filename = _schema_filename(schema_id)
         if filename in MODELS:
             raise ValueError(f"duplicate public schema filename: {filename}")
         MODELS[filename] = (schema_id, model)
+
 
 def main() -> int:
     repo = Path(__file__).resolve().parents[1]

@@ -21,7 +21,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.executor import REASON_CODE
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS,
     DomainGateInput,
-    EvidenceSufficiencyRunResult,
+    EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
 )
 from bridge.toolkit.api import run_tool, validate_request
 from bridge.toolkit.contracts import ExecutionState, ToolRequest, ToolRequestV2
@@ -53,6 +53,10 @@ def _measurement_spec(*, status: str = "frozen") -> dict[str, Any]:
         "applicable_product_cards": ["product-definition:pd-mda-progenitor"],
         "input_contract": {"object_type": "versioned_upstream_evidence"},
         "analysis_unit": "product case x domain",
+        "analysis_unit_kind": "preparation",
+        "independence_group_kind": "sample",
+        "observation_unit_kind": "cell",
+        "applicable_contexts": ["context:test-v0.1"],
         "raw_metric_definition": {"owner": "upstream_tool"},
         "numerator": None,
         "denominator": None,
@@ -93,6 +97,8 @@ def _qc(*, readiness_state: str = "ready") -> dict[str, Any]:
         "evidence_ids": ["evidence:qc-1"],
         "score_state": "unavailable",
         "domain_score": None,
+        "measurement_spec_version": "0.1.0",
+        "selected_data_view": None,
     }
 
 
@@ -100,14 +106,22 @@ def _measurement(*, evidence_state: str = "measured") -> dict[str, Any]:
     return {
         "measurement_id": "measurement:target-1",
         "measurement_spec_id": "MS-TARGET-v0.1",
+        "measurement_spec_version": "0.1.0",
         "metric_name": "upstream_target_evidence",
-        "raw_value": {"state": evidence_state},
+        "raw_value": (
+            None
+            if evidence_state in {"missing", "unavailable"}
+            else {"state": evidence_state}
+        ),
         "numerator": None,
         "denominator": None,
         "interval": None,
         "domain_score": None,
         "score_state": "unavailable",
         "evidence_state": evidence_state,
+        "source_run_ref": "tool-run:upstream-1@0.2.0",
+        "source_execution_state": "succeeded",
+        "unknown_scope": "identity" if evidence_state == "unknown" else None,
         "provenance_refs": ["evidence:measurement-1", "run:upstream-1"],
     }
 
@@ -272,23 +286,23 @@ def _fixture_request(
         (
             "target-spec",
             "measurement_spec",
-            "bridge://schemas/measurement-spec/v0.1",
+            "bridge://schemas/measurement-spec/v0.2",
             measurement_spec if measurement_spec is not None else _measurement_spec(),
             "0.1.0",
         ),
         (
             "case-qc",
             "qc_readiness_profile",
-            "bridge://schemas/qc-readiness-profile/v0.1",
+            "bridge://schemas/qc-readiness-profile/v0.2",
             qc if qc is not None else _qc(),
-            "0.1.0",
+            "0.2.0",
         ),
         (
             "target-result",
             "measurement_result",
-            "bridge://schemas/measurement-result/v0.1",
+            "bridge://schemas/measurement-result/v0.2",
             measurement if measurement is not None else _measurement(),
-            "0.1.0",
+            "0.2.0",
         ),
         (
             "target-validation",
@@ -343,7 +357,7 @@ def _fixture_request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-08",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -393,7 +407,7 @@ def test_packaged_rule_and_reason_catalog_are_exact_candidate_resources() -> Non
     assert gate.status.value == "candidate"
     assert gate.precedence == ("not_assessed", "insufficient", "limited", "sufficient")
     assert tuple(reason.code for reason in catalog.reasons) == REASON_CODES
-    assert len(catalog.reasons) == 45
+    assert len(catalog.reasons) == 49
 
 
 @pytest.mark.parametrize("schema_ref,model", PUBLIC_SCHEMA_MODELS.items())
@@ -415,10 +429,43 @@ def test_sufficient_raw_evidence_never_enables_a_domain_score(tmp_path: Path) ->
     assert run.result_schema_ref == RESULT_SCHEMA_REF
     result = EvidenceSufficiencyRunResult.model_validate(run.result)
     profile = result.profiles[0]
+    source_by_input_id = {
+        binding.input_id: binding for binding in result.source_object_bindings
+    }
     assert profile.evidence_sufficiency_state.value == "sufficient"
     assert profile.domain_score is None
     assert profile.score_state.value == "unavailable"
     assert profile.score_reason_codes == ["p0_score_contract_unavailable"]
+    assert profile.product_case_ref is not None
+    assert profile.product_case_ref.ref == "product-case:case-001@1.0.0"
+    assert profile.measurement_spec_ref is not None
+    assert profile.measurement_spec_ref.ref == "MS-TARGET-v0.1@0.1.0"
+    assert profile.measurement_result_refs[0].ref == "measurement:target-1@0.2.0"
+    assert set(source_by_input_id) == {
+        ref.input_id for ref in run.request.object_inputs
+    }
+    for ref in run.request.object_inputs:
+        binding = source_by_input_id[ref.input_id]
+        assert binding.role == ref.role
+        assert binding.object_version == ref.object_version
+        assert binding.schema_ref == ref.schema_ref
+        assert binding.source_sha256 == ref.sha256
+        assert "path" not in binding.model_dump(mode="json")
+    measurement_binding = source_by_input_id["target-result"]
+    assert measurement_binding.logical_object_id == "measurement:target-1"
+    assert profile.measurement_evidence_state_counts.model_dump() == {
+        state: int(state == "measured")
+        for state in (
+            "measured",
+            "inferred",
+            "prior_only",
+            "negative",
+            "missing",
+            "unknown",
+            "unavailable",
+            "alert",
+        )
+    }
 
 
 def test_default_registry_dispatches_p0_08_through_declared_adapter(tmp_path: Path) -> None:
@@ -483,16 +530,16 @@ def test_five_domains_are_gated_independently_and_counted_only(tmp_path: Path) -
             (
                 "qc-limited",
                 "qc_readiness_profile",
-                "bridge://schemas/qc-readiness-profile/v0.1",
+                "bridge://schemas/qc-readiness-profile/v0.2",
                 _qc(readiness_state="limited") | {"profile_id": "qc-profile:limited"},
-                "0.1.0",
+                "0.2.0",
             ),
             (
                 "qc-blocked",
                 "qc_readiness_profile",
-                "bridge://schemas/qc-readiness-profile/v0.1",
+                "bridge://schemas/qc-readiness-profile/v0.2",
                 _qc(readiness_state="blocked") | {"profile_id": "qc-profile:blocked"},
-                "0.1.0",
+                "0.2.0",
             ),
             (
                 "validation-candidate",
@@ -734,23 +781,60 @@ def test_score_reference_is_provenance_only_and_never_enables_score(tmp_path: Pa
 
 
 @pytest.mark.parametrize(
-    "evidence_state", ["negative", "alert", "unknown", "missing", "unavailable"]
+    ("evidence_state", "expected_sufficiency", "expected_reason"),
+    [
+        ("measured", "sufficient", None),
+        ("inferred", "sufficient", None),
+        ("prior_only", "sufficient", None),
+        ("negative", "sufficient", None),
+        ("missing", "not_assessed", "measurement_state_missing"),
+        ("unknown", "not_assessed", "measurement_state_unknown"),
+        ("unavailable", "not_assessed", "measurement_state_unavailable"),
+        ("alert", "sufficient", None),
+    ],
 )
 def test_raw_measurement_state_is_not_reinterpreted(
-    tmp_path: Path, evidence_state: str
+    tmp_path: Path,
+    evidence_state: str,
+    expected_sufficiency: str,
+    expected_reason: str | None,
 ) -> None:
     run = _run(tmp_path, measurement=_measurement(evidence_state=evidence_state))
+    result = EvidenceSufficiencyRunResult.model_validate(run.result)
+    profile = result.profiles[0]
+
+    assert profile.evidence_sufficiency_state.value == expected_sufficiency
+    assert getattr(profile.measurement_evidence_state_counts, evidence_state) == 1
+    assert profile.measurement_evidence_state_counts.total == 1
+    assert getattr(
+        result.case_summary.measurement_evidence_state_counts, evidence_state
+    ) == 1
+    if expected_reason is None:
+        assert not any(
+            reason.startswith("measurement_state_")
+            for reason in profile.data_reason_codes
+        )
+    else:
+        assert expected_reason in profile.data_reason_codes
+        assert expected_reason in profile.missing_requirements
+        assert "raw_evidence_gate_not_assessed" in profile.missing_requirements
+    assert profile.domain_score is None
+
+
+def test_assessed_measurement_requires_upstream_tool_run_provenance(
+    tmp_path: Path,
+) -> None:
+    measurement = _measurement()
+    measurement["source_run_ref"] = None
+    measurement["source_execution_state"] = None
+
+    run = _run(tmp_path, measurement=measurement)
     profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
 
-    assert profile.evidence_sufficiency_state.value == "sufficient"
-    assert evidence_state not in {
-        *profile.data_reason_codes,
-        *profile.robustness_reason_codes,
-        *profile.prior_reason_codes,
-        *profile.blocking_reasons,
-        *profile.limiting_reasons,
-    }
-    assert profile.domain_score is None
+    assert profile.data_readiness.value == "not_assessed"
+    assert profile.evidence_sufficiency_state.value == "not_assessed"
+    assert "measurement_source_run_not_provided" in profile.data_reason_codes
+    assert "measurement_source_run_not_provided" in profile.missing_requirements
 
 
 def test_blocking_and_missing_reason_buckets_follow_catalog_severity(
@@ -1016,9 +1100,9 @@ def test_unbound_structured_input_and_legacy_contract_fail_closed(tmp_path: Path
     unbound = (
         "sealed-competitor-extra",
         "measurement_result",
-        "bridge://schemas/measurement-result/v0.1",
+        "bridge://schemas/measurement-result/v0.2",
         extra_payload,
-        "0.1.0",
+        "0.2.0",
     )
     request = _fixture_request(tmp_path, extras=[unbound])
     spec = ToolRegistry.load_default().describe("P0-08")
@@ -1550,23 +1634,23 @@ def test_request_local_binding_ids_may_contain_spaces(tmp_path: Path) -> None:
             (
                 "target spec",
                 "measurement_spec",
-                "bridge://schemas/measurement-spec/v0.1",
+                "bridge://schemas/measurement-spec/v0.2",
                 _measurement_spec(),
                 "0.1.0",
             ),
             (
                 "case qc",
                 "qc_readiness_profile",
-                "bridge://schemas/qc-readiness-profile/v0.1",
+                "bridge://schemas/qc-readiness-profile/v0.2",
                 _qc(),
-                "0.1.0",
+                "0.2.0",
             ),
             (
                 "target result",
                 "measurement_result",
-                "bridge://schemas/measurement-result/v0.1",
+                "bridge://schemas/measurement-result/v0.2",
                 _measurement(),
-                "0.1.0",
+                "0.2.0",
             ),
             (
                 "target validation",
@@ -1658,7 +1742,7 @@ def test_v1_invocation_and_forbidden_expression_channel_fail_eligibility(
     v1 = ToolRequest(
         request_id="v1",
         tool_id="P0-08",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=(tmp_path / "out-v1").resolve(),
     )
     v1_eligibility = adapter.check_eligibility(v1, spec)  # type: ignore[arg-type]
@@ -1740,19 +1824,19 @@ def test_duplicate_core_logical_object_ids_fail_even_when_fully_bound(
         input_id = "spec-copy"
         second_domain["measurement_spec_input_id"] = input_id
         role = "measurement_spec"
-        schema_ref = "bridge://schemas/measurement-spec/v0.1"
+        schema_ref = "bridge://schemas/measurement-spec/v0.2"
         payload = _measurement_spec()
     elif duplicate_role == "qc":
         input_id = "qc-copy"
         second_domain["qc_profile_input_id"] = input_id
         role = "qc_readiness_profile"
-        schema_ref = "bridge://schemas/qc-readiness-profile/v0.1"
+        schema_ref = "bridge://schemas/qc-readiness-profile/v0.2"
         payload = _qc()
     elif duplicate_role == "measurement":
         input_id = "measurement-copy"
         second_domain["measurement_result_input_ids"] = [input_id]
         role = "measurement_result"
-        schema_ref = "bridge://schemas/measurement-result/v0.1"
+        schema_ref = "bridge://schemas/measurement-result/v0.2"
         payload = _measurement()
     else:  # pragma: no cover - protects future parameter edits
         raise AssertionError(duplicate_role)
@@ -1766,7 +1850,13 @@ def test_duplicate_core_logical_object_ids_fail_even_when_fully_bound(
                 second_domain,
                 "0.1.0",
             ),
-            (input_id, role, schema_ref, payload, "0.1.0"),
+            (
+                input_id,
+                role,
+                schema_ref,
+                payload,
+                "0.1.0" if role == "measurement_spec" else "0.2.0",
+            ),
         ],
     )
 
@@ -1873,7 +1963,7 @@ def test_role_schema_and_unrecognized_role_fail_closed(tmp_path: Path) -> None:
     mismatched = _replace_ref(
         request,
         "target-domain",
-        schema_ref="bridge://schemas/measurement-result/v0.1",
+        schema_ref="bridge://schemas/measurement-result/v0.2",
     )
     assert "object_input_schema_mismatch" in adapter.check_eligibility(
         mismatched, spec
@@ -2202,6 +2292,14 @@ def test_artifact_bundle_is_deterministic_reusable_and_path_free(tmp_path: Path)
     for item in manifest["artifacts"]:
         artifact_path = first_dir / item["filename"]
         assert hashlib.sha256(artifact_path.read_bytes()).hexdigest() == item["sha256"]
+    profiles_projection = json.loads(
+        (first_dir / "evidence_sufficiency_profiles.json").read_text()
+    )
+    assert profiles_projection["projection_kind"] == (
+        "noncanonical_convenience_projection"
+    )
+    assert profiles_projection["canonical_result_ref"] == first.result["result_id"]
+    assert "schema_ref" not in profiles_projection
     assert len(first.artifacts) == 5
 
     repeated_request = _fixture_request(tmp_path, request_id="first", output_name="output-a")
@@ -2218,7 +2316,7 @@ def test_artifact_bundle_is_deterministic_reusable_and_path_free(tmp_path: Path)
     assert reordered_run.input_hash == first.input_hash
 
 
-def test_set_like_input_list_order_does_not_change_run_identity_or_result_bytes(
+def test_object_input_order_does_not_change_run_identity_or_result_bytes(
     tmp_path: Path,
 ) -> None:
     def ordered_request(root: Path, *, reverse: bool) -> ToolRequestV2:
@@ -2313,56 +2411,13 @@ def test_set_like_input_list_order_does_not_change_run_identity_or_result_bytes(
             evidence_refs=["evidence:sensitivity-3", "evidence:sensitivity-4"],
             provenance_refs=["run:sensitivity-3", "run:sensitivity-4"],
         )
-        set_like_fields = [
-            (
-                measurement_spec,
-                [
-                    "applicable_product_cards",
-                    "tool_refs",
-                    "reference_refs",
-                    "prior_refs",
-                ],
-            ),
-            (qc, ["missing_inputs", "blocking_issues", "warnings", "evidence_ids"]),
-            (measurement, ["provenance_refs"]),
-            (validation, ["validation_refs", "evidence_refs", "provenance_refs"]),
-            (prior, ["evidence_refs", "provenance_refs"]),
-            (sensitivity, ["evidence_refs", "provenance_refs"]),
-            (second_measurement, ["provenance_refs"]),
-            (
-                second_validation,
-                ["validation_refs", "evidence_refs", "provenance_refs"],
-            ),
-            (second_prior, ["evidence_refs", "provenance_refs"]),
-            (second_sensitivity, ["evidence_refs", "provenance_refs"]),
-            (
-                domain,
-                [
-                    "measurement_result_input_ids",
-                    "validation_record_input_ids",
-                    "prior_record_input_ids",
-                    "sensitivity_record_input_ids",
-                    "required_sensitivity_kinds",
-                    "evidence_refs",
-                    "provenance_refs",
-                ],
-            ),
-        ]
-        if reverse:
-            for payload, fields_to_reverse in set_like_fields:
-                for field in fields_to_reverse:
-                    payload[field] = list(reversed(payload[field]))
-            for pointer in (domain["product_case"], domain["product_definition"]):
-                pointer["provenance_refs"] = list(
-                    reversed(pointer["provenance_refs"])
-                )
         extras = [
             (
                 "target-result-2",
                 "measurement_result",
-                "bridge://schemas/measurement-result/v0.1",
+                "bridge://schemas/measurement-result/v0.2",
                 second_measurement,
-                "0.1.0",
+                "0.2.0",
             ),
             (
                 "target-validation-2",
@@ -2432,23 +2487,149 @@ def test_set_like_input_list_order_does_not_change_run_identity_or_result_bytes(
     raw_sha_second = {
         ref.input_id: ref.sha256 for ref in second.request.object_inputs
     }
-    assert any(
-        raw_sha_first[input_id] != raw_sha_second[input_id]
-        for input_id in raw_sha_first
-    )
+    assert raw_sha_first == raw_sha_second
     manifest = json.loads(
         (first_dir / "artifact_manifest.json").read_text(encoding="utf-8")
     )
     assert manifest["structured_input_provenance_policy"] == {
-        "bundle_identity": "canonical_semantic_sha256",
+        "bundle_identity": "canonical_semantic_sha256_with_exact_source_sha256",
         "invocation_source_checksum": "ToolRunV2.request.object_inputs[].sha256",
+        "result_source_checksum": "source_object_bindings[].source_sha256",
     }
     assert all(
-        "semantic_sha256" in item and "sha256" not in item
+        "semantic_sha256" in item
         for item in manifest["structured_inputs"]
     )
+    assert all("source_sha256" in item for item in manifest["structured_inputs"])
     for artifact in second.artifacts:
         assert hashlib.sha256(artifact.path.read_bytes()).hexdigest() == artifact.sha256
+
+
+def test_measurement_source_bytes_are_bound_into_run_identity(
+    tmp_path: Path,
+) -> None:
+    first_measurement = _measurement()
+    second_measurement = _measurement()
+    second_measurement["provenance_refs"] = list(
+        reversed(second_measurement["provenance_refs"])
+    )
+    first_request = _fixture_request(
+        tmp_path / "first",
+        measurement=first_measurement,
+        request_id="measurement-bytes-first",
+    )
+    second_request = _fixture_request(
+        tmp_path / "second",
+        measurement=second_measurement,
+        request_id="measurement-bytes-second",
+    )
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    first = adapter.run(first_request, spec)
+    second = adapter.run(second_request, spec)
+    first_result = EvidenceSufficiencyRunResult.model_validate(first.result)
+    second_result = EvidenceSufficiencyRunResult.model_validate(second.result)
+    first_binding = next(
+        item
+        for item in first_result.source_object_bindings
+        if item.role == "measurement_result"
+    )
+    second_binding = next(
+        item
+        for item in second_result.source_object_bindings
+        if item.role == "measurement_result"
+    )
+    first_manifest = json.loads(
+        (first.artifacts[0].path.parent / "artifact_manifest.json").read_text()
+    )
+    second_manifest = json.loads(
+        (second.artifacts[0].path.parent / "artifact_manifest.json").read_text()
+    )
+    first_manifest_binding = next(
+        item
+        for item in first_manifest["structured_inputs"]
+        if item["role"] == "measurement_result"
+    )
+    second_manifest_binding = next(
+        item
+        for item in second_manifest["structured_inputs"]
+        if item["role"] == "measurement_result"
+    )
+
+    assert first.execution_state is ExecutionState.SUCCEEDED
+    assert second.execution_state is ExecutionState.SUCCEEDED
+    assert first.input_hash != second.input_hash
+    assert first.run_id != second.run_id
+    assert first_binding.source_sha256 != second_binding.source_sha256
+    assert first_binding.source_sha256 == first_manifest_binding["source_sha256"]
+    assert second_binding.source_sha256 == second_manifest_binding["source_sha256"]
+    assert (
+        first_manifest_binding["semantic_sha256"]
+        == second_manifest_binding["semantic_sha256"]
+    )
+
+
+def test_nonmeasurement_source_bytes_are_bound_into_run_identity(
+    tmp_path: Path,
+) -> None:
+    first_qc = _qc()
+    first_qc["warnings"] = ["warning:a", "warning:b"]
+    second_qc = _qc()
+    second_qc["warnings"] = list(reversed(first_qc["warnings"]))
+    first_request = _fixture_request(
+        tmp_path / "first",
+        qc=first_qc,
+        request_id="qc-bytes-first",
+    )
+    second_request = _fixture_request(
+        tmp_path / "second",
+        qc=second_qc,
+        request_id="qc-bytes-second",
+    )
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    first = adapter.run(first_request, spec)
+    second = adapter.run(second_request, spec)
+    first_result = EvidenceSufficiencyRunResult.model_validate(first.result)
+    second_result = EvidenceSufficiencyRunResult.model_validate(second.result)
+    first_binding = next(
+        item
+        for item in first_result.source_object_bindings
+        if item.role == "qc_readiness_profile"
+    )
+    second_binding = next(
+        item
+        for item in second_result.source_object_bindings
+        if item.role == "qc_readiness_profile"
+    )
+    first_manifest = json.loads(
+        (first.artifacts[0].path.parent / "artifact_manifest.json").read_text()
+    )
+    second_manifest = json.loads(
+        (second.artifacts[0].path.parent / "artifact_manifest.json").read_text()
+    )
+    first_manifest_binding = next(
+        item
+        for item in first_manifest["structured_inputs"]
+        if item["role"] == "qc_readiness_profile"
+    )
+    second_manifest_binding = next(
+        item
+        for item in second_manifest["structured_inputs"]
+        if item["role"] == "qc_readiness_profile"
+    )
+
+    assert first.execution_state is ExecutionState.SUCCEEDED
+    assert second.execution_state is ExecutionState.SUCCEEDED
+    assert first.input_hash != second.input_hash
+    assert first.run_id != second.run_id
+    assert first_binding.source_sha256 != second_binding.source_sha256
+    assert first_binding.source_sha256 == first_manifest_binding["source_sha256"]
+    assert second_binding.source_sha256 == second_manifest_binding["source_sha256"]
+    assert (
+        first_manifest_binding["semantic_sha256"]
+        == second_manifest_binding["semantic_sha256"]
+    )
 
 
 def test_semantic_input_change_changes_run_identity(tmp_path: Path) -> None:

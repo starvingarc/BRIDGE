@@ -7,6 +7,7 @@ from typing import Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
+from bridge.tool_packages._configurable_contracts import VersionedObjectRef
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -137,6 +138,10 @@ SCIENTIFIC_REASON_CODES = (
     "measurement_spec_not_provided",
     "qc_profile_not_provided",
     "measurement_result_not_provided",
+    "measurement_state_missing",
+    "measurement_state_unknown",
+    "measurement_state_unavailable",
+    "measurement_source_run_not_provided",
     "task_validation_not_assessed",
     "method_requirement_not_assessed",
     "validation_record_not_provided",
@@ -180,13 +185,13 @@ SCIENTIFIC_REASON_CODES = (
 SCIENTIFIC_REASON_ORDER = {
     code: position for position, code in enumerate(SCIENTIFIC_REASON_CODES)
 }
-MISSING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[:17]) | {
+MISSING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[:21]) | {
     "raw_evidence_gate_not_assessed"
 }
-BLOCKING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[17:24]) | {
+BLOCKING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[21:28]) | {
     "raw_evidence_gate_insufficient"
 }
-LIMITING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[24:33]) | {
+LIMITING_REASON_CODES = frozenset(SCIENTIFIC_REASON_CODES[28:37]) | {
     "raw_evidence_gate_limited"
 }
 PUBLISHED_REF = re.compile(
@@ -759,6 +764,481 @@ class EvidenceSufficiencyRunResult(FrozenModel):
         return self
 
 
+SOURCE_OBJECT_SCHEMA_BY_ROLE = {
+    "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+    "domain_gate_input": "bridge://schemas/domain-gate-input/v0.1",
+    "measurement_spec": "bridge://schemas/measurement-spec/v0.2",
+    "qc_readiness_profile": "bridge://schemas/qc-readiness-profile/v0.2",
+    "measurement_result": "bridge://schemas/measurement-result/v0.2",
+    "validation_record": "bridge://schemas/evidence-validation-record/v0.1",
+    "prior_applicability_record": (
+        "bridge://schemas/prior-applicability-record/v0.1"
+    ),
+    "sensitivity_record": "bridge://schemas/evidence-sensitivity-record/v0.1",
+}
+
+
+class SourceObjectBinding(FrozenModel):
+    """Path-free binding to one exact accepted structured-input object."""
+
+    input_id: str = Field(min_length=1)
+    role: Literal[
+        "gate_rule_spec",
+        "domain_gate_input",
+        "measurement_spec",
+        "qc_readiness_profile",
+        "measurement_result",
+        "validation_record",
+        "prior_applicability_record",
+        "sensitivity_record",
+    ]
+    logical_object_id: str = Field(min_length=1)
+    object_version: str = Field(min_length=1)
+    schema_ref: Literal[
+        "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1",
+        "bridge://schemas/domain-gate-input/v0.1",
+        "bridge://schemas/measurement-spec/v0.2",
+        "bridge://schemas/qc-readiness-profile/v0.2",
+        "bridge://schemas/measurement-result/v0.2",
+        "bridge://schemas/evidence-validation-record/v0.1",
+        "bridge://schemas/prior-applicability-record/v0.1",
+        "bridge://schemas/evidence-sensitivity-record/v0.1",
+    ]
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @field_validator("input_id", "object_version")
+    @classmethod
+    def local_binding_fields_are_not_blank(cls, value: str) -> str:
+        return _strip(value)
+
+    @field_validator("logical_object_id")
+    @classmethod
+    def logical_object_id_is_publishable(cls, value: str) -> str:
+        return published_ref(value)
+
+    @property
+    def ref(self) -> str:
+        return f"{self.logical_object_id}@{self.object_version}"
+
+    @model_validator(mode="after")
+    def role_and_schema_agree(self) -> Self:
+        if self.schema_ref != SOURCE_OBJECT_SCHEMA_BY_ROLE[self.role]:
+            raise ValueError("source-object role and schema_ref must agree")
+        return self
+
+
+class MeasurementEvidenceStateCount(FrozenModel):
+    measured: int = Field(ge=0)
+    inferred: int = Field(ge=0)
+    prior_only: int = Field(ge=0)
+    negative: int = Field(ge=0)
+    missing: int = Field(ge=0)
+    unknown: int = Field(ge=0)
+    unavailable: int = Field(ge=0)
+    alert: int = Field(ge=0)
+
+    @property
+    def total(self) -> int:
+        return sum(self.model_dump().values())
+
+
+class EvidenceSufficiencyProfileV2(FrozenModel):
+    profile_id: str = Field(
+        pattern=r"^evidence-sufficiency-profile:[a-f0-9]{16}:[A-Za-z0-9._:-]+$"
+    )
+    profile_version: Literal["0.2.0"]
+    gate_rule_spec_ref: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.1"]
+    gate_rule_version: Literal["0.1.0"]
+    product_case_ref: VersionedObjectRef | None = Field(
+        default=None,
+        description=(
+            "Versioned pointer declared inside DomainGateInput; P0-08 does not "
+            "consume or validate ProductCase object content."
+        ),
+    )
+    product_definition_ref: VersionedObjectRef | None = Field(
+        default=None,
+        description=(
+            "Versioned pointer declared inside DomainGateInput; P0-08 does not "
+            "consume or validate ProductDefinition object content."
+        ),
+    )
+    domain_id: P0DomainId | None = None
+    measurement_spec_ref: VersionedObjectRef | None = None
+    score_contract_ref: str | None = None
+    data_readiness: DataReadinessState
+    data_reason_codes: list[str]
+    qc_profile_ref: VersionedObjectRef | None = None
+    model_robustness: ModelRobustnessState
+    robustness_reason_codes: list[str]
+    validation_refs: list[str]
+    prior_applicability: PriorApplicabilityState
+    prior_reason_codes: list[str]
+    snapshot_refs: list[str]
+    evidence_sufficiency_state: EvidenceSufficiencyState
+    blocking_reasons: list[str]
+    limiting_reasons: list[str]
+    missing_requirements: list[str]
+    domain_score: None = None
+    score_state: Literal[ScoreState.UNAVAILABLE] = ScoreState.UNAVAILABLE
+    score_reason_codes: list[str]
+    measurement_result_refs: list[VersionedObjectRef]
+    measurement_evidence_state_counts: MeasurementEvidenceStateCount = Field(
+        description="Counts MeasurementResult references bound to this domain profile."
+    )
+    evidence_refs: list[str]
+    sensitivity_refs: list[str]
+    deduplicated_evidence_family_ids: list[str]
+    created_at: datetime
+    deterministic_run_ref: str = Field(pattern=r"^run-[a-f0-9]{16}$")
+
+    _created_at_utc = field_validator("created_at")(_aware_utc)
+
+    @field_validator("score_contract_ref")
+    @classmethod
+    def scalar_output_refs_are_publishable(
+        cls, value: str | None
+    ) -> str | None:
+        return None if value is None else published_ref(value)
+
+    @field_validator(
+        "data_reason_codes",
+        "robustness_reason_codes",
+        "prior_reason_codes",
+        "blocking_reasons",
+        "limiting_reasons",
+        "missing_requirements",
+        "score_reason_codes",
+    )
+    @classmethod
+    def reason_lists_follow_catalog_order(cls, value: list[str]) -> list[str]:
+        return _reason_codes_in_catalog_order(value)
+
+    @field_validator(
+        "validation_refs",
+        "snapshot_refs",
+        "evidence_refs",
+        "sensitivity_refs",
+        "deduplicated_evidence_family_ids",
+    )
+    @classmethod
+    def output_lists_are_unique(cls, value: list[str]) -> list[str]:
+        cleaned = [published_ref(item) for item in value]
+        return list(_unique(cleaned, "output list"))
+
+    @field_validator("measurement_result_refs")
+    @classmethod
+    def measurement_results_are_unique(
+        cls, value: list[VersionedObjectRef]
+    ) -> list[VersionedObjectRef]:
+        if len({item.ref for item in value}) != len(value):
+            raise ValueError("measurement_result_refs must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def handoff_is_coherent_and_score_unavailable(self) -> Self:
+        if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
+            raise ValueError(
+                "blocking_reasons may contain only blocking catalog codes"
+            )
+        if not set(self.limiting_reasons) <= LIMITING_REASON_CODES:
+            raise ValueError(
+                "limiting_reasons may contain only limiting catalog codes"
+            )
+        if not set(self.missing_requirements) <= MISSING_REASON_CODES:
+            raise ValueError(
+                "missing_requirements may contain only missing catalog codes"
+            )
+        if (
+            self.domain_score is not None
+            or self.score_state is not ScoreState.UNAVAILABLE
+        ):
+            raise ValueError(
+                "P0-08 cannot emit a domain score in the current release"
+            )
+        expected_score_reasons = ["p0_score_contract_unavailable"]
+        if self.score_contract_ref is not None:
+            expected_score_reasons.append(
+                "score_contract_ignored_current_release"
+            )
+        if self.score_reason_codes != expected_score_reasons:
+            raise ValueError(
+                "P0-08 score reason codes must follow the current no-score policy"
+            )
+        digest = self.profile_id.split(":", 2)[1]
+        if self.deterministic_run_ref != f"run-{digest}":
+            raise ValueError("profile and deterministic run digests must agree")
+        if self.domain_id is not None and not self.profile_id.endswith(
+            f":{self.domain_id.value}"
+        ):
+            raise ValueError("profile ID suffix must match the declared domain")
+        if self.measurement_evidence_state_counts.total != len(
+            self.measurement_result_refs
+        ):
+            raise ValueError(
+                "measurement evidence-state counts must match result refs"
+            )
+        if (
+            self.evidence_sufficiency_state
+            is not EvidenceSufficiencyState.NOT_ASSESSED
+        ):
+            required = (
+                self.product_case_ref,
+                self.product_definition_ref,
+                self.domain_id,
+                self.measurement_spec_ref,
+                self.qc_profile_ref,
+            )
+            if any(item is None for item in required):
+                raise ValueError(
+                    "assessed profile requires complete versioned context"
+                )
+        return self
+
+
+class CaseEvidenceReadinessSummaryV2(FrozenModel):
+    summary_id: str = Field(
+        pattern=r"^case-evidence-readiness-summary:[a-f0-9]{16}$"
+    )
+    summary_version: Literal["0.2.0"]
+    product_case_ref: VersionedObjectRef | None = None
+    profile_count: int = Field(ge=1, le=5)
+    evidence_sufficiency_counts: StateCount
+    measurement_evidence_state_counts: MeasurementEvidenceStateCount = Field(
+        description=(
+            "Sum of domain-profile MeasurementResult references; one source object "
+            "shared across domains is counted once per domain profile."
+        )
+    )
+    score_state_counts: ScoreStateCount
+    blocking_reasons: list[str]
+
+    @field_validator("blocking_reasons")
+    @classmethod
+    def unique_reasons(cls, value: list[str]) -> list[str]:
+        return _reason_codes_in_catalog_order(value)
+
+    @model_validator(mode="after")
+    def count_totals_match(self) -> Self:
+        if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
+            raise ValueError(
+                "case blocking_reasons may contain only blocking catalog codes"
+            )
+        counts = self.evidence_sufficiency_counts
+        total = (
+            counts.sufficient
+            + counts.limited
+            + counts.insufficient
+            + counts.not_assessed
+        )
+        if total != self.profile_count:
+            raise ValueError(
+                "evidence sufficiency counts must equal profile_count"
+            )
+        if self.score_state_counts.unavailable != self.profile_count:
+            raise ValueError(
+                "every P0-08 profile must have unavailable score state"
+            )
+        return self
+
+
+class EvidenceSufficiencyRunResultV2(FrozenModel):
+    result_id: str = Field(
+        pattern=r"^evidence-sufficiency-result:[a-f0-9]{16}$"
+    )
+    result_version: Literal["0.2.0"]
+    gate_rule_spec_ref: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.1"]
+    source_object_bindings: list[SourceObjectBinding] = Field(
+        min_length=2,
+        description=(
+            "One path-free exact-source binding for every accepted StructuredInputRef."
+        ),
+    )
+    profiles: list[EvidenceSufficiencyProfileV2] = Field(
+        min_length=1, max_length=5
+    )
+    case_summary: CaseEvidenceReadinessSummaryV2
+    gate_trace: list[GateTraceEntry] = Field(min_length=1, max_length=5)
+
+    @model_validator(mode="after")
+    def validate_aggregate_bindings(self) -> Self:
+        source_input_ids = [item.input_id for item in self.source_object_bindings]
+        if len(source_input_ids) != len(set(source_input_ids)):
+            raise ValueError("source-object input IDs must be unique")
+        expected_order = sorted(
+            self.source_object_bindings,
+            key=lambda item: (item.role, item.input_id),
+        )
+        if self.source_object_bindings != expected_order:
+            raise ValueError("source-object bindings must follow role/input order")
+        source_by_role: dict[str, list[SourceObjectBinding]] = {}
+        for binding in self.source_object_bindings:
+            source_by_role.setdefault(binding.role, []).append(binding)
+        gate_bindings = source_by_role.get("gate_rule_spec", [])
+        domain_bindings = source_by_role.get("domain_gate_input", [])
+        if (
+            len(gate_bindings) != 1
+            or gate_bindings[0].logical_object_id != self.gate_rule_spec_ref
+        ):
+            raise ValueError("result must bind its one gate-rule source object")
+        if not 1 <= len(domain_bindings) <= 5:
+            raise ValueError("result must bind one to five domain input objects")
+        digest = self.result_id.rsplit(":", 1)[1]
+        if (
+            self.case_summary.summary_id
+            != f"case-evidence-readiness-summary:{digest}"
+        ):
+            raise ValueError("result and summary digests must agree")
+        if self.case_summary.profile_count != len(self.profiles):
+            raise ValueError(
+                "summary profile_count must equal profiles length"
+            )
+        if len(self.gate_trace) != len(self.profiles):
+            raise ValueError(
+                "one gate-trace entry is required per profile"
+            )
+        expected_domain_refs = {
+            item.logical_object_id for item in domain_bindings
+        }
+        actual_domain_refs = {
+            trace.domain_gate_input_ref for trace in self.gate_trace
+        }
+        if actual_domain_refs != expected_domain_refs:
+            raise ValueError("gate trace must cover every domain input source")
+        for profile, trace in zip(
+            self.profiles, self.gate_trace, strict=True
+        ):
+            if f":{digest}:" not in profile.profile_id:
+                raise ValueError(
+                    "profile digest must agree with result digest"
+                )
+            if trace.profile_ref != profile.profile_id:
+                raise ValueError(
+                    "gate trace must bind the corresponding profile"
+                )
+            if trace.selected_state is not profile.evidence_sufficiency_state:
+                raise ValueError(
+                    "gate trace selected state must match the profile"
+                )
+        case_refs = {
+            profile.product_case_ref.ref
+            for profile in self.profiles
+            if profile.product_case_ref
+        }
+        if len(case_refs) > 1:
+            raise ValueError(
+                "profiles in one result must belong to one product case"
+            )
+        expected_case = next(iter(case_refs), None)
+        actual_case = (
+            None
+            if self.case_summary.product_case_ref is None
+            else self.case_summary.product_case_ref.ref
+        )
+        if actual_case != expected_case:
+            raise ValueError(
+                "case summary product case must match profiles"
+            )
+        expected_measurement_refs = {
+            item.ref for item in source_by_role.get("measurement_result", [])
+        }
+        actual_measurement_refs = {
+            item.ref
+            for profile in self.profiles
+            for item in profile.measurement_result_refs
+        }
+        if actual_measurement_refs != expected_measurement_refs:
+            raise ValueError(
+                "profile measurement refs must cover measurement source objects"
+            )
+        for role, field in (
+            ("measurement_spec", "measurement_spec_ref"),
+            ("qc_readiness_profile", "qc_profile_ref"),
+        ):
+            expected_refs = {
+                item.ref for item in source_by_role.get(role, [])
+            }
+            actual_refs = {
+                ref.ref
+                for profile in self.profiles
+                if (ref := getattr(profile, field)) is not None
+            }
+            if actual_refs != expected_refs:
+                raise ValueError(
+                    f"profile {field} values must cover {role} source objects"
+                )
+        actual_counts = {
+            state: sum(
+                profile.evidence_sufficiency_state.value == state
+                for profile in self.profiles
+            )
+            for state in (
+                "sufficient",
+                "limited",
+                "insufficient",
+                "not_assessed",
+            )
+        }
+        if (
+            self.case_summary.evidence_sufficiency_counts.model_dump()
+            != actual_counts
+        ):
+            raise ValueError(
+                "case summary state counts must match profiles"
+            )
+        expected_measurement_counts = {
+            state: sum(
+                profile.measurement_evidence_state_counts.model_dump()[state]
+                for profile in self.profiles
+            )
+            for state in (
+                self.case_summary.measurement_evidence_state_counts.model_dump()
+            )
+        }
+        if (
+            self.case_summary.measurement_evidence_state_counts.model_dump()
+            != expected_measurement_counts
+        ):
+            raise ValueError(
+                "case summary measurement-state counts must match profiles"
+            )
+        expected_blocking = sorted(
+            {
+                reason
+                for profile in self.profiles
+                for reason in profile.blocking_reasons
+            },
+            key=SCIENTIFIC_REASON_ORDER.__getitem__,
+        )
+        if self.case_summary.blocking_reasons != expected_blocking:
+            raise ValueError(
+                "case summary blocking reasons must match profiles"
+            )
+        domain_order = {
+            domain: position for position, domain in enumerate(P0DomainId)
+        }
+        actual_order = [
+            (
+                domain_order[profile.domain_id]
+                if profile.domain_id is not None
+                else len(domain_order),
+                (
+                    trace.domain_gate_input_ref
+                    if profile.domain_id is None
+                    else ""
+                ),
+            )
+            for profile, trace in zip(
+                self.profiles, self.gate_trace, strict=True
+            )
+        ]
+        if actual_order != sorted(actual_order):
+            raise ValueError(
+                "profiles and gate traces must follow P0 domain order"
+            )
+        return self
+
+
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.1": ReasonCodeCatalog,
     "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.1": GateRuleSpec,
@@ -769,4 +1249,7 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/evidence-sufficiency-profile/v0.1": EvidenceSufficiencyProfile,
     "bridge://schemas/case-evidence-readiness-summary/v0.1": CaseEvidenceReadinessSummary,
     "bridge://schemas/evidence-sufficiency-run-result/v0.1": EvidenceSufficiencyRunResult,
+    "bridge://schemas/evidence-sufficiency-run-result/v0.2": (
+        EvidenceSufficiencyRunResultV2
+    ),
 }
