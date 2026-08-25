@@ -178,9 +178,15 @@ states while leaving unrelated neural and non-neural cells unresolved.
 - Fine RG/Nb-derived states remain provisional because marker and external-source
   support are incomplete.
 - Current inductive methods force cortical, motor-neuron, neural-crest and
-  mesenchymal OOD cells into known fetal VM labels.
+  mesenchymal out-of-reference / out-of-distribution (OOD) controls into known
+  fetal VM labels.
 - Formal target, regional-fidelity and off-target composition conclusions are
   therefore unavailable.
+
+Pseudobulk reference correlation is a reference-similarity summary, not
+replicate-aware differential-expression inference. Marker/program evidence is a
+complementary channel rather than an independent source because its curation
+lineage overlaps the internal annotation.
 
 No state or method is frozen. The next scientific step is review of the 25 state
 definitions and marker cards, followed by locked external-source and OOD testing.

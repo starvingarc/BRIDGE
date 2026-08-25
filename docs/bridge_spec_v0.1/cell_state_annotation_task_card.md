@@ -1,4 +1,4 @@
-# BRIDGE P0 Cell-State Annotation 任务卡
+# BRIDGE P0 Cell-State Evidence 任务卡
 
 | 字段 | 内容 |
 | --- | --- |
@@ -53,7 +53,7 @@ L3 包含：`RG_mFP`、`RG_mBMP`、`RG_mBIP`、`Nb_mFP`、`Nb_mBMP`、`Nb_mBIP`�
 | `REF-CHEN-NEUROGENESIS-v1` | combined 的 neurogenesis 派生子集 | 83,017 | 发育和轨迹背景 | 不代表 causal lineage truth |
 | `REF-CHEN-NEUROGENESIS-SUBSUB-v1-draft` | neurogenesis 的 vMB 派生子集 | 77,382 | L3 shadow evidence | 模型版本和命名依据待冻结 |
 | `REF-LAMANNO-2016-v1` | scRNA-seq；PCW6-11；人胎腹侧中脑 | 1,977 | scRNA 小型独立 VM primary source | 平台较旧、样本量有限 |
-| `REF-BIRTELE-v1` | 人胎腹侧中脑 scRNA 与原代培养；6-11 周 post-conception | 13 个 GEO samples；processed CSV 可用 | external-source VM reference 候选 | raw reads 因隐私不可用；`GSE192405_RAW.tar` 是 CSV 容器而非 raw reads；当前对象尚未转换 |
+| `REF-BIRTELE-v1` | 人胎腹侧中脑 scRNA 与原代培养；6-11 周 post-conception | 13 个 GEO samples；processed CSV 可用 | external-source VM reference 候选 | 转换器及验证过的 conversion manifest 已建立；raw reads 因隐私不可用；资产仍为 `conditionally_approved_source_holdout` / `biological_review_in_progress`，不构成 state 或 method freeze |
 | `REF-BRAUN-2023-v1` | scRNA-seq；PCW5-14；第一孕期全脑 | 1,548,209 | 全脑区域与 off-axis 背景 | 不能替代腹侧中脑产品定义 |
 | `REF-ZENG-2023-v1` | scRNA-seq；PCW3-12；全胚、头和脑 | 400,141 | 早期发育和 OOD 背景 | 本地统一标签仍需冻结 |
 
@@ -61,7 +61,7 @@ L3 包含：`RG_mFP`、`RG_mBMP`、`RG_mBIP`、`Nb_mFP`、`Nb_mBMP`、`Nb_mBIP`�
 
 ## 4. 分析流程
 
-当前可执行 baseline 固定为两条互补通道：source-specific pseudobulk Spearman/cosine support，以及版本化 marker/program evidence。它们分别保存，不转换为概率、不按工具数投票，也不设置未经验证的 OOD 阈值。scRNA 与 snRNA 使用独立 `MeasurementSpec`；Chen combined 对象只作 sensitivity。
+当前可执行 baseline 固定为两条互补通道：source-specific pseudobulk Spearman/cosine support，以及版本化 marker/program evidence。它们分别保存，不转换为概率、不按工具数投票，也不设置未经验证的 OOD 阈值。这里的 pseudobulk correlation 是 sample-by-label reference similarity summary，不是 replicate-aware differential-expression inference，不输出 DE effect 或 FDR。scRNA 与 snRNA 使用独立 `MeasurementSpec`；Chen combined 对象只作 sensitivity。
 
 ```mermaid
 flowchart LR
@@ -83,7 +83,8 @@ flowchart LR
 
 ## 5. 方法目录与首轮短名单
 
-完整方法级输入、输出、许可、维护状态、环境和官方来源记录在配套 Excel。目录覆盖：
+完整方法级输入、输出、许可、维护状态、环境和官方来源记录在 tracked
+[knowledge catalog](../../knowledge/catalog/README.md)；运行时使用其不可变 packaged snapshot。仓库外归档工作簿不是当前合同。目录覆盖：
 
 | 方法家族 | 目录中的代表方法 | 首轮安排 |
 | --- | --- | --- |

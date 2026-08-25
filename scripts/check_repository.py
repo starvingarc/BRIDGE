@@ -159,6 +159,37 @@ def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> Non
 def _check_tool_package_specs(problems: list[str]) -> None:
     for path in sorted((ROOT / "src/bridge/tool_packages/specs").glob("*.yaml")):
         payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        tool_id = str(payload.get("tool_id", ""))
+        package_prefix = tool_id.casefold().replace("-", "_")
+        package_dirs = sorted(
+            item
+            for item in (ROOT / "src/bridge/tool_packages").glob(f"{package_prefix}_*")
+            if item.is_dir()
+        )
+        if len(package_dirs) != 1:
+            problems.append(
+                f"Tool Package must have exactly one implementation directory: "
+                f"{tool_id}: {len(package_dirs)}"
+            )
+        else:
+            package_readme = package_dirs[0] / "README.md"
+            if not package_readme.is_file():
+                problems.append(f"Tool Package has no package README: {tool_id}")
+            else:
+                readme = package_readme.read_text(encoding="utf-8")
+                required_readme_fragments = (
+                    f"../cards/{tool_id}.md",
+                    "../../../../docs/bridge_spec_v0.1/",
+                    "../../../../examples/requests/",
+                    "../../../../docs/validation/",
+                )
+                missing = [
+                    item for item in required_readme_fragments if item not in readme
+                ]
+                if missing:
+                    problems.append(
+                        f"Tool Package README is incomplete: {tool_id}: {missing}"
+                    )
         if payload.get("input_schema_ref") != "bridge://schemas/tool-request/v0.2":
             continue
         relative = path.relative_to(ROOT)

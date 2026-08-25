@@ -4,7 +4,7 @@ These scripts rebuild checked-in resources and enforce repository policy. They a
 
 | Script | Purpose |
 |---|---|
-| `build_knowledge_catalog.py` | Build the packaged knowledge snapshot and active-method shortlist |
+| `build_knowledge_catalog.py` | Build the packaged knowledge snapshot and catalog-backed method shortlist |
 | `verify_knowledge_sources.py` | Audit registered public sources |
 | `export_schemas.py` | Generate packaged JSON Schemas from Python contracts |
 | `render_tool_cards.py` | Generate or validate the 12 Tool Cards |

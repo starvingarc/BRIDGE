@@ -3,12 +3,14 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-DEVELOPMENT-v0.1` |
-| 文档版本 | `0.1` |
+| Task document version | `0.1` |
 | 日期 | 2026-08-06 |
-| 状态 | `candidate` |
+| Package version | `P0-04 0.2.0` |
+| Runtime / scientific state | `implemented` / `candidate shadow` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard` |
-| 主要输出 | `DevelopmentalCompatibilityProfile`；校准轨另存 `LineageCalibrationRecord` |
+| Current input | checksummed `ProductCase`、`ProductDefinitionCard`、`DevelopmentWindowSpec`、`DevelopmentStateMap`、`MeasurementSpecV2`、`CellStateEvidenceProfileV2`；可选 timepoint series |
+| Current result | `bridge://schemas/developmental-compatibility-result/v0.1` |
+| Detailed runtime contract | [P0-04 Tool Card](../../src/bridge/tool_packages/cards/P0-04.md) |
 
 > v0.2 engineering note: the first executable package is a conservative
 > composition-only candidate. It consumes versioned, checksummed ProductCase,
@@ -62,7 +64,8 @@
 | SISBAR lineage assets | 三个相邻阶段的独立 split-barcoding 实验 | 轨迹方法校准 | 不能拼成一条连续克隆轨迹 |
 | sealed competitor test | D16/D25/D40 | 冻结后外部测试 | 不进入 reference、prior、方法选择或阈值调整 |
 
-完整数据条目、规模、角色和状态由配套 Excel 的 `Current Data` 工作表维护。
+完整数据条目、规模、角色和状态由 tracked
+[Data/Reference Registry](data_reference_registry.md) 维护。仓库外归档工作簿不是运行合同。
 
 ## 4. 分析流程
 

@@ -26,47 +26,30 @@ The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Sc
 6. Use knowledge search for planning and explanation; never turn retrieval rank into scientific evidence weight.
 7. Declare `source_family_id` so the tool can exclude same-family references, and resolve logical QC/reference IDs through deployment-owned catalogs.
 
-P0-01 through P0-12 are executable candidate packages. P0-02 emits shadow
-Cell-State Evidence unless its
-`MeasurementSpec` names a signed `CellStateReleaseManifest`; draft review cards
-or benchmark results never become formal labels. P0-07 compares precomputed
-checksummed evidence bundles under an external comparability and confounding
-contract; it reports descriptive deltas and preparation ranges without choosing
-a winner, declaring equivalence, or backfilling missing values. P0-08 accepts
-only immutable, checksum- and Schema-bound upstream evidence objects, applies
-Data Readiness → Model Robustness → Prior Applicability → sufficiency, and emits
-no measurements or domain score. A scientifically incomplete but contract-valid
-P0-08 case returns `not_assessed`; malformed inputs fail eligibility. P0-09
-compiles accepted atomic records and explicit missing requirements into immutable
-JSON/Parquet Case or Comparison Evidence Graphs. Its Agent surface exposes only
-seven bounded read-only queries; callers cannot submit arbitrary graph queries
-or writes. Rejected sibling records yield a traceable `partial` bundle without
-entering the graph, while top-level contract failures publish nothing. P0-10
-checks a structured `ReportDraft` against one P0-09 graph manifest and packaged
-policy authority, then emits one receipt; internal correspondence does not make
-a report public-eligible, and public claims require cited formal Evidence. P0-11
-accepts exactly four checksummed JSON inputs, rebuilds only allowlisted report
-fields, blocks deterministic leak canaries, and requires a candidate-hash
-confirmation before reporting `exported`; it writes locally and never uploads.
-P0-12 accepts either no graft objects or exactly one checksummed GraftCase,
-external GraftAssessmentSpec and precomputed GraftEvidenceBundle; it returns
-independent `not_provided` or descriptive candidate/shadow evidence and never
-backfills pretransplant domains. P0-03 consumes eleven checksummed objects,
-including the shared P0-05 `StateRoleMap`, and publishes only three configured
-target/regional ratios; unknown/OOD remains `not_assessed`, zero regional
-denominators remain unavailable, and no domain score is produced. HTTP, MCP and
-queue adapters may wrap the same JSON contracts later without changing
-scientific semantics.
+## Package Flow
 
-P0-05 accepts exactly six checksummed JSON objects and applies an external
-`StateRoleMap` and `OffTargetAssessmentSpec` to a precomputed evidence bundle. It
-never infers product roles from labels or embeds biological thresholds;
-incomplete coverage withholds fractions, zero observations do not establish
-absence, and missing rare-state calibration returns `cannot_exclude` or
-`not_assessed`.
+```text
+P0-01 → P0-02 → P0-03 / P0-04 / P0-05 / P0-06
+                         ↓
+                      P0-08 → P0-09 → P0-10 → P0-11
 
+P0-07 compares multiple precomputed product-evidence bundles.
+P0-12 is an optional, independent graft branch.
+```
 
-P0-06 accepts seven checksummed structured objects and applies only external ProgramSpec stage, coverage, LOD and review rules to precomputed records. It returns descriptive shadow evidence; unresolved process metadata remains cannot_attribute, and an untriggered flag is not evidence of safety.
+| Stage | Agent responsibility | Result boundary |
+|---|---|---|
+| P0-01–P0-02 | Supply declared expression, metadata and deployment-resolved reference/QC bindings | P0-02 remains shadow without a signed `CellStateReleaseManifest` |
+| P0-03–P0-06 | Supply checksummed, externally versioned biological roles, windows, programs and precomputed evidence | Executors do not invent state roles, thresholds, biological age, spatial location or safety claims |
+| P0-07 / P0-12 | Preserve independent preparation or graft units and explicit linkage | Comparison is descriptive; graft never backfills pre-transplant evidence |
+| P0-08–P0-09 | Preserve exact upstream objects, evidence families, missing requirements and bounded graph access | No new measurement, score, arbitrary graph query or write |
+| P0-10–P0-11 | Preserve the structured report, package-owned authority, receipt and candidate hash | Verification is correspondence, and export is a local JSON write rather than release or upload |
+
+The [Tool Package guide](tool-packages.md) gives the purpose, input, output,
+refusal behavior and documentation path for every module. The corresponding
+[Tool Card](../src/bridge/tool_packages/cards/) remains the detailed runtime
+contract. HTTP, MCP and queue adapters may wrap the same JSON contracts later
+without changing scientific semantics.
 
 Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.
 

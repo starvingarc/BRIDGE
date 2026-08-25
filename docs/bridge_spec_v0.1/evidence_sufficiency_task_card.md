@@ -3,11 +3,13 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-EVIDENCE-SUFFICIENCY` |
-| Version | `v0.1-draft` |
+| Task document version | `v0.1` |
 | Date | 2026-08-07 |
+| Package version | `P0-08 0.3.0` |
 | Analysis unit | `product case x domain x MeasurementSpec` |
-| Primary output | `EvidenceSufficiencyProfile` |
-| Current state | `candidate` |
+| Runtime / scientific state | `implemented` / `candidate` |
+| Current result | `bridge://schemas/evidence-sufficiency-run-result/v0.2` |
+| Detailed runtime contract | [P0-08 Tool Card](../../src/bridge/tool_packages/cards/P0-08.md) |
 
 ## 0. 当前实现绑定（候选）
 

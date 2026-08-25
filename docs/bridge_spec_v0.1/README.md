@@ -5,6 +5,10 @@
 **审计日期：** 2026-08-03
 **用途：** 供 BRIDGE 生物学团队、算法团队和智能体合作团队共同评审。
 
+目录名 `v0.1` 表示这组科学任务文档的合同族，不表示每个 Tool Package
+当前仍为 0.1 版本。每个包的当前工程版本、输入输出 Schema 和 runtime 状态以
+[Tool Package guide](../tool-packages.md) 与相应 Tool Card 为准。
+
 本目录是 [BRIDGE PRD](../BRIDGE_PRD.md) 的实施附件包。PRD 是当前唯一主规范；附件提供数据、工具、知识、对象、可视化和环境事实，不得改变 PRD 的科学边界或产品合同。
 
 ## 文档地图
@@ -27,7 +31,7 @@
 | [P0-12 Graft Assessment](graft_assessment_task_card.md) | 独立后验 graft 证据边界 |
 | [公开 JSON Schema](../../src/bridge/resources/schemas/) | Agent、证据、比较、可视化和运行对象合同 |
 | [Tool Package Cards](../../src/bridge/tool_packages/cards/) | 当前可调用工具、输入输出和实现状态 |
-| [Active Methods](../../knowledge/active-methods.md) | P0-01、P0-02、P0-03、P0-04、P0-07、P0-08 与 P0-09 当前选定方法 |
+| [Catalog-backed Methods](../../knowledge/active-methods.md) | 当前 P0 包从全局 knowledge snapshot 选择的方法；P0-10 使用独立版本化 benchmark |
 | [Conda 环境合同](../../environments/README.md) | 当前运行能力所需的最小环境与待建环境 |
 
 ## 状态词

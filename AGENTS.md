@@ -1,6 +1,6 @@
 # BRIDGE Agent Handbook
 
-本文件是 BRIDGE 仓库内所有 Coding Agent 的第一入口。开始工作前先阅读本文件、`plans/README.md` 与 `docs/index.md`。
+本文件是 BRIDGE 仓库内所有 Coding Agent 的第一入口。开始工作前先阅读本文件、`plans/README.md` 与 `docs/README.md`。
 
 BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方式：
 

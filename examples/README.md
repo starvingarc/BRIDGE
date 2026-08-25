@@ -1,17 +1,29 @@
 # Interface Examples
 
-The request files demonstrate the stable JSON shape used by the Python SDK and `bridge-tool` CLI. Paths are placeholders and must be replaced with real absolute paths before validation or execution.
+The request files document the JSON shape shared by the Python SDK and
+`bridge-tool` CLI. Absolute paths, output directories and SHA-256 values are
+placeholders unless stated otherwise; replace them with immutable local objects
+before calling `validate` or `run`.
 
-- `requests/p0_01_count_ready.json`: executable count-level input audit and QC.
-- `requests/p0_01_analysis_ready.json`: structure-only audit of normalized expression.
-- `requests/p0_02_cell_state.json`: executable shadow Cell-State Evidence request. The deployment must resolve its `qc_profile_ref` and the frozen reference snapshot.
-- `requests/p0_03_target_regional_evidence.json`: eleven-object P0-03 candidate request shape. It consumes the shared P0-05 StateRoleMap and a P0-02 V3 profile with exact measurement, vocabulary, reference, QC and lineage bindings; all paths and checksums are placeholders.
-- `requests/p0_05_off_target_control.json`: six-object P0-05 candidate request for externally defined roles, thresholds and precomputed state evidence. Paths and checksums are placeholders.
-- `requests/p0_06_proliferation_stress_response.json`: structured P0-06 candidate request shape for seven checksummed objects. Paths and checksums are placeholders; all program vocabulary, applicability, thresholds and review rules come from external versioned specifications.
-- `requests/p0_07_product_comparison_stability.json`: four-or-more-object P0-07 candidate request for an external comparison contract, case manifest and precomputed product evidence bundles. Paths and checksums are placeholders.
-- `requests/p0_08_evidence_sufficiency.json`: structured P0-08 candidate request shape. Every path and checksum is a placeholder; create immutable local JSON objects and calculate their real SHA-256 values before `validate` or `run`. The packaged candidate gate-rule bytes must be used unchanged.
-- `requests/p0_09_evidence_compiler.json`: structured P0-09 candidate request shape for a compilation bundle, P0-08 profiles and versioned Evidence Family, Claim and reconciliation registries. Placeholder paths and checksums must be replaced with immutable local JSON objects and their real SHA-256 values.
-- `requests/p0_12_graft_assessment.json`: executable optional no-graft request; `object_inputs=[]` returns `not_provided`. A provided graft uses three checksummed JSON objects documented in the P0-12 Tool Card.
+| Tool | Request example | What it demonstrates |
+|---|---|---|
+| P0-01 | [`p0_01_count_ready.json`](requests/p0_01_count_ready.json) | Count-level H5AD/10x input audit and QC |
+| P0-01 | [`p0_01_analysis_ready.json`](requests/p0_01_analysis_ready.json) | Structure-only audit of normalized expression |
+| P0-02 | [`p0_02_cell_state.json`](requests/p0_02_cell_state.json) | Shadow Cell-State Evidence request and deployment-resolved reference/QC bindings |
+| P0-03 | [`p0_03_target_regional_evidence.json`](requests/p0_03_target_regional_evidence.json) | Eleven-object target/regional evidence request |
+| P0-04 | [`p0_04_developmental_compatibility.json`](requests/p0_04_developmental_compatibility.json) | External developmental-window and state-map request |
+| P0-05 | [`p0_05_off_target_control.json`](requests/p0_05_off_target_control.json) | Role-aware whole-product composition request |
+| P0-06 | [`p0_06_proliferation_stress_response.json`](requests/p0_06_proliferation_stress_response.json) | External program, process and precomputed-evidence request |
+| P0-07 | [`p0_07_product_comparison_stability.json`](requests/p0_07_product_comparison_stability.json) | Multi-case comparability and descriptive-delta request |
+| P0-08 | [`p0_08_evidence_sufficiency.json`](requests/p0_08_evidence_sufficiency.json) | Versioned evidence-gate request |
+| P0-09 | [`p0_09_evidence_compiler.json`](requests/p0_09_evidence_compiler.json) | Compilation bundle and evidence-registry request |
+| P0-10 | [`p0_10_claim_verifier.json`](requests/p0_10_claim_verifier.json) | Four-object structured claim-verification request |
+| P0-11 | [`p0_11_public_safe_export.json`](requests/p0_11_public_safe_export.json) | Four-object allowlisted local-export request |
+| P0-12 | [`p0_12_graft_assessment.json`](requests/p0_12_graft_assessment.json) | Optional no-graft request; supplied graft mode uses three objects |
+
+See the [Tool Package guide](../docs/tool-packages.md) for each tool's purpose,
+inputs, outputs, refusal behavior, Tool Card, scientific task card and validation
+record.
 
 ## Synthetic scRNA Upload Demo
 
@@ -22,7 +34,7 @@ used only as feature identifiers.
 
 | File | Purpose | SHA-256 |
 |---|---|---|
-| `demo-data/scrna-upload-v0.1/demo_scrna.h5ad` | 2,048-cell by 10,000-gene scRNA object with log-normalized `X`, integer `layers/counts` and synthetic `obs` metadata | `984f74f7a4118da1c898e593a0d93b536aee092bcda5dbf76d10fc65addd5a91` |
+| `demo-data/scrna-upload-v0.1/demo_scrna.h5ad` | 2,048-cell by 10,000-gene object with log-normalized `X`, integer `layers/counts` and synthetic `obs` metadata | `984f74f7a4118da1c898e593a0d93b536aee092bcda5dbf76d10fc65addd5a91` |
 | `demo-data/scrna-upload-v0.1/sample_metadata.csv` | Four-row capture-level companion metadata | `81c15f855da1c83ee58d0a5711d5afe1d0e52c78362f514604864d5aa194c93a` |
 
 - Source class: `fully_synthetic`.

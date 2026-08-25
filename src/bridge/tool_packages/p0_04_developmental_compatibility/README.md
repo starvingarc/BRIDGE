@@ -1,12 +1,23 @@
 # P0-04 Developmental Compatibility
 
-This module implements the deterministic P0-04 candidate runtime. Biology stays
-in checksummed `DevelopmentWindowSpec` and `DevelopmentStateMap` inputs; the code
-only validates bindings and aggregates P0-02 composition counts.
+This directory contains the deterministic developmental-window evidence package.
 
-Runtime entry: `adapter:adapter`. Result model:
-`DevelopmentalCompatibilityResult`. The packaged Tool Card and example request
-define the full input, output, checksum, missing-state and reason-code contract.
+## Interface at a glance
 
-The package never assigns a state, converts in-vitro day to fetal age, performs
-inferential time-course analysis, or emits a domain score.
+- **Input:** checksummed ProductCase, product definition, DevelopmentWindowSpec,
+  DevelopmentStateMap, MeasurementSpec and P0-02 profile, with an optional
+  declared timepoint series.
+- **Output:** `DevelopmentalCompatibilityResult` with window, earlier, later,
+  branch-shift and unresolved composition states.
+- **Boundary:** alignment is relative to a user-supplied window; the package does
+  not infer biological age, trajectory, maturation or a domain score.
+
+## Documentation
+
+- [Tool Card — authoritative runtime contract](../cards/P0-04.md)
+- [Scientific task card](../../../../docs/bridge_spec_v0.1/developmental_compatibility_task_card.md)
+- [Request example](../../../../examples/requests/p0_04_developmental_compatibility.json)
+- [Validation record](../../../../docs/validation/p0_04_developmental_compatibility_v0.2.md)
+
+Use `bridge-tool describe P0-04` for the installed version, schemas, environment
+and registered method IDs.

@@ -1,98 +1,149 @@
-# BRIDGE
+<div align="center">
 
-**Development-aware transcriptomic evidence for cell-therapy products.**
+<h1>BRIDGE</h1>
 
-Parkinson's disease hPSC-derived midbrain dopaminergic (hPSC-mDA) products are the first biological instance.
+<p><strong>Development-aware transcriptomic evidence for cell-therapy products</strong></p>
 
-![BRIDGE connects human fetal references and a pre-transplant cell product to five evidence domains and traceable outputs.](docs/assets/bridge-biological-workflow.svg)
+<p>Twelve composable tools that turn uploaded single-cell data, reviewed biological<br>
+authorities and precomputed measurements into traceable evidence.</p>
 
-## Biological question
+<p>
+  <a href="https://github.com/starvingarc/BRIDGE/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/starvingarc/BRIDGE/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776AB">
+  <img alt="12 Tool Packages" src="https://img.shields.io/badge/Tool_Packages-12-6D5A9E">
+  <img alt="Research preview" src="https://img.shields.io/badge/Status-research_preview-B65D3D">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-2E7B70.svg"></a>
+</p>
 
-Given a pre-transplant cell product, which intended developmental and regional identities are supported by its transcriptome, where does the full composition diverge, and which uncertainties should be tested next?
+<p>
+  <a href="docs/README.md">Documentation</a> ·
+  <a href="docs/tool-packages.md">Tool Packages</a> ·
+  <a href="examples/README.md">Examples</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-## Five evidence domains
+</div>
 
-| Domain | Evidence question |
-|---|---|
-| Target identity | Are the intended lineage and cell states represented? |
-| Regional fidelity | Does the product support the intended anatomical identity rather than an off-axis fate? |
-| Developmental compatibility | How does the product align with a researcher-defined developmental window? |
-| Off-target control | What target, adjacent, off-axis, and unresolved states make up the whole product? |
-| Proliferation & Stress Response | Without reassigning cell identity or composition, which stage-conditioned proliferation, stress-response, death-associated, or residual pluripotency-like transcriptomic signals require review? |
+> [!IMPORTANT]
+> **Research preview.** All 12 P0 packages are implemented and callable, but
+> their scientific use remains `candidate` or `shadow`. BRIDGE has no frozen
+> state, method or `ScoreContract`; every domain score remains `null`. It does
+> not make clinical efficacy, safety, potency or GMP-release claims.
 
-## Current biological progress
+![BRIDGE connects developmental references and a pre-transplant cell product to five evidence domains and traceable outputs.](docs/assets/bridge-biological-workflow.svg)
 
-The first pilot asked whether fetal ventral-midbrain references can identify intended
-states in a pre-transplant product while refusing unrelated neural and non-neural
-cells.
+## Why BRIDGE
 
-| Biological question | Data examined | Current finding | Meaning for product evaluation |
-|---|---|---|---|
-| Can broad fetal ventral-midbrain states be recognized? | Donor-aware Chen vMB scRNA-seq splits | Several methods recover broad states, with uneven performance across labels | Exploratory state composition is possible, but no state is released for formal reporting |
-| Can fine RG/Nb-derived states be separated? | Seven priority L2 states | Some methods separate these states internally, but external support and marker review are incomplete | Fine regional or developmental claims remain unavailable |
-| Can unrelated cells be rejected? | Cortical organoid, neural crest, motor-neuron and mesenchymal OOD data | Tested inductive methods can force these cells into known ventral-midbrain labels | Formal target, regional-fidelity and off-target conclusions are blocked |
-| Can markers provide an independent check? | Internal marker/program cards | Negative-marker coverage is incomplete and all seven L2 marker cards remain unfrozen | Marker evidence remains a shadow interpretation channel |
+Evaluating a cell-therapy product is not one classification task. The uploaded
+data, developmental reference, product definition, measurement choices,
+uncertainty and final claims must remain connected. BRIDGE packages that chain
+into explicit, checksummed interfaces that can be reviewed and rerun.
 
-The next scientific step is the **P0-02 External-Source Freeze Candidate**: review
-the 25 state definitions and marker cards together with the ProductDefinitionCard
-and StateRoleMap, then sign the FreezeGate before any locked runner is implemented
-or run. Unresolved Nb boundaries remain provisional or unavailable.
+| Inspect | Evaluate | Govern |
+|---|---|---|
+| Audit uploaded expression data and assemble source-aware cell-state evidence. | Summarize target, regional, developmental, composition, proliferation/stress, comparison and optional graft evidence. | Gate sufficiency, compile evidence graphs, verify claims and build a local public-safe export. |
+| [P0-01–P0-02](docs/tool-packages.md#intake-and-state-evidence) | [P0-03–P0-06](docs/tool-packages.md#product-domain-evidence) · [P0-07/P0-12](docs/tool-packages.md#comparison-and-graft-context) | [P0-08–P0-11](docs/tool-packages.md#evidence-governance-and-export) |
 
-## Repository status
+Parkinson's disease hPSC-derived midbrain dopaminergic products are the first
+biological use case. The evidence contract is intended to extend to other
+cell-therapy products without embedding one lab's state map or thresholds in
+the runtime.
 
-| Package | Status |
-|---|---|
-| P0-01 Input Audit & QC | Executable candidate |
-| P0-02 Cell-State Evidence | Executable shadow; no state or method frozen |
-| P0-03 Target Identity & Regional Fidelity | Executable deterministic shadow candidate over eleven checksummed objects; three descriptive ratios only, no spatial or score claim |
-| P0-04 Developmental Compatibility | Executable deterministic shadow candidate over external window and state specifications; no score or maturation claim |
-| P0-05 Off-target Control | Executable deterministic shadow candidate over six checksummed JSON objects; roles and thresholds remain external, no score or safety conclusion |
-| P0-06 Proliferation & Stress Response | Executable deterministic shadow candidate over external program and process contracts; no safety or unsupported process-attribution claim |
-| P0-07 Product Comparison & Stability | Executable deterministic shadow candidate over external comparison contracts and precomputed evidence; descriptive deltas only, no winner or score |
-| P0-08 Evidence Sufficiency | Executable deterministic candidate over versioned upstream evidence; no score or real-case conclusion |
-| P0-09 Evidence Compiler & Reconciler | Executable deterministic candidate for immutable evidence graphs and bounded read-only queries; no score or claim verification |
-| P0-10 Report Claim Verifier | Executable deterministic candidate receipt; verification is correspondence, not biological truth or release authority |
-| P0-11 Public-safe Export | Executable deterministic JSON candidate; no upload, scientific validation or domain score |
-| P0-12 Optional Graft Assessment | Executable independent descriptive candidate; never backfills pre-transplant evidence |
+## Quick start
 
-## Minimal usage
+BRIDGE requires Python 3.12.
 
 ```bash
+git clone https://github.com/starvingarc/BRIDGE.git
+cd BRIDGE
 python -m pip install -e ".[qc,evidence]"
+
 bridge-tool list
 bridge-tool describe P0-02
-bridge-tool validate --request request.json
-bridge-tool run --request request.json
+bridge-tool validate --request /absolute/path/to/request.json
+bridge-tool run --request /absolute/path/to/request.json
 ```
 
-Each run preserves the input and records the applicable measurement, reference, method, artifact, and checksum provenance.
+The CLI and Python SDK use the same versioned contracts. Start with the
+[committed requests](examples/README.md), or use the
+[fully synthetic scRNA upload fixture](examples/demo-data/scrna-upload-v0.1/)
+to test file ingestion. Example paths and checksums are placeholders unless an
+example explicitly states otherwise.
 
-## Repository layout
+## The 12 Tool Packages
 
-| Path | Purpose |
-|---|---|
-| `src/bridge/toolkit/` | Shared SDK, CLI, contracts, registry, runtime, and knowledge search |
-| `src/bridge/tool_packages/` | The 12 biological analysis and evidence packages, their specifications, Tool Cards, and package-owned resources |
-| `src/bridge/resources/schemas/` | Packaged public JSON Schemas used by Python and non-Python Agent clients |
-| `docs/` | Product, scientific, integration, and validation documentation |
-| `knowledge/` | Curated method/source inputs and the human-readable active-method shortlist |
-| `scripts/` | Repository maintenance and deterministic resource generation; not Agent tools |
-| `tests/` | Executable behavior and scientific-boundary checks |
+| Stage | Packages | Result |
+|---|---|---|
+| Intake and state evidence | **P0-01** Input Audit & QC · **P0-02** Cell-State Evidence | Audited expression views and source-aware state evidence |
+| Product-domain evidence | **P0-03** Target/Regional · **P0-04** Development · **P0-05** Off-target · **P0-06** Proliferation/Stress | Descriptive, externally configured domain evidence |
+| Product context | **P0-07** Comparison & Stability · **P0-12** Optional Graft Assessment | Comparable-case summaries and an independent graft branch |
+| Evidence governance | **P0-08** Sufficiency · **P0-09** Compiler · **P0-10** Claim Verifier · **P0-11** Public-safe Export | Gate traces, evidence graphs, verification receipts and local export |
 
-## Scientific boundaries
+Every package has a concise module README, authoritative Tool Card, public JSON
+Schema, request example, scientific task card and version-bound validation
+record. Browse all of them in the [Tool Package guide](docs/tool-packages.md).
 
-- BRIDGE reports research-use transcriptomic evidence, uncertainty, and evidence gaps.
-- Missing, unresolved, and out-of-reference evidence is not treated as a negative result.
-- Candidate or shadow evidence does not establish clinical efficacy, safety, potency, GMP release, or an absolute product ranking.
-- Post-transplant graft evidence is analyzed independently and is not back-propagated into the pre-transplant profile.
-- No frozen P0 domain score is currently published.
+## Scientific scope
+
+| Evidence domain | What BRIDGE asks | What it does not claim |
+|---|---|---|
+| Target identity | Are intended lineage and states represented? | Released identity or potency |
+| Regional fidelity | Is there transcriptomic regional support? | Spatial localization |
+| Developmental compatibility | Is evidence compatible with a supplied window? | Biological age |
+| Off-target control | How is the whole product composition accounted for? | Physical removal, safety or release control |
+| Proliferation & Stress Response | Which stage-conditioned signals require review? | Cell fitness, causality or safety |
+
+BRIDGE keeps externally versioned biology outside the executors, distinguishes
+`missing`, `unknown`, `unavailable`, `negative` and `alert`, and never fills
+missing evidence with zero. Each result preserves applicable source, method,
+artifact and checksum provenance.
+
+<details>
+<summary><strong>Current P0-02 scientific status</strong></summary>
+
+The first pilot used donor-aware splits from a controlled, unpublished fetal
+ventral-midbrain reference. Broad states were recoverable with uneven
+label-level performance, while seven fine RG/Nb-derived states remained
+incompletely supported. Tested inductive methods also forced several
+out-of-reference / out-of-distribution controls into known labels rather than
+reliably abstaining.
+
+Marker/program evidence is complementary rather than independent because its
+curation lineage overlaps the internal annotation. Pseudobulk correlation is a
+reference-similarity summary, not replicate-aware differential-expression
+inference. These observations support exploratory composition only.
+
+See the [pilot record](docs/validation/p0_02_scientific_freeze_pilot_20260811.md),
+[data/reference registry](docs/bridge_spec_v0.1/data_reference_registry.md) and
+[active scientific plan](plans/p0-02-cell-state-scientific-freeze.md).
+
+</details>
 
 ## Documentation
 
-- [Documentation index](docs/index.md)
-- [Product requirements](docs/BRIDGE_PRD.md)
-- [Scientific principles](docs/product-principles.md)
-- [Tool Package cards](src/bridge/tool_packages/cards/)
-- [Public JSON Schemas](src/bridge/resources/schemas/)
-- [Method and source knowledge](knowledge/README.md)
-- [Agent integration](docs/agent-integration.md)
+| I want to… | Start here |
+|---|---|
+| Understand the product and biological model | [Product and scientific principles](docs/product-principles.md) · [P0 scientific specifications](docs/bridge_spec_v0.1/README.md) |
+| Call a tool or connect an Agent | [Tool Package guide](docs/tool-packages.md) · [Agent integration](docs/agent-integration.md) · [request examples](examples/README.md) |
+| Inspect an interface or tested behavior | [Tool Cards](src/bridge/tool_packages/cards/) · [public JSON Schemas](src/bridge/resources/schemas/) · [validation index](docs/validation/README.md) |
+| Contribute or review provenance | [Contributing](CONTRIBUTING.md) · [quality baseline](docs/quality-baseline.md) · [privacy and provenance](docs/privacy-and-provenance.md) |
+
+The [documentation home](docs/README.md) explains which source is authoritative
+for runtime behavior, scientific intent, validation evidence and active plans.
+
+<details>
+<summary><strong>Selected foundations and citation guidance</strong></summary>
+
+- Human fetal midbrain and hPSC-mDA context: [La Manno et al., *Cell* 2016](https://doi.org/10.1016/j.cell.2016.09.027) and [Xu et al., *JCI* 2022](https://doi.org/10.1172/JCI156768).
+- Single-cell representation and QC: [Wolf et al., *Genome Biology* 2018](https://doi.org/10.1186/s13059-017-1382-0) and [Wolock et al., *Cell Systems* 2019](https://doi.org/10.1016/j.cels.2018.11.005).
+- Cross-dataset annotation benchmarking: [Abdelaal et al., *Genome Biology* 2019](https://doi.org/10.1186/s13059-019-1795-z).
+- Experimental-unit and replicate safeguards: [Zimmerman et al., *Nature Communications* 2021](https://doi.org/10.1038/s41467-021-21038-1) and [Squair et al., *Nature Communications* 2021](https://doi.org/10.1038/s41467-021-25960-2).
+
+These sources motivate the use case and safeguards; they do not validate
+BRIDGE's internal reference, thresholds or product conclusions. Until a software
+DOI is issued, cite the exact BRIDGE commit and Tool Package version together
+with the underlying method and data papers.
+
+</details>
+
+BRIDGE is available under the [MIT License](LICENSE).
