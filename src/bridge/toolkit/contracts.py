@@ -1144,6 +1144,140 @@ class CellStateEvidenceProfile(FrozenModel):
     domain_score: None = None
 
 
+class CellStateCompositionView(StrEnum):
+    CONSENSUS_SUPPORTED_ONLY = "consensus_supported_only"
+    SOURCE_SPECIFIC = "source_specific"
+    RECONCILIATION_STATE = "reconciliation_state"
+
+
+class CellStateCompositionRecordState(StrEnum):
+    CANDIDATE = "candidate"
+    UNKNOWN = "unknown"
+    OOD = "ood"
+    UNRESOLVED = "unresolved"
+    UNAVAILABLE = "unavailable"
+
+
+class CellStateCompositionDenominatorScope(StrEnum):
+    SELECTED_DATA_VIEW = "selected_data_view"
+
+
+class CellStateCompositionRecord(FrozenModel):
+    view: CellStateCompositionView
+    source_id: str | None = Field(
+        default=None, pattern=r"^[A-Za-z][A-Za-z0-9._:-]*$"
+    )
+    label: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9._:-]*$")
+    label_level: Literal["L1", "L2", "L3"]
+    state_evidence_state: CellStateCompositionRecordState
+    denominator_scope: CellStateCompositionDenominatorScope
+    count: StrictInt = Field(ge=0)
+    fraction: StrictFloat = Field(ge=0.0, le=1.0)
+    denominator: StrictInt = Field(gt=0)
+
+    @model_validator(mode="after")
+    def record_is_coherent(self) -> "CellStateCompositionRecord":
+        if self.count > self.denominator:
+            raise ValueError("composition count exceeds denominator")
+        if not math.isclose(
+            self.fraction,
+            self.count / self.denominator,
+            rel_tol=0.0,
+            abs_tol=1e-9,
+        ):
+            raise ValueError("composition fraction does not match count/denominator")
+        source_specific = self.view is CellStateCompositionView.SOURCE_SPECIFIC
+        if source_specific != (self.source_id is not None):
+            raise ValueError(
+                "source_specific composition requires exactly one source_id"
+            )
+        positive_view = self.view in {
+            CellStateCompositionView.SOURCE_SPECIFIC,
+            CellStateCompositionView.CONSENSUS_SUPPORTED_ONLY,
+        }
+        if (
+            positive_view
+            and self.state_evidence_state
+            is not CellStateCompositionRecordState.CANDIDATE
+        ):
+            raise ValueError(
+                "positive composition views cannot carry unknown, OOD, "
+                "unresolved, or unavailable evidence"
+            )
+        return self
+
+
+class CellStateComposition(FrozenModel):
+    state: Literal[
+        "shadow", "not_assessed", "unavailable", "unknown", "missing"
+    ]
+    records: list[CellStateCompositionRecord]
+
+    @field_validator("records")
+    @classmethod
+    def record_keys_are_unique(
+        cls, value: list[CellStateCompositionRecord]
+    ) -> list[CellStateCompositionRecord]:
+        identities = [
+            (item.view, item.source_id, item.label_level, item.label)
+            for item in value
+        ]
+        if len(identities) != len(set(identities)):
+            raise ValueError("composition record keys must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def records_are_denominator_complete(self) -> "CellStateComposition":
+        if self.state != "shadow" and self.records:
+            raise ValueError("non-shadow composition cannot contain records")
+        if not self.records:
+            return self
+        denominators = {item.denominator for item in self.records}
+        if len(denominators) != 1:
+            raise ValueError("composition records must share one denominator")
+        denominator = next(iter(denominators))
+        reconciliation = [
+            item
+            for item in self.records
+            if item.view is CellStateCompositionView.RECONCILIATION_STATE
+        ]
+        if not reconciliation or sum(item.count for item in reconciliation) != denominator:
+            raise ValueError(
+                "reconciliation rows must partition the selected DataView denominator"
+            )
+        source_ids = {
+            item.source_id
+            for item in self.records
+            if item.view is CellStateCompositionView.SOURCE_SPECIFIC
+        }
+        for source_id in source_ids:
+            if (
+                sum(
+                    item.count
+                    for item in self.records
+                    if item.view is CellStateCompositionView.SOURCE_SPECIFIC
+                    and item.source_id == source_id
+                )
+                > denominator
+            ):
+                raise ValueError("source-specific composition exceeds denominator")
+        consensus_count = sum(
+            item.count
+            for item in self.records
+            if item.view is CellStateCompositionView.CONSENSUS_SUPPORTED_ONLY
+        )
+        reconciled_consensus_count = sum(
+            item.count
+            for item in reconciliation
+            if item.label == "consensus_supported"
+        )
+        if consensus_count != reconciled_consensus_count:
+            raise ValueError(
+                "consensus composition must match consensus reconciliation count"
+            )
+        return self
+
+
 class CellStateEvidenceProfileV2(CellStateEvidenceProfile):
     model_config = ConfigDict(
         json_schema_extra={
@@ -1170,6 +1304,44 @@ class CellStateEvidenceProfileV2(CellStateEvidenceProfile):
             raise ValueError(
                 "upstream QC profile reference and checksum must be paired"
             )
+        return self
+
+
+class CellStateEvidenceProfileV3(CellStateEvidenceProfileV2):
+    assay: Literal["scRNA-seq", "snRNA-seq"]
+    denominator: Literal["selected_data_view"]
+    composition: CellStateComposition
+    measurement_spec_version: str = Field(min_length=1)
+    measurement_spec_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    annotation_vocabulary_version: str = Field(min_length=1)
+    annotation_vocabulary_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reference_manifest_version: str = Field(min_length=1)
+    reference_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    upstream_qc_profile_ref: str = Field(min_length=1)
+    upstream_qc_profile_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    input_data_view: DataViewBinding
+    open_set_state: Literal["not_assessed", "candidate", "calibrated"]
+    calibration_state: Literal["not_assessed", "candidate", "calibrated"]
+    producer_run_ref: str = Field(min_length=1)
+    producer_tool_id: Literal["P0-02"]
+    producer_tool_version: str = Field(min_length=1)
+    environment_spec_ref: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def v3_lineage_and_assignment_are_coherent(
+        self,
+    ) -> "CellStateEvidenceProfileV3":
+        if self.n_observations != self.input_data_view.n_observations:
+            raise ValueError(
+                "profile observation count must match the selected DataView"
+            )
+        if self.profile_id != f"cell-state-profile:{self.producer_run_ref}":
+            raise ValueError("profile identity must bind the producer run")
+        for record in self.composition.records:
+            if record.denominator != self.input_data_view.n_observations:
+                raise ValueError(
+                    "composition denominator must match the selected DataView"
+                )
         return self
 
 

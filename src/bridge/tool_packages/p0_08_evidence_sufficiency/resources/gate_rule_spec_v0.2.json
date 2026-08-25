@@ -1,0 +1,25 @@
+{
+  "applicable_domains": [
+    "target_identity",
+    "regional_fidelity",
+    "developmental_compatibility",
+    "off_target_control",
+    "proliferation_stress_response"
+  ],
+  "created_at": "2026-08-13T00:00:00Z",
+  "engine_method_id": "METHOD-BRIDGE-ALGORITHM-A0908D",
+  "gate_rule_spec_id": "GATE-EVIDENCE-SUFFICIENCY-v0.2",
+  "legacy_checker_method_id": "METHOD-BRIDGE-VALIDATOR",
+  "object_version": "0.2.0",
+  "precedence": [
+    "not_assessed",
+    "insufficient",
+    "limited",
+    "sufficient"
+  ],
+  "prior_matcher_method_id": "METHOD-BRIDGE-ALGORITHM-A0908D",
+  "reason_catalog_method_id": "METHOD-BRIDGE-REGISTRY",
+  "reason_code_catalog_ref": "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.2",
+  "score_policy": "domain_score_null_score_state_unavailable",
+  "status": "candidate"
+}

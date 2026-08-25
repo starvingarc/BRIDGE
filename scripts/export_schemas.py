@@ -12,6 +12,7 @@ from bridge.toolkit.contracts import (
     CellStateBenchmarkSpec,
     CellStateEvidenceProfile,
     CellStateEvidenceProfileV2,
+    CellStateEvidenceProfileV3,
     CellStateReleaseManifest,
     EligibilityResult,
     FreezeGateSpec,
@@ -53,6 +54,9 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     PUBLIC_SCHEMA_MODELS as P0_10_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_12_graft_assessment.models import (
+    PUBLIC_SCHEMA_MODELS as P0_12_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_11_public_safe_export.models import (
     PUBLIC_SCHEMA_MODELS as P0_11_SCHEMA_MODELS,
 )
@@ -76,6 +80,10 @@ MODELS = {
     "cell_state_evidence_profile_v2": (
         "bridge://schemas/cell-state-evidence-profile/v0.2",
         CellStateEvidenceProfileV2,
+    ),
+    "cell_state_evidence_profile_v3": (
+        "bridge://schemas/cell-state-evidence-profile/v0.3",
+        CellStateEvidenceProfileV3,
     ),
     "cell_state_release_manifest": ("bridge://schemas/cell-state-release-manifest/v0.1", CellStateReleaseManifest),
     "eligibility_result": ("bridge://schemas/eligibility-result/v0.1", EligibilityResult),
@@ -130,6 +138,7 @@ for schema_models in (
     P0_09_SCHEMA_MODELS,
     P0_10_SCHEMA_MODELS,
     P0_11_SCHEMA_MODELS,
+    P0_12_SCHEMA_MODELS,
 ):
     for schema_id, model in schema_models.items():
         filename = _schema_filename(schema_id)

@@ -1,0 +1,151 @@
+{
+  "$defs": {
+    "GraftEvidenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "provenance_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "role_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role Id",
+          "type": "string"
+        },
+        "source_run_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+          "title": "Source Run Ref",
+          "type": "string"
+        },
+        "state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "State",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "role_id",
+        "metric_id",
+        "state",
+        "source_run_ref",
+        "provenance_refs"
+      ],
+      "title": "GraftEvidenceRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-evidence-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assessment_spec_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Assessment Spec Ref",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "evidence_bundle_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Evidence Bundle Id",
+      "type": "string"
+    },
+    "graft_case_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Graft Case Ref",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/GraftEvidenceRecord"
+      },
+      "minItems": 1,
+      "title": "Records",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "evidence_bundle_id",
+    "graft_case_ref",
+    "assessment_spec_ref",
+    "records",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "GraftEvidenceBundle",
+  "type": "object"
+}

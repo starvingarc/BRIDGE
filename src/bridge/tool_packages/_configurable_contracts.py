@@ -12,6 +12,7 @@ from pydantic import ConfigDict, Field, StrictFloat, StrictInt, ValidationError,
 from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import (
     BiologicalUnitKind,
+    CellStateComposition,
     CellStateEvidenceProfileV2,
     FrozenModel,
     IndependenceGroupKind,
@@ -649,7 +650,15 @@ class RoleFraction(FrozenModel):
 def parse_composition(
     profile: CellStateEvidenceProfileV2,
 ) -> list[UpstreamCompositionRecord]:
-    raw_records = profile.composition.get("records")
+    composition = profile.composition
+    if isinstance(composition, CellStateComposition):
+        if composition.state != "shadow":
+            return []
+        raw_records = [
+            item.model_dump(mode="python") for item in composition.records
+        ]
+    else:
+        raw_records = composition.get("records")
     if raw_records is None:
         return []
     if not isinstance(raw_records, list):
