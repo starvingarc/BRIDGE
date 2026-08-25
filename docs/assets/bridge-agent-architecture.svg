@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="585" viewBox="0 0 900 585" role="img" aria-labelledby="title desc" preserveAspectRatio="xMidYMid meet">
+  <title id="title">BRIDGE Agent architecture</title>
+  <desc id="desc">Product data, product definition and sample metadata enter the BRIDGE Agent. The Agent performs intake, analysis planning, tool orchestration and interpretation. It calls 12 versioned P0 tool packages and governed knowledge resources. Their outputs form an evidence graph followed by reviewable reports, visualizations and follow-up analyses.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6D7975"/>
+    </marker>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #172521; }
+      .section { font-size: 14px; font-weight: 700; letter-spacing: 1.2px; fill: #596661; }
+      .title { font-size: 21px; font-weight: 700; }
+      .subtitle { font-size: 14px; font-weight: 500; fill: #56635F; }
+      .agent-title { font-size: 23px; font-weight: 700; fill: #205F56; }
+      .step { font-size: 17px; font-weight: 650; }
+      .line { fill: none; stroke: #6D7975; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+      .inner-line { fill: none; stroke: #6D7975; stroke-width: 1.8; stroke-linecap: round; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="900" height="585" rx="18" fill="#F8FAF9"/>
+
+  <text x="30" y="31" class="section">INPUTS</text>
+
+  <g aria-label="Product data">
+    <rect x="30" y="46" width="260" height="66" rx="9" fill="#FFFFFF" stroke="#AAB5B1" stroke-width="1.4"/>
+    <text x="52" y="74" class="title">Product data</text>
+    <text x="52" y="97" class="subtitle">scRNA-seq and linked assays</text>
+  </g>
+
+  <g aria-label="Product definition">
+    <rect x="320" y="46" width="260" height="66" rx="9" fill="#FFFFFF" stroke="#AAB5B1" stroke-width="1.4"/>
+    <text x="342" y="74" class="title">Product definition</text>
+    <text x="342" y="97" class="subtitle">target states and intended use</text>
+  </g>
+
+  <g aria-label="Sample metadata">
+    <rect x="610" y="46" width="260" height="66" rx="9" fill="#FFFFFF" stroke="#AAB5B1" stroke-width="1.4"/>
+    <text x="632" y="74" class="title">Sample metadata</text>
+    <text x="632" y="97" class="subtitle">batch, timepoint and preparation</text>
+  </g>
+
+  <path d="M 160 112 V 143" class="line"/>
+  <path d="M 450 112 V 143" class="line"/>
+  <path d="M 740 112 V 143" class="line"/>
+
+  <g aria-label="BRIDGE Agent">
+    <rect x="30" y="150" width="840" height="132" rx="12" fill="#E8F3F0" stroke="#2E7B70" stroke-width="2"/>
+    <text x="58" y="181" class="agent-title">BRIDGE Agent</text>
+
+    <rect x="58" y="201" width="176" height="52" rx="8" fill="#FFFFFF" stroke="#83AAA3"/>
+    <text x="146" y="233" text-anchor="middle" class="step">Intake</text>
+
+    <path d="M 234 227 H 254" class="inner-line"/>
+
+    <rect x="262" y="201" width="176" height="52" rx="8" fill="#FFFFFF" stroke="#83AAA3"/>
+    <text x="350" y="233" text-anchor="middle" class="step">Analysis plan</text>
+
+    <path d="M 438 227 H 458" class="inner-line"/>
+
+    <rect x="466" y="201" width="176" height="52" rx="8" fill="#FFFFFF" stroke="#83AAA3"/>
+    <text x="554" y="233" text-anchor="middle" class="step">Orchestrate</text>
+
+    <path d="M 642 227 H 662" class="inner-line"/>
+
+    <rect x="670" y="201" width="172" height="52" rx="8" fill="#FFFFFF" stroke="#83AAA3"/>
+    <text x="756" y="233" text-anchor="middle" class="step">Interpret</text>
+  </g>
+
+  <text x="30" y="326" class="section">SCIENTIFIC RUNTIME</text>
+
+  <path d="M 300 282 V 337" class="line"/>
+  <path d="M 730 282 V 337" class="line"/>
+
+  <g aria-label="P0 tool layer">
+    <rect x="30" y="344" width="520" height="82" rx="10" fill="#FFFFFF" stroke="#6F8CA8" stroke-width="1.5"/>
+    <text x="54" y="377" class="title">P0 tool layer</text>
+    <text x="54" y="402" class="subtitle">12 versioned packages for measurement, evidence and export</text>
+  </g>
+
+  <g aria-label="Governed knowledge and references">
+    <rect x="590" y="344" width="280" height="82" rx="10" fill="#FFFFFF" stroke="#8B80A6" stroke-width="1.5"/>
+    <text x="614" y="377" class="title">Knowledge &amp; references</text>
+    <text x="614" y="402" class="subtitle">versioned local snapshots</text>
+  </g>
+
+  <text x="30" y="471" class="section">EVIDENCE AND OUTPUTS</text>
+
+  <path d="M 290 426 V 477 Q 290 489 302 489 H 317" class="line"/>
+  <path d="M 730 426 V 456 Q 730 469 717 469 H 455 Q 442 469 442 482" class="line"/>
+
+  <g aria-label="Evidence graph">
+    <rect x="160" y="489" width="282" height="70" rx="10" fill="#FFFFFF" stroke="#A47E57" stroke-width="1.5"/>
+    <text x="184" y="519" class="title">Evidence graph</text>
+    <text x="184" y="543" class="subtitle">provenance, conflicts and gaps</text>
+  </g>
+
+  <path d="M 442 524 H 473" class="line"/>
+
+  <g aria-label="Reviewable outputs">
+    <rect x="480" y="489" width="390" height="70" rx="10" fill="#FFFFFF" stroke="#77847F" stroke-width="1.5"/>
+    <text x="504" y="519" class="title">Reviewable outputs</text>
+    <text x="504" y="543" class="subtitle">visualizations, reports and follow-up analyses</text>
+  </g>
+</svg>
