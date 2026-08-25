@@ -1,6 +1,6 @@
 # Active BRIDGE Methods
 
-This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-08, P0-09 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
+This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-04, P0-08, P0-09 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
 
 ## P0-01: Input Audit & QC
 
@@ -33,6 +33,11 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 ## P0-03: Target Identity & Regional Fidelity
 
 No methods are selected while this package remains a scaffold.
+
+## P0-04: Developmental Compatibility
+
+- `METHOD-BRIDGE-DEVELOPMENTSTATEMAP` — BRIDGE DevelopmentStateMap ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DEVELOPMENTSTATEMAP))
+- `METHOD-BRIDGE-SOFT-COMPOSITION-A5E97A` — BRIDGE soft composition ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SOFT-COMPOSITION-A5E97A))
 
 ## P0-08: Evidence Sufficiency
 

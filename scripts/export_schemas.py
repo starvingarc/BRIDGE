@@ -45,6 +45,9 @@ from bridge.tool_packages.p0_01_input_qc.io import P001StructuredOutputIndex
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS as P0_08_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_04_developmental_compatibility.models import (
+    PUBLIC_SCHEMA_MODELS as P0_04_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     PUBLIC_SCHEMA_MODELS as P0_09_SCHEMA_MODELS,
 )
@@ -125,11 +128,17 @@ MODELS = {
 
 
 def _schema_filename(schema_id: str) -> str:
-    slug = schema_id.removeprefix("bridge://schemas/").rsplit("/v", 1)[0]
-    return slug.replace("-", "_")
+    slug, version = schema_id.removeprefix("bridge://schemas/").rsplit("/v", 1)
+    stem = slug.replace("-", "_")
+    if version == "0.1":
+        return stem
+    major, minor = version.split(".", 1)
+    suffix = minor if major == "0" else major
+    return f"{stem}_v{suffix}"
 
 
 for schema_models in (
+    P0_04_SCHEMA_MODELS,
     P0_08_SCHEMA_MODELS,
     P0_09_SCHEMA_MODELS,
     P0_10_SCHEMA_MODELS,
