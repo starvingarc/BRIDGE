@@ -12,7 +12,7 @@ input_contract:
     mitochondrial_symbol_prefixes: [MT-]
     ribosomal_symbol_prefixes: [RPS, RPL]
     mitochondrial_interpretation: scRNA technical-state sensitivity metric; not a product-quality conclusion
-analysis_unit: cell grouped by confirmed capture
+analysis_unit: cell grouped by a row-complete caller-declared capture identifier
 raw_metric_definition:
   metrics: [total_counts, detected_genes, mitochondrial_fraction, ribosomal_fraction, top_20_gene_fraction]
 numerator: metric-specific

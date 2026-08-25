@@ -47,6 +47,7 @@ SCHEMA_REFS = {
     "bridge://schemas/measurement-result/v0.2": "measurement_result_v2.schema.json",
     "bridge://schemas/measurement-spec/v0.1": "measurement_spec.schema.json",
     "bridge://schemas/measurement-spec/v0.2": "measurement_spec_v2.schema.json",
+    "bridge://schemas/p0-01-structured-output-index/v0.1": "p0_01_structured_output_index.schema.json",
     "bridge://schemas/product-case/v0.1": "product_case.schema.json",
     "bridge://schemas/product-definition-card/v0.1": "product_definition_card.schema.json",
     "bridge://schemas/qc-readiness-profile/v0.1": "qc_readiness_profile.schema.json",
