@@ -16,10 +16,10 @@ DETAILED_CARD_IDS = {"P0-08", "P0-09", "P0-10"}
 DETAILS = {
     "P0-01": {
         "input": "A declared h5ad, 10x H5, or 10x MTX asset; input level, assay, matrix semantics, sample/capture metadata, gene-identifier source, and output location.",
-        "output": "Raw structural and QC metrics, `QCReadinessProfile`, candidate data views when a candidate MeasurementSpec is selected, visualizations, and a checksummed artifact manifest.",
+        "output": "Raw structural and QC metrics, the backward-compatible `QCReadinessProfile`, an additive `QCReadinessProfileV2` bound to the exact input view, candidate data views, visualizations, and a checksummed artifact manifest. Complete caller-declared lineage metadata additionally produces biological-unit assignment and manifest artifacts; invalid or absent lineage remains explicitly unavailable without changing a valid v0.1 result. Declared lineage is not reviewed/frozen authority or proof of biological independence.",
         "reject": "Unreadable or ambiguous matrix, duplicate identifiers, invalid count semantics, missing assay, missing required sample/capture information, unsupported MeasurementSpec/input-level pairing, an incomplete declared gene-symbol column, or an output directory nested inside a directory input.",
         "visualization": "Per-sample QC distributions and counts-versus-detected-genes diagnostics with explicit denominators.",
-        "validation": "Format fixtures, scRNA/snRNA contracts, matrix-semantic failures, deterministic reruns, input immutability, and optional Scrublet eligibility.",
+        "validation": "Format fixtures, scRNA/snRNA contracts, matrix-semantic failures, deterministic reruns, input immutability, declared-lineage fail-soft cases, exact data-view/checksum bindings, and optional Scrublet eligibility.",
         "details": "docs/bridge_spec_v0.1/input_audit_qc_task_card.md",
     },
     "P0-02": {
