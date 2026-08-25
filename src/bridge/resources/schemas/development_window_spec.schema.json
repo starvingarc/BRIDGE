@@ -1,0 +1,146 @@
+{
+  "$defs": {
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/development-window-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "applicable_assays": {
+      "items": {
+        "enum": [
+          "scRNA-seq",
+          "snRNA-seq"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Applicable Assays",
+      "type": "array"
+    },
+    "composition_view": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "Composition View",
+      "type": "string"
+    },
+    "confirmed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confirmed At"
+    },
+    "label_level": {
+      "enum": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "title": "Label Level",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "rationale_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "minItems": 1,
+      "title": "Rationale Refs",
+      "type": "array"
+    },
+    "review_state": {
+      "enum": [
+        "candidate",
+        "confirmed"
+      ],
+      "title": "Review State",
+      "type": "string"
+    },
+    "reviewer_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "source_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Id"
+    },
+    "state_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "window_spec_id": {
+      "pattern": "^development-window-spec:[A-Za-z0-9._:-]+$",
+      "title": "Window Spec Id",
+      "type": "string"
+    },
+    "window_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Window Spec Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "window_spec_id",
+    "window_spec_version",
+    "product_definition_ref",
+    "state_map_ref",
+    "review_state",
+    "applicable_assays",
+    "composition_view",
+    "label_level",
+    "rationale_refs"
+  ],
+  "title": "DevelopmentWindowSpec",
+  "type": "object"
+}

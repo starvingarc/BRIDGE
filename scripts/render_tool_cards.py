@@ -6,11 +6,12 @@ from pathlib import Path
 import yaml
 
 
-# P0-07 through P0-12 keep field-level interface cards as their maintained
+# P0-04, P0-07 and P0-09 through P0-12 keep field-level interface cards as
+# their maintained
 # source. The generic renderer is intentionally too small for their structured
 # object contracts, so regeneration validates those cards instead of replacing
 # them with scaffold summaries.
-DETAILED_CARD_IDS = {"P0-07", "P0-08", "P0-09", "P0-10", "P0-11", "P0-12"}
+DETAILED_CARD_IDS = {"P0-04", "P0-07", "P0-09", "P0-10", "P0-11", "P0-12"}
 
 
 DETAILS = {
@@ -69,6 +70,14 @@ DETAILS = {
         "visualization": "Effect-size forest, composition differences, timelines, batch distances, program heatmaps, Pareto matrix, and integration sensitivity.",
         "validation": "Known shifts and nulls, paired/unpaired designs, insufficient replication, over-correction checks, and independent-versus-joint consistency.",
         "details": "docs/bridge_spec_v0.1/product_comparison_stability_task_card.md",
+    },
+    "P0-08": {
+        "input": "A `ToolRequestV2` with empty assets and parameters, one checksummed candidate GateRuleSpec v0.2 bound to ReasonCodeCatalog v0.2, one to five DomainGateInput v0.1 bindings, MeasurementSpecV2/QCReadinessProfileV2/MeasurementResultV2 objects, and their versioned validation, prior and sensitivity records.",
+        "output": "One canonical `EvidenceSufficiencyRunResultV2` (`bridge://schemas/evidence-sufficiency-run-result/v0.2`) with a path-free exact checksum/version/Schema binding for every structured input, versioned per-domain references, eight-state MeasurementResult counts, gate trace and case summary. Convenience profile/summary files are noncanonical projections, not independent structured contracts.",
+        "reject": "Wrong roles, Schema IDs, object versions, logical bindings, checksums, candidate gate bytes, unsafe references, changed inputs or drifted bundles fail with stable reason codes and no scientific result. A bound MeasurementResult whose MeasurementSpec version disagrees, or a populated QC MeasurementSpec version that disagrees, is ineligible. Missing, unknown or unavailable measurement states, or absent paired upstream ToolRun provenance, instead execute as `not_assessed`; negative and alert remain distinct and never become pass/fail.",
+        "visualization": "No visualization output. The canonical downstream object is `evidence_sufficiency_run_result.json`; profile, summary and gate-trace files are review conveniences only.",
+        "validation": "Synthetic fixtures exercise all 49 scientific reason codes, all eight evidence states, exact-source identity for every input role, version mismatch refusals, deterministic object-input ordering, TOCTOU checks and immutable publication. The executable example uses placeholders; focused tests exercise the same adapter reached by `bridge-tool validate --request` and `bridge-tool run --request`.",
+        "details": "docs/bridge_spec_v0.1/evidence_sufficiency_task_card.md",
     },
     "P0-10": {
         "input": "Structured ReportDraft, a verified P0-09 Case graph manifest, ClaimBlocks, one-field numeric spans, statement references, and policy versions.",

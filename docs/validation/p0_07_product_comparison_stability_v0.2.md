@@ -1,7 +1,8 @@
 # P0-07 Product Comparison & Stability v0.2 validation
 
 - Branch: `p0-07-product-comparison-stability-v1`
-- Base: `720639a223d0905315bb6550dce3c4200382725a`
+- Implementation base: `720639a223d0905315bb6550dce3c4200382725a`
+- Final integration base: `b28a6bc5948ae1d38a950b67caf8694bcc9c1ece`
 - Runtime: Ubuntu server, Python 3.12, `ENV-P0-CORE-v0.1`
 - Scientific state: `candidate`; registered methods remain formally ineligible
 - Score boundary: all product/domain/overall scores and ranks remain null
@@ -26,13 +27,21 @@ The exact staged source was validated on `bridge-amax` under `/data1` only:
 - tool discovery: exactly **12** packages, with P0-07 marked implemented;
 - generated public Schemas: **4** P0-07 contracts registered and packaged;
 - repository policy and staged `git diff --check`: passed;
-- tracked repository files after staging: **287**, within the dynamic policy
+- tracked repository files after final staging: **316**, within the dynamic policy
   budget.
 
 The focused suite exercises deterministic path/order-independent runs,
 checksum refusal, V1 refusal, missing-not-zero semantics, contract/binding
 mismatches, contextual and OOD comparisons, complete confounding, missing
 confounder metadata, and replicated descriptive stability.
+
+After synchronizing the implementation with the final integration base, the
+P0-07 focused, registry and knowledge suites passed together (**36 passed**).
+The version-aware Schema exporter resolved both v0.1 and v0.2 names, the four
+P0-07 Schema bytes matched two independent in-memory generations, and Tool Card
+generation was byte-idempotent across two rounds. Repository policy and both
+working/staged diff checks passed. The complete suite above was not repeated for
+this merge-only synchronization.
 
 ## Retained boundaries
 
