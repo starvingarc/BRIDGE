@@ -1,6 +1,6 @@
 tool_id: P0-01
 name: Input Audit & QC
-version: 0.1.0
+version: 0.1.1
 summary: Validate expression inputs and emit a QC readiness profile.
 implementation_state: implemented
 scientific_status: candidate

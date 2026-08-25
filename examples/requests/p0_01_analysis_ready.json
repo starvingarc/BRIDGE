@@ -19,5 +19,5 @@
   "random_seed": 0,
   "request_id": "example-p0-01-analysis-ready",
   "tool_id": "P0-01",
-  "tool_version": "0.1.0"
+  "tool_version": "0.1.1"
 }
