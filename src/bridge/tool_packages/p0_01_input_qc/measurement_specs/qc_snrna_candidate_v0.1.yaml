@@ -12,7 +12,7 @@ input_contract:
     mitochondrial_symbol_prefixes: [MT-]
     ribosomal_symbol_prefixes: [RPS, RPL]
     mitochondrial_interpretation: snRNA assay-sensitivity metric; not directly comparable with scRNA fractions
-analysis_unit: nucleus grouped by confirmed capture
+analysis_unit: nucleus grouped by a row-complete caller-declared capture identifier
 raw_metric_definition:
   metrics: [total_counts, detected_genes, mitochondrial_fraction, ribosomal_fraction, top_20_gene_fraction]
 numerator: metric-specific

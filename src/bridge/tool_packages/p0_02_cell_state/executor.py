@@ -18,6 +18,7 @@ from bridge.tool_packages.p0_01_input_qc.io import (
 from bridge.tool_packages.p0_02_cell_state.measurement_specs import load_measurement_spec
 from bridge.tool_packages.p0_02_cell_state.metrics import (
     composition_records,
+    composition_records_v3,
     hierarchy_restricted_summary,
     marker_program_evidence,
     normalize_query,
@@ -33,7 +34,12 @@ from bridge.tool_packages.p0_02_cell_state.reference import (
     resolve_reference_snapshot,
     validate_runtime_reference,
 )
-from bridge.tool_packages.p0_02_cell_state.qc import UpstreamQCError, validate_upstream_qc
+from bridge.tool_packages.p0_02_cell_state.qc import (
+    UpstreamQCError,
+    validate_selected_data_view,
+    validate_upstream_qc_bundle,
+    validate_upstream_qc_unchanged,
+)
 from bridge.tool_packages.p0_02_cell_state.visualization import (
     render_composition,
     render_conflicts,
@@ -43,6 +49,7 @@ from bridge.tool_packages.p0_02_cell_state.visualization import (
 from bridge.toolkit.contracts import (
     ArtifactManifest,
     CellStateEvidenceProfile,
+    CellStateEvidenceProfileV3,
     EvidenceState,
     ExecutionState,
     MeasurementResult,
@@ -60,12 +67,15 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     if asset.checksum is not None and asset.checksum != input_hash:
         return _failed_run(request, spec, input_hash, "input_checksum_mismatch")
     try:
-        validate_upstream_qc(asset, input_hash)
+        upstream_qc = validate_upstream_qc_bundle(asset, input_hash)
     except UpstreamQCError as exc:
         return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
     measurement_spec = load_measurement_spec(request.measurement_spec_ref)
     if measurement_spec is None:
         return _failed_run(request, spec, input_hash, "measurement_spec_not_found")
+    measurement_spec_sha256 = _semantic_sha256(
+        measurement_spec.model_dump(mode="json")
+    )
     release = None
     if measurement_spec.release_manifest_ref:
         try:
@@ -125,10 +135,28 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
 
     query = normalize_query(adata.X, asset.matrix_semantics or "")
     observation_ids = adata.obs_names.astype(str).to_numpy()
+    selected_data_view = None
+    if (
+        upstream_qc.profile_v2 is not None
+        and upstream_qc.typed_lineage is not None
+    ):
+        try:
+            selected_data_view = validate_selected_data_view(
+                upstream_qc.profile_v2,
+                observation_ids.tolist(),
+            )
+        except UpstreamQCError as exc:
+            return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
     minimum_shared = int(measurement_spec.minimum_data["minimum_shared_genes"])
     chunk_size = int(request.parameters.get("chunk_size", 256))
     workers = max(1, min(int(request.parameters.get("workers", min(4, os.cpu_count() or 1))), 8))
-    run_id = _run_id(request, spec, input_hash, sha256_path(snapshot_root / "reference_manifest.json"))
+    run_id = _run_id(
+        request,
+        spec,
+        input_hash,
+        sha256_path(snapshot_root / "reference_manifest.json"),
+        measurement_spec_sha256,
+    )
     run_dir = request.output_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -222,10 +250,11 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         marker_cards,
         minimum_marker_genes=int(measurement_spec.minimum_data["minimum_marker_genes"]),
     )
-    composition = composition_records(evidence, source_summaries, primary_source_ids)
-    for record in composition:
+    l1_composition = composition_records(evidence, source_summaries, primary_source_ids)
+    for record in l1_composition:
         record["label_level"] = "L1"
         record["denominator_view"] = "all input observations"
+    composition = list(l1_composition)
     composition.extend(l2_composition)
     modality_sensitivity, sensitivity_support = _run_sensitivity(
         query,
@@ -316,6 +345,53 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         score_state=ScoreState.SHADOW,
         domain_score=None,
     )
+    profile_v3 = None
+    if selected_data_view is not None:
+        try:
+            profile_v3_payload = profile.model_dump(mode="python")
+            profile_v3_payload.update(
+                {
+                    "denominator": "selected_data_view",
+                    "composition": {
+                        "state": "shadow",
+                        "records": composition_records_v3(
+                            l1_composition,
+                            selected_view_denominator=selected_data_view.n_observations,
+                        ),
+                    },
+                    "measurement_spec_version": measurement_spec.version,
+                    "measurement_spec_sha256": measurement_spec_sha256,
+                    "annotation_vocabulary_version": vocabulary.version,
+                    "annotation_vocabulary_sha256": manifest.vocabulary_sha256,
+                    "reference_manifest_version": manifest.version,
+                    "reference_manifest_sha256": reference_manifest_hash,
+                    "upstream_qc_profile_ref": upstream_qc.profile_v2.profile_id,
+                    "upstream_qc_profile_sha256": upstream_qc.profile_v2_sha256,
+                    "input_data_view": selected_data_view,
+                    "open_set_state": "not_assessed",
+                    "calibration_state": "not_assessed",
+                    "producer_run_ref": run_id,
+                    "producer_tool_id": "P0-02",
+                    "producer_tool_version": spec.version,
+                    "environment_spec_ref": spec.environment_spec_id,
+                }
+            )
+            profile_v3 = CellStateEvidenceProfileV3.model_validate(
+                profile_v3_payload
+            )
+        except ValueError as exc:
+            return _failed_run(
+                request,
+                spec,
+                input_hash,
+                "cell_state_profile_v3_generation_failed",
+                str(exc),
+            )
+
+    try:
+        validate_upstream_qc_unchanged(upstream_qc)
+    except UpstreamQCError as exc:
+        return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
 
     artifacts, visualizations = _write_outputs(
         run_dir,
@@ -327,7 +403,23 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         composition_frame,
         evidence_ids,
     )
+    if profile_v3 is not None:
+        profile_v3_path = run_dir / "cell_state_evidence_profile_v3.json"
+        _write_json(profile_v3_path, profile_v3.model_dump(mode="json"))
+        artifacts.append(
+            _artifact(
+                f"artifact:{run_id}:profile-v3",
+                "cell_state_profile_v3",
+                profile_v3_path,
+                evidence_ids,
+            )
+        )
     manifest_path = run_dir / "artifact_manifest.json"
+    manifest_artifacts = []
+    for item in artifacts:
+        record = item.model_dump(mode="json")
+        record["size_bytes"] = item.path.stat().st_size
+        manifest_artifacts.append(record)
     _write_json(
         manifest_path,
         {
@@ -339,13 +431,31 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
             "reference_snapshot_id": manifest.snapshot_id,
             "reference_manifest_hash": reference_manifest_hash,
             "measurement_spec_ref": request.measurement_spec_ref,
-            "artifacts": [item.model_dump(mode="json") for item in artifacts],
+            "measurement_spec_sha256": measurement_spec_sha256,
+            "artifacts": manifest_artifacts,
             "visualizations": [item.model_dump(mode="json") for item in visualizations],
         },
     )
-    artifacts.append(_artifact(f"artifact:{run_id}:manifest", "manifest", manifest_path, evidence_ids))
+    artifacts.append(
+        _artifact(
+            f"artifact:{run_id}:manifest",
+            "manifest",
+            manifest_path,
+            evidence_ids,
+        )
+    )
     if sha256_path(asset.path) != input_hash:
         return _failed_run(request, spec, input_hash, "input_asset_modified_during_run")
+    try:
+        validate_upstream_qc_unchanged(upstream_qc)
+    except UpstreamQCError as exc:
+        return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
+    run_warnings = list(profile.warnings)
+    if profile_v3 is None:
+        run_warnings.append(
+            "cell_state_evidence_profile_v3_unavailable:"
+            f"{upstream_qc.v3_unavailable_reason}"
+        )
     return ToolRun(
         run_id=run_id,
         request=request,
@@ -364,7 +474,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         artifacts=artifacts,
         visualizations=visualizations,
         result=profile.model_dump(mode="json"),
-        warnings=profile.warnings,
+        warnings=sorted(set(run_warnings)),
     )
 
 
@@ -715,19 +825,38 @@ def _declared_gene_names(adata, metadata: dict[str, Any]) -> np.ndarray:
     return genes
 
 
-def _run_id(request: ToolRequest, spec: ToolPackageSpec, input_hash: str, reference_hash: str) -> str:
+def _run_id(
+    request: ToolRequest,
+    spec: ToolPackageSpec,
+    input_hash: str,
+    reference_hash: str,
+    measurement_spec_sha256: str,
+) -> str:
     payload = json.dumps(
         {
             "request": request.model_dump(mode="json"),
             "tool_version": spec.version,
             "input_hash": input_hash,
             "reference_hash": reference_hash,
+            "measurement_spec_sha256": measurement_spec_sha256,
         },
         sort_keys=True,
         separators=(",", ":"),
         default=str,
     )
     return f"run-{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
+
+
+def _semantic_sha256(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _failed_run(request, spec, input_hash, reason_code, detail=None) -> ToolRun:

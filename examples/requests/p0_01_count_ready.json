@@ -8,6 +8,37 @@
       "matrix_location": "layers/counts",
       "matrix_semantics": "raw_counts",
       "metadata": {
+        "biological_unit_lineage": {
+          "analysis_unit_kind": "preparation",
+          "independence_group_kind": "donor",
+          "independence_scope_ref": {
+            "object_id": "independence-scope:example-product",
+            "object_version": "1.0.0"
+          },
+          "constant_unit_refs": {
+            "capture": {
+              "object_id": "capture:example-library",
+              "object_version": "1.0.0"
+            },
+            "donor": {
+              "object_id": "donor:example-donor",
+              "object_version": "1.0.0"
+            },
+            "preparation": {
+              "object_id": "preparation:example-product",
+              "object_version": "1.0.0"
+            }
+          },
+          "source_unit_kind": "preparation",
+          "source_unit_ref": {
+            "object_id": "preparation:example-product",
+            "object_version": "1.0.0"
+          },
+          "unit_identity_namespace_ref": {
+            "object_id": "unit-namespace:example-study",
+            "object_version": "1.0.0"
+          }
+        },
         "capture_id_column": "capture_id",
         "gene_symbol_column": "gene_symbol",
         "sample_id_column": "sample_id"
@@ -23,5 +54,5 @@
   "random_seed": 0,
   "request_id": "example-p0-01-count-ready",
   "tool_id": "P0-01",
-  "tool_version": "0.1.0"
+  "tool_version": "0.1.2"
 }
