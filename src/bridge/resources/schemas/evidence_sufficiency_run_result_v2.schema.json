@@ -53,9 +53,9 @@
         "summary_version",
         "profile_count",
         "evidence_sufficiency_counts",
-        "measurement_evidence_state_counts",
         "score_state_counts",
-        "blocking_reasons"
+        "blocking_reasons",
+        "measurement_evidence_state_counts"
       ],
       "title": "CaseEvidenceReadinessSummaryV2",
       "type": "object"
@@ -310,12 +310,12 @@
         "missing_requirements",
         "score_reason_codes",
         "measurement_result_refs",
-        "measurement_evidence_state_counts",
         "evidence_refs",
         "sensitivity_refs",
         "deduplicated_evidence_family_ids",
         "created_at",
-        "deterministic_run_ref"
+        "deterministic_run_ref",
+        "measurement_evidence_state_counts"
       ],
       "title": "EvidenceSufficiencyProfileV2",
       "type": "object"
@@ -672,10 +672,10 @@
     "result_id",
     "result_version",
     "gate_rule_spec_ref",
-    "source_object_bindings",
     "profiles",
     "case_summary",
-    "gate_trace"
+    "gate_trace",
+    "source_object_bindings"
   ],
   "title": "EvidenceSufficiencyRunResultV2",
   "type": "object"

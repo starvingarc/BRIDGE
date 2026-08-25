@@ -842,13 +842,8 @@ class MeasurementEvidenceStateCount(FrozenModel):
         return sum(self.model_dump().values())
 
 
-class EvidenceSufficiencyProfileV2(FrozenModel):
-    profile_id: str = Field(
-        pattern=r"^evidence-sufficiency-profile:[a-f0-9]{16}:[A-Za-z0-9._:-]+$"
-    )
+class EvidenceSufficiencyProfileV2(EvidenceSufficiencyProfile):
     profile_version: Literal["0.2.0"]
-    gate_rule_spec_ref: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.1"]
-    gate_rule_version: Literal["0.1.0"]
     product_case_ref: VersionedObjectRef | None = Field(
         default=None,
         description=(
@@ -863,36 +858,12 @@ class EvidenceSufficiencyProfileV2(FrozenModel):
             "consume or validate ProductDefinition object content."
         ),
     )
-    domain_id: P0DomainId | None = None
     measurement_spec_ref: VersionedObjectRef | None = None
-    score_contract_ref: str | None = None
-    data_readiness: DataReadinessState
-    data_reason_codes: list[str]
     qc_profile_ref: VersionedObjectRef | None = None
-    model_robustness: ModelRobustnessState
-    robustness_reason_codes: list[str]
-    validation_refs: list[str]
-    prior_applicability: PriorApplicabilityState
-    prior_reason_codes: list[str]
-    snapshot_refs: list[str]
-    evidence_sufficiency_state: EvidenceSufficiencyState
-    blocking_reasons: list[str]
-    limiting_reasons: list[str]
-    missing_requirements: list[str]
-    domain_score: None = None
-    score_state: Literal[ScoreState.UNAVAILABLE] = ScoreState.UNAVAILABLE
-    score_reason_codes: list[str]
     measurement_result_refs: list[VersionedObjectRef]
     measurement_evidence_state_counts: MeasurementEvidenceStateCount = Field(
         description="Counts MeasurementResult references bound to this domain profile."
     )
-    evidence_refs: list[str]
-    sensitivity_refs: list[str]
-    deduplicated_evidence_family_ids: list[str]
-    created_at: datetime
-    deterministic_run_ref: str = Field(pattern=r"^run-[a-f0-9]{16}$")
-
-    _created_at_utc = field_validator("created_at")(_aware_utc)
 
     @field_validator("score_contract_ref")
     @classmethod
@@ -900,19 +871,6 @@ class EvidenceSufficiencyProfileV2(FrozenModel):
         cls, value: str | None
     ) -> str | None:
         return None if value is None else published_ref(value)
-
-    @field_validator(
-        "data_reason_codes",
-        "robustness_reason_codes",
-        "prior_reason_codes",
-        "blocking_reasons",
-        "limiting_reasons",
-        "missing_requirements",
-        "score_reason_codes",
-    )
-    @classmethod
-    def reason_lists_follow_catalog_order(cls, value: list[str]) -> list[str]:
-        return _reason_codes_in_catalog_order(value)
 
     @field_validator(
         "validation_refs",
@@ -936,42 +894,7 @@ class EvidenceSufficiencyProfileV2(FrozenModel):
         return value
 
     @model_validator(mode="after")
-    def handoff_is_coherent_and_score_unavailable(self) -> Self:
-        if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
-            raise ValueError(
-                "blocking_reasons may contain only blocking catalog codes"
-            )
-        if not set(self.limiting_reasons) <= LIMITING_REASON_CODES:
-            raise ValueError(
-                "limiting_reasons may contain only limiting catalog codes"
-            )
-        if not set(self.missing_requirements) <= MISSING_REASON_CODES:
-            raise ValueError(
-                "missing_requirements may contain only missing catalog codes"
-            )
-        if (
-            self.domain_score is not None
-            or self.score_state is not ScoreState.UNAVAILABLE
-        ):
-            raise ValueError(
-                "P0-08 cannot emit a domain score in the current release"
-            )
-        expected_score_reasons = ["p0_score_contract_unavailable"]
-        if self.score_contract_ref is not None:
-            expected_score_reasons.append(
-                "score_contract_ignored_current_release"
-            )
-        if self.score_reason_codes != expected_score_reasons:
-            raise ValueError(
-                "P0-08 score reason codes must follow the current no-score policy"
-            )
-        digest = self.profile_id.split(":", 2)[1]
-        if self.deterministic_run_ref != f"run-{digest}":
-            raise ValueError("profile and deterministic run digests must agree")
-        if self.domain_id is not None and not self.profile_id.endswith(
-            f":{self.domain_id.value}"
-        ):
-            raise ValueError("profile ID suffix must match the declared domain")
+    def v2_handoff_is_coherent(self) -> Self:
         if self.measurement_evidence_state_counts.total != len(
             self.measurement_result_refs
         ):
@@ -996,58 +919,26 @@ class EvidenceSufficiencyProfileV2(FrozenModel):
         return self
 
 
-class CaseEvidenceReadinessSummaryV2(FrozenModel):
-    summary_id: str = Field(
-        pattern=r"^case-evidence-readiness-summary:[a-f0-9]{16}$"
-    )
+class CaseEvidenceReadinessSummaryV2(CaseEvidenceReadinessSummary):
     summary_version: Literal["0.2.0"]
     product_case_ref: VersionedObjectRef | None = None
-    profile_count: int = Field(ge=1, le=5)
-    evidence_sufficiency_counts: StateCount
     measurement_evidence_state_counts: MeasurementEvidenceStateCount = Field(
         description=(
             "Sum of domain-profile MeasurementResult references; one source object "
             "shared across domains is counted once per domain profile."
         )
     )
-    score_state_counts: ScoreStateCount
-    blocking_reasons: list[str]
 
-    @field_validator("blocking_reasons")
+    @field_validator("product_case_ref")
     @classmethod
-    def unique_reasons(cls, value: list[str]) -> list[str]:
-        return _reason_codes_in_catalog_order(value)
-
-    @model_validator(mode="after")
-    def count_totals_match(self) -> Self:
-        if not set(self.blocking_reasons) <= BLOCKING_REASON_CODES:
-            raise ValueError(
-                "case blocking_reasons may contain only blocking catalog codes"
-            )
-        counts = self.evidence_sufficiency_counts
-        total = (
-            counts.sufficient
-            + counts.limited
-            + counts.insufficient
-            + counts.not_assessed
-        )
-        if total != self.profile_count:
-            raise ValueError(
-                "evidence sufficiency counts must equal profile_count"
-            )
-        if self.score_state_counts.unavailable != self.profile_count:
-            raise ValueError(
-                "every P0-08 profile must have unavailable score state"
-            )
-        return self
+    def product_case_is_publishable(
+        cls, value: VersionedObjectRef | None
+    ) -> VersionedObjectRef | None:
+        return value
 
 
-class EvidenceSufficiencyRunResultV2(FrozenModel):
-    result_id: str = Field(
-        pattern=r"^evidence-sufficiency-result:[a-f0-9]{16}$"
-    )
+class EvidenceSufficiencyRunResultV2(EvidenceSufficiencyRunResult):
     result_version: Literal["0.2.0"]
-    gate_rule_spec_ref: Literal["GATE-EVIDENCE-SUFFICIENCY-v0.1"]
     source_object_bindings: list[SourceObjectBinding] = Field(
         min_length=2,
         description=(
@@ -1058,10 +949,9 @@ class EvidenceSufficiencyRunResultV2(FrozenModel):
         min_length=1, max_length=5
     )
     case_summary: CaseEvidenceReadinessSummaryV2
-    gate_trace: list[GateTraceEntry] = Field(min_length=1, max_length=5)
 
     @model_validator(mode="after")
-    def validate_aggregate_bindings(self) -> Self:
+    def validate_v2_source_bindings(self) -> Self:
         source_input_ids = [item.input_id for item in self.source_object_bindings]
         if len(source_input_ids) != len(set(source_input_ids)):
             raise ValueError("source-object input IDs must be unique")
@@ -1083,20 +973,6 @@ class EvidenceSufficiencyRunResultV2(FrozenModel):
             raise ValueError("result must bind its one gate-rule source object")
         if not 1 <= len(domain_bindings) <= 5:
             raise ValueError("result must bind one to five domain input objects")
-        digest = self.result_id.rsplit(":", 1)[1]
-        if (
-            self.case_summary.summary_id
-            != f"case-evidence-readiness-summary:{digest}"
-        ):
-            raise ValueError("result and summary digests must agree")
-        if self.case_summary.profile_count != len(self.profiles):
-            raise ValueError(
-                "summary profile_count must equal profiles length"
-            )
-        if len(self.gate_trace) != len(self.profiles):
-            raise ValueError(
-                "one gate-trace entry is required per profile"
-            )
         expected_domain_refs = {
             item.logical_object_id for item in domain_bindings
         }
@@ -1105,40 +981,6 @@ class EvidenceSufficiencyRunResultV2(FrozenModel):
         }
         if actual_domain_refs != expected_domain_refs:
             raise ValueError("gate trace must cover every domain input source")
-        for profile, trace in zip(
-            self.profiles, self.gate_trace, strict=True
-        ):
-            if f":{digest}:" not in profile.profile_id:
-                raise ValueError(
-                    "profile digest must agree with result digest"
-                )
-            if trace.profile_ref != profile.profile_id:
-                raise ValueError(
-                    "gate trace must bind the corresponding profile"
-                )
-            if trace.selected_state is not profile.evidence_sufficiency_state:
-                raise ValueError(
-                    "gate trace selected state must match the profile"
-                )
-        case_refs = {
-            profile.product_case_ref.ref
-            for profile in self.profiles
-            if profile.product_case_ref
-        }
-        if len(case_refs) > 1:
-            raise ValueError(
-                "profiles in one result must belong to one product case"
-            )
-        expected_case = next(iter(case_refs), None)
-        actual_case = (
-            None
-            if self.case_summary.product_case_ref is None
-            else self.case_summary.product_case_ref.ref
-        )
-        if actual_case != expected_case:
-            raise ValueError(
-                "case summary product case must match profiles"
-            )
         expected_measurement_refs = {
             item.ref for item in source_by_role.get("measurement_result", [])
         }
@@ -1167,25 +1009,6 @@ class EvidenceSufficiencyRunResultV2(FrozenModel):
                 raise ValueError(
                     f"profile {field} values must cover {role} source objects"
                 )
-        actual_counts = {
-            state: sum(
-                profile.evidence_sufficiency_state.value == state
-                for profile in self.profiles
-            )
-            for state in (
-                "sufficient",
-                "limited",
-                "insufficient",
-                "not_assessed",
-            )
-        }
-        if (
-            self.case_summary.evidence_sufficiency_counts.model_dump()
-            != actual_counts
-        ):
-            raise ValueError(
-                "case summary state counts must match profiles"
-            )
         expected_measurement_counts = {
             state: sum(
                 profile.measurement_evidence_state_counts.model_dump()[state]
@@ -1201,40 +1024,6 @@ class EvidenceSufficiencyRunResultV2(FrozenModel):
         ):
             raise ValueError(
                 "case summary measurement-state counts must match profiles"
-            )
-        expected_blocking = sorted(
-            {
-                reason
-                for profile in self.profiles
-                for reason in profile.blocking_reasons
-            },
-            key=SCIENTIFIC_REASON_ORDER.__getitem__,
-        )
-        if self.case_summary.blocking_reasons != expected_blocking:
-            raise ValueError(
-                "case summary blocking reasons must match profiles"
-            )
-        domain_order = {
-            domain: position for position, domain in enumerate(P0DomainId)
-        }
-        actual_order = [
-            (
-                domain_order[profile.domain_id]
-                if profile.domain_id is not None
-                else len(domain_order),
-                (
-                    trace.domain_gate_input_ref
-                    if profile.domain_id is None
-                    else ""
-                ),
-            )
-            for profile, trace in zip(
-                self.profiles, self.gate_trace, strict=True
-            )
-        ]
-        if actual_order != sorted(actual_order):
-            raise ValueError(
-                "profiles and gate traces must follow P0 domain order"
             )
         return self
 

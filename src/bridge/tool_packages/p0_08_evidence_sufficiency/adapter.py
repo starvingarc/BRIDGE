@@ -500,13 +500,23 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
                 if isinstance(qc_profile, QCReadinessProfile) and (
                     qc_profile.assay != measurement_spec.assay
                     or qc_profile.measurement_spec_status != measurement_spec.status
+                    or (
+                        qc_profile.measurement_spec_version is not None
+                        and qc_profile.measurement_spec_version
+                        != measurement_spec.version
+                    )
                 ):
                     reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in domain.measurement_result_input_ids:
                 value = loaded.objects_by_input_id.get(input_id)
                 if (
                     isinstance(value, MeasurementResult)
-                    and value.measurement_spec_id != measurement_spec.measurement_spec_id
+                    and (
+                        value.measurement_spec_id
+                        != measurement_spec.measurement_spec_id
+                        or value.measurement_spec_version
+                        != measurement_spec.version
+                    )
                 ):
                     reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in domain.validation_record_input_ids:

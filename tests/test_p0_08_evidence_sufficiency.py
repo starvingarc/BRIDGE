@@ -2095,6 +2095,8 @@ def test_domain_bindings_measurement_and_product_definition_must_agree(
         ("product_definition_not_applicable", "domain_input_product_definition_mismatch"),
         ("qc_assay", "domain_input_measurement_spec_mismatch"),
         ("qc_measurement_status", "domain_input_measurement_spec_mismatch"),
+        ("qc_measurement_version", "domain_input_measurement_spec_mismatch"),
+        ("measurement_result_version", "domain_input_measurement_spec_mismatch"),
         ("validation_modality", "domain_input_measurement_spec_mismatch"),
         ("validation_tool", "domain_input_measurement_spec_mismatch"),
         ("empty_measurement_tools", "domain_input_measurement_spec_mismatch"),
@@ -2105,6 +2107,7 @@ def test_sufficient_path_cross_bindings_fail_eligibility(
 ) -> None:
     measurement_spec = _measurement_spec()
     qc = _qc()
+    measurement = _measurement()
     validation = _validation()
     if case == "product_definition_not_applicable":
         measurement_spec["applicable_product_cards"] = ["product-definition:other"]
@@ -2112,6 +2115,10 @@ def test_sufficient_path_cross_bindings_fail_eligibility(
         qc["assay"] = "bulk-RNA-seq"
     elif case == "qc_measurement_status":
         qc["measurement_spec_status"] = "candidate"
+    elif case == "qc_measurement_version":
+        qc["measurement_spec_version"] = "9.9.9"
+    elif case == "measurement_result_version":
+        measurement["measurement_spec_version"] = "9.9.9"
     elif case == "validation_modality":
         validation["modality"] = "bulk-RNA-seq"
     elif case == "validation_tool":
@@ -2125,9 +2132,22 @@ def test_sufficient_path_cross_bindings_fail_eligibility(
         tmp_path,
         measurement_spec=measurement_spec,
         qc=qc,
+        measurement=measurement,
         validation=validation,
     )
     _assert_failed_without_publication(request, reason)
+
+
+def test_qc_measurement_spec_version_may_be_explicitly_absent(
+    tmp_path: Path,
+) -> None:
+    qc = _qc()
+    qc["measurement_spec_version"] = None
+
+    request = _fixture_request(tmp_path, qc=qc)
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    assert adapter.check_eligibility(request, spec).eligible
 
 
 def test_cross_domain_pointer_provenance_order_is_set_like(tmp_path: Path) -> None:
