@@ -410,7 +410,9 @@ def test_benchmark_is_task_grouped_complete_and_has_no_default_or_aggregate() ->
 
 def test_benchmark_markdown_is_generated_from_json() -> None:
     expected = render_benchmark_markdown()
-    actual = Path("tool_packages/P0-10/BENCHMARK.md").read_text(encoding="utf-8")
+    actual = Path(
+        "docs/validation/p0_10_claim_verifier_benchmark_v0.1.md"
+    ).read_text(encoding="utf-8")
 
     assert actual == expected
     assert "Aggregate score/rank: `null` / `null`" in actual
