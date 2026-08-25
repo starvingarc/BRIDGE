@@ -48,17 +48,17 @@ with a different experimental-unit interpretation.
 
 ## Evidence status
 
-The following evidence was produced from the final staged tree immediately
-before commit; the commit identity is reported in the integration handoff. Any
-content change invalidates this closeout. No previous PR, commit, workflow run,
-wheel checksum or test count is reused as evidence.
+The following evidence was reproduced from implementation commit
+`f0b458728f311fb8ccdb3d2a59e2456ef1808c32`. Any implementation or packaged
+content change invalidates this closeout. No previous PR, workflow run, wheel
+checksum or test count is reused as evidence.
 
 | Gate | Current result |
 |---|---|
 | P0-03/shared-runtime focused suite | 197 passed |
 | Complete source pytest | 1,079 passed; 3 pre-existing dependency warnings |
 | Complete installed-wheel pytest | 1,079 passed; the same 3 warnings |
-| Wheel and installed import | `bridge-0.2.0.dev0-py3-none-any.whl`; SHA-256 `70caee6a05d768ac1dc94eb3f85e6f506e2aeef48b30822edfc30bb872281db6`; import resolved from independent Python 3.12 `site-packages` |
+| Wheel and installed import | `bridge-0.2.0.dev0-py3-none-any.whl`; SHA-256 `5ae1a0bd54e141a24df421ad879d9ce389d9adca2a84fd09a2b5d7671dcc938e`; import resolved from independent Python 3.12 `site-packages` |
 | CLI/SDK validate and run | installed CLI `describe/validate/run` and SDK eligibility/run passed; identical deterministic result/run ID |
 | 12-tool discovery | exactly 12, `P0-01` through `P0-12` |
 | Knowledge validation | valid; no dangling method/source refs; `formal_eligible_method_count=0` |
