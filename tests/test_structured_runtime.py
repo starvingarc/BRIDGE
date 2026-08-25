@@ -1439,21 +1439,29 @@ def test_repository_policy_rejects_unknown_v2_result_schema_without_execution(
     assert adapter.run_calls == 0
 
 
-def test_schema_projections_match_and_v1_contract_bytes_are_unchanged() -> None:
-    repo = Path(__file__).resolve().parents[1]
-    for filename in [
-        "structured_input_ref.schema.json",
-        "tool_request_v2.schema.json",
-        "tool_run_v2.schema.json",
-        "tool_package_spec_v2.schema.json",
-    ]:
-        assert (repo / "schemas" / filename).read_bytes() == (
-            repo / "src/bridge/resources/schemas" / filename
-        ).read_bytes()
+def test_repository_policy_rejects_root_contract_projections() -> None:
+    problems: list[str] = []
 
+    repository_policy._check_tracked_layout(
+        [
+            Path("schemas/example.schema.json"),
+            Path("tool_packages/P0-01/README.md"),
+        ],
+        problems,
+    )
+
+    assert problems == [
+        "duplicate root projection: schemas/example.schema.json",
+        "duplicate root projection: tool_packages/P0-01/README.md",
+    ]
+
+
+def test_packaged_v1_contract_bytes_are_unchanged() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    schema_dir = repo / "src/bridge/resources/schemas"
     for filename, expected_sha256 in V1_SCHEMA_SHA256.items():
         actual_sha256 = hashlib.sha256(
-            (repo / "schemas" / filename).read_bytes()
+            (schema_dir / filename).read_bytes()
         ).hexdigest()
         assert actual_sha256 == expected_sha256
 

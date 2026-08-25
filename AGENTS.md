@@ -44,11 +44,10 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 | 路径 | 职责 |
 |---|---|
 | `src/bridge/toolkit/` | 公共对象、Registry、运行器、产物与知识检索 |
-| `src/bridge/tool_packages/` | 12 个高层科学工具包；底层方法不直接暴露给 Agent |
-| `tool_packages/` | 人可读 Tool Card、输入输出、环境、可视化与验证合同 |
+| `src/bridge/tool_packages/` | 12 个高层科学工具包及其 Spec、Tool Card 和包内资源；底层方法不直接暴露给 Agent |
+| `src/bridge/resources/schemas/` | 随 Python 包发布的对外 JSON Schema；语义变更必须版本化 |
 | `knowledge/` | 紧凑的人类导航与当前 P0 方法短名单；完整目录仅以打包快照发布 |
 | `catalog_seed/` | 方法目录策展、来源核验与确定性重建输入 |
-| `schemas/` | 对外 JSON Schema；语义变更必须版本化 |
 | `tests/` | 当前活动实现的可执行合同与回归测试 |
 | `docs/` | 稳定科学和工程事实 |
 | `plans/` | 当前主题分支的临时实施计划 |
