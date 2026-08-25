@@ -720,6 +720,12 @@ def _final_gate(
 
 
 def _validation_has_not_assessed(record: EvidenceValidationRecord) -> bool:
+    learned_requirement_omitted = record.method_kind is MethodKind.LEARNED and (
+        record.source_holdout_state is CoverageState.NOT_REQUIRED
+        or record.modality_holdout_state is CoverageState.NOT_REQUIRED
+        or record.calibration_state is ValidationCheckState.NOT_REQUIRED
+        or record.ood_state is ValidationCheckState.NOT_REQUIRED
+    )
     return (
         record.validation_state is ContractValidationState.NOT_ASSESSED
         or record.environment_state is ContractValidationState.NOT_ASSESSED
@@ -728,6 +734,7 @@ def _validation_has_not_assessed(record: EvidenceValidationRecord) -> bool:
         or record.modality_holdout_state is CoverageState.NOT_ASSESSED
         or record.calibration_state is ValidationCheckState.NOT_ASSESSED
         or record.ood_state is ValidationCheckState.NOT_ASSESSED
+        or learned_requirement_omitted
     )
 
 
@@ -736,6 +743,15 @@ def _validation_is_fully_covered(record: EvidenceValidationRecord) -> bool:
         record.validation_state is ContractValidationState.FROZEN
         and record.environment_state is ContractValidationState.FROZEN
         and record.context_of_use_state is ContextOfUseState.APPLICABLE
+        and (
+            record.method_kind is not MethodKind.LEARNED
+            or (
+                record.source_holdout_state is CoverageState.COVERED
+                and record.modality_holdout_state is CoverageState.COVERED
+                and record.calibration_state is ValidationCheckState.PASSED
+                and record.ood_state is ValidationCheckState.PASSED
+            )
+        )
         and record.source_holdout_state in {CoverageState.COVERED, CoverageState.NOT_REQUIRED}
         and record.modality_holdout_state in {CoverageState.COVERED, CoverageState.NOT_REQUIRED}
         and record.calibration_state

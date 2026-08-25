@@ -497,16 +497,30 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
                 reasons.append("domain_input_product_definition_mismatch")
             if domain.qc_profile_input_id is not None:
                 qc_profile = loaded.objects_by_input_id.get(domain.qc_profile_input_id)
-                if isinstance(qc_profile, QCReadinessProfile) and (
-                    qc_profile.assay != measurement_spec.assay
-                    or qc_profile.measurement_spec_status != measurement_spec.status
-                    or (
-                        qc_profile.measurement_spec_version is not None
-                        and qc_profile.measurement_spec_version
-                        != measurement_spec.version
+                if isinstance(qc_profile, QCReadinessProfile):
+                    qc_keys = {
+                        "downstream_scientific_modules",
+                        *measurement_spec.tool_refs,
+                    }
+                    qc_blocks_bound_tool = any(
+                        qc_profile.module_eligibility.get(key, "")
+                        .strip()
+                        .casefold()
+                        in {"ineligible", "not_implemented", "blocked"}
+                        for key in qc_keys
                     )
-                ):
-                    reasons.append("domain_input_measurement_spec_mismatch")
+                    if (
+                        qc_profile.assay != measurement_spec.assay
+                        or qc_profile.measurement_spec_status
+                        != measurement_spec.status
+                        or (
+                            qc_profile.measurement_spec_version is not None
+                            and qc_profile.measurement_spec_version
+                            != measurement_spec.version
+                        )
+                        or qc_blocks_bound_tool
+                    ):
+                        reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in domain.measurement_result_input_ids:
                 value = loaded.objects_by_input_id.get(input_id)
                 if (
@@ -519,14 +533,66 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
                     )
                 ):
                     reasons.append("domain_input_measurement_spec_mismatch")
+            validation_records: list[EvidenceValidationRecord] = []
             for input_id in domain.validation_record_input_ids:
                 value = loaded.objects_by_input_id.get(input_id)
-                if isinstance(value, EvidenceValidationRecord) and (
-                    value.modality != measurement_spec.assay
-                    or not measurement_spec.tool_refs
-                    or value.tool_ref not in measurement_spec.tool_refs
-                ):
-                    reasons.append("domain_input_measurement_spec_mismatch")
+                if isinstance(value, EvidenceValidationRecord):
+                    validation_records.append(value)
+                    if (
+                        value.modality != measurement_spec.assay
+                        or not measurement_spec.tool_refs
+                        or value.tool_ref not in measurement_spec.tool_refs
+                    ):
+                        reasons.append("domain_input_measurement_spec_mismatch")
+            required_validation = [
+                record
+                for record in validation_records
+                if record.required_for_interpretation
+            ]
+            if required_validation and (
+                measurement_spec.validation_ref is None
+                or measurement_spec.validation_ref
+                not in {record.validation_record_id for record in required_validation}
+                or any(
+                    record.context_of_use_ref
+                    not in measurement_spec.applicable_contexts
+                    for record in required_validation
+                )
+            ):
+                reasons.append("domain_input_measurement_spec_mismatch")
+            prior_records = [
+                value
+                for input_id in domain.prior_record_input_ids
+                if isinstance(
+                    (value := loaded.objects_by_input_id.get(input_id)),
+                    PriorApplicabilityRecord,
+                )
+            ]
+            required_priors = [
+                record for record in prior_records if record.required_for_interpretation
+            ]
+            declared_prior_refs = {
+                *measurement_spec.prior_refs,
+                *measurement_spec.reference_refs,
+            }
+            if any(
+                record.prior_ref not in declared_prior_refs
+                for record in required_priors
+            ):
+                reasons.append("domain_input_measurement_spec_mismatch")
+            if domain.prior_requirement.value == "not_required" and required_priors:
+                reasons.append("domain_input_measurement_spec_mismatch")
+            required_sensitivity_kinds = set(domain.required_sensitivity_kinds)
+            if any(
+                isinstance(
+                    (value := loaded.objects_by_input_id.get(input_id)),
+                    EvidenceSensitivityRecord,
+                )
+                and value.required_for_interpretation
+                and value.sensitivity_kind not in required_sensitivity_kinds
+                for input_id in domain.sensitivity_record_input_ids
+            ):
+                reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in [
                 *domain.validation_record_input_ids,
                 *domain.prior_record_input_ids,

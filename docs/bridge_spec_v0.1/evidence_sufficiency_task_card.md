@@ -45,6 +45,10 @@ Evidence Sufficiency 判断某个域的分析结果是否具有足够证据支�
 
 系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本、Schema、精确源字节 SHA-256 和 provenance；这些字段在顶层 `source_object_bindings` 中无路径重现，并全部进入 deterministic run identity。跨域复用的非空 ProductCase/ProductDefinition 只是在 DomainGateInput 内声明的 versioned pointer；P0-08 不接收或验证其对象内容。pointer 必须分别在对象 ID、对象版本和 provenance-reference 集合上完全一致，且 DomainGateInput 的精确源 SHA 绑定这些声明。自身 Schema 无版本字段的 `QCReadinessProfileV2` 和 `MeasurementResultV2` 在本 adapter 中只接受 `StructuredInputRef.object_version=0.2.0`。MeasurementResultV2 的 `measurement_spec_version` 必须等于 MeasurementSpecV2 `version`；QCReadinessProfileV2 的同名字段在非空时也必须相等。
 
+资格检查还必须把对象内部声明交叉绑定：QC 对 MeasurementSpec 所列工具或通用下游模块的显式 `ineligible`、`not_implemented`、`blocked` 会拒绝运行；required validation 必须由 `validation_ref` 指向并落在 `applicable_contexts`；required prior 的 `prior_ref` 必须出现在 MeasurementSpec 的 `prior_refs` 或 `reference_refs`。`prior_requirement=not_required` 不得同时绑定 required prior，required sensitivity record 的 kind 也必须出现在 `required_sensitivity_kinds`。这些矛盾复用 `domain_input_measurement_spec_mismatch` 并在生成科学 profile 前 fail closed。
+
+学习方法不能把 source/modality holdout、calibration 或 OOD 标为 `not_required` 后获得 `validated_applicable`；四项分别必须为 `covered`、`covered`、`passed`、`passed`。确定性方法继续允许合同明确的 `not_required` 路径。
+
 ## 3. 三轴证据合同
 
 ### 3.1 Data Readiness
@@ -199,6 +203,7 @@ created_at / deterministic_run_ref
 - required prior 不适用：Prior Applicability=`inapplicable`。
 - 同源数据库或相关方法数量增加：不得提高 sufficiency。
 - ProductDefinition 不在 MeasurementSpec 适用卡中、QC assay/MeasurementSpec 状态不一致，或 validation modality/tool 与 MeasurementSpec 不一致：技术资格失败，不生成科学 profile。
+- QC 下游资格、validation context/ref、prior ref 或 requirement/sensitivity 声明之间存在上述交叉合同矛盾：技术资格失败，不生成科学 profile；学习方法的 required 验证维度不得用 `not_required` 绕过。
 - DomainGateInput、MeasurementSpec、QC profile、MeasurementResult 出现歧义逻辑 ID，或 validation/prior/sensitivity 的同一逻辑 ID 跨 evidence family：技术资格失败。
 - 结构化科学 JSON 的任意深度 key 或 value 中出现绝对路径，或使用 `~`/`~user`/HOME/USERPROFILE/HOMEPATH 的 home-relative 路径、任意位置的 `file:` scheme（含 opaque 与 slash 形式）、带凭据 URL、非空 credential-named JSON key/value、`<credential-name>[:=]<single-token>`、bearer credential 或常见访问令牌形式：返回 `unsafe_scientific_reference`，不回显原字符串且不发布输出 bundle。同一个语义 credential-name 规则用于 JSON key、URL query key、赋值左值和所有 scientific/source 字符串（包括通过 published-ref shape 的字符串）：去除大小写和 separator 差异后，名称若精确为 `auth`/`authorization`，以 `password`/`passphrase`/`passwd`/`pwd`/`secret`/`token`/`credential(s)`/`passcode`/`pincode` 结尾，或以 `key` 结尾且 stem 以 database/DB/webhook/master/service/account/signing/encryption/decryption/private/SSH/API/access/client/consumer/secret 敏感 qualifier 开头或结尾，则视为凭据；`pin` 仅在 stem 带 auth/authorization/account/access/security/login/user/credential/verification/device 明确上下文时拒绝。该规则覆盖 `databasePassphrase`、`servicePasswd`、`accountPwd`、`databaseKey`、`dbKey`、`webhookKey` 和 `accountPin`，同时保持 `pin`、`cellPin`、`publicKey`、`capillaryKey`、`monkey` 等已记录邻近词合法。这是一份有限、明确的 publication-safety vocabulary，不是任意秘密检测器，也不声称识别所有秘密；未声明的新别名本身不构成当前合同违约，新增别名必须显式修订 vocabulary、文档和回归测试。正常 `bridge://`/无凭据 HTTP(S) 引用和含空格的科学自然语言仍可使用。
 - 实际会复制到公开 profile 的 MeasurementSpec/QC/measurement/record/snapshot/Evidence Family/evidence 等引用必须在 eligibility 阶段通过 scheme-shaped 或 identifier-shaped 检查；不合法时统一返回 `structured_input_schema_invalid`，直接 adapter 与公共 SDK 都返回失败 `ToolRunV2` 且不落盘。request-local `*_input_ids` 不受此发布引用约束，未复制到公开结果的源字段继续只服从其源 Schema。

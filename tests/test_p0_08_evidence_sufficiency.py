@@ -658,7 +658,7 @@ def test_five_domains_are_gated_independently_and_counted_only(tmp_path: Path) -
                 "validation_record",
                 "bridge://schemas/evidence-validation-record/v0.1",
                 _validation(
-                    validation_record_id="validation-record:candidate",
+                    validation_record_id="validation-record:method-1",
                     validation_state="candidate",
                 ),
                 "0.1.0",
@@ -855,7 +855,16 @@ def test_deterministic_and_prior_not_required_paths_are_explicit(tmp_path: Path)
         prior_requirement="not_required",
         prior_record_input_ids=[],
     )
-    run = _run(tmp_path, domain=domain)
+    run = _run(
+        tmp_path,
+        domain=domain,
+        validation=_validation(
+            source_holdout_state="not_required",
+            modality_holdout_state="not_required",
+            calibration_state="not_required",
+            ood_state="not_required",
+        ),
+    )
     profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
 
     assert profile.model_robustness.value == "not_required"
@@ -872,6 +881,29 @@ def test_learned_record_cannot_establish_no_model_required_path(tmp_path: Path) 
         prior_record_input_ids=[],
     )
     run = _run(tmp_path, domain=domain, validation=_validation(method_kind="learned"))
+    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+
+    assert profile.model_robustness.value == "not_assessed"
+    assert profile.evidence_sufficiency_state.value == "not_assessed"
+    assert "validation_check_not_assessed" in profile.missing_requirements
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "source_holdout_state",
+        "modality_holdout_state",
+        "calibration_state",
+        "ood_state",
+    ],
+)
+def test_learned_validation_cannot_omit_required_coverage(
+    tmp_path: Path, field: str
+) -> None:
+    run = _run(
+        tmp_path,
+        validation=_validation(method_kind="learned", **{field: "not_required"}),
+    )
     profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
 
     assert profile.model_robustness.value == "not_assessed"
@@ -2212,6 +2244,11 @@ def test_domain_bindings_measurement_and_product_definition_must_agree(
         ("validation_modality", "domain_input_measurement_spec_mismatch"),
         ("validation_tool", "domain_input_measurement_spec_mismatch"),
         ("empty_measurement_tools", "domain_input_measurement_spec_mismatch"),
+        ("qc_tool_ineligible", "domain_input_measurement_spec_mismatch"),
+        ("qc_generic_blocked", "domain_input_measurement_spec_mismatch"),
+        ("validation_context", "domain_input_measurement_spec_mismatch"),
+        ("validation_ref", "domain_input_measurement_spec_mismatch"),
+        ("prior_ref", "domain_input_measurement_spec_mismatch"),
     ],
 )
 def test_sufficient_path_cross_bindings_fail_eligibility(
@@ -2221,6 +2258,7 @@ def test_sufficient_path_cross_bindings_fail_eligibility(
     qc = _qc()
     measurement = _measurement()
     validation = _validation()
+    prior = _prior()
     if case == "product_definition_not_applicable":
         measurement_spec["applicable_product_cards"] = ["product-definition:other"]
     elif case == "qc_assay":
@@ -2237,6 +2275,16 @@ def test_sufficient_path_cross_bindings_fail_eligibility(
         validation["tool_ref"] = "P0-04"
     elif case == "empty_measurement_tools":
         measurement_spec["tool_refs"] = []
+    elif case == "qc_tool_ineligible":
+        qc["module_eligibility"]["P0-03"] = "ineligible"
+    elif case == "qc_generic_blocked":
+        qc["module_eligibility"]["downstream_scientific_modules"] = "blocked"
+    elif case == "validation_context":
+        validation["context_of_use_ref"] = "context:other-v0.1"
+    elif case == "validation_ref":
+        measurement_spec["validation_ref"] = "validation-record:other"
+    elif case == "prior_ref":
+        prior["prior_ref"] = "prior:other-v0.1"
     else:  # pragma: no cover - protects future parameter edits
         raise AssertionError(case)
 
@@ -2246,8 +2294,26 @@ def test_sufficient_path_cross_bindings_fail_eligibility(
         qc=qc,
         measurement=measurement,
         validation=validation,
+        prior=prior,
     )
     _assert_failed_without_publication(request, reason)
+
+
+@pytest.mark.parametrize(
+    "domain",
+    [
+        _domain(prior_requirement="not_required"),
+        _domain(required_sensitivity_kinds=[]),
+    ],
+)
+def test_requirement_contradictions_fail_eligibility(
+    tmp_path: Path, domain: dict[str, Any]
+) -> None:
+    request = _fixture_request(tmp_path, domain=domain)
+
+    _assert_failed_without_publication(
+        request, "domain_input_measurement_spec_mismatch"
+    )
 
 
 def test_qc_measurement_spec_version_may_be_explicitly_absent(
