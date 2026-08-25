@@ -35,4 +35,14 @@ release claim.
 
 ## Status
 
-`in_progress`
+Implementation and `/data1` validation are complete at
+`dc3eeea51eed57115dd789c0e0c97886ca6241c3`:
+
+- full suite: 1,221 passed with 8 pre-existing warning instances;
+- 12-tool discovery, repository policy, knowledge validation and diff checks:
+  passed;
+- Tool Card and knowledge generation: idempotent;
+- isolated wheel build/import: passed with 12 installed tools.
+
+GitHub exact-head CI and human review remain pending. Status:
+`implementation_complete_review_pending`.

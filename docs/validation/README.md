@@ -32,6 +32,7 @@ lineage checks do not sign the biological FreezeGate.
 
 ## Shared Runtime and Repository Evidence
 
+- [Repository readability validation, 2026-08-25](repository_readability_20260825.md)
 - [Structured tool runtime contracts, 2026-08-13](tool_runtime_structured_contracts_20260813.md)
 - [Shared P0 scientific contract spine, 2026-08-25](shared_p0_scientific_contract_spine_20260825.md)
 - [Runtime output-path hardening, 2026-08-24](runtime_output_path_hardening_20260824.md)
