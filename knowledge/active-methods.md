@@ -1,6 +1,8 @@
-# Active BRIDGE Methods
+# Catalog-backed BRIDGE Methods
 
-This generated shortlist mirrors the methods selected by the active P0-01, P0-02, P0-03, P0-04, P0-07, P0-08, P0-09 Tool Package specs. The packaged snapshot remains the canonical retrieval artifact.
+This generated shortlist mirrors methods selected from the global knowledge catalog by P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09, P0-11, P0-12. The packaged snapshot remains the canonical retrieval artifact.
+
+P0-10 uses a package-owned, versioned benchmark rather than duplicating its internal verification methods here. See `docs/validation/p0_10_claim_verifier_benchmark_v0.1.md`.
 
 ## P0-01: Input Audit & QC
 
@@ -40,6 +42,15 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 - `METHOD-BRIDGE-DEVELOPMENTSTATEMAP` — BRIDGE DevelopmentStateMap ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DEVELOPMENTSTATEMAP))
 - `METHOD-BRIDGE-SOFT-COMPOSITION-A5E97A` — BRIDGE soft composition ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SOFT-COMPOSITION-A5E97A))
 
+## P0-05: Off-target Control
+
+- `METHOD-BRIDGE-ROLE-AWARE-SOFT-COMPOSITION` — BRIDGE role-aware soft composition ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ROLE-AWARE-SOFT-COMPOSITION))
+
+## P0-06: Proliferation & Stress Response
+
+- `METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION` — BRIDGE sample/state aggregation ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION))
+- `METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION` — Design audit and sensitivity stratification ([catalog record](bridge://knowledge/methods/METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION))
+
 ## P0-07: Product Comparison & Stability
 
 - `METHOD-BRIDGE-COMPARABILITY-GATE` — BRIDGE Comparability Gate ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-COMPARABILITY-GATE))
@@ -58,3 +69,13 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 - `METHOD-INTERNAL-READ-ONLY-API` — internal read-only API ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-READ-ONLY-API))
 - `METHOD-COLUMNAR-STORAGE` — columnar storage ([catalog record](bridge://knowledge/methods/METHOD-COLUMNAR-STORAGE))
 - `METHOD-GRAPH-LIBRARY` — graph library ([catalog record](bridge://knowledge/methods/METHOD-GRAPH-LIBRARY))
+
+## P0-11: Public-safe Export
+
+- `METHOD-BRIDGE-ALGORITHM-2AFBC8` — BRIDGE algorithm ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ALGORITHM-2AFBC8))
+- `METHOD-BRIDGE-RULE-ENGINE` — BRIDGE rule engine ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RULE-ENGINE))
+
+## P0-12: Optional Graft Assessment
+
+- `METHOD-BRIDGE-GRAFTCASE-VALIDATOR` — BRIDGE GraftCase Validator ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-GRAFTCASE-VALIDATOR))
+- `METHOD-BRIDGE-SOFT-COMPOSITION-404672` — BRIDGE soft composition ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SOFT-COMPOSITION-404672))
