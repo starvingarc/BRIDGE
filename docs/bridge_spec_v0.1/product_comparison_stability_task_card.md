@@ -3,12 +3,14 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-COMPARISON` |
-| Version | `v0.1-draft` |
+| Task document version | `v0.1` |
 | Date | 2026-08-07 |
+| Package version | `P0-07 0.2.0` |
+| Runtime / scientific state | `implemented` / `candidate` |
 | Scope | 同阶段跨方案、真实时间序列及 batch/lot/preparation 稳定性 |
 | Primary unit | 独立 `sample/preparation` |
-| Primary output | `ProductComparisonStabilityProfile` (v0.2 executable package) |
-| Current state | `candidate` |
+| Current result | `bridge://schemas/product-comparison-stability-profile/v0.1` |
+| Detailed runtime contract | [P0-07 Tool Card](../../src/bridge/tool_packages/cards/P0-07.md) |
 
 > v0.2 engineering note: the first executable package consumes checksummed
 > `ComparisonStabilitySpec`, `ComparisonCaseManifest`, and two or more

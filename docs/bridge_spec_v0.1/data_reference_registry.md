@@ -39,7 +39,7 @@ annotation_version / preprocessing_version / checksum
 | `pretransplant_query` | 体外、移植前完整制剂或工艺中间态 | 是，需满足 Card、MeasurementSpec 和 eligibility；当前不发布域分数 |
 | `calibration` | 建立阈值、error curve、stage 或风险边界 | 否 |
 | `locked_validation` | 冻结后一次性检验算法 | 否，不用于调参 |
-| `negative_ood` | 检验 specificity、unknown 和拒答 | 否 |
+| `negative_ood` | 生物学负对照及相对于已登记 reference 的 out-of-reference / out-of-distribution challenge，用于检验 specificity、unknown 和拒答；两者不自动等价 | 否 |
 | `graft_context` | 独立评估移植后组成与状态 | 独立后验层 |
 | `reserve` | 待转换、核实或未来扩展 | 否 |
 | `excluded` | 当前合同不允许使用 | 否 |
@@ -79,6 +79,10 @@ flowchart TD
 | `REF-ZENG-2023-v1` | scRNA；论文另有 PCW4 spatial | PCW3-12；全胚、全头、全脑 | 400,141 cells | early embryo、neural tube、brain 与 non-neural background | `processed_ready` | 本地 harmonization 的年龄和区域标签需冻结 |
 | `REF-LAMANNO-2016-v1` | human fetal VM scRNA | PCW6-11；腹侧中脑 | 1,977 fetal cells | 经典独立 VM 发育 reference | `ready_small` | 旧平台、样本量有限；需单独报告 platform shift |
 | `REF-BIRTELE-2022-v1` | fetal VM scRNA 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 77,804 cells；25,032 genes；13 个 GEO samples | 原代胎儿 VM maturation external-source 候选 | `conditionally_approved_source_holdout`；P0-02 `biological_review_in_progress` | 仅允许 source-level holdout、stage-level description 与 provisional-group sensitivity；raw reads 因隐私不可用，公开记录仍不足以把 13 个矩阵无歧义映射到 biological units，当前均为 `not_estimable` replicates；不构成科学冻结 |
+
+上表 Chen vMB family 是受控、未发表的内部 reference，本 registry 未记录其公开
+accession 或 primary paper。相关 pilot 观察只能由 BRIDGE 的版本化验证记录支持，
+不能用外部论文替代内部结果证据。
 
 核心公开来源：
 

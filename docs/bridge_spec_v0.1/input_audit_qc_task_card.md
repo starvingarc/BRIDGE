@@ -78,7 +78,9 @@ flowchart LR
 | 环境 RNA 校验 | SoupX | `droplet_ready` scRNA-seq | `candidate` | contamination estimate 与替代校正视图 | 缺 empty droplets、cluster/context 或 snRNA 适用性未验证 |
 | 扩展 QC | scQCenrich / SampleQC | 专项开发数据 | `deferred` | 研究期比较，不进入 P0 正式结论 | 适用范围、循环证据或多样本要求未解决 |
 
-具体版本、许可证、环境、官方文档、源码和论文由配套 Excel Registry 维护。安装成功不等于科学验证通过。
+具体版本、许可证、环境、官方文档、源码和论文由 tracked
+[knowledge catalog](../../knowledge/catalog/README.md) 及其生成的
+[catalog-backed shortlist](../../knowledge/active-methods.md) 维护。仓库外归档工作簿不是运行合同。安装成功不等于科学验证通过。
 
 ## 5. 知识与 reference 绑定
 

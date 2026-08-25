@@ -79,7 +79,8 @@ ProgramSpec 外置管理全部 program、gene-set ref/checksum、适用 stage/st
 | `RES-CORTEX-STRESS-132672-v1` | cortical organoid stress | stress specificity reserve | `downloaded_pending_conversion`；非 PD-mDA 场景 |
 | 内部与公开产品队列 | 多时间点、多方案、2D/3D scRNA | 无标签稳定性和 false-review-flag 检查 | 无功能、安全性或工艺真值 |
 
-当前没有 transformed-cell、genomic-instability、tumorigenicity、临床安全、potency 或产品放行真值。完整来源关系和可用状态由 Data/Reference Registry 与配套 Excel 维护。
+当前没有 transformed-cell、genomic-instability、tumorigenicity、临床安全、potency 或产品放行真值。完整来源关系和可用状态由 tracked
+[Data/Reference Registry](data_reference_registry.md) 维护；仓库外归档工作簿不是运行合同。
 
 ## 4. 分析流程
 
