@@ -20,6 +20,8 @@ P0 遵循以下原则：
 - scRNA-seq 与 snRNA-seq 共用任务框架，但分别绑定冻结的 `MeasurementSpec`。
 - 所有 count-based 方法必须确认矩阵为未归一化、非负、整数型 UMI counts。
 - 基因集合指标必须绑定 `var_names` 或显式声明的 `var` 基因符号列；未覆盖目标基因集合时返回 `unavailable`，不得写成比例为零。
+- 单个 observation 的 total count 为零时，mitochondrial、ribosomal 与 top-gene fraction 均为未定义值；该 observation 不得进入候选 eligible view。
+- 三列 10x MTX 必须提供完整的 feature-type 值，且 QC 矩阵只保留精确标记为 `Gene Expression` 的行；ADT、guide 或其他 feature 不得混入基因 QC。既有两列 `genes.tsv/features.tsv` 仍按“全部为 Gene Expression”的显式兼容假设读取，并记录 `legacy_two_column_features_assumed_gene_expression`，不得静默升级证据。
 - `sample_id`、文件名或目录名不得被自动解释为 `capture_id`、library 或 biological replicate。
 
 ## 2. 输入级别
@@ -29,7 +31,7 @@ P0 遵循以下原则：
 | 输入级别 | 最低要求 | 可运行模块 | 缺失行为 |
 | --- | --- | --- | --- |
 | `analysis_ready` | 可读取的 cell × gene 表达对象；唯一 cell/gene ID；assay、物种、样本层级及矩阵语义声明 | 结构审计、元数据完整性、基因覆盖、有限的已处理表达分布检查 | count-based QC、doublet、cell calling 和环境 RNA 模块标记 `ineligible` 或 `not_assessed` |
-| `count_ready` | `analysis_ready` + cell-called barcodes 的未归一化 UMI counts；每个细胞有经确认的 `capture_id`；建库/chemistry 信息 | 常规 QC、flag 生成、scDblFinder/Scrublet 候选评估、下采样和阈值敏感性 | 无未过滤 droplet matrix 时，不运行 cell calling 或环境 RNA 建模 |
+| `count_ready` | `analysis_ready` + cell-called barcodes 的未归一化 UMI counts；每个 observation 有逐行完整、由调用者声明的 `capture_id`；建库/chemistry 信息 | 常规 QC、flag 生成、scDblFinder/Scrublet 候选评估、下采样和阈值敏感性 | 无未过滤 droplet matrix 时，不运行 cell calling 或环境 RNA 建模 |
 | `droplet_ready` | 未过滤 10x droplet matrix、明确 `capture_id`、原始/filtered barcode 关系和上游运行信息 | 当前仅做结构与合同审计；future executor 才条件运行 emptyDrops、CellBender 或 SoupX | cell calling 与环境 RNA 返回 `not_assessed`，不能把全部 barcode 当作细胞 |
 
 - 历史公开数据允许以 `analysis_ready` 或部分 `count_ready` 进入，并明确证据缺口。
@@ -53,7 +55,7 @@ flowchart LR
 
 1. **基础审计**：验证对象可读性、稀疏矩阵、维度、唯一 ID、基因标识符、缺失值、非负性、矩阵层语义、样本层级与来源版本。
 2. **上游运行审计**：若提供 Cell Ranger 或等价报告，抽取 reads、mapping、barcode、cell count 等运行指标；未提供时只记录缺失。
-3. **常规 QC**：按 capture/sample 展示 counts、detected genes、mitochondrial/ribosomal fraction、top-gene fraction 与离群状态。阈值来自对应 `MeasurementSpec`，不跨 scRNA/snRNA 复用。
+3. **常规 QC**：只在 capture 值逐 observation 完整且不含显式 missing sentinel 时按 capture 展示 counts、detected genes、mitochondrial/ribosomal fraction、top-gene fraction 与离群状态。阈值来自对应 `MeasurementSpec`，不跨 scRNA/snRNA 复用。
 4. **Doublet**：仅对 `count_ready` 及以上输入按 capture 运行。scDblFinder 是待验证主候选，Scrublet 是同一转录组证据家族的算法校验；二者不构成正交证据。
 5. **Cell calling**：仅对 `droplet_ready` 输入运行 emptyDrops 或其他已冻结方法，并与原始 barcode call 并列展示。
 6. **环境 RNA**：仅在输入满足工具要求时运行。校正矩阵只进入 `sensitivity_views`，原始 counts 始终保留为主要计数视图。
@@ -69,7 +71,7 @@ flowchart LR
 | 基础 QC 指标 | Scanpy QC | 明确的 count/expression view | `adopted` | 计算并保存透明 raw metrics | layer 语义不明或 count 方法收到 normalized matrix |
 | QC flags | `BRIDGE-QC-FLAG-ENGINE` | `analysis_ready` 及以上 | `adopted_spec` | 按 MeasurementSpec 生成可追溯 flags | assay spec 未冻结或关键分母缺失 |
 | QC 独立校验 | scuttle / miQC | 条件满足的 scRNA-seq | `candidate` / `conditional` | 检查离群规则或概率边界的敏感性 | 当前 scuttle release 为 legacy；miQC 不直接外推至 snRNA |
-| Doublet 主候选 | scDblFinder | `count_ready` 及以上 | `candidate` | per-capture score、class 与阈值记录 | capture 未确认、细胞过少、counts 不合格 |
+| Doublet 主候选 | scDblFinder | `count_ready` 及以上 | `candidate` | per-capture score、class 与阈值记录 | `capture_id` 未逐 observation 完整声明、细胞过少、counts 不合格 |
 | Doublet 算法校验 | Scrublet | `count_ready` 及以上 | `conditional` | 同证据家族敏感性比较 | 多 capture 混跑、counts 不合格、阈值不稳定 |
 | Cell calling | DropletUtils `emptyDrops` | `droplet_ready` | `conditional` | barcode-level cell-containing evidence | 缺未过滤 droplet matrix |
 | 环境 RNA 模型 | CellBender `remove-background` | `droplet_ready` | `conditional` | 生成校正矩阵、posterior 和运行报告 | 工具未部署、GPU/输入不满足、版本未冻结 |
@@ -137,7 +139,8 @@ QC 只绑定与数据解释直接相关的版本化资源：
 
 - 矩阵语义未确认：不运行 count-based 方法。
 - 未识别到所需线粒体或其他 QC 基因集合：对应指标和依赖它的 eligibility 返回 `unavailable`，不报告为零。
-- `capture_id` 未确认：不运行或汇总 doublet 模型，也不从名称推断。
+- `capture_id` 未由调用者逐 observation 完整声明、为空或含常见 missing sentinel：metadata completeness 为 false，不生成 pooled capture summary，doublet 和 typed lineage 返回稳定的 unavailable/reason-code 结果；其余可读的 v0.1 QC 不因此整体失效。
+- 三列 10x MTX 含空/缺失 feature-type、没有 `Gene Expression` 行或 feature-type 语义不明确：返回结构化失败，不用其他 feature 代替基因；两列 legacy 文件只在上述带警告的兼容边界内读取。
 - 无未过滤 droplet matrix：cell calling 与环境 RNA 模块返回 `not_assessed`。
 - 缺上游运行报告：只说明 library-level 证据缺失，不判定失败。
 - 仅有已处理表达值：可以做结构审计和有限分布检查，不能声称完成原始 QC。
@@ -165,7 +168,7 @@ QC 只绑定与数据解释直接相关的版本化资源：
 - `droplet_ready` 当前不执行 cell calling 或 ambient correction；两项均返回 `not_assessed`。
 - scRNA 与 snRNA 使用独立候选 MeasurementSpec、feature-set policy、解释文本和 observation unit；两类结果不共用未验证阈值。
 - 缺少所需 gene-set coverage 时，对应 fraction 与候选筛选视图返回 `unavailable`，不得补零。
-- 输出目录不得位于目录型输入资产内部，输入在运行前后均以 checksum 核验。
+- 输入先复制到私有 byte snapshot；原始初始 checksum、snapshot checksum 与复制后原始 checksum 必须一致，执行只读取 snapshot。所有产物先写入唯一私有 staging bundle，发布前再次核验原始输入，再以目录 rename 原子发布；失败清理 staging，既有 bundle 只有逐文件完全一致时才复用。
 - Scrublet 仅在明确请求、每个 capture 满足最低细胞量且 counts 合格时作为候选通道运行。
 - scDblFinder、DropletUtils、SoupX、miQC 和 CellBender 仍是待独立环境与 benchmark 的条件方法。
 - counts 语义、capture mapping 或基因符号来源未确认时，只保留不依赖该字段的结果。
@@ -182,10 +185,12 @@ P0-01 保持 v0.1 `ToolRequest`、`ToolRun.result` 与 `qc_readiness_profile.jso
 | `unit_identity_namespace_ref` | 本次 unit identity 命名空间的版本化引用 |
 | `analysis_unit_kind` | 当前测量采用的显式分析单位；不是 cell 数量的同义词 |
 | `independence_group_kind` / `independence_scope_ref` | 显式独立组类型与适用范围；只允许 preparation/sample/donor/animal |
-| `observation_ref_columns` | unit kind 到 h5ad `obs` 列的映射；列值必须已经是完整版本化引用 |
+| `observation_ref_columns` | unit kind 到 h5ad `obs` 列的映射；列值必须已经是完整版本化引用；`count_ready` 必须显式映射 versioned capture ref |
 | `constant_unit_refs` | 明确声明应用于视图中每个 observation 的版本化 unit；不得与同 kind 的列映射并用 |
 
-谱系闭合时额外写出 checksummed `biological_unit_assignment.json` 与 `biological_unit_manifest.json`，并由 v2 `DataViewBinding` 绑定 manifest ref/hash。任何缺列、缺值、无版本引用、单一来源不一致、冲突 lineage 或非法 independence kind 都只令新增 lineage 输出变为 `unavailable`，不阻断仍合法的 v0.1 QC 结果，也不留下未登记的部分 lineage 产物。
+谱系闭合时额外写出 checksummed `biological_unit_assignment.json` 与 `biological_unit_manifest.json`，并由 v2 `DataViewBinding` 绑定 manifest ref/hash。同一个 preparation/analysis unit 可对应多个 capture binding，但这些 binding 必须共享 analysis kind 与同一 independence ref/kind；assignment row 必须匹配完整 typed hierarchy。对 `count_ready`，typed `capture_ref` 的 observation partition 还必须与实际用于 QC/Scrublet 的逐行完整 caller-declared `capture_id` partition 双向一对一等价，标签文本可不同；缺少该 partition 或存在 split/merge 时只令 v2 lineage `unavailable`。一个 capture 映射多个 biological source 仍 fail closed，直到另有显式 demultiplexing 合同。任何缺列、缺值、无版本引用、单一来源不一致、冲突 lineage 或非法 independence kind 都只令新增 lineage 输出变为 `unavailable`，不阻断仍合法的 v0.1 QC 结果，也不留下未登记的部分 lineage 产物。
+
+每次成功运行还写出 `structured_output_index.json`（`bridge://schemas/p0-01-structured-output-index/v0.1`）。其 `ArtifactManifest.kind` 等于该 schema URI，index 逐项登记本次实际存在的 v2 profile、assignment 与 biological manifest 的 role、相对文件名、artifact ID、checksum、media type、schema ref 和 object version；它不改变 v0.1 `ArtifactManifest` 或 `ToolRun.result`。
 
 P0-01 的 `generator_tool_id` 固定为 `P0-01`，`lineage_state` 只能是 `declared`，review gate 必须为空。该声明不证明 preparation/sample/donor/animal 的生物学真实性、不授予 `reviewed`/`frozen` 权限，也不证明任何组在统计上独立。真实数据与人工科学审核仍需验证 unit mapping、pooling/multiplexing、独立重复和后续 estimand。
 

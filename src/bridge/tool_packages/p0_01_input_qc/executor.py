@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -11,6 +14,10 @@ import pandas as pd
 
 from bridge.tool_packages.p0_01_input_qc.io import (
     InputAuditError,
+    LEGACY_TWO_COLUMN_FEATURE_WARNING,
+    P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF,
+    P001StructuredOutputIndex,
+    P001StructuredOutputRecord,
     build_declared_lineage,
     canonical_json_bytes,
     read_expression_asset,
@@ -32,6 +39,7 @@ from bridge.toolkit.contracts import (
     ArtifactManifest,
     EvidenceState,
     ExecutionState,
+    InputAsset,
     MeasurementResult,
     MeasurementSpec,
     QCReadinessProfile,
@@ -49,7 +57,12 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
     asset = request.assets[0]
     if _output_overlaps_input(asset.path, request.output_dir):
         return _failed_run(request, spec, None, "output_dir_overlaps_input_asset")
-    input_hash = sha256_path(asset.path)
+    try:
+        input_hash = sha256_path(asset.path)
+    except InputAuditError as exc:
+        return _failed_run(request, spec, None, exc.reason_code, str(exc))
+    except Exception as exc:
+        return _failed_run(request, spec, None, "input_asset_hash_failed", str(exc))
     if asset.checksum is not None and asset.checksum != input_hash:
         return _failed_run(request, spec, input_hash, "input_checksum_mismatch")
 
@@ -63,21 +76,95 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         if asset.input_level.value not in supported_levels:
             return _failed_run(request, spec, input_hash, "measurement_spec_input_level_mismatch")
 
+    run_id = _run_id(request, spec, input_hash)
+    workspace: Path | None = None
     try:
-        adata = read_expression_asset(asset)
-        require_counts = asset.matrix_semantics == "raw_counts"
-        validate_expression_object(adata, require_counts=require_counts)
+        workspace = _private_workspace(request.output_dir)
+        snapshot_path = _snapshot_asset(asset.path, workspace / "input")
+        snapshot_hash = sha256_path(snapshot_path)
+        original_after_snapshot_hash = sha256_path(asset.path)
+        if snapshot_hash != input_hash or original_after_snapshot_hash != input_hash:
+            return _failed_run(
+                request,
+                spec,
+                input_hash,
+                "input_asset_modified_during_snapshot",
+            )
+
+        snapshot_asset = asset.model_copy(update={"path": snapshot_path})
+        try:
+            adata = read_expression_asset(snapshot_asset)
+            require_counts = asset.matrix_semantics == "raw_counts"
+            validate_expression_object(adata, require_counts=require_counts)
+        except InputAuditError as exc:
+            return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
+        except Exception as exc:
+            return _failed_run(request, spec, input_hash, "expression_asset_read_failed", str(exc))
+
+        staging_run_dir = workspace / "bundle"
+        staging_run_dir.mkdir(mode=0o700)
+        final_run_dir = request.output_dir / run_id
+        staged_run = _build_staged_run(
+            request=request,
+            spec=spec,
+            asset=asset,
+            adata=adata,
+            measurement_spec=measurement_spec,
+            input_hash=input_hash,
+            run_id=run_id,
+            staging_run_dir=staging_run_dir,
+            final_run_dir=final_run_dir,
+        )
+        if staged_run.execution_state is not ExecutionState.SUCCEEDED:
+            return staged_run
+        if sha256_path(asset.path) != input_hash:
+            return _failed_run(
+                request,
+                spec,
+                input_hash,
+                "input_asset_modified_during_run",
+            )
+        publish_reason = _publish_bundle(staging_run_dir, final_run_dir)
+        if publish_reason is not None:
+            return _failed_run(request, spec, input_hash, publish_reason)
+        return staged_run
     except InputAuditError as exc:
         return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
     except Exception as exc:
-        return _failed_run(request, spec, input_hash, "expression_asset_read_failed", str(exc))
+        return _failed_run(request, spec, input_hash, "artifact_staging_failed", str(exc))
+    finally:
+        if workspace is not None:
+            shutil.rmtree(workspace, ignore_errors=True)
 
+
+def _build_staged_run(
+    *,
+    request: ToolRequest,
+    spec: ToolPackageSpec,
+    asset: InputAsset,
+    adata,
+    measurement_spec: MeasurementSpec | None,
+    input_hash: str,
+    run_id: str,
+    staging_run_dir: Path,
+    final_run_dir: Path,
+) -> ToolRun:
     input_level = asset.input_level.value
     observation_unit = _observation_unit(asset.assay, input_level)
-    run_id = _run_id(request, spec, input_hash)
-    run_dir = request.output_dir / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
     warnings: list[str] = []
+    feature_selection: dict[str, Any] = {}
+    if asset.format == "10x_mtx":
+        raw_feature_selection = adata.uns.get("bridge_10x_feature_selection")
+        if isinstance(raw_feature_selection, dict):
+            feature_selection = {
+                "input_feature_count": int(raw_feature_selection["input_feature_count"]),
+                "selected_gene_expression_feature_count": int(
+                    raw_feature_selection["selected_gene_expression_feature_count"]
+                ),
+                "feature_selection_policy": str(raw_feature_selection["feature_selection_policy"]),
+            }
+        if feature_selection.get("feature_selection_policy") == "all_features_assumed_gene_expression":
+            warnings.append(LEGACY_TWO_COLUMN_FEATURE_WARNING)
     missing_inputs: list[str] = []
     evidence_ids = [f"evidence:{run_id}:structure"]
     artifacts: list[ArtifactManifest] = []
@@ -102,6 +189,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         "eligible_cells_view": {"state": "unavailable"},
         "sensitivity_views": [],
     }
+    qc_capture_groups: pd.Series | None = None
 
     if input_level == "count_ready":
         try:
@@ -118,10 +206,15 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         metrics.index.name = "observation_id"
         evidence_ids.append(f"evidence:{run_id}:count-metrics")
         measurements.extend(_count_measurements(run_id, metrics, measurement_spec))
-        group_series, group_warning = _declared_group(adata.obs, asset.metadata, "capture_id")
+        qc_capture_groups, group_warning = _declared_group(
+            adata.obs,
+            asset.metadata,
+            "capture_id",
+        )
+        group_series = qc_capture_groups
         if group_warning:
             warnings.append(group_warning)
-        if group_series is None:
+        if group_series is None and group_warning == "capture_id_not_declared":
             group_series, sample_warning = _declared_group(adata.obs, asset.metadata, "sample_id")
             if sample_warning and sample_warning not in warnings:
                 warnings.append(sample_warning)
@@ -145,9 +238,17 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         )
         warnings.extend(doublet_warnings)
 
-        metrics_path = run_dir / "qc_metrics.parquet"
+        metrics_path = staging_run_dir / "qc_metrics.parquet"
         metrics.to_parquet(metrics_path)
-        artifacts.append(_artifact(f"artifact:{run_id}:qc-metrics", "qc_metrics", metrics_path, evidence_ids))
+        artifacts.append(
+            _artifact(
+                f"artifact:{run_id}:qc-metrics",
+                "qc_metrics",
+                metrics_path,
+                evidence_ids,
+                logical_path=final_run_dir / metrics_path.name,
+            )
+        )
         data_views["all_cells_view"]["artifact_id"] = f"artifact:{run_id}:qc-metrics"
 
         missing_required_gene_sets: list[str] = []
@@ -167,7 +268,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
                 adata.obs[column] = flags[column].to_numpy()
             for column in metrics.columns:
                 adata.obs[f"bridge_qc_{column}"] = metrics[column].to_numpy()
-            derived_path = run_dir / "candidate_qc_view.h5ad"
+            derived_path = staging_run_dir / "candidate_qc_view.h5ad"
             adata.write_h5ad(derived_path)
             evidence_ids.append(f"evidence:{run_id}:candidate-flags")
             artifacts.append(
@@ -176,6 +277,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
                     "derived_h5ad",
                     derived_path,
                     [f"evidence:{run_id}:candidate-flags"],
+                    logical_path=final_run_dir / derived_path.name,
                 )
             )
             data_views["eligible_cells_view"] = {
@@ -190,7 +292,8 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
 
         visualization_artifacts, visualization_records = _write_visualizations(
             metrics,
-            run_dir,
+            staging_run_dir,
+            final_run_dir,
             run_id,
             observation_unit,
         )
@@ -242,6 +345,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
             "gene_identifier_source": (
                 gene_identifier_source if input_level == "count_ready" else "not_assessed"
             ),
+            **feature_selection,
         },
         upstream_library_qc={"state": "not_assessed", "reason": "upstream_report_not_provided"},
         cell_qc=cell_qc,
@@ -262,13 +366,22 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         domain_score=None,
     )
 
-    profile_path = run_dir / "qc_readiness_profile.json"
+    profile_path = staging_run_dir / "qc_readiness_profile.json"
     _write_json(profile_path, profile.model_dump(mode="json"))
-    artifacts.append(_artifact(f"artifact:{run_id}:profile", "qc_profile", profile_path, evidence_ids))
+    artifacts.append(
+        _artifact(
+            f"artifact:{run_id}:profile",
+            "qc_profile",
+            profile_path,
+            evidence_ids,
+            logical_path=final_run_dir / profile_path.name,
+        )
+    )
 
     lineage = build_declared_lineage(
         asset=asset,
         observations=adata.obs,
+        qc_capture_groups=qc_capture_groups,
         input_hash=input_hash,
         run_id=run_id,
         tool_version=spec.version,
@@ -278,6 +391,7 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
     v2_missing_inputs = list(profile.missing_inputs)
     v2_warnings = list(profile.warnings)
     v2_evidence_ids = list(profile.evidence_ids)
+    structured_outputs: list[P001StructuredOutputRecord] = []
     if lineage.lineage_is_available:
         lineage_evidence_id = f"evidence:{run_id}:declared-biological-unit-lineage"
         v2_evidence_ids.append(lineage_evidence_id)
@@ -287,30 +401,46 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
             "assignment_artifact_id": f"artifact:{run_id}:biological-unit-assignment",
             "manifest_ref": lineage.manifest.ref.ref,
         }
-        assignment_path = run_dir / "biological_unit_assignment.json"
+        assignment_path = staging_run_dir / "biological_unit_assignment.json"
         _write_json(
             assignment_path,
             lineage.assignment_artifact.model_dump(mode="json"),
         )
-        artifacts.append(
-            _artifact(
+        assignment_artifact = _artifact(
                 f"artifact:{run_id}:biological-unit-assignment",
                 "biological_unit_assignment",
                 assignment_path,
                 [lineage_evidence_id],
+                logical_path=final_run_dir / assignment_path.name,
+            )
+        artifacts.append(assignment_artifact)
+        structured_outputs.append(
+            _structured_output_record(
+                role="biological_unit_assignment",
+                artifact=assignment_artifact,
+                schema_ref="bridge://schemas/biological-unit-assignment/v0.1",
+                object_version=lineage.assignment_artifact.object_version,
             )
         )
-        biological_manifest_path = run_dir / "biological_unit_manifest.json"
+        biological_manifest_path = staging_run_dir / "biological_unit_manifest.json"
         _write_json(
             biological_manifest_path,
             lineage.manifest.model_dump(mode="json"),
         )
-        artifacts.append(
-            _artifact(
+        biological_manifest_artifact = _artifact(
                 f"artifact:{run_id}:biological-unit-manifest",
                 "biological_unit_manifest",
                 biological_manifest_path,
                 [lineage_evidence_id],
+                logical_path=final_run_dir / biological_manifest_path.name,
+            )
+        artifacts.append(biological_manifest_artifact)
+        structured_outputs.append(
+            _structured_output_record(
+                role="biological_unit_manifest",
+                artifact=biological_manifest_artifact,
+                schema_ref="bridge://schemas/biological-unit-manifest/v0.1",
+                object_version=lineage.manifest.object_version,
             )
         )
     else:
@@ -331,18 +461,45 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
             "evidence_ids": sorted(set(v2_evidence_ids)),
         }
     )
-    profile_v2_path = run_dir / "qc_readiness_profile_v2.json"
+    profile_v2_path = staging_run_dir / "qc_readiness_profile_v2.json"
     _write_json(profile_v2_path, profile_v2.model_dump(mode="json"))
-    artifacts.append(
-        _artifact(
+    profile_v2_artifact = _artifact(
             f"artifact:{run_id}:profile-v2",
             "qc_profile_v2",
             profile_v2_path,
             v2_evidence_ids,
+            logical_path=final_run_dir / profile_v2_path.name,
+        )
+    artifacts.append(profile_v2_artifact)
+    structured_outputs.insert(
+        0,
+        _structured_output_record(
+            role="qc_readiness_profile_v2",
+            artifact=profile_v2_artifact,
+            schema_ref="bridge://schemas/qc-readiness-profile/v0.2",
+            object_version="0.2.0",
+        ),
+    )
+
+    structured_index = P001StructuredOutputIndex(
+        object_version="0.1.0",
+        schema_ref=P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF,
+        run_id=run_id,
+        outputs=structured_outputs,
+    )
+    structured_index_path = staging_run_dir / "structured_output_index.json"
+    _write_json(structured_index_path, structured_index.model_dump(mode="json"))
+    artifacts.append(
+        _artifact(
+            f"artifact:{run_id}:structured-output-index",
+            P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF,
+            structured_index_path,
+            v2_evidence_ids,
+            logical_path=final_run_dir / structured_index_path.name,
         )
     )
 
-    manifest_path = run_dir / "artifact_manifest.json"
+    manifest_path = staging_run_dir / "artifact_manifest.json"
     _write_json(
         manifest_path,
         {
@@ -356,10 +513,15 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
             "visualizations": [item.model_dump(mode="json") for item in visualizations],
         },
     )
-    artifacts.append(_artifact(f"artifact:{run_id}:manifest", "manifest", manifest_path, evidence_ids))
-
-    if sha256_path(asset.path) != input_hash:
-        return _failed_run(request, spec, input_hash, "input_asset_modified_during_run")
+    artifacts.append(
+        _artifact(
+            f"artifact:{run_id}:manifest",
+            "manifest",
+            manifest_path,
+            evidence_ids,
+            logical_path=final_run_dir / manifest_path.name,
+        )
+    )
 
     return ToolRun(
         run_id=run_id,
@@ -411,8 +573,15 @@ def _failed_run(
     reason_code: str,
     detail: str | None = None,
 ) -> ToolRun:
+    payload = {
+        "attempted_request": request.model_dump(mode="json"),
+        "tool_version": spec.version,
+        "reason_code": reason_code,
+        "known_input_sha256": input_hash,
+    }
+    failed_run_digest = hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
     return ToolRun(
-        run_id=f"run-{hashlib.sha256((request.request_id + reason_code).encode()).hexdigest()[:16]}",
+        run_id=f"run-{failed_run_digest[:16]}",
         request=request,
         implementation_state=spec.implementation_state,
         execution_state=ExecutionState.FAILED,
@@ -472,7 +641,7 @@ def _count_measurements(run_id: str, metrics: pd.DataFrame, spec: MeasurementSpe
                 measurement_spec_id=spec_id,
                 metric_name=f"{column}_median",
                 raw_value=float(median) if median is not None else None,
-                denominator=int(len(metrics)),
+                denominator=int(len(values)) if available else None,
                 score_state=ScoreState.UNAVAILABLE,
                 evidence_state=EvidenceState.MEASURED if available else EvidenceState.UNAVAILABLE,
                 provenance_refs=[f"evidence:{run_id}:count-metrics"],
@@ -496,21 +665,56 @@ def _declared_gene_names(adata, metadata: dict[str, Any]) -> tuple[pd.Index, str
 def _metadata_completeness(obs: pd.DataFrame, metadata: dict[str, Any]) -> dict[str, Any]:
     checks: dict[str, bool] = {}
     for logical_name in ("sample_id", "capture_id"):
-        column = metadata.get(f"{logical_name}_column")
-        checks[logical_name] = bool(
-            logical_name in metadata or (column is not None and column in obs.columns)
-        )
+        groups, _ = _declared_group(obs, metadata, logical_name)
+        checks[logical_name] = groups is not None
     return {"fields": checks, "complete": all(checks.values())}
 
 
 def _declared_group(obs: pd.DataFrame, metadata: dict[str, Any], logical_name: str) -> tuple[pd.Series | None, str | None]:
     column = metadata.get(f"{logical_name}_column")
-    if column is not None and column in obs.columns:
-        return obs[column], None
-    value = metadata.get(logical_name)
-    if value is not None:
-        return pd.Series([str(value)] * len(obs), index=obs.index), None
+    if column is not None:
+        if column not in obs.columns:
+            return None, f"{logical_name}_incomplete"
+        normalized = [_normalized_group_value(value) for value in obs[column].tolist()]
+        if any(value is None for value in normalized):
+            return None, f"{logical_name}_incomplete"
+        return pd.Series(normalized, index=obs.index, dtype="string"), None
+    if logical_name in metadata:
+        normalized_value = _normalized_group_value(metadata.get(logical_name))
+        if normalized_value is None:
+            return None, f"{logical_name}_incomplete"
+        return pd.Series([normalized_value] * len(obs), index=obs.index, dtype="string"), None
     return None, f"{logical_name}_not_declared"
+
+
+_MISSING_GROUP_SENTINELS = frozenset(
+    {
+        "",
+        "na",
+        "n/a",
+        "nan",
+        "none",
+        "null",
+        "missing",
+        "unknown",
+        "unavailable",
+        "not_assessed",
+        "not assessed",
+        "not available",
+    }
+)
+
+
+def _normalized_group_value(value: object) -> str | None:
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        return None
+    text = str(value).strip()
+    if text.casefold() in _MISSING_GROUP_SENTINELS:
+        return None
+    return text
 
 
 def _assess_doublets(
@@ -522,7 +726,8 @@ def _assess_doublets(
 ) -> tuple[dict[str, Any], list[str]]:
     groups, warning = _declared_group(adata.obs, metadata, "capture_id")
     if groups is None:
-        return {"state": "not_assessed", "reason": "capture_id_not_declared"}, [warning or "capture_id_not_declared"]
+        reason = warning or "capture_id_not_declared"
+        return {"state": "not_assessed", "reason": reason}, [reason]
     minimum = int(measurement_spec.minimum_data.get("min_cells_for_scrublet", 100)) if measurement_spec else 100
     if len(adata) < minimum:
         return {"state": "not_assessed", "reason": "insufficient_cells_for_scrublet", "minimum_cells": minimum}, []
@@ -562,25 +767,29 @@ def _assess_doublets(
 
 def _write_visualizations(
     metrics: pd.DataFrame,
-    run_dir: Path,
+    staging_run_dir: Path,
+    final_run_dir: Path,
     run_id: str,
     observation_unit: str,
 ) -> tuple[list[ArtifactManifest], list[VisualizationArtifact]]:
-    data_path = run_dir / "qc_visualization_data.parquet"
+    data_path = staging_run_dir / "qc_visualization_data.parquet"
     metrics.to_parquet(data_path)
     overview_svg, overview_png = render_qc_overview(
         metrics,
-        run_dir / "qc_overview",
+        staging_run_dir / "qc_overview",
         observation_unit=observation_unit,
     )
-    scatter_svg, scatter_png = render_counts_genes_scatter(metrics, run_dir / "counts_genes_scatter")
+    scatter_svg, scatter_png = render_counts_genes_scatter(
+        metrics,
+        staging_run_dir / "counts_genes_scatter",
+    )
     evidence = [f"evidence:{run_id}:count-metrics"]
     artifacts = [
-        _artifact(f"artifact:{run_id}:visual-data", "visualization_data", data_path, evidence),
-        _artifact(f"artifact:{run_id}:overview-svg", "visualization_svg", overview_svg, evidence),
-        _artifact(f"artifact:{run_id}:overview-png", "visualization_png", overview_png, evidence),
-        _artifact(f"artifact:{run_id}:scatter-svg", "visualization_svg", scatter_svg, evidence),
-        _artifact(f"artifact:{run_id}:scatter-png", "visualization_png", scatter_png, evidence),
+        _artifact(f"artifact:{run_id}:visual-data", "visualization_data", data_path, evidence, logical_path=final_run_dir / data_path.name),
+        _artifact(f"artifact:{run_id}:overview-svg", "visualization_svg", overview_svg, evidence, logical_path=final_run_dir / overview_svg.name),
+        _artifact(f"artifact:{run_id}:overview-png", "visualization_png", overview_png, evidence, logical_path=final_run_dir / overview_png.name),
+        _artifact(f"artifact:{run_id}:scatter-svg", "visualization_svg", scatter_svg, evidence, logical_path=final_run_dir / scatter_svg.name),
+        _artifact(f"artifact:{run_id}:scatter-png", "visualization_png", scatter_png, evidence, logical_path=final_run_dir / scatter_png.name),
     ]
     visualizations = [
         VisualizationArtifact(
@@ -607,7 +816,14 @@ def _write_visualizations(
     return artifacts, visualizations
 
 
-def _artifact(artifact_id: str, kind: str, path: Path, evidence_ids: list[str]) -> ArtifactManifest:
+def _artifact(
+    artifact_id: str,
+    kind: str,
+    path: Path,
+    evidence_ids: list[str],
+    *,
+    logical_path: Path,
+) -> ArtifactManifest:
     media_types = {
         ".json": "application/json",
         ".parquet": "application/vnd.apache.parquet",
@@ -618,11 +834,91 @@ def _artifact(artifact_id: str, kind: str, path: Path, evidence_ids: list[str]) 
     return ArtifactManifest(
         artifact_id=artifact_id,
         kind=kind,
-        path=path.resolve(),
+        path=logical_path.resolve(),
         media_type=media_types.get(path.suffix, "application/octet-stream"),
         sha256=sha256_path(path),
         evidence_ids=evidence_ids,
     )
+
+
+def _structured_output_record(
+    *,
+    role: str,
+    artifact: ArtifactManifest,
+    schema_ref: str,
+    object_version: str,
+) -> P001StructuredOutputRecord:
+    return P001StructuredOutputRecord(
+        role=role,
+        relative_filename=artifact.path.name,
+        artifact_id=artifact.artifact_id,
+        sha256=artifact.sha256,
+        media_type="application/json",
+        schema_ref=schema_ref,
+        object_version=object_version,
+    )
+
+
+def _private_workspace(output_dir: Path) -> Path:
+    parent = output_dir.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    workspace = Path(tempfile.mkdtemp(prefix=".bridge-p0-01-", dir=parent))
+    workspace.chmod(0o700)
+    return workspace
+
+
+def _snapshot_asset(source: Path, destination_root: Path) -> Path:
+    destination_root.mkdir(mode=0o700)
+    destination = destination_root / source.name
+    if source.is_dir():
+        shutil.copytree(source, destination, symlinks=True)
+    else:
+        shutil.copy2(source, destination, follow_symlinks=False)
+    return destination
+
+
+def _publish_bundle(staging_run_dir: Path, final_run_dir: Path) -> str | None:
+    output_dir = final_run_dir.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if final_run_dir.exists() or final_run_dir.is_symlink():
+        return None if _bundles_match(staging_run_dir, final_run_dir) else "existing_run_bundle_mismatch"
+    try:
+        os.rename(staging_run_dir, final_run_dir)
+    except FileExistsError:
+        return None if _bundles_match(staging_run_dir, final_run_dir) else "existing_run_bundle_mismatch"
+    except OSError:
+        if final_run_dir.exists() or final_run_dir.is_symlink():
+            return None if _bundles_match(staging_run_dir, final_run_dir) else "existing_run_bundle_mismatch"
+        raise
+    return None
+
+
+def _bundles_match(first: Path, second: Path) -> bool:
+    try:
+        return _bundle_records(first) == _bundle_records(second)
+    except (InputAuditError, OSError):
+        return False
+
+
+def _bundle_records(root: Path) -> tuple[tuple[str, int, str], ...]:
+    if root.is_symlink() or not root.is_dir():
+        raise InputAuditError("existing_run_bundle_mismatch", "Run bundle must be a regular directory")
+    records: list[tuple[str, int, str]] = []
+    for path in sorted(root.rglob("*"), key=lambda item: item.relative_to(root).as_posix()):
+        if path.is_symlink():
+            raise InputAuditError("existing_run_bundle_mismatch", "Run bundle cannot contain symlinks")
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            raise InputAuditError("existing_run_bundle_mismatch", "Run bundle cannot contain special files")
+        records.append(
+            (
+                path.relative_to(root).as_posix(),
+                path.stat().st_size,
+                sha256_path(path),
+            )
+        )
+    return tuple(records)
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:

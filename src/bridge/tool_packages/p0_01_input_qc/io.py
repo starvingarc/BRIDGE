@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Self
@@ -32,6 +33,176 @@ from bridge.toolkit.contracts import (
 LINEAGE_METADATA_KEY = "biological_unit_lineage"
 _LINEAGE_SCHEMA_VERSION = "0.1.0"
 _HIERARCHY_KINDS = tuple(BiologicalUnitKind)
+LEGACY_TWO_COLUMN_FEATURE_WARNING = "legacy_two_column_features_assumed_gene_expression"
+P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF = (
+    "bridge://schemas/p0-01-structured-output-index/v0.1"
+)
+_P001_OUTPUT_ROLE_CONTRACTS = {
+    "qc_readiness_profile_v2": (
+        "bridge://schemas/qc-readiness-profile/v0.2",
+        "0.2.0",
+    ),
+    "biological_unit_assignment": (
+        "bridge://schemas/biological-unit-assignment/v0.1",
+        "0.1.0",
+    ),
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        "0.1.0",
+    ),
+}
+
+
+class P001StructuredOutputRecord(BaseModel):
+    """One machine-discoverable structured P0-01 output."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: Literal[
+        "qc_readiness_profile_v2",
+        "biological_unit_assignment",
+        "biological_unit_manifest",
+    ]
+    relative_filename: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+    artifact_id: str = Field(min_length=1)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    media_type: Literal["application/json"]
+    schema_ref: str = Field(min_length=1)
+    object_version: str = Field(min_length=1)
+
+
+class P001StructuredOutputIndex(BaseModel):
+    """Versioned index for structured outputs emitted by one P0-01 run."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        json_schema_extra={
+            "allOf": [
+                {
+                    "properties": {
+                        "outputs": {
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "if": {
+                                            "properties": {"role": {"const": role}},
+                                            "required": ["role"],
+                                        },
+                                        "then": {
+                                            "properties": {
+                                                "schema_ref": {"const": schema_ref},
+                                                "object_version": {"const": object_version},
+                                            }
+                                        },
+                                    }
+                                    for role, (
+                                        schema_ref,
+                                        object_version,
+                                    ) in _P001_OUTPUT_ROLE_CONTRACTS.items()
+                                ]
+                            }
+                        }
+                    }
+                },
+                *[
+                    {
+                        "properties": {
+                            "outputs": {
+                                "contains": {
+                                    "properties": {"role": {"const": role}},
+                                    "required": ["role"],
+                                },
+                                "minContains": int(role == "qc_readiness_profile_v2"),
+                                "maxContains": 1,
+                            }
+                        }
+                    }
+                    for role in _P001_OUTPUT_ROLE_CONTRACTS
+                ],
+                {
+                    "if": {
+                        "properties": {
+                            "outputs": {
+                                "contains": {
+                                    "properties": {
+                                        "role": {
+                                            "enum": [
+                                                "biological_unit_assignment",
+                                                "biological_unit_manifest",
+                                            ]
+                                        }
+                                    },
+                                    "required": ["role"],
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "outputs": {
+                                "allOf": [
+                                    {
+                                        "contains": {
+                                            "properties": {
+                                                "role": {
+                                                    "const": "biological_unit_assignment"
+                                                }
+                                            },
+                                            "required": ["role"],
+                                        }
+                                    },
+                                    {
+                                        "contains": {
+                                            "properties": {
+                                                "role": {
+                                                    "const": "biological_unit_manifest"
+                                                }
+                                            },
+                                            "required": ["role"],
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    },
+                },
+            ]
+        },
+    )
+
+    object_version: Literal["0.1.0"]
+    schema_ref: Literal["bridge://schemas/p0-01-structured-output-index/v0.1"]
+    run_id: str = Field(min_length=1)
+    outputs: list[P001StructuredOutputRecord] = Field(min_length=1, max_length=3)
+
+    @model_validator(mode="after")
+    def outputs_are_coherent(self) -> Self:
+        for field in ("role", "relative_filename", "artifact_id"):
+            values = [getattr(item, field) for item in self.outputs]
+            if len(values) != len(set(values)):
+                raise ValueError(f"structured output {field} values must be unique")
+        for item in self.outputs:
+            expected_schema_ref, expected_object_version = _P001_OUTPUT_ROLE_CONTRACTS[
+                item.role
+            ]
+            if (item.schema_ref, item.object_version) != (
+                expected_schema_ref,
+                expected_object_version,
+            ):
+                raise ValueError(
+                    f"structured output {item.role} uses the wrong schema or object version"
+                )
+        roles = {item.role for item in self.outputs}
+        if "qc_readiness_profile_v2" not in roles:
+            raise ValueError("structured output index must include qc_readiness_profile_v2")
+        lineage_roles = {
+            "biological_unit_assignment",
+            "biological_unit_manifest",
+        }
+        if roles & lineage_roles and not lineage_roles <= roles:
+            raise ValueError("biological unit assignment and manifest must be indexed together")
+        return self
 
 
 class InputAuditError(ValueError):
@@ -41,17 +212,54 @@ class InputAuditError(ValueError):
 
 
 def sha256_path(path: Path) -> str:
+    """Hash a regular file or a framed manifest of regular directory files."""
+
+    mode = path.lstat().st_mode
+    if stat.S_ISLNK(mode):
+        raise InputAuditError("input_asset_unsafe_file_type", "Input assets cannot contain symlinks")
+    if stat.S_ISREG(mode):
+        return _sha256_regular_file(path)
+    if not stat.S_ISDIR(mode):
+        raise InputAuditError("input_asset_unsafe_file_type", "Input asset must be a regular file or directory")
+
+    records: list[dict[str, str | int]] = []
+    for child in sorted(path.rglob("*"), key=lambda item: item.relative_to(path).as_posix()):
+        child_mode = child.lstat().st_mode
+        relative_path = child.relative_to(path).as_posix()
+        if stat.S_ISLNK(child_mode):
+            raise InputAuditError(
+                "input_asset_unsafe_file_type",
+                f"Input directory contains a symlink: {relative_path}",
+            )
+        if stat.S_ISDIR(child_mode):
+            continue
+        if not stat.S_ISREG(child_mode):
+            raise InputAuditError(
+                "input_asset_unsafe_file_type",
+                f"Input directory contains a special file: {relative_path}",
+            )
+        records.append(
+            {
+                "path": relative_path,
+                "size": child.lstat().st_size,
+                "sha256": _sha256_regular_file(child),
+            }
+        )
+    framed_manifest = json.dumps(
+        {"format": "bridge-directory-digest-v1", "files": records},
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(framed_manifest).hexdigest()
+
+
+def _sha256_regular_file(path: Path) -> str:
     digest = hashlib.sha256()
-    if path.is_file():
-        with path.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                digest.update(chunk)
-        return digest.hexdigest()
-    for child in sorted(item for item in path.rglob("*") if item.is_file()):
-        digest.update(child.relative_to(path).as_posix().encode("utf-8"))
-        with child.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                digest.update(chunk)
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
     return digest.hexdigest()
 
 
@@ -107,12 +315,54 @@ def _read_10x_mtx(asset: InputAsset) -> ad.AnnData:
     barcodes = pd.read_csv(barcode_path, sep="\t", header=None, compression="infer")
     if matrix.shape != (len(barcodes), len(features)):
         raise InputAuditError("10x_dimension_mismatch", "Matrix, feature and barcode dimensions disagree")
-    gene_names = features.iloc[:, 1] if features.shape[1] > 1 else features.iloc[:, 0]
+    if features.shape[1] < 2:
+        raise InputAuditError(
+            "10x_feature_columns_incomplete",
+            "10x MTX feature rows must include feature ID and feature name",
+        )
+    input_feature_count = len(features)
+    legacy_two_column_features = features.shape[1] == 2
+    if legacy_two_column_features:
+        feature_types = pd.Series("Gene Expression", index=features.index)
+        gene_expression = pd.Series(True, index=features.index)
+        feature_selection_policy = "all_features_assumed_gene_expression"
+    else:
+        raw_feature_types = features.iloc[:, 2]
+        if raw_feature_types.isna().any():
+            raise InputAuditError("10x_feature_type_ambiguous", "10x feature_type contains null values")
+        feature_types = raw_feature_types.astype(str).str.strip()
+        if (feature_types == "").any():
+            raise InputAuditError("10x_feature_type_ambiguous", "10x feature_type contains blank values")
+        gene_expression = feature_types == "Gene Expression"
+        if not gene_expression.any():
+            raise InputAuditError(
+                "10x_gene_expression_features_unavailable",
+                "10x feature table contains no Gene Expression rows",
+            )
+        feature_selection_policy = "gene_expression_only"
+    matrix = matrix[:, gene_expression.to_numpy()].tocsr()
+    features = features.loc[gene_expression].reset_index(drop=True)
+    gene_names = features.iloc[:, 1]
+    if gene_names.isna().any() or (gene_names.astype(str).str.strip() == "").any():
+        raise InputAuditError("10x_gene_name_incomplete", "Gene Expression feature names must be complete")
     adata = ad.AnnData(
         matrix,
         obs=pd.DataFrame(index=barcodes.iloc[:, 0].astype(str)),
-        var=pd.DataFrame(index=gene_names.astype(str)),
+        var=pd.DataFrame(
+            {
+                "feature_id": features.iloc[:, 0].astype(str).to_numpy(),
+                "feature_type": feature_types.loc[gene_expression].to_numpy(),
+            },
+            index=gene_names.astype(str),
+        ),
     )
+    adata.uns["bridge_10x_feature_selection"] = {
+        "input_feature_count": input_feature_count,
+        "selected_gene_expression_feature_count": int(gene_expression.sum()),
+        "feature_selection_policy": feature_selection_policy,
+    }
+    if legacy_two_column_features:
+        adata.uns["bridge_input_warnings"] = [LEGACY_TWO_COLUMN_FEATURE_WARNING]
     _add_constant_metadata(adata, asset)
     return adata
 
@@ -185,6 +435,7 @@ def build_declared_lineage(
     *,
     asset: InputAsset,
     observations: pd.DataFrame,
+    qc_capture_groups: pd.Series | None,
     input_hash: str,
     run_id: str,
     tool_version: str,
@@ -223,6 +474,17 @@ def build_declared_lineage(
         declaration = DeclaredLineageMetadata.model_validate(raw_metadata)
     except ValidationError:
         return _lineage_unavailable(base_view, "biological_unit_lineage_metadata_invalid")
+    declared_kinds = set(declaration.observation_ref_columns) | set(declaration.constant_unit_refs)
+    if input_level == "count_ready" and BiologicalUnitKind.CAPTURE not in declared_kinds:
+        return _lineage_unavailable(
+            base_view,
+            "biological_unit_lineage_capture_reference_required",
+        )
+    if input_level == "count_ready" and qc_capture_groups is None:
+        return _lineage_unavailable(
+            base_view,
+            "biological_unit_lineage_capture_partition_unavailable",
+        )
 
     missing_columns = sorted(
         {
@@ -235,7 +497,7 @@ def build_declared_lineage(
         return _lineage_unavailable(base_view, "biological_unit_lineage_column_missing")
 
     assignments: list[BiologicalUnitAssignment] = []
-    bindings: dict[str, BiologicalUnitBinding] = {}
+    bindings: dict[tuple[str, ...], BiologicalUnitBinding] = {}
     for observation_id, (_, row) in zip(observation_ids, observations.iterrows(), strict=True):
         refs: dict[BiologicalUnitKind, VersionedObjectRef] = dict(declaration.constant_unit_refs)
         for kind, column in declaration.observation_ref_columns.items():
@@ -284,10 +546,17 @@ def build_declared_lineage(
             )
         except (ValidationError, ValueError):
             return _lineage_unavailable(base_view, "biological_unit_lineage_contract_invalid")
-        previous = bindings.setdefault(analysis_ref.ref, binding)
-        if previous != binding:
-            return _lineage_unavailable(base_view, "biological_unit_lineage_binding_conflict")
+        bindings.setdefault(_binding_key(binding), binding)
         assignments.append(assignment)
+
+    if input_level == "count_ready" and not _capture_partitions_are_equivalent(
+        qc_capture_groups,
+        [item.capture_ref for item in assignments],
+    ):
+        return _lineage_unavailable(
+            base_view,
+            "biological_unit_lineage_capture_partition_mismatch",
+        )
 
     try:
         assignment_artifact = BiologicalUnitAssignmentArtifact(
@@ -372,6 +641,44 @@ def _parse_versioned_ref(value: str) -> VersionedObjectRef:
     if separator != "@" or not object_id or not object_version:
         raise ValueError("versioned biological unit reference must use object_id@object_version")
     return VersionedObjectRef(object_id=object_id, object_version=object_version)
+
+
+def _binding_key(binding: BiologicalUnitBinding) -> tuple[str, ...]:
+    hierarchy = tuple(
+        "" if (ref := getattr(binding, f"{kind.value}_ref")) is None else ref.ref
+        for kind in _HIERARCHY_KINDS
+    )
+    return (
+        binding.analysis_unit_ref.ref,
+        binding.analysis_unit_kind.value,
+        binding.independence_group_ref.ref,
+        binding.independence_group_kind,
+        *hierarchy,
+    )
+
+
+def _capture_partitions_are_equivalent(
+    qc_capture_groups: pd.Series | None,
+    typed_capture_refs: list[str | None],
+) -> bool:
+    if qc_capture_groups is None or len(qc_capture_groups) != len(typed_capture_refs):
+        return False
+    qc_to_typed: dict[str, set[str]] = {}
+    typed_to_qc: dict[str, set[str]] = {}
+    for qc_group, typed_ref in zip(
+        qc_capture_groups.tolist(),
+        typed_capture_refs,
+        strict=True,
+    ):
+        if typed_ref is None:
+            return False
+        qc_group = str(qc_group)
+        qc_to_typed.setdefault(qc_group, set()).add(typed_ref)
+        typed_to_qc.setdefault(typed_ref, set()).add(qc_group)
+    return all(
+        len(values) == 1
+        for values in (*qc_to_typed.values(), *typed_to_qc.values())
+    )
 
 
 def _lineage_unavailable(view: DataViewBinding, reason: str) -> DeclaredLineageOutput:

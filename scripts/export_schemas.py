@@ -40,6 +40,7 @@ from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
 )
+from bridge.tool_packages.p0_01_input_qc.io import P001StructuredOutputIndex
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS as P0_08_SCHEMA_MODELS,
 )
@@ -89,6 +90,10 @@ MODELS = {
     "product_definition_card": (
         "bridge://schemas/product-definition-card/v0.1",
         ProductDefinitionCard,
+    ),
+    "p0_01_structured_output_index": (
+        "bridge://schemas/p0-01-structured-output-index/v0.1",
+        P001StructuredOutputIndex,
     ),
     "qc_readiness_profile": ("bridge://schemas/qc-readiness-profile/v0.1", QCReadinessProfile),
     "qc_readiness_profile_v2": (
