@@ -1,0 +1,124 @@
+{
+  "$defs": {
+    "ComparisonGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "minItems": 1,
+          "title": "Bundle Refs",
+          "type": "array"
+        },
+        "group_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Group Id",
+          "type": "string"
+        },
+        "product_definition_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "role": {
+          "$ref": "#/$defs/ComparisonGroupRole"
+        },
+        "target_stage_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        }
+      },
+      "required": [
+        "group_id",
+        "role",
+        "product_definition_ref",
+        "target_stage_ref",
+        "bundle_refs"
+      ],
+      "title": "ComparisonGroup",
+      "type": "object"
+    },
+    "ComparisonGroupRole": {
+      "enum": [
+        "baseline",
+        "comparator",
+        "reference_ood"
+      ],
+      "title": "ComparisonGroupRole",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/comparison-case-manifest/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "comparison_id": {
+      "pattern": "^comparison:[A-Za-z0-9._:-]+$",
+      "title": "Comparison Id",
+      "type": "string"
+    },
+    "comparison_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Comparison Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "groups": {
+      "items": {
+        "$ref": "#/$defs/ComparisonGroup"
+      },
+      "minItems": 2,
+      "title": "Groups",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "$ref": "#/$defs/VersionedObjectRef"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    }
+  },
+  "required": [
+    "object_version",
+    "comparison_id",
+    "comparison_version",
+    "spec_ref",
+    "groups",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "ComparisonCaseManifest",
+  "type": "object"
+}

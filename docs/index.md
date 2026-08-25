@@ -29,6 +29,7 @@
 
 ## Validation Records
 
+- [P0-07 Product Comparison & Stability candidate validation, 2026-08-25](validation/p0_07_product_comparison_stability_v0.2.md)
 - [P0-05 Off-target Control candidate validation, 2026-08-25](validation/p0_05_off_target_control_20260825.md)
 - [P0-06 Proliferation & Stress Response candidate validation, 2026-08-25](validation/p0_06_proliferation_stress_response_20260825.md)
 - [P0-04 Developmental Compatibility candidate validation, 2026-08-25](validation/p0_04_developmental_compatibility_v0.2.md)
