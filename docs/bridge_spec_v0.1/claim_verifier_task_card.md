@@ -16,7 +16,7 @@ checksummed inputs are `ReportDraft`, a P0-09 Case graph manifest,
 versions embedded in the packaged release contract. Free Markdown recovery,
 LLM judgment, web/media rendering,
 OCR and automatic export are not runtime inputs. The versioned method record is
-[BENCHMARK.md](../../tool_packages/P0-10/BENCHMARK.md); candidate methods do not
+[benchmark record](../validation/p0_10_claim_verifier_benchmark_v0.1.md); candidate methods do not
 constitute a selected default.
 
 ## 1. 任务目标与边界

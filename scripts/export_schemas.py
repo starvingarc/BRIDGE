@@ -122,15 +122,13 @@ for schema_models in (P0_08_SCHEMA_MODELS, P0_09_SCHEMA_MODELS, P0_10_SCHEMA_MOD
 
 def main() -> int:
     repo = Path(__file__).resolve().parents[1]
-    output_dirs = [repo / "schemas", repo / "src/bridge/resources/schemas"]
-    for output_dir in output_dirs:
-        output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = repo / "src/bridge/resources/schemas"
+    output_dir.mkdir(parents=True, exist_ok=True)
     for filename, (schema_id, model) in MODELS.items():
         schema = model.model_json_schema()
         schema["$id"] = schema_id
         encoded = json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-        for output_dir in output_dirs:
-            (output_dir / f"{filename}.schema.json").write_text(encoded, encoding="utf-8")
+        (output_dir / f"{filename}.schema.json").write_text(encoded, encoding="utf-8")
     return 0
 
 

@@ -33,20 +33,12 @@ FORBIDDEN_PRIVATE = (
 LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 PRODUCT_LEVEL_V2_BRANDING = re.compile(r"\bbridge(?:\s+|[-_])v2\b", re.IGNORECASE)
 COMPLETED_PLAN_NAME = re.compile(r"(?:^|[-_])(?:complete(?:d)?|done)(?:[-_.]|$)", re.IGNORECASE)
-TRACKED_FILE_BASELINE = 315
+TRACKED_FILE_BASELINE = 250
 IMPLEMENTED_TOOL_BASELINE = 5
 MAX_FILES_PER_NEW_IMPLEMENTED_TOOL = 18
 SHARED_CONTRACT_SPINE_FILES = (
     Path("docs/validation/shared_p0_scientific_contract_spine_20260825.md"),
     Path("plans/shared-p0-scientific-contract-spine.md"),
-    Path("schemas/biological_unit_assignment.schema.json"),
-    Path("schemas/biological_unit_manifest.schema.json"),
-    Path("schemas/measurement_result_v2.schema.json"),
-    Path("schemas/measurement_spec_v2.schema.json"),
-    Path("schemas/qc_readiness_profile_v2.schema.json"),
-    Path("schemas/cell_state_evidence_profile_v2.schema.json"),
-    Path("schemas/product_case.schema.json"),
-    Path("schemas/product_definition_card.schema.json"),
     Path("src/bridge/resources/schemas/biological_unit_assignment.schema.json"),
     Path("src/bridge/resources/schemas/biological_unit_manifest.schema.json"),
     Path("src/bridge/resources/schemas/measurement_result_v2.schema.json"),
@@ -104,7 +96,6 @@ def main() -> int:
         if legacy_term in active_source:
             problems.append(f"legacy scoring term in active source: {legacy_term}")
 
-    _check_projection_parity(problems)
     _check_tool_package_specs(problems)
 
     if problems:
@@ -149,6 +140,12 @@ def _tracked_file_budget() -> int:
 
 def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> None:
     for relative_path in tracked_files:
+        if relative_path.parts and relative_path.parts[0] in {"schemas", "tool_packages"}:
+            problems.append(f"duplicate root projection: {relative_path}")
+        if relative_path.parts and relative_path.parts[0] in {"catalog_seed", "tools"}:
+            problems.append(f"obsolete root directory: {relative_path}")
+        if relative_path == Path("PLANS.md"):
+            problems.append("obsolete root plan index: PLANS.md")
         if "legacy" in {part.casefold() for part in relative_path.parts}:
             problems.append(f"active legacy directory: {relative_path}")
         if (
@@ -158,24 +155,6 @@ def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> Non
             and COMPLETED_PLAN_NAME.search(relative_path.name)
         ):
             problems.append(f"completed plan file remains active: {relative_path}")
-
-
-def _check_projection_parity(problems: list[str]) -> None:
-    card_dir = ROOT / "src" / "bridge" / "tool_packages" / "cards"
-    packaged_card_dir = ROOT / "tool_packages"
-    public_cards = {path.stem: path for path in card_dir.glob("P0-*.md")}
-    packaged_cards = {
-        path.parent.name: path for path in packaged_card_dir.glob("P0-*/README.md")
-    }
-    _check_byte_projection_pair("Tool Card", public_cards, packaged_cards, problems)
-
-    public_schemas = {path.name: path for path in (ROOT / "schemas").glob("*.schema.json")}
-    packaged_schemas = {
-        path.name: path
-        for path in (ROOT / "src" / "bridge" / "resources" / "schemas").glob("*.schema.json")
-    }
-    _check_byte_projection_pair("schema", public_schemas, packaged_schemas, problems)
-
 
 def _check_tool_package_specs(problems: list[str]) -> None:
     for path in sorted((ROOT / "src/bridge/tool_packages/specs").glob("*.yaml")):
@@ -253,21 +232,6 @@ def _check_tool_package_specs(problems: list[str]) -> None:
             registry._resolve_adapter(spec)
         except Exception as exc:
             problems.append(f"implemented v0.2 adapter does not resolve: {spec.tool_id}: {exc}")
-
-
-def _check_byte_projection_pair(
-    label: str,
-    public: dict[str, Path],
-    packaged: dict[str, Path],
-    problems: list[str],
-) -> None:
-    if public.keys() != packaged.keys():
-        problems.append(f"{label} projection inventory mismatch")
-        return
-    for key in sorted(public):
-        if public[key].read_bytes() != packaged[key].read_bytes():
-            problems.append(f"{label} projection bytes differ: {key}")
-
 
 def _broken_links(path: Path, text: str) -> list[str]:
     problems: list[str] = []
