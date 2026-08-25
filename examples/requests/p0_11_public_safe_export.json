@@ -1,0 +1,48 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "report",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/report_draft.json",
+      "role": "report_draft",
+      "schema_ref": "bridge://schemas/report-draft/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "receipt",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/claim_verification_result.json",
+      "role": "claim_verification_result",
+      "schema_ref": "bridge://schemas/claim-verification-result/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "policy",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/public_export_policy.json",
+      "role": "public_export_policy",
+      "schema_ref": "bridge://schemas/public-export-policy-spec/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "export-request",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/public_export_request.json",
+      "role": "public_export_request",
+      "schema_ref": "bridge://schemas/public-export-request/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-11-documentation-only",
+  "tool_id": "P0-11",
+  "tool_version": "0.2.0"
+}

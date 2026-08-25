@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "PublicClaimField": {
+      "enum": [
+        "claim_type",
+        "text",
+        "language",
+        "statement_refs",
+        "reported_evidence_state",
+        "comparison_mode"
+      ],
+      "title": "PublicClaimField",
+      "type": "string"
+    },
+    "PublicExportChannel": {
+      "enum": [
+        "public_json"
+      ],
+      "title": "PublicExportChannel",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-export-policy-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "active": {
+      "title": "Active",
+      "type": "boolean"
+    },
+    "allowed_statement_refs": {
+      "items": {
+        "pattern": "^statement:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+        "type": "string"
+      },
+      "title": "Allowed Statement Refs",
+      "type": "array"
+    },
+    "allowlisted_claim_fields": {
+      "items": {
+        "$ref": "#/$defs/PublicClaimField"
+      },
+      "minItems": 3,
+      "title": "Allowlisted Claim Fields",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "policy_id": {
+      "pattern": "^public-export-policy:[A-Za-z0-9._:-]+$",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "policy_version": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "public_case_aliases": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "minProperties": 1,
+      "title": "Public Case Aliases",
+      "type": "object"
+    },
+    "report_audience": {
+      "const": "public_candidate",
+      "title": "Report Audience",
+      "type": "string"
+    },
+    "target_channels": {
+      "items": {
+        "$ref": "#/$defs/PublicExportChannel"
+      },
+      "minItems": 1,
+      "title": "Target Channels",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "policy_id",
+    "policy_version",
+    "active",
+    "report_audience",
+    "target_channels",
+    "allowlisted_claim_fields",
+    "public_case_aliases",
+    "allowed_statement_refs"
+  ],
+  "title": "PublicExportPolicySpec",
+  "type": "object"
+}

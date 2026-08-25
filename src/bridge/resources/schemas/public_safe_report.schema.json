@@ -1,0 +1,197 @@
+{
+  "$defs": {
+    "ClaimType": {
+      "enum": [
+        "measurement_claim",
+        "domain_interpretation",
+        "descriptive_comparison",
+        "inferential_comparison",
+        "availability_claim",
+        "alert_claim",
+        "prior_or_literature_claim",
+        "method_claim",
+        "recommendation_hypothesis",
+        "graft_retrospective_claim",
+        "policy_or_boundary_statement",
+        "visualization_caption"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "ComparisonMode": {
+      "enum": [
+        "not_applicable",
+        "descriptive_only",
+        "inferential"
+      ],
+      "title": "ComparisonMode",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "PublicExportChannel": {
+      "enum": [
+        "public_json"
+      ],
+      "title": "PublicExportChannel",
+      "type": "string"
+    },
+    "PublicSafeClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "comparison_mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComparisonMode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "language": {
+          "$ref": "#/$defs/ReportLanguage"
+        },
+        "public_case_alias": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$",
+          "title": "Public Case Alias",
+          "type": "string"
+        },
+        "public_claim_id": {
+          "pattern": "^public-claim:[a-f0-9]{16}$",
+          "title": "Public Claim Id",
+          "type": "string"
+        },
+        "reported_evidence_state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "statement_refs": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^statement:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statement Refs"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "public_claim_id",
+        "public_case_alias",
+        "claim_type",
+        "text",
+        "language"
+      ],
+      "title": "PublicSafeClaim",
+      "type": "object"
+    },
+    "ReportLanguage": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed"
+      ],
+      "title": "ReportLanguage",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-safe-report/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "claim_verification_receipt_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Claim Verification Receipt Sha256",
+      "type": "string"
+    },
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/PublicSafeClaim"
+      },
+      "minItems": 1,
+      "title": "Claims",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "export_policy_ref": {
+      "pattern": "^public-export-policy:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+      "title": "Export Policy Ref",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "public_report_id": {
+      "pattern": "^public-report:[a-f0-9]{16}$",
+      "title": "Public Report Id",
+      "type": "string"
+    },
+    "public_report_version": {
+      "const": "0.1.0",
+      "title": "Public Report Version",
+      "type": "string"
+    },
+    "source_report_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Report Sha256",
+      "type": "string"
+    },
+    "target_channel": {
+      "$ref": "#/$defs/PublicExportChannel"
+    }
+  },
+  "required": [
+    "object_version",
+    "public_report_id",
+    "public_report_version",
+    "source_report_sha256",
+    "claim_verification_receipt_sha256",
+    "export_policy_ref",
+    "target_channel",
+    "claims",
+    "created_at"
+  ],
+  "title": "PublicSafeReport",
+  "type": "object"
+}
