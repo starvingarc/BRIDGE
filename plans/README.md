@@ -6,7 +6,6 @@
 |---|---|---|---|---|
 | [P0-02 External-Source Freeze Candidate](p0-02-cell-state-scientific-freeze.md) | Determine whether reviewed fetal ventral-midbrain states can support source-aware product annotation and reject off-axis cells | Birtele is conditionally approved for source/stage-level holdout with provisional groups; all samples remain `not_estimable` as biological replicates | Review the 25 state cards one at a time, then ProductDefinitionCard and StateRoleMap | `biological_review_in_progress` |
 | [Shared P0 Scientific Contract Spine](shared-p0-scientific-contract-spine.md) | Preserve exact data-view, biological-unit and measurement lineage across independently packaged P0 modules | Exact source and installed-wheel suites pass at the implementation commit without importing mutable domain decisions | Complete independent biology, single-cell/statistics and AI4S exact-head review | `implementation_complete_review_pending` |
-| [Repository Readability](repository-readability.md) | Make the public entrypoints and all 12 package documentation paths readable without changing scientific claims | Reader-oriented navigation and all 12 package landing pages pass exact-source and isolated-wheel server gates | Complete GitHub exact-head CI and human review | `implementation_complete_review_pending` |
 
 ## Rules
 
