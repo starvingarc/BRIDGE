@@ -32,7 +32,8 @@ This generated shortlist mirrors the methods selected by the active P0-01, P0-02
 
 ## P0-03: Target Identity & Regional Fidelity
 
-No methods are selected while this package remains a scaffold.
+- `METHOD-BRIDGE-DETERMINISTIC-STATEROLEMAP` — BRIDGE deterministic StateRoleMap ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DETERMINISTIC-STATEROLEMAP))
+- `METHOD-BRIDGE-REGIONAL-STATEROLEMAP` — BRIDGE regional StateRoleMap ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-REGIONAL-STATEROLEMAP))
 
 ## P0-08: Evidence Sufficiency
 

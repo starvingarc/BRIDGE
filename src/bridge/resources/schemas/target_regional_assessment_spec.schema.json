@@ -1,0 +1,206 @@
+{
+  "$defs": {
+    "CompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "CompositionView",
+      "type": "string"
+    },
+    "LineageRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "not_target",
+        "unresolved"
+      ],
+      "title": "LineageRole",
+      "type": "string"
+    },
+    "RegionalRole": {
+      "enum": [
+        "target_region",
+        "acceptable_adjacent_region",
+        "regional_shift",
+        "not_applicable",
+        "unresolved"
+      ],
+      "title": "RegionalRole",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/target-regional-assessment-spec/v0.1",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "source_ids": {
+            "maxItems": 0
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "composition_views": {
+            "contains": {
+              "const": "source_specific"
+            }
+          }
+        },
+        "required": [
+          "composition_views"
+        ]
+      },
+      "then": {
+        "properties": {
+          "source_ids": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "regional_denominator_lineage_roles": {
+          "not": {
+            "contains": {
+              "const": "unresolved"
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "whole_product_target_region_roles": {
+          "not": {
+            "contains": {
+              "const": "unresolved"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "assessment_spec_id": {
+      "pattern": "^target-regional-assessment-spec:[A-Za-z0-9._:-]+$",
+      "title": "Assessment Spec Id",
+      "type": "string"
+    },
+    "assessment_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Assessment Spec Version",
+      "type": "string"
+    },
+    "composition_views": {
+      "items": {
+        "$ref": "#/$defs/CompositionView"
+      },
+      "minItems": 1,
+      "title": "Composition Views",
+      "type": "array"
+    },
+    "included_label_levels": {
+      "items": {
+        "enum": [
+          "L1",
+          "L2",
+          "L3"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Included Label Levels",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "regional_denominator_lineage_roles": {
+      "items": {
+        "$ref": "#/$defs/LineageRole"
+      },
+      "minItems": 1,
+      "title": "Regional Denominator Lineage Roles",
+      "type": "array"
+    },
+    "source_ids": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Source Ids",
+      "type": "array"
+    },
+    "spatial_policy": {
+      "const": "not_assessed_without_projection",
+      "title": "Spatial Policy",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "candidate",
+        "frozen"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "unmapped_state_policy": {
+      "const": "report_unresolved",
+      "title": "Unmapped State Policy",
+      "type": "string"
+    },
+    "whole_product_target_region_roles": {
+      "items": {
+        "$ref": "#/$defs/RegionalRole"
+      },
+      "minItems": 1,
+      "title": "Whole Product Target Region Roles",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "assessment_spec_id",
+    "assessment_spec_version",
+    "product_definition_ref",
+    "status",
+    "composition_views",
+    "included_label_levels",
+    "regional_denominator_lineage_roles",
+    "whole_product_target_region_roles",
+    "unmapped_state_policy",
+    "spatial_policy"
+  ],
+  "title": "TargetRegionalAssessmentSpec",
+  "type": "object"
+}

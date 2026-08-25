@@ -40,6 +40,9 @@ from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
 )
+from bridge.tool_packages.p0_03_target_regional.models import (
+    PUBLIC_SCHEMA_MODELS as P0_03_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS as P0_08_SCHEMA_MODELS,
 )
@@ -113,7 +116,12 @@ def _schema_filename(schema_id: str) -> str:
     return slug.replace("-", "_")
 
 
-for schema_models in (P0_08_SCHEMA_MODELS, P0_09_SCHEMA_MODELS, P0_10_SCHEMA_MODELS):
+for schema_models in (
+    P0_03_SCHEMA_MODELS,
+    P0_08_SCHEMA_MODELS,
+    P0_09_SCHEMA_MODELS,
+    P0_10_SCHEMA_MODELS,
+):
     for schema_id, model in schema_models.items():
         filename = _schema_filename(schema_id)
         if filename in MODELS:

@@ -1,12 +1,16 @@
 tool_id: P0-03
 name: Target Identity & Regional Fidelity
-version: 0.1.0
+version: 0.2.0
 summary: Measure target lineage identity and ventral-midbrain regional support.
-implementation_state: scaffold
+implementation_state: implemented
 scientific_status: candidate
 optional: false
 environment_spec_id: ENV-P0-CORE-v0.1
-input_schema_ref: bridge://schemas/tool-request/v0.1
-output_schema_ref: bridge://schemas/tool-run/v0.1
-method_ids: []
+input_schema_ref: bridge://schemas/tool-request/v0.2
+output_schema_ref: bridge://schemas/tool-run/v0.2
+result_schema_ref: bridge://schemas/target-regional-evidence-result/v0.1
+adapter_ref: bridge.tool_packages.p0_03_target_regional.adapter:adapter
+method_ids:
+  - METHOD-BRIDGE-DETERMINISTIC-STATEROLEMAP
+  - METHOD-BRIDGE-REGIONAL-STATEROLEMAP
 card_ref: bridge://tool-cards/P0-03

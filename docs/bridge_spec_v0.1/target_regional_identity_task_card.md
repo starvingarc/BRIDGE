@@ -3,12 +3,45 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-TARGET-IDENTITY-v0.1`；`TASK-REGIONAL-FIDELITY-v0.1` |
-| 文档版本 | `0.1` |
-| 日期 | 2026-08-06 |
+| 文档版本 | `0.2 executable-candidate update` |
+| 日期 | 2026-08-25 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA progenitor |
-| 上游输入 | `QCReadinessProfile`、`CellStateEvidenceProfile`、`ProductDefinitionCard` |
-| 主要输出 | `TargetIdentityProfile`、`RegionalFidelityProfile`、`SpatialReferenceProjectionProfile` |
+| 上游输入 | `ProductCase`、`ProductDefinitionCard`、`StateRoleMap`、`TargetRegionalAssessmentSpec`、`MeasurementSpecV2`、`QCReadinessProfileV2`、`CellStateEvidenceProfileV2`、`BiologicalUnitManifest`、`BiologicalUnitAssignmentArtifact` |
+| 主要输出 | `TargetRegionalEvidenceResult`（raw target/regional channels；spatial 固定为 `not_assessed`） |
+
+## 0. 当前可执行候选
+
+P0-03 v0.2.0 实现组成解释的最小确定性路径。它通过
+`ToolRequestV2` 精确接收九个带 Schema、版本和 SHA-256 的本地 JSON 对象：
+ProductCase、ProductDefinitionCard、StateRoleMap、
+TargetRegionalAssessmentSpec、MeasurementSpecV2、CellStateEvidenceProfileV2、
+QCReadinessProfileV2、BiologicalUnitManifest 和
+BiologicalUnitAssignmentArtifact，输出一个原子发布的
+`TargetRegionalEvidenceResult`。旧 QC/Cell-State v0.1 profile 不构成兼容入口。
+
+实现代码不包含具体状态名、marker、状态到产品角色的映射、阈值或固定的
+正向角色集合。下文 PD-mDA 内容仍是待审核科学候选；一次运行实际采用的状态
+角色、composition view、source、label level、regional denominator roles 和
+whole-product numerator roles 全部来自版本化、带 checksum 的输入。因此生物学
+决定变化时替换对象版本即可，不需要修改执行器。
+
+“外部可配置”不等于可以重新解释 unknown。执行合同只固化不可变的安全约束：
+角色不能自相矛盾；`SOURCE_SPECIFIC` 与 `source_ids` 必须成对；上游
+`unknown`、`ood`、`unresolved`、unresolved label、显式 unresolved mapping 和
+composition residual 永远保持 unresolved，至少形成 `partial`，不得补零或进入
+正向 numerator/denominator。其他角色集合仍完全由评估 spec 决定。每个 target
+channel 的 role numerators 必须守恒到 whole denominator；每个 regional channel
+必须同时守恒 target-related denominator 和 whole-product denominator。
+
+九对象脊柱还要求 ProductCase、MeasurementSpec、P0-01 data view、P0-02 input
+view、manifest 和 assignment 的 observation set、analysis unit、independence group、
+hierarchy、ref 与 checksum 全部闭合。assignment 不参与生物学角色求和，但用于
+证明每个观测对应哪个实验单位，并将该文件 checksum 写入结果。`declared` 仍只
+表示来源声明，不能被解释为已审核的独立生物重复。
+
+当前路径不重跑表达分析或空间投射，不输出区间、MeasurementResult、分数、效力、
+安全或放行结论。所有可评估结果仍为 `shadow`，`domain_score=null`。
 
 ## 1. 任务目标
 
@@ -22,8 +55,8 @@
 ## 2. 评估边界
 
 - Cell-State 模块负责生成 prediction set、连续权重、方法分歧和 unknown；本模块负责依据 ProductDefinitionCard 解释这些证据。
-- Target Identity 的默认分母为全部 `eligible_cells_view` 细胞。
-- Regional Fidelity 的正式候选分母为 target-related cells；同时单列完整制剂中的区域支持比例。
+- Target Identity 分母来自所选 P0-02 composition channel，并由输入记录显式携带。
+- Regional Fidelity 分母由 `TargetRegionalAssessmentSpec` 指定的 lineage roles 组成；同时单列完整制剂中的区域支持比例。
 - 区域身份、细胞谱系和发育阶段分别判断。体外分化日不能自动换算为 GW/PCW。
 - 体外产品 scRNA 投射到人胚空间参考称为 **Spatial Reference Projection**，不表示产品具有真实组织空间结构。
 - 非目标细胞和异常状态传递给 Off-target Control 与 Proliferation & Stress Response，不在本模块重复定义。
