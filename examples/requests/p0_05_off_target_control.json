@@ -1,0 +1,66 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "product-case",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_case.json",
+      "role": "product_case",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "product-definition",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_definition_card.json",
+      "role": "product_definition_card",
+      "schema_ref": "bridge://schemas/product-definition-card/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "state-role-map",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/state_role_map.json",
+      "role": "state_role_map",
+      "schema_ref": "bridge://schemas/state-role-map/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "assessment-spec",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/off_target_assessment_spec.json",
+      "role": "off_target_assessment_spec",
+      "schema_ref": "bridge://schemas/off-target-assessment-spec/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "input_id": "cell-state-profile",
+      "media_type": "application/json",
+      "object_version": "0.2.0",
+      "path": "/absolute/path/to/cell_state_evidence_profile_v2.json",
+      "role": "cell_state_evidence_profile",
+      "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.2",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "input_id": "off-target-evidence",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/off_target_evidence_bundle.json",
+      "role": "off_target_evidence_bundle",
+      "schema_ref": "bridge://schemas/off-target-evidence-bundle/v0.1",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-05-documentation-only",
+  "tool_id": "P0-05",
+  "tool_version": "0.2.0"
+}

@@ -48,7 +48,7 @@ byte-identical artifacts.
 
 ## Engineering evidence
 
-- Focused P0-06 and registry suite: 35 passed.
+- Focused P0-06 and registry suite: 34 passed.
 - Exactly 12 high-level Tool Packages remain discoverable.
 - Five module-local public P0-06 Schemas are generated, packaged and byte-identical across
   two consecutive generator runs.

@@ -1,0 +1,252 @@
+{
+  "$defs": {
+    "CoverageState": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "CoverageState",
+      "type": "string"
+    },
+    "OffTargetDenominator": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Denominator Id",
+          "type": "string"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "total_soft_mass": {
+          "exclusiveMinimum": 0.0,
+          "title": "Total Soft Mass",
+          "type": "number"
+        },
+        "unit": {
+          "const": "cells",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "denominator_id",
+        "n_observations",
+        "total_soft_mass",
+        "unit"
+      ],
+      "title": "OffTargetDenominator",
+      "type": "object"
+    },
+    "RareStateCalibration": {
+      "additionalProperties": false,
+      "properties": {
+        "calibration_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Calibration Ref",
+          "type": "string"
+        },
+        "calibration_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Calibration Sha256",
+          "type": "string"
+        },
+        "false_positive_fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "False Positive Fraction",
+          "type": "number"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        },
+        "validated_detection_limit_fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Validated Detection Limit Fraction",
+          "type": "number"
+        },
+        "zero_observation_upper_bound_fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Zero Observation Upper Bound Fraction",
+          "type": "number"
+        }
+      },
+      "required": [
+        "state_id",
+        "calibration_ref",
+        "calibration_sha256",
+        "validated_detection_limit_fraction",
+        "false_positive_fraction",
+        "zero_observation_upper_bound_fraction"
+      ],
+      "title": "RareStateCalibration",
+      "type": "object"
+    },
+    "StateObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "observed_count": {
+          "minimum": 0,
+          "title": "Observed Count",
+          "type": "integer"
+        },
+        "soft_mass": {
+          "minimum": 0.0,
+          "title": "Soft Mass",
+          "type": "number"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "soft_mass",
+        "observed_count"
+      ],
+      "title": "StateObservation",
+      "type": "object"
+    },
+    "UnknownObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "observed_count": {
+          "minimum": 0,
+          "title": "Observed Count",
+          "type": "integer"
+        },
+        "reason_id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Reason Id",
+          "type": "string"
+        },
+        "soft_mass": {
+          "minimum": 0.0,
+          "title": "Soft Mass",
+          "type": "number"
+        }
+      },
+      "required": [
+        "reason_id",
+        "soft_mass",
+        "observed_count"
+      ],
+      "title": "UnknownObservation",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/off-target-evidence-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "bundle_id": {
+      "pattern": "^off-target-evidence-bundle:[A-Za-z0-9._:-]+$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "bundle_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Bundle Version",
+      "type": "string"
+    },
+    "cell_state_profile_id": {
+      "minLength": 1,
+      "title": "Cell State Profile Id",
+      "type": "string"
+    },
+    "cell_state_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Cell State Profile Sha256",
+      "type": "string"
+    },
+    "composition_coverage_state": {
+      "$ref": "#/$defs/CoverageState"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "denominator": {
+      "$ref": "#/$defs/OffTargetDenominator"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "minLength": 1,
+      "title": "Product Case Ref",
+      "type": "string"
+    },
+    "product_case_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Product Case Sha256",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "minLength": 1,
+      "title": "Product Definition Ref",
+      "type": "string"
+    },
+    "product_definition_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Product Definition Sha256",
+      "type": "string"
+    },
+    "rare_state_calibrations": {
+      "items": {
+        "$ref": "#/$defs/RareStateCalibration"
+      },
+      "title": "Rare State Calibrations",
+      "type": "array"
+    },
+    "state_observations": {
+      "items": {
+        "$ref": "#/$defs/StateObservation"
+      },
+      "title": "State Observations",
+      "type": "array"
+    },
+    "unknown_coverage_state": {
+      "$ref": "#/$defs/CoverageState"
+    },
+    "unknown_observations": {
+      "items": {
+        "$ref": "#/$defs/UnknownObservation"
+      },
+      "title": "Unknown Observations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "bundle_id",
+    "bundle_version",
+    "product_case_ref",
+    "product_case_sha256",
+    "product_definition_ref",
+    "product_definition_sha256",
+    "cell_state_profile_id",
+    "cell_state_profile_sha256",
+    "denominator",
+    "composition_coverage_state",
+    "state_observations",
+    "unknown_coverage_state",
+    "unknown_observations",
+    "rare_state_calibrations",
+    "created_at"
+  ],
+  "title": "OffTargetEvidenceBundle",
+  "type": "object"
+}
