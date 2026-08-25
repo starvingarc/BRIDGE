@@ -1,0 +1,289 @@
+{
+  "$defs": {
+    "AnalysisScope": {
+      "enum": [
+        "whole_product",
+        "state_specific"
+      ],
+      "title": "AnalysisScope",
+      "type": "string"
+    },
+    "ProgramEvidenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "denominator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "evidence_state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Gene Coverage",
+          "type": "number"
+        },
+        "lod_state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Lod State",
+          "type": "string"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "process_step_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Process Step Ids",
+          "type": "array"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "provenance_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "source_run_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+          "title": "Source Run Ref",
+          "type": "string"
+        },
+        "stage_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Stage Id",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "program_id",
+        "analysis_scope",
+        "stage_id",
+        "metric_id",
+        "gene_coverage",
+        "lod_state",
+        "evidence_state",
+        "source_run_ref",
+        "provenance_refs"
+      ],
+      "title": "ProgramEvidenceRecord",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/program-evidence-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "cell_state_profile_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Cell State Profile Ref",
+      "type": "string"
+    },
+    "cell_state_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Cell State Profile Sha256",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "development_window_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "development_window_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Development Window Sha256",
+      "type": "string"
+    },
+    "evidence_bundle_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Evidence Bundle Id",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_case_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Product Case Sha256",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_definition_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Product Definition Sha256",
+      "type": "string"
+    },
+    "program_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "program_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Program Spec Sha256",
+      "type": "string"
+    },
+    "protocol_context_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Protocol Context Ref",
+      "type": "string"
+    },
+    "protocol_context_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Protocol Context Sha256",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/ProgramEvidenceRecord"
+      },
+      "minItems": 1,
+      "title": "Records",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "evidence_bundle_id",
+    "product_case_ref",
+    "product_case_sha256",
+    "product_definition_ref",
+    "product_definition_sha256",
+    "development_window_ref",
+    "development_window_sha256",
+    "program_spec_ref",
+    "program_spec_sha256",
+    "cell_state_profile_ref",
+    "cell_state_profile_sha256",
+    "protocol_context_ref",
+    "protocol_context_sha256",
+    "records",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "ProgramEvidenceBundle",
+  "type": "object"
+}

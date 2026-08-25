@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "DevelopmentWindowState": {
+      "enum": [
+        "unconfirmed",
+        "confirmed"
+      ],
+      "title": "DevelopmentWindowState",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/development-window-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "applicable_stage_ids": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Applicable Stage Ids",
+      "type": "array"
+    },
+    "development_window_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Development Window Id",
+      "type": "string"
+    },
+    "development_window_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Development Window Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "window_state": {
+      "$ref": "#/$defs/DevelopmentWindowState"
+    }
+  },
+  "required": [
+    "object_version",
+    "development_window_id",
+    "development_window_version",
+    "product_definition_ref",
+    "window_state",
+    "applicable_stage_ids",
+    "provenance_refs"
+  ],
+  "title": "DevelopmentWindowSpec",
+  "type": "object"
+}

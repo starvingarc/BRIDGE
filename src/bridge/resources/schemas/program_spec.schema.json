@@ -1,0 +1,251 @@
+{
+  "$defs": {
+    "AnalysisScope": {
+      "enum": [
+        "whole_product",
+        "state_specific"
+      ],
+      "title": "AnalysisScope",
+      "type": "string"
+    },
+    "ProcessAttributionRule": {
+      "additionalProperties": false,
+      "properties": {
+        "minimum_comparable_groups": {
+          "minimum": 1,
+          "title": "Minimum Comparable Groups",
+          "type": "integer"
+        },
+        "minimum_independent_replicates": {
+          "minimum": 1,
+          "title": "Minimum Independent Replicates",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "minimum_independent_replicates",
+        "minimum_comparable_groups"
+      ],
+      "title": "ProcessAttributionRule",
+      "type": "object"
+    },
+    "ProgramRule": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_analysis_scopes": {
+          "items": {
+            "$ref": "#/$defs/AnalysisScope"
+          },
+          "minItems": 1,
+          "title": "Allowed Analysis Scopes",
+          "type": "array"
+        },
+        "allowed_lod_states": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Lod States",
+          "type": "array"
+        },
+        "allowed_metric_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Metric Ids",
+          "type": "array"
+        },
+        "allowed_stage_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Stage Ids",
+          "type": "array"
+        },
+        "allowed_state_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Allowed State Ids",
+          "type": "array"
+        },
+        "gene_set_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+          "title": "Gene Set Ref",
+          "type": "string"
+        },
+        "gene_set_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Gene Set Sha256",
+          "type": "string"
+        },
+        "minimum_gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Minimum Gene Coverage",
+          "type": "number"
+        },
+        "orthogonal_follow_up_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "title": "Orthogonal Follow Up Refs",
+          "type": "array"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "provenance_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Provenance Refs",
+          "type": "array"
+        },
+        "resolvable_lod_states": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Resolvable Lod States",
+          "type": "array"
+        },
+        "review_outcomes": {
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9._:-]*$": {
+              "$ref": "#/$defs/ReviewFlagState"
+            }
+          },
+          "title": "Review Outcomes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "program_id",
+        "gene_set_ref",
+        "gene_set_sha256",
+        "allowed_analysis_scopes",
+        "allowed_stage_ids",
+        "allowed_metric_ids",
+        "minimum_gene_coverage",
+        "allowed_lod_states",
+        "resolvable_lod_states",
+        "review_outcomes",
+        "provenance_refs"
+      ],
+      "title": "ProgramRule",
+      "type": "object"
+    },
+    "ReviewFlagState": {
+      "enum": [
+        "transcriptomic_review_flag",
+        "not_detected_above_lod",
+        "cannot_resolve",
+        "not_assessed"
+      ],
+      "title": "ReviewFlagState",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/program-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "aggregation_method_ids": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Aggregation Method Ids",
+      "type": "array"
+    },
+    "attribution_rule": {
+      "$ref": "#/$defs/ProcessAttributionRule"
+    },
+    "development_window_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "program_rules": {
+      "items": {
+        "$ref": "#/$defs/ProgramRule"
+      },
+      "minItems": 1,
+      "title": "Program Rules",
+      "type": "array"
+    },
+    "program_spec_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Program Spec Id",
+      "type": "string"
+    },
+    "program_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Program Spec Version",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "program_spec_id",
+    "program_spec_version",
+    "product_definition_ref",
+    "development_window_ref",
+    "aggregation_method_ids",
+    "attribution_rule",
+    "program_rules",
+    "provenance_refs"
+  ],
+  "title": "ProgramSpec",
+  "type": "object"
+}
