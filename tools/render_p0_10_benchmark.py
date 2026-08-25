@@ -36,7 +36,7 @@ def main() -> int:
         + "\n"
     ).encode("utf-8")
     resource.write_bytes(resource_bytes)
-    output = repo / "tool_packages" / "P0-10" / "BENCHMARK.md"
+    output = repo / "docs/validation/p0_10_claim_verifier_benchmark_v0.1.md"
     output.write_text(
         render_benchmark_markdown(
             benchmark,

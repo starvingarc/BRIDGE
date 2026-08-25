@@ -15,7 +15,7 @@ P0-08 `v0.2.0` 已实现为确定性候选工具，使用 `ToolRequestV2` 的带
 
 这是一项工程可执行性进展，不是科学确认。`ENV-EVIDENCE-v0.1` 已通过服务器工程健康检查，所有已选内部方法记录仍为 `formal_eligible=false`；真实 ProductCase 的三轴状态尚未由此实现得到验证。当前没有批准的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
 
-完整输入角色、字段、eligibility、artifact、reason code、失败与幂等行为见 `tool_packages/P0-08/README.md`；合成对象的可复现工程验证见 `docs/validation/p0_08_evidence_sufficiency_20260813.md`。
+完整输入角色、字段、eligibility、artifact、reason code、失败与幂等行为见 `src/bridge/tool_packages/cards/P0-08.md`；合成对象的可复现工程验证见 `docs/validation/p0_08_evidence_sufficiency_20260813.md`。
 
 ## 1. 任务目标与边界
 

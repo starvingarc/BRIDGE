@@ -61,6 +61,16 @@ bridge-tool run --request request.json
 
 Each run preserves the input and records the applicable measurement, reference, method, artifact, and checksum provenance.
 
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `src/bridge/toolkit/` | Shared SDK, CLI, contracts, registry, runtime, and knowledge search |
+| `src/bridge/tool_packages/` | The 12 biological analysis and evidence packages, their specifications, Tool Cards, and package-owned resources |
+| `src/bridge/resources/schemas/` | Packaged public JSON Schemas used by Python and non-Python Agent clients |
+| `docs/` | Product, scientific, integration, and validation documentation |
+| `tests/` | Executable behavior and scientific-boundary checks |
+
 ## Scientific boundaries
 
 - BRIDGE reports research-use transcriptomic evidence, uncertainty, and evidence gaps.
@@ -74,6 +84,7 @@ Each run preserves the input and records the applicable measurement, reference, 
 - [Documentation index](docs/index.md)
 - [Product requirements](docs/BRIDGE_PRD.md)
 - [Scientific principles](docs/product-principles.md)
-- [Tool Package cards](tool_packages/)
+- [Tool Package cards](src/bridge/tool_packages/cards/)
+- [Public JSON Schemas](src/bridge/resources/schemas/)
 - [Method and source knowledge](knowledge/README.md)
 - [Agent integration](docs/agent-integration.md)

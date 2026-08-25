@@ -12,9 +12,9 @@ The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Sc
 
 - Python: `list_tools`, `describe_tool`, `validate_request`, `run_tool`, `search_knowledge`.
 - CLI: `bridge-tool list`, `describe`, `validate`, `run`, and `knowledge search`.
-- Language-neutral contracts: `schemas/`.
+- Language-neutral contracts: `src/bridge/resources/schemas/`.
 - Requests: `examples/requests/`.
-- Tool behavior and refusal rules: `tool_packages/P0-XX/README.md`.
+- Tool behavior and refusal rules: `src/bridge/tool_packages/cards/P0-XX.md`.
 
 ## Required Agent Flow
 
