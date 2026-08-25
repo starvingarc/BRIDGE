@@ -1,12 +1,15 @@
 tool_id: P0-05
 name: Off-target Control
-version: 0.1.0
-summary: Describe whole-product non-target composition, OOD and rare-state detectability.
-implementation_state: scaffold
+version: 0.2.0
+summary: Aggregate externally defined product roles, unknown reasons and rare-state detectability.
+implementation_state: implemented
 scientific_status: candidate
 optional: false
 environment_spec_id: ENV-P0-CORE-v0.1
-input_schema_ref: bridge://schemas/tool-request/v0.1
-output_schema_ref: bridge://schemas/tool-run/v0.1
-method_ids: []
+input_schema_ref: bridge://schemas/tool-request/v0.2
+output_schema_ref: bridge://schemas/tool-run/v0.2
+method_ids:
+  - METHOD-BRIDGE-ROLE-AWARE-SOFT-COMPOSITION
 card_ref: bridge://tool-cards/P0-05
+adapter_ref: bridge.tool_packages.p0_05_off_target_control.adapter:adapter
+result_schema_ref: bridge://schemas/off-target-control-profile/v0.1
