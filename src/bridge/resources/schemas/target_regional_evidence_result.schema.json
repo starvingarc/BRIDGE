@@ -1,5 +1,14 @@
 {
   "$defs": {
+    "ChannelAssessmentState": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "ChannelAssessmentState",
+      "type": "string"
+    },
     "CompositionView": {
       "enum": [
         "consensus_supported_only",
@@ -11,6 +20,11 @@
     "InputChecksumBindings": {
       "additionalProperties": false,
       "properties": {
+        "annotation_vocabulary": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Annotation Vocabulary",
+          "type": "string"
+        },
         "biological_unit_assignment": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Biological Unit Assignment",
@@ -46,6 +60,11 @@
           "title": "Qc Readiness Profile",
           "type": "string"
         },
+        "reference_manifest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Reference Manifest",
+          "type": "string"
+        },
         "state_role_map": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "State Role Map",
@@ -66,20 +85,27 @@
         "cell_state_evidence_profile",
         "qc_readiness_profile",
         "biological_unit_manifest",
-        "biological_unit_assignment"
+        "biological_unit_assignment",
+        "annotation_vocabulary",
+        "reference_manifest"
       ],
       "title": "InputChecksumBindings",
       "type": "object"
     },
-    "RegionalFidelityChannel": {
+    "MetricArtifactBinding": {
       "additionalProperties": false,
       "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
         "composition_view": {
           "$ref": "#/$defs/CompositionView"
         },
-        "denominator_view": {
-          "minLength": 1,
-          "title": "Denominator View",
+        "file_name": {
+          "pattern": "^[a-z0-9][a-z0-9_.-]*\\.json$",
+          "title": "File Name",
           "type": "string"
         },
         "label_level": {
@@ -89,6 +115,19 @@
             "L3"
           ],
           "title": "Label Level",
+          "type": "string"
+        },
+        "measurement_id": {
+          "minLength": 1,
+          "title": "Measurement Id",
+          "type": "string"
+        },
+        "metric_name": {
+          "$ref": "#/$defs/NormalizedMetricName"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
           "type": "string"
         },
         "source_id": {
@@ -103,40 +142,28 @@
           ],
           "default": null,
           "title": "Source Id"
-        },
-        "target_related_denominator": {
-          "minimum": 0,
-          "title": "Target Related Denominator",
-          "type": "integer"
-        },
-        "target_related_role_fractions": {
-          "items": {
-            "$ref": "#/$defs/RoleFraction"
-          },
-          "minItems": 1,
-          "title": "Target Related Role Fractions",
-          "type": "array"
-        },
-        "whole_product_denominator": {
-          "exclusiveMinimum": 0,
-          "title": "Whole Product Denominator",
-          "type": "integer"
-        },
-        "whole_product_target_region_fraction": {
-          "$ref": "#/$defs/RoleFraction"
         }
       },
       "required": [
+        "measurement_id",
+        "metric_name",
         "composition_view",
         "label_level",
-        "denominator_view",
-        "whole_product_denominator",
-        "target_related_denominator",
-        "target_related_role_fractions",
+        "artifact_id",
+        "file_name",
+        "sha256"
+      ],
+      "title": "MetricArtifactBinding",
+      "type": "object"
+    },
+    "NormalizedMetricName": {
+      "enum": [
+        "target_identity_fraction",
+        "regional_fidelity_fraction",
         "whole_product_target_region_fraction"
       ],
-      "title": "RegionalFidelityChannel",
-      "type": "object"
+      "title": "NormalizedMetricName",
+      "type": "string"
     },
     "RoleFraction": {
       "additionalProperties": false,
@@ -179,41 +206,18 @@
       "title": "RoleFraction",
       "type": "object"
     },
-    "SpatialReferenceProjectionProfile": {
+    "TargetRegionalChannelResult": {
       "additionalProperties": false,
       "properties": {
         "assessment_state": {
-          "const": "not_assessed",
-          "title": "Assessment State",
-          "type": "string"
+          "$ref": "#/$defs/ChannelAssessmentState"
         },
-        "reason_code": {
-          "const": "spatial_projection_not_supplied",
-          "title": "Reason Code",
-          "type": "string"
-        }
-      },
-      "required": [
-        "assessment_state",
-        "reason_code"
-      ],
-      "title": "SpatialReferenceProjectionProfile",
-      "type": "object"
-    },
-    "TargetIdentityChannel": {
-      "additionalProperties": false,
-      "properties": {
         "composition_view": {
           "$ref": "#/$defs/CompositionView"
         },
-        "denominator": {
-          "exclusiveMinimum": 0,
-          "title": "Denominator",
-          "type": "integer"
-        },
-        "denominator_view": {
-          "minLength": 1,
-          "title": "Denominator View",
+        "denominator_scope": {
+          "const": "selected_data_view",
+          "title": "Denominator Scope",
           "type": "string"
         },
         "label_level": {
@@ -225,71 +229,35 @@
           "title": "Label Level",
           "type": "string"
         },
-        "role_fractions": {
-          "items": {
-            "$ref": "#/$defs/RoleFraction"
+        "measurement_ids": {
+          "additionalProperties": {
+            "type": "string"
           },
-          "minItems": 1,
-          "title": "Role Fractions",
-          "type": "array"
+          "propertyNames": {
+            "$ref": "#/$defs/NormalizedMetricName"
+          },
+          "title": "Measurement Ids",
+          "type": "object"
         },
-        "source_id": {
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "regional_fidelity_fraction": {
           "anyOf": [
             {
-              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
-              "type": "string"
+              "$ref": "#/$defs/RoleFraction"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Source Id"
-        }
-      },
-      "required": [
-        "composition_view",
-        "label_level",
-        "denominator_view",
-        "denominator",
-        "role_fractions"
-      ],
-      "title": "TargetIdentityChannel",
-      "type": "object"
-    },
-    "UnmappedStateRecord": {
-      "additionalProperties": false,
-      "properties": {
-        "composition_view": {
-          "$ref": "#/$defs/CompositionView"
-        },
-        "count": {
-          "minimum": 0,
-          "title": "Count",
-          "type": "integer"
-        },
-        "denominator": {
-          "exclusiveMinimum": 0,
-          "title": "Denominator",
-          "type": "integer"
-        },
-        "label_level": {
-          "enum": [
-            "L1",
-            "L2",
-            "L3"
-          ],
-          "title": "Label Level",
-          "type": "string"
-        },
-        "reason_code": {
-          "enum": [
-            "state_role_not_configured",
-            "state_role_explicitly_unresolved",
-            "upstream_state_unresolved"
-          ],
-          "title": "Reason Code",
-          "type": "string"
+          "default": null
         },
         "source_id": {
           "anyOf": [
@@ -304,21 +272,37 @@
           "default": null,
           "title": "Source Id"
         },
-        "state_id": {
-          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
-          "title": "State Id",
-          "type": "string"
+        "target_identity_fraction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoleFraction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "whole_product_target_region_fraction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoleFraction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
-        "state_id",
-        "label_level",
         "composition_view",
-        "count",
-        "denominator",
-        "reason_code"
+        "label_level",
+        "denominator_scope",
+        "assessment_state",
+        "measurement_ids"
       ],
-      "title": "UnmappedStateRecord",
+      "title": "TargetRegionalChannelResult",
       "type": "object"
     },
     "VersionedObjectRef": {
@@ -345,126 +329,10 @@
   },
   "$id": "bridge://schemas/target-regional-evidence-result/v0.1",
   "additionalProperties": false,
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "result_state": {
-            "const": "not_assessed"
-          }
-        },
-        "required": [
-          "result_state"
-        ]
-      },
-      "then": {
-        "properties": {
-          "regional_fidelity_channels": {
-            "maxItems": 0
-          },
-          "score_state": {
-            "const": "unavailable"
-          },
-          "target_identity_channels": {
-            "maxItems": 0
-          },
-          "unmapped_states": {
-            "maxItems": 0
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "upstream_composition_state": {
-            "enum": [
-              "not_assessed",
-              "unavailable",
-              "unknown",
-              "missing"
-            ]
-          }
-        },
-        "required": [
-          "upstream_composition_state"
-        ]
-      },
-      "then": {
-        "properties": {
-          "regional_fidelity_channels": {
-            "maxItems": 0
-          },
-          "result_state": {
-            "const": "not_assessed"
-          },
-          "score_state": {
-            "const": "unavailable"
-          },
-          "target_identity_channels": {
-            "maxItems": 0
-          },
-          "unmapped_states": {
-            "maxItems": 0
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "result_state": {
-            "const": "complete"
-          }
-        },
-        "required": [
-          "result_state"
-        ]
-      },
-      "then": {
-        "properties": {
-          "regional_fidelity_channels": {
-            "minItems": 1
-          },
-          "score_state": {
-            "const": "shadow"
-          },
-          "target_identity_channels": {
-            "minItems": 1
-          },
-          "unmapped_states": {
-            "maxItems": 0
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "result_state": {
-            "const": "partial"
-          }
-        },
-        "required": [
-          "result_state"
-        ]
-      },
-      "then": {
-        "properties": {
-          "regional_fidelity_channels": {
-            "minItems": 1
-          },
-          "score_state": {
-            "const": "shadow"
-          },
-          "target_identity_channels": {
-            "minItems": 1
-          }
-        }
-      }
-    }
-  ],
   "properties": {
+    "annotation_vocabulary_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
     "assessment_spec_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
     },
@@ -473,6 +341,14 @@
     },
     "cell_state_profile_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "channels": {
+      "items": {
+        "$ref": "#/$defs/TargetRegionalChannelResult"
+      },
+      "minItems": 1,
+      "title": "Channels",
+      "type": "array"
     },
     "domain_score": {
       "default": null,
@@ -493,6 +369,14 @@
     },
     "measurement_spec_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "metric_artifacts": {
+      "items": {
+        "$ref": "#/$defs/MetricArtifactBinding"
+      },
+      "minItems": 3,
+      "title": "Metric Artifacts",
+      "type": "array"
     },
     "object_version": {
       "const": "0.1.0",
@@ -517,12 +401,8 @@
       "type": "array",
       "uniqueItems": true
     },
-    "regional_fidelity_channels": {
-      "items": {
-        "$ref": "#/$defs/RegionalFidelityChannel"
-      },
-      "title": "Regional Fidelity Channels",
-      "type": "array"
+    "reference_manifest_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
     },
     "result_id": {
       "pattern": "^target-regional-result:[a-f0-9]{16}$",
@@ -546,18 +426,13 @@
       "title": "Score State",
       "type": "string"
     },
-    "spatial_projection": {
-      "$ref": "#/$defs/SpatialReferenceProjectionProfile"
+    "spatial_projection_state": {
+      "const": "not_assessed",
+      "title": "Spatial Projection State",
+      "type": "string"
     },
     "state_role_map_ref": {
       "$ref": "#/$defs/VersionedObjectRef"
-    },
-    "target_identity_channels": {
-      "items": {
-        "$ref": "#/$defs/TargetIdentityChannel"
-      },
-      "title": "Target Identity Channels",
-      "type": "array"
     },
     "tool_id": {
       "const": "P0-03",
@@ -568,13 +443,6 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
       "title": "Tool Version",
       "type": "string"
-    },
-    "unmapped_states": {
-      "items": {
-        "$ref": "#/$defs/UnmappedStateRecord"
-      },
-      "title": "Unmapped States",
-      "type": "array"
     },
     "upstream_composition_state": {
       "enum": [
@@ -601,13 +469,14 @@
     "cell_state_profile_ref",
     "qc_profile_ref",
     "biological_unit_manifest_ref",
+    "annotation_vocabulary_ref",
+    "reference_manifest_ref",
     "input_sha256_by_role",
     "upstream_composition_state",
     "result_state",
-    "target_identity_channels",
-    "regional_fidelity_channels",
-    "unmapped_states",
-    "spatial_projection",
+    "channels",
+    "metric_artifacts",
+    "spatial_projection_state",
     "evidence_refs",
     "reason_codes",
     "score_state"

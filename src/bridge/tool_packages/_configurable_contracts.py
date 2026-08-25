@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import datetime, timezone
 from enum import StrEnum
 import hashlib
 import json
 import math
-from typing import Iterable, Literal, Self
+from typing import Literal, Self
 
 from pydantic import ConfigDict, Field, StrictFloat, StrictInt, ValidationError, field_validator, model_validator
 
@@ -600,9 +599,6 @@ class UpstreamCompositionRecord(FrozenModel):
     source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
     label: str = Field(pattern=OBJECT_ID_PATTERN)
     label_level: Literal["L1", "L2", "L3"]
-    state_evidence_state: Literal[
-        "assigned", "unknown", "ood", "unresolved"
-    ] = "assigned"
     denominator_view: str = Field(min_length=1)
     count: StrictInt = Field(ge=0)
     fraction: StrictFloat = Field(ge=0.0, le=1.0)
@@ -628,97 +624,6 @@ class UpstreamCompositionRecord(FrozenModel):
         if self.view is not UpstreamCompositionView.SOURCE_SPECIFIC and self.source_id is not None:
             raise ValueError("non-source-specific composition cannot declare source_id")
         return self
-
-
-CompositionChannelKey = tuple[
-    CompositionView,
-    str | None,
-    Literal["L1", "L2", "L3"],
-]
-
-
-def select_composition_records(
-    records: Iterable[UpstreamCompositionRecord],
-    *,
-    views: Iterable[CompositionView],
-    label_levels: Iterable[Literal["L1", "L2", "L3"]],
-    source_ids: Iterable[str],
-) -> list[UpstreamCompositionRecord]:
-    """Select configured biological composition channels without inferring roles."""
-
-    selected_views = {view.value for view in views}
-    selected_levels = set(label_levels)
-    selected_sources = set(source_ids)
-    return [
-        record
-        for record in records
-        if record.view.value in selected_views
-        and record.label_level in selected_levels
-        and (
-            record.view is not UpstreamCompositionView.SOURCE_SPECIFIC
-            or record.source_id in selected_sources
-        )
-    ]
-
-
-def group_composition_records(
-    records: Iterable[UpstreamCompositionRecord],
-) -> dict[CompositionChannelKey, list[UpstreamCompositionRecord]]:
-    """Group selected records by view, source and vocabulary level."""
-
-    grouped: dict[
-        CompositionChannelKey,
-        list[UpstreamCompositionRecord],
-    ] = defaultdict(list)
-    for record in records:
-        key = (
-            CompositionView(record.view.value),
-            record.source_id,
-            record.label_level,
-        )
-        grouped[key].append(record)
-    return dict(grouped)
-
-
-def requested_composition_channels_missing(
-    grouped: dict[CompositionChannelKey, list[UpstreamCompositionRecord]],
-    *,
-    views: Iterable[CompositionView],
-    label_levels: Iterable[Literal["L1", "L2", "L3"]],
-    source_ids: Iterable[str],
-) -> bool:
-    """Report whether any configured view/level or explicit source is absent."""
-
-    selected_views = set(views)
-    selected_levels = set(label_levels)
-    selected_sources = set(source_ids)
-    observed_kinds = {(key[0], key[2]) for key in grouped}
-    requested_kinds = {
-        (view, level)
-        for view in selected_views
-        for level in selected_levels
-    }
-    if requested_kinds - observed_kinds:
-        return True
-    requested_sources = {
-        (CompositionView.SOURCE_SPECIFIC, source_id, level)
-        for source_id in selected_sources
-        for level in selected_levels
-        if CompositionView.SOURCE_SPECIFIC in selected_views
-    }
-    return bool(requested_sources - set(grouped))
-
-
-def composition_channel_denominator(
-    records: list[UpstreamCompositionRecord],
-) -> tuple[int, str]:
-    """Return the single count and named denominator shared by one channel."""
-
-    denominators = {record.denominator for record in records}
-    denominator_views = {record.denominator_view for record in records}
-    if len(denominators) != 1 or len(denominator_views) != 1:
-        raise ValueError("cell_state_composition_denominator_mismatch")
-    return next(iter(denominators)), next(iter(denominator_views))
 
 
 class RoleFraction(FrozenModel):
@@ -804,13 +709,9 @@ def profile_lineage_reasons(
     every_binding_has_source = len(manifest_source_refs) == len(
         biological_unit_manifest.unit_bindings
     )
-    if (
-        not manifest_source_refs
-        or not every_binding_has_source
-        or any(
-            source_ref != product_case.sample_or_preparation_ref
-            for source_ref in manifest_source_refs
-        )
+    if not every_binding_has_source or any(
+        source_ref != product_case.sample_or_preparation_ref
+        for source_ref in manifest_source_refs
     ):
         reasons.append("product_case_source_unit_binding_mismatch")
 
@@ -885,12 +786,6 @@ def profile_lineage_reasons(
         != measurement_spec.version
     ):
         reasons.append("measurement_spec_binding_mismatch")
-    if (
-        qc_profile.measurement_spec_version != measurement_spec.version
-        or qc_profile.measurement_spec_status != measurement_spec.status
-        or cell_state_profile.measurement_spec_status != measurement_spec.status
-    ):
-        reasons.append("measurement_spec_profile_binding_mismatch")
     if (
         measurement_spec.analysis_unit_kind
         != biological_unit_manifest.analysis_unit_kind

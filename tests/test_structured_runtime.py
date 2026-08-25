@@ -13,10 +13,6 @@ import pytest
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
-from bridge.tool_packages._structured_runtime import (
-    StructuredInputError,
-    publish_single_json,
-)
 from bridge.toolkit import api
 from bridge.toolkit.cli import main as cli_main
 from bridge.toolkit.contracts import (
@@ -511,7 +507,7 @@ def test_versioned_schema_requires_object_version_binding(
 def test_established_top_level_version_binds_to_reference(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    package_payload = ToolRegistry.load_default().describe("P0-01").model_dump(
+    package_payload = ToolRegistry.load_default().describe("P0-03").model_dump(
         mode="json"
     )
     input_ref = _write_structured_input(
@@ -942,14 +938,14 @@ def test_registry_loads_mixed_contract_versions_and_selects_request_model(
 def test_deprecated_v1_package_is_ineligible_and_non_executable(tmp_path: Path) -> None:
     specs = ToolRegistry.load_default().list()
     deprecated = ToolPackageSpec.model_validate(
-        specs[3].model_dump(mode="json")
+        specs[2].model_dump(mode="json")
         | {"implementation_state": ImplementationState.DEPRECATED}
     )
-    specs[3] = deprecated
+    specs[2] = deprecated
     registry = ToolRegistry(specs)
     request = ToolRequest(
         request_id="request-deprecated-v1",
-        tool_id="P0-04",
+        tool_id="P0-03",
         output_dir=tmp_path,
     )
 
@@ -1486,128 +1482,3 @@ def test_jsonschema_is_declared_once_as_a_runtime_dependency() -> None:
     test_dependencies = project["optional-dependencies"]["test"]
     assert sum(item.startswith("jsonschema") for item in runtime_dependencies) == 1
     assert all(not item.startswith("jsonschema") for item in test_dependencies)
-
-
-def test_single_json_publication_is_atomic_idempotent_and_conflict_safe(
-    tmp_path: Path,
-) -> None:
-    input_ref = _write_structured_input(tmp_path)
-    request = ToolRequestV2(
-        request_id="publish-single-json",
-        tool_id="P0-03",
-        output_dir=tmp_path / "output",
-        object_inputs=[input_ref],
-    )
-    payload = b'{"result":"stable"}\n'
-
-    first = publish_single_json(
-        request=request,
-        run_id="run-stable",
-        filename="result.json",
-        payload=payload,
-    )
-    second = publish_single_json(
-        request=request,
-        run_id="run-stable",
-        filename="result.json",
-        payload=payload,
-    )
-
-    assert first == second
-    assert first.read_bytes() == payload
-    assert {item.name for item in first.parent.iterdir()} == {"result.json"}
-    assert not list(request.output_dir.glob(".*.staging-*"))
-
-    with pytest.raises(
-        StructuredInputError,
-        match="existing_run_bundle_hash_mismatch",
-    ):
-        publish_single_json(
-            request=request,
-            run_id="run-stable",
-            filename="result.json",
-            payload=b'{"result":"changed"}\n',
-        )
-
-    (first.parent / "unexpected.json").write_text("{}", encoding="utf-8")
-    with pytest.raises(
-        StructuredInputError,
-        match="existing_run_bundle_hash_mismatch",
-    ):
-        publish_single_json(
-            request=request,
-            run_id="run-stable",
-            filename="result.json",
-            payload=payload,
-        )
-
-
-@pytest.mark.parametrize("kind", ["file", "symlink"])
-def test_single_json_publication_rejects_non_directory_output_paths(
-    tmp_path: Path,
-    kind: str,
-) -> None:
-    input_ref = _write_structured_input(tmp_path)
-    output = tmp_path / "output"
-    if kind == "file":
-        output.write_text("keep", encoding="utf-8")
-    else:
-        target = tmp_path / "target"
-        target.mkdir()
-        output.symlink_to(target, target_is_directory=True)
-    request = ToolRequestV2(
-        request_id=f"publish-{kind}",
-        tool_id="P0-03",
-        output_dir=output,
-        object_inputs=[input_ref],
-    )
-
-    with pytest.raises(StructuredInputError, match="output_path_invalid"):
-        publish_single_json(
-            request=request,
-            run_id="run-invalid-output",
-            filename="result.json",
-            payload=b"{}\n",
-        )
-
-
-def test_single_json_publication_rejects_non_basename_json_filename(
-    tmp_path: Path,
-) -> None:
-    input_ref = _write_structured_input(tmp_path)
-    request = ToolRequestV2(
-        request_id="publish-invalid-filename",
-        tool_id="P0-03",
-        output_dir=tmp_path / "output",
-        object_inputs=[input_ref],
-    )
-
-    with pytest.raises(StructuredInputError, match="output_filename_invalid"):
-        publish_single_json(
-            request=request,
-            run_id="run-invalid-filename",
-            filename="../result.json",
-            payload=b"{}\n",
-        )
-
-
-@pytest.mark.parametrize("run_id", ["", ".", "..", "../escape", "run/name"])
-def test_single_json_publication_rejects_unsafe_run_ids(
-    tmp_path: Path,
-    run_id: str,
-) -> None:
-    input_ref = _write_structured_input(tmp_path)
-    request = ToolRequestV2(
-        request_id="publish-invalid-run-id",
-        tool_id="P0-03",
-        output_dir=tmp_path / "output",
-        object_inputs=[input_ref],
-    )
-
-    with pytest.raises(StructuredInputError, match="output_run_id_invalid"):
-        publish_single_json(
-            request=request,
-            run_id=run_id,
-            filename="result.json",
-            payload=b"{}\n",
-        )

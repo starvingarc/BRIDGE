@@ -1,7 +1,7 @@
 tool_id: P0-03
 name: Target Identity & Regional Fidelity
 version: 0.2.0
-summary: Measure target lineage identity and ventral-midbrain regional support.
+summary: Measure externally defined target-lineage and regional support.
 implementation_state: implemented
 scientific_status: candidate
 optional: false

@@ -3,27 +3,16 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
-from pydantic import (
-    ConfigDict,
-    Field,
-    StrictInt,
-    field_validator,
-    model_validator,
-)
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from bridge.tool_packages._configurable_contracts import (
     CompositionView,
     OBJECT_ID_PATTERN,
-    ProductCase,
-    ProductDefinitionCard,
     RoleFraction,
     SHA256_PATTERN,
-    UpstreamCompositionRecord,
-    UpstreamCompositionView,
     VERSION_PATTERN,
     VersionedObjectRef,
 )
-from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -67,7 +56,7 @@ class StateRoleAssignment(FrozenModel):
         return value
 
     @model_validator(mode="after")
-    def lineage_and_regional_roles_are_coherent(self) -> Self:
+    def roles_are_coherent(self) -> Self:
         if (
             self.regional_role is RegionalRole.TARGET_REGION
             and self.lineage_role is not LineageRole.TARGET
@@ -113,40 +102,7 @@ class StateRoleMap(FrozenModel):
 
 
 class TargetRegionalAssessmentSpec(FrozenModel):
-    model_config = ConfigDict(
-        frozen=True,
-        extra="forbid",
-        json_schema_extra={
-            "allOf": [
-                {
-                    "if": {
-                        "properties": {
-                            "composition_views": {
-                                "contains": {"const": "source_specific"}
-                            }
-                        },
-                        "required": ["composition_views"],
-                    },
-                    "then": {"properties": {"source_ids": {"minItems": 1}}},
-                    "else": {"properties": {"source_ids": {"maxItems": 0}}},
-                },
-                {
-                    "properties": {
-                        "regional_denominator_lineage_roles": {
-                            "not": {"contains": {"const": "unresolved"}}
-                        }
-                    }
-                },
-                {
-                    "properties": {
-                        "whole_product_target_region_roles": {
-                            "not": {"contains": {"const": "unresolved"}}
-                        }
-                    }
-                },
-            ]
-        },
-    )
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     object_version: Literal["0.1.0"]
     assessment_spec_id: str = Field(
@@ -160,16 +116,23 @@ class TargetRegionalAssessmentSpec(FrozenModel):
         min_length=1
     )
     source_ids: list[PublishedRef] = Field(default_factory=list)
+    target_identity_numerator_lineage_roles: list[LineageRole] = Field(
+        min_length=1
+    )
     regional_denominator_lineage_roles: list[LineageRole] = Field(min_length=1)
+    regional_target_numerator_roles: list[RegionalRole] = Field(min_length=1)
     whole_product_target_region_roles: list[RegionalRole] = Field(min_length=1)
-    unmapped_state_policy: Literal["report_unresolved"]
+    unmapped_state_policy: Literal["not_assessed"]
+    ambiguous_state_policy: Literal["not_assessed"]
     spatial_policy: Literal["not_assessed_without_projection"]
 
     @field_validator(
         "composition_views",
         "included_label_levels",
         "source_ids",
+        "target_identity_numerator_lineage_roles",
         "regional_denominator_lineage_roles",
+        "regional_target_numerator_roles",
         "whole_product_target_region_roles",
     )
     @classmethod
@@ -178,22 +141,22 @@ class TargetRegionalAssessmentSpec(FrozenModel):
         return value
 
     @model_validator(mode="after")
-    def source_selection_is_explicit(self) -> Self:
-        source_specific = (
-            CompositionView.SOURCE_SPECIFIC in self.composition_views
-        )
+    def configuration_is_safe(self) -> Self:
+        source_specific = CompositionView.SOURCE_SPECIFIC in self.composition_views
         if source_specific != bool(self.source_ids):
             raise ValueError(
                 "source_specific view and non-empty source_ids are required together"
             )
-        if LineageRole.UNRESOLVED in self.regional_denominator_lineage_roles:
-            raise ValueError(
-                "unresolved lineage cannot enter the regional denominator"
-            )
-        if RegionalRole.UNRESOLVED in self.whole_product_target_region_roles:
-            raise ValueError(
-                "unresolved region cannot enter the whole-product numerator"
-            )
+        if LineageRole.UNRESOLVED in (
+            self.target_identity_numerator_lineage_roles
+            + self.regional_denominator_lineage_roles
+        ):
+            raise ValueError("unresolved lineage cannot enter a configured ratio")
+        if RegionalRole.UNRESOLVED in (
+            self.regional_target_numerator_roles
+            + self.whole_product_target_region_roles
+        ):
+            raise ValueError("unresolved region cannot enter a configured ratio")
         return self
 
     @property
@@ -204,108 +167,82 @@ class TargetRegionalAssessmentSpec(FrozenModel):
         )
 
 
-class UnmappedStateRecord(FrozenModel):
-    state_id: str = Field(pattern=OBJECT_ID_PATTERN)
-    label_level: Literal["L1", "L2", "L3"]
-    composition_view: CompositionView
-    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
-    count: StrictInt = Field(ge=0)
-    denominator: StrictInt = Field(gt=0)
-    reason_code: Literal[
-        "state_role_not_configured",
-        "state_role_explicitly_unresolved",
-        "upstream_state_unresolved",
-    ]
-
-
-class TargetIdentityChannel(FrozenModel):
-    composition_view: CompositionView
-    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
-    label_level: Literal["L1", "L2", "L3"]
-    denominator_view: str = Field(min_length=1)
-    denominator: StrictInt = Field(gt=0)
-    role_fractions: list[RoleFraction] = Field(min_length=1)
-
-    _denominator_is_publication_safe = field_validator("denominator_view")(
-        validate_publication_text
+class NormalizedMetricName(StrEnum):
+    TARGET_IDENTITY_FRACTION = "target_identity_fraction"
+    REGIONAL_FIDELITY_FRACTION = "regional_fidelity_fraction"
+    WHOLE_PRODUCT_TARGET_REGION_FRACTION = (
+        "whole_product_target_region_fraction"
     )
 
-    @model_validator(mode="after")
-    def fractions_conserve_the_channel_denominator(self) -> Self:
-        source_specific = self.composition_view is CompositionView.SOURCE_SPECIFIC
-        if source_specific != (self.source_id is not None):
-            raise ValueError("source-specific target channel requires one source ID")
-        roles = [item.role for item in self.role_fractions]
-        if set(roles) != {role.value for role in LineageRole} or len(roles) != len(
-            LineageRole
-        ):
-            raise ValueError("target identity channel requires every lineage role once")
-        if any(item.denominator != self.denominator for item in self.role_fractions):
-            raise ValueError("target identity role denominators must match the channel")
-        if sum(item.numerator for item in self.role_fractions) != self.denominator:
-            raise ValueError("target identity numerators must conserve the denominator")
-        return self
+
+class ChannelAssessmentState(StrEnum):
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    NOT_ASSESSED = "not_assessed"
 
 
-class RegionalFidelityChannel(FrozenModel):
+class TargetRegionalChannelResult(FrozenModel):
     composition_view: CompositionView
     source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
     label_level: Literal["L1", "L2", "L3"]
-    denominator_view: str = Field(min_length=1)
-    whole_product_denominator: StrictInt = Field(gt=0)
-    target_related_denominator: StrictInt = Field(ge=0)
-    target_related_role_fractions: list[RoleFraction] = Field(min_length=1)
-    whole_product_target_region_fraction: RoleFraction
-
-    _denominator_is_publication_safe = field_validator("denominator_view")(
-        validate_publication_text
+    denominator_scope: Literal["selected_data_view"]
+    assessment_state: ChannelAssessmentState
+    target_identity_fraction: RoleFraction | None = None
+    regional_fidelity_fraction: RoleFraction | None = None
+    whole_product_target_region_fraction: RoleFraction | None = None
+    measurement_ids: dict[NormalizedMetricName, str]
+    reason_codes: list[ReasonCode] = Field(
+        default_factory=list,
+        json_schema_extra={"uniqueItems": True},
     )
 
+    @field_validator("reason_codes")
+    @classmethod
+    def reasons_are_sorted_unique(cls, value: list[str]) -> list[str]:
+        if value != sorted(set(value)):
+            raise ValueError("channel reasons must be unique and sorted")
+        return value
+
     @model_validator(mode="after")
-    def fractions_conserve_both_denominators(self) -> Self:
+    def channel_is_coherent(self) -> Self:
         source_specific = self.composition_view is CompositionView.SOURCE_SPECIFIC
         if source_specific != (self.source_id is not None):
-            raise ValueError("source-specific regional channel requires one source ID")
-        if self.target_related_denominator > self.whole_product_denominator:
-            raise ValueError(
-                "regional target-related denominator cannot exceed whole product"
-            )
-        roles = [item.role for item in self.target_related_role_fractions]
-        if set(roles) != {role.value for role in RegionalRole} or len(roles) != len(
-            RegionalRole
+            raise ValueError("source-specific channel requires one source ID")
+        if set(self.measurement_ids) != set(NormalizedMetricName):
+            raise ValueError("channel must bind exactly the three normalized metrics")
+        values = (
+            self.target_identity_fraction,
+            self.regional_fidelity_fraction,
+            self.whole_product_target_region_fraction,
+        )
+        if self.assessment_state is ChannelAssessmentState.COMPLETE and any(
+            item is None for item in values
         ):
-            raise ValueError("regional channel requires every regional role once")
-        if any(
-            item.denominator != self.target_related_denominator
-            for item in self.target_related_role_fractions
+            raise ValueError("complete channel requires all three ratios")
+        if self.assessment_state is ChannelAssessmentState.NOT_ASSESSED and any(
+            item is not None for item in values
+        ):
+            raise ValueError("not_assessed channel cannot contain a numeric ratio")
+        if self.assessment_state is ChannelAssessmentState.PARTIAL and (
+            self.target_identity_fraction is None
+            or self.whole_product_target_region_fraction is None
+            or self.regional_fidelity_fraction is not None
         ):
             raise ValueError(
-                "regional role denominators must match target-related denominator"
-            )
-        if (
-            sum(item.numerator for item in self.target_related_role_fractions)
-            != self.target_related_denominator
-        ):
-            raise ValueError(
-                "regional role numerators must conserve target-related denominator"
-            )
-        whole_fraction = self.whole_product_target_region_fraction
-        if whole_fraction.role != "configured_target_region":
-            raise ValueError("whole-product regional fraction has the wrong role")
-        if whole_fraction.denominator != self.whole_product_denominator:
-            raise ValueError(
-                "whole-product regional denominator must match whole product"
-            )
-        if whole_fraction.numerator > self.whole_product_denominator:
-            raise ValueError(
-                "whole-product regional numerator cannot exceed its denominator"
+                "partial channel is reserved for a zero regional denominator"
             )
         return self
 
 
-class SpatialReferenceProjectionProfile(FrozenModel):
-    assessment_state: Literal["not_assessed"]
-    reason_code: Literal["spatial_projection_not_supplied"]
+class MetricArtifactBinding(FrozenModel):
+    measurement_id: str = Field(min_length=1)
+    metric_name: NormalizedMetricName
+    composition_view: CompositionView
+    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
+    label_level: Literal["L1", "L2", "L3"]
+    artifact_id: str = Field(min_length=1)
+    file_name: str = Field(pattern=r"^[a-z0-9][a-z0-9_.-]*\.json$")
+    sha256: str = Field(pattern=SHA256_PATTERN)
 
 
 class InputChecksumBindings(FrozenModel):
@@ -318,83 +255,11 @@ class InputChecksumBindings(FrozenModel):
     qc_readiness_profile: str = Field(pattern=SHA256_PATTERN)
     biological_unit_manifest: str = Field(pattern=SHA256_PATTERN)
     biological_unit_assignment: str = Field(pattern=SHA256_PATTERN)
+    annotation_vocabulary: str = Field(pattern=SHA256_PATTERN)
+    reference_manifest: str = Field(pattern=SHA256_PATTERN)
 
 
 class TargetRegionalEvidenceResult(FrozenModel):
-    model_config = ConfigDict(
-        frozen=True,
-        extra="forbid",
-        json_schema_extra={
-            "allOf": [
-                {
-                    "if": {
-                        "properties": {"result_state": {"const": "not_assessed"}},
-                        "required": ["result_state"],
-                    },
-                    "then": {
-                        "properties": {
-                            "target_identity_channels": {"maxItems": 0},
-                            "regional_fidelity_channels": {"maxItems": 0},
-                            "unmapped_states": {"maxItems": 0},
-                            "score_state": {"const": "unavailable"},
-                        }
-                    },
-                },
-                {
-                    "if": {
-                        "properties": {
-                            "upstream_composition_state": {
-                                "enum": [
-                                    "not_assessed",
-                                    "unavailable",
-                                    "unknown",
-                                    "missing",
-                                ]
-                            }
-                        },
-                        "required": ["upstream_composition_state"],
-                    },
-                    "then": {
-                        "properties": {
-                            "result_state": {"const": "not_assessed"},
-                            "target_identity_channels": {"maxItems": 0},
-                            "regional_fidelity_channels": {"maxItems": 0},
-                            "unmapped_states": {"maxItems": 0},
-                            "score_state": {"const": "unavailable"},
-                        }
-                    },
-                },
-                {
-                    "if": {
-                        "properties": {"result_state": {"const": "complete"}},
-                        "required": ["result_state"],
-                    },
-                    "then": {
-                        "properties": {
-                            "target_identity_channels": {"minItems": 1},
-                            "regional_fidelity_channels": {"minItems": 1},
-                            "unmapped_states": {"maxItems": 0},
-                            "score_state": {"const": "shadow"},
-                        }
-                    },
-                },
-                {
-                    "if": {
-                        "properties": {"result_state": {"const": "partial"}},
-                        "required": ["result_state"],
-                    },
-                    "then": {
-                        "properties": {
-                            "target_identity_channels": {"minItems": 1},
-                            "regional_fidelity_channels": {"minItems": 1},
-                            "score_state": {"const": "shadow"},
-                        }
-                    },
-                },
-            ]
-        },
-    )
-
     object_version: Literal["0.1.0"]
     result_id: str = Field(pattern=r"^target-regional-result:[a-f0-9]{16}$")
     tool_id: Literal["P0-03"]
@@ -407,15 +272,16 @@ class TargetRegionalEvidenceResult(FrozenModel):
     cell_state_profile_ref: VersionedObjectRef
     qc_profile_ref: VersionedObjectRef
     biological_unit_manifest_ref: VersionedObjectRef
+    annotation_vocabulary_ref: VersionedObjectRef
+    reference_manifest_ref: VersionedObjectRef
     input_sha256_by_role: InputChecksumBindings
     upstream_composition_state: Literal[
         "shadow", "not_assessed", "unavailable", "unknown", "missing"
     ]
     result_state: Literal["complete", "partial", "not_assessed"]
-    target_identity_channels: list[TargetIdentityChannel]
-    regional_fidelity_channels: list[RegionalFidelityChannel]
-    unmapped_states: list[UnmappedStateRecord]
-    spatial_projection: SpatialReferenceProjectionProfile
+    channels: list[TargetRegionalChannelResult] = Field(min_length=1)
+    metric_artifacts: list[MetricArtifactBinding] = Field(min_length=3)
+    spatial_projection_state: Literal["not_assessed"]
     evidence_refs: list[PublishedRef] = Field(
         json_schema_extra={"uniqueItems": True}
     )
@@ -433,68 +299,53 @@ class TargetRegionalEvidenceResult(FrozenModel):
         return value
 
     @model_validator(mode="after")
-    def result_state_is_coherent(self) -> Self:
-        has_channels = bool(
-            self.target_identity_channels or self.regional_fidelity_channels
+    def result_is_coherent(self) -> Self:
+        channel_keys = [
+            (item.composition_view, item.source_id, item.label_level)
+            for item in self.channels
+        ]
+        if len(channel_keys) != len(set(channel_keys)):
+            raise ValueError("channel identities must be unique")
+        expected_ids = {
+            measurement_id
+            for channel in self.channels
+            for measurement_id in channel.measurement_ids.values()
+        }
+        artifact_ids = [item.measurement_id for item in self.metric_artifacts]
+        if set(artifact_ids) != expected_ids or len(artifact_ids) != len(expected_ids):
+            raise ValueError("metric artifacts must bind every measurement exactly once")
+        artifact_by_measurement = {
+            item.measurement_id: item for item in self.metric_artifacts
+        }
+        for channel in self.channels:
+            for metric_name, measurement_id in channel.measurement_ids.items():
+                artifact = artifact_by_measurement[measurement_id]
+                if (
+                    artifact.metric_name != metric_name
+                    or artifact.composition_view != channel.composition_view
+                    or artifact.source_id != channel.source_id
+                    or artifact.label_level != channel.label_level
+                ):
+                    raise ValueError("measurement artifact is bound to the wrong channel")
+        states = [item.assessment_state for item in self.channels]
+        expected_state = (
+            "complete"
+            if all(item is ChannelAssessmentState.COMPLETE for item in states)
+            else "not_assessed"
+            if all(item is ChannelAssessmentState.NOT_ASSESSED for item in states)
+            else "partial"
         )
-        if self.result_state == "not_assessed" and (
-            has_channels or self.unmapped_states
-        ):
-            raise ValueError(
-                "not_assessed result cannot contain channels or unmapped states"
-            )
-        if self.result_state == "partial" and (
-            not self.target_identity_channels
-            or not self.regional_fidelity_channels
-        ):
-            raise ValueError("partial result requires both channel types")
-        if self.result_state == "complete" and (
-            not self.target_identity_channels
-            or not self.regional_fidelity_channels
-            or self.unmapped_states
-        ):
-            raise ValueError("complete result requires both profiles and no unmapped states")
-        if (
-            self.upstream_composition_state != "shadow"
-            and self.result_state != "not_assessed"
-        ):
-            raise ValueError("non-shadow upstream composition cannot be assessed")
-        mapping_incomplete = "state_role_mapping_incomplete" in self.reason_codes
-        if mapping_incomplete != bool(self.unmapped_states):
-            raise ValueError("unmapped states and mapping reason must agree")
-
-        target_keys = [
-            (item.composition_view, item.source_id, item.label_level)
-            for item in self.target_identity_channels
-        ]
-        regional_keys = [
-            (item.composition_view, item.source_id, item.label_level)
-            for item in self.regional_fidelity_channels
-        ]
-        if (
-            len(target_keys) != len(set(target_keys))
-            or len(regional_keys) != len(set(regional_keys))
-            or set(target_keys) != set(regional_keys)
-        ):
-            raise ValueError("target and regional channel identities must match exactly")
-        regional_by_key = dict(zip(regional_keys, self.regional_fidelity_channels))
-        for key, target in zip(target_keys, self.target_identity_channels):
-            regional = regional_by_key[key]
-            if (
-                target.denominator != regional.whole_product_denominator
-                or target.denominator_view != regional.denominator_view
-            ):
-                raise ValueError(
-                    "target and regional channels must share the whole denominator"
-                )
-
-        expected_score_state = (
+        if self.result_state != expected_state:
+            raise ValueError("result state must summarize channel states")
+        expected_score = (
             ScoreState.UNAVAILABLE
-            if self.result_state == "not_assessed"
+            if expected_state == "not_assessed"
             else ScoreState.SHADOW
         )
-        if self.score_state != expected_score_state:
+        if self.score_state != expected_score:
             raise ValueError("score state must match assessment availability")
+        if self.upstream_composition_state != "shadow" and expected_state != "not_assessed":
+            raise ValueError("non-shadow composition cannot produce numeric ratios")
         return self
 
 

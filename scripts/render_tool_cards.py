@@ -31,11 +31,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/cell_state_annotation_task_card.md",
     },
     "P0-03": {
-        "input": "Frozen Cell-State evidence, ProductDefinitionCard, internal ventral-midbrain vocabulary, and eligible reference/spatial evidence.",
-        "output": "Separate target-lineage and regional-fidelity raw evidence, conflicts, uncertainty, sensitivity, and applicability state.",
-        "reject": "Unconfirmed product target, insufficient reference coverage, unresolved regional vocabulary, or unstable evidence across registered channels.",
-        "visualization": "Target and regional composition, reference support, spatial support, evidence conflicts, and method/reference sensitivity.",
-        "validation": "Anatomical/source holdouts, OOD regions, marker masking, reference swaps, modality checks, and source-family de-duplication.",
+        "input": "Eleven checksummed JSON objects binding ProductCase, external state/assessment rules, MeasurementSpecV2, P0-02 V3 composition, QC, biological-unit lineage, vocabulary and reference manifest.",
+        "output": "One TargetRegionalEvidenceResult plus one independent checksummed MeasurementResultV2 for each of three normalized ratio types per requested channel.",
+        "reject": "Schema/checksum or cross-object drift, ineligible QC, unknown vocabulary/reference source, or inconsistent ProductCase/DataView/lineage binding.",
+        "visualization": "None in v0.2.0; the candidate publishes JSON result and measurement artifacts only.",
+        "validation": "Eleven-object binding, external role changes, unknown/OOD refusal, zero target denominator, deterministic bundle reuse and publication drift.",
         "details": "docs/bridge_spec_v0.1/target_regional_identity_task_card.md",
     },
     "P0-04": {

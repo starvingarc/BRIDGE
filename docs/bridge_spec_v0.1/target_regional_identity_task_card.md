@@ -7,41 +7,42 @@
 | 日期 | 2026-08-25 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA progenitor |
-| 上游输入 | `ProductCase`、`ProductDefinitionCard`、`StateRoleMap`、`TargetRegionalAssessmentSpec`、`MeasurementSpecV2`、`QCReadinessProfileV2`、`CellStateEvidenceProfileV2`、`BiologicalUnitManifest`、`BiologicalUnitAssignmentArtifact` |
-| 主要输出 | `TargetRegionalEvidenceResult`（raw target/regional channels；spatial 固定为 `not_assessed`） |
+| 上游输入 | 11 个 checksummed JSON：`ProductCase`、`ProductDefinitionCard`、`StateRoleMap`、`TargetRegionalAssessmentSpec`、`MeasurementSpecV2`、`CellStateEvidenceProfileV3`、`QCReadinessProfileV2`、`BiologicalUnitManifest`、`BiologicalUnitAssignmentArtifact`、`AnnotationVocabulary`、`ReferenceManifest` |
+| 主要输出 | `TargetRegionalEvidenceResult`；每个请求 channel 的 3 个独立 checksummed `MeasurementResultV2` |
 
 ## 0. 当前可执行候选
 
 P0-03 v0.2.0 实现组成解释的最小确定性路径。它通过
-`ToolRequestV2` 精确接收九个带 Schema、版本和 SHA-256 的本地 JSON 对象：
-ProductCase、ProductDefinitionCard、StateRoleMap、
-TargetRegionalAssessmentSpec、MeasurementSpecV2、CellStateEvidenceProfileV2、
-QCReadinessProfileV2、BiologicalUnitManifest 和
-BiologicalUnitAssignmentArtifact，输出一个原子发布的
-`TargetRegionalEvidenceResult`。旧 QC/Cell-State v0.1 profile 不构成兼容入口。
+`ToolRequestV2` 精确接收上表 11 个带 Schema、版本和 SHA-256 的本地 JSON
+对象，原子发布一个 `TargetRegionalEvidenceResult`，并为每个请求 channel
+分别发布 3 个 `MeasurementResultV2`：`target_identity_fraction`、
+`regional_fidelity_fraction` 和
+`whole_product_target_region_fraction`。旧 Cell-State v0.1/v0.2 profile 不构成
+兼容入口。
 
 实现代码不包含具体状态名、marker、状态到产品角色的映射、阈值或固定的
 正向角色集合。下文 PD-mDA 内容仍是待审核科学候选；一次运行实际采用的状态
-角色、composition view、source、label level、regional denominator roles 和
-whole-product numerator roles 全部来自版本化、带 checksum 的输入。因此生物学
-决定变化时替换对象版本即可，不需要修改执行器。
+角色、composition view、source、label level，以及三类比率的 numerator 与
+denominator role sets 全部来自版本化、带 checksum 的输入。因此生物学决定变化
+时替换对象版本即可，不需要修改执行器。
 
 “外部可配置”不等于可以重新解释 unknown。执行合同只固化不可变的安全约束：
 角色不能自相矛盾；`SOURCE_SPECIFIC` 与 `source_ids` 必须成对；上游
-`unknown`、`ood`、`unresolved`、unresolved label、显式 unresolved mapping 和
-composition residual 永远保持 unresolved，至少形成 `partial`，不得补零或进入
-正向 numerator/denominator。其他角色集合仍完全由评估 spec 决定。每个 target
-channel 的 role numerators 必须守恒到 whole denominator；每个 regional channel
-必须同时守恒 target-related denominator 和 whole-product denominator。
+`unknown`/`ood` 使对应 channel 成为 `not_assessed`，三个指标都不携带数值；
+缺失或 unresolved mapping 同样不得补零。target-related denominator 为零时，
+`regional_fidelity_fraction` 必须是 `unavailable` 且 value/numerator/denominator
+均为 null。其他角色集合完全由评估 spec 决定。
 
-九对象脊柱还要求 ProductCase、MeasurementSpec、P0-01 data view、P0-02 input
+11 对象脊柱要求 ProductCase、MeasurementSpec、P0-01 data view、P0-02 input
 view、manifest 和 assignment 的 observation set、analysis unit、independence group、
-hierarchy、ref 与 checksum 全部闭合。assignment 不参与生物学角色求和，但用于
-证明每个观测对应哪个实验单位，并将该文件 checksum 写入结果。`declared` 仍只
-表示来源声明，不能被解释为已审核的独立生物重复。
+hierarchy、ref 与 checksum 全部闭合；同时严格绑定 P0-02 V3 中的
+MeasurementSpec、AnnotationVocabulary、ReferenceManifest 与 QC SHA。assignment
+不参与生物学角色求和，只证明观测对应的实验单位。`declared` 仍不能被解释为
+已审核的独立生物重复。
 
-当前路径不重跑表达分析或空间投射，不输出区间、MeasurementResult、分数、效力、
-安全或放行结论。所有可评估结果仍为 `shadow`，`domain_score=null`。
+当前路径不重跑表达分析或空间投射，不输出区间、分数、效力、安全或放行结论。
+三个 `MeasurementResultV2` 只承载分母明确的原始比率。所有可评估结果仍为
+`shadow`，`domain_score=null`。
 
 ## 1. 任务目标
 

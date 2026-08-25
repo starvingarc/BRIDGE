@@ -53,59 +53,12 @@
   },
   "$id": "bridge://schemas/target-regional-assessment-spec/v0.1",
   "additionalProperties": false,
-  "allOf": [
-    {
-      "else": {
-        "properties": {
-          "source_ids": {
-            "maxItems": 0
-          }
-        }
-      },
-      "if": {
-        "properties": {
-          "composition_views": {
-            "contains": {
-              "const": "source_specific"
-            }
-          }
-        },
-        "required": [
-          "composition_views"
-        ]
-      },
-      "then": {
-        "properties": {
-          "source_ids": {
-            "minItems": 1
-          }
-        }
-      }
-    },
-    {
-      "properties": {
-        "regional_denominator_lineage_roles": {
-          "not": {
-            "contains": {
-              "const": "unresolved"
-            }
-          }
-        }
-      }
-    },
-    {
-      "properties": {
-        "whole_product_target_region_roles": {
-          "not": {
-            "contains": {
-              "const": "unresolved"
-            }
-          }
-        }
-      }
-    }
-  ],
   "properties": {
+    "ambiguous_state_policy": {
+      "const": "not_assessed",
+      "title": "Ambiguous State Policy",
+      "type": "string"
+    },
     "assessment_spec_id": {
       "pattern": "^target-regional-assessment-spec:[A-Za-z0-9._:-]+$",
       "title": "Assessment Spec Id",
@@ -153,6 +106,14 @@
       "title": "Regional Denominator Lineage Roles",
       "type": "array"
     },
+    "regional_target_numerator_roles": {
+      "items": {
+        "$ref": "#/$defs/RegionalRole"
+      },
+      "minItems": 1,
+      "title": "Regional Target Numerator Roles",
+      "type": "array"
+    },
     "source_ids": {
       "items": {
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
@@ -174,8 +135,16 @@
       "title": "Status",
       "type": "string"
     },
+    "target_identity_numerator_lineage_roles": {
+      "items": {
+        "$ref": "#/$defs/LineageRole"
+      },
+      "minItems": 1,
+      "title": "Target Identity Numerator Lineage Roles",
+      "type": "array"
+    },
     "unmapped_state_policy": {
-      "const": "report_unresolved",
+      "const": "not_assessed",
       "title": "Unmapped State Policy",
       "type": "string"
     },
@@ -196,9 +165,12 @@
     "status",
     "composition_views",
     "included_label_levels",
+    "target_identity_numerator_lineage_roles",
     "regional_denominator_lineage_roles",
+    "regional_target_numerator_roles",
     "whole_product_target_region_roles",
     "unmapped_state_policy",
+    "ambiguous_state_policy",
     "spatial_policy"
   ],
   "title": "TargetRegionalAssessmentSpec",
