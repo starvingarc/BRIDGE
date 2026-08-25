@@ -1,0 +1,355 @@
+{
+  "$defs": {
+    "EvidenceStateClass": {
+      "enum": [
+        "usable",
+        "limited",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceStateClass",
+      "type": "string"
+    },
+    "GraftAnalysisMode": {
+      "enum": [
+        "unavailable",
+        "descriptive_only"
+      ],
+      "title": "GraftAnalysisMode",
+      "type": "string"
+    },
+    "GraftAvailability": {
+      "enum": [
+        "not_provided",
+        "provided"
+      ],
+      "title": "GraftAvailability",
+      "type": "string"
+    },
+    "GraftEvidenceState": {
+      "enum": [
+        "unavailable",
+        "shadow"
+      ],
+      "title": "GraftEvidenceState",
+      "type": "string"
+    },
+    "GraftLinkageState": {
+      "enum": [
+        "not_applicable",
+        "provided_unlinked",
+        "provided_linked"
+      ],
+      "title": "GraftLinkageState",
+      "type": "string"
+    },
+    "GraftResultState": {
+      "enum": [
+        "not_provided",
+        "candidate"
+      ],
+      "title": "GraftResultState",
+      "type": "string"
+    },
+    "GraftRoleSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_states": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidence States",
+          "type": "array"
+        },
+        "metric_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Metric Ids",
+          "type": "array"
+        },
+        "record_count": {
+          "minimum": 0,
+          "title": "Record Count",
+          "type": "integer"
+        },
+        "role_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role Id",
+          "type": "string"
+        },
+        "state_class_counts": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/EvidenceStateClass"
+          },
+          "title": "State Class Counts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "role_id",
+        "record_count",
+        "metric_ids",
+        "evidence_states",
+        "state_class_counts",
+        "evidence_ids"
+      ],
+      "title": "GraftRoleSummary",
+      "type": "object"
+    },
+    "GraftSourceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "input_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Input Id",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "role": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_ref": {
+          "minLength": 1,
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "input_id",
+        "role",
+        "schema_ref",
+        "object_version",
+        "source_sha256"
+      ],
+      "title": "GraftSourceBinding",
+      "type": "object"
+    },
+    "PreparationGraftLinkage": {
+      "additionalProperties": false,
+      "properties": {
+        "descriptive_only": {
+          "const": true,
+          "default": true,
+          "title": "Descriptive Only",
+          "type": "boolean"
+        },
+        "linkage_evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Linkage Evidence Refs",
+          "type": "array"
+        },
+        "originating_preparation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Originating Preparation Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "originating_preparation_id",
+        "linkage_evidence_refs"
+      ],
+      "title": "PreparationGraftLinkage",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-assessment-result/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_mode": {
+      "$ref": "#/$defs/GraftAnalysisMode"
+    },
+    "assessment_spec_ref": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Assessment Spec Ref"
+    },
+    "confounder_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "title": "Confounder Refs",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_bundle_ref": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evidence Bundle Ref"
+    },
+    "evidence_state": {
+      "$ref": "#/$defs/GraftEvidenceState"
+    },
+    "graft_availability": {
+      "$ref": "#/$defs/GraftAvailability"
+    },
+    "graft_case_ref": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Graft Case Ref"
+    },
+    "linkage_state": {
+      "$ref": "#/$defs/GraftLinkageState"
+    },
+    "missing_metadata": {
+      "items": {
+        "enum": [
+          "animal_id",
+          "post_transplant_timepoint",
+          "biological_replicate_id"
+        ],
+        "type": "string"
+      },
+      "title": "Missing Metadata",
+      "type": "array"
+    },
+    "preparation_linkage": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PreparationGraftLinkage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "pretransplant_evidence_effect": {
+      "const": "none",
+      "default": "none",
+      "title": "Pretransplant Evidence Effect",
+      "type": "string"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "required_roles_missing": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Required Roles Missing",
+      "type": "array"
+    },
+    "result_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Result Id",
+      "type": "string"
+    },
+    "result_version": {
+      "const": "0.1.0",
+      "title": "Result Version",
+      "type": "string"
+    },
+    "role_summaries": {
+      "items": {
+        "$ref": "#/$defs/GraftRoleSummary"
+      },
+      "title": "Role Summaries",
+      "type": "array"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "source_bindings": {
+      "items": {
+        "$ref": "#/$defs/GraftSourceBinding"
+      },
+      "title": "Source Bindings",
+      "type": "array"
+    },
+    "state": {
+      "$ref": "#/$defs/GraftResultState"
+    }
+  },
+  "required": [
+    "result_id",
+    "result_version",
+    "state",
+    "graft_availability",
+    "linkage_state",
+    "analysis_mode",
+    "evidence_state",
+    "source_bindings",
+    "role_summaries",
+    "missing_metadata",
+    "confounder_refs",
+    "required_roles_missing",
+    "reason_codes",
+    "created_at"
+  ],
+  "title": "GraftAssessmentResult",
+  "type": "object"
+}

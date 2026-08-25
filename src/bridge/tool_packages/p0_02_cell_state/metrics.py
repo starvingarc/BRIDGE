@@ -282,6 +282,56 @@ def composition_records(
     return records
 
 
+def composition_records_v3(
+    records: list[dict[str, Any]],
+    *,
+    selected_view_denominator: int,
+) -> list[dict[str, Any]]:
+    reconciliation_states = {
+        "consensus_supported": "candidate",
+        "single_source_supported": "candidate",
+        "source_conflict": "unresolved",
+        "unavailable": "unavailable",
+        "unknown": "unknown",
+        "ood": "ood",
+    }
+    typed: list[dict[str, Any]] = []
+    for record in records:
+        if record.get("label_level") != "L1":
+            continue
+        view = str(record["view"])
+        label = str(record["label"])
+        if int(record["denominator"]) != selected_view_denominator:
+            raise ValueError(
+                "L1 composition denominator does not match selected DataView"
+            )
+        if view in {"source_specific", "consensus_supported_only"}:
+            evidence_state = "candidate"
+        elif view == "reconciliation_state":
+            try:
+                evidence_state = reconciliation_states[label]
+            except KeyError as exc:
+                raise ValueError(
+                    f"unmapped reconciliation state: {label}"
+                ) from exc
+        else:
+            raise ValueError(f"unmapped composition view: {view}")
+        typed.append(
+            {
+                "view": view,
+                "source_id": record.get("source_id"),
+                "label": label,
+                "label_level": "L1",
+                "state_evidence_state": evidence_state,
+                "denominator_scope": "selected_data_view",
+                "count": int(record["count"]),
+                "fraction": float(record["fraction"]),
+                "denominator": selected_view_denominator,
+            }
+        )
+    return typed
+
+
 def serialize_prediction_sets(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame.copy()
     for column in ("prediction_set", "l2_prediction_set"):

@@ -6,11 +6,11 @@ from pathlib import Path
 import yaml
 
 
-# P0-08 through P0-10 keep field-level interface cards as their maintained
+# P0-06 and P0-09 through P0-12 keep detailed interface cards as maintained
 # source. The generic renderer is intentionally too small for their structured
 # object contracts, so regeneration validates those cards instead of replacing
 # them with scaffold summaries.
-DETAILED_CARD_IDS = {"P0-06", "P0-08", "P0-09", "P0-10"}
+DETAILED_CARD_IDS = {"P0-06", "P0-09", "P0-10", "P0-11", "P0-12"}
 
 
 DETAILS = {
@@ -23,11 +23,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/input_audit_qc_task_card.md",
     },
     "P0-02": {
-        "input": "QC-qualified expression views, declared scRNA/snRNA modality, internal annotation vocabulary, frozen reference candidates, and provenance.",
-        "output": "Hierarchical prediction sets, soft assignments, uncertainty, method disagreement, unknown reasons, and product-level composition evidence.",
-        "reject": "Reference or vocabulary mismatch, absent required genes, unresolved modality shift, or no method combination passing the state-axis benchmark.",
+        "input": "QC-qualified expression views, declared scRNA/snRNA modality, annotation vocabulary, reference candidates and provenance. The optional V3 handoff also consumes a deployment-catalogued P0-01 structured-output index with checksummed QC V2, biological-unit assignment and manifest artifacts.",
+        "output": "Backward-compatible Cell-State evidence plus an optional candidate-only V3 profile bound to the selected data view, MeasurementSpec, vocabulary, reference, QC bytes, typed biological-unit lineage, producer and environment. V3 emits explicit evidence states and denominators; it never emits assigned states or a domain score.",
+        "reject": "Reference, vocabulary, MeasurementSpec, assay, data-view or checksum mismatch fails closed. Missing structured-index or typed-lineage inputs leave the legacy run successful but V3 unavailable; no lineage or positive composition is inferred.",
         "visualization": "Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.",
-        "validation": "Source/lab/modality holdouts, leave-one-state-out, rare-state mixtures, calibration, OOD detection, and product-composition error.",
+        "validation": "Real P0-01-to-P0-02 typed handoff, checksum and replacement adversaries, selected-view/observation lineage, legacy compatibility, source/lab/modality holdouts, calibration and OOD behavior.",
         "details": "docs/bridge_spec_v0.1/cell_state_annotation_task_card.md",
     },
     "P0-03": {
@@ -70,6 +70,14 @@ DETAILS = {
         "validation": "Known shifts and nulls, paired/unpaired designs, insufficient replication, over-correction checks, and independent-versus-joint consistency.",
         "details": "docs/bridge_spec_v0.1/product_comparison_stability_task_card.md",
     },
+    "P0-08": {
+        "input": "A `ToolRequestV2` with empty assets and parameters, one checksummed candidate GateRuleSpec v0.2 bound to ReasonCodeCatalog v0.2, one to five DomainGateInput v0.1 bindings, MeasurementSpecV2/QCReadinessProfileV2/MeasurementResultV2 objects, and their versioned validation, prior and sensitivity records.",
+        "output": "One canonical `EvidenceSufficiencyRunResultV2` (`bridge://schemas/evidence-sufficiency-run-result/v0.2`) with a path-free exact checksum/version/Schema binding for every structured input, versioned per-domain references, eight-state MeasurementResult counts, gate trace and case summary. Convenience profile/summary files are noncanonical projections, not independent structured contracts.",
+        "reject": "Wrong roles, Schema IDs, object versions, logical bindings, checksums, candidate gate bytes, unsafe references, changed inputs or drifted bundles fail with stable reason codes and no scientific result. A bound MeasurementResult whose MeasurementSpec version disagrees, or a populated QC MeasurementSpec version that disagrees, is ineligible. Missing, unknown or unavailable measurement states, or absent paired upstream ToolRun provenance, instead execute as `not_assessed`; negative and alert remain distinct and never become pass/fail.",
+        "visualization": "No visualization output. The canonical downstream object is `evidence_sufficiency_run_result.json`; profile, summary and gate-trace files are review conveniences only.",
+        "validation": "Synthetic fixtures exercise all 49 scientific reason codes, all eight evidence states, exact-source identity for every input role, version mismatch refusals, deterministic object-input ordering, TOCTOU checks and immutable publication. The executable example uses placeholders; focused tests exercise the same adapter reached by `bridge-tool validate --request` and `bridge-tool run --request`.",
+        "details": "docs/bridge_spec_v0.1/evidence_sufficiency_task_card.md",
+    },
     "P0-10": {
         "input": "Structured ReportDraft, a verified P0-09 Case graph manifest, ClaimBlocks, one-field numeric spans, statement references, and policy versions.",
         "output": "One ClaimVerificationResult receipt binding the ReportDraft, P0-09 graph manifest, checks, audience, export eligibility and release state.",
@@ -79,11 +87,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/claim_verifier_task_card.md",
     },
     "P0-11": {
-        "input": "Original ReportDraft plus an eligible P0-10 ClaimVerificationResult receipt, field allowlist, public aliases and export policy version.",
-        "output": "New PublicSafeReport candidate, regenerated public figures, file manifest, checksums, scan results, and confirmation-bound package hash.",
-        "reject": "Any non-allowlisted field, private path or identifier, unsafe embedded content, unregistered file, hash drift, or missing user confirmation.",
-        "visualization": "Public-data payload only; figures are regenerated and checked for metadata, scripts, links, hidden text, and tooltip leakage.",
-        "validation": "Leakage canaries, public accession preservation, CSV injection, MIME mismatch, archive traversal, media metadata, and deterministic packaging.",
+        "input": "Exactly four checksummed JSON objects: ReportDraft v0.1, eligible ClaimVerificationResult v0.1, PublicExportPolicySpec v0.1 and PublicExportRequest v0.1.",
+        "output": "Three checksummed JSON artifacts: an allowlist-rebuilt PublicSafeReport, PublicExportManifest and PublicExportResult with a confirmation-bound candidate hash.",
+        "reject": "Receipt, report, audience, policy or channel mismatch; missing public alias; non-allowlisted statement; checksum drift; leak canary; confirmation mismatch; or unsafe output path.",
+        "visualization": "None in v0.2.0. This first implementation is JSON-only and does not copy or regenerate figures.",
+        "validation": "Candidate and confirmed reruns, exact input bindings, allowlist projection, path/credential/email/internal-ref canaries, deterministic reuse and V1 refusal.",
         "details": "docs/bridge_spec_v0.1/public_safe_export_task_card.md",
     },
     "P0-12": {

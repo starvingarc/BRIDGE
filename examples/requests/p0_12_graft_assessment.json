@@ -1,0 +1,11 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-12-no-graft",
+  "tool_id": "P0-12",
+  "tool_version": "0.2.0"
+}

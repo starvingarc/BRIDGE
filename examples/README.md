@@ -8,6 +8,7 @@ The request files demonstrate the stable JSON shape used by the Python SDK and `
 - `requests/p0_06_proliferation_stress_response.json`: structured P0-06 candidate request shape for seven checksummed objects. Paths and checksums are placeholders; all program vocabulary, applicability, thresholds and review rules come from external versioned specifications.
 - `requests/p0_08_evidence_sufficiency.json`: structured P0-08 candidate request shape. Every path and checksum is a placeholder; create immutable local JSON objects and calculate their real SHA-256 values before `validate` or `run`. The packaged candidate gate-rule bytes must be used unchanged.
 - `requests/p0_09_evidence_compiler.json`: structured P0-09 candidate request shape for a compilation bundle, P0-08 profiles and versioned Evidence Family, Claim and reconciliation registries. Placeholder paths and checksums must be replaced with immutable local JSON objects and their real SHA-256 values.
+- `requests/p0_12_graft_assessment.json`: executable optional no-graft request; `object_inputs=[]` returns `not_provided`. A provided graft uses three checksummed JSON objects documented in the P0-12 Tool Card.
 
 ## Synthetic scRNA Upload Demo
 

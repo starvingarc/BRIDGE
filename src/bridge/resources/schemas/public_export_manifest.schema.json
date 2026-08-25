@@ -1,0 +1,115 @@
+{
+  "$defs": {
+    "PublicExportManifestEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "byte_count": {
+          "minimum": 1,
+          "title": "Byte Count",
+          "type": "integer"
+        },
+        "filename": {
+          "const": "public_safe_report.json",
+          "title": "Filename",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "application/json",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename",
+        "media_type",
+        "sha256",
+        "byte_count"
+      ],
+      "title": "PublicExportManifestEntry",
+      "type": "object"
+    },
+    "PublicExportState": {
+      "enum": [
+        "ready_for_confirmation",
+        "exported"
+      ],
+      "title": "PublicExportState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-export-manifest/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "candidate_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Candidate Hash",
+      "type": "string"
+    },
+    "canonicalization_id": {
+      "const": "bridge-canonical-json/v0.1",
+      "title": "Canonicalization Id",
+      "type": "string"
+    },
+    "confirmation_hash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confirmation Hash"
+    },
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/PublicExportManifestEntry"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "title": "Entries",
+      "type": "array"
+    },
+    "export_state": {
+      "$ref": "#/$defs/PublicExportState"
+    },
+    "manifest_id": {
+      "pattern": "^public-export-manifest:[a-f0-9]{16}$",
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-11",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "manifest_id",
+    "tool_id",
+    "tool_version",
+    "canonicalization_id",
+    "candidate_hash",
+    "export_state",
+    "entries"
+  ],
+  "title": "PublicExportManifest",
+  "type": "object"
+}
