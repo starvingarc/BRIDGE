@@ -14,6 +14,7 @@ SCHEMA_REFS = {
     "bridge://schemas/cell-state-benchmark-spec/v0.2": "cell_state_benchmark_spec.schema.json",
     "bridge://schemas/cell-state-evidence-profile/v0.1": "cell_state_evidence_profile.schema.json",
     "bridge://schemas/cell-state-evidence-profile/v0.2": "cell_state_evidence_profile_v2.schema.json",
+    "bridge://schemas/cell-state-evidence-profile/v0.3": "cell_state_evidence_profile_v3.schema.json",
     "bridge://schemas/cell-state-release-manifest/v0.1": "cell_state_release_manifest.schema.json",
     "bridge://schemas/case-evidence-readiness-summary/v0.1": "case_evidence_readiness_summary.schema.json",
     "bridge://schemas/case-evidence-graph-manifest/v0.1": "case_evidence_graph_manifest.schema.json",
