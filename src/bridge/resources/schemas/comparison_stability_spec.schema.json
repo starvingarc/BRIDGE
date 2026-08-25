@@ -1,0 +1,178 @@
+{
+  "$defs": {
+    "ComparisonField": {
+      "enum": [
+        "product_definition",
+        "target_stage",
+        "assay",
+        "data_view",
+        "timepoint",
+        "reference",
+        "preprocessing",
+        "algorithm"
+      ],
+      "title": "ComparisonField",
+      "type": "string"
+    },
+    "ConfoundingFactor": {
+      "enum": [
+        "protocol",
+        "lab",
+        "batch",
+        "cell_line"
+      ],
+      "title": "ConfoundingFactor",
+      "type": "string"
+    },
+    "MetricContract": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator_kind": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "measurement_spec_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_id",
+        "measurement_spec_ref",
+        "unit",
+        "denominator_kind"
+      ],
+      "title": "MetricContract",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/comparison-stability-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_mode": {
+      "const": "descriptive_only",
+      "title": "Analysis Mode",
+      "type": "string"
+    },
+    "comparison_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "confounding_factors": {
+      "items": {
+        "$ref": "#/$defs/ConfoundingFactor"
+      },
+      "title": "Confounding Factors",
+      "type": "array"
+    },
+    "contextual_fields": {
+      "items": {
+        "$ref": "#/$defs/ComparisonField"
+      },
+      "title": "Contextual Fields",
+      "type": "array"
+    },
+    "contextual_mismatch_policy": {
+      "enum": [
+        "contextual_comparator",
+        "not_comparable"
+      ],
+      "title": "Contextual Mismatch Policy",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "metric_contracts": {
+      "items": {
+        "$ref": "#/$defs/MetricContract"
+      },
+      "minItems": 1,
+      "title": "Metric Contracts",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "required_equal_fields": {
+      "items": {
+        "$ref": "#/$defs/ComparisonField"
+      },
+      "title": "Required Equal Fields",
+      "type": "array"
+    },
+    "spec_id": {
+      "pattern": "^comparison-stability-spec:[A-Za-z0-9._:-]+$",
+      "title": "Spec Id",
+      "type": "string"
+    },
+    "spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Spec Version",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "candidate",
+        "frozen"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "spec_id",
+    "spec_version",
+    "comparison_ref",
+    "status",
+    "analysis_mode",
+    "required_equal_fields",
+    "contextual_fields",
+    "contextual_mismatch_policy",
+    "confounding_factors",
+    "metric_contracts",
+    "created_at"
+  ],
+  "title": "ComparisonStabilitySpec",
+  "type": "object"
+}

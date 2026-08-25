@@ -3,16 +3,22 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.1.1` |
-| 日期 | 2026-08-12 |
+| 文档版本 | `0.2-candidate` |
+| 日期 | 2026-08-25 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | `ProductCase`、`QCReadinessProfile`、`CellStateEvidenceProfile`、`DevelopmentWindowSpec`、`ProtocolIR` |
+| 上游输入 | `ProductCase`、`ProductDefinitionCard`、外部 `DevelopmentWindowSpec`/`ProgramSpec`、`CellStateEvidenceProfileV2`、`ProtocolIR`、预计算 `ProgramEvidenceBundle` |
 | 主要输出 | `ProliferationStressResponseProfile`、`TranscriptomicReviewFlag[]` |
+
+## 0. 当前可执行候选
+
+P0-06 `0.2.0` 已提供 `ToolRequestV2 validate/run`，固定接收七个 checksummed JSON 对象。ProductCase、ProductDefinitionCard 与 CellStateEvidenceProfileV2 复用共享合同；DevelopmentWindowSpec 由 P0-04 唯一拥有，P0-06 只消费；ProgramSpec、ProtocolIR 和 ProgramEvidenceBundle 为模块本地公开合同。
+
+ProgramSpec 外置管理全部 program、gene-set ref/checksum、适用 stage/state/scope、metric、gene-coverage 阈值、LOD 状态、review mapping 和 process-attribution 计数要求。executor 只做 lineage/checksum 绑定、适用性、coverage/LOD、process metadata/confounding 判定与确定性聚合。结果固定为 `descriptive_only`、`candidate/shadow`、`domain_score=null`；未触发 review rule 明确不是安全证据。下文的表达矩阵分析、方法 benchmark 和生物学冻结仍是后续目标，不代表本版本已实现。
 
 ## 1. 任务目标与边界
 
-本模块在已有 Cell-State 与组成证据基础上，描述移植前产品中阶段条件化的增殖、应激及相关转录程序，识别需要复核的信号，并区分生物状态、样本处理影响和证据不足。当前阶段只整理并验证数据、方法、环境和输出合同，不制定 0-100 指数。
+本模块在已有 Cell-State 与组成证据基础上，描述移植前产品中阶段条件化的增殖、应激及相关转录程序，识别需要复核的信号，并区分生物状态、样本处理影响和证据不足。当前可执行候选只绑定并聚合预计算证据，不读取表达矩阵或重跑单细胞分析，也不制定 0-100 指数。
 
 - Proliferation & Stress Response 表示这些增殖、应激及相关转录程序与当前 `ProductDefinitionCard`、目标阶段及参考范围的相容性；它不重新判定细胞身份或计算 off-target 比例。
 - cycling、stress 或其他程序升高必须结合细胞身份、发育阶段、样本处理和 assay 解释，不能自动标记为异常。

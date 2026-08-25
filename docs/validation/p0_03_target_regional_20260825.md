@@ -47,7 +47,7 @@ metric artifact prevents bundle reuse.
 
 ## Engineering evidence
 
-- Focused P0-03 and registry suite: 31 passed.
+- Focused P0-03 and registry suite after final main sync: 29 passed.
 - Exactly 12 high-level Tool Packages remain discoverable.
 - Two module-owned P0-03 Schemas, the shared P0-05 StateRoleMap Schema and the
   detailed Tool Card were byte-identical across two consecutive generator

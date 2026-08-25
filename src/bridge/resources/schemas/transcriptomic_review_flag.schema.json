@@ -1,0 +1,143 @@
+{
+  "$defs": {
+    "AnalysisScope": {
+      "enum": [
+        "whole_product",
+        "state_specific"
+      ],
+      "title": "AnalysisScope",
+      "type": "string"
+    },
+    "ProcessAttributionState": {
+      "enum": [
+        "conditional_association",
+        "cannot_attribute",
+        "not_requested"
+      ],
+      "title": "ProcessAttributionState",
+      "type": "string"
+    },
+    "ProgramApplicabilityState": {
+      "enum": [
+        "applicable",
+        "not_applicable"
+      ],
+      "title": "ProgramApplicabilityState",
+      "type": "string"
+    },
+    "ProgramAvailabilityState": {
+      "enum": [
+        "available",
+        "unavailable",
+        "cannot_resolve"
+      ],
+      "title": "ProgramAvailabilityState",
+      "type": "string"
+    },
+    "ReviewFlagState": {
+      "enum": [
+        "transcriptomic_review_flag",
+        "not_detected_above_lod",
+        "cannot_resolve",
+        "not_assessed"
+      ],
+      "title": "ReviewFlagState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/transcriptomic-review-flag/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_scope": {
+      "$ref": "#/$defs/AnalysisScope"
+    },
+    "applicability": {
+      "$ref": "#/$defs/ProgramApplicabilityState"
+    },
+    "availability": {
+      "$ref": "#/$defs/ProgramAvailabilityState"
+    },
+    "cell_state_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cell State Id"
+    },
+    "evidence_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Evidence Id",
+      "type": "string"
+    },
+    "flag_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Flag Id",
+      "type": "string"
+    },
+    "flag_status": {
+      "const": "shadow",
+      "default": "shadow",
+      "title": "Flag Status",
+      "type": "string"
+    },
+    "orthogonal_follow_up_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "title": "Orthogonal Follow Up Refs",
+      "type": "array"
+    },
+    "process_attribution": {
+      "$ref": "#/$defs/ProcessAttributionState"
+    },
+    "program_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Program Id",
+      "type": "string"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "review_flag_state": {
+      "$ref": "#/$defs/ReviewFlagState"
+    },
+    "safety_interpretation": {
+      "const": "not_evidence_of_safety",
+      "default": "not_evidence_of_safety",
+      "title": "Safety Interpretation",
+      "type": "string"
+    },
+    "stage_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Stage Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "flag_id",
+    "evidence_id",
+    "program_id",
+    "analysis_scope",
+    "stage_id",
+    "review_flag_state",
+    "applicability",
+    "availability",
+    "process_attribution",
+    "orthogonal_follow_up_refs",
+    "reason_codes"
+  ],
+  "title": "TranscriptomicReviewFlag",
+  "type": "object"
+}

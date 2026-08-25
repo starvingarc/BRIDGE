@@ -7,8 +7,16 @@
 | Date | 2026-08-07 |
 | Scope | 同阶段跨方案、真实时间序列及 batch/lot/preparation 稳定性 |
 | Primary unit | 独立 `sample/preparation` |
-| Primary output | `ComparisonRecord` |
+| Primary output | `ProductComparisonStabilityProfile` (v0.2 executable package) |
 | Current state | `candidate` |
+
+> v0.2 engineering note: the first executable package consumes checksummed
+> `ComparisonStabilitySpec`, `ComparisonCaseManifest`, and two or more
+> precomputed `ProductEvidenceBundle` objects. It performs deterministic contract,
+> confounding and descriptive-delta checks only. Inferential statistics, Pareto
+> claims, winner/equivalence conclusions and biological thresholds remain
+> unavailable; missing evidence is never converted to zero and all scores remain
+> null.
 
 ## 1. 任务目标与边界
 
