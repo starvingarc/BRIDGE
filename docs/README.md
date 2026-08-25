@@ -4,15 +4,19 @@ Use this page to find the shortest path to the contract, scientific rationale or
 evidence you need.
 
 > [!NOTE]
-> **Current state:** all 12 P0 packages are executable engineering candidates.
-> No scientific method, state, threshold or score is frozen. A future capability
-> in the PRD or a task card is not current runtime behavior.
+> **Product and current stage:** BRIDGE's final product is a scientific
+> evaluation Agent. The current `main` branch provides its deterministic P0 tool
+> layer: all 12 packages are executable engineering candidates. The end-to-end
+> Agent/Web experience is not yet integrated. No scientific method, state,
+> threshold or score is frozen, and a target capability in the PRD or a task
+> card is not current runtime behavior.
 
 ## Find what you need
 
 | I want to… | Start | Continue with |
 |---|---|---|
-| Run or integrate a tool | [12 Tool Packages](tool-packages.md) | [Request examples](../examples/README.md) · [Agent integration](agent-integration.md) |
+| Understand the Agent product | [Product requirements](BRIDGE_PRD.md) | [Agent architecture and team boundary](agent-integration.md) · [product principles](product-principles.md) |
+| Run or integrate the current tool layer | [12 P0 Tool Packages](tool-packages.md) | [Request examples](../examples/README.md) · [high-level contract](tool-contract.md) |
 | Review the biology | [Product and scientific principles](product-principles.md) | [P0 specifications](bridge_spec_v0.1/README.md) · [data/reference registry](bridge_spec_v0.1/data_reference_registry.md) |
 | Verify an exact interface | [Tool Cards](../src/bridge/tool_packages/cards/) | [Public JSON Schemas](../src/bridge/resources/schemas/) · [high-level contract](tool-contract.md) |
 | Check what was tested | [Validation records](validation/README.md) | [Quality baseline](quality-baseline.md) · [method/source knowledge](../knowledge/README.md) |
@@ -33,13 +37,18 @@ the documentation drift. Do not infer current behavior from an overview page.
 
 ## Browse by topic
 
-### Product and use
+### Product architecture
 
 - [Product requirements](BRIDGE_PRD.md)
 - [Product and scientific principles](product-principles.md)
-- [12 Tool Packages](tool-packages.md)
 - [Agent team integration](agent-integration.md)
 - [Privacy and provenance](privacy-and-provenance.md)
+
+### Current P0 tool layer
+
+- [12 P0 Tool Packages](tool-packages.md)
+- [High-level tool contract](tool-contract.md)
+- [Request examples](../examples/README.md)
 
 ### Science and methods
 

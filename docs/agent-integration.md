@@ -1,12 +1,21 @@
 # Agent Team Integration
 
+> [!NOTE]
+> This document describes the target Agent/tool integration boundary. The
+> current `main` branch exposes the tool-side contracts and 12 deterministic P0
+> packages; the end-to-end conversational Agent, Web UI and orchestration runtime
+> are not yet integrated. Tool availability alone is not a complete BRIDGE
+> product workflow.
+
 ## Ownership
 
 | BRIDGE science/tool team | Agent/Web team |
 |---|---|
 | Scientific contracts, Tool Packages, Method/Source knowledge, MeasurementSpecs, deterministic results, artifacts and validation | Conversation, orchestration, multi-Agent coordination, Web UI, task queue, authentication, permissions and model-provider integration |
 
-The Agent calls P0-01 through P0-12 as high-level tools. It does not assemble Scanpy, R packages, foundation models or database queries itself.
+The completed product's Agent calls P0-01 through P0-12 as high-level tools. It
+does not assemble Scanpy, R packages, foundation models or database queries
+itself.
 
 ## Stable Entry Points
 

@@ -2,7 +2,11 @@
 
 ## Collaboration Boundary
 
-BRIDGE exposes 12 high-level Tool Packages through a Python SDK and JSON CLI. Agent and Web implementations consume these contracts and do not call individual bioinformatics packages directly.
+BRIDGE currently exposes 12 high-level Tool Packages through a Python SDK and
+JSON CLI. They are the deterministic capability layer for the planned scientific
+Agent, not the complete product experience. Agent and Web implementations
+consume these contracts and do not call individual bioinformatics packages
+directly; executing a tool by itself is not an end-to-end BRIDGE evaluation.
 
 Every package supports:
 

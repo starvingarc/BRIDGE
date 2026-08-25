@@ -18,6 +18,8 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 
 ## 快速索引
 
+- 智能体产品主规范：`docs/BRIDGE_PRD.md`
+- Agent 与工具团队边界：`docs/agent-integration.md`
 - 产品原则与科学边界：`docs/product-principles.md`
 - 高层工具合同：`docs/tool-contract.md`
 - 隐私、来源与可追溯性：`docs/privacy-and-provenance.md`
@@ -40,6 +42,9 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 若高优先级来源互相冲突，停止扩大改动，在活动计划和决定记录中写明冲突，并由科学负责人确认。计划不能静默推翻稳定合同。
 
 ## 仓库地图
+
+当前仓库的 `main` 实现的是 BRIDGE 科学智能体的确定性 P0 工具底座，
+不是完整的对话式产品。Agent/Web/任务编排层通过稳定合同消费这些工具。
 
 | 路径 | 职责 |
 |---|---|

@@ -1,8 +1,11 @@
 # Tool Package Guide
 
-BRIDGE exposes 12 high-level P0 tools. All are implemented and callable; all
-remain scientific candidates, and P0-02 and downstream domain evidence remain
-shadow unless their versioned scientific authorities are approved.
+The 12 high-level P0 tools are the current Agent-callable foundation, not the
+complete BRIDGE product. All are implemented and callable; all remain scientific
+candidates, and P0-02 and downstream domain evidence remain shadow unless their
+versioned scientific authorities are approved. The future Agent will orchestrate
+these packages through the same contracts rather than reproduce their scientific
+logic.
 
 **Jump to:** [P0-01–P0-02 intake and state evidence](#intake-and-state-evidence) ·
 [P0-03–P0-06 product-domain evidence](#product-domain-evidence) ·
