@@ -1,6 +1,6 @@
 # BRIDGE Agent Handbook
 
-本文件是 BRIDGE 仓库内所有 Coding Agent 的第一入口。开始工作前先阅读本文件、`PLANS.md` 与 `docs/index.md`。
+本文件是 BRIDGE 仓库内所有 Coding Agent 的第一入口。开始工作前先阅读本文件、`plans/README.md` 与 `docs/index.md`。
 
 BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方式：
 
@@ -24,7 +24,7 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 - 质量与验证基线：`docs/quality-baseline.md`
 - 文档维护：`docs/documentation-guide.md`
 - 重大决定：`docs/decision-log.md`
-- 当前活动计划：`PLANS.md`
+- 当前活动计划：`plans/README.md`
 
 ## 事实优先级
 
@@ -44,11 +44,10 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 | 路径 | 职责 |
 |---|---|
 | `src/bridge/toolkit/` | 公共对象、Registry、运行器、产物与知识检索 |
-| `src/bridge/tool_packages/` | 12 个高层科学工具包；底层方法不直接暴露给 Agent |
-| `tool_packages/` | 人可读 Tool Card、输入输出、环境、可视化与验证合同 |
-| `knowledge/` | 紧凑的人类导航与当前 P0 方法短名单；完整目录仅以打包快照发布 |
-| `catalog_seed/` | 方法目录策展、来源核验与确定性重建输入 |
-| `schemas/` | 对外 JSON Schema；语义变更必须版本化 |
+| `src/bridge/tool_packages/` | 12 个高层科学工具包及其 Spec、Tool Card 和包内资源；底层方法不直接暴露给 Agent |
+| `src/bridge/resources/schemas/` | 随 Python 包发布的对外 JSON Schema；语义变更必须版本化 |
+| `knowledge/` | 方法目录策展、来源核验、当前 P0 短名单与知识快照重建输入 |
+| `scripts/` | 仓库检查和确定性资源生成；不属于 Agent 可调用的科学工具 |
 | `tests/` | 当前活动实现的可执行合同与回归测试 |
 | `docs/` | 稳定科学和工程事实 |
 | `plans/` | 当前主题分支的临时实施计划 |
@@ -79,7 +78,7 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 ### 计划与交付循环
 
 - 跨多个合同或稳定文档、需要分阶段验收、涉及 Schema、隐私、评分、reference、locked/sealed data 或发布风险的工作必须先创建分支计划。
-- 计划身份由主题分支和任务 slug 决定；已有同名计划时恢复或移交，不得覆盖重建。`PLANS.md` 以计划路径为唯一键。
+- 计划身份由主题分支和任务 slug 决定；已有同名计划时恢复或移交，不得覆盖重建。`plans/README.md` 以计划路径为唯一键。
 - Draft PR 可以保留 `in_progress` 计划，但不得把未完成任务写成稳定能力。转为 Ready for Review 前，必须在计划中记录最终验证证据；未完成范围应继续保留为明确任务或拆入后续计划。
 - 稳定事实同步写入 `docs/`，施工状态只写入 `plans/`。计划不能推翻稳定合同；若需要改变合同或科学边界，必须在 `docs/decision-log.md` 追加决定。
 - 交付必须包含改动范围、关键决定、变更文件、验证证据、未验证项、风险和后续动作；“已实现”不能替代可复现证据。
@@ -114,7 +113,7 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 ## 文档与计划
 
 - `docs/` 只写已实现或已批准的稳定事实；未来工作写入活动计划或明确标注 `candidate/proposed`。
-- 复杂任务在 `plans/<branch-slug>.md` 中记录范围、验收、决定和验证，并由 `PLANS.md` 索引。
+- 复杂任务在 `plans/<branch-slug>.md` 中记录范围、验收、决定和验证，并由 `plans/README.md` 索引。
 - Schema、科学边界、隐私、评分或公开导出规则变化时，同一变更必须更新测试和稳定文档。
 - 重大且难以逆转的决定追加到 `docs/decision-log.md`，不得覆盖历史决定。
 
@@ -133,7 +132,7 @@ README、计划、PR、Issue 和验证记录按以下顺序说明进展：生物
 python -m pytest -q
 python -m bridge.toolkit.cli list --json
 python -m bridge.toolkit.cli knowledge validate
-python tools/check_repository.py
+python scripts/check_repository.py
 git diff --check
 ```
 
