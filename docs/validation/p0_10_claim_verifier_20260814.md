@@ -366,9 +366,9 @@ The resulting implementation commit was
 were the fully synthetic scRNA upload demo and its documentation; no P0-10,
 P0-08 or P0-09 interface changed.
 
-Validation ran exclusively under `/data1` from a complete transferred Git
-bundle. The old server worktree was not reused because its Git metadata still
-depended on the unavailable legacy volume. A new independent checkout and a
+Validation ran exclusively in an isolated server worktree from a complete
+transferred Git bundle. The old server worktree was not reused because its Git
+metadata still depended on the unavailable legacy volume. A new independent checkout and a
 new append-only evidence directory were used instead. No long-lived Conda
 environment was modified: the existing core environment supplied QC/test
 dependencies, while the exact pinned `regex` 2026.7.19 package was copied from

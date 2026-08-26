@@ -17,7 +17,7 @@ It does not rerun scientific domains or infer biological desirability.
 
 ## Server verification
 
-The exact staged source was validated on `bridge-amax` under `/data1` only:
+The exact staged source was validated in an isolated private server worktree:
 
 - focused P0-07 suite: **15 passed**;
 - complete repository suite: **1,077 passed**, with eight pre-existing

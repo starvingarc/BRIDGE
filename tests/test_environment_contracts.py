@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -96,25 +97,39 @@ def test_evidence_environment_is_self_contained_and_pinned() -> None:
 
 
 def test_active_environment_contracts_do_not_name_machine_local_environments() -> None:
+    paths = sorted((REPO_ROOT / "environments").glob("*"))
+    specs = [
+        yaml.safe_load(path.read_text(encoding="utf-8"))
+        for path in paths
+        if path.suffix in {".yaml", ".yml"}
+    ]
+    named_specs = [spec for spec in specs if isinstance(spec, dict) and "name" in spec]
     text = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted((REPO_ROOT / "environments").glob("*"))
-        if path.is_file()
+        path.read_text(encoding="utf-8") for path in paths if path.is_file()
     )
 
-    assert "name: pytorch" not in text
-    assert "/data1/" not in text
-    assert "/data2/" not in text
-    assert "/Users/" not in text
+    private_mount = re.compile(r"/(?:data[0-9]+|mnt|srv)/")
+    private_home = re.compile(r"/(?:Users|home)/[^/\s]+/")
+    assert named_specs
+    assert all(str(spec["name"]).startswith("bridge-") for spec in named_specs)
+    assert private_mount.search(text) is None
+    assert private_home.search(text) is None
 
 
 def test_active_tool_docs_use_environment_specs_not_server_environment_names() -> None:
     docs = REPO_ROOT / "docs" / "bridge_spec_v0.1"
     text = "\n".join(path.read_text(encoding="utf-8") for path in sorted(docs.glob("*.md")))
 
-    assert "`pytorch`" not in text
-    assert "`r4.3`" not in text
-    assert "bridge-amax" not in text
+    internal_host = re.compile(
+        r"\b(?:source|server|compute)\s+host(?:name)?\s*(?:is|[:=])\s*\S+",
+        re.I,
+    )
+    machine_environment = re.compile(
+        r"\b(?:server|machine-local)\s+environment(?:\s+name)?\s*(?:is|[:=])\s*\S+",
+        re.I,
+    )
+    assert internal_host.search(text) is None
+    assert machine_environment.search(text) is None
 
 
 def test_cell_state_python_environment_contract_is_pinned() -> None:

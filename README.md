@@ -2,6 +2,7 @@
 
 <h1>BRIDGE</h1>
 
+<p><em>Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation</em></p>
 <p><strong>Scientific agent for cell-therapy product evaluation</strong></p>
 
 <p>

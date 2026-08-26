@@ -291,12 +291,12 @@ def test_confirmation_mismatch_fails_without_artifacts(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "text",
     [
-        "Private path /" + "data1/team/run must not be public.",
+        "Private path /" + "mnt/internal-team/run must not be public.",
         "Contact alice@example.org for details.",
         "Credential api_key=super-secret-value is private.",
         "Internal evidence:abcdef must not appear.",
         "Internal sample:private-1 must not appear.",
-        "The source host is bridge-amax.",
+        "The source hostname is compute-node-17.",
     ],
 )
 def test_leak_canaries_fail_closed(tmp_path: Path, text: str) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from bridge.toolkit.contracts import ImplementationState, ToolRequest
@@ -68,9 +69,10 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
 
     payload = [spec.model_dump_json() for spec in registry.list()]
 
-    assert "/data1/" not in "".join(payload)
-    assert "/data2/" not in "".join(payload)
-    assert "/Users/" not in "".join(payload)
+    serialized = "".join(payload)
+    private_mount = re.compile(r"/(?:data[0-9]+|mnt|srv)/")
+    assert private_mount.search(serialized) is None
+    assert "/Users/" not in serialized
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
