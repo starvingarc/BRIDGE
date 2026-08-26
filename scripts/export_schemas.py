@@ -41,6 +41,7 @@ from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
 )
+from bridge.tool_packages._input_contracts import ToolInputContract
 from bridge.tool_packages.p0_01_input_qc.io import P001StructuredOutputIndex
 from bridge.tool_packages.p0_03_target_regional.models import (
     PUBLIC_SCHEMA_MODELS as P0_03_SCHEMA_MODELS,
@@ -129,6 +130,10 @@ MODELS = {
     "reference_manifest": ("bridge://schemas/reference-manifest/v0.1", ReferenceManifest),
     "reference_profile": ("bridge://schemas/reference-profile/v0.1", ReferenceProfile),
     "structured_input_ref": ("bridge://schemas/structured-input-ref/v0.1", StructuredInputRef),
+    "tool_input_contract": (
+        "bridge://schemas/tool-input-contract/v0.1",
+        ToolInputContract,
+    ),
     "tool_package_spec": ("bridge://schemas/tool-package-spec/v0.1", ToolPackageSpec),
     "tool_package_spec_v2": ("bridge://schemas/tool-package-spec/v0.2", ToolPackageSpecV2),
     "tool_request": ("bridge://schemas/tool-request/v0.1", ToolRequest),

@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
-import os
-from pathlib import Path
-import shutil
-from uuid import uuid4
+from dataclasses import dataclass
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
@@ -13,10 +9,13 @@ from bridge.tool_packages._structured_runtime import (
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
-    inputs_unchanged,
     load_structured_inputs,
     objects_for_role,
+    request_v2_from_v1,
     single_object,
+)
+from bridge.tool_packages._structured_runtime import (
+    publish_single_json as _publish_single_json,
 )
 from bridge.tool_packages.p0_07_product_comparison_stability.executor import (
     evaluate_product_comparison,
@@ -39,7 +38,6 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
     ToolRunV2,
 )
-
 
 RESULT_SCHEMA_REF = "bridge://schemas/product-comparison-stability-profile/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
@@ -322,35 +320,6 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
 
 
-def _publish_single_json(
-    *, request: ToolRequestV2, run_id: str, filename: str, payload: bytes
-) -> Path:
-    output_root = request.output_dir.resolve()
-    output_root.mkdir(parents=True, exist_ok=True)
-    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    staging.mkdir(mode=0o700)
-    staged_file = staging / filename
-    staged_file.write_bytes(payload)
-    final_dir = output_root / run_id
-    try:
-        if not inputs_unchanged(request.object_inputs):
-            raise StructuredInputError("structured_input_modified_during_run")
-        if final_dir.exists():
-            final_file = final_dir / filename
-            if (
-                not final_dir.is_dir()
-                or set(item.name for item in final_dir.iterdir()) != {filename}
-                or not final_file.is_file()
-                or final_file.is_symlink()
-                or final_file.read_bytes() != payload
-            ):
-                raise StructuredInputError("existing_run_bundle_hash_mismatch")
-            return final_file
-        os.replace(staging, final_dir)
-        return final_dir / filename
-    finally:
-        if staging.exists():
-            shutil.rmtree(staging)
 
 
 def _failed_run(
@@ -370,16 +339,9 @@ def _failed_run(
     )
 
 
-def _failed_v1_request(request: ToolRequest, spec: ToolPackageSpecV2) -> ToolRunV2:
-    request_v2 = ToolRequestV2(
-        request_id=request.request_id,
-        tool_id=request.tool_id,
-        output_dir=request.output_dir,
-        tool_version=request.tool_version,
-        assets=request.assets,
-        measurement_spec_ref=request.measurement_spec_ref,
-        parameters=request.parameters,
-        random_seed=request.random_seed,
-        object_inputs=[],
+def _failed_v1_request(
+    request: ToolRequest, spec: ToolPackageSpecV2
+) -> ToolRunV2:
+    return _failed_run(
+        request_v2_from_v1(request), spec, ["tool_request_v2_required"]
     )
-    return _failed_run(request_v2, spec, ["tool_request_v2_required"])

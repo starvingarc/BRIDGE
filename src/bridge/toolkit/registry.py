@@ -14,6 +14,10 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 import yaml
 
+from bridge.tool_packages._input_contracts import (
+    ToolInputContract,
+    get_input_contract,
+)
 from bridge.toolkit.contracts import (
     ExecutionState,
     EligibilityResult,
@@ -109,6 +113,10 @@ class ToolRegistry:
             return self._specs[tool_id]
         except KeyError as exc:
             raise KeyError(f"Unknown Tool Package: {tool_id}") from exc
+
+    def describe_input(self, tool_id: str) -> ToolInputContract:
+        self.describe(tool_id)
+        return get_input_contract(tool_id)
 
     def read_card(self, tool_id: str) -> str:
         spec = self.describe(tool_id)

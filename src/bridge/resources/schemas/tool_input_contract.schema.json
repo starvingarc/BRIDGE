@@ -1,0 +1,231 @@
+{
+  "$defs": {
+    "AssetInputContract": {
+      "additionalProperties": false,
+      "properties": {
+        "assays": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assays",
+          "type": "array"
+        },
+        "formats": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Formats",
+          "type": "array"
+        },
+        "input_levels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Input Levels",
+          "type": "array"
+        },
+        "matrix_semantics": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Matrix Semantics",
+          "type": "array"
+        },
+        "max_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Count"
+        },
+        "min_count": {
+          "minimum": 0,
+          "title": "Min Count",
+          "type": "integer"
+        },
+        "required_metadata_keys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Metadata Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "min_count"
+      ],
+      "title": "AssetInputContract",
+      "type": "object"
+    },
+    "ObjectInputModeContract": {
+      "additionalProperties": false,
+      "properties": {
+        "mode_id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Mode Id",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/ObjectInputRoleContract"
+          },
+          "title": "Roles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "mode_id"
+      ],
+      "title": "ObjectInputModeContract",
+      "type": "object"
+    },
+    "ObjectInputRoleContract": {
+      "additionalProperties": false,
+      "properties": {
+        "max_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Count"
+        },
+        "min_count": {
+          "minimum": 0,
+          "title": "Min Count",
+          "type": "integer"
+        },
+        "object_version_policy": {
+          "enum": [
+            "fixed",
+            "payload"
+          ],
+          "title": "Object Version Policy",
+          "type": "string"
+        },
+        "object_versions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Object Versions",
+          "type": "array"
+        },
+        "role": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Schema Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "role",
+        "schema_refs",
+        "object_version_policy",
+        "min_count"
+      ],
+      "title": "ObjectInputRoleContract",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/tool-input-contract/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "asset_input": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AssetInputContract"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "measurement_spec_ref_policy": {
+      "enum": [
+        "forbidden",
+        "optional",
+        "required"
+      ],
+      "title": "Measurement Spec Ref Policy",
+      "type": "string"
+    },
+    "object_input_modes": {
+      "items": {
+        "$ref": "#/$defs/ObjectInputModeContract"
+      },
+      "title": "Object Input Modes",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "parameters_allowed": {
+      "title": "Parameters Allowed",
+      "type": "boolean"
+    },
+    "random_seed_policy": {
+      "enum": [
+        "any_integer",
+        "fixed_zero"
+      ],
+      "title": "Random Seed Policy",
+      "type": "string"
+    },
+    "request_schema_ref": {
+      "enum": [
+        "bridge://schemas/tool-request/v0.1",
+        "bridge://schemas/tool-request/v0.2"
+      ],
+      "title": "Request Schema Ref",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/tool-input-contract/v0.1",
+      "default": "bridge://schemas/tool-input-contract/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "semantic_validation": {
+      "const": "adapter",
+      "default": "adapter",
+      "title": "Semantic Validation",
+      "type": "string"
+    },
+    "tool_id": {
+      "pattern": "^P0-(0[1-9]|1[0-2])$",
+      "title": "Tool Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tool_id",
+    "request_schema_ref",
+    "measurement_spec_ref_policy",
+    "parameters_allowed",
+    "random_seed_policy"
+  ],
+  "title": "ToolInputContract",
+  "type": "object"
+}

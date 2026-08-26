@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import hashlib
 import json
+from copy import deepcopy
 from pathlib import Path
 
-from jsonschema import Draft202012Validator
 import pytest
+from jsonschema import Draft202012Validator
 
-from bridge.tool_packages.p0_03_target_regional.adapter import ROLE_MODELS, adapter
-from bridge.tool_packages.p0_03_target_regional.models import PUBLIC_SCHEMA_MODELS
-from bridge.tool_packages.p0_05_off_target_control.models import (
+from bridge.tool_packages._configurable_contracts import (
     StateRoleMap as SharedStateRoleMap,
 )
+from bridge.tool_packages.p0_03_target_regional.adapter import ROLE_MODELS, adapter
+from bridge.tool_packages.p0_03_target_regional.models import PUBLIC_SCHEMA_MODELS
 from bridge.toolkit.contracts import (
     ExecutionState,
     ImplementationState,
@@ -24,7 +24,6 @@ from bridge.toolkit.contracts import (
 )
 from bridge.toolkit.registry import ToolRegistry
 from tests.p0_biological_units import bind_reviewed_biological_units
-
 
 ROLE_SCHEMAS = {role: contract[0] for role, contract in ROLE_MODELS.items()}
 ROLE_VERSIONS = {

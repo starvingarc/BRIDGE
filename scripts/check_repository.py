@@ -38,7 +38,6 @@ IMPLEMENTED_TOOL_BASELINE = 5
 MAX_FILES_PER_NEW_IMPLEMENTED_TOOL = 18
 SHARED_CONTRACT_SPINE_FILES = (
     Path("docs/validation/shared_p0_scientific_contract_spine_20260825.md"),
-    Path("plans/shared-p0-scientific-contract-spine.md"),
     Path("src/bridge/resources/schemas/biological_unit_assignment.schema.json"),
     Path("src/bridge/resources/schemas/biological_unit_manifest.schema.json"),
     Path("src/bridge/resources/schemas/measurement_result_v2.schema.json"),

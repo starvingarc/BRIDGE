@@ -6,8 +6,9 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from bridge.toolkit.registry import ToolRegistry
 from pydantic import ValidationError
+
+from bridge.toolkit.registry import ToolRegistry
 
 
 def _emit(payload: object) -> None:
@@ -24,6 +25,10 @@ def build_parser() -> argparse.ArgumentParser:
     describe_parser = subparsers.add_parser("describe")
     describe_parser.add_argument("tool_id")
     describe_parser.add_argument("--json", action="store_true")
+
+    input_parser = subparsers.add_parser("input-contract")
+    input_parser.add_argument("tool_id")
+    input_parser.add_argument("--json", action="store_true")
 
     validate_parser = subparsers.add_parser("validate")
     validate_parser.add_argument("--request", required=True, type=Path)
@@ -63,6 +68,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             _emit({"error": "unknown_tool", "tool_id": args.tool_id})
             return 2
         _emit(spec.model_dump(mode="json"))
+        return 0
+
+    if args.command == "input-contract":
+        try:
+            contract = registry.describe_input(args.tool_id)
+        except KeyError:
+            _emit({"error": "unknown_tool", "tool_id": args.tool_id})
+            return 2
+        _emit(contract.model_dump(mode="json"))
         return 0
 
     if args.command in {"validate", "run"}:

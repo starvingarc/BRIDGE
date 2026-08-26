@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 from enum import StrEnum
-import math
 from typing import Literal, Self
 
 from pydantic import Field, StrictFloat, StrictInt, field_validator, model_validator
 
-from bridge.tool_packages._configurable_contracts import VersionedObjectRef
+from bridge.tool_packages._configurable_contracts import (
+    ProductRole,
+    StateRoleMap,
+    VersionedObjectRef,
+)
 from bridge.toolkit.contracts import FrozenModel
-
 
 OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
 VERSION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
@@ -26,13 +29,6 @@ def _aware_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("created_at must include a timezone")
     return value.astimezone(timezone.utc)
-
-
-class ProductRole(StrEnum):
-    TARGET = "target"
-    ACCEPTABLE_ADJACENT = "acceptable_adjacent"
-    KNOWN_OFF_TARGET = "known_off_target"
-    ROLE_UNRESOLVED = "role_unresolved"
 
 
 class CoverageState(StrEnum):
@@ -58,51 +54,6 @@ class RareDetectionState(StrEnum):
     NOT_ASSESSED = "not_assessed"
 
 
-class StateRoleAssignment(FrozenModel):
-    state_id: str = Field(pattern=OBJECT_ID_PATTERN)
-    product_role: ProductRole
-    role_evidence_class: str = Field(pattern=OBJECT_ID_PATTERN)
-    evidence_direction: str = Field(pattern=OBJECT_ID_PATTERN)
-    source_refs: list[str] = Field(default_factory=list)
-
-    @field_validator("source_refs")
-    @classmethod
-    def sources_are_unique(cls, value: list[str]) -> list[str]:
-        _unique(value, "source_refs")
-        return value
-
-
-class StateRoleMap(FrozenModel):
-    object_version: Literal["0.1.0"]
-    state_role_map_id: str = Field(pattern=r"^state-role-map:[A-Za-z0-9._:-]+$")
-    map_version: str = Field(pattern=VERSION_PATTERN)
-    product_definition_ref: VersionedObjectRef
-    review_state: Literal["draft", "reviewed", "frozen"]
-    assignments: list[StateRoleAssignment] = Field(min_length=1)
-    provenance_refs: list[VersionedObjectRef] = Field(min_length=1)
-
-    @field_validator("assignments")
-    @classmethod
-    def states_are_unique(
-        cls, value: list[StateRoleAssignment]
-    ) -> list[StateRoleAssignment]:
-        _unique([item.state_id for item in value], "state assignments")
-        return value
-
-    @field_validator("provenance_refs")
-    @classmethod
-    def provenance_is_unique(
-        cls, value: list[VersionedObjectRef]
-    ) -> list[VersionedObjectRef]:
-        _unique([item.ref for item in value], "provenance_refs")
-        return value
-
-    @property
-    def ref(self) -> VersionedObjectRef:
-        return VersionedObjectRef(
-            object_id=self.state_role_map_id,
-            object_version=self.map_version,
-        )
 
 
 class RareStateRule(FrozenModel):

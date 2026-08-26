@@ -11,6 +11,7 @@ directly; executing a tool by itself is not an end-to-end BRIDGE evaluation.
 Every package supports:
 
 - `describe`: return version, purpose, status, requirements and artifacts.
+- `input-contract`: return the accepted request envelope and input modes.
 - `check_eligibility`: deterministically evaluate a request without running science code.
 - `run`: execute only when `implementation_state=implemented` and eligibility passes.
 
@@ -25,6 +26,7 @@ Every package supports:
 | `ToolPackageSpecV2` | v0.2 package identity plus packaged adapter and structured-result schema bindings |
 | `ToolRequestV2` | v0.2 request retaining asset inputs while adding schema-bound structured-object references |
 | `ToolRunV2` | v0.2 run envelope binding successful or partial structured results to a declared result schema |
+| `ToolInputContract` | Versioned Agent-facing asset rules or structured-object modes, including role cardinality, Schema references and object-version policy |
 | `MeasurementResult` | Raw metric, denominator, interval, evidence and score state |
 | `MeasurementResultV2` | Standalone v0.2 raw measurement with spec version, unit, source run, typed interval metadata and explicit unknown scope |
 | `MeasurementSpecV2` | Additive v0.2 measurement context with controlled biological analysis and independence units; cell/nucleus remains an observation-unit declaration |
@@ -47,6 +49,11 @@ Every package supports:
 Implemented Tool Packages retain at least one selected `method_id`. Scaffold packages keep `method_ids` empty until an executable, benchmark-bound method contract exists; candidate catalog entries do not imply implementation.
 
 The existing v0.1 models and schemas remain the contract for current P0-01 and P0-02 behavior. A v0.2 package declares `bridge://schemas/tool-request/v0.2` and `bridge://schemas/tool-run/v0.2`. Implemented v0.2 packages additionally bind a non-empty method set, one adapter under `bridge.tool_packages.*`, and a result schema. Scaffold v0.2 packages bind neither adapter nor result schema. The registry selects the request model after reading `tool_id`; the CLI command and Python SDK entrypoints do not change. A Python caller that manually supplies the wrong request-model generation receives a structured refusal before adapter or executor resolution: `tool_request_v2_required` for a v1 request sent to a v0.2 package, or `tool_request_v1_required` for the inverse. `validate_request` returns an ineligible `EligibilityResult`; `run_tool` returns a failed envelope matching the request object that actually arrived, so the refusal remains serializable.
+
+`ToolInputContract` is an additive discovery object; it does not change either
+request envelope. It exposes expression-asset constraints for P0-01/P0-02 and
+named structured-object modes for P0-03 through P0-12. Cross-object identities,
+checksums and scientific applicability are still checked by the selected adapter.
 
 `ToolRunV2.measurements` intentionally remains bound to the existing `MeasurementResult`; its public v0.2 Schema bytes are unchanged. `MeasurementResultV2` is a separate structured contract for modules that explicitly declare it, and is not silently substituted into the run envelope. It requires an exact measurement-spec version, paired finite numerator/denominator and source-run fields, a positive denominator, finite ordered intervals, null values for `missing`/`unavailable`, and a controlled scope for `unknown`. Measurement-level unknowns carry no quantitative value; identity- or role-level uncertainty may retain an observed value while preserving that narrower uncertainty. `domain_score` remains null and `score_state` remains unavailable.
 

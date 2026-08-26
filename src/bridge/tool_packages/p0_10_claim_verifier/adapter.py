@@ -1,26 +1,26 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
-import os
-from pathlib import Path
-import shutil
-from uuid import uuid4
+from dataclasses import dataclass
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
+    PublicationError,
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
-    inputs_unchanged,
     load_structured_inputs,
     read_regular_bytes,
+    request_v2_from_v1,
     single_object,
+)
+from bridge.tool_packages._structured_runtime import (
+    publish_json_result as _publish_result,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CaseEvidenceGraphManifest,
-    contains_unsafe_reference,
     EvidenceRecordSet,
+    contains_unsafe_reference,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
 from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
@@ -51,7 +51,6 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-
 RESULT_SCHEMA_REF = "bridge://schemas/claim-verification-result/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "report_draft": ("bridge://schemas/report-draft/v0.1", ReportDraft),
@@ -70,10 +69,6 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
 }
 
 
-class PublicationError(ValueError):
-    def __init__(self, reason_code: str) -> None:
-        super().__init__(reason_code)
-        self.reason_code = reason_code
 
 
 @dataclass(frozen=True)
@@ -162,6 +157,7 @@ class ClaimVerifierAdapter:
             output_file = _publish_result(
                 request=request,
                 run_id=run_id,
+                filename="claim_verification_result.json",
                 payload=result_bytes,
             )
         except PublicationError as exc:
@@ -362,56 +358,6 @@ def _input_hash(
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
 
 
-def _publish_result(
-    *,
-    request: ToolRequestV2,
-    run_id: str,
-    payload: bytes,
-) -> Path:
-    output_root = request.output_dir
-    if directory_state(output_root) == "other":
-        raise PublicationError("output_path_invalid")
-    try:
-        output_root.mkdir(parents=True, exist_ok=True)
-    except (OSError, RuntimeError):
-        raise PublicationError("output_path_invalid") from None
-    if directory_state(output_root) != "directory":
-        raise PublicationError("output_path_invalid")
-    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    filename = "claim_verification_result.json"
-    try:
-        staging.mkdir(mode=0o700)
-        (staging / filename).write_bytes(payload)
-        if not inputs_unchanged(request.object_inputs):
-            raise PublicationError("structured_input_modified_during_run")
-        final = output_root / run_id
-        final_state = directory_state(final)
-        if final_state == "directory":
-            existing = final / filename
-            try:
-                matches = (
-                    read_regular_bytes(existing) == payload
-                    and {path.name for path in final.iterdir()} == {filename}
-                )
-            except (OSError, RuntimeError):
-                matches = False
-            if not matches:
-                raise PublicationError("existing_run_bundle_hash_mismatch")
-            shutil.rmtree(staging)
-        elif final_state == "missing":
-            os.replace(staging, final)
-        else:
-            raise PublicationError("existing_run_bundle_hash_mismatch")
-        published = final / filename
-        if read_regular_bytes(published) != payload:
-            raise PublicationError("published_result_hash_mismatch")
-        return published
-    except PublicationError:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    except (OSError, RuntimeError):
-        shutil.rmtree(staging, ignore_errors=True)
-        raise PublicationError("output_path_invalid") from None
 
 
 def _failed_run(
@@ -434,15 +380,6 @@ def _failed_run(
 def _failed_v1_request(
     request: ToolRequest, spec: ToolPackageSpecV2
 ) -> ToolRunV2:
-    request_v2 = ToolRequestV2(
-        request_id=request.request_id,
-        tool_id=request.tool_id,
-        output_dir=request.output_dir,
-        tool_version=request.tool_version,
-        assets=request.assets,
-        measurement_spec_ref=request.measurement_spec_ref,
-        parameters=request.parameters,
-        random_seed=request.random_seed,
-        object_inputs=[],
+    return _failed_run(
+        request_v2_from_v1(request), spec, ["tool_request_v2_required"]
     )
-    return _failed_run(request_v2, spec, ["tool_request_v2_required"])

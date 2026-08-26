@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from importlib.resources import files
 
-
 SCHEMA_REFS = {
     "bridge://schemas/annotation-vocabulary/v0.1": "annotation_vocabulary.schema.json",
     "bridge://schemas/artifact-manifest/v0.1": "artifact_manifest.schema.json",
@@ -93,6 +92,7 @@ SCHEMA_REFS = {
     "bridge://schemas/target-regional-assessment-spec/v0.1": "target_regional_assessment_spec.schema.json",
     "bridge://schemas/target-regional-evidence-result/v0.1": "target_regional_evidence_result.schema.json",
     "bridge://schemas/structured-input-ref/v0.1": "structured_input_ref.schema.json",
+    "bridge://schemas/tool-input-contract/v0.1": "tool_input_contract.schema.json",
     "bridge://schemas/tool-package-spec/v0.1": "tool_package_spec.schema.json",
     "bridge://schemas/tool-package-spec/v0.2": "tool_package_spec_v2.schema.json",
     "bridge://schemas/tool-request/v0.1": "tool_request.schema.json",

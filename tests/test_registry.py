@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import re
+from importlib import import_module
 from pathlib import Path
 
 from bridge.toolkit.contracts import ImplementationState, ToolRequest
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.schemas import SCHEMA_REFS, load_schema
-
 
 EXPECTED_IDS = [f"P0-{index:02d}" for index in range(1, 13)]
 
@@ -75,8 +75,80 @@ def test_public_registry_payload_contains_no_absolute_paths() -> None:
     assert "/Users/" not in serialized
 
 
+def test_every_tool_exposes_a_resolvable_input_contract() -> None:
+    registry = ToolRegistry.load_default()
+
+    for spec in registry.list():
+        contract = registry.describe_input(spec.tool_id)
+        assert contract.tool_id == spec.tool_id
+        assert contract.request_schema_ref == spec.input_schema_ref
+        for mode in contract.object_input_modes:
+            for role in mode.roles:
+                assert set(role.schema_refs).issubset(SCHEMA_REFS)
+
+    assert registry.describe_input("P0-01").asset_input.max_count == 1
+    assert len(registry.describe_input("P0-03").object_input_modes[0].roles) == 11
+    assert [mode.mode_id for mode in registry.describe_input("P0-09").object_input_modes] == [
+        "case_initial",
+        "case_append",
+        "comparison_initial",
+        "comparison_append",
+    ]
+    assert [mode.mode_id for mode in registry.describe_input("P0-12").object_input_modes] == [
+        "not_provided",
+        "graft_assessment",
+    ]
+
+
+def test_input_contract_roles_match_runtime_adapters() -> None:
+    modules = {
+        "P0-03": "bridge.tool_packages.p0_03_target_regional.adapter",
+        "P0-04": "bridge.tool_packages.p0_04_developmental_compatibility.adapter",
+        "P0-05": "bridge.tool_packages.p0_05_off_target_control.adapter",
+        "P0-06": "bridge.tool_packages.p0_06_proliferation_stress_response.adapter",
+        "P0-07": "bridge.tool_packages.p0_07_product_comparison_stability.adapter",
+        "P0-08": "bridge.tool_packages.p0_08_evidence_sufficiency.adapter",
+        "P0-09": "bridge.tool_packages.p0_09_evidence_compiler.adapter",
+        "P0-10": "bridge.tool_packages.p0_10_claim_verifier.adapter",
+        "P0-11": "bridge.tool_packages.p0_11_public_safe_export.adapter",
+        "P0-12": "bridge.tool_packages.p0_12_graft_assessment.adapter",
+    }
+    registry = ToolRegistry.load_default()
+
+    for tool_id, module_name in modules.items():
+        module = import_module(module_name)
+        runtime_contract = getattr(module, "ROLE_SCHEMAS", None)
+        if runtime_contract is None:
+            runtime_contract = getattr(
+                module, "ROLE_MODELS", getattr(module, "ROLE_CONTRACTS", {})
+            )
+        declared_roles = {
+            role.role
+            for mode in registry.describe_input(tool_id).object_input_modes
+            for role in mode.roles
+        }
+        assert declared_roles == set(runtime_contract)
+
+
+def test_shared_product_context_imports_remain_compatible() -> None:
+    from bridge.tool_packages._configurable_contracts import (
+        DevelopmentWindowSpec as SharedDevelopmentWindowSpec,
+    )
+    from bridge.tool_packages._configurable_contracts import (
+        StateRoleMap as SharedStateRoleMap,
+    )
+    from bridge.tool_packages.p0_04_developmental_compatibility.models import (
+        DevelopmentWindowSpec,
+    )
+    from bridge.tool_packages.p0_05_off_target_control.models import StateRoleMap
+
+    assert DevelopmentWindowSpec is SharedDevelopmentWindowSpec
+    assert StateRoleMap is SharedStateRoleMap
+
+
+
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 95
+    assert len(SCHEMA_REFS) == 96
     assert {
         "bridge://schemas/claim-verifier-run-result/v0.1",
         "bridge://schemas/verified-report/v0.1",

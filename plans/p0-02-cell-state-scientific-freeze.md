@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Branch | `p0-02-external-source-preparation` |
+| Coordination | `main` and Issues #3, #5, #6, #7 and #8 |
 | Status | `biological_review_in_progress` |
 | Owner | BRIDGE core |
 
@@ -129,7 +129,7 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
 
 - The Birtele conversion, checksum, QC and lineage-audit implementation is
   complete and documented at [P0-02 external-source preparation](../docs/bridge_spec_v0.1/external_source_preparation.md); its source/stage-only use is conditionally approved with provisional groups and no biological-replicate inference.
-- P0-02 is now package version `0.4.8`. The rendered public and packaged cards
+- P0-02 is now package version `0.4.9`. The rendered public and packaged cards
   consistently report `scientific_status=candidate` and
   `freeze_state=biological_review_in_progress`; they do not claim a scientific
   freeze, score availability or a non-null domain score.

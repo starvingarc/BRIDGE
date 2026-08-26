@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import os
-from pathlib import Path
 import re
 import shutil
+from dataclasses import dataclass
+from pathlib import Path
 from uuid import uuid4
 
 from bridge.tool_packages._configurable_contracts import (
@@ -13,6 +13,7 @@ from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitManifest,
     ProductCase,
     ProductDefinitionCard,
+    StateRoleMap,
     profile_lineage_reasons,
 )
 from bridge.tool_packages._structured_runtime import (
@@ -24,6 +25,7 @@ from bridge.tool_packages._structured_runtime import (
     inputs_unchanged,
     load_structured_inputs,
     read_regular_bytes,
+    request_v2_from_v1,
     single_object,
 )
 from bridge.tool_packages.p0_03_target_regional.executor import (
@@ -32,7 +34,6 @@ from bridge.tool_packages.p0_03_target_regional.executor import (
 from bridge.tool_packages.p0_03_target_regional.models import (
     TargetRegionalAssessmentSpec,
 )
-from bridge.tool_packages.p0_05_off_target_control.models import StateRoleMap
 from bridge.toolkit.contracts import (
     AnnotationVocabulary,
     ArtifactManifest,
@@ -52,7 +53,6 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
     ToolRunV2,
 )
-
 
 RESULT_SCHEMA_REF = "bridge://schemas/target-regional-evidence-result/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
@@ -630,16 +630,9 @@ def _failed_run(
     )
 
 
-def _failed_v1_request(request: ToolRequest, spec: ToolPackageSpecV2) -> ToolRunV2:
-    request_v2 = ToolRequestV2(
-        request_id=request.request_id,
-        tool_id=request.tool_id,
-        output_dir=request.output_dir,
-        tool_version=request.tool_version,
-        assets=request.assets,
-        measurement_spec_ref=request.measurement_spec_ref,
-        parameters=request.parameters,
-        random_seed=request.random_seed,
-        object_inputs=[],
+def _failed_v1_request(
+    request: ToolRequest, spec: ToolPackageSpecV2
+) -> ToolRunV2:
+    return _failed_run(
+        request_v2_from_v1(request), spec, ["tool_request_v2_required"]
     )
-    return _failed_run(request_v2, spec, ["tool_request_v2_required"])
