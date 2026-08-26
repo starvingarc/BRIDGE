@@ -22,6 +22,18 @@ def test_cli_describe_rejects_unknown_tool(capsys) -> None:
     assert payload == {"error": "unknown_tool", "tool_id": "P0-99"}
 
 
+def test_cli_emits_machine_readable_input_contract(capsys) -> None:
+    exit_code = main(["input-contract", "P0-12", "--json"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert payload["schema_ref"] == "bridge://schemas/tool-input-contract/v0.1"
+    assert [mode["mode_id"] for mode in payload["object_input_modes"]] == [
+        "not_provided",
+        "graft_assessment",
+    ]
+
+
 def test_cli_validate_reports_missing_input_as_ineligible(tmp_path: Path, capsys) -> None:
     request_path = tmp_path / "request.json"
     request_path.write_text(

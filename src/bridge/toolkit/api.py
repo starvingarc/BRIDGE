@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bridge.tool_packages._input_contracts import ToolInputContract
 from bridge.toolkit.contracts import (
     EligibilityResult,
     KnowledgeHit,
@@ -20,6 +21,10 @@ def list_tools() -> list[ToolPackageSpec | ToolPackageSpecV2]:
 
 def describe_tool(tool_id: str) -> ToolPackageSpec | ToolPackageSpecV2:
     return ToolRegistry.load_default().describe(tool_id)
+
+
+def describe_tool_input(tool_id: str) -> ToolInputContract:
+    return ToolRegistry.load_default().describe_input(tool_id)
 
 
 def validate_request(request: ToolRequest | ToolRequestV2) -> EligibilityResult:

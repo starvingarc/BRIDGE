@@ -1,13 +1,21 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import StrEnum
 import hashlib
 import json
 import math
+from datetime import datetime, timezone
+from enum import StrEnum
 from typing import Literal, Self
 
-from pydantic import ConfigDict, Field, StrictFloat, StrictInt, ValidationError, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    StrictFloat,
+    StrictInt,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from bridge.tool_packages._publication_safety import validate_publication_text
 from bridge.toolkit.contracts import (
@@ -19,7 +27,6 @@ from bridge.toolkit.contracts import (
     MeasurementSpecV2,
     QCReadinessProfileV2,
 )
-
 
 OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
 VERSION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
@@ -45,6 +52,112 @@ class VersionedObjectRef(FrozenModel):
     def ref(self) -> str:
         return f"{self.object_id}@{self.object_version}"
 
+
+class DevelopmentWindowSpec(FrozenModel):
+    object_version: Literal["0.1.0"]
+    window_spec_id: str = Field(pattern=r"^development-window-spec:[A-Za-z0-9._:-]+$")
+    window_spec_version: str = Field(pattern=VERSION_PATTERN)
+    product_definition_ref: VersionedObjectRef
+    state_map_ref: VersionedObjectRef
+    review_state: Literal["candidate", "confirmed"]
+    reviewer_ref: VersionedObjectRef | None = None
+    confirmed_at: datetime | None = None
+    applicable_assays: list[Literal["scRNA-seq", "snRNA-seq"]] = Field(min_length=1)
+    composition_view: Literal["consensus_supported_only", "source_specific"]
+    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
+    label_level: Literal["L1", "L2", "L3"]
+    rationale_refs: list[VersionedObjectRef] = Field(min_length=1)
+
+    @field_validator("confirmed_at")
+    @classmethod
+    def confirmed_at_is_utc(cls, value: datetime | None) -> datetime | None:
+        return None if value is None else _aware_utc(value)
+
+    @field_validator("applicable_assays")
+    @classmethod
+    def assays_are_unique(cls, value: list[str]) -> list[str]:
+        _unique(value, "applicable_assays")
+        return value
+
+    @field_validator("rationale_refs")
+    @classmethod
+    def rationale_is_unique(
+        cls, value: list[VersionedObjectRef]
+    ) -> list[VersionedObjectRef]:
+        _unique([item.ref for item in value], "rationale_refs")
+        return value
+
+    @model_validator(mode="after")
+    def review_and_source_are_coherent(self) -> Self:
+        confirmed = self.review_state == "confirmed"
+        if confirmed != (self.reviewer_ref is not None and self.confirmed_at is not None):
+            raise ValueError("confirmed window requires reviewer and confirmation time")
+        if self.composition_view == "source_specific" and self.source_id is None:
+            raise ValueError("source_specific window requires source_id")
+        if self.composition_view != "source_specific" and self.source_id is not None:
+            raise ValueError("non-source-specific window cannot declare source_id")
+        return self
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.window_spec_id,
+            object_version=self.window_spec_version,
+        )
+
+
+class ProductRole(StrEnum):
+    TARGET = "target"
+    ACCEPTABLE_ADJACENT = "acceptable_adjacent"
+    KNOWN_OFF_TARGET = "known_off_target"
+    ROLE_UNRESOLVED = "role_unresolved"
+
+
+class StateRoleAssignment(FrozenModel):
+    state_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    product_role: ProductRole
+    role_evidence_class: str = Field(pattern=OBJECT_ID_PATTERN)
+    evidence_direction: str = Field(pattern=OBJECT_ID_PATTERN)
+    source_refs: list[str] = Field(default_factory=list)
+
+    @field_validator("source_refs")
+    @classmethod
+    def sources_are_unique(cls, value: list[str]) -> list[str]:
+        _unique(value, "source_refs")
+        return value
+
+
+class StateRoleMap(FrozenModel):
+    object_version: Literal["0.1.0"]
+    state_role_map_id: str = Field(pattern=r"^state-role-map:[A-Za-z0-9._:-]+$")
+    map_version: str = Field(pattern=VERSION_PATTERN)
+    product_definition_ref: VersionedObjectRef
+    review_state: Literal["draft", "reviewed", "frozen"]
+    assignments: list[StateRoleAssignment] = Field(min_length=1)
+    provenance_refs: list[VersionedObjectRef] = Field(min_length=1)
+
+    @field_validator("assignments")
+    @classmethod
+    def states_are_unique(
+        cls, value: list[StateRoleAssignment]
+    ) -> list[StateRoleAssignment]:
+        _unique([item.state_id for item in value], "state assignments")
+        return value
+
+    @field_validator("provenance_refs")
+    @classmethod
+    def provenance_is_unique(
+        cls, value: list[VersionedObjectRef]
+    ) -> list[VersionedObjectRef]:
+        _unique([item.ref for item in value], "provenance_refs")
+        return value
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.state_role_map_id,
+            object_version=self.map_version,
+        )
 
 
 class BiologicalUnitLineageState(StrEnum):

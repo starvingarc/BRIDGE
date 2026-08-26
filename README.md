@@ -53,6 +53,7 @@ python -m pip install -e ".[qc,evidence]"
 
 bridge-tool list
 bridge-tool describe P0-02
+bridge-tool input-contract P0-02
 bridge-tool validate --request /absolute/path/to/request.json
 bridge-tool run --request /absolute/path/to/request.json
 ~~~

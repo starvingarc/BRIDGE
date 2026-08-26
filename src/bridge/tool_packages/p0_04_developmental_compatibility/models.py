@@ -8,11 +8,12 @@ from pydantic import Field, StrictInt, field_validator, model_validator
 
 from bridge.tool_packages._configurable_contracts import (
     OBJECT_ID_PATTERN,
+    SHA256_PATTERN,
+    VERSION_PATTERN,
+    DevelopmentWindowSpec,
     ProductCase,
     ProductDefinitionCard,
     RoleFraction,
-    SHA256_PATTERN,
-    VERSION_PATTERN,
     VersionedObjectRef,
 )
 from bridge.tool_packages._publication_safety import validate_publication_text
@@ -76,59 +77,6 @@ class DevelopmentStateMap(FrozenModel):
         return VersionedObjectRef(
             object_id=self.state_map_id,
             object_version=self.state_map_version,
-        )
-
-
-class DevelopmentWindowSpec(FrozenModel):
-    object_version: Literal["0.1.0"]
-    window_spec_id: str = Field(pattern=r"^development-window-spec:[A-Za-z0-9._:-]+$")
-    window_spec_version: str = Field(pattern=VERSION_PATTERN)
-    product_definition_ref: VersionedObjectRef
-    state_map_ref: VersionedObjectRef
-    review_state: Literal["candidate", "confirmed"]
-    reviewer_ref: VersionedObjectRef | None = None
-    confirmed_at: datetime | None = None
-    applicable_assays: list[Literal["scRNA-seq", "snRNA-seq"]] = Field(min_length=1)
-    composition_view: Literal["consensus_supported_only", "source_specific"]
-    source_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
-    label_level: Literal["L1", "L2", "L3"]
-    rationale_refs: list[VersionedObjectRef] = Field(min_length=1)
-
-    @field_validator("confirmed_at")
-    @classmethod
-    def confirmed_at_is_utc(cls, value: datetime | None) -> datetime | None:
-        return None if value is None else _aware_utc(value)
-
-    @field_validator("applicable_assays")
-    @classmethod
-    def assays_are_unique(cls, value: list[str]) -> list[str]:
-        _unique(value, "applicable_assays")
-        return value
-
-    @field_validator("rationale_refs")
-    @classmethod
-    def rationale_is_unique(
-        cls, value: list[VersionedObjectRef]
-    ) -> list[VersionedObjectRef]:
-        _unique([item.ref for item in value], "rationale_refs")
-        return value
-
-    @model_validator(mode="after")
-    def review_and_source_are_coherent(self) -> Self:
-        confirmed = self.review_state == "confirmed"
-        if confirmed != (self.reviewer_ref is not None and self.confirmed_at is not None):
-            raise ValueError("confirmed window requires reviewer and confirmation time")
-        if self.composition_view == "source_specific" and self.source_id is None:
-            raise ValueError("source_specific window requires source_id")
-        if self.composition_view != "source_specific" and self.source_id is not None:
-            raise ValueError("non-source-specific window cannot declare source_id")
-        return self
-
-    @property
-    def ref(self) -> VersionedObjectRef:
-        return VersionedObjectRef(
-            object_id=self.window_spec_id,
-            object_version=self.window_spec_version,
         )
 
 

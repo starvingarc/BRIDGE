@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from bridge import describe_tool, list_tools, search_knowledge
+from bridge import describe_tool, describe_tool_input, list_tools, search_knowledge
 
 
 def test_python_sdk_lists_and_describes_registered_tools() -> None:
@@ -8,6 +8,12 @@ def test_python_sdk_lists_and_describes_registered_tools() -> None:
 
     assert [tool.tool_id for tool in tools] == [f"P0-{index:02d}" for index in range(1, 13)]
     assert describe_tool("P0-01").name == "Input Audit & QC"
+
+
+def test_python_sdk_describes_tool_input_contract() -> None:
+    contract = describe_tool_input("P0-07")
+
+    assert contract.object_input_modes[0].roles[-1].min_count == 2
 
 
 def test_python_sdk_searches_packaged_knowledge() -> None:

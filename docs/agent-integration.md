@@ -19,15 +19,16 @@ itself.
 
 ## Stable Entry Points
 
-- Python: `list_tools`, `describe_tool`, `validate_request`, `run_tool`, `search_knowledge`.
-- CLI: `bridge-tool list`, `describe`, `validate`, `run`, and `knowledge search`.
+- Python: `list_tools`, `describe_tool`, `describe_tool_input`, `validate_request`, `run_tool`, `search_knowledge`.
+- CLI: `bridge-tool list`, `describe`, `input-contract`, `validate`, `run`, and `knowledge search`.
 - Language-neutral contracts: `src/bridge/resources/schemas/`.
 - Requests: `examples/requests/`.
 - Tool behavior and refusal rules: `src/bridge/tool_packages/cards/P0-XX.md`.
 
 ## Required Agent Flow
 
-1. Call `describe` and construct a versioned `ToolRequest` from user-confirmed metadata.
+1. Call `describe` and `input-contract`, select one declared input mode and
+   construct a versioned `ToolRequest` from user-confirmed metadata.
 2. Call `validate`; present only reason codes that require user action.
 3. Call `run` only when eligible and authorized.
 4. Treat `not_implemented`, `not_assessed`, `unavailable`, `unknown`, `negative` and `alert` as distinct states.

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import hashlib
 import json
-from pathlib import Path
+import os
+import shutil
 import stat
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable, Literal
+from uuid import uuid4
 
 from pydantic import ValidationError
 
@@ -15,6 +18,7 @@ from bridge.toolkit.contracts import (
     FrozenModel,
     StructuredInputRef,
     ToolPackageSpecV2,
+    ToolRequest,
     ToolRequestV2,
     ToolRunV2,
 )
@@ -200,6 +204,127 @@ def inputs_unchanged(refs: list[StructuredInputRef]) -> bool:
         except OSError:
             return False
     return True
+
+
+class PublicationError(ValueError):
+    def __init__(self, reason_code: str) -> None:
+        super().__init__(reason_code)
+        self.reason_code = reason_code
+
+
+def request_v2_from_v1(request: ToolRequest) -> ToolRequestV2:
+    return ToolRequestV2(
+        request_id=request.request_id,
+        tool_id=request.tool_id,
+        output_dir=request.output_dir,
+        tool_version=request.tool_version,
+        assets=request.assets,
+        measurement_spec_ref=request.measurement_spec_ref,
+        parameters=request.parameters,
+        random_seed=request.random_seed,
+        object_inputs=[],
+    )
+
+
+def publish_single_json(
+    *, request: ToolRequestV2, run_id: str, filename: str, payload: bytes
+) -> Path:
+    output_root = request.output_dir.resolve()
+    output_root.mkdir(parents=True, exist_ok=True)
+    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
+    staging.mkdir(mode=0o700)
+    staged_file = staging / filename
+    staged_file.write_bytes(payload)
+    final_dir = output_root / run_id
+    try:
+        if not inputs_unchanged(request.object_inputs):
+            raise StructuredInputError("structured_input_modified_during_run")
+        if final_dir.exists():
+            final_file = final_dir / filename
+            if (
+                not final_dir.is_dir()
+                or set(item.name for item in final_dir.iterdir()) != {filename}
+                or not final_file.is_file()
+                or final_file.is_symlink()
+                or final_file.read_bytes() != payload
+            ):
+                raise StructuredInputError("existing_run_bundle_hash_mismatch")
+            return final_file
+        os.replace(staging, final_dir)
+        return final_dir / filename
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+
+
+def publish_json_bundle(
+    *,
+    request: ToolRequestV2,
+    run_id: str,
+    payloads: dict[str, bytes],
+    inputs_are_unchanged: Callable[[list[StructuredInputRef]], bool] = inputs_unchanged,
+) -> dict[str, Path]:
+    output_root = request.output_dir
+    if directory_state(output_root) == "other":
+        raise PublicationError("output_path_invalid")
+    try:
+        output_root.mkdir(parents=True, exist_ok=True)
+    except (OSError, RuntimeError):
+        raise PublicationError("output_path_invalid") from None
+    if directory_state(output_root) != "directory":
+        raise PublicationError("output_path_invalid")
+    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
+    try:
+        staging.mkdir(mode=0o700)
+        for filename, payload in payloads.items():
+            (staging / filename).write_bytes(payload)
+        if not inputs_are_unchanged(request.object_inputs):
+            raise PublicationError("structured_input_modified_during_run")
+        final = output_root / run_id
+        state = directory_state(final)
+        if state == "directory":
+            try:
+                matches = {path.name for path in final.iterdir()} == set(payloads)
+                matches = matches and all(
+                    read_regular_bytes(final / filename) == payload
+                    for filename, payload in payloads.items()
+                )
+            except (OSError, RuntimeError):
+                matches = False
+            if not matches:
+                raise PublicationError("existing_run_bundle_hash_mismatch")
+            shutil.rmtree(staging)
+        elif state == "missing":
+            os.replace(staging, final)
+        else:
+            raise PublicationError("existing_run_bundle_hash_mismatch")
+        published = {name: final / name for name in payloads}
+        if any(
+            read_regular_bytes(path) != payloads[name]
+            for name, path in published.items()
+        ):
+            raise PublicationError("published_result_hash_mismatch")
+        return published
+    except PublicationError:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    except (OSError, RuntimeError):
+        shutil.rmtree(staging, ignore_errors=True)
+        raise PublicationError("output_path_invalid") from None
+
+
+def publish_json_result(
+    *,
+    request: ToolRequestV2,
+    run_id: str,
+    filename: str,
+    payload: bytes,
+) -> Path:
+    return publish_json_bundle(
+        request=request,
+        run_id=run_id,
+        payloads={filename: payload},
+    )[filename]
 
 
 def write_json(path: Path, payload: object) -> None:

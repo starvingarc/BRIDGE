@@ -1,22 +1,24 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import os
-from pathlib import Path
 import re
 import shutil
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
+    PublicationError,
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
     inputs_unchanged,
     load_structured_inputs,
     read_regular_bytes,
+    request_v2_from_v1,
     single_object,
 )
 from bridge.tool_packages.p0_10_claim_verifier.models import (
@@ -49,7 +51,6 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
     ToolRunV2,
 )
-
 
 RESULT_SCHEMA_REF = "bridge://schemas/public-export-result/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
@@ -94,10 +95,6 @@ LEAK_PATTERNS = (
 )
 
 
-class PublicationError(ValueError):
-    def __init__(self, reason_code: str) -> None:
-        super().__init__(reason_code)
-        self.reason_code = reason_code
 
 
 @dataclass(frozen=True)
@@ -568,16 +565,9 @@ def _failed_run(
     )
 
 
-def _failed_v1_request(request: ToolRequest, spec: ToolPackageSpecV2) -> ToolRunV2:
-    request_v2 = ToolRequestV2(
-        request_id=request.request_id,
-        tool_id=request.tool_id,
-        output_dir=request.output_dir,
-        tool_version=request.tool_version,
-        assets=request.assets,
-        measurement_spec_ref=request.measurement_spec_ref,
-        parameters=request.parameters,
-        random_seed=request.random_seed,
-        object_inputs=[],
+def _failed_v1_request(
+    request: ToolRequest, spec: ToolPackageSpecV2
+) -> ToolRunV2:
+    return _failed_run(
+        request_v2_from_v1(request), spec, ["tool_request_v2_required"]
     )
-    return _failed_run(request_v2, spec, ["tool_request_v2_required"])

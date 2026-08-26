@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 from typing import Literal
 
 from bridge.tool_packages._configurable_contracts import (
@@ -9,7 +9,9 @@ from bridge.tool_packages._configurable_contracts import (
     CompositionView,
     ProductCase,
     ProductDefinitionCard,
+    ProductRole,
     RoleFraction,
+    StateRoleMap,
     VersionedObjectRef,
 )
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
@@ -20,10 +22,6 @@ from bridge.tool_packages.p0_03_target_regional.models import (
     TargetRegionalAssessmentSpec,
     TargetRegionalChannelResult,
     TargetRegionalEvidenceResult,
-)
-from bridge.tool_packages.p0_05_off_target_control.models import (
-    ProductRole,
-    StateRoleMap,
 )
 from bridge.toolkit.contracts import (
     AnnotationVocabulary,
@@ -38,7 +36,6 @@ from bridge.toolkit.contracts import (
     ReferenceManifest,
     ScoreState,
 )
-
 
 ChannelKey = tuple[CompositionView, str | None, Literal["L1", "L2", "L3"]]
 

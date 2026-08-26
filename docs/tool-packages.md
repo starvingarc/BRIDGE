@@ -40,11 +40,12 @@ Shared calls are:
 
 ```bash
 bridge-tool describe P0-XX
+bridge-tool input-contract P0-XX
 bridge-tool validate --request /absolute/path/to/request.json
 bridge-tool run --request /absolute/path/to/request.json
 ```
 
-The Python SDK exposes the same `list_tools`, `describe_tool`,
+The Python SDK exposes the same `list_tools`, `describe_tool`, `describe_tool_input`,
 `validate_request` and `run_tool` surface. P0-01 and P0-02 use the expression-
 asset `ToolRequest` v0.1 envelope; P0-03 through P0-12 use checksummed local JSON
 objects in `ToolRequestV2`.

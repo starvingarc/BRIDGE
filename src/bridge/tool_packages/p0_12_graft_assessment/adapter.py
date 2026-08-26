@@ -1,23 +1,24 @@
 from __future__ import annotations
 
+import hashlib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import hashlib
-import os
-from pathlib import Path
-import shutil
-from uuid import uuid4
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
+    PublicationError,
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
     inputs_unchanged,
     load_structured_inputs,
     read_regular_bytes,
+    request_v2_from_v1,
     single_object,
+)
+from bridge.tool_packages._structured_runtime import (
+    publish_json_bundle as _publish_bundle,
 )
 from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftAnalysisMode,
@@ -46,7 +47,6 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-
 RESULT_SCHEMA_REF = "bridge://schemas/graft-assessment-result/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "graft_case": ("bridge://schemas/graft-case/v0.1", GraftCase),
@@ -61,10 +61,6 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
 }
 
 
-class PublicationError(ValueError):
-    def __init__(self, reason_code: str) -> None:
-        super().__init__(reason_code)
-        self.reason_code = reason_code
 
 
 @dataclass(frozen=True)
@@ -125,6 +121,7 @@ class GraftAssessmentAdapter:
                     "graft_assessment_result.json": result_bytes,
                     "artifact_manifest.json": manifest_bytes,
                 },
+                inputs_are_unchanged=inputs_unchanged,
             )
         except PublicationError as exc:
             return _failed_run(
@@ -437,59 +434,6 @@ def _artifact_manifest_payload(
     }
 
 
-def _publish_bundle(
-    *,
-    request: ToolRequestV2,
-    run_id: str,
-    payloads: dict[str, bytes],
-) -> dict[str, Path]:
-    output_root = request.output_dir
-    if directory_state(output_root) == "other":
-        raise PublicationError("output_path_invalid")
-    try:
-        output_root.mkdir(parents=True, exist_ok=True)
-    except (OSError, RuntimeError):
-        raise PublicationError("output_path_invalid") from None
-    if directory_state(output_root) != "directory":
-        raise PublicationError("output_path_invalid")
-    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    try:
-        staging.mkdir(mode=0o700)
-        for filename, payload in payloads.items():
-            (staging / filename).write_bytes(payload)
-        if not inputs_unchanged(request.object_inputs):
-            raise PublicationError("structured_input_modified_during_run")
-        final = output_root / run_id
-        state = directory_state(final)
-        if state == "directory":
-            try:
-                matches = {path.name for path in final.iterdir()} == set(payloads)
-                matches = matches and all(
-                    read_regular_bytes(final / filename) == payload
-                    for filename, payload in payloads.items()
-                )
-            except (OSError, RuntimeError):
-                matches = False
-            if not matches:
-                raise PublicationError("existing_run_bundle_hash_mismatch")
-            shutil.rmtree(staging)
-        elif state == "missing":
-            os.replace(staging, final)
-        else:
-            raise PublicationError("existing_run_bundle_hash_mismatch")
-        published = {name: final / name for name in payloads}
-        if any(
-            read_regular_bytes(path) != payloads[name]
-            for name, path in published.items()
-        ):
-            raise PublicationError("published_result_hash_mismatch")
-        return published
-    except PublicationError:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    except (OSError, RuntimeError):
-        shutil.rmtree(staging, ignore_errors=True)
-        raise PublicationError("output_path_invalid") from None
 
 
 def _failed_run(
@@ -512,15 +456,6 @@ def _failed_run(
 def _failed_v1_request(
     request: ToolRequest, spec: ToolPackageSpecV2
 ) -> ToolRunV2:
-    request_v2 = ToolRequestV2(
-        request_id=request.request_id,
-        tool_id=request.tool_id,
-        output_dir=request.output_dir,
-        tool_version=request.tool_version,
-        assets=request.assets,
-        measurement_spec_ref=request.measurement_spec_ref,
-        parameters=request.parameters,
-        random_seed=request.random_seed,
-        object_inputs=[],
+    return _failed_run(
+        request_v2_from_v1(request), spec, ["tool_request_v2_required"]
     )
-    return _failed_run(request_v2, spec, ["tool_request_v2_required"])
