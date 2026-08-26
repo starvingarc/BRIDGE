@@ -36,6 +36,13 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 
 - `METHOD-BRIDGE-DETERMINISTIC-STATEROLEMAP` — BRIDGE deterministic StateRoleMap ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DETERMINISTIC-STATEROLEMAP))
 - `METHOD-BRIDGE-REGIONAL-STATEROLEMAP` — BRIDGE regional StateRoleMap ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-REGIONAL-STATEROLEMAP))
+- `METHOD-BRIDGE-PSEUDOBULK-CORRELATION` — BRIDGE pseudobulk correlation ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-PSEUDOBULK-CORRELATION))
+- `METHOD-BRIDGE-REGIONAL-PSEUDOBULK-CORRELATION` — BRIDGE regional pseudobulk correlation ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-REGIONAL-PSEUDOBULK-CORRELATION))
+- `METHOD-BRIDGE-NNLS-SIMPLEX` — BRIDGE NNLS/simplex ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-NNLS-SIMPLEX))
+- `METHOD-DECOUPLER` — decoupler ([catalog record](bridge://knowledge/methods/METHOD-DECOUPLER))
+- `METHOD-SAMPLE-PRESERVING-BOOTSTRAP` — sample-preserving bootstrap ([catalog record](bridge://knowledge/methods/METHOD-SAMPLE-PRESERVING-BOOTSTRAP))
+- `METHOD-BRIDGE-CROSS-REFERENCE-SENSITIVITY` — BRIDGE cross-reference sensitivity ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-CROSS-REFERENCE-SENSITIVITY))
+- `METHOD-SCRNA-SNRNA-SENSITIVITY` — scRNA/snRNA sensitivity ([catalog record](bridge://knowledge/methods/METHOD-SCRNA-SNRNA-SENSITIVITY))
 
 ## P0-04: Developmental Compatibility
 

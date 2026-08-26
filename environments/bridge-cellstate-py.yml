@@ -11,6 +11,7 @@ dependencies:
   - scipy=1.16.3
   - pydantic=2.12.5
   - pyyaml=6.0.3
+  - jsonschema=4.26.0
   - h5py=3.15.1
   - anndata=0.12.6
   - scanpy=1.11.5

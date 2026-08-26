@@ -1,0 +1,645 @@
+{
+  "$defs": {
+    "ContinuousIdentityWeight": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "profile_id": {
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "residual_norm": {
+          "minimum": 0.0,
+          "title": "Residual Norm",
+          "type": "number"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        },
+        "weight": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "profile_id",
+        "state_id",
+        "weight",
+        "residual_norm"
+      ],
+      "title": "ContinuousIdentityWeight",
+      "type": "object"
+    },
+    "MethodExecutionState": {
+      "enum": [
+        "succeeded",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "MethodExecutionState",
+      "type": "string"
+    },
+    "ProgramActivityRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "title": "Activity",
+          "type": "number"
+        },
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "card_id": {
+          "minLength": 1,
+          "title": "Card Id",
+          "type": "string"
+        },
+        "evidence_scope": {
+          "enum": [
+            "target_identity",
+            "regional_fidelity"
+          ],
+          "title": "Evidence Scope",
+          "type": "string"
+        },
+        "observed_negative_markers": {
+          "minimum": 0,
+          "title": "Observed Negative Markers",
+          "type": "integer"
+        },
+        "observed_positive_markers": {
+          "minimum": 0,
+          "title": "Observed Positive Markers",
+          "type": "integer"
+        },
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "card_id",
+        "state_id",
+        "evidence_scope",
+        "activity",
+        "observed_positive_markers",
+        "observed_negative_markers"
+      ],
+      "title": "ProgramActivityRecord",
+      "type": "object"
+    },
+    "ReferenceSupportRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "evidence_scope": {
+          "enum": [
+            "target_identity",
+            "regional_fidelity"
+          ],
+          "title": "Evidence Scope",
+          "type": "string"
+        },
+        "evidence_state": {
+          "enum": [
+            "shadow",
+            "unavailable"
+          ],
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "margin": {
+          "anyOf": [
+            {
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Margin"
+        },
+        "profile_assay": {
+          "minLength": 1,
+          "title": "Profile Assay",
+          "type": "string"
+        },
+        "profile_id": {
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "runner_up_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runner Up Label"
+        },
+        "shared_genes": {
+          "minimum": 0,
+          "title": "Shared Genes",
+          "type": "integer"
+        },
+        "top_cosine_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Cosine Support"
+        },
+        "top_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Label"
+        },
+        "top_spearman_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Spearman Support"
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "evidence_scope",
+        "profile_id",
+        "profile_assay",
+        "shared_genes",
+        "evidence_state"
+      ],
+      "title": "ReferenceSupportRecord",
+      "type": "object"
+    },
+    "RobustnessRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "compared_profile_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Compared Profile Ids",
+          "type": "array"
+        },
+        "label_agreement": {
+          "enum": [
+            "agree",
+            "disagree",
+            "not_assessed"
+          ],
+          "title": "Label Agreement",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "robustness_kind": {
+          "enum": [
+            "cross_reference",
+            "modality"
+          ],
+          "title": "Robustness Kind",
+          "type": "string"
+        },
+        "support_range": {
+          "anyOf": [
+            {
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Support Range"
+        },
+        "top_labels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Top Labels",
+          "type": "array"
+        }
+      },
+      "required": [
+        "robustness_kind",
+        "analysis_unit_ref",
+        "label_agreement"
+      ],
+      "title": "RobustnessRecord",
+      "type": "object"
+    },
+    "SampleBootstrapInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence_level": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 1.0,
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence Level"
+        },
+        "estimate": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Estimate",
+          "type": "number"
+        },
+        "interval_state": {
+          "enum": [
+            "available",
+            "descriptive_only"
+          ],
+          "title": "Interval State",
+          "type": "string"
+        },
+        "lower": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower"
+        },
+        "metric_name": {
+          "const": "target_identity_nnls_weight",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "n_independent_units": {
+          "minimum": 1,
+          "title": "N Independent Units",
+          "type": "integer"
+        },
+        "replicates": {
+          "minimum": 0,
+          "title": "Replicates",
+          "type": "integer"
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upper"
+        }
+      },
+      "required": [
+        "metric_name",
+        "estimate",
+        "n_independent_units",
+        "replicates",
+        "interval_state"
+      ],
+      "title": "SampleBootstrapInterval",
+      "type": "object"
+    },
+    "TargetRegionalMethodEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_family": {
+          "enum": [
+            "reference_similarity",
+            "regional_similarity",
+            "continuous_identity",
+            "marker_program",
+            "regional_program",
+            "uncertainty",
+            "robustness"
+          ],
+          "title": "Evidence Family",
+          "type": "string"
+        },
+        "execution_state": {
+          "$ref": "#/$defs/MethodExecutionState"
+        },
+        "implementation": {
+          "minLength": 1,
+          "title": "Implementation",
+          "type": "string"
+        },
+        "method_id": {
+          "$ref": "#/$defs/TargetRegionalMethodId"
+        },
+        "n_analysis_units": {
+          "minimum": 0,
+          "title": "N Analysis Units",
+          "type": "integer"
+        },
+        "n_shared_genes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Shared Genes"
+        },
+        "package_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Package Versions",
+          "type": "object"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "reference_profile_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reference Profile Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "method_id",
+        "execution_state",
+        "evidence_family",
+        "implementation",
+        "n_analysis_units"
+      ],
+      "title": "TargetRegionalMethodEvidence",
+      "type": "object"
+    },
+    "TargetRegionalMethodId": {
+      "enum": [
+        "TRG-PBCORR",
+        "REG-PBCORR",
+        "TRG-NNLS",
+        "TRG-DECOUPLER",
+        "REG-DECOUPLER",
+        "TRG-BOOTSTRAP",
+        "REG-CROSSREF",
+        "REG-MODALITY"
+      ],
+      "title": "TargetRegionalMethodId",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/target-regional-method-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_unit_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Analysis Unit Refs",
+      "type": "array"
+    },
+    "bootstrap_intervals": {
+      "items": {
+        "$ref": "#/$defs/SampleBootstrapInterval"
+      },
+      "title": "Bootstrap Intervals",
+      "type": "array"
+    },
+    "bundle_id": {
+      "pattern": "^target-regional-method-bundle:[a-f0-9]{16}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "continuous_identity_weights": {
+      "items": {
+        "$ref": "#/$defs/ContinuousIdentityWeight"
+      },
+      "title": "Continuous Identity Weights",
+      "type": "array"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "expression_asset_id": {
+      "minLength": 1,
+      "title": "Expression Asset Id",
+      "type": "string"
+    },
+    "expression_asset_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Expression Asset Sha256",
+      "type": "string"
+    },
+    "independence_group_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Independence Group Refs",
+      "type": "array"
+    },
+    "method_evidence": {
+      "items": {
+        "$ref": "#/$defs/TargetRegionalMethodEvidence"
+      },
+      "minItems": 1,
+      "title": "Method Evidence",
+      "type": "array"
+    },
+    "method_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "n_genes": {
+      "minimum": 1,
+      "title": "N Genes",
+      "type": "integer"
+    },
+    "n_observations": {
+      "minimum": 1,
+      "title": "N Observations",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "program_activity": {
+      "items": {
+        "$ref": "#/$defs/ProgramActivityRecord"
+      },
+      "title": "Program Activity",
+      "type": "array"
+    },
+    "reference_manifest_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reference_support": {
+      "items": {
+        "$ref": "#/$defs/ReferenceSupportRecord"
+      },
+      "title": "Reference Support",
+      "type": "array"
+    },
+    "robustness": {
+      "items": {
+        "$ref": "#/$defs/RobustnessRecord"
+      },
+      "title": "Robustness",
+      "type": "array"
+    },
+    "score_state": {
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-03",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "bundle_id",
+    "tool_id",
+    "tool_version",
+    "method_spec_ref",
+    "expression_asset_id",
+    "expression_asset_sha256",
+    "reference_manifest_ref",
+    "analysis_unit_refs",
+    "independence_group_refs",
+    "n_observations",
+    "n_genes",
+    "method_evidence",
+    "score_state"
+  ],
+  "title": "TargetRegionalMethodBundle",
+  "type": "object"
+}

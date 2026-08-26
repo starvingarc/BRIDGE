@@ -3,46 +3,40 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-TARGET-IDENTITY-v0.1`；`TASK-REGIONAL-FIDELITY-v0.1` |
-| 文档版本 | `0.2 executable-candidate update` |
-| 日期 | 2026-08-25 |
+| 文档版本 | `0.3 expression-method candidate update` |
+| 日期 | 2026-08-26 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA progenitor |
-| 上游输入 | 11 个 checksummed JSON：`ProductCase`、`ProductDefinitionCard`、`StateRoleMap`、`TargetRegionalAssessmentSpec`、`MeasurementSpecV2`、`CellStateEvidenceProfileV3`、`QCReadinessProfileV2`、`BiologicalUnitManifest`、`BiologicalUnitAssignmentArtifact`、`AnnotationVocabulary`、`ReferenceManifest` |
-| 主要输出 | `TargetRegionalEvidenceResult`；每个请求 channel 的 3 个独立 checksummed `MeasurementResultV2` |
+| 上游输入 | 11 个 checksummed 核心 JSON；表达模式另加 1 个 analysis-ready H5AD 与 1 个 `TargetRegionalMethodSpec` |
+| 主要输出 | `TargetRegionalEvidenceResult`、3 类 `MeasurementResultV2`；表达模式另加 `TargetRegionalMethodBundle` |
 
 ## 0. 当前可执行候选
 
-P0-03 v0.2.0 实现组成解释的最小确定性路径。它通过
-`ToolRequestV2` 精确接收上表 11 个带 Schema、版本和 SHA-256 的本地 JSON
-对象，原子发布一个 `TargetRegionalEvidenceResult`，并为每个请求 channel
-分别发布 3 个 `MeasurementResultV2`：`target_identity_fraction`、
-`regional_fidelity_fraction` 和
-`whole_product_target_region_fraction`。旧 Cell-State v0.1/v0.2 profile 不构成
+P0-03 v0.3.0 提供两个兼容入口：
+
+- **聚合模式**：读取 11 个 checksummed JSON，发布三个分母明确的
+  `MeasurementResultV2` 与 `TargetRegionalEvidenceResult`。
+- **表达模式**：在同一合同上增加 QC-selected H5AD 和
+  `TargetRegionalMethodSpec`，执行 target/regional pseudobulk correlation、
+  target NNLS、target/regional decoupler ULM、independence-group bootstrap、
+  cross-reference 与 scRNA/snRNA sensitivity，并发布
+  `TargetRegionalMethodBundle`。
+
+两套 reference 集合、program card、coverage minima、状态角色和区域集合均由
+版本化输入给出。代码不包含具体状态名、marker、产品阈值或固定正向角色。下文
+PD-mDA 内容仍是待审核科学候选，改变生物学定义时应更新输入对象而非执行器。
+
+表达矩阵中的 observation IDs 必须与 P0-01/P0-02 DataView 及
+`BiologicalUnitAssignmentArtifact` 完全一致。Pseudobulk 按其中的
+`analysis_unit_ref` 聚合；bootstrap 按 `independence_group_ref` 重采样。只有
+一个独立单位时只发布 `descriptive_only`，不伪造区间。
+
+上游 `unknown`/`ood`、缺失映射和零分母仍保持 typed
+`not_assessed`/`unavailable`，不得补零。旧 Cell-State v0.1/v0.2 profile 不是
 兼容入口。
 
-实现代码不包含具体状态名、marker、状态到产品角色的映射、阈值或固定的
-正向角色集合。下文 PD-mDA 内容仍是待审核科学候选；一次运行实际采用的状态
-product role、composition view、source、label level，以及区域 numerator 与
-denominator state-ID sets 全部来自版本化、带 checksum 的输入。因此生物学决定变化
-时替换对象版本即可，不需要修改执行器。
-
-“外部可配置”不等于可以重新解释 unknown。执行合同只固化不可变的安全约束：
-角色不能自相矛盾；`SOURCE_SPECIFIC` 与 `source_ids` 必须成对；上游
-`unknown`/`ood` 使对应 channel 成为 `not_assessed`，三个指标都不携带数值；
-缺失或 unresolved mapping 同样不得补零。target-related denominator 为零时，
-`regional_fidelity_fraction` 必须是 `unavailable` 且 value/numerator/denominator
-均为 null。其他角色集合完全由评估 spec 决定。
-
-11 对象脊柱要求 ProductCase、MeasurementSpec、P0-01 data view、P0-02 input
-view、manifest 和 assignment 的 observation set、analysis unit、independence group、
-hierarchy、ref 与 checksum 全部闭合；同时严格绑定共享 StateRoleMap 和 P0-02 V3
-中的 MeasurementSpec、AnnotationVocabulary、ReferenceManifest 与 QC SHA。assignment
-不参与生物学角色求和，只证明观测对应的实验单位。`declared` 仍不能被解释为
-已审核的独立生物重复。
-
-当前路径不重跑表达分析或空间投射，不输出区间、分数、效力、安全或放行结论。
-三个 `MeasurementResultV2` 只承载分母明确的原始比率。所有可评估结果仍为
-`shadow`，`domain_score=null`。
+空间投射尚未进入本版本。所有数值仍为 `shadow`，`domain_score=null`；真实
+方法可执行不等于 reference、program 或产品结论已经过生物学验证。
 
 ## 1. 任务目标
 
@@ -112,24 +106,38 @@ flowchart LR
 
 ## 6. Target Identity 工具组合
 
-| 分析需求 | 推荐方法 | 正式输出候选 |
-| --- | --- | --- |
-| 状态角色解释 | BRIDGE `StateRoleMap` + assessment spec | product role 与区域 state-ID membership |
-| 完整制剂组成 | soft composition + sample-preserving bootstrap | target、acceptable adjacent、unresolved 比例和区间 |
-| marker/program 校验 | 内部 program + UCell/decoupler；AUCell sensitivity | program coverage、方向一致性和冲突 |
-| 独立 reference 校验 | sample/state pseudobulk correlation；SingleR/scmap sensitivity | correlation、margin、reference sensitivity |
-| 分类/映射证据 | Cell-State benchmark 后冻结的 custom classifier/reference mapper | posterior、prediction set、unknown 和 applicability |
-| 连续或混合身份 | NNLS/simplex 或经验证的连续分解 | target weight、residual、hybrid/unknown |
+表中短 ID 来自主目录的 `tool_id`，运行时作为 method selector；Tool Package
+Spec 使用知识快照中的规范化 `METHOD-*` ID，二者通过 catalog alias 对应。
 
-正式运行只读取 Cell-State 已冻结的方法组合。多个工具共享 marker、reference 或训练数据时归入同一 evidence family，不按投票数重复加权。
+
+| 能力 | 方法 ID / 软件 | 当前调用位置 | 输出 |
+| --- | --- | --- | --- |
+| 状态角色与组成 | `TRG-ROLEMAP` / soft composition | P0-03 聚合模式直接执行 | target/adjacent/unresolved 分母与比例 |
+| Target reference similarity | `TRG-PBCORR` | P0-03 表达模式直接执行 | Spearman/cosine、margin、shared genes |
+| 连续身份 | `TRG-NNLS` / SciPy | P0-03 表达模式直接执行 | state weights 与 residual |
+| Signed program | `TRG-DECOUPLER` / decoupler ULM | P0-03 表达模式直接执行 | activity、p-value 与 marker coverage |
+| 不确定性 | `TRG-BOOTSTRAP` | P0-03 表达模式直接执行 | independence-group interval 或 `descriptive_only` |
+| 分类/映射/open-set | CellTypist、scANVI、SingleR、scmap、Symphony、scConform | P0-02 benchmark adapter；P0-03 只消费其已绑定 evidence | prediction、similarity、mapping 与 abstention evidence |
+| 其他候选 | UCell、AUCell、popV、scArches | catalog only；本版本不直接执行 | 尚无 P0-03 runtime artifact |
+
+共享 marker、reference 或训练数据的方法归入同一 evidence family，不按工具数量重复加权。
 
 ## 7. Regional Fidelity 工具组合
 
 ### 7.1 转录组区域证据
 
-- 使用内部区域标签和冻结的 regional programs，分别量化 vMB/mFP、其他中脑亚区、MHB、间脑、前脑和后脑支持。
-- 保留 marker/program、pseudobulk correlation、分类/映射和开放集四类输出；同源证据先去重。
-- `regional_shift` 必须报告具体方向，reference coverage 不足时返回 `unknown` 或 `unavailable`。
+| 能力 | 方法 ID / 软件 | 当前调用位置 | 输出 |
+| --- | --- | --- | --- |
+| Regional role aggregation | `REG-ROLEMAP` | P0-03 聚合模式直接执行 | target-region 与 whole-product 比例 |
+| Regional reference similarity | `REG-PBCORR` | P0-03 表达模式直接执行 | label support、margin、shared genes |
+| Signed regional program | `REG-DECOUPLER` / decoupler ULM | P0-03 表达模式直接执行 | activity 与 coverage |
+| Reference robustness | `REG-CROSSREF` | P0-03 表达模式直接执行 | label agreement 与 support range |
+| Modality robustness | `REG-MODALITY` | P0-03 表达模式直接执行 | scRNA/snRNA agreement 或 typed refusal |
+| 分类、映射与 open-set | CellTypist、scANVI、SingleR、Symphony、scConform | P0-02 benchmark adapter；P0-03 消费已绑定 evidence | regional prediction/mapping evidence |
+| Ontology crosswalk | UBERON/HsapDv | catalog only；当前不执行 | 尚无 runtime artifact |
+
+区域偏移必须报告具体方向；reference coverage 不足时返回 `unknown` 或
+`unavailable`。
 
 ### 7.2 Spatial Reference Projection
 
@@ -177,16 +185,13 @@ Web 可以突出展示 cell-level 投射图；正式可比较 raw metrics 先按
 
 ## 9. 运行环境
 
-本模块不能可靠地塞进单一环境。环境之间使用版本化 h5ad/Parquet/TSV 和 JSON manifest 交换结果。
+P0-03 v0.3.0 的聚合与当前表达方法均在冻结的
+`ENV-CELLSTATE-PY-v0.1` 中运行。AnnData 负责 H5AD I/O，NumPy/pandas/SciPy
+负责 pseudobulk、correlation、NNLS 和 bootstrap，decoupler 负责 ULM。
 
-| 环境 | 用途 | 当前状态 |
-| --- | --- | --- |
-| `ENV-TARGET-REGION-PY-CORE-v0.1` | composition、program、correlation、Cell-State 结果聚合 | `proposed`；需建立 lock 与 health check |
-| `ENV-SPATIAL-CORE-v0.1` | AnnData/Scanpy/SpatialData/Squidpy/cell2location 与 hEB58 reference | `proposed_isolated`；需固定唯一版本和 fixture |
-| `ENV-SPATIAL-PROJECTION-PY-v0.1` | Tangram 与 BRIDGE 透明投射基线 | `proposed`；兼容性验证后再决定是否与 spatial core 合并 |
-| `ENV-SPAOTSC-v0.1` | SpaOTsc | `proposed_isolated`；旧依赖隔离 |
-| `ENV-CELLTREK-v0.1` | CellTrek/Seurat | `proposed_isolated` |
-| `ENV-CYTOSPACE-v0.1` | CytoSPACE 与 solver | `proposed_isolated`；按官方环境锁定 |
+SpatialData、Squidpy、Tangram、SpaOTsc、CellTrek、CytoSPACE 和 cell2location
+仍是空间阶段候选。它们尚无 P0-03 runtime artifact，也不属于当前环境；进入实现
+时必须分别冻结兼容环境和 fixture。
 
 所有运行保留环境 ID、软件版本、随机种子、资源记录和输出 checksum。安装成功不等于方法通过科学验证。
 
