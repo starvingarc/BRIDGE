@@ -13,6 +13,7 @@ This directory contains the deterministic program-evidence aggregation package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-06)
 - [Tool Card — authoritative runtime contract](../cards/P0-06.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/proliferation_stress_response_task_card.md)
 - [Request example](../../../../examples/requests/p0_06_proliferation_stress_response.json)

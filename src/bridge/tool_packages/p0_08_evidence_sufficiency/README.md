@@ -13,6 +13,7 @@ This directory contains the deterministic evidence-gating package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-08)
 - [Tool Card — authoritative runtime contract](../cards/P0-08.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/evidence_sufficiency_task_card.md)
 - [Request example](../../../../examples/requests/p0_08_evidence_sufficiency.json)

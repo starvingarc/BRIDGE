@@ -13,6 +13,7 @@ This directory contains the independent, optional graft-evidence package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-12)
 - [Tool Card — authoritative runtime contract](../cards/P0-12.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/graft_assessment_task_card.md)
 - [Request example](../../../../examples/requests/p0_12_graft_assessment.json)

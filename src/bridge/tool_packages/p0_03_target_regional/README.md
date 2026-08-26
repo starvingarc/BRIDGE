@@ -14,6 +14,7 @@ This directory contains the deterministic target and regional evidence package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-03)
 - [Tool Card — authoritative runtime contract](../cards/P0-03.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/target_regional_identity_task_card.md)
 - [Request example](../../../../examples/requests/p0_03_target_regional_evidence.json)

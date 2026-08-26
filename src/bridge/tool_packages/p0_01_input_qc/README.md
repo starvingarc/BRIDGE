@@ -12,6 +12,7 @@ This directory contains the executable input-audit and QC package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-01)
 - [Tool Card — authoritative runtime contract](../cards/P0-01.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/input_audit_qc_task_card.md)
 - [Count-ready request example](../../../../examples/requests/p0_01_count_ready.json)
