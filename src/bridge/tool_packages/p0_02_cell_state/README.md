@@ -14,6 +14,7 @@ package. Its output remains shadow without a signed release manifest.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-02)
 - [Tool Card — authoritative runtime contract](../cards/P0-02.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/cell_state_annotation_task_card.md)
 - [Request example](../../../../examples/requests/p0_02_cell_state.json)

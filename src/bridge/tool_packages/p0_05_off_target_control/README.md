@@ -13,6 +13,7 @@ This directory contains the deterministic whole-product role-accounting package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-05)
 - [Tool Card — authoritative runtime contract](../cards/P0-05.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/off_target_control_task_card.md)
 - [Request example](../../../../examples/requests/p0_05_off_target_control.json)

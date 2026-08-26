@@ -13,6 +13,7 @@ This directory contains the deterministic allowlist-based JSON export package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-11)
 - [Tool Card — authoritative runtime contract](../cards/P0-11.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/public_safe_export_task_card.md)
 - [Request example](../../../../examples/requests/p0_11_public_safe_export.json)

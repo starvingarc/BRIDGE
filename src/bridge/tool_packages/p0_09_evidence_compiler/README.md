@@ -14,6 +14,7 @@ package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-09)
 - [Tool Card — authoritative runtime contract](../cards/P0-09.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/evidence_compiler_task_card.md)
 - [Request example](../../../../examples/requests/p0_09_evidence_compiler.json)

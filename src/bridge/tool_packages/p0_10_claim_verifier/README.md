@@ -13,6 +13,7 @@ This directory contains the deterministic structured-claim verification package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-10)
 - [Tool Card — authoritative runtime contract](../cards/P0-10.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/claim_verifier_task_card.md)
 - [Request example](../../../../examples/requests/p0_10_claim_verifier.json)

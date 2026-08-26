@@ -14,6 +14,7 @@ This directory contains the deterministic developmental-window evidence package.
 
 ## Documentation
 
+- [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-04)
 - [Tool Card — authoritative runtime contract](../cards/P0-04.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/developmental_compatibility_task_card.md)
 - [Request example](../../../../examples/requests/p0_04_developmental_compatibility.json)
