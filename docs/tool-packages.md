@@ -84,12 +84,12 @@ scientific methods.
 
 | Item | Details |
 |---|---|
-| Purpose | Aggregate alignment to an externally supplied developmental window. [Scientific task card](bridge_spec_v0.1/developmental_compatibility_task_card.md). |
-| Executable implementation | Deterministic DevelopmentStateMap validation and soft-composition aggregation; no window or state map is hard-coded. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no external trajectory or age model. |
-| Input → output | ProductCase, product definition, DevelopmentWindowSpec, DevelopmentStateMap, MeasurementSpec and P0-02 profile, optionally with timepoints → `DevelopmentalCompatibilityResult`. [Tool Card](../src/bridge/tool_packages/cards/P0-04.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-04`; start from the [request example](../examples/requests/p0_04_developmental_compatibility.json). |
-| Current evidence / status | Contract fixtures verify deterministic composition and unavailable/refusal states. The package remains `candidate`, `domain_score=null`; it does not freeze a developmental window or biological age. [Validation](validation/p0_04_developmental_compatibility_v0.2.md). |
+| Purpose | Evaluate composition, reference-stage support, stage programs and declared true-time trends against an externally supplied developmental window. [Scientific task card](bridge_spec_v0.1/developmental_compatibility_task_card.md). |
+| Executable implementation | DevelopmentStateMap/soft-composition aggregation; sample-pseudobulk Spearman/cosine; cumulative ordinal logistic baseline; decoupler ULM; independence-group bootstrap; statsmodels/Patsy spline. |
+| Software | AnnData, NumPy, Pandas, SciPy, scikit-learn, decoupler, statsmodels and Patsy in `ENV-DEVELOPMENT-PY-v0.1`. Conditional R, trajectory, velocity and OT catalog entries are not invoked by v0.3. |
+| Input → output | Eleven traceable case/P0-01/P0-02/reference objects, plus optional timepoints; expression mode adds one H5AD and `DevelopmentMethodSpec` → `DevelopmentalCompatibilityResult` and optional `DevelopmentMethodBundle`. [Tool Card](../src/bridge/tool_packages/cards/P0-04.md). |
+| Call | `bridge-tool describe/input-contract/validate/run` with `tool_id=P0-04`; see the [request](../examples/requests/p0_04_developmental_compatibility.json) and [method spec](../examples/objects/p0_04_development_method_spec.json). |
+| Current evidence / status | Synthetic fixtures verify real package calls, deterministic artifacts, typed degradation and external stage-role control. The package remains `candidate/shadow`, `domain_score=null`; reference similarity is not biological age or release evidence. [Validation](validation/p0_04_developmental_compatibility_v0.3.md). |
 
 <a id="p0-05"></a>
 ## P0-05 Off-target Control

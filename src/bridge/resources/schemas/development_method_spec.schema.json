@@ -1,0 +1,229 @@
+{
+  "$defs": {
+    "AnalysisUnitTimepoint": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "timepoint_id": {
+          "minLength": 1,
+          "title": "Timepoint Id",
+          "type": "string"
+        },
+        "timepoint_label": {
+          "minLength": 1,
+          "title": "Timepoint Label",
+          "type": "string"
+        },
+        "timepoint_order": {
+          "minimum": 0,
+          "title": "Timepoint Order",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "timepoint_id",
+        "timepoint_order",
+        "timepoint_label"
+      ],
+      "title": "AnalysisUnitTimepoint",
+      "type": "object"
+    },
+    "DevelopmentMethodId": {
+      "enum": [
+        "DEV-PSEUDOBULK-CORR",
+        "DEV-ORDINAL",
+        "DEV-PROGRAM",
+        "DEV-BOOTSTRAP",
+        "TIME-PROGRAM",
+        "TIME-GAM-PY"
+      ],
+      "title": "DevelopmentMethodId",
+      "type": "string"
+    },
+    "DevelopmentStageRole": {
+      "enum": [
+        "earlier",
+        "within_window",
+        "later",
+        "branch_shift",
+        "unresolved"
+      ],
+      "title": "DevelopmentStageRole",
+      "type": "string"
+    },
+    "ReferenceStageDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "ordinal_rank": {
+          "minimum": 0,
+          "title": "Ordinal Rank",
+          "type": "integer"
+        },
+        "profile_id": {
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "stage_role": {
+          "$ref": "#/$defs/DevelopmentStageRole"
+        }
+      },
+      "required": [
+        "profile_id",
+        "label",
+        "ordinal_rank",
+        "stage_role"
+      ],
+      "title": "ReferenceStageDefinition",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/development-method-spec/v0.1",
+  "additionalProperties": false,
+  "description": "External, versioned choices for optional expression-level evidence.",
+  "properties": {
+    "analysis_unit_timepoints": {
+      "items": {
+        "$ref": "#/$defs/AnalysisUnitTimepoint"
+      },
+      "title": "Analysis Unit Timepoints",
+      "type": "array"
+    },
+    "bootstrap_confidence_level": {
+      "default": 0.95,
+      "exclusiveMaximum": 1.0,
+      "exclusiveMinimum": 0.0,
+      "title": "Bootstrap Confidence Level",
+      "type": "number"
+    },
+    "bootstrap_replicates": {
+      "default": 1000,
+      "maximum": 10000,
+      "minimum": 10,
+      "title": "Bootstrap Replicates",
+      "type": "integer"
+    },
+    "expression_asset_id": {
+      "minLength": 1,
+      "title": "Expression Asset Id",
+      "type": "string"
+    },
+    "gene_symbol_column": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gene Symbol Column"
+    },
+    "method_spec_id": {
+      "pattern": "^development-method-spec:[A-Za-z0-9._:-]+$",
+      "title": "Method Spec Id",
+      "type": "string"
+    },
+    "method_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Spec Version",
+      "type": "string"
+    },
+    "minimum_program_genes": {
+      "default": 3,
+      "minimum": 2,
+      "title": "Minimum Program Genes",
+      "type": "integer"
+    },
+    "minimum_shared_genes": {
+      "default": 50,
+      "minimum": 2,
+      "title": "Minimum Shared Genes",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observation_id_column": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observation Id Column"
+    },
+    "program_card_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Program Card Ids",
+      "type": "array"
+    },
+    "reference_profile_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reference Profile Ids",
+      "type": "array"
+    },
+    "reference_stages": {
+      "items": {
+        "$ref": "#/$defs/ReferenceStageDefinition"
+      },
+      "title": "Reference Stages",
+      "type": "array"
+    },
+    "selected_method_ids": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentMethodId"
+      },
+      "minItems": 1,
+      "title": "Selected Method Ids",
+      "type": "array"
+    },
+    "spline_degrees_of_freedom": {
+      "default": 3,
+      "maximum": 8,
+      "minimum": 3,
+      "title": "Spline Degrees Of Freedom",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "candidate",
+        "frozen"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_spec_id",
+    "method_spec_version",
+    "status",
+    "expression_asset_id",
+    "selected_method_ids"
+  ],
+  "title": "DevelopmentMethodSpec",
+  "type": "object"
+}

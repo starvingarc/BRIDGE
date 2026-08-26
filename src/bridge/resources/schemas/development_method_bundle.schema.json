@@ -1,0 +1,703 @@
+{
+  "$defs": {
+    "DevelopmentBootstrapInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence_level": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 1.0,
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence Level"
+        },
+        "estimate": {
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Estimate",
+          "type": "number"
+        },
+        "interval_state": {
+          "enum": [
+            "available",
+            "descriptive_only"
+          ],
+          "title": "Interval State",
+          "type": "string"
+        },
+        "lower": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower"
+        },
+        "metric_name": {
+          "const": "within_window_reference_support",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "n_independence_groups": {
+          "minimum": 1,
+          "title": "N Independence Groups",
+          "type": "integer"
+        },
+        "replicates": {
+          "minimum": 0,
+          "title": "Replicates",
+          "type": "integer"
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upper"
+        }
+      },
+      "required": [
+        "metric_name",
+        "estimate",
+        "n_independence_groups",
+        "replicates",
+        "interval_state"
+      ],
+      "title": "DevelopmentBootstrapInterval",
+      "type": "object"
+    },
+    "DevelopmentMethodEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_family": {
+          "enum": [
+            "reference_stage_support",
+            "ordinal_stage_support",
+            "stage_program",
+            "uncertainty",
+            "time_trend"
+          ],
+          "title": "Evidence Family",
+          "type": "string"
+        },
+        "execution_state": {
+          "$ref": "#/$defs/MethodExecutionState"
+        },
+        "implementation": {
+          "minLength": 1,
+          "title": "Implementation",
+          "type": "string"
+        },
+        "method_id": {
+          "$ref": "#/$defs/DevelopmentMethodId"
+        },
+        "n_analysis_units": {
+          "minimum": 0,
+          "title": "N Analysis Units",
+          "type": "integer"
+        },
+        "n_independence_groups": {
+          "minimum": 0,
+          "title": "N Independence Groups",
+          "type": "integer"
+        },
+        "package_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Package Versions",
+          "type": "object"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "method_id",
+        "execution_state",
+        "evidence_family",
+        "implementation",
+        "n_analysis_units",
+        "n_independence_groups"
+      ],
+      "title": "DevelopmentMethodEvidence",
+      "type": "object"
+    },
+    "DevelopmentMethodId": {
+      "enum": [
+        "DEV-PSEUDOBULK-CORR",
+        "DEV-ORDINAL",
+        "DEV-PROGRAM",
+        "DEV-BOOTSTRAP",
+        "TIME-PROGRAM",
+        "TIME-GAM-PY"
+      ],
+      "title": "DevelopmentMethodId",
+      "type": "string"
+    },
+    "DevelopmentProgramActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "title": "Activity",
+          "type": "number"
+        },
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "card_id": {
+          "minLength": 1,
+          "title": "Card Id",
+          "type": "string"
+        },
+        "observed_negative_markers": {
+          "minimum": 0,
+          "title": "Observed Negative Markers",
+          "type": "integer"
+        },
+        "observed_positive_markers": {
+          "minimum": 0,
+          "title": "Observed Positive Markers",
+          "type": "integer"
+        },
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "state_id": {
+          "minLength": 1,
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "card_id",
+        "state_id",
+        "activity",
+        "observed_positive_markers",
+        "observed_negative_markers"
+      ],
+      "title": "DevelopmentProgramActivity",
+      "type": "object"
+    },
+    "DevelopmentStageRole": {
+      "enum": [
+        "earlier",
+        "within_window",
+        "later",
+        "branch_shift",
+        "unresolved"
+      ],
+      "title": "DevelopmentStageRole",
+      "type": "string"
+    },
+    "DevelopmentTimeTrend": {
+      "additionalProperties": false,
+      "properties": {
+        "card_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Card Id"
+        },
+        "fitted_points": {
+          "items": {
+            "$ref": "#/$defs/TimeTrendPoint"
+          },
+          "minItems": 2,
+          "title": "Fitted Points",
+          "type": "array"
+        },
+        "metric_name": {
+          "enum": [
+            "within_window_reference_support",
+            "stage_program_activity"
+          ],
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "n_analysis_units": {
+          "minimum": 1,
+          "title": "N Analysis Units",
+          "type": "integer"
+        },
+        "n_independence_groups": {
+          "minimum": 1,
+          "title": "N Independence Groups",
+          "type": "integer"
+        },
+        "n_timepoints": {
+          "minimum": 2,
+          "title": "N Timepoints",
+          "type": "integer"
+        },
+        "spline_degrees_of_freedom": {
+          "minimum": 3,
+          "title": "Spline Degrees Of Freedom",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "metric_name",
+        "n_analysis_units",
+        "n_independence_groups",
+        "n_timepoints",
+        "spline_degrees_of_freedom",
+        "fitted_points"
+      ],
+      "title": "DevelopmentTimeTrend",
+      "type": "object"
+    },
+    "MethodExecutionState": {
+      "enum": [
+        "succeeded",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "MethodExecutionState",
+      "type": "string"
+    },
+    "OrdinalStagePrediction": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "expected_ordinal_rank": {
+          "title": "Expected Ordinal Rank",
+          "type": "number"
+        },
+        "n_reference_rows": {
+          "minimum": 1,
+          "title": "N Reference Rows",
+          "type": "integer"
+        },
+        "n_reference_sources": {
+          "minimum": 1,
+          "title": "N Reference Sources",
+          "type": "integer"
+        },
+        "nearest_label": {
+          "minLength": 1,
+          "title": "Nearest Label",
+          "type": "string"
+        },
+        "nearest_stage_role": {
+          "$ref": "#/$defs/DevelopmentStageRole"
+        },
+        "rank_probabilities": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Rank Probabilities",
+          "type": "object"
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "expected_ordinal_rank",
+        "nearest_label",
+        "nearest_stage_role",
+        "rank_probabilities",
+        "n_reference_rows",
+        "n_reference_sources"
+      ],
+      "title": "OrdinalStagePrediction",
+      "type": "object"
+    },
+    "ReferenceStageSupportRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "evidence_state": {
+          "enum": [
+            "shadow",
+            "unavailable"
+          ],
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "margin": {
+          "anyOf": [
+            {
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Margin"
+        },
+        "profile_assay": {
+          "minLength": 1,
+          "title": "Profile Assay",
+          "type": "string"
+        },
+        "profile_id": {
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_source_id": {
+          "minLength": 1,
+          "title": "Profile Source Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "runner_up_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runner Up Label"
+        },
+        "shared_genes": {
+          "minimum": 0,
+          "title": "Shared Genes",
+          "type": "integer"
+        },
+        "top_cosine_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Cosine Support"
+        },
+        "top_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Label"
+        },
+        "top_ordinal_rank": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Ordinal Rank"
+        },
+        "top_spearman_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Spearman Support"
+        },
+        "top_stage_role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DevelopmentStageRole"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "profile_id",
+        "profile_source_id",
+        "profile_assay",
+        "shared_genes",
+        "evidence_state"
+      ],
+      "title": "ReferenceStageSupportRecord",
+      "type": "object"
+    },
+    "TimeTrendPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "fitted_value": {
+          "title": "Fitted Value",
+          "type": "number"
+        },
+        "lower": {
+          "title": "Lower",
+          "type": "number"
+        },
+        "timepoint_id": {
+          "minLength": 1,
+          "title": "Timepoint Id",
+          "type": "string"
+        },
+        "timepoint_label": {
+          "minLength": 1,
+          "title": "Timepoint Label",
+          "type": "string"
+        },
+        "timepoint_order": {
+          "minimum": 0,
+          "title": "Timepoint Order",
+          "type": "integer"
+        },
+        "upper": {
+          "title": "Upper",
+          "type": "number"
+        }
+      },
+      "required": [
+        "timepoint_id",
+        "timepoint_order",
+        "timepoint_label",
+        "fitted_value",
+        "lower",
+        "upper"
+      ],
+      "title": "TimeTrendPoint",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/development-method-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_unit_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Analysis Unit Refs",
+      "type": "array"
+    },
+    "bootstrap_intervals": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentBootstrapInterval"
+      },
+      "title": "Bootstrap Intervals",
+      "type": "array"
+    },
+    "bundle_id": {
+      "pattern": "^development-method-bundle:[a-f0-9]{16}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "expression_asset_id": {
+      "minLength": 1,
+      "title": "Expression Asset Id",
+      "type": "string"
+    },
+    "expression_asset_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Expression Asset Sha256",
+      "type": "string"
+    },
+    "independence_group_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Independence Group Refs",
+      "type": "array"
+    },
+    "method_evidence": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentMethodEvidence"
+      },
+      "minItems": 1,
+      "title": "Method Evidence",
+      "type": "array"
+    },
+    "method_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "n_genes": {
+      "minimum": 1,
+      "title": "N Genes",
+      "type": "integer"
+    },
+    "n_observations": {
+      "minimum": 1,
+      "title": "N Observations",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "ordinal_stage_predictions": {
+      "items": {
+        "$ref": "#/$defs/OrdinalStagePrediction"
+      },
+      "title": "Ordinal Stage Predictions",
+      "type": "array"
+    },
+    "program_activity": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentProgramActivity"
+      },
+      "title": "Program Activity",
+      "type": "array"
+    },
+    "reference_manifest_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reference_stage_support": {
+      "items": {
+        "$ref": "#/$defs/ReferenceStageSupportRecord"
+      },
+      "title": "Reference Stage Support",
+      "type": "array"
+    },
+    "score_state": {
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Score State",
+      "type": "string"
+    },
+    "time_trends": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentTimeTrend"
+      },
+      "title": "Time Trends",
+      "type": "array"
+    },
+    "tool_id": {
+      "const": "P0-04",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "bundle_id",
+    "tool_id",
+    "tool_version",
+    "method_spec_ref",
+    "expression_asset_id",
+    "expression_asset_sha256",
+    "reference_manifest_ref",
+    "analysis_unit_refs",
+    "independence_group_refs",
+    "n_observations",
+    "n_genes",
+    "method_evidence",
+    "score_state"
+  ],
+  "title": "DevelopmentMethodBundle",
+  "type": "object"
+}

@@ -1,0 +1,74 @@
+{
+  "analysis_unit_timepoints": [
+    {
+      "analysis_unit_ref": "preparation:demo-01@1.0.0",
+      "timepoint_id": "timepoint-0",
+      "timepoint_label": "D10",
+      "timepoint_order": 0
+    },
+    {
+      "analysis_unit_ref": "preparation:demo-02@1.0.0",
+      "timepoint_id": "timepoint-1",
+      "timepoint_label": "D20",
+      "timepoint_order": 1
+    },
+    {
+      "analysis_unit_ref": "preparation:demo-03@1.0.0",
+      "timepoint_id": "timepoint-2",
+      "timepoint_label": "D30",
+      "timepoint_order": 2
+    },
+    {
+      "analysis_unit_ref": "preparation:demo-04@1.0.0",
+      "timepoint_id": "timepoint-3",
+      "timepoint_label": "D40",
+      "timepoint_order": 3
+    }
+  ],
+  "bootstrap_confidence_level": 0.95,
+  "bootstrap_replicates": 1000,
+  "expression_asset_id": "asset:development-expression-view",
+  "gene_symbol_column": "gene_symbol",
+  "method_spec_id": "development-method-spec:example",
+  "method_spec_version": "1.0.0",
+  "minimum_program_genes": 3,
+  "minimum_shared_genes": 50,
+  "object_version": "0.1.0",
+  "observation_id_column": null,
+  "program_card_ids": [
+    "program-card:development-window"
+  ],
+  "reference_profile_ids": [
+    "reference-profile:development-primary"
+  ],
+  "reference_stages": [
+    {
+      "label": "reference:earlier",
+      "ordinal_rank": 0,
+      "profile_id": "reference-profile:development-primary",
+      "stage_role": "earlier"
+    },
+    {
+      "label": "reference:within-window",
+      "ordinal_rank": 1,
+      "profile_id": "reference-profile:development-primary",
+      "stage_role": "within_window"
+    },
+    {
+      "label": "reference:later",
+      "ordinal_rank": 2,
+      "profile_id": "reference-profile:development-primary",
+      "stage_role": "later"
+    }
+  ],
+  "selected_method_ids": [
+    "DEV-PSEUDOBULK-CORR",
+    "DEV-ORDINAL",
+    "DEV-PROGRAM",
+    "DEV-BOOTSTRAP",
+    "TIME-PROGRAM",
+    "TIME-GAM-PY"
+  ],
+  "spline_degrees_of_freedom": 3,
+  "status": "candidate"
+}

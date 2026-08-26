@@ -23,7 +23,7 @@ from bridge.tool_packages.p0_04_developmental_compatibility.models import (
     InputChecksumBindings,
     ReferenceStageSupport,
 )
-from bridge.toolkit.contracts import CellStateEvidenceProfileV2, MeasurementSpecV2
+from bridge.toolkit.contracts import CellStateEvidenceProfileV3, MeasurementSpecV2
 
 
 ROLE_ORDER = tuple(DevelopmentStageRole)
@@ -38,13 +38,20 @@ def evaluate_developmental_compatibility(
     window_spec: DevelopmentWindowSpec,
     state_map: DevelopmentStateMap,
     measurement_spec: MeasurementSpecV2,
-    cell_state_profile: CellStateEvidenceProfileV2,
+    cell_state_profile: CellStateEvidenceProfileV3,
     cell_state_profile_version: str,
     timepoint_series: DevelopmentTimepointSeries | None,
     input_sha256_by_role: dict[str, str],
+    method_bundle_ref: VersionedObjectRef | None = None,
+    method_bundle_sha256: str | None = None,
+    selected_method_ids: list[str] | None = None,
+    method_reason_codes: list[str] | None = None,
 ) -> DevelopmentalCompatibilityResult:
-    composition_state = str(cell_state_profile.composition.get("state", "not_assessed"))
-    reasons: set[str] = {"reference_stage_support_not_supplied"}
+    composition_state = cell_state_profile.composition.state
+    selected_method_ids = sorted(set(selected_method_ids or []))
+    reasons: set[str] = set(method_reason_codes or [])
+    if method_bundle_ref is None:
+        reasons.add("reference_stage_support_not_supplied")
     whole_profile: DevelopmentFractionProfile | None = None
     target_profile: DevelopmentFractionProfile | None = None
 
@@ -75,7 +82,8 @@ def evaluate_developmental_compatibility(
     )
     if timepoint_series is None:
         reasons.add("timepoint_series_not_supplied")
-    reasons.add("inferential_timecourse_not_implemented")
+    if not {"TIME-GAM-PY", "TIME-PROGRAM"}.intersection(selected_method_ids):
+        reasons.add("inferential_timecourse_not_supplied")
 
     if whole_profile is None:
         result_state = "not_assessed"
@@ -102,7 +110,7 @@ def evaluate_developmental_compatibility(
         )
 
     return DevelopmentalCompatibilityResult(
-        object_version="0.1.0",
+        object_version="0.2.0",
         result_id=(
             "developmental-compatibility-result:"
             f"{run_id.removeprefix('run-')}"
@@ -134,6 +142,18 @@ def evaluate_developmental_compatibility(
             development_timepoint_series=input_sha256_by_role.get(
                 "development_timepoint_series"
             ),
+            qc_readiness_profile=input_sha256_by_role.get("qc_readiness_profile"),
+            biological_unit_manifest=input_sha256_by_role.get(
+                "biological_unit_manifest"
+            ),
+            biological_unit_assignment=input_sha256_by_role.get(
+                "biological_unit_assignment"
+            ),
+            annotation_vocabulary=input_sha256_by_role.get("annotation_vocabulary"),
+            reference_manifest=input_sha256_by_role.get("reference_manifest"),
+            development_method_spec=input_sha256_by_role.get(
+                "development_method_spec"
+            ),
         ),
         upstream_composition_state=composition_state,
         result_state=result_state,
@@ -142,9 +162,18 @@ def evaluate_developmental_compatibility(
         whole_product_profile=whole_profile,
         target_related_profile=target_profile,
         timecourse_profiles=timecourse_profiles,
-        reference_stage_support=ReferenceStageSupport(
-            assessment_state="unavailable",
-            reason_code="reference_stage_support_not_supplied",
+        reference_stage_support=(
+            ReferenceStageSupport(
+                assessment_state="shadow",
+                method_bundle_ref=method_bundle_ref,
+                method_bundle_sha256=method_bundle_sha256,
+                selected_method_ids=selected_method_ids,
+            )
+            if method_bundle_ref is not None
+            else ReferenceStageSupport(
+                assessment_state="unavailable",
+                reason_code="reference_stage_support_not_supplied",
+            )
         ),
         evidence_state=evidence_state,
         evidence_refs=sorted(set(cell_state_profile.evidence_ids)),

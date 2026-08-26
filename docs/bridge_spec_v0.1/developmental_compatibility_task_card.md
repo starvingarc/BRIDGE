@@ -17,12 +17,13 @@
 > ProductDefinitionCard, DevelopmentWindowSpec, DevelopmentStateMap,
 > MeasurementSpecV2 and CellStateEvidenceProfileV2 JSON objects, with an optional
 > declared timepoint series. State roles and channel selection remain external.
-> Reference support, lineage calibration and inferential time-course are
-> unavailable; `domain_score` remains null.
+> Package v0.3 executes transparent reference, program, uncertainty and
+> declared true-time methods as candidate/shadow evidence. Lineage calibration,
+> isolated R/trajectory methods and `domain_score` remain unavailable.
 
 ## 1. 任务目标与边界
 
-本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。当前阶段只整理并验证数据、方法、环境和输出合同，不制定 0-100 分数。
+本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。v0.3 已封装可调用的透明基线方法，但不制定 0-100 分数。
 
 - 发育相容性是相对于 `ProductDefinitionCard` 的条件化证据，不寻找跨产品通用的最优阶段。
 - 人胎 reference 定义生物学状态轴；体外时间序列只用于过程校准和同条件比较。
@@ -89,6 +90,12 @@ flowchart LR
 
 ## 5. 方法组合
 
+v0.3 的 `DevelopmentMethodSpec` 以版本化外部对象选择 reference profile、
+reference label 的角色/顺序、program card、真实时间点和方法。当前直接执行
+`DEV-PSEUDOBULK-CORR`、`DEV-ORDINAL`、`DEV-PROGRAM`、
+`DEV-BOOTSTRAP`、`TIME-PROGRAM` 和 `TIME-GAM-PY`；运行结果记录软件
+版本、覆盖度、独立单位和 reason code。
+
 ### 5.1 窗口组成
 
 - 读取 Cell-State soft composition，并按 `DevelopmentStateMap` 聚合为 `earlier`、`within_window`、`later`、`branch_shift` 和 `unresolved`。
@@ -101,12 +108,17 @@ flowchart LR
 - source-aware ordinal classifier 作为独立阶段映射通道，训练和验证按 source、donor、lab 与 modality 分组。
 - 输出 `top_supported_reference_interval` 及完整支持分布；该区间只表示 reference 相似性，不表示胎龄换算。
 - RAPToR 作为 `shadow` 候选，必须使用 BRIDGE 自有 reference 重新验证后才可解释。
+- v0.3 直接执行 sample/preparation pseudobulk 的 Spearman/cosine 支持，以及
+  scikit-learn 累积二分类 logistic ordinal baseline；二者均只输出 reference
+  support，不作胎龄换算。
 
 ### 5.3 真实时间点趋势
 
 - 按真实 `D/Stage` 展示阶段组成和发育程序趋势，不使用 pseudotime 代替实验时间。
 - 有独立 biological replicates 时，可比较 propeller/speckle 与 scCODA/pertpy-scCODA 等组成模型；模型单位是 sample/preparation，不是 cell。
-- 样本层 spline/GAM 用于真实时间趋势。重复不足时只输出 `descriptive_timecourse`，不发布推断性统计。
+- 样本层 spline/GAM 用于真实时间趋势。v0.3 使用 statsmodels OLS、预先声明
+  的 Patsy cubic B-spline basis 和 HC3 covariance；少于四个时间点、独立单位
+  不足或重复 independence group 时返回 typed `not_assessed`。
 
 ### 5.4 轨迹与转变方法
 
@@ -149,7 +161,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-DEVELOPMENT-PY-v0.1` | composition、pseudobulk、statsmodels/sklearn、Scanpy DPT/PAGA、Palantir | `proposed` |
+| `ENV-DEVELOPMENT-PY-v0.1` | composition、pseudobulk、scikit-learn、decoupler、statsmodels/Patsy | `health_check_pending`；v0.3 执行环境 |
 | `ENV-DEVELOPMENT-CELLRANK-v0.1` | CellRank 条件性轨迹验证 | `proposed_conditional` |
 | `ENV-DEVELOPMENT-VELOCITY-v0.1` | RNA velocity 研究性验证 | `proposed_exploratory`；独立冻结稳定版本 |
 | `ENV-DEVELOPMENT-VIA-v0.1` | VIA shadow benchmark | `proposed_shadow` |
