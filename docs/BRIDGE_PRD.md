@@ -3,6 +3,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 项目全称 | Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation |
+| 产品形态 | 科学评估智能体（Scientific Agent） |
 | 文档版本 | `v0.1` |
 | 修订日期 | 2026-08-26 |
 | 状态 | `current_primary_specification` |
