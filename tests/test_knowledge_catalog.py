@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from bridge.toolkit.registry import ToolRegistry
@@ -111,10 +112,11 @@ def test_packaged_snapshot_contains_no_private_paths() -> None:
     registry = KnowledgeRegistry.load_default()
     payload = json.dumps(registry.snapshot, ensure_ascii=False)
 
-    assert "/data1/" not in payload
-    assert "/data2/" not in payload
+    private_mount = re.compile(r"/(?:data[0-9]+|mnt|srv)/")
+    private_home = re.compile(r"/home/[A-Za-z0-9._-]+/")
+    assert private_mount.search(payload) is None
     assert "/Users/" not in payload
-    assert "yuxiao" not in payload.lower()
+    assert private_home.search(payload) is None
 
 
 def test_curated_p0_01_source_corrections_are_present() -> None:

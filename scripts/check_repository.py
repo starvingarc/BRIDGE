@@ -26,7 +26,7 @@ EXCLUDED_PARTS = {
     "venv",
 }
 FORBIDDEN_PRIVATE = (
-    re.compile(r"/data[12]/[^/\s\"']+/"),
+    re.compile(r"/(?:data[0-9]+|mnt|srv)/[^/\s\"']+/"),
     re.compile(r"/Users/[^/\s\"']+/"),
     re.compile(r"\\Users\\[^\\\s\"']+\\"),
 )

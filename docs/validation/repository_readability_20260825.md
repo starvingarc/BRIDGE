@@ -11,8 +11,8 @@ adapter, scientific status, score or release authority.
 
 ## Server environment
 
-- Host class: BRIDGE controlled server.
-- Workspace: `/data1` worktree; the public record intentionally omits user and
+- Host class: controlled compute server.
+- Workspace: isolated worktree; the public record intentionally omits user and
   server-specific absolute paths.
 - Python: 3.12.13.
 - Source import: exact worktree for the full suite.

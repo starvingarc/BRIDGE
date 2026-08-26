@@ -74,10 +74,15 @@ FILENAMES = (
 )
 LEAK_PATTERNS = (
     re.compile(
-        r"(?:/data[12]/|/" r"Users/|/home/|[A-Za-z]:\\Users\\)",
+        r"(?:/(?:data[0-9]+|mnt|srv|private|internal)/|/"
+        r"Users/|/home/|[A-Za-z]:\\Users\\)",
         re.I,
     ),
-    re.compile(r"\bbridge-amax\b", re.I),
+    re.compile(
+        r"\b(?:source|server|compute)\s+host(?:name)?\s*"
+        r"(?:is|[:=])\s*[A-Za-z0-9._-]+\b",
+        re.I,
+    ),
     re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I),
     re.compile(
         r"\b(?:api[_-]?key|password|secret|access[_-]?token|"

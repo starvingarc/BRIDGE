@@ -3,8 +3,9 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
-from pathlib import Path
+import re
 import traceback
+from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -1019,7 +1020,11 @@ def test_committed_synthetic_fixtures_validate_without_private_material() -> Non
             missing.model_dump(mode="json"),
         ]
     )
-    assert "/Users/" not in serialized and "/data1/" not in serialized
+    private_path = re.compile(
+        r"(?:/(?:data[0-9]+|mnt|srv|private|internal)/|/"
+        r"Users/|/home/)"
+    )
+    assert private_path.search(serialized) is None
 
 
 def test_case_compilation_publishes_ten_immutable_artifacts_without_formal_promotion(
