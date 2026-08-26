@@ -2,8 +2,9 @@
 
 | 项目 | 内容 |
 | --- | --- |
+| 项目全称 | Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation |
 | 文档版本 | `v0.1` |
-| 修订日期 | 2026-08-10 |
+| 修订日期 | 2026-08-26 |
 | 状态 | `current_primary_specification` |
 | 适用范围 | 研究用途的细胞治疗产品转录组评估；PD hPSC-mDA 为首个实例 |
 | 文档权威性 | 本文档是 BRIDGE 当前唯一主规范；Registry 和 Task Card 是受其约束的实施附件 |

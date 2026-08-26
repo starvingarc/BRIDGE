@@ -2,7 +2,10 @@
 
 <h1>BRIDGE</h1>
 
-<p><strong>Scientific agent for cell-therapy product evaluation</strong></p>
+<p>
+  <strong>Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation</strong><br>
+  Scientific agent for cell-therapy product evaluation
+</p>
 
 <p>
   <a href="https://github.com/starvingarc/BRIDGE/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/starvingarc/BRIDGE/actions/workflows/ci.yml/badge.svg"></a>
