@@ -58,11 +58,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/developmental_compatibility_task_card.md",
     },
     "P0-05": {
-        "input": "Frozen Cell-State prediction sets, ProductDefinitionCard role table, eligible-cell denominator, and rare-state/OOD calibration records.",
-        "output": "Whole-product soft composition, role-resolved non-target evidence, unknown reasons, rare-state detection limits, and sensitivity.",
-        "reject": "Missing full-product denominator, unresolved product role, uncalibrated OOD method, or a zero observation presented as biological absence.",
-        "visualization": "Whole-product composition, off-axis drill-down, unknown reasons, OOD calibration, rare-state LOD/UCB, and method sensitivity.",
-        "validation": "Real OOD panels, source-family holdouts, known mixtures, rare-state spike-ins, downsampling, and reference/preprocessing swaps.",
+        "input": "Checksummed ProductCase, role and assessment objects, P0-02 evidence and, in method mode, reviewed biological-unit lineage, a method spec and unit-level composition/spike-in/OOD inputs.",
+        "output": "Whole-product composition plus descriptive intervals, independent-unit bootstrap, hard/soft sensitivity, candidate spike-in limits, SCOPIT design and supplied-source OOD coordination.",
+        "reject": "Missing full-product denominator, partial method inputs, lineage/count mismatch, undeclared reason/state, checksum drift, or zero observations presented as biological absence.",
+        "visualization": "No visualization output in v0.3; the package emits checksummed JSON profiles and method records.",
+        "validation": "Synthetic execution of all selectors and refusal paths; real OOD holdouts, known mixtures and spike-in calibration remain scientific follow-up.",
         "details": "docs/bridge_spec_v0.1/off_target_control_task_card.md",
     },
     "P0-06": {

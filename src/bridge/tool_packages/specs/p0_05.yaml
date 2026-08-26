@@ -1,7 +1,7 @@
 tool_id: P0-05
 name: Off-target Control
-version: 0.2.0
-summary: Aggregate externally defined product roles, unknown reasons and rare-state detectability.
+version: 0.3.0
+summary: Aggregate product roles and execute count intervals, independent-unit uncertainty, rare-state calibration, design, and OOD coordination.
 implementation_state: implemented
 scientific_status: candidate
 optional: false
@@ -10,6 +10,13 @@ input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
 method_ids:
   - METHOD-BRIDGE-ROLE-AWARE-SOFT-COMPOSITION
+  - METHOD-EXACT-BINOMIAL-CLOPPER-PEARSON
+  - METHOD-HARD-LABEL-COMPOSITION
+  - METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-9669E1
+  - METHOD-BRIDGE-SAMPLE-PRESERVING-SPIKE-IN
+  - METHOD-SCOPIT
+  - METHOD-BRIDGE-MODEL-AND-REFERENCE-DISAGREEMENT
+  - METHOD-BRIDGE-OOD-ENSEMBLE
 card_ref: bridge://tool-cards/P0-05
 adapter_ref: bridge.tool_packages.p0_05_off_target_control.adapter:adapter
 result_schema_ref: bridge://schemas/off-target-control-profile/v0.1

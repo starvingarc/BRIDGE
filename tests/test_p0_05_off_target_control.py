@@ -243,7 +243,7 @@ def _request(tmp_path: Path) -> ToolRequestV2:
     return ToolRequestV2(
         request_id="request-p0-05",
         tool_id="P0-05",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=tmp_path / "output",
         object_inputs=refs,
     )
@@ -275,11 +275,20 @@ def test_registry_exposes_executable_p0_05() -> None:
     spec = ToolRegistry.load_default().describe("P0-05")
 
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
-    assert spec.version == "0.2.0"
+    assert spec.version == "0.3.0"
     assert spec.result_schema_ref == (
         "bridge://schemas/off-target-control-profile/v0.1"
     )
-    assert spec.method_ids == ["METHOD-BRIDGE-ROLE-AWARE-SOFT-COMPOSITION"]
+    assert spec.method_ids == [
+        "METHOD-BRIDGE-ROLE-AWARE-SOFT-COMPOSITION",
+        "METHOD-EXACT-BINOMIAL-CLOPPER-PEARSON",
+        "METHOD-HARD-LABEL-COMPOSITION",
+        "METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-9669E1",
+        "METHOD-BRIDGE-SAMPLE-PRESERVING-SPIKE-IN",
+        "METHOD-SCOPIT",
+        "METHOD-BRIDGE-MODEL-AND-REFERENCE-DISAGREEMENT",
+        "METHOD-BRIDGE-OOD-ENSEMBLE",
+    ]
 
 
 def test_happy_run_aggregates_external_roles_and_publishes_checksum(

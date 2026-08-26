@@ -2,12 +2,12 @@
 
 | 字段 | 内容 |
 |---|---|
-| Task ID | `TASK-OFFTARGET-v0.2` |
-| 文档版本 | `0.2` |
+| Task ID | `TASK-OFFTARGET-v0.3` |
+| 文档版本 | `0.3` |
 | 日期 | 2026-08-25 |
 | 状态 | `candidate / executable shadow` |
-| 上游 | P0-02 `CellStateEvidenceProfileV2` 与预计算 evidence bundle |
-| 输出 | `OffTargetControlProfile v0.1` |
+| 上游 | P0-02 V2/V3、预计算 evidence bundle 与可选方法运行对象 |
+| 输出 | `OffTargetControlProfile v0.1`；方法模式另含 `OffTargetMethodBundle v0.1` |
 
 ## 1. 生物学问题与当前边界
 
@@ -15,8 +15,10 @@ P0-05 回答一个受限问题：在同一个全制剂分母内，外部产品�
 `target`、`acceptable_adjacent`、`known_off_target` 和
 `role_unresolved` 组成、unknown 原因以及预声明稀有状态的检测边界是什么。
 
-第一版只聚合已经计算好的细胞状态证据，不读取表达矩阵、不重新注释细胞、
-不训练 OOD 模型，也不拟合稀有状态校准。它不输出临床安全、疗效、potency、
+兼容模式只聚合已经计算好的细胞状态证据。方法模式进一步执行透明的描述性
+区间、independence-group bootstrap、hard/soft sensitivity、输入 spike-in 的
+候选检测限、SCOPIT 设计计算以及多来源 OOD 状态协调。两种模式均不读取表达
+矩阵、不重新注释细胞、不训练 OOD 模型，也不输出临床安全、疗效、potency、
 GMP 放行或产品排序结论。
 
 `known_off_target` 只表示该状态在当前版本产品定义中不是目标组成，不等同于
@@ -40,18 +42,21 @@ GMP 放行或产品排序结论。
 
 ## 3. 精确输入合同
 
-请求必须是 `ToolRequestV2`，且恰好包含六个
-`application/json` `StructuredInputRef`。每个引用均需绝对普通文件路径、
-Schema URI、对象版本和 SHA-256。
+请求必须是 `ToolRequestV2`。`legacy_aggregation` 恰好包含原有六个对象；
+`method_runtime` 恰好包含九个对象，并将 P0-02 输入升级为 V3。每个
+`StructuredInputRef` 均需绝对普通文件路径、Schema URI、对象版本和 SHA-256。
 
-| role | Schema | 关键字段与绑定 |
+| role | 模式 | Schema / 关键绑定 |
 |---|---|---|
-| `product_case` | `bridge://schemas/product-case/v0.1` | ProductDefinition、assay、MeasurementSpec、case provenance |
-| `product_definition_card` | `bridge://schemas/product-definition-card/v0.1` | supported assay 与 StateRoleMap ref |
-| `state_role_map` | `bridge://schemas/state-role-map/v0.1` | state-role assignments、证据类别、方向与 provenance |
-| `off_target_assessment_spec` | `bridge://schemas/off-target-assessment-spec/v0.1` | map ref/hash、分母 ID、unknown allowlist、rare-state rules |
-| `cell_state_evidence_profile` | `bridge://schemas/cell-state-evidence-profile/v0.2` | P0-02 profile ID、assay、MeasurementSpec version、观测数 |
-| `off_target_evidence_bundle` | `bridge://schemas/off-target-evidence-bundle/v0.1` | 上游对象 ref/hash、分母、state/unknown observations、rare calibration |
+| `product_case` | 两者 | ProductDefinition、assay、MeasurementSpec；方法模式另绑定 BiologicalUnitManifest |
+| `product_definition_card` | 两者 | supported assay 与 StateRoleMap ref |
+| `state_role_map` | 两者 | state-role assignments、证据类别、方向与 provenance |
+| `off_target_assessment_spec` | 两者 | map ref/hash、分母、unknown allowlist、rare-state rules |
+| `cell_state_evidence_profile` | 两者 | legacy 为 V2；方法模式为 V3，含 composition 与 DataView lineage |
+| `off_target_evidence_bundle` | 两者 | 上游 ref/hash、分母、state/unknown observations、supplied calibration |
+| `biological_unit_manifest` | 方法 | reviewed analysis-unit 与 independence-group mapping |
+| `off_target_method_spec` | 方法 | 方法选择、置信度、bootstrap 次数、planning target、OOD 规则 |
+| `off_target_method_input` | 方法 | unit-level soft/hard composition、spike-in trials、OOD channels |
 
 `OffTargetEvidenceBundle` 是上游计算结果的最小交接面。它包含 soft mass 与
 observed count，但不携带角色判断。完整覆盖状态下，state 与 unknown 的 soft
@@ -60,7 +65,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 
 ## 4. 确定性处理
 
-1. 校验六个文件的 Schema、版本、媒体类型和 checksum。
+1. 校验所选模式的六个或九个文件、Schema、版本、媒体类型和 checksum。
 2. 校验 ProductCase → ProductDefinitionCard → StateRoleMap、assay、
    MeasurementSpec、P0-02 profile 和 bundle 的引用及 checksum 血缘。
 3. 拒绝未映射 state、未声明 unknown reason、未声明的 rare calibration、
@@ -68,15 +73,19 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 4. 按外部 StateRoleMap 将预计算 state observations 确定性求和。
 5. 只有 composition coverage 为 `complete` 时才计算角色 fraction。
 6. unknown 只按外部 allowlist 中实际出现的 reason 汇总。
-7. rare-state 结果只使用外部 rule 与预计算 calibration 比较，不拟合新参数。
-8. 在发布前再次检查所有输入 checksum，原子写入一个 JSON 结果。
+7. 方法模式核对 DataView、BiologicalUnitManifest、unit-level 与 aggregate counts。
+8. 执行描述性 exact interval、hard/soft sensitivity 与 independence-group bootstrap。
+9. 根据输入 spike-in 及外部规则计算候选检测限与 SCOPIT 设计；按来源族协调 OOD 状态。
+10. 在发布前再次检查所有输入 checksum，原子写入一个或两个 JSON artifact。
 
-相同输入内容产生相同 run ID、input hash 和结果 artifact hash。
+相同输入内容与 random seed 产生相同 run ID、input hash 和 artifact hash；
+方法模式下 random seed 是运行指纹的一部分。
 
 ## 5. 输出合同
 
-成功运行生成一个 checksummed
-`off_target_control_profile.json`，同时作为 `ToolRunV2.result` 返回。
+两种模式都生成 checksummed `off_target_control_profile.json`，同时作为
+`ToolRunV2.result` 返回；方法模式原子增加
+`off_target_method_bundle.json`。
 
 | 字段 | 含义 |
 |---|---|
@@ -89,7 +98,16 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 | `evidence_state` | 固定 `shadow` |
 | `score_state` / `domain_score` | 固定 `unavailable` / `null` |
 
-该版本不产生 `MeasurementResult`、图表或第二种结果表示。
+方法 bundle 另含：
+
+| 字段 | 含义 |
+|---|---|
+| `executions` | selector、canonical method ref、实际实现、包版本、状态与 reason code |
+| `composition_intervals` | descriptive cell-count interval 与 independence-group bootstrap |
+| `hard_soft_sensitivity` | 同一角色 hard fraction 与 soft fraction 的差异 |
+| `rare_intervals` / `spike_in_calibrations` | 稀有状态描述区间、恢复曲线与 candidate detection limit |
+| `planning_records` | SCOPIT 所需观察数及独立随机抽样、完美检测假设 |
+| `ood_disagreement` / `ood_ensemble` | 来源族分歧与外部有序规则的协调结果 |
 
 ## 6. 缺失、零值与检测语义
 
@@ -107,22 +125,26 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 
 以下情况在 eligibility 阶段 fail closed：V1 请求、表达资产、任意 parameters、
 对象数量/role/Schema/version 不符、checksum 漂移、跨对象引用不一致、未映射
-state、未允许 unknown reason、未声明 calibration、inactive spec 或分母不一致。
+state、未允许 unknown reason、未声明 calibration、inactive spec、方法对象不完整、
+analysis-unit/independence-group 漂移或 aggregate count 不闭合。
 
 本版本不承担：
 
 - P0-02 注释、soft assignment 或 OOD 推断；
 - reference、preprocessing 或 assay sensitivity 重算；
-- bootstrap、组间推断、剂量反应或风险模型；
+- replicate-level 假设检验、剂量反应或风险模型；
 - 稀有状态 discovery、spike-in 构建或 calibration fitting；
+- deep OOD 模型训练、阈值学习或 catalog candidate 的自动选择；
 - P0-06 增殖/应激信号、P0-07 比较或 P0-12 graft 解释；
 - 任何正式分数、临床安全或发布授权。
 
 ## 8. 验证与后续科学工作
 
-当前工程验证使用完全合成的结构化对象，覆盖角色映射可替换性、完整/部分分母、
-unknown allowlist、rare detection、校准缺失/不合格、零观测、血缘、checksum、
-输出复用和篡改。该验证仅证明接口与 fail-closed 语义可执行。
+当前工程验证使用完全合成的结构化对象，覆盖两个模式、八个 selector、角色映射
+可替换性、完整/部分分母、analysis-unit 与 independence-group 血缘、exact 与
+bootstrap interval、hard/soft sensitivity、spike-in、SCOPIT、OOD 协调、零/缺失、
+checksum、seeded deterministic reuse 和篡改。该验证仅证明接口、计算路径与
+fail-closed 语义可执行。
 
 在任何科学冻结前仍需独立完成：真实全制剂分母审查、StateRoleMap 生物学审核、
 source-family/OOD holdout、known-mixture 组成误差、稀有状态 spike-in 与假阳性
