@@ -9,7 +9,7 @@
 | Primary output | `ClaimVerificationResult` receipt |
 | Current state | `candidate` |
 
-P0-10 `v0.1.0` implements the structured deterministic path only. Its four
+P0-10 `v0.1.1` implements the structured deterministic path only. Its four
 checksummed inputs are `ReportDraft`, a P0-09 Case graph manifest,
 `ClaimPolicySpec` and
 `StatementRegistry`. The supplied policy and statement objects must equal the

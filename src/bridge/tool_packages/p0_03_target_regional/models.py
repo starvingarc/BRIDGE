@@ -14,6 +14,11 @@ from bridge.tool_packages._configurable_contracts import (
     VersionedObjectRef,
 )
 from bridge.tool_packages.p0_05_off_target_control.models import ProductRole
+from bridge.tool_packages.p0_03_target_regional.method_models import (
+    TargetRegionalMethodArtifactBinding,
+    TargetRegionalMethodBundle,
+    TargetRegionalMethodSpec,
+)
 from bridge.toolkit.contracts import FrozenModel, ScoreState
 
 
@@ -39,13 +44,9 @@ class TargetRegionalAssessmentSpec(FrozenModel):
     state_role_map_sha256: str = Field(pattern=SHA256_PATTERN)
     status: Literal["candidate", "frozen"]
     composition_views: list[CompositionView] = Field(min_length=1)
-    included_label_levels: list[Literal["L1", "L2", "L3"]] = Field(
-        min_length=1
-    )
+    included_label_levels: list[Literal["L1", "L2", "L3"]] = Field(min_length=1)
     source_ids: list[PublishedRef] = Field(default_factory=list)
-    target_identity_numerator_product_roles: list[ProductRole] = Field(
-        min_length=1
-    )
+    target_identity_numerator_product_roles: list[ProductRole] = Field(min_length=1)
     regional_denominator_state_ids: list[PublishedRef] = Field(min_length=1)
     regional_target_numerator_state_ids: list[PublishedRef] = Field(min_length=1)
     whole_product_target_region_state_ids: list[PublishedRef] = Field(min_length=1)
@@ -77,9 +78,7 @@ class TargetRegionalAssessmentSpec(FrozenModel):
         if ProductRole.ROLE_UNRESOLVED in (
             self.target_identity_numerator_product_roles
         ):
-            raise ValueError(
-                "unresolved product role cannot enter a configured ratio"
-            )
+            raise ValueError("unresolved product role cannot enter a configured ratio")
         if not set(self.regional_target_numerator_state_ids).issubset(
             self.regional_denominator_state_ids
         ):
@@ -97,9 +96,7 @@ class TargetRegionalAssessmentSpec(FrozenModel):
 class NormalizedMetricName(StrEnum):
     TARGET_IDENTITY_FRACTION = "target_identity_fraction"
     REGIONAL_FIDELITY_FRACTION = "regional_fidelity_fraction"
-    WHOLE_PRODUCT_TARGET_REGION_FRACTION = (
-        "whole_product_target_region_fraction"
-    )
+    WHOLE_PRODUCT_TARGET_REGION_FRACTION = "whole_product_target_region_fraction"
 
 
 class ChannelAssessmentState(StrEnum):
@@ -184,10 +181,13 @@ class InputChecksumBindings(FrozenModel):
     biological_unit_assignment: str = Field(pattern=SHA256_PATTERN)
     annotation_vocabulary: str = Field(pattern=SHA256_PATTERN)
     reference_manifest: str = Field(pattern=SHA256_PATTERN)
+    target_regional_method_spec: str | None = Field(
+        default=None, pattern=SHA256_PATTERN
+    )
 
 
 class TargetRegionalEvidenceResult(FrozenModel):
-    object_version: Literal["0.1.0"]
+    object_version: Literal["0.2.0"]
     result_id: str = Field(pattern=r"^target-regional-result:[a-f0-9]{16}$")
     tool_id: Literal["P0-03"]
     tool_version: str = Field(pattern=VERSION_PATTERN)
@@ -208,13 +208,10 @@ class TargetRegionalEvidenceResult(FrozenModel):
     result_state: Literal["complete", "partial", "not_assessed"]
     channels: list[TargetRegionalChannelResult] = Field(min_length=1)
     metric_artifacts: list[MetricArtifactBinding] = Field(min_length=3)
+    method_artifact: TargetRegionalMethodArtifactBinding | None = None
     spatial_projection_state: Literal["not_assessed"]
-    evidence_refs: list[PublishedRef] = Field(
-        json_schema_extra={"uniqueItems": True}
-    )
-    reason_codes: list[ReasonCode] = Field(
-        json_schema_extra={"uniqueItems": True}
-    )
+    evidence_refs: list[PublishedRef] = Field(json_schema_extra={"uniqueItems": True})
+    reason_codes: list[ReasonCode] = Field(json_schema_extra={"uniqueItems": True})
     domain_score: None = None
     score_state: Literal[ScoreState.SHADOW, ScoreState.UNAVAILABLE]
 
@@ -240,7 +237,9 @@ class TargetRegionalEvidenceResult(FrozenModel):
         }
         artifact_ids = [item.measurement_id for item in self.metric_artifacts]
         if set(artifact_ids) != expected_ids or len(artifact_ids) != len(expected_ids):
-            raise ValueError("metric artifacts must bind every measurement exactly once")
+            raise ValueError(
+                "metric artifacts must bind every measurement exactly once"
+            )
         artifact_by_measurement = {
             item.measurement_id: item for item in self.metric_artifacts
         }
@@ -253,14 +252,18 @@ class TargetRegionalEvidenceResult(FrozenModel):
                     or artifact.source_id != channel.source_id
                     or artifact.label_level != channel.label_level
                 ):
-                    raise ValueError("measurement artifact is bound to the wrong channel")
+                    raise ValueError(
+                        "measurement artifact is bound to the wrong channel"
+                    )
         states = [item.assessment_state for item in self.channels]
         expected_state = (
             "complete"
             if all(item is ChannelAssessmentState.COMPLETE for item in states)
-            else "not_assessed"
-            if all(item is ChannelAssessmentState.NOT_ASSESSED for item in states)
-            else "partial"
+            else (
+                "not_assessed"
+                if all(item is ChannelAssessmentState.NOT_ASSESSED for item in states)
+                else "partial"
+            )
         )
         if self.result_state != expected_state:
             raise ValueError("result state must summarize channel states")
@@ -271,7 +274,10 @@ class TargetRegionalEvidenceResult(FrozenModel):
         )
         if self.score_state != expected_score:
             raise ValueError("score state must match assessment availability")
-        if self.upstream_composition_state != "shadow" and expected_state != "not_assessed":
+        if (
+            self.upstream_composition_state != "shadow"
+            and expected_state != "not_assessed"
+        ):
             raise ValueError("non-shadow composition cannot produce numeric ratios")
         return self
 
@@ -280,7 +286,9 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/target-regional-assessment-spec/v0.1": (
         TargetRegionalAssessmentSpec
     ),
-    "bridge://schemas/target-regional-evidence-result/v0.1": (
+    "bridge://schemas/target-regional-evidence-result/v0.2": (
         TargetRegionalEvidenceResult
     ),
+    "bridge://schemas/target-regional-method-spec/v0.1": TargetRegionalMethodSpec,
+    "bridge://schemas/target-regional-method-bundle/v0.1": (TargetRegionalMethodBundle),
 }
