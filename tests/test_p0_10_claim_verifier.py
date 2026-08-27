@@ -344,7 +344,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-10",
         tool_id="P0-10",
-        tool_version="0.1.0",
+        tool_version="0.1.1",
         output_dir=tmp_path / "output",
         object_inputs=refs,
     )
@@ -361,6 +361,39 @@ def test_public_models_emit_valid_draft_2020_12_schemas(schema_ref: str, model: 
     schema = model.model_json_schema()
     schema["$id"] = schema_ref
     Draft202012Validator.check_schema(schema)
+
+
+def test_runtime_validates_each_raw_input_with_jsonschema(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    runtime_validator = adapter_module.Draft202012Validator
+
+    class TrackingValidator:
+        @classmethod
+        def check_schema(cls, schema: dict[str, Any]) -> None:
+            runtime_validator.check_schema(schema)
+
+        def __init__(self, schema: dict[str, Any]) -> None:
+            calls.append(schema["$id"])
+            self.validator = runtime_validator(schema)
+
+        def validate(self, payload: Any) -> None:
+            self.validator.validate(payload)
+
+    monkeypatch.setattr(
+        adapter_module,
+        "Draft202012Validator",
+        TrackingValidator,
+    )
+
+    eligibility = adapter.check_eligibility(_request(tmp_path), _spec())
+
+    assert eligibility.eligible
+    assert sorted(calls) == sorted(
+        schema_ref for schema_ref, _model in adapter_module.ROLE_MODELS.values()
+    )
 
 
 def test_benchmark_is_task_grouped_complete_and_has_no_default_or_aggregate() -> None:
