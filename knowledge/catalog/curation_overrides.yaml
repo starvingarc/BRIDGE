@@ -4,6 +4,8 @@ methods:
     official_url: https://doi.org/10.1186/s13059-023-02859-3
     license: MIT
     note: The DOI suffix and repository license were checked against the primary publication and official repository.
+  Single-state at-least-one binomial planner:
+    note: The implementation is the one-state at-least-one-cell binomial special case; the SCOPIT paper is retained only as methodological context and the runtime must not claim SCOPIT execution.
   scQCenrich:
     license: MIT
     note: The repository license was checked against the official source repository.

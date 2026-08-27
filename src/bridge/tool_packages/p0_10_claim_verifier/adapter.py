@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from typing import Any
+
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError, ValidationError
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
     PublicationError,
+    StructuredInputError,
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
@@ -50,6 +55,7 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
     ToolRunV2,
 )
+from bridge.toolkit.schemas import load_schema
 
 RESULT_SCHEMA_REF = "bridge://schemas/claim-verification-result/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
@@ -249,8 +255,18 @@ def _load_inputs(
     return load_structured_inputs(
         refs,
         model_for=lambda ref: ROLE_MODELS.get(ref.role, ("", None))[1],
+        validate_payload=_validate_json_schema,
         validate_model=_validate_object_version,
     )
+
+
+def _validate_json_schema(ref: StructuredInputRef, payload: Any) -> None:
+    try:
+        schema = load_schema(ref.schema_ref)
+        Draft202012Validator.check_schema(schema)
+        Draft202012Validator(schema).validate(payload)
+    except (KeyError, FileNotFoundError, SchemaError, ValidationError):
+        raise StructuredInputError("structured_input_schema_invalid") from None
 
 
 def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> None:
@@ -260,8 +276,6 @@ def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> Non
         else getattr(value, "object_version", None)
     )
     if version != ref.object_version:
-        from bridge.tool_packages._structured_runtime import StructuredInputError
-
         raise StructuredInputError("object_input_version_mismatch")
 
 

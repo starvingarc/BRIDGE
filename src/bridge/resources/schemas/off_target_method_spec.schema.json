@@ -1,0 +1,215 @@
+{
+  "$defs": {
+    "OODChannelBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "method_ref": {
+          "pattern": "^METHOD-[A-Z0-9-]+$",
+          "title": "Method Ref",
+          "type": "string"
+        },
+        "reference_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Reference Ref",
+          "type": "string"
+        },
+        "source_family_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Source Family Id",
+          "type": "string"
+        },
+        "upstream_result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Upstream Result Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel_id",
+        "source_family_id",
+        "upstream_result_sha256",
+        "method_ref",
+        "reference_ref"
+      ],
+      "title": "OODChannelBinding",
+      "type": "object"
+    },
+    "OODDecisionRule": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_state": {
+          "enum": [
+            "supported",
+            "unknown",
+            "ood"
+          ],
+          "title": "Channel State",
+          "type": "string"
+        },
+        "minimum_distinct_source_families": {
+          "exclusiveMinimum": 0,
+          "title": "Minimum Distinct Source Families",
+          "type": "integer"
+        },
+        "output_state": {
+          "enum": [
+            "supported",
+            "unknown",
+            "ood"
+          ],
+          "title": "Output State",
+          "type": "string"
+        },
+        "reason_id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Reason Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel_state",
+        "output_state",
+        "minimum_distinct_source_families",
+        "reason_id"
+      ],
+      "title": "OODDecisionRule",
+      "type": "object"
+    },
+    "OffTargetMethodId": {
+      "enum": [
+        "COMP-EXACT",
+        "COMP-HARD-SENS",
+        "COMP-HBOOT",
+        "RARE-EXACT",
+        "RARE-SPIKEIN",
+        "RARE-BINOMIAL-AT-LEAST-ONE",
+        "OOD-DISAGREE",
+        "OOD-ENSEMBLE"
+      ],
+      "title": "OffTargetMethodId",
+      "type": "string"
+    },
+    "RarePlanningTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "desired_detection_probability": {
+          "exclusiveMaximum": 1.0,
+          "exclusiveMinimum": 0.0,
+          "title": "Desired Detection Probability",
+          "type": "number"
+        },
+        "expected_frequency_fraction": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Expected Frequency Fraction",
+          "type": "number"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "expected_frequency_fraction",
+        "desired_detection_probability"
+      ],
+      "title": "RarePlanningTarget",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/off-target-method-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "active": {
+      "title": "Active",
+      "type": "boolean"
+    },
+    "bootstrap_replicates": {
+      "maximum": 100000,
+      "minimum": 100,
+      "title": "Bootstrap Replicates",
+      "type": "integer"
+    },
+    "confidence_level": {
+      "exclusiveMaximum": 1.0,
+      "exclusiveMinimum": 0.5,
+      "title": "Confidence Level",
+      "type": "number"
+    },
+    "method_spec_id": {
+      "pattern": "^off-target-method-spec:[A-Za-z0-9._:-]+$",
+      "title": "Method Spec Id",
+      "type": "string"
+    },
+    "method_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Spec Version",
+      "type": "string"
+    },
+    "minimum_spike_in_detection_probability": {
+      "exclusiveMaximum": 1.0,
+      "exclusiveMinimum": 0.0,
+      "title": "Minimum Spike In Detection Probability",
+      "type": "number"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "ood_channel_bindings": {
+      "items": {
+        "$ref": "#/$defs/OODChannelBinding"
+      },
+      "title": "Ood Channel Bindings",
+      "type": "array"
+    },
+    "ood_decision_rules": {
+      "items": {
+        "$ref": "#/$defs/OODDecisionRule"
+      },
+      "title": "Ood Decision Rules",
+      "type": "array"
+    },
+    "planning_targets": {
+      "items": {
+        "$ref": "#/$defs/RarePlanningTarget"
+      },
+      "title": "Planning Targets",
+      "type": "array"
+    },
+    "selected_method_ids": {
+      "items": {
+        "$ref": "#/$defs/OffTargetMethodId"
+      },
+      "minItems": 1,
+      "title": "Selected Method Ids",
+      "type": "array"
+    },
+    "status": {
+      "const": "candidate",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_spec_id",
+    "method_spec_version",
+    "status",
+    "selected_method_ids",
+    "confidence_level",
+    "bootstrap_replicates",
+    "minimum_spike_in_detection_probability",
+    "active"
+  ],
+  "title": "OffTargetMethodSpec",
+  "type": "object"
+}

@@ -66,6 +66,17 @@
     "ObjectInputModeContract": {
       "additionalProperties": false,
       "properties": {
+        "asset_input": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssetInputContract"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "mode_id": {
           "pattern": "^[a-z][a-z0-9_]*$",
           "title": "Mode Id",

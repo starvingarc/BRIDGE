@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from enum import StrEnum
 from typing import Literal, Self
 
 from pydantic import Field, StrictInt, field_validator, model_validator
@@ -17,6 +16,9 @@ from bridge.tool_packages._configurable_contracts import (
     VersionedObjectRef,
 )
 from bridge.tool_packages._publication_safety import validate_publication_text
+from bridge.tool_packages.p0_04_developmental_compatibility.roles import (
+    DevelopmentStageRole,
+)
 from bridge.toolkit.contracts import FrozenModel
 
 
@@ -29,14 +31,6 @@ def _aware_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("datetime must include a timezone")
     return value.astimezone(timezone.utc)
-
-
-class DevelopmentStageRole(StrEnum):
-    EARLIER = "earlier"
-    WITHIN_WINDOW = "within_window"
-    LATER = "later"
-    BRANCH_SHIFT = "branch_shift"
-    UNRESOLVED = "unresolved"
 
 
 class DevelopmentStateAssignment(FrozenModel):
@@ -183,8 +177,27 @@ class DevelopmentTimepointProfile(FrozenModel):
 
 
 class ReferenceStageSupport(FrozenModel):
-    assessment_state: Literal["unavailable"]
-    reason_code: Literal["reference_stage_support_not_supplied"]
+    assessment_state: Literal["shadow", "unavailable"]
+    method_bundle_ref: VersionedObjectRef | None = None
+    method_bundle_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    selected_method_ids: list[str] = Field(default_factory=list)
+    reason_code: str | None = None
+
+    @model_validator(mode="after")
+    def binding_matches_state(self) -> Self:
+        available = self.assessment_state == "shadow"
+        binding_present = (
+            self.method_bundle_ref is not None
+            and self.method_bundle_sha256 is not None
+            and bool(self.selected_method_ids)
+        )
+        if available != binding_present:
+            raise ValueError("reference-stage state and method binding disagree")
+        if available and self.reason_code is not None:
+            raise ValueError("available reference-stage support cannot retain a reason")
+        if not available and not self.reason_code:
+            raise ValueError("unavailable reference-stage support requires a reason")
+        return self
 
 
 class InputChecksumBindings(FrozenModel):
@@ -195,10 +208,16 @@ class InputChecksumBindings(FrozenModel):
     measurement_spec: str = Field(pattern=SHA256_PATTERN)
     cell_state_evidence_profile: str = Field(pattern=SHA256_PATTERN)
     development_timepoint_series: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    qc_readiness_profile: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    biological_unit_manifest: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    biological_unit_assignment: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    annotation_vocabulary: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    reference_manifest: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    development_method_spec: str | None = Field(default=None, pattern=SHA256_PATTERN)
 
 
 class DevelopmentalCompatibilityResult(FrozenModel):
-    object_version: Literal["0.1.0"]
+    object_version: Literal["0.2.0"]
     result_id: str = Field(pattern=r"^developmental-compatibility-result:[A-Za-z0-9._:-]+$")
     tool_id: Literal["P0-04"]
     tool_version: str = Field(pattern=VERSION_PATTERN)
@@ -252,11 +271,19 @@ class DevelopmentalCompatibilityResult(FrozenModel):
         return self
 
 
+from bridge.tool_packages.p0_04_developmental_compatibility.method_models import (
+    DevelopmentMethodBundle,
+    DevelopmentMethodSpec,
+)
+
+
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/development-window-spec/v0.1": DevelopmentWindowSpec,
     "bridge://schemas/development-state-map/v0.1": DevelopmentStateMap,
     "bridge://schemas/development-timepoint-series/v0.1": DevelopmentTimepointSeries,
-    "bridge://schemas/developmental-compatibility-result/v0.1": DevelopmentalCompatibilityResult,
+    "bridge://schemas/development-method-spec/v0.1": DevelopmentMethodSpec,
+    "bridge://schemas/development-method-bundle/v0.1": DevelopmentMethodBundle,
+    "bridge://schemas/developmental-compatibility-result/v0.2": DevelopmentalCompatibilityResult,
 }
 
 

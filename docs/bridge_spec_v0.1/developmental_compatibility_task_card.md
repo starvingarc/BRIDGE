@@ -3,13 +3,13 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-DEVELOPMENT-v0.1` |
-| Task document version | `0.1` |
-| 日期 | 2026-08-06 |
-| Package version | `P0-04 0.2.0` |
+| Task document version | `0.3` |
+| 日期 | 2026-08-27 |
+| Package version | `P0-04 0.3.0` |
 | Runtime / scientific state | `implemented` / `candidate shadow` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| Current input | checksummed `ProductCase`、`ProductDefinitionCard`、`DevelopmentWindowSpec`、`DevelopmentStateMap`、`MeasurementSpecV2`、`CellStateEvidenceProfileV2`；可选 timepoint series |
-| Current result | `bridge://schemas/developmental-compatibility-result/v0.1` |
+| Current input | checksummed `ProductCase`、`ProductDefinitionCard`、`DevelopmentWindowSpec`、`DevelopmentStateMap`、`MeasurementSpecV2`、`CellStateEvidenceProfileV3`；可选 timepoint series、H5AD 与 `DevelopmentMethodSpec` |
+| Current result | `bridge://schemas/developmental-compatibility-result/v0.2` |
 | Detailed runtime contract | [P0-04 Tool Card](../../src/bridge/tool_packages/cards/P0-04.md) |
 
 > v0.2 engineering note: the first executable package is a conservative
@@ -17,12 +17,13 @@
 > ProductDefinitionCard, DevelopmentWindowSpec, DevelopmentStateMap,
 > MeasurementSpecV2 and CellStateEvidenceProfileV2 JSON objects, with an optional
 > declared timepoint series. State roles and channel selection remain external.
-> Reference support, lineage calibration and inferential time-course are
-> unavailable; `domain_score` remains null.
+> Package v0.3 executes transparent reference, program, uncertainty and
+> declared true-time methods as candidate/shadow evidence. Lineage calibration,
+> isolated R/trajectory methods and `domain_score` remain unavailable.
 
 ## 1. 任务目标与边界
 
-本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。当前阶段只整理并验证数据、方法、环境和输出合同，不制定 0-100 分数。
+本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。v0.3 已封装可调用的透明基线方法，但不制定 0-100 分数。
 
 - 发育相容性是相对于 `ProductDefinitionCard` 的条件化证据，不寻找跨产品通用的最优阶段。
 - 人胎 reference 定义生物学状态轴；体外时间序列只用于过程校准和同条件比较。
@@ -76,18 +77,22 @@ flowchart LR
     B --> D["分来源与分模态 reference-stage support"]
     B --> E{"是否存在真实多时间点"}
     E -->|否| F["static_profile；动态证据 unavailable"]
-    E -->|是，无足够独立重复| G["descriptive_timecourse"]
-    E -->|是，满足重复合同| H["inferential_timecourse"]
+    E -->|是| G["descriptive_timecourse；inferential unavailable"]
     C --> I["方法与 reference 敏感性"]
     D --> I
     F --> I
     G --> I
-    H --> I
     I --> J["DevelopmentalCompatibilityProfile"]
     K["SISBAR 独立校准轨"] --> L["LineageCalibrationRecord"]
 ```
 
 ## 5. 方法组合
+
+v0.3 的 `DevelopmentMethodSpec` 以版本化外部对象选择 reference profile、
+reference label 的角色/顺序、program card、真实时间点和方法。当前直接执行
+`DEV-PSEUDOBULK-CORR`、`DEV-ORDINAL`、`DEV-PROGRAM`、
+`DEV-BOOTSTRAP`、`TIME-PROGRAM` 和 `TIME-GAM-PY`；运行结果记录软件
+版本、覆盖度、独立单位和 reason code。
 
 ### 5.1 窗口组成
 
@@ -98,15 +103,29 @@ flowchart LR
 ### 5.2 Reference-stage support
 
 - 对每个 sample/preparation 构建 pseudobulk，并分别对每个 reference source 与 modality 计算阶段支持分布。
-- source-aware ordinal classifier 作为独立阶段映射通道，训练和验证按 source、donor、lab 与 modality 分组。
+- source-aware ordinal classifier 作为独立阶段映射通道。v0.3 不在运行时完成
+  校准或 held-out benchmark；只有外部、版本化、已审核且通过的
+  source-group-held-out evidence receipt 精确绑定所有选定 profile 和至少两个
+  source 时才执行，否则返回 typed `not_assessed`。
 - 输出 `top_supported_reference_interval` 及完整支持分布；该区间只表示 reference 相似性，不表示胎龄换算。
 - RAPToR 作为 `shadow` 候选，必须使用 BRIDGE 自有 reference 重新验证后才可解释。
+- v0.3 直接执行 sample/preparation pseudobulk 的 Spearman/cosine 支持，以及
+  scikit-learn 累积二分类 logistic ordinal baseline。ordinal 输出明确标记为
+  `uncalibrated_baseline` 并引用 gate receipt；两者均只输出 reference
+  support，不作胎龄换算。
+- 任一选定 profile 覆盖不足，或同一 analysis unit 在不同 source/assay 的
+  top stage role 不一致时，该 unit 的 reference support 为 `unavailable`，
+  也不进入其后的 bootstrap 或 time spline。
 
 ### 5.3 真实时间点趋势
 
 - 按真实 `D/Stage` 展示阶段组成和发育程序趋势，不使用 pseudotime 代替实验时间。
 - 有独立 biological replicates 时，可比较 propeller/speckle 与 scCODA/pertpy-scCODA 等组成模型；模型单位是 sample/preparation，不是 cell。
-- 样本层 spline/GAM 用于真实时间趋势。重复不足时只输出 `descriptive_timecourse`，不发布推断性统计。
+- 样本层 spline 用于真实时间的未调整描述。v0.3 使用 statsmodels OLS 和
+  预先声明的 Patsy cubic B-spline basis，只输出
+  `analysis_state=unadjusted_descriptive` 的 fitted trend，不输出置信区间、
+  调整后效应或推断性结论。少于四个时间点、独立单位不足或重复
+  independence group 时返回 typed `not_assessed`。
 
 ### 5.4 轨迹与转变方法
 
@@ -128,7 +147,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 | 字段 | 含义 |
 | --- | --- |
-| `analysis_mode` | `static_profile` / `descriptive_timecourse` / `inferential_timecourse` |
+| `analysis_mode` | `static_profile` / `descriptive_timecourse`；v0.3 不产生 `inferential_timecourse` |
 | `window_spec_id` | 研究者确认的窗口、版本和确认记录 |
 | `target_related_denominator` | target-related cells/weights、数量与视图 |
 | `whole_product_denominator` | 全部 eligible product cells、数量与视图 |
@@ -149,7 +168,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-DEVELOPMENT-PY-v0.1` | composition、pseudobulk、statsmodels/sklearn、Scanpy DPT/PAGA、Palantir | `proposed` |
+| `ENV-DEVELOPMENT-PY-v0.1` | composition、pseudobulk、scikit-learn、decoupler、statsmodels/Patsy | `health_check_passed`；v0.3 执行环境 |
 | `ENV-DEVELOPMENT-CELLRANK-v0.1` | CellRank 条件性轨迹验证 | `proposed_conditional` |
 | `ENV-DEVELOPMENT-VELOCITY-v0.1` | RNA velocity 研究性验证 | `proposed_exploratory`；独立冻结稳定版本 |
 | `ENV-DEVELOPMENT-VIA-v0.1` | VIA shadow benchmark | `proposed_shadow` |
@@ -176,7 +195,10 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 - Cell-State evidence 不可用或 target-related 分母不足：相应组成返回 `unavailable`。
 - 单时间点：`analysis_mode=static_profile`，不输出时间进展或转变证据。
 - 无足够独立重复：最多 `descriptive_timecourse`，细胞数不能代替 biological replicate。
-- reference source/modality 冲突且无法协调：保留各自结果并标记 `unstable` 或 `unavailable`。
+- ordinal 缺少通过审核且精确绑定的 source-group-held-out receipt：该方法
+  `not_assessed`，不得把运行内拟合解释为已校准预测。
+- reference profile 覆盖不足或 source/modality 的 top stage role 冲突：
+  对应 analysis unit 为 `unavailable`，不得用可用 source 静默补齐。
 - 缺少 lineage barcode：不输出克隆关系、命运或 observed transition。
 - sealed competitor test 不参与任何方法选择、reference 构建、prior 或阈值调整。
 
