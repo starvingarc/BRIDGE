@@ -181,11 +181,11 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Characterize optional post-transplant graft evidence without feeding it back into the pre-transplant product profile. [Scientific task card](bridge_spec_v0.1/graft_assessment_task_card.md). |
-| Executable implementation | Deterministic GraftCase validation, soft-composition aggregation and explicit no-input handling. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no external graft-outcome model. |
-| Input → output | No object inputs, or GraftCase, GraftAssessmentSpec and GraftEvidenceBundle → `GraftAssessmentResult` with `not_provided` or descriptive evidence. [Tool Card](../src/bridge/tool_packages/cards/P0-12.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-12`; start from the [request example](../examples/requests/p0_12_graft_assessment.json). |
-| Current evidence / status | Synthetic cases verify aggregation, provenance and `not_provided`. Results remain `candidate/shadow`; they establish neither efficacy, release suitability nor a pre-transplant score. [Validation](validation/p0_12_graft_assessment_20260825.md). |
+| Executable implementation | Three modes behind one adapter: explicit `not_provided`; deterministic aggregation of precomputed graft records; or real H5AD analysis with sample-level soft composition, bootstrap intervals, sample-pseudobulk reference correlation and marker-program evidence. State probabilities, reference profiles, programs and analysis settings are external inputs. |
+| Software | [AnnData](https://anndata.readthedocs.io/) and [Scanpy](https://scanpy.readthedocs.io/) read/normalize H5AD; [NumPy](https://numpy.org/doc/) and [pandas](https://pandas.pydata.org/docs/) handle matrices and sample aggregation; [SciPy](https://docs.scipy.org/doc/scipy/) provides bootstrap intervals and Spearman correlation. No classifier, training or external graft-outcome model runs. |
+| Input → output | No objects; three precomputed JSON objects; or GraftCase plus checksummed H5AD manifest, analysis spec, reference panel and marker-program collection → `GraftAssessmentResult` or `GraftExpressionAnalysisResult`, both under the union run-result Schema. [Tool Card](../src/bridge/tool_packages/cards/P0-12.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-12`; start from the [no-graft](../examples/requests/p0_12_graft_assessment.json) or [expression-analysis](../examples/requests/p0_12_expression_analysis.json) request. |
+| Current evidence / status | Synthetic H5AD cases exercise file/checksum validation, raw-count normalization, composition, intervals, reference/program evidence and fail-closed inputs through the public adapter. Results remain `candidate/shadow`, `domain_score=null`; this is engineering validation, not efficacy or release evidence. [Validation](validation/p0_12_expression_analysis_20260827.md). |
 
 ## Methods, Schemas and evidence
 

@@ -1,0 +1,465 @@
+{
+  "$defs": {
+    "AnalysisAvailability": {
+      "enum": [
+        "available",
+        "unavailable"
+      ],
+      "title": "AnalysisAvailability",
+      "type": "string"
+    },
+    "GraftAssay": {
+      "enum": [
+        "scRNA-seq",
+        "snRNA-seq"
+      ],
+      "title": "GraftAssay",
+      "type": "string"
+    },
+    "GraftCompositionEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "cell_equivalent": {
+          "minimum": 0,
+          "title": "Cell Equivalent",
+          "type": "number"
+        },
+        "ci_lower": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ci Lower"
+        },
+        "ci_upper": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ci Upper"
+        },
+        "confidence_level": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence Level",
+          "type": "number"
+        },
+        "denominator_cells": {
+          "minimum": 0,
+          "title": "Denominator Cells",
+          "type": "integer"
+        },
+        "denominator_samples": {
+          "minimum": 0,
+          "title": "Denominator Samples",
+          "type": "integer"
+        },
+        "interval_state": {
+          "$ref": "#/$defs/IntervalState"
+        },
+        "mean_fraction": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Mean Fraction",
+          "type": "number"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "mean_fraction",
+        "cell_equivalent",
+        "denominator_cells",
+        "denominator_samples",
+        "interval_state",
+        "confidence_level"
+      ],
+      "title": "GraftCompositionEstimate",
+      "type": "object"
+    },
+    "GraftMatrixSemantics": {
+      "enum": [
+        "raw_counts",
+        "log_normalized"
+      ],
+      "title": "GraftMatrixSemantics",
+      "type": "string"
+    },
+    "GraftProgramEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/AnalysisAvailability"
+        },
+        "gene_count": {
+          "minimum": 0,
+          "title": "Gene Count",
+          "type": "integer"
+        },
+        "gene_coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Gene Coverage",
+          "type": "number"
+        },
+        "mean_expression": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Expression"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "sample_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Sample Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sample_id",
+        "program_id",
+        "availability",
+        "gene_count",
+        "gene_coverage",
+        "reason_codes"
+      ],
+      "title": "GraftProgramEvidence",
+      "type": "object"
+    },
+    "GraftReferenceSupport": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/AnalysisAvailability"
+        },
+        "profile_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "sample_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Sample Id",
+          "type": "string"
+        },
+        "shared_gene_count": {
+          "minimum": 0,
+          "title": "Shared Gene Count",
+          "type": "integer"
+        },
+        "spearman_correlation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spearman Correlation"
+        }
+      },
+      "required": [
+        "sample_id",
+        "profile_id",
+        "availability",
+        "shared_gene_count",
+        "reason_codes"
+      ],
+      "title": "GraftReferenceSupport",
+      "type": "object"
+    },
+    "GraftSourceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "input_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Input Id",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "role": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_ref": {
+          "minLength": 1,
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "input_id",
+        "role",
+        "schema_ref",
+        "object_version",
+        "source_sha256"
+      ],
+      "title": "GraftSourceBinding",
+      "type": "object"
+    },
+    "IntervalState": {
+      "enum": [
+        "available",
+        "unavailable"
+      ],
+      "title": "IntervalState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/graft-expression-analysis-result/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_mode": {
+      "const": "expression_analysis",
+      "title": "Analysis Mode",
+      "type": "string"
+    },
+    "analysis_spec_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Analysis Spec Ref",
+      "type": "string"
+    },
+    "assay": {
+      "$ref": "#/$defs/GraftAssay"
+    },
+    "asset_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Asset Ref",
+      "type": "string"
+    },
+    "cell_count": {
+      "minimum": 0,
+      "title": "Cell Count",
+      "type": "integer"
+    },
+    "composition_estimates": {
+      "items": {
+        "$ref": "#/$defs/GraftCompositionEstimate"
+      },
+      "title": "Composition Estimates",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_state": {
+      "const": "shadow",
+      "title": "Evidence State",
+      "type": "string"
+    },
+    "gene_count": {
+      "minimum": 0,
+      "title": "Gene Count",
+      "type": "integer"
+    },
+    "graft_case_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Graft Case Ref",
+      "type": "string"
+    },
+    "graft_count": {
+      "minimum": 0,
+      "title": "Graft Count",
+      "type": "integer"
+    },
+    "marker_program_collection_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Marker Program Collection Ref",
+      "type": "string"
+    },
+    "matrix_semantics": {
+      "$ref": "#/$defs/GraftMatrixSemantics"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "pretransplant_evidence_effect": {
+      "const": "none",
+      "default": "none",
+      "title": "Pretransplant Evidence Effect",
+      "type": "string"
+    },
+    "program_evidence": {
+      "items": {
+        "$ref": "#/$defs/GraftProgramEvidence"
+      },
+      "title": "Program Evidence",
+      "type": "array"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "reference_panel_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Reference Panel Ref",
+      "type": "string"
+    },
+    "reference_support": {
+      "items": {
+        "$ref": "#/$defs/GraftReferenceSupport"
+      },
+      "title": "Reference Support",
+      "type": "array"
+    },
+    "result_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Result Id",
+      "type": "string"
+    },
+    "runtime_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Runtime Versions",
+      "type": "object"
+    },
+    "sample_count": {
+      "minimum": 0,
+      "title": "Sample Count",
+      "type": "integer"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "selected_method_ids": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Selected Method Ids",
+      "type": "array"
+    },
+    "source_bindings": {
+      "items": {
+        "$ref": "#/$defs/GraftSourceBinding"
+      },
+      "title": "Source Bindings",
+      "type": "array"
+    },
+    "state": {
+      "const": "candidate",
+      "title": "State",
+      "type": "string"
+    },
+    "tool_id": {
+      "const": "P0-12",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "unassigned_fraction": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Unassigned Fraction",
+      "type": "number"
+    }
+  },
+  "required": [
+    "object_version",
+    "result_id",
+    "tool_id",
+    "tool_version",
+    "state",
+    "evidence_state",
+    "analysis_mode",
+    "graft_case_ref",
+    "asset_ref",
+    "analysis_spec_ref",
+    "reference_panel_ref",
+    "marker_program_collection_ref",
+    "assay",
+    "matrix_semantics",
+    "cell_count",
+    "gene_count",
+    "sample_count",
+    "graft_count",
+    "unassigned_fraction",
+    "composition_estimates",
+    "reference_support",
+    "program_evidence",
+    "source_bindings",
+    "selected_method_ids",
+    "runtime_versions",
+    "reason_codes",
+    "created_at"
+  ],
+  "title": "GraftExpressionAnalysisResult",
+  "type": "object"
+}

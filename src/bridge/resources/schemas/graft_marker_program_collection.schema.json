@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "GraftMarkerProgram": {
+      "additionalProperties": false,
+      "properties": {
+        "genes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Genes",
+          "type": "array"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "program_id",
+        "genes"
+      ],
+      "title": "GraftMarkerProgram",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-marker-program-collection/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "collection_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Collection Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "programs": {
+      "items": {
+        "$ref": "#/$defs/GraftMarkerProgram"
+      },
+      "minItems": 1,
+      "title": "Programs",
+      "type": "array"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "collection_id",
+    "programs",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "GraftMarkerProgramCollection",
+  "type": "object"
+}

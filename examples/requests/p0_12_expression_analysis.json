@@ -1,0 +1,57 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "graft-case",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/graft_case.json",
+      "role": "graft_case",
+      "schema_ref": "bridge://schemas/graft-case/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "graft-expression-asset",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/graft_expression_asset.json",
+      "role": "graft_expression_asset",
+      "schema_ref": "bridge://schemas/graft-expression-asset/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "graft-analysis-spec",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/graft_expression_analysis_spec.json",
+      "role": "graft_expression_analysis_spec",
+      "schema_ref": "bridge://schemas/graft-expression-analysis-spec/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "graft-reference-panel",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/graft_reference_panel.json",
+      "role": "graft_reference_panel",
+      "schema_ref": "bridge://schemas/graft-reference-panel/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "input_id": "graft-marker-programs",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/graft_marker_program_collection.json",
+      "role": "graft_marker_program_collection",
+      "schema_ref": "bridge://schemas/graft-marker-program-collection/v0.1",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-12-expression-documentation-only",
+  "tool_id": "P0-12",
+  "tool_version": "0.3.0"
+}

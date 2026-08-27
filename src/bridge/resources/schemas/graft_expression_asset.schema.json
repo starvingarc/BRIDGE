@@ -1,0 +1,145 @@
+{
+  "$defs": {
+    "GraftAssay": {
+      "enum": [
+        "scRNA-seq",
+        "snRNA-seq"
+      ],
+      "title": "GraftAssay",
+      "type": "string"
+    },
+    "GraftMatrixSemantics": {
+      "enum": [
+        "raw_counts",
+        "log_normalized"
+      ],
+      "title": "GraftMatrixSemantics",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/graft-expression-asset/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assay": {
+      "$ref": "#/$defs/GraftAssay"
+    },
+    "assay_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Assay Id",
+      "type": "string"
+    },
+    "asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "expression_layer": {
+      "minLength": 1,
+      "pattern": "^(?:X|[A-Za-z][A-Za-z0-9._-]*)$",
+      "title": "Expression Layer",
+      "type": "string"
+    },
+    "format": {
+      "const": "h5ad",
+      "title": "Format",
+      "type": "string"
+    },
+    "gene_symbol_key": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gene Symbol Key"
+    },
+    "graft_case_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Graft Case Ref",
+      "type": "string"
+    },
+    "graft_id_key": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Graft Id Key"
+    },
+    "matrix_semantics": {
+      "$ref": "#/$defs/GraftMatrixSemantics"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "path": {
+      "format": "path",
+      "pattern": "^/",
+      "title": "Path",
+      "type": "string"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "sample_id_key": {
+      "pattern": "^[A-Za-z][A-Za-z0-9._-]*$",
+      "title": "Sample Id Key",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sha256",
+      "type": "string"
+    },
+    "state_probability_columns": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._:-]*$": {
+          "type": "string"
+        }
+      },
+      "title": "State Probability Columns",
+      "type": "object"
+    }
+  },
+  "required": [
+    "object_version",
+    "asset_id",
+    "graft_case_ref",
+    "assay_id",
+    "path",
+    "sha256",
+    "format",
+    "assay",
+    "expression_layer",
+    "matrix_semantics",
+    "sample_id_key",
+    "state_probability_columns",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "GraftExpressionAsset",
+  "type": "object"
+}

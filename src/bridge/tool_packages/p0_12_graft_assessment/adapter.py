@@ -20,6 +20,12 @@ from bridge.tool_packages._structured_runtime import (
 from bridge.tool_packages._structured_runtime import (
     publish_json_bundle as _publish_bundle,
 )
+from bridge.tool_packages.p0_12_graft_assessment.analysis import (
+    ROLE_MODELS as ANALYSIS_ROLE_MODELS,
+    check_eligibility as check_expression_eligibility,
+    is_expression_analysis_request,
+    run as run_expression_analysis,
+)
 from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftAnalysisMode,
     GraftAssessmentResult,
@@ -47,8 +53,12 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/graft-assessment-result/v0.1"
-ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
+RESULT_SCHEMA_REF = "bridge://schemas/graft-assessment-run-result/v0.1"
+PRECOMPUTED_METHOD_IDS = [
+    "METHOD-BRIDGE-GRAFTCASE-VALIDATOR",
+    "METHOD-BRIDGE-SOFT-COMPOSITION-404672",
+]
+PRECOMPUTED_ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "graft_case": ("bridge://schemas/graft-case/v0.1", GraftCase),
     "assessment_spec": (
         "bridge://schemas/graft-assessment-spec/v0.1",
@@ -59,8 +69,7 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         GraftEvidenceBundle,
     ),
 }
-
-
+ROLE_MODELS = {**PRECOMPUTED_ROLE_MODELS, **ANALYSIS_ROLE_MODELS}
 
 
 @dataclass(frozen=True)
@@ -75,6 +84,8 @@ class GraftAssessmentAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
+        if is_expression_analysis_request(request):
+            return check_expression_eligibility(request, spec)
         reasons = _envelope_reasons(request, spec)
         if request.object_inputs:
             loaded, loading_reasons = _load_inputs(request.object_inputs)
@@ -91,6 +102,8 @@ class GraftAssessmentAdapter:
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         if not isinstance(request, ToolRequestV2):
             return _failed_v1_request(request, spec)
+        if is_expression_analysis_request(request):
+            return run_expression_analysis(request, spec)
         eligibility = self.check_eligibility(request, spec)
         if not eligibility.eligible:
             return _failed_run(request, spec, eligibility.reason_codes)
@@ -194,13 +207,13 @@ def _envelope_reasons(
         reasons.append("p0_12_parameters_forbidden")
     if request.object_inputs:
         roles = [ref.role for ref in request.object_inputs]
-        for role in ROLE_MODELS:
+        for role in PRECOMPUTED_ROLE_MODELS:
             if roles.count(role) != 1:
                 reasons.append(f"exactly_one_{role}_required")
-        if any(role not in ROLE_MODELS for role in roles):
+        if any(role not in PRECOMPUTED_ROLE_MODELS for role in roles):
             reasons.append("unsupported_object_input_role")
         for ref in request.object_inputs:
-            contract = ROLE_MODELS.get(ref.role)
+            contract = PRECOMPUTED_ROLE_MODELS.get(ref.role)
             if contract is not None and ref.schema_ref != contract[0]:
                 reasons.append("object_input_schema_mismatch")
             if contract is not None and ref.object_version != "0.1.0":
@@ -215,7 +228,7 @@ def _load_inputs(
 ) -> tuple[LoadedInputs | None, list[str]]:
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: ROLE_MODELS.get(ref.role, ("", None))[1],
+        model_for=lambda ref: PRECOMPUTED_ROLE_MODELS.get(ref.role, ("", None))[1],
         validate_model=_validate_object_version,
     )
 
@@ -244,7 +257,10 @@ def _binding_reasons(
         reasons.append("graft_case_binding_mismatch")
     if bundle.assessment_spec_ref != assessment.assessment_spec_id:
         reasons.append("assessment_spec_binding_mismatch")
-    if sorted(assessment.method_ids) != sorted(spec.method_ids):
+    if (
+        assessment.method_ids != PRECOMPUTED_METHOD_IDS
+        or not set(PRECOMPUTED_METHOD_IDS).issubset(spec.method_ids)
+    ):
         reasons.append("assessment_spec_binding_mismatch")
     rules = {rule.role_id: rule for rule in assessment.role_rules}
     for record in bundle.records:

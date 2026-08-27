@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "GraftReferenceProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "gene_values": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "minProperties": 3,
+          "title": "Gene Values",
+          "type": "object"
+        },
+        "profile_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "gene_values"
+      ],
+      "title": "GraftReferenceProfile",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-reference-panel/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "profiles": {
+      "items": {
+        "$ref": "#/$defs/GraftReferenceProfile"
+      },
+      "minItems": 1,
+      "title": "Profiles",
+      "type": "array"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "reference_panel_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Reference Panel Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "reference_panel_id",
+    "profiles",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "GraftReferencePanel",
+  "type": "object"
+}

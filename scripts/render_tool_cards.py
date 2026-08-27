@@ -106,11 +106,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/public_safe_export_task_card.md",
     },
     "P0-12": {
-        "input": "Optional GraftCase with explicit host/model/animal/timepoint/species/preparation linkage plus modality-matched fetal references.",
-        "output": "Independent GraftAssessment, whole-graft composition, fetal/mDA support, maturation evidence, sensitivity, and optional descriptive linkage record.",
-        "reject": "No graft returns `not_provided`; missing animal IDs or confounded designs force descriptive mode; implicit preparation linkage is forbidden.",
-        "visualization": "Whole-graft composition, mDA/reference support, maturation programs, animal/timepoint variation, sensitivity, and linkage Evidence Graph.",
-        "validation": "Metadata contracts, source/lab/modality holdouts, mixtures, species contamination, downsampling, reference swaps, and no score backfill.",
+        "input": "No objects; three checksummed precomputed graft objects; or five checksummed objects binding a GraftCase, H5AD asset, analysis spec, reference panel and marker-program collection.",
+        "output": "An independent not-provided/descriptive result, or sample-aware soft composition, pseudobulk reference support and marker-program evidence from the declared H5AD.",
+        "reject": "Schema, checksum, file, matrix, probability, metadata, method-set or cross-object drift fails closed; missing optional graft metadata degrades explicitly.",
+        "visualization": "No visualization output in v0.3.0.",
+        "validation": "Synthetic H5AD and JSON fixtures exercise real file reading, normalization, aggregation, bootstrap intervals, reference/program calculations, deterministic output and no score backfill.",
         "details": "docs/bridge_spec_v0.1/graft_assessment_task_card.md",
     },
 }
