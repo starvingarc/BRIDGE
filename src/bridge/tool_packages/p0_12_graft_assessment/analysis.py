@@ -364,6 +364,8 @@ def _asset_file_reasons(
         if not isinstance(data, ad.AnnData):
             reasons.add("graft_expression_not_anndata")
             return reasons
+        if data.n_obs * data.n_vars > analysis_spec.max_matrix_elements:
+            return {"graft_expression_memory_budget_exceeded"}
         if data.n_obs < analysis_spec.minimum_cells:
             reasons.add("graft_expression_cell_count_below_minimum")
         if data.n_vars < analysis_spec.minimum_genes:
@@ -545,7 +547,7 @@ def _analysis_view(
         else data.layers[asset.expression_layer]
     )
     result = ad.AnnData(
-        X=source.copy(),
+        X=source,
         obs=data.obs.copy(),
         var=data.var.copy(),
     )

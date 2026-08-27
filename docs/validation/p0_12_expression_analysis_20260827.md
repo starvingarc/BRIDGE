@@ -18,6 +18,8 @@ Controls cover:
 - compatibility with the existing no-input and three-object modes;
 - missing declared observation fields;
 - H5AD checksum replacement;
+- a gzip-compressed sparse H5AD whose on-disk bytes pass but whose logical
+  `n_obs × n_vars` exceeds the declared matrix-element budget;
 - negative and fractional raw counts;
 - probabilities outside the declared tolerance;
 - unsafe sample identifiers;
@@ -28,10 +30,13 @@ Controls cover:
 ## Observed behavior
 
 The expression request passes the same registry, CLI and adapter seam used by
-other P0 tools. Scanpy reads the H5AD, and the shared P0-01 expression-object
-validator checks matrix structure and raw-count semantics. Raw counts are
-summed by sample, normalized and log-transformed before sample-pseudobulk
-reference correlation. Marker-program output is the mean of the externally
+other P0 tools. Scanpy first opens the H5AD in backed mode and checks the
+on-disk byte and logical matrix-element budgets. An oversized logical shape is
+rejected without a full read. Eligible files are then materialized, and the
+shared P0-01 expression-object validator checks matrix structure and raw-count
+semantics. Raw counts are summed by sample, normalized and log-transformed
+before sample-pseudobulk reference correlation. Marker-program output is the
+mean of the externally
 declared program genes in the same transformed sample profile; it is not an
 independent identity method. Cell probabilities are pooled over all uploaded
 rows for descriptive composition. No biological-unit weighting, confidence

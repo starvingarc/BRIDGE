@@ -22,8 +22,9 @@ P0-12 `0.3.0` 通过同一个 `ToolRequestV2 validate/run` 接口提供三条路
   marker-program mean；固定输出 `qc_state=not_reassessed`，不做置信区间。
 
 表达分析所用 state probability columns、reference profiles、marker
-programs、coverage/容差与文件上限均由版本化输入提供。organism、gene
-namespace、assay、value semantics 与 source family 进入显式绑定校验。
+programs、coverage/容差、on-disk byte 上限与 `n_obs × n_vars` 逻辑矩阵
+上限均由版本化输入提供，并受 package ceiling 约束。organism、gene namespace、
+assay、value semantics 与 source family 进入显式绑定校验。
 executor 不训练或调用 cell-state classifier，不在代码中冻结 biological
 vocabulary、marker、阈值或发布规则，也不从文件名推断 preparation
 linkage。两种 provided 结果都保持 `candidate/shadow`、

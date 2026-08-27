@@ -18,6 +18,12 @@
       "title": "Max File Bytes",
       "type": "integer"
     },
+    "max_matrix_elements": {
+      "maximum": 100000000,
+      "minimum": 1,
+      "title": "Max Matrix Elements",
+      "type": "integer"
+    },
     "method_ids": {
       "items": {
         "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
@@ -93,6 +99,7 @@
     "minimum_program_genes",
     "probability_tolerance",
     "max_file_bytes",
+    "max_matrix_elements",
     "provenance_refs"
   ],
   "title": "GraftExpressionAnalysisSpec",

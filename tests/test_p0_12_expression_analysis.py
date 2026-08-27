@@ -9,7 +9,11 @@ import anndata as ad
 import numpy as np
 import pandas as pd
 import pytest
+from scipy import sparse
 
+from bridge.tool_packages.p0_12_graft_assessment import (
+    analysis as analysis_module,
+)
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_12_graft_assessment.analysis import (
     ANALYSIS_METHOD_IDS,
@@ -111,6 +115,29 @@ def _write_h5ad(
     data.write_h5ad(path)
 
 
+def _write_compressed_oversize_h5ad(path: Path) -> None:
+    size = 1_025
+    counts = sparse.csr_matrix((size, size), dtype=np.int8)
+    obs = pd.DataFrame(
+        {
+            "sample_id": np.full(size, "demo-sample-1"),
+            "graft_id": np.full(size, "demo-graft-1"),
+            "state_a_probability": np.full(size, 0.4),
+            "state_b_probability": np.full(size, 0.4),
+        },
+        index=[f"demo-cell-{index:04d}" for index in range(size)],
+    )
+    data = ad.AnnData(
+        X=counts,
+        obs=obs,
+        var=pd.DataFrame(
+            index=[f"GENE{index}" for index in range(1, size + 1)]
+        ),
+    )
+    data.layers["counts"] = counts
+    data.write_h5ad(path, compression="gzip")
+
+
 def _request(
     tmp_path: Path,
     *,
@@ -120,18 +147,23 @@ def _request(
     omit_sample_id: bool = False,
     unsafe_sample_id: bool = False,
     reference_organism: str = "NCBITaxon:9606",
+    compressed_oversize: bool = False,
+    max_matrix_elements: int = 10_000_000,
 ) -> tuple[ToolRequestV2, Path]:
     input_dir = tmp_path / "inputs"
     input_dir.mkdir(parents=True)
     h5ad_path = input_dir / "demo-graft.h5ad"
-    _write_h5ad(
-        h5ad_path,
-        invalid_counts=invalid_counts,
-        fractional_counts=fractional_counts,
-        invalid_probabilities=invalid_probabilities,
-        omit_sample_id=omit_sample_id,
-        unsafe_sample_id=unsafe_sample_id,
-    )
+    if compressed_oversize:
+        _write_compressed_oversize_h5ad(h5ad_path)
+    else:
+        _write_h5ad(
+            h5ad_path,
+            invalid_counts=invalid_counts,
+            fractional_counts=fractional_counts,
+            invalid_probabilities=invalid_probabilities,
+            omit_sample_id=omit_sample_id,
+            unsafe_sample_id=unsafe_sample_id,
+        )
     case = {
         "object_version": "0.1.0",
         "graft_case_id": "graft-case:demo",
@@ -188,6 +220,7 @@ def _request(
         "minimum_program_genes": 2,
         "probability_tolerance": 0.000001,
         "max_file_bytes": 10_000_000,
+        "max_matrix_elements": max_matrix_elements,
         "provenance_refs": ["demo:analysis-settings"],
     }
     reference_panel = {
@@ -361,6 +394,34 @@ def test_reference_context_mismatch_is_ineligible(tmp_path: Path) -> None:
 
     assert not eligibility.eligible
     assert eligibility.reason_codes == ["graft_reference_organism_mismatch"]
+
+
+def test_compressed_small_h5ad_shape_fails_before_materialization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = analysis_module.sc.read_h5ad
+    read_modes: list[str | None] = []
+
+    def backed_only(path: Path, **kwargs: Any) -> ad.AnnData:
+        read_modes.append(kwargs.get("backed"))
+        if kwargs.get("backed") != "r":
+            raise AssertionError("oversized H5AD was materialized")
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(analysis_module.sc, "read_h5ad", backed_only)
+    request, h5ad_path = _request(
+        tmp_path,
+        compressed_oversize=True,
+        max_matrix_elements=1_000_000,
+    )
+
+    assert h5ad_path.stat().st_size < 1_000_000
+    run = ToolRegistry.load_default().run(request)
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["graft_expression_memory_budget_exceeded"]
+    assert read_modes == ["r"]
+    assert not request.output_dir.exists()
 
 
 def test_expression_asset_checksum_and_metadata_fail_closed(

@@ -25,6 +25,7 @@ UnitFloat = Annotated[
     float, Field(ge=0, le=1, allow_inf_nan=False)
 ]
 SHA256 = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+MAX_MATRIX_ELEMENTS = 100_000_000
 
 
 def _utc(value: datetime) -> datetime:
@@ -122,6 +123,7 @@ class GraftExpressionAnalysisSpec(FrozenModel):
     minimum_program_genes: StrictInt = Field(ge=1)
     probability_tolerance: UnitFloat
     max_file_bytes: StrictInt = Field(ge=1, le=2_000_000_000)
+    max_matrix_elements: StrictInt = Field(ge=1, le=MAX_MATRIX_ELEMENTS)
     provenance_refs: list[PublishedRef] = Field(min_length=1)
 
     @field_validator(
