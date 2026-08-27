@@ -12,7 +12,7 @@ before calling `validate` or `run`.
 | P0-02 | [`p0_02_cell_state.json`](requests/p0_02_cell_state.json) | Shadow Cell-State Evidence request and deployment-resolved reference/QC bindings |
 | P0-03 | [`p0_03_target_regional_evidence.json`](requests/p0_03_target_regional_evidence.json) | Eleven-object target/regional evidence request |
 | P0-04 | [`p0_04_developmental_compatibility.json`](requests/p0_04_developmental_compatibility.json) | Traceable aggregation plus optional expression-method request |
-| P0-05 | [`p0_05_off_target_control.json`](requests/p0_05_off_target_control.json) | Role-aware whole-product composition request |
+| P0-05 | [`p0_05_off_target_control.json`](requests/p0_05_off_target_control.json) | Nine-object method-runtime request for whole-product composition, uncertainty, rare-state and OOD coordination |
 | P0-03 | [`p0_03_target_regional_expression.json`](requests/p0_03_target_regional_expression.json) | Optional H5AD expression-method request |
 | P0-03 | [`p0_03_target_regional_method_spec.json`](objects/p0_03_target_regional_method_spec.json) | External method, reference, program and coverage choices |
 | P0-06 | [`p0_06_proliferation_stress_response.json`](requests/p0_06_proliferation_stress_response.json) | External program, process and precomputed-evidence request |

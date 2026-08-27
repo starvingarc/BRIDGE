@@ -96,12 +96,12 @@ scientific methods.
 
 | Item | Details |
 |---|---|
-| Purpose | Account for the whole product under supplied state roles and rare-state calibration rules. [Scientific task card](bridge_spec_v0.1/off_target_control_task_card.md). |
-| Executable implementation | Deterministic role-aware soft composition, unknown accounting, coverage checks and rare-state detectability states. |
-| Software | Shared Pydantic/JSON Schema runtime plus Python numerical and hashing utilities; no external classifier. |
-| Input → output | ProductCase, product definition, StateRoleMap, assessment spec, P0-02 profile and evidence bundle → `OffTargetControlProfile`. [Tool Card](../src/bridge/tool_packages/cards/P0-05.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-05`; start from the [request example](../examples/requests/p0_05_off_target_control.json). |
-| Current evidence / status | Synthetic positive, negative, missing and alert cases verify whole-product accounting and failure semantics. Results remain `candidate/shadow`, `domain_score=null`; they are not safety evidence. [Validation](validation/p0_05_off_target_control_20260825.md). |
+| Purpose | Account for whole-product composition, uncertainty, rare-state detectability and supplied OOD evidence under versioned external rules. [Scientific task card](bridge_spec_v0.1/off_target_control_task_card.md). |
+| Executable implementation | Role-aware soft composition plus eight selectors: Clopper-Pearson count intervals, hard/soft sensitivity, independence-group bootstrap, rare-state intervals, empirical spike-in curves, single-state at-least-one binomial planning, source-family disagreement and ordered OOD coordination. |
+| Software | Pydantic/JSON Schema runtime, [NumPy](https://numpy.org/) bootstrap and [SciPy](https://scipy.org/) beta quantiles; remaining aggregation, design and coordination code is internal and deterministic. Deep OOD models and rare-cluster discovery tools in the catalog are not invoked. |
+| Input → output | Compatible six-object aggregation → `OffTargetControlProfile`; nine-object method mode adds P0-02 V3, biological-unit lineage and method inputs → checksummed `OffTargetMethodBundle`. [Tool Card](../src/bridge/tool_packages/cards/P0-05.md). |
+| Call | `bridge-tool describe P0-05`, `bridge-tool input-contract P0-05`, then shared validate/run CLI or SDK; start from the [request example](../examples/requests/p0_05_off_target_control.json). |
+| Current evidence / status | Synthetic fixtures execute all eight selectors, verify deterministic seeded runs, lineage/refusal semantics and artifact reuse. Outputs remain `candidate/shadow`, `domain_score=null`; count intervals and candidate detection limits are not biological validation or safety evidence. [Validation](validation/p0_05_real_method_runtime_v0.3.md). |
 
 <a id="p0-06"></a>
 ## P0-06 Proliferation & Stress Response

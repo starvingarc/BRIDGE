@@ -381,7 +381,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         random_seed_policy="any_integer",
         object_input_modes=[
             _mode(
-                "default",
+                "legacy_aggregation",
                 _role("product_case", "bridge://schemas/product-case/v0.1", V01, 1, 1),
                 _role(
                     "product_definition_card",
@@ -414,7 +414,63 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                     1,
                 ),
-            )
+            ),
+            _mode(
+                "method_runtime",
+                _role("product_case", "bridge://schemas/product-case/v0.1", V01, 1, 1),
+                _role(
+                    "product_definition_card",
+                    "bridge://schemas/product-definition-card/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "state_role_map", "bridge://schemas/state-role-map/v0.1", V01, 1, 1
+                ),
+                _role(
+                    "off_target_assessment_spec",
+                    "bridge://schemas/off-target-assessment-spec/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "cell_state_evidence_profile",
+                    "bridge://schemas/cell-state-evidence-profile/v0.3",
+                    V03,
+                    1,
+                    1,
+                ),
+                _role(
+                    "off_target_evidence_bundle",
+                    "bridge://schemas/off-target-evidence-bundle/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "biological_unit_manifest",
+                    "bridge://schemas/biological-unit-manifest/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "off_target_method_spec",
+                    "bridge://schemas/off-target-method-spec/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "off_target_method_input",
+                    "bridge://schemas/off-target-method-input/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+            ),
         ],
     ),
     "P0-06": ToolInputContract(
