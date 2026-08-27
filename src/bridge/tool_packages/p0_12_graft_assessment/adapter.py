@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
     PublicationError,
+    StructuredInputError,
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
@@ -22,9 +23,12 @@ from bridge.tool_packages._structured_runtime import (
 )
 from bridge.tool_packages.p0_12_graft_assessment.analysis import (
     ROLE_MODELS as ANALYSIS_ROLE_MODELS,
-    check_eligibility as check_expression_eligibility,
+    GraftAnalysisError,
+    build_expression_result,
+    expression_asset,
+    expression_asset_unchanged,
+    expression_binding_reasons,
     is_expression_analysis_request,
-    run as run_expression_analysis,
 )
 from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftAnalysisMode,
@@ -73,6 +77,13 @@ ROLE_MODELS = {**PRECOMPUTED_ROLE_MODELS, **ANALYSIS_ROLE_MODELS}
 
 
 @dataclass(frozen=True)
+class _PreparedRequest:
+    expression_mode: bool
+    loaded: LoadedInputs | None
+    reason_codes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class GraftAssessmentAdapter:
     def check_eligibility(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
@@ -84,45 +95,82 @@ class GraftAssessmentAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
-        if is_expression_analysis_request(request):
-            return check_expression_eligibility(request, spec)
-        reasons = _envelope_reasons(request, spec)
-        if request.object_inputs:
-            loaded, loading_reasons = _load_inputs(request.object_inputs)
-            reasons.extend(loading_reasons)
-            if loaded is not None and not loading_reasons and not reasons:
-                reasons.extend(_binding_reasons(request, loaded, spec))
-        reason_codes = sorted(set(reasons))
+        prepared = _prepare(request, spec)
         return EligibilityResult(
             tool_id=request.tool_id,
-            eligible=not reason_codes,
-            reason_codes=reason_codes,
+            eligible=not prepared.reason_codes,
+            reason_codes=list(prepared.reason_codes),
         )
 
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         if not isinstance(request, ToolRequestV2):
             return _failed_v1_request(request, spec)
-        if is_expression_analysis_request(request):
-            return run_expression_analysis(request, spec)
-        eligibility = self.check_eligibility(request, spec)
-        if not eligibility.eligible:
-            return _failed_run(request, spec, eligibility.reason_codes)
-
-        loaded: LoadedInputs | None = None
-        if request.object_inputs:
-            loaded, reasons = _load_inputs(request.object_inputs)
-            if loaded is None or reasons:
-                return _failed_run(request, spec, reasons)
-        input_hash = _input_hash(request, spec)
+        prepared = _prepare(request, spec)
+        input_hash = _input_hash(request, spec, prepared.expression_mode)
+        if prepared.reason_codes:
+            return _failed_run(
+                request,
+                spec,
+                list(prepared.reason_codes),
+                input_hash=input_hash,
+            )
+        loaded = prepared.loaded
+        if prepared.expression_mode:
+            if loaded is None:
+                return _failed_run(
+                    request,
+                    spec,
+                    ["graft_expression_inputs_missing"],
+                    input_hash=input_hash,
+                )
+            asset = expression_asset(request, loaded)
+            try:
+                result = build_expression_result(
+                    request=request,
+                    loaded=loaded,
+                    tool_version=spec.version,
+                    input_hash=input_hash,
+                )
+            except GraftAnalysisError as exc:
+                return _failed_run(
+                    request,
+                    spec,
+                    [exc.reason_code],
+                    input_hash=input_hash,
+                )
+            result_filename = "graft_expression_analysis_result.json"
+            evidence_ids: list[str] = []
+            inputs_are_unchanged = lambda refs: (
+                inputs_unchanged(refs) and expression_asset_unchanged(asset)
+            )
+        else:
+            result = _build_result(request, loaded, input_hash)
+            result_filename = "graft_assessment_result.json"
+            evidence_ids = (
+                []
+                if loaded is None
+                else sorted(
+                    record.evidence_id
+                    for record in single_object(
+                        request,
+                        loaded,
+                        "evidence_bundle",
+                        GraftEvidenceBundle,
+                    ).records
+                )
+            )
+            inputs_are_unchanged = inputs_unchanged
         run_id = f"run-{input_hash[:16]}"
-        result = _build_result(request, loaded, input_hash)
-        result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
+        result_bytes = canonical_json_bytes(
+            result.model_dump(mode="json"), indent=2
+        )
         result_sha = hashlib.sha256(result_bytes).hexdigest()
         manifest = _artifact_manifest_payload(
             request=request,
             spec=spec,
             run_id=run_id,
             input_hash=input_hash,
+            result_filename=result_filename,
             result_sha=result_sha,
         )
         manifest_bytes = canonical_json_bytes(manifest, indent=2)
@@ -131,10 +179,10 @@ class GraftAssessmentAdapter:
                 request=request,
                 run_id=run_id,
                 payloads={
-                    "graft_assessment_result.json": result_bytes,
+                    result_filename: result_bytes,
                     "artifact_manifest.json": manifest_bytes,
                 },
-                inputs_are_unchanged=inputs_unchanged,
+                inputs_are_unchanged=inputs_are_unchanged,
             )
         except PublicationError as exc:
             return _failed_run(
@@ -143,16 +191,6 @@ class GraftAssessmentAdapter:
                 [exc.reason_code],
                 input_hash=input_hash,
             )
-        evidence_ids = (
-            []
-            if loaded is None
-            else sorted(
-                record.evidence_id
-                for record in single_object(
-                    request, loaded, "evidence_bundle", GraftEvidenceBundle
-                ).records
-            )
-        )
         artifacts = [
             ArtifactManifest(
                 artifact_id=f"artifact:{run_id}:{path.stem}",
@@ -164,13 +202,6 @@ class GraftAssessmentAdapter:
             )
             for path in sorted(published.values(), key=lambda item: item.name)
         ]
-        created_at = (
-            datetime(1970, 1, 1, tzinfo=timezone.utc)
-            if loaded is None
-            else single_object(
-                request, loaded, "evidence_bundle", GraftEvidenceBundle
-            ).created_at
-        )
         return ToolRunV2(
             run_id=run_id,
             request=request,
@@ -179,7 +210,7 @@ class GraftAssessmentAdapter:
             tool_version=spec.version,
             environment_spec_id=spec.environment_spec_id,
             input_hash=input_hash,
-            created_at=created_at,
+            created_at=result.created_at,
             measurements=[],
             artifacts=artifacts,
             visualizations=[],
@@ -193,27 +224,60 @@ class GraftAssessmentAdapter:
 adapter = GraftAssessmentAdapter()
 
 
+def _prepare(
+    request: ToolRequestV2,
+    spec: ToolPackageSpecV2,
+) -> _PreparedRequest:
+    expression_mode = is_expression_analysis_request(request)
+    role_models = (
+        ANALYSIS_ROLE_MODELS if expression_mode else PRECOMPUTED_ROLE_MODELS
+    )
+    reasons = _envelope_reasons(request, spec, expression_mode, role_models)
+    loaded: LoadedInputs | None = None
+    if request.object_inputs and not reasons:
+        loaded, loading_reasons = _load_inputs(request.object_inputs, role_models)
+        reasons.extend(loading_reasons)
+    if loaded is not None and not reasons:
+        reasons.extend(
+            expression_binding_reasons(request, loaded, spec)
+            if expression_mode
+            else _precomputed_binding_reasons(request, loaded, spec)
+        )
+    return _PreparedRequest(
+        expression_mode=expression_mode,
+        loaded=loaded,
+        reason_codes=tuple(sorted(set(reasons))),
+    )
+
+
 def _envelope_reasons(
-    request: ToolRequestV2, spec: ToolPackageSpecV2
+    request: ToolRequestV2,
+    spec: ToolPackageSpecV2,
+    expression_mode: bool,
+    role_models: dict[str, tuple[str, type[FrozenModel]]],
 ) -> list[str]:
     reasons: list[str] = []
     if request.tool_version is not None and request.tool_version != spec.version:
         reasons.append("tool_version_mismatch")
     if request.assets:
-        reasons.append("p0_12_expression_assets_forbidden")
+        reasons.append(
+            "p0_12_expression_assets_require_manifest"
+            if expression_mode
+            else "p0_12_expression_assets_forbidden"
+        )
     if request.measurement_spec_ref is not None:
         reasons.append("p0_12_measurement_spec_forbidden")
     if request.parameters:
         reasons.append("p0_12_parameters_forbidden")
-    if request.object_inputs:
+    if expression_mode or request.object_inputs:
         roles = [ref.role for ref in request.object_inputs]
-        for role in PRECOMPUTED_ROLE_MODELS:
+        for role in role_models:
             if roles.count(role) != 1:
                 reasons.append(f"exactly_one_{role}_required")
-        if any(role not in PRECOMPUTED_ROLE_MODELS for role in roles):
+        if any(role not in role_models for role in roles):
             reasons.append("unsupported_object_input_role")
         for ref in request.object_inputs:
-            contract = PRECOMPUTED_ROLE_MODELS.get(ref.role)
+            contract = role_models.get(ref.role)
             if contract is not None and ref.schema_ref != contract[0]:
                 reasons.append("object_input_schema_mismatch")
             if contract is not None and ref.object_version != "0.1.0":
@@ -225,22 +289,21 @@ def _envelope_reasons(
 
 def _load_inputs(
     refs: list[StructuredInputRef],
+    role_models: dict[str, tuple[str, type[FrozenModel]]],
 ) -> tuple[LoadedInputs | None, list[str]]:
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: PRECOMPUTED_ROLE_MODELS.get(ref.role, ("", None))[1],
+        model_for=lambda ref: role_models.get(ref.role, ("", None))[1],
         validate_model=_validate_object_version,
     )
 
 
 def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> None:
     if getattr(value, "object_version", None) != ref.object_version:
-        from bridge.tool_packages._structured_runtime import StructuredInputError
-
         raise StructuredInputError("object_input_version_mismatch")
 
 
-def _binding_reasons(
+def _precomputed_binding_reasons(
     request: ToolRequestV2,
     loaded: LoadedInputs,
     spec: ToolPackageSpecV2,
@@ -275,11 +338,16 @@ def _binding_reasons(
     return reasons
 
 
-def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
+def _input_hash(
+    request: ToolRequestV2,
+    spec: ToolPackageSpecV2,
+    expression_mode: bool,
+) -> str:
     payload = {
         "tool_id": spec.tool_id,
         "tool_version": spec.version,
         "environment_spec_id": spec.environment_spec_id,
+        "mode": "expression_analysis" if expression_mode else "precomputed",
         "object_inputs": [
             {
                 "role": ref.role,
@@ -421,6 +489,7 @@ def _artifact_manifest_payload(
     spec: ToolPackageSpecV2,
     run_id: str,
     input_hash: str,
+    result_filename: str,
     result_sha: str,
 ) -> dict[str, object]:
     return {
@@ -442,16 +511,12 @@ def _artifact_manifest_payload(
         ],
         "artifacts": [
             {
-                "filename": "graft_assessment_result.json",
+                "filename": result_filename,
                 "media_type": "application/json",
                 "sha256": result_sha,
             }
         ],
     }
-
-
-
-
 def _failed_run(
     request: ToolRequestV2,
     spec: ToolPackageSpecV2,

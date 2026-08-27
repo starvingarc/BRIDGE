@@ -60,7 +60,9 @@ def _write_h5ad(
     *,
     invalid_counts: bool = False,
     fractional_counts: bool = False,
-    invalid_probabilities: bool = False,
+    probability_override: float | None = None,
+    mixed_grafts: bool = False,
+    matrix_semantics: str = "raw_counts",
     omit_sample_id: bool = False,
     unsafe_sample_id: bool = False,
 ) -> None:
@@ -82,12 +84,15 @@ def _write_h5ad(
     if fractional_counts:
         counts[0, 0] = 1.5
     state_a = [0.8, 0.7, 0.9, 0.8, 0.2, 0.3, 0.1, 0.2]
-    if invalid_probabilities:
-        state_a[0] = 1.2
+    if probability_override is not None:
+        state_a[0] = probability_override
+    graft_ids = ["demo-graft-1"] * 8
+    if mixed_grafts:
+        graft_ids[4:] = ["demo-graft-2"] * 4
     obs = pd.DataFrame(
         {
             "sample_id": ["demo-sample-1"] * 4 + ["demo-sample-2"] * 4,
-            "graft_id": ["demo-graft-1"] * 4 + ["demo-graft-2"] * 4,
+            "graft_id": graft_ids,
             "state_a_probability": state_a,
             "state_b_probability": [
                 0.1,
@@ -106,8 +111,12 @@ def _write_h5ad(
         obs = obs.drop(columns=["sample_id"])
     elif unsafe_sample_id:
         obs.iloc[0, obs.columns.get_loc("sample_id")] = "unsafe sample"
+    expression = counts.copy()
+    if matrix_semantics == "log_normalized":
+        totals = expression.sum(axis=1, keepdims=True)
+        expression = np.log1p(expression / totals * 10_000)
     data = ad.AnnData(
-        X=counts.copy(),
+        X=expression,
         obs=obs,
         var=pd.DataFrame(index=[f"GENE{index}" for index in range(1, 6)]),
     )
@@ -143,7 +152,14 @@ def _request(
     *,
     invalid_counts: bool = False,
     fractional_counts: bool = False,
-    invalid_probabilities: bool = False,
+    probability_override: float | None = None,
+    probability_tolerance: float = 0.000001,
+    mixed_grafts: bool = False,
+    declared_graft_id: str | None = "demo-graft-1",
+    animal_id: str | None = "animal:demo",
+    post_transplant_timepoint: str | None = "day-42",
+    matrix_semantics: str = "raw_counts",
+    reference_aggregation: str | None = None,
     omit_sample_id: bool = False,
     unsafe_sample_id: bool = False,
     reference_organism: str = "NCBITaxon:9606",
@@ -160,7 +176,9 @@ def _request(
             h5ad_path,
             invalid_counts=invalid_counts,
             fractional_counts=fractional_counts,
-            invalid_probabilities=invalid_probabilities,
+            probability_override=probability_override,
+            mixed_grafts=mixed_grafts,
+            matrix_semantics=matrix_semantics,
             omit_sample_id=omit_sample_id,
             unsafe_sample_id=unsafe_sample_id,
         )
@@ -169,8 +187,9 @@ def _request(
         "graft_case_id": "graft-case:demo",
         "assay_id": "assay:demo",
         "specimen_id": "specimen:demo",
-        "animal_id": "animal:demo",
-        "post_transplant_timepoint": "day-42",
+        "graft_id": declared_graft_id,
+        "animal_id": animal_id,
+        "post_transplant_timepoint": post_transplant_timepoint,
         "biological_replicate_id": "replicate:demo",
         "originating_preparation_id": None,
         "linkage_evidence_refs": [],
@@ -189,8 +208,10 @@ def _request(
         "assay": "scRNA-seq",
         "organism": "NCBITaxon:9606",
         "gene_id_namespace": "HGNC.symbol",
-        "expression_layer": "counts",
-        "matrix_semantics": "raw_counts",
+        "expression_layer": (
+            "counts" if matrix_semantics == "raw_counts" else "X"
+        ),
+        "matrix_semantics": matrix_semantics,
         "analysis_value_semantics": "log1p_cp10k",
         "gene_symbol_key": None,
         "sample_id_key": "sample_id",
@@ -218,7 +239,7 @@ def _request(
         "minimum_genes": 4,
         "minimum_reference_genes": 3,
         "minimum_program_genes": 2,
-        "probability_tolerance": 0.000001,
+        "probability_tolerance": probability_tolerance,
         "max_file_bytes": 10_000_000,
         "max_matrix_elements": max_matrix_elements,
         "provenance_refs": ["demo:analysis-settings"],
@@ -231,6 +252,14 @@ def _request(
         "gene_id_namespace": "HGNC.symbol",
         "assay": "scRNA-seq",
         "value_semantics": "log1p_cp10k",
+        "profile_aggregation": (
+            reference_aggregation
+            or (
+                "sample_pseudobulk"
+                if matrix_semantics == "raw_counts"
+                else "sample_mean_log_expression"
+            )
+        ),
         "profiles": [
             {
                 "profile_id": "profile-a",
@@ -314,7 +343,12 @@ def test_expression_analysis_runs_real_h5ad_chain_deterministically(
     assert result.cell_count == 8
     assert result.gene_count == 5
     assert result.sample_count == 2
-    assert result.graft_count == 2
+    assert result.graft_count == 1
+    assert result.graft_id == "demo-graft-1"
+    assert result.animal_id == "animal:demo"
+    assert result.post_transplant_timepoint == "day-42"
+    assert result.sample_unit == "technical_sample"
+    assert result.profile_aggregation == "sample_pseudobulk"
     assert result.selected_method_ids == ANALYSIS_METHOD_IDS
     assert result.reference_source_family_id == "source-family:demo-reference"
     assert result.marker_source_family_id == "source-family:demo-marker-programs"
@@ -352,15 +386,13 @@ def test_expression_analysis_runs_real_h5ad_chain_deterministically(
     [
         ({"invalid_counts": True}, "graft_expression_counts_invalid"),
         ({"fractional_counts": True}, "graft_expression_counts_invalid"),
-        (
-            {"invalid_probabilities": True},
-            "graft_state_probabilities_invalid",
-        ),
+        ({"probability_override": 1.2}, "graft_state_probabilities_invalid"),
+        ({"probability_override": -0.1}, "graft_state_probabilities_invalid"),
     ],
 )
 def test_expression_analysis_invalid_values_fail_closed(
     tmp_path: Path,
-    change: dict[str, bool],
+    change: dict[str, object],
     reason: str,
 ) -> None:
     request, _ = _request(tmp_path, **change)
@@ -370,6 +402,95 @@ def test_expression_analysis_invalid_values_fail_closed(
     assert run.execution_state is ExecutionState.FAILED
     assert run.reason_codes == [reason]
     assert not request.output_dir.exists()
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ({"mixed_grafts": True}, "graft_observation_unit_mismatch"),
+        (
+            {"declared_graft_id": "demo-graft-other"},
+            "graft_observation_unit_mismatch",
+        ),
+        ({"declared_graft_id": None}, "graft_id_not_declared"),
+        ({"animal_id": None}, "graft_animal_id_not_declared"),
+        (
+            {"post_transplant_timepoint": None},
+            "graft_timepoint_not_declared",
+        ),
+    ],
+)
+def test_expression_analysis_requires_one_declared_biological_unit(
+    tmp_path: Path,
+    change: dict[str, object],
+    reason: str,
+) -> None:
+    request, _ = _request(tmp_path, **change)
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == [reason]
+
+
+def test_probability_tolerance_is_small_and_does_not_clip_values(
+    tmp_path: Path,
+) -> None:
+    registry = ToolRegistry.load_default()
+    tolerated, _ = _request(tmp_path / "tolerated", probability_override=0.9000005)
+
+    run = registry.run(tolerated)
+    result = GraftExpressionAnalysisResult.model_validate(run.result)
+    state_a = next(
+        item for item in result.composition_estimates if item.state_id == "state-a"
+    )
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert state_a.cell_equivalent == pytest.approx(4.1000005)
+    assert "graft_probability_mass_within_tolerance" in result.reason_codes
+
+    excessive_mass, _ = _request(
+        tmp_path / "excessive-mass", probability_override=0.900002
+    )
+    failed = registry.run(excessive_mass)
+    assert failed.execution_state is ExecutionState.FAILED
+    assert failed.reason_codes == ["graft_state_probabilities_invalid"]
+
+    excessive_tolerance, _ = _request(
+        tmp_path / "excessive-tolerance", probability_tolerance=0.1
+    )
+    ineligible = registry.check_eligibility(excessive_tolerance)
+    assert not ineligible.eligible
+    assert ineligible.reason_codes == [
+        "structured_input_schema_validation_failed"
+    ]
+
+
+def test_log_normalized_profiles_use_explicit_sample_mean_semantics(
+    tmp_path: Path,
+) -> None:
+    registry = ToolRegistry.load_default()
+    mismatched, _ = _request(
+        tmp_path / "mismatch",
+        matrix_semantics="log_normalized",
+        reference_aggregation="sample_pseudobulk",
+    )
+    eligibility = registry.check_eligibility(mismatched)
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == ["graft_reference_aggregation_mismatch"]
+
+    request, _ = _request(
+        tmp_path / "matched", matrix_semantics="log_normalized"
+    )
+    run = registry.run(request)
+    result = GraftExpressionAnalysisResult.model_validate(run.result)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert result.matrix_semantics == "log_normalized"
+    assert result.profile_aggregation == "sample_mean_log_expression"
+    assert all(
+        item.availability == "available" for item in result.reference_support
+    )
 
 
 def test_expression_analysis_rejects_unsafe_sample_ids(

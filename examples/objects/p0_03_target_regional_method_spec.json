@@ -1,0 +1,74 @@
+{
+  "object_version": "0.1.0",
+  "method_spec_id": "target-regional-method-spec:example",
+  "method_spec_version": "1.0.0",
+  "status": "candidate",
+  "expression_asset_id": "asset:qc-selected-expression-view",
+  "observation_id_column": null,
+  "gene_symbol_column": "gene_symbol",
+  "target_reference_profile_ids": [
+    "reference-profile:target-primary",
+    "reference-profile:target-sensitivity"
+  ],
+  "regional_reference_profile_ids": [
+    "reference-profile:regional-scrna",
+    "reference-profile:regional-snrna"
+  ],
+  "expression_semantics_contract": {
+    "object_version": "0.1.0",
+    "contract_id": "expression-semantics-contract:example",
+    "contract_version": "1.0.0",
+    "status": "candidate",
+    "expression_asset_id": "asset:qc-selected-expression-view",
+    "reference_profile_ids": [
+      "reference-profile:target-primary",
+      "reference-profile:target-sensitivity",
+      "reference-profile:regional-scrna",
+      "reference-profile:regional-snrna"
+    ],
+    "matrix_semantics": "normalized_expression",
+    "normalization_method": "replace-with-reviewed-method",
+    "transformation": "replace-with-reviewed-transform",
+    "gene_identifier_namespace": "replace-with-reviewed-namespace"
+  },
+  "modality_comparison_group": {
+    "object_version": "0.1.0",
+    "group_id": "modality-comparison-group:example",
+    "group_version": "1.0.0",
+    "status": "candidate",
+    "reference_profile_ids": [
+      "reference-profile:regional-scrna",
+      "reference-profile:regional-snrna"
+    ],
+    "matched_feature_view_id": "replace-with-reviewed-feature-view",
+    "matched_context_id": "replace-with-reviewed-context"
+  },
+  "nnls_residual_applicability": {
+    "object_version": "0.1.0",
+    "contract_id": "nnls-residual-applicability-contract:example",
+    "contract_version": "1.0.0",
+    "status": "candidate",
+    "residual_metric": "relative_l2_norm",
+    "maximum_residual": 0.25
+  },
+  "selected_method_ids": [
+    "REG-CROSSREF",
+    "REG-DECOUPLER",
+    "REG-MODALITY",
+    "REG-PBCORR",
+    "TRG-BOOTSTRAP",
+    "TRG-DECOUPLER",
+    "TRG-NNLS",
+    "TRG-PBCORR"
+  ],
+  "target_program_card_ids": [
+    "program-card:target-example"
+  ],
+  "regional_program_card_ids": [
+    "program-card:regional-example"
+  ],
+  "minimum_shared_genes": 500,
+  "minimum_program_genes": 5,
+  "bootstrap_replicates": 1000,
+  "bootstrap_confidence_level": 0.95
+}

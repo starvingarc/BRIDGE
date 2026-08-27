@@ -59,7 +59,7 @@
       "type": "string"
     },
     "probability_tolerance": {
-      "maximum": 1,
+      "maximum": 1e-06,
       "minimum": 0,
       "title": "Probability Tolerance",
       "type": "number"

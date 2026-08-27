@@ -1,16 +1,24 @@
 tool_id: P0-11
 name: Public-safe Export
-version: 0.2.0
-summary: Rebuild an eligible verified report as an allowlisted public JSON candidate.
+version: 0.3.0
+summary: Rebuild an eligible report as public JSON or audit public artifact candidates.
 implementation_state: implemented
 scientific_status: candidate
 optional: false
 environment_spec_id: ENV-EVIDENCE-v0.1
 input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
-result_schema_ref: bridge://schemas/public-export-result/v0.1
+result_schema_ref: bridge://schemas/public-safe-export-run-result/v0.1
 adapter_ref: bridge.tool_packages.p0_11_public_safe_export.adapter:adapter
 method_ids:
   - METHOD-BRIDGE-ALGORITHM-2AFBC8
   - METHOD-BRIDGE-RULE-ENGINE
+  - METHOD-CSV-DETERMINISTIC-RULE
+  - METHOD-CUSTOM-DETERMINISTIC-RULES
+  - METHOD-CUSTOM-SVG-INSPECTOR
+  - METHOD-FORMAT-GATE
+  - METHOD-JSONSCHEMA-HASHLIB
+  - METHOD-MARKDOWN-PARSER-REGEX
+  - METHOD-OS-CLI
+  - METHOD-URL-PARSER-ALLOWLIST
 card_ref: bridge://tool-cards/P0-11

@@ -66,10 +66,10 @@
         "value": {
           "anyOf": [
             {
-              "type": "number"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "number"
             },
             {
               "type": "null"

@@ -15,6 +15,9 @@ from bridge.tool_packages._configurable_contracts import (
     VersionedObjectRef,
 )
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
+from bridge.tool_packages.p0_03_target_regional.method_models import (
+    TargetRegionalMethodArtifactBinding,
+)
 from bridge.tool_packages.p0_03_target_regional.models import (
     ChannelAssessmentState,
     MetricArtifactBinding,
@@ -75,6 +78,8 @@ def evaluate_target_regional(
     annotation_vocabulary: AnnotationVocabulary,
     reference_manifest: ReferenceManifest,
     input_sha256_by_role: dict[str, str],
+    method_artifact: TargetRegionalMethodArtifactBinding | None = None,
+    method_reason_codes: list[str] | None = None,
 ) -> EvaluationBundle:
     assignments = {item.state_id: item for item in state_role_map.assignments}
     records = cell_state_profile.composition.records
@@ -92,9 +97,7 @@ def evaluate_target_regional(
     drafts: list[_ChannelDraft] = []
     for key in _expected_channels(assessment_spec):
         if blocking_reason is not None:
-            drafts.append(
-                _not_assessed_draft(key, blocking_reason, blocking_state)
-            )
+            drafts.append(_not_assessed_draft(key, blocking_reason, blocking_state))
             continue
         selected = _selected_records(records, key)
         if not selected:
@@ -116,9 +119,7 @@ def evaluate_target_regional(
                 )
             )
             continue
-        channel_assignments = [
-            assignments.get(item.label) for item in selected
-        ]
+        channel_assignments = [assignments.get(item.label) for item in selected]
         if any(item is None for item in channel_assignments):
             drafts.append(
                 _not_assessed_draft(
@@ -185,9 +186,7 @@ def evaluate_target_regional(
                 measurement.model_dump(mode="json"), indent=2
             )
             filename = f"{channel_token}.{metric_name.value}.measurement_result.json"
-            artifact_id = (
-                f"artifact:{run_id}:{channel_token}:{metric_name.value}"
-            )
+            artifact_id = f"artifact:{run_id}:{channel_token}:{metric_name.value}"
             measurements.append(measurement)
             payloads[filename] = payload
             measurement_ids[metric_name] = measurement.measurement_id
@@ -224,10 +223,11 @@ def evaluate_target_regional(
         {
             "spatial_projection_not_supplied",
             *(reason for draft in drafts for reason in draft.reasons),
+            *(method_reason_codes or []),
         }
     )
     result = TargetRegionalEvidenceResult(
-        object_version="0.1.0",
+        object_version="0.2.0",
         result_id=f"target-regional-result:{run_id.removeprefix('run-')}",
         tool_id="P0-03",
         tool_version=tool_version,
@@ -260,9 +260,8 @@ def evaluate_target_regional(
         upstream_composition_state=cell_state_profile.composition.state,
         result_state=result_state,
         channels=channels,
-        metric_artifacts=sorted(
-            artifact_bindings, key=lambda item: item.file_name
-        ),
+        metric_artifacts=sorted(artifact_bindings, key=lambda item: item.file_name),
+        method_artifact=method_artifact,
         spatial_projection_state="not_assessed",
         evidence_refs=evidence_refs,
         reason_codes=reasons,
@@ -284,9 +283,7 @@ def _expected_channels(spec: TargetRegionalAssessmentSpec) -> list[ChannelKey]:
     keys: list[ChannelKey] = []
     for view in spec.composition_views:
         sources: list[str | None] = (
-            list(spec.source_ids)
-            if view is CompositionView.SOURCE_SPECIFIC
-            else [None]
+            list(spec.source_ids) if view is CompositionView.SOURCE_SPECIFIC else [None]
         )
         for source_id in sources:
             for level in spec.included_label_levels:
@@ -318,8 +315,7 @@ def _composition_block(
         for item in records
         if item.view is CellStateCompositionView.RECONCILIATION_STATE
         and item.count > 0
-        and item.state_evidence_state
-        is not CellStateCompositionRecordState.CANDIDATE
+        and item.state_evidence_state is not CellStateCompositionRecordState.CANDIDATE
     }
     if states & {
         CellStateCompositionRecordState.UNKNOWN,
@@ -357,8 +353,7 @@ def _numeric_draft(
     target_count = sum(
         record.count
         for record, assignment in zip(records, assignments, strict=True)
-        if assignment.product_role
-        in spec.target_identity_numerator_product_roles
+        if assignment.product_role in spec.target_identity_numerator_product_roles
     )
     target_related_count = sum(
         record.count
@@ -375,9 +370,7 @@ def _numeric_draft(
         for record in records
         if record.label in spec.whole_product_target_region_state_ids
     )
-    target_fraction = _fraction(
-        "configured_target_identity", target_count, denominator
-    )
+    target_fraction = _fraction("configured_target_identity", target_count, denominator)
     whole_fraction = _fraction(
         "configured_whole_product_target_region",
         whole_region_count,
@@ -469,9 +462,7 @@ def _measurement(
         ),
         domain_score=None,
         score_state=(
-            ScoreState.SHADOW
-            if ratio is not None
-            else ScoreState.UNAVAILABLE
+            ScoreState.SHADOW if ratio is not None else ScoreState.UNAVAILABLE
         ),
         evidence_state=resolved_state,
         provenance_refs=evidence_refs,

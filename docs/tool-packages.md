@@ -72,48 +72,48 @@ scientific methods.
 
 | Item | Details |
 |---|---|
-| Purpose | Aggregate externally defined target-lineage and transcriptomic regional support. [Scientific task card](bridge_spec_v0.1/target_regional_identity_task_card.md). |
-| Executable implementation | Deterministic StateRoleMap and regional StateRoleMap aggregation; biological roles are supplied, not inferred or embedded. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no external biological model. |
-| Input → output | Eleven checksummed case, product, role, measurement, QC, state-evidence, vocabulary and reference objects → three descriptive ratios with applicability, reasons and provenance. [Tool Card](../src/bridge/tool_packages/cards/P0-03.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-03`; start from the [request example](../examples/requests/p0_03_target_regional_evidence.json). |
-| Current evidence / status | Synthetic cases verify deterministic ratios, missing-data behavior and checksummed artifacts. Results remain `candidate/shadow`, `domain_score=null`; this is not biological validation of regional identity. [Validation](validation/p0_03_target_regional_20260825.md). |
+| Purpose | Measure externally configured target identity and transcriptomic regional support while preserving case, reference and biological-unit provenance. [Scientific task card](bridge_spec_v0.1/target_regional_identity_task_card.md). |
+| Executable implementation | Aggregation: StateRoleMap-based target/regional ratios. Optional expression mode: `TRG-PBCORR`, `REG-PBCORR`, `TRG-NNLS`, `TRG-DECOUPLER`, `REG-DECOUPLER`, `TRG-BOOTSTRAP`, `REG-CROSSREF` and `REG-MODALITY`. P0-02 benchmark adapters remain upstream; spatial catalog candidates are not invoked. |
+| Software | AnnData reads the selected H5AD; NumPy/pandas/SciPy perform pseudobulk, correlation, NNLS and bootstrap; [decoupler](https://decoupler.readthedocs.io/) runs ULM program activity; the shared Pydantic/JSON Schema runtime validates and publishes results. |
+| Input → output | Eleven checksummed core objects → three descriptive ratios. Adding one H5AD and one `TargetRegionalMethodSpec` with expression-semantics, matched-modality and residual-applicability contracts → checksummed reference support, applicability-typed continuous weights, program activity, interval state and robustness evidence. [Tool Card](../src/bridge/tool_packages/cards/P0-03.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-03`; use the [aggregation request](../examples/requests/p0_03_target_regional_evidence.json) or [expression request](../examples/requests/p0_03_target_regional_expression.json). |
+| Current evidence / status | Synthetic end-to-end execution verifies all eight selected methods, target/regional reference separation, biological-unit binding, typed contract refusal, residual gating and one-unit bootstrap degradation. Results remain `candidate/shadow`, `domain_score=null`; engineering execution is not biological validation. [Aggregation validation](validation/p0_03_target_regional_20260825.md) · [Expression validation](validation/p0_03_expression_methods_20260826.md). |
 
 <a id="p0-04"></a>
 ## P0-04 Developmental Compatibility
 
 | Item | Details |
 |---|---|
-| Purpose | Aggregate alignment to an externally supplied developmental window. [Scientific task card](bridge_spec_v0.1/developmental_compatibility_task_card.md). |
-| Executable implementation | Deterministic DevelopmentStateMap validation and soft-composition aggregation; no window or state map is hard-coded. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no external trajectory or age model. |
-| Input → output | ProductCase, product definition, DevelopmentWindowSpec, DevelopmentStateMap, MeasurementSpec and P0-02 profile, optionally with timepoints → `DevelopmentalCompatibilityResult`. [Tool Card](../src/bridge/tool_packages/cards/P0-04.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-04`; start from the [request example](../examples/requests/p0_04_developmental_compatibility.json). |
-| Current evidence / status | Contract fixtures verify deterministic composition and unavailable/refusal states. The package remains `candidate`, `domain_score=null`; it does not freeze a developmental window or biological age. [Validation](validation/p0_04_developmental_compatibility_v0.2.md). |
+| Purpose | Evaluate composition, reference-stage support, stage programs and declared true-time trends against an externally supplied developmental window. [Scientific task card](bridge_spec_v0.1/developmental_compatibility_task_card.md). |
+| Executable implementation | DevelopmentStateMap/soft-composition aggregation; sample-pseudobulk Spearman/cosine with per-unit cross-profile availability; externally gated uncalibrated cumulative ordinal logistic baseline; decoupler ULM; independence-group bootstrap; unadjusted descriptive statsmodels/Patsy spline. |
+| Software | AnnData, NumPy, Pandas, SciPy, scikit-learn, decoupler, statsmodels and Patsy in `ENV-DEVELOPMENT-PY-v0.1`. Conditional R, trajectory, velocity and OT catalog entries are not invoked by v0.3. |
+| Input → output | Eleven traceable case/P0-01/P0-02/reference objects, plus optional timepoints; expression mode adds one H5AD and `DevelopmentMethodSpec` → `DevelopmentalCompatibilityResult` and optional `DevelopmentMethodBundle`. [Tool Card](../src/bridge/tool_packages/cards/P0-04.md). |
+| Call | `bridge-tool describe/input-contract/validate/run` with `tool_id=P0-04`; see the [request](../examples/requests/p0_04_developmental_compatibility.json) and [method spec](../examples/objects/p0_04_development_method_spec.json). |
+| Current evidence / status | Synthetic fixtures verify real package calls, deterministic artifacts, external stage-role control, ordinal held-out receipt gating, coverage/disagreement fail-closed behavior and descriptive-only time trends. The receipt itself is not scientifically validated. The package remains `candidate/shadow`, `domain_score=null`; reference similarity is not biological age or release evidence. [Validation](validation/p0_04_developmental_compatibility_v0.3.md). |
 
 <a id="p0-05"></a>
 ## P0-05 Off-target Control
 
 | Item | Details |
 |---|---|
-| Purpose | Account for the whole product under supplied state roles and rare-state calibration rules. [Scientific task card](bridge_spec_v0.1/off_target_control_task_card.md). |
-| Executable implementation | Deterministic role-aware soft composition, unknown accounting, coverage checks and rare-state detectability states. |
-| Software | Shared Pydantic/JSON Schema runtime plus Python numerical and hashing utilities; no external classifier. |
-| Input → output | ProductCase, product definition, StateRoleMap, assessment spec, P0-02 profile and evidence bundle → `OffTargetControlProfile`. [Tool Card](../src/bridge/tool_packages/cards/P0-05.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-05`; start from the [request example](../examples/requests/p0_05_off_target_control.json). |
-| Current evidence / status | Synthetic positive, negative, missing and alert cases verify whole-product accounting and failure semantics. Results remain `candidate/shadow`, `domain_score=null`; they are not safety evidence. [Validation](validation/p0_05_off_target_control_20260825.md). |
+| Purpose | Account for whole-product composition, uncertainty, rare-state detectability and supplied OOD evidence under versioned external rules. [Scientific task card](bridge_spec_v0.1/off_target_control_task_card.md). |
+| Executable implementation | Role-aware soft composition plus eight selectors: Clopper-Pearson count intervals, hard/soft sensitivity, independence-group bootstrap, rare-state intervals, empirical spike-in curves, single-state at-least-one binomial planning, source-family disagreement and ordered OOD coordination. |
+| Software | Pydantic/JSON Schema runtime, [NumPy](https://numpy.org/) bootstrap and [SciPy](https://scipy.org/) beta quantiles; remaining aggregation, design and coordination code is internal and deterministic. Deep OOD models and rare-cluster discovery tools in the catalog are not invoked. |
+| Input → output | Compatible six-object aggregation → `OffTargetControlProfile`; nine-object method mode adds P0-02 V3, biological-unit lineage and method inputs → checksummed `OffTargetMethodBundle`. [Tool Card](../src/bridge/tool_packages/cards/P0-05.md). |
+| Call | `bridge-tool describe P0-05`, `bridge-tool input-contract P0-05`, then shared validate/run CLI or SDK; start from the [request example](../examples/requests/p0_05_off_target_control.json). |
+| Current evidence / status | Synthetic fixtures execute all eight selectors, verify deterministic seeded runs, lineage/refusal semantics and artifact reuse. Outputs remain `candidate/shadow`, `domain_score=null`; count intervals and candidate detection limits are not biological validation or safety evidence. [Validation](validation/p0_05_real_method_runtime_v0.3.md). |
 
 <a id="p0-06"></a>
 ## P0-06 Proliferation & Stress Response
 
 | Item | Details |
 |---|---|
-| Purpose | Aggregate precomputed, stage-conditioned proliferation, stress-response and related review signals. [Scientific task card](bridge_spec_v0.1/proliferation_stress_response_task_card.md). |
-| Executable implementation | Deterministic sample/state aggregation plus design, confounding and sensitivity audit. Gene-set scoring is upstream under a supplied ProgramSpec. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no external gene-set engine is run. |
-| Input → output | Case, product, developmental window, ProgramSpec, P0-02 profile, ProtocolIR and evidence bundle → `ProliferationStressResponseProfile`. [Tool Card](../src/bridge/tool_packages/cards/P0-06.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-06`; start from the [request example](../examples/requests/p0_06_proliferation_stress_response.json). |
-| Current evidence / status | Synthetic cases verify deterministic profiles, alerts and unavailable paths. Results remain `candidate/shadow`, `domain_score=null`; they do not establish cell fitness, safety or potency. [Validation](validation/p0_06_proliferation_stress_response_20260825.md). |
+| Purpose | Score externally defined proliferation, stress and cell-cycle programs, then aggregate them by biological unit and cell state. [Scientific task card](bridge_spec_v0.1/proliferation_stress_response_task_card.md). |
+| Executable implementation | [Scanpy score_genes](https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.score_genes.html), [decoupler ULM](https://decoupler.readthedocs.io/en/latest/api/generated/decoupler.mt.ulm.html), [Scanpy cell-cycle scoring](https://scanpy.readthedocs.io/en/stable/api/scanpy.tl.score_genes_cell_cycle.html), deterministic sample/state aggregation and the existing design/confounding audit. |
+| Software | AnnData, Scanpy, decoupler, NumPy, pandas and SciPy, plus the shared Pydantic/JSON Schema runtime. UCell, AUCell, pseudobulk and CNV methods remain independent candidates and are not called by this adapter. |
+| Input → output | Legacy: seven structured evidence objects → `ProliferationStressResponseProfile`. Method runtime: those objects plus P0-02 V3 lineage, biological-unit mapping, selector/parameter-only method spec, method input and one normalized H5AD → the profile and a `ProcessMethodBundle` bound to the authoritative ProgramSpec checksum. [Tool Card](../src/bridge/tool_packages/cards/P0-06.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-06`; use the [legacy request](../examples/requests/p0_06_proliferation_stress_response.json) or [method-runtime request](../examples/requests/p0_06_process_method_runtime.json). |
+| Current evidence / status | Synthetic H5AD execution verifies all four runtime selectors, immutable inputs and deterministic artifacts. It is engineering validation only; outputs remain `candidate/shadow`, `domain_score=null` and do not establish cell fitness, safety or potency. [Validation](validation/p0_06_real_methods_20260827.md). |
 
 <a id="p0-07"></a>
 ## P0-07 Product Comparison & Stability
@@ -121,11 +121,11 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Compare product cases only when an explicit comparability and confounding contract permits it. [Scientific task card](bridge_spec_v0.1/product_comparison_stability_task_card.md). |
-| Executable implementation | Deterministic comparability gate, design/confounding check and raw metric deltas/ranges. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no equivalence or ranking engine. |
-| Input → output | ComparisonStabilitySpec, ComparisonCaseManifest and two to twenty product-evidence bundles → `ProductComparisonStabilityProfile`. [Tool Card](../src/bridge/tool_packages/cards/P0-07.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-07`; start from the [request example](../examples/requests/p0_07_product_comparison_stability.json). |
-| Current evidence / status | Fixtures verify eligibility gates, confounding states and descriptive deltas. The package remains `candidate`, `domain_score=null`; it declares no winner, equivalence or stability claim. [Validation](validation/p0_07_product_comparison_stability_v0.2.md). |
+| Executable implementation | Deterministic comparability/confounding gate and raw deltas; optional method mode executes Hedges g, Jensen-Shannon distance, Spearman profile correlation, one-dimensional Wasserstein distance and within-group dispersion. Registered R/Bioconductor, Bayesian, mixed-model and integration candidates are not executed. |
+| Software | [SciPy](https://docs.scipy.org/doc/scipy/) for Jensen-Shannon, Spearman and Wasserstein calls; [NumPy](https://numpy.org/doc/stable/) plus a small BRIDGE Hedges-g implementation; shared Pydantic/JSON Schema runtime. |
+| Input → output | Base spec, manifest and 2–20 product-evidence bundles → `ProductComparisonStabilityProfile`; method mode adds checksummed method spec/input → `ComparisonMethodBundle` artifact. [Tool Card](../src/bridge/tool_packages/cards/P0-07.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-07`; see the [base request](../examples/requests/p0_07_product_comparison_stability.json) and [method-runtime request](../examples/requests/p0_07_comparison_method_runtime.json). |
+| Current evidence / status | Fixtures verify gate precedence, complete sample/source binding, method applicability, actual dispatch, deterministic estimates and explicit refusal/degradation. Results remain `candidate/shadow`, `domain_score=null`; no p-value, winner, equivalence, ranking or stability claim is produced. [Base validation](validation/p0_07_product_comparison_stability_v0.2.md); [method validation](validation/p0_07_real_methods_20260827.md). |
 
 <a id="p0-08"></a>
 ## P0-08 Evidence Sufficiency
@@ -157,23 +157,23 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Verify that a structured report preserves cited values, units, states, scope and package-approved wording. [Scientific task card](bridge_spec_v0.1/claim_verifier_task_card.md). |
-| Executable implementation | Deterministic claim verification, exact numeric comparison, controlled rendering, packaged rules and typed release-state aggregation over P0-09 queries. |
+| Executable implementation | Independent Draft 2020-12 validation of the four raw JSON inputs, deterministic claim verification, exact numeric comparison, controlled rendering, packaged rules and typed release-state aggregation over P0-09 queries. |
 | Software | [regex](https://github.com/mrabarnett/mrab-regex) for bounded Unicode matching, Python [Decimal](https://docs.python.org/3/library/decimal.html), Pydantic/jsonschema and the P0-09 query layer. |
 | Input → output | ReportDraft, P0-09 Case graph manifest, packaged ClaimPolicySpec and StatementRegistry → one `ClaimVerificationResult`. [Tool Card](../src/bridge/tool_packages/cards/P0-10.md). |
 | Call | Shared CLI/SDK with `tool_id=P0-10`; start from the [request example](../examples/requests/p0_10_claim_verifier.json). |
-| Current evidence / status | Adversarial fixtures and a package benchmark verify value/wording correspondence, authority binding and fail-closed behavior. `verified` is not biological truth or release permission. [Validation](validation/p0_10_claim_verifier_20260814.md) · [Benchmark](validation/p0_10_claim_verifier_benchmark_v0.1.md). |
+| Current evidence / status | Adversarial fixtures and a package benchmark verify value/wording correspondence, authority binding and fail-closed behavior. `verified` is not biological truth or release permission. [Validation](validation/p0_10_claim_verifier_20260814.md) · [JSON Schema runtime](validation/p0_10_jsonschema_runtime_20260827.md) · [Benchmark](validation/p0_10_claim_verifier_benchmark_v0.1.md). |
 
 <a id="p0-11"></a>
 ## P0-11 Public-safe Export
 
 | Item | Details |
 |---|---|
-| Purpose | Rebuild an eligible structured report through a field allowlist and confirmation-bound local export. [Scientific task card](bridge_spec_v0.1/public_safe_export_task_card.md). |
-| Executable implementation | Deterministic allowlist projection, packaged rules, leak-canary scan and immutable local JSON export; no network upload. |
-| Software | Shared Pydantic/JSON Schema runtime plus Python regular-expression, JSON, hashing and filesystem utilities; consumes a P0-10 receipt. |
-| Input → output | ReportDraft, eligible P0-10 receipt, PublicExportPolicySpec and PublicExportRequest → `PublicSafeReport`, export manifest and result. [Tool Card](../src/bridge/tool_packages/cards/P0-11.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-11`; start from the [request example](../examples/requests/p0_11_public_safe_export.json). |
-| Current evidence / status | Fixtures verify confirmation binding, allowlisting, leak-canary checks and immutable local output. A passed scan covers frozen rules/canaries only; `exported` means neither uploaded nor scientifically released. [Validation](validation/p0_11_public_safe_export_20260825.md). |
+| Purpose | Prepare local public-facing candidates through an allowlisted report rebuild or a format-aware artifact audit. [Scientific task card](bridge_spec_v0.1/public_safe_export_task_card.md). |
+| Executable implementation | `report_export` rebuilds and confirmation-binds public JSON. `artifact_audit` checks one hash-bound byte snapshot per JSON, Markdown, CSV or SVG candidate without uploading it. |
+| Software | Pydantic/JSON Schema and `hashlib`; [markdown-it-py](https://markdown-it-py.readthedocs.io/) and [regex](https://github.com/mrabarnett/mrab-regex); Python `csv.reader(strict=True)`; [defusedxml](https://github.com/tiran/defusedxml); system `file` on a read-only snapshot. |
+| Input → output | Four report-export objects → public report/manifest/result; or audit policy plus artifact manifest → one path-free `PublicArtifactAuditResult`. [Tool Card](../src/bridge/tool_packages/cards/P0-11.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-11`; use the [report example](../examples/requests/p0_11_public_safe_export.json) or [artifact-audit example](../examples/requests/p0_11_public_artifact_audit.json). |
+| Current evidence / status | Fixtures execute every listed first-version parser/check, deterministic reuse, checksum mutation and blocked Markdown/CSV/SVG cases. Leak canaries include paths, host/environment identifiers and credential material; Markdown checks cover GFM-style bare URLs and static rejection of IP, private and selected special-use DNS names without resolving DNS. Passed rules are not a privacy proof; `exported` is neither upload nor scientific release. [Report export validation](validation/p0_11_public_safe_export_20260825.md) · [Artifact audit validation](validation/p0_11_public_artifact_audit_20260827.md). |
 
 <a id="p0-12"></a>
 ## P0-12 Optional Graft Assessment
@@ -181,11 +181,11 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Characterize optional post-transplant graft evidence without feeding it back into the pre-transplant product profile. [Scientific task card](bridge_spec_v0.1/graft_assessment_task_card.md). |
-| Executable implementation | Three modes behind one adapter: explicit `not_provided`; deterministic aggregation of precomputed graft records; or H5AD analysis with shared structural/count-matrix validation, descriptive soft composition over all uploaded rows, sample-pseudobulk reference correlation and external marker-program means. State probabilities, reference profiles, programs and analysis settings are external inputs; graft QC is `not_reassessed`. |
+| Executable implementation | Three modes behind one adapter: explicit `not_provided`; deterministic aggregation of precomputed graft records; or one-declared-graft H5AD analysis with shared structural/count-matrix validation, descriptive soft composition over all uploaded rows, aggregation-matched sample-profile reference correlation and external marker-program means. Raw counts produce `sample_pseudobulk`; log-normalized values produce `sample_mean_log_expression`. Multiple sample IDs are technical samples, not independent biological replicates. State probabilities, reference profiles, programs and analysis settings are external inputs; graft QC is `not_reassessed`. |
 | Software | [AnnData](https://anndata.readthedocs.io/) and [Scanpy](https://scanpy.readthedocs.io/) read and normalize H5AD; the shared P0-01 validator checks matrix structure and count semantics; [NumPy](https://numpy.org/doc/), [pandas](https://pandas.pydata.org/docs/) and [SciPy](https://docs.scipy.org/doc/scipy/) provide descriptive aggregation and Spearman correlation. No classifier, bootstrap inference, training or external graft-outcome model runs. |
 | Input → output | No objects; three precomputed JSON objects; or GraftCase plus checksummed H5AD manifest, analysis spec, reference panel and marker-program collection → `GraftAssessmentResult` or `GraftExpressionAnalysisResult`, both under the union run-result Schema. [Tool Card](../src/bridge/tool_packages/cards/P0-12.md). |
 | Call | Shared CLI/SDK with `tool_id=P0-12`; start from the [no-graft](../examples/requests/p0_12_graft_assessment.json) or [expression-analysis](../examples/requests/p0_12_expression_analysis.json) request. |
-| Current evidence / status | Synthetic H5AD cases exercise file/checksum validation, backed logical-shape rejection before materialization, raw-count normalization, all-row composition, external-context binding, reference/program summaries and fail-closed inputs through the public adapter. Results remain `candidate/shadow`, `domain_score=null`; this is engineering validation, not efficacy or release evidence. [Validation](validation/p0_12_expression_analysis_20260827.md). |
+| Current evidence / status | Synthetic H5AD cases exercise single-graft unit binding, file/checksum validation, backed logical-shape rejection before materialization, probability non-repair, raw-count and log-normalized aggregation semantics, all-row composition, external-context binding, reference/program summaries and fail-closed inputs through the public adapter. Results remain `candidate/shadow`, `domain_score=null`; this is engineering validation, not efficacy or release evidence. [Validation](validation/p0_12_expression_analysis_20260827.md). |
 
 ## Methods, Schemas and evidence
 

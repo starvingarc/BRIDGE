@@ -1,0 +1,195 @@
+{
+  "$defs": {
+    "ComparisonMethodSeries": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator_kind": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "group_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Group Id",
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Labels",
+          "type": "array"
+        },
+        "measurement_scale": {
+          "default": "unknown",
+          "enum": [
+            "ratio",
+            "non_ratio",
+            "unknown"
+          ],
+          "title": "Measurement Scale",
+          "type": "string"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "semantics": {
+          "$ref": "#/$defs/ComparisonSeriesSemantics"
+        },
+        "series_id": {
+          "pattern": "^comparison-series:[A-Za-z0-9._:-]+$",
+          "title": "Series Id",
+          "type": "string"
+        },
+        "source_bundle_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionedObjectRef"
+          },
+          "minItems": 1,
+          "title": "Source Bundle Refs",
+          "type": "array"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "minItems": 2,
+          "title": "Values",
+          "type": "array"
+        },
+        "weights": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weights"
+        }
+      },
+      "required": [
+        "series_id",
+        "group_id",
+        "metric_id",
+        "semantics",
+        "labels",
+        "values",
+        "unit",
+        "denominator_kind",
+        "source_bundle_refs"
+      ],
+      "title": "ComparisonMethodSeries",
+      "type": "object"
+    },
+    "ComparisonSeriesSemantics": {
+      "enum": [
+        "probability_mass",
+        "matched_features",
+        "ordered_values",
+        "sample_values"
+      ],
+      "title": "ComparisonSeriesSemantics",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/comparison-method-input/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "comparison_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Comparison Manifest Sha256",
+      "type": "string"
+    },
+    "comparison_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "method_input_id": {
+      "pattern": "^comparison-method-input:[A-Za-z0-9._:-]+$",
+      "title": "Method Input Id",
+      "type": "string"
+    },
+    "method_input_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Input Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "series": {
+      "items": {
+        "$ref": "#/$defs/ComparisonMethodSeries"
+      },
+      "minItems": 1,
+      "title": "Series",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_input_id",
+    "method_input_version",
+    "comparison_ref",
+    "comparison_manifest_sha256",
+    "series",
+    "created_at"
+  ],
+  "title": "ComparisonMethodInput",
+  "type": "object"
+}

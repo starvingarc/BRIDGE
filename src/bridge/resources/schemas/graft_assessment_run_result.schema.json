@@ -273,6 +273,11 @@
           "title": "Analysis Value Semantics",
           "type": "string"
         },
+        "animal_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Animal Id",
+          "type": "string"
+        },
         "assay": {
           "$ref": "#/$defs/GraftAssay"
         },
@@ -328,6 +333,11 @@
           "title": "Graft Count",
           "type": "integer"
         },
+        "graft_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Graft Id",
+          "type": "string"
+        },
         "marker_program_collection_ref": {
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
           "title": "Marker Program Collection Ref",
@@ -346,11 +356,19 @@
           "title": "Object Version",
           "type": "string"
         },
+        "post_transplant_timepoint": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Post Transplant Timepoint",
+          "type": "string"
+        },
         "pretransplant_evidence_effect": {
           "const": "none",
           "default": "none",
           "title": "Pretransplant Evidence Effect",
           "type": "string"
+        },
+        "profile_aggregation": {
+          "$ref": "#/$defs/GraftProfileAggregation"
         },
         "program_evidence": {
           "items": {
@@ -405,6 +423,11 @@
           "minimum": 0,
           "title": "Sample Count",
           "type": "integer"
+        },
+        "sample_unit": {
+          "const": "technical_sample",
+          "title": "Sample Unit",
+          "type": "string"
         },
         "score_state": {
           "const": "unavailable",
@@ -462,12 +485,17 @@
         "analysis_spec_ref",
         "reference_panel_ref",
         "marker_program_collection_ref",
+        "graft_id",
+        "animal_id",
+        "post_transplant_timepoint",
         "reference_source_family_id",
         "marker_source_family_id",
         "assay",
         "matrix_semantics",
         "analysis_value_semantics",
+        "profile_aggregation",
         "qc_state",
+        "sample_unit",
         "composition_denominator",
         "cell_count",
         "gene_count",
@@ -501,6 +529,14 @@
         "log_normalized"
       ],
       "title": "GraftMatrixSemantics",
+      "type": "string"
+    },
+    "GraftProfileAggregation": {
+      "enum": [
+        "sample_pseudobulk",
+        "sample_mean_log_expression"
+      ],
+      "title": "GraftProfileAggregation",
       "type": "string"
     },
     "GraftProgramEvidence": {

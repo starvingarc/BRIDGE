@@ -6,7 +6,13 @@ import math
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, StrictInt, field_validator, model_validator
+from pydantic import (
+    Field,
+    StrictFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftSourceBinding,
@@ -23,6 +29,9 @@ NonNegativeFloat = Annotated[
 ]
 UnitFloat = Annotated[
     float, Field(ge=0, le=1, allow_inf_nan=False)
+]
+ProbabilityTolerance = Annotated[
+    StrictFloat, Field(ge=0, le=1e-6, allow_inf_nan=False)
 ]
 SHA256 = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 MAX_MATRIX_ELEMENTS = 100_000_000
@@ -50,6 +59,11 @@ class GraftMatrixSemantics(StrEnum):
     LOG_NORMALIZED = "log_normalized"
 
 
+class GraftProfileAggregation(StrEnum):
+    SAMPLE_PSEUDOBULK = "sample_pseudobulk"
+    SAMPLE_MEAN_LOG_EXPRESSION = "sample_mean_log_expression"
+
+
 class AnalysisAvailability(StrEnum):
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
@@ -75,9 +89,7 @@ class GraftExpressionAsset(FrozenModel):
         default=None, pattern=r"^[A-Za-z][A-Za-z0-9._-]*$"
     )
     sample_id_key: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9._-]*$")
-    graft_id_key: str | None = Field(
-        default=None, pattern=r"^[A-Za-z][A-Za-z0-9._-]*$"
-    )
+    graft_id_key: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9._-]*$")
     state_probability_columns: dict[SafeId, str] = Field(min_length=1)
     provenance_refs: list[PublishedRef] = Field(min_length=1)
     created_at: datetime
@@ -121,7 +133,7 @@ class GraftExpressionAnalysisSpec(FrozenModel):
     minimum_genes: StrictInt = Field(ge=2)
     minimum_reference_genes: StrictInt = Field(ge=3)
     minimum_program_genes: StrictInt = Field(ge=1)
-    probability_tolerance: UnitFloat
+    probability_tolerance: ProbabilityTolerance
     max_file_bytes: StrictInt = Field(ge=1, le=2_000_000_000)
     max_matrix_elements: StrictInt = Field(ge=1, le=MAX_MATRIX_ELEMENTS)
     provenance_refs: list[PublishedRef] = Field(min_length=1)
@@ -151,6 +163,7 @@ class GraftReferencePanel(FrozenModel):
     gene_id_namespace: SafeId
     assay: GraftAssay
     value_semantics: Literal["log1p_cp10k"]
+    profile_aggregation: GraftProfileAggregation
     profiles: list[GraftReferenceProfile] = Field(min_length=1)
     provenance_refs: list[PublishedRef] = Field(min_length=1)
     created_at: datetime
@@ -287,12 +300,17 @@ class GraftExpressionAnalysisResult(FrozenModel):
     analysis_spec_ref: SafeId
     reference_panel_ref: SafeId
     marker_program_collection_ref: SafeId
+    graft_id: SafeId
+    animal_id: SafeId
+    post_transplant_timepoint: SafeId
     reference_source_family_id: SafeId
     marker_source_family_id: SafeId
     assay: GraftAssay
     matrix_semantics: GraftMatrixSemantics
     analysis_value_semantics: Literal["log1p_cp10k"]
+    profile_aggregation: GraftProfileAggregation
     qc_state: Literal["not_reassessed"]
+    sample_unit: Literal["technical_sample"]
     composition_denominator: Literal["all_uploaded_rows"]
     cell_count: NonNegativeInt
     gene_count: NonNegativeInt
@@ -340,6 +358,8 @@ class GraftExpressionAnalysisResult(FrozenModel):
         _sorted_unique(self.reason_codes, "reason_codes")
         if self.sample_count < 1 or self.cell_count < 1 or self.gene_count < 1:
             raise ValueError("expression analysis requires non-empty data")
+        if self.graft_count != 1:
+            raise ValueError("expression analysis requires exactly one declared graft")
         return self
 
 

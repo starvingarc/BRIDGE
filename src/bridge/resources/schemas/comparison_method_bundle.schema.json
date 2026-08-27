@@ -1,0 +1,304 @@
+{
+  "$defs": {
+    "ComparisonMethodExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "execution_state": {
+          "$ref": "#/$defs/ComparisonMethodExecutionState"
+        },
+        "implementation": {
+          "minLength": 1,
+          "title": "Implementation",
+          "type": "string"
+        },
+        "method_id": {
+          "$ref": "#/$defs/ComparisonMethodId"
+        },
+        "method_ref": {
+          "pattern": "^METHOD-[A-Z0-9-]+$",
+          "title": "Method Ref",
+          "type": "string"
+        },
+        "package_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Package Versions",
+          "type": "object"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "method_id",
+        "method_ref",
+        "implementation",
+        "execution_state",
+        "package_versions",
+        "reason_codes"
+      ],
+      "title": "ComparisonMethodExecution",
+      "type": "object"
+    },
+    "ComparisonMethodExecutionState": {
+      "enum": [
+        "succeeded",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "ComparisonMethodExecutionState",
+      "type": "string"
+    },
+    "ComparisonMethodId": {
+      "enum": [
+        "CMP-EFFECT",
+        "CMP-JS",
+        "CMP-CORR",
+        "CMP-WASS-1D",
+        "STAB-CV"
+      ],
+      "title": "ComparisonMethodId",
+      "type": "string"
+    },
+    "ComparisonMethodRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "estimate_units": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Estimate Units",
+          "type": "object"
+        },
+        "estimates": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Estimates",
+          "type": "object"
+        },
+        "method_id": {
+          "$ref": "#/$defs/ComparisonMethodId"
+        },
+        "n_values": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "N Values",
+          "type": "array"
+        },
+        "raw_delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Delta"
+        },
+        "raw_delta_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Delta Unit"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "series_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Series Ids",
+          "type": "array"
+        },
+        "task_id": {
+          "pattern": "^comparison-method-task:[A-Za-z0-9._:-]+$",
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "method_id",
+        "series_ids",
+        "estimates",
+        "estimate_units",
+        "n_values",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "ComparisonMethodRecord",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/comparison-method-bundle/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "bundle_id": {
+      "pattern": "^comparison-method-bundle:[a-f0-9]{16}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "comparison_eligibility": {
+      "enum": [
+        "strictly_comparable",
+        "contextual_comparator",
+        "reference_or_ood",
+        "not_comparable",
+        "not_estimable"
+      ],
+      "title": "Comparison Eligibility",
+      "type": "string"
+    },
+    "comparison_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "evidence_state": {
+      "const": "shadow",
+      "default": "shadow",
+      "title": "Evidence State",
+      "type": "string"
+    },
+    "executions": {
+      "items": {
+        "$ref": "#/$defs/ComparisonMethodExecution"
+      },
+      "minItems": 1,
+      "title": "Executions",
+      "type": "array"
+    },
+    "method_input_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Method Input Sha256",
+      "type": "string"
+    },
+    "method_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Method Spec Sha256",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/ComparisonMethodRecord"
+      },
+      "minItems": 1,
+      "title": "Records",
+      "type": "array"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "selected_method_ids": {
+      "items": {
+        "$ref": "#/$defs/ComparisonMethodId"
+      },
+      "minItems": 1,
+      "title": "Selected Method Ids",
+      "type": "array"
+    },
+    "tool_id": {
+      "const": "P0-07",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "bundle_id",
+    "tool_id",
+    "tool_version",
+    "comparison_ref",
+    "comparison_eligibility",
+    "method_spec_sha256",
+    "method_input_sha256",
+    "selected_method_ids",
+    "executions",
+    "records",
+    "evidence_refs",
+    "created_at"
+  ],
+  "title": "ComparisonMethodBundle",
+  "type": "object"
+}

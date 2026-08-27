@@ -1,0 +1,30 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "artifact-audit-policy",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/public_artifact_audit_policy.json",
+      "role": "public_artifact_audit_policy",
+      "schema_ref": "bridge://schemas/public-artifact-audit-policy/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "artifact-manifest",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/public_artifact_manifest.json",
+      "role": "public_artifact_manifest",
+      "schema_ref": "bridge://schemas/public-artifact-manifest/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-11-artifact-audit-documentation-only",
+  "tool_id": "P0-11",
+  "tool_version": "0.3.0"
+}

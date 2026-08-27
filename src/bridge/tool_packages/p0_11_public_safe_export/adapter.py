@@ -1,13 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-import os
-import re
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
@@ -15,9 +11,8 @@ from bridge.tool_packages._structured_runtime import (
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
-    inputs_unchanged,
     load_structured_inputs,
-    read_regular_bytes,
+    publish_json_bundle,
     request_v2_from_v1,
     single_object,
 )
@@ -27,6 +22,13 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ReleaseState,
     ReportAudience,
     ReportDraft,
+)
+from bridge.tool_packages.p0_11_public_safe_export.artifact_audit import (
+    LEAK_PATTERNS,
+    ROLE_MODELS as ARTIFACT_ROLE_MODELS,
+    check_eligibility as check_artifact_eligibility,
+    is_artifact_audit_request,
+    run as run_artifact_audit,
 )
 from bridge.tool_packages.p0_11_public_safe_export.models import (
     PublicClaimField,
@@ -52,8 +54,8 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/public-export-result/v0.1"
-ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
+RESULT_SCHEMA_REF = "bridge://schemas/public-safe-export-run-result/v0.1"
+EXPORT_ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "report_draft": ("bridge://schemas/report-draft/v0.1", ReportDraft),
     "claim_verification_result": (
         "bridge://schemas/claim-verification-result/v0.1",
@@ -68,35 +70,12 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         PublicExportRequest,
     ),
 }
+ROLE_MODELS = {**EXPORT_ROLE_MODELS, **ARTIFACT_ROLE_MODELS}
 FILENAMES = (
     "public_safe_report.json",
     "public_export_manifest.json",
     "public_export_result.json",
 )
-LEAK_PATTERNS = (
-    re.compile(
-        r"(?:/(?:data[0-9]+|mnt|srv|private|internal)/|/"
-        r"Users/|/home/|[A-Za-z]:\\Users\\)",
-        re.I,
-    ),
-    re.compile(
-        r"\b(?:source|server|compute)\s+host(?:name)?\s*"
-        r"(?:is|[:=])\s*[A-Za-z0-9._-]+\b",
-        re.I,
-    ),
-    re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I),
-    re.compile(
-        r"\b(?:api[_-]?key|password|secret|access[_-]?token|"
-        r"refresh[_-]?token|bearer)\b(?:\s*[:=]\s*|\s+)[^\s,;]+",
-        re.I,
-    ),
-    re.compile(r"\b(?:sk-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{8,})\b"),
-    re.compile(r"\b(?:evidence|product-case|sample|preparation):[A-Za-z0-9]", re.I),
-)
-
-
-
-
 @dataclass(frozen=True)
 class ExportBundle:
     public_report: PublicSafeReport
@@ -117,6 +96,8 @@ class PublicSafeExportAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
+        if is_artifact_audit_request(request):
+            return check_artifact_eligibility(request, spec)
         reasons = _envelope_reasons(request, spec)
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
@@ -132,6 +113,8 @@ class PublicSafeExportAdapter:
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         if not isinstance(request, ToolRequestV2):
             return _failed_v1_request(request, spec)
+        if is_artifact_audit_request(request):
+            return run_artifact_audit(request, spec)
         eligibility = self.check_eligibility(request, spec)
         input_hash = _input_hash(request, spec)
         if not eligibility.eligible:
@@ -144,7 +127,7 @@ class PublicSafeExportAdapter:
         bundle = _build_bundle(request, loaded, spec)
         run_id = f"run-{input_hash[:16]}"
         try:
-            output_dir = _publish_bundle(
+            published = publish_json_bundle(
                 request=request,
                 run_id=run_id,
                 payloads=bundle.payloads,
@@ -157,7 +140,7 @@ class PublicSafeExportAdapter:
             ArtifactManifest(
                 artifact_id=f"artifact:{run_id}:{name.removesuffix('.json')}",
                 kind=name.removesuffix(".json"),
-                path=output_dir / name,
+                path=published[name],
                 media_type="application/json",
                 sha256=hashlib.sha256(bundle.payloads[name]).hexdigest(),
                 evidence_ids=[],
@@ -202,13 +185,13 @@ def _envelope_reasons(
     if request.parameters:
         reasons.append("p0_11_parameters_forbidden")
     roles = [ref.role for ref in request.object_inputs]
-    for role in ROLE_MODELS:
+    for role in EXPORT_ROLE_MODELS:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
-    if any(role not in ROLE_MODELS for role in roles):
+    if any(role not in EXPORT_ROLE_MODELS for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
-        contract = ROLE_MODELS.get(ref.role)
+        contract = EXPORT_ROLE_MODELS.get(ref.role)
         if contract is not None and ref.schema_ref != contract[0]:
             reasons.append("object_input_schema_mismatch")
         if ref.object_version != "0.1.0":
@@ -223,7 +206,7 @@ def _load_inputs(
 ) -> tuple[LoadedInputs | None, list[str]]:
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: ROLE_MODELS.get(ref.role, ("", None))[1],
+        model_for=lambda ref: EXPORT_ROLE_MODELS.get(ref.role, ("", None))[1],
         validate_model=_validate_object_version,
     )
 
@@ -493,59 +476,6 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
         ],
     }
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
-
-
-def _publish_bundle(
-    *,
-    request: ToolRequestV2,
-    run_id: str,
-    payloads: dict[str, bytes],
-) -> Path:
-    output_root = request.output_dir
-    if directory_state(output_root) == "other":
-        raise PublicationError("output_path_invalid")
-    try:
-        output_root.mkdir(parents=True, exist_ok=True)
-    except (OSError, RuntimeError):
-        raise PublicationError("output_path_invalid") from None
-    if directory_state(output_root) != "directory":
-        raise PublicationError("output_path_invalid")
-    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    try:
-        staging.mkdir(mode=0o700)
-        for name in FILENAMES:
-            (staging / name).write_bytes(payloads[name])
-        if not inputs_unchanged(request.object_inputs):
-            raise PublicationError("structured_input_modified_during_run")
-        final = output_root / run_id
-        final_state = directory_state(final)
-        if final_state == "directory":
-            try:
-                matches = (
-                    {path.name for path in final.iterdir()} == set(FILENAMES)
-                    and all(
-                        read_regular_bytes(final / name) == payloads[name]
-                        for name in FILENAMES
-                    )
-                )
-            except (OSError, RuntimeError):
-                matches = False
-            if not matches:
-                raise PublicationError("existing_run_bundle_hash_mismatch")
-            shutil.rmtree(staging)
-        elif final_state == "missing":
-            os.replace(staging, final)
-        else:
-            raise PublicationError("existing_run_bundle_hash_mismatch")
-        if any(read_regular_bytes(final / name) != payloads[name] for name in FILENAMES):
-            raise PublicationError("published_result_hash_mismatch")
-        return final
-    except PublicationError:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    except (OSError, RuntimeError):
-        shutil.rmtree(staging, ignore_errors=True)
-        raise PublicationError("output_path_invalid") from None
 
 
 def _failed_run(

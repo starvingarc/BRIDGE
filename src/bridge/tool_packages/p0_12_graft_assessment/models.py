@@ -69,6 +69,7 @@ class GraftCase(FrozenModel):
     graft_case_id: SafeId
     assay_id: SafeId
     specimen_id: SafeId
+    graft_id: SafeId | None = None
     animal_id: SafeId | None = None
     post_transplant_timepoint: SafeId | None = None
     biological_replicate_id: SafeId | None = None

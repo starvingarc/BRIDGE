@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "ComparisonMethodId": {
+      "enum": [
+        "CMP-EFFECT",
+        "CMP-JS",
+        "CMP-CORR",
+        "CMP-WASS-1D",
+        "STAB-CV"
+      ],
+      "title": "ComparisonMethodId",
+      "type": "string"
+    },
+    "ComparisonMethodTask": {
+      "additionalProperties": false,
+      "properties": {
+        "method_id": {
+          "$ref": "#/$defs/ComparisonMethodId"
+        },
+        "series_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Series Ids",
+          "type": "array"
+        },
+        "task_id": {
+          "pattern": "^comparison-method-task:[A-Za-z0-9._:-]+$",
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "method_id",
+        "series_ids"
+      ],
+      "title": "ComparisonMethodTask",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/comparison-method-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "active": {
+      "title": "Active",
+      "type": "boolean"
+    },
+    "comparison_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "jensen_shannon_base": {
+      "default": 2.0,
+      "exclusiveMinimum": 1,
+      "title": "Jensen Shannon Base",
+      "type": "number"
+    },
+    "method_spec_id": {
+      "pattern": "^comparison-method-spec:[A-Za-z0-9._:-]+$",
+      "title": "Method Spec Id",
+      "type": "string"
+    },
+    "method_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Spec Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "status": {
+      "const": "candidate",
+      "title": "Status",
+      "type": "string"
+    },
+    "tasks": {
+      "items": {
+        "$ref": "#/$defs/ComparisonMethodTask"
+      },
+      "minItems": 1,
+      "title": "Tasks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_spec_id",
+    "method_spec_version",
+    "comparison_ref",
+    "status",
+    "tasks",
+    "active"
+  ],
+  "title": "ComparisonMethodSpec",
+  "type": "object"
+}

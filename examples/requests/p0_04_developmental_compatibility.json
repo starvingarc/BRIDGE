@@ -1,5 +1,20 @@
 {
-  "assets": [],
+  "assets": [
+    {
+      "asset_id": "asset:development-expression-view",
+      "assay": "scRNA-seq",
+      "checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+      "format": "h5ad",
+      "input_level": "analysis_ready",
+      "matrix_location": "X",
+      "matrix_semantics": "normalized_expression",
+      "metadata": {
+        "data_view_id": "data-view:qc-selected",
+        "parent_asset_sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      "path": "/absolute/path/to/development_expression_view.h5ad"
+    }
+  ],
   "measurement_spec_ref": null,
   "object_inputs": [
     {
@@ -41,7 +56,7 @@
     {
       "input_id": "measurement",
       "media_type": "application/json",
-      "object_version": "0.2.0",
+      "object_version": "1.0.0",
       "path": "/absolute/path/to/measurement_spec_v2.json",
       "role": "measurement_spec",
       "schema_ref": "bridge://schemas/measurement-spec/v0.2",
@@ -50,17 +65,71 @@
     {
       "input_id": "cell-state",
       "media_type": "application/json",
-      "object_version": "0.2.0",
-      "path": "/absolute/path/to/cell_state_evidence_profile_v2.json",
+      "object_version": "0.3.0",
+      "path": "/absolute/path/to/cell_state_evidence_profile_v3.json",
       "role": "cell_state_evidence_profile",
-      "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.2",
+      "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.3",
       "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "input_id": "qc",
+      "media_type": "application/json",
+      "object_version": "0.2.0",
+      "path": "/absolute/path/to/qc_readiness_profile_v2.json",
+      "role": "qc_readiness_profile",
+      "schema_ref": "bridge://schemas/qc-readiness-profile/v0.2",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "input_id": "units",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/biological_unit_manifest.json",
+      "role": "biological_unit_manifest",
+      "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "input_id": "assignments",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/biological_unit_assignment.json",
+      "role": "biological_unit_assignment",
+      "schema_ref": "bridge://schemas/biological-unit-assignment/v0.1",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "input_id": "vocabulary",
+      "media_type": "application/json",
+      "object_version": "1.0.0",
+      "path": "/absolute/path/to/annotation_vocabulary.json",
+      "role": "annotation_vocabulary",
+      "schema_ref": "bridge://schemas/annotation-vocabulary/v0.1",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
+      "input_id": "reference",
+      "media_type": "application/json",
+      "object_version": "1.0.0",
+      "path": "/absolute/path/to/reference_manifest.json",
+      "role": "reference_manifest",
+      "schema_ref": "bridge://schemas/reference-manifest/v0.1",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    {
+      "input_id": "methods",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/p0_04_development_method_spec.json",
+      "role": "development_method_spec",
+      "schema_ref": "bridge://schemas/development-method-spec/v0.1",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
     }
   ],
   "output_dir": "/absolute/path/to/p0-04-output",
   "parameters": {},
-  "random_seed": 0,
+  "random_seed": 17,
   "request_id": "example-p0-04-developmental-compatibility",
   "tool_id": "P0-04",
-  "tool_version": "0.2.0"
+  "tool_version": "0.3.0"
 }

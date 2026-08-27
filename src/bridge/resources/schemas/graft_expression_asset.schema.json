@@ -78,17 +78,9 @@
       "type": "string"
     },
     "graft_id_key": {
-      "anyOf": [
-        {
-          "pattern": "^[A-Za-z][A-Za-z0-9._-]*$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Graft Id Key"
+      "pattern": "^[A-Za-z][A-Za-z0-9._-]*$",
+      "title": "Graft Id Key",
+      "type": "string"
     },
     "matrix_semantics": {
       "$ref": "#/$defs/GraftMatrixSemantics"
@@ -154,6 +146,7 @@
     "matrix_semantics",
     "analysis_value_semantics",
     "sample_id_key",
+    "graft_id_key",
     "state_probability_columns",
     "provenance_refs",
     "created_at"

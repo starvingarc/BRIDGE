@@ -3255,18 +3255,18 @@
       "environment_requirement": "Python 单细胞核心环境",
       "evidence_family": "",
       "formal_output": "Required-cell planning",
-      "key_boundary": "Planning calculation, not rare-state discovery",
+      "key_boundary": "Single-state at-least-one-cell planning only; not SCOPIT or rare-state discovery",
       "license": "Article terms",
       "module": "Off-target Control",
       "module_id": "P0-05",
       "official_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6852764/",
-      "required_input": "Expected frequency and desired detection probability",
+      "required_input": "One expected state frequency and desired at-least-one detection probability",
       "role": "experimental design | Design aid",
-      "scientific_status": "catalog_only",
+      "scientific_status": "candidate",
       "source_ref": "outputs/bridge_p0_off_target_20260806/BRIDGE_P0_off_target_control_registry_20260806.xlsx#Rare State Methods:R9",
       "source_status": "catalog_only",
-      "tool_id": "RARE-SCOPIT",
-      "tool_or_method": "SCOPIT"
+      "tool_id": "RARE-BINOMIAL-AT-LEAST-ONE",
+      "tool_or_method": "Single-state at-least-one binomial planner"
     },
     {
       "capability": "unknown and OOD",

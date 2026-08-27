@@ -8,6 +8,14 @@
       "title": "GraftAssay",
       "type": "string"
     },
+    "GraftProfileAggregation": {
+      "enum": [
+        "sample_pseudobulk",
+        "sample_mean_log_expression"
+      ],
+      "title": "GraftProfileAggregation",
+      "type": "string"
+    },
     "GraftReferenceProfile": {
       "additionalProperties": false,
       "properties": {
@@ -59,6 +67,9 @@
       "title": "Organism",
       "type": "string"
     },
+    "profile_aggregation": {
+      "$ref": "#/$defs/GraftProfileAggregation"
+    },
     "profiles": {
       "items": {
         "$ref": "#/$defs/GraftReferenceProfile"
@@ -100,6 +111,7 @@
     "gene_id_namespace",
     "assay",
     "value_semantics",
+    "profile_aggregation",
     "profiles",
     "provenance_refs",
     "created_at"

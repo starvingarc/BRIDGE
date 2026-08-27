@@ -58,11 +58,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/developmental_compatibility_task_card.md",
     },
     "P0-05": {
-        "input": "Frozen Cell-State prediction sets, ProductDefinitionCard role table, eligible-cell denominator, and rare-state/OOD calibration records.",
-        "output": "Whole-product soft composition, role-resolved non-target evidence, unknown reasons, rare-state detection limits, and sensitivity.",
-        "reject": "Missing full-product denominator, unresolved product role, uncalibrated OOD method, or a zero observation presented as biological absence.",
-        "visualization": "Whole-product composition, off-axis drill-down, unknown reasons, OOD calibration, rare-state LOD/UCB, and method sensitivity.",
-        "validation": "Real OOD panels, source-family holdouts, known mixtures, rare-state spike-ins, downsampling, and reference/preprocessing swaps.",
+        "input": "Checksummed ProductCase, role and assessment objects, P0-02 evidence and, in method mode, reviewed biological-unit lineage, a method spec and unit-level composition/spike-in/OOD inputs.",
+        "output": "Whole-product composition plus descriptive intervals, independent-unit bootstrap, hard/soft sensitivity, candidate spike-in limits, single-state at-least-one binomial planning and checksummed-source OOD coordination.",
+        "reject": "Missing full-product denominator, partial method inputs, lineage/count mismatch, undeclared reason/state, checksum drift, or zero observations presented as biological absence.",
+        "visualization": "No visualization output in v0.3; the package emits checksummed JSON profiles and method records.",
+        "validation": "Synthetic execution of all selectors and refusal paths; real OOD holdouts, known mixtures and spike-in calibration remain scientific follow-up.",
         "details": "docs/bridge_spec_v0.1/off_target_control_task_card.md",
     },
     "P0-06": {
@@ -107,10 +107,10 @@ DETAILS = {
     },
     "P0-12": {
         "input": "No objects; three checksummed precomputed graft objects; or five checksummed objects binding a GraftCase, H5AD asset, analysis spec, reference panel and marker-program collection.",
-        "output": "An independent not-provided/descriptive result, or all-row descriptive soft composition, sample-pseudobulk reference support and external marker-program means from the declared H5AD.",
-        "reject": "Schema, checksum, file, matrix, probability, metadata, method-set or cross-object drift fails closed; missing optional graft metadata degrades explicitly.",
+        "output": "An independent not-provided/descriptive result, or one-declared-graft all-row soft composition, aggregation-matched sample-profile reference support and external marker-program means from the declared H5AD.",
+        "reject": "Schema, checksum, file, matrix, probability, biological-unit, aggregation, method-set or cross-object drift fails closed; expression mode requires one declared graft, animal and timepoint.",
         "visualization": "No visualization output in v0.3.0.",
-        "validation": "Synthetic H5AD and JSON fixtures exercise file reading, shared matrix validation, normalization, descriptive aggregation, external-context binding, reference/program calculations, deterministic output and no score backfill.",
+        "validation": "Synthetic H5AD and JSON fixtures exercise single-graft binding, file reading, shared matrix validation, probability non-repair, raw-count pseudobulk and log-normalized sample-mean semantics, external-context binding, deterministic output and no score backfill.",
         "details": "docs/bridge_spec_v0.1/graft_assessment_task_card.md",
     },
 }

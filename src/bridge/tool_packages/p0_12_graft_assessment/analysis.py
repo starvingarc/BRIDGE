@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -21,16 +20,6 @@ from bridge.tool_packages.p0_01_input_qc.io import (
 )
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
-    PublicationError,
-    StructuredInputError,
-    canonical_json_bytes,
-    directory_state,
-    failed_v2_run,
-    inputs_unchanged,
-    load_structured_inputs,
-    publish_json_bundle,
-    read_regular_bytes,
-    request_v2_from_v1,
     single_object,
 )
 from bridge.tool_packages.p0_12_graft_assessment.analysis_models import (
@@ -41,6 +30,7 @@ from bridge.tool_packages.p0_12_graft_assessment.analysis_models import (
     GraftExpressionAsset,
     GraftMarkerProgramCollection,
     GraftMatrixSemantics,
+    GraftProfileAggregation,
     GraftProgramEvidence,
     GraftReferencePanel,
     GraftReferenceSupport,
@@ -51,20 +41,12 @@ from bridge.tool_packages.p0_12_graft_assessment.models import (
     SAFE_ID_PATTERN,
 )
 from bridge.toolkit.contracts import (
-    ArtifactManifest,
-    EligibilityResult,
-    ExecutionState,
     FrozenModel,
-    ImplementationState,
-    StructuredInputRef,
     ToolPackageSpecV2,
-    ToolRequest,
     ToolRequestV2,
-    ToolRunV2,
 )
 
 
-RESULT_SCHEMA_REF = "bridge://schemas/graft-assessment-run-result/v0.1"
 ANALYSIS_METHOD_IDS = [
     "METHOD-ANNDATA",
     "METHOD-BRIDGE-GRAFTCASE-VALIDATOR",
@@ -106,158 +88,12 @@ def is_expression_analysis_request(request: ToolRequestV2) -> bool:
     )
 
 
-def check_eligibility(
-    request: ToolRequestV2,
-    spec: ToolPackageSpecV2,
-) -> EligibilityResult:
-    if not isinstance(request, ToolRequestV2):
-        tool_id = request.tool_id if isinstance(request, ToolRequest) else "P0-12"
-        return EligibilityResult(
-            tool_id=tool_id,
-            eligible=False,
-            reason_codes=["tool_request_v2_required"],
-        )
-    reasons = _envelope_reasons(request, spec)
-    loaded, loading_reasons = _load_inputs(request.object_inputs)
-    reasons.extend(loading_reasons)
-    if loaded is not None and not reasons:
-        reasons.extend(_binding_reasons(request, loaded, spec))
-    reason_codes = sorted(set(reasons))
-    return EligibilityResult(
-        tool_id=request.tool_id,
-        eligible=not reason_codes,
-        reason_codes=reason_codes,
-    )
-
-
-def run(request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
-    if not isinstance(request, ToolRequestV2):
-        return _failed_v1_request(request, spec)
-    eligibility = check_eligibility(request, spec)
-    input_hash = _input_hash(request, spec)
-    if not eligibility.eligible:
-        return _failed_run(
-            request, spec, eligibility.reason_codes, input_hash=input_hash
-        )
-    loaded, reasons = _load_inputs(request.object_inputs)
-    if loaded is None or reasons:
-        return _failed_run(request, spec, reasons, input_hash=input_hash)
-    case, asset, analysis_spec, reference_panel, programs = _objects(
-        request, loaded
-    )
-    try:
-        result = _analyze(
-            request=request,
-            case=case,
-            asset=asset,
-            analysis_spec=analysis_spec,
-            reference_panel=reference_panel,
-            programs=programs,
-            tool_version=spec.version,
-            input_hash=input_hash,
-        )
-    except GraftAnalysisError as exc:
-        return _failed_run(
-            request, spec, [exc.reason_code], input_hash=input_hash
-        )
-    run_id = f"run-{input_hash[:16]}"
-    result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
-    manifest_bytes = canonical_json_bytes(
-        _manifest_payload(request, spec, run_id, input_hash, result_bytes),
-        indent=2,
-    )
-    try:
-        published = publish_json_bundle(
-            request=request,
-            run_id=run_id,
-            payloads={
-                "graft_expression_analysis_result.json": result_bytes,
-                "artifact_manifest.json": manifest_bytes,
-            },
-            inputs_are_unchanged=lambda refs: (
-                inputs_unchanged(refs) and _asset_unchanged(asset)
-            ),
-        )
-    except PublicationError as exc:
-        return _failed_run(
-            request, spec, [exc.reason_code], input_hash=input_hash
-        )
-    artifacts = [
-        ArtifactManifest(
-            artifact_id=f"artifact:{run_id}:{path.stem}",
-            kind=path.stem,
-            path=path,
-            media_type="application/json",
-            sha256=hashlib.sha256(read_regular_bytes(path)).hexdigest(),
-            evidence_ids=[],
-        )
-        for path in sorted(published.values(), key=lambda value: value.name)
-    ]
-    return ToolRunV2(
-        run_id=run_id,
-        request=request,
-        implementation_state=ImplementationState.IMPLEMENTED,
-        execution_state=ExecutionState.SUCCEEDED,
-        tool_version=spec.version,
-        environment_spec_id=spec.environment_spec_id,
-        input_hash=input_hash,
-        created_at=asset.created_at,
-        measurements=[],
-        artifacts=artifacts,
-        visualizations=[],
-        result_schema_ref=RESULT_SCHEMA_REF,
-        result=result.model_dump(mode="json"),
-        reason_codes=[],
-        warnings=[],
-    )
-
-
-def _envelope_reasons(
-    request: ToolRequestV2,
-    spec: ToolPackageSpecV2,
-) -> list[str]:
-    reasons: list[str] = []
-    if request.tool_version is not None and request.tool_version != spec.version:
-        reasons.append("tool_version_mismatch")
-    if request.assets:
-        reasons.append("p0_12_expression_assets_require_manifest")
-    if request.measurement_spec_ref is not None:
-        reasons.append("p0_12_measurement_spec_forbidden")
-    if request.parameters:
-        reasons.append("p0_12_parameters_forbidden")
-    roles = [ref.role for ref in request.object_inputs]
-    for role in ROLE_MODELS:
-        if roles.count(role) != 1:
-            reasons.append(f"exactly_one_{role}_required")
-    if any(role not in ROLE_MODELS for role in roles):
-        reasons.append("unsupported_object_input_role")
-    for ref in request.object_inputs:
-        contract = ROLE_MODELS.get(ref.role)
-        if contract is not None and ref.schema_ref != contract[0]:
-            reasons.append("object_input_schema_mismatch")
-        if ref.object_version != "0.1.0":
-            reasons.append("object_input_version_mismatch")
-    if directory_state(request.output_dir) == "other":
-        reasons.append("output_dir_not_regular_directory")
-    return reasons
-
-
-def _load_inputs(
-    refs: list[StructuredInputRef],
-) -> tuple[LoadedInputs | None, list[str]]:
-    return load_structured_inputs(
-        refs,
-        model_for=lambda ref: ROLE_MODELS.get(ref.role, ("", None))[1],
-        validate_model=_validate_object_version,
-    )
-
-
-def _validate_object_version(
-    ref: StructuredInputRef,
-    value: FrozenModel,
-) -> None:
-    if getattr(value, "object_version", None) != ref.object_version:
-        raise StructuredInputError("object_input_version_mismatch")
+def _profile_aggregation(
+    matrix_semantics: GraftMatrixSemantics,
+) -> GraftProfileAggregation:
+    if matrix_semantics is GraftMatrixSemantics.RAW_COUNTS:
+        return GraftProfileAggregation.SAMPLE_PSEUDOBULK
+    return GraftProfileAggregation.SAMPLE_MEAN_LOG_EXPRESSION
 
 
 def _objects(
@@ -293,7 +129,7 @@ def _objects(
     )
 
 
-def _binding_reasons(
+def expression_binding_reasons(
     request: ToolRequestV2,
     loaded: LoadedInputs,
     spec: ToolPackageSpecV2,
@@ -306,6 +142,12 @@ def _binding_reasons(
         reasons.add("graft_case_binding_mismatch")
     if asset.assay_id != case.assay_id:
         reasons.add("graft_assay_binding_mismatch")
+    if case.graft_id is None:
+        reasons.add("graft_id_not_declared")
+    if case.animal_id is None:
+        reasons.add("graft_animal_id_not_declared")
+    if case.post_transplant_timepoint is None:
+        reasons.add("graft_timepoint_not_declared")
     if analysis_spec.reference_panel_ref != reference_panel.reference_panel_id:
         reasons.add("graft_reference_panel_binding_mismatch")
     if (
@@ -325,6 +167,10 @@ def _binding_reasons(
         reasons.add("graft_reference_assay_mismatch")
     if asset.analysis_value_semantics != reference_panel.value_semantics:
         reasons.add("graft_reference_value_semantics_mismatch")
+    if reference_panel.profile_aggregation != _profile_aggregation(
+        asset.matrix_semantics
+    ):
+        reasons.add("graft_reference_aggregation_mismatch")
     if asset.analysis_value_semantics != programs.value_semantics:
         reasons.add("graft_marker_program_value_semantics_mismatch")
     if analysis_spec.method_ids != ANALYSIS_METHOD_IDS:
@@ -335,11 +181,12 @@ def _binding_reasons(
     resolved = asset.path.resolve(strict=False)
     if resolved == output_root or resolved.is_relative_to(output_root):
         reasons.add("graft_expression_output_overlap")
-    reasons.update(_asset_file_reasons(asset, analysis_spec))
+    reasons.update(_asset_file_reasons(case, asset, analysis_spec))
     return sorted(reasons)
 
 
 def _asset_file_reasons(
+    case: GraftCase,
     asset: GraftExpressionAsset,
     analysis_spec: GraftExpressionAnalysisSpec,
 ) -> set[str]:
@@ -379,10 +226,14 @@ def _asset_file_reasons(
             *asset.state_probability_columns.values(),
             *analysis_spec.required_obs_fields,
         }
-        if asset.graft_id_key is not None:
-            required.add(asset.graft_id_key)
+        required.add(asset.graft_id_key)
         if not required.issubset(data.obs.columns):
             reasons.add("graft_expression_obs_fields_missing")
+        elif case.graft_id is not None and (
+            data.obs[asset.graft_id_key].isna().any()
+            or set(data.obs[asset.graft_id_key].astype(str)) != {case.graft_id}
+        ):
+            reasons.add("graft_observation_unit_mismatch")
         gene_values = (
             data.var_names.astype(str).tolist()
             if asset.gene_symbol_key is None
@@ -426,11 +277,42 @@ def _file_digest(path: Path) -> str:
     return digest
 
 
-def _asset_unchanged(asset: GraftExpressionAsset) -> bool:
+def expression_asset(
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+) -> GraftExpressionAsset:
+    return single_object(
+        request, loaded, "graft_expression_asset", GraftExpressionAsset
+    )
+
+
+def expression_asset_unchanged(asset: GraftExpressionAsset) -> bool:
     try:
         return _file_digest(asset.path) == asset.sha256
     except OSError:
         return False
+
+
+def build_expression_result(
+    *,
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    tool_version: str,
+    input_hash: str,
+) -> GraftExpressionAnalysisResult:
+    case, asset, analysis_spec, reference_panel, programs = _objects(
+        request, loaded
+    )
+    return _analyze(
+        request=request,
+        case=case,
+        asset=asset,
+        analysis_spec=analysis_spec,
+        reference_panel=reference_panel,
+        programs=programs,
+        tool_version=tool_version,
+        input_hash=input_hash,
+    )
 
 
 def _analyze(
@@ -453,11 +335,13 @@ def _analyze(
     analysis = _analysis_view(data, asset)
     probabilities = _probabilities(analysis, asset, analysis_spec)
     samples = _labels(analysis.obs[asset.sample_id_key], "sample")
-    grafts = (
-        _labels(analysis.obs[asset.graft_id_key], "graft")
-        if asset.graft_id_key is not None
-        else None
-    )
+    grafts = _labels(analysis.obs[asset.graft_id_key], "graft")
+    if case.graft_id is None or set(grafts.tolist()) != {case.graft_id}:
+        raise GraftAnalysisError("graft_observation_unit_mismatch")
+    if case.animal_id is None:
+        raise GraftAnalysisError("graft_animal_id_not_declared")
+    if case.post_transplant_timepoint is None:
+        raise GraftAnalysisError("graft_timepoint_not_declared")
     gene_symbols = _gene_symbols(analysis, asset)
     analysis.var_names = gene_symbols
     composition = _composition(probabilities)
@@ -477,16 +361,7 @@ def _analyze(
         "METHOD-SCANPY",
     }
     reasons: set[str] = set()
-    if grafts is None:
-        reasons.add("graft_id_not_provided")
-    if any(
-        value is None
-        for value in (
-            case.animal_id,
-            case.post_transplant_timepoint,
-            case.biological_replicate_id,
-        )
-    ):
+    if case.biological_replicate_id is None:
         reasons.add("graft_metadata_incomplete")
     if any(
         item.availability is AnalysisAvailability.UNAVAILABLE
@@ -499,6 +374,8 @@ def _analyze(
     ):
         reasons.add("graft_program_evidence_partial")
     row_sums = probabilities.sum(axis=1).to_numpy(dtype=float)
+    if np.any(row_sums > 1.0):
+        reasons.add("graft_probability_mass_within_tolerance")
     return GraftExpressionAnalysisResult(
         object_version="0.1.0",
         result_id=f"graft-expression-analysis:{input_hash[:24]}",
@@ -512,19 +389,24 @@ def _analyze(
         analysis_spec_ref=analysis_spec.analysis_spec_id,
         reference_panel_ref=reference_panel.reference_panel_id,
         marker_program_collection_ref=programs.collection_id,
+        graft_id=case.graft_id,
+        animal_id=case.animal_id,
+        post_transplant_timepoint=case.post_transplant_timepoint,
         assay=asset.assay,
         matrix_semantics=asset.matrix_semantics,
         analysis_value_semantics=asset.analysis_value_semantics,
+        profile_aggregation=_profile_aggregation(asset.matrix_semantics),
         reference_source_family_id=reference_panel.source_family_id,
         marker_source_family_id=programs.source_family_id,
         qc_state="not_reassessed",
+        sample_unit="technical_sample",
         composition_denominator="all_uploaded_rows",
         cell_count=analysis.n_obs,
         gene_count=analysis.n_vars,
         sample_count=len(set(samples.tolist())),
-        graft_count=0 if grafts is None else len(set(grafts.tolist())),
+        graft_count=1,
         unassigned_fraction=float(
-            np.clip(np.mean(1.0 - row_sums), 0.0, 1.0)
+            np.mean(np.maximum(0.0, 1.0 - row_sums))
         ),
         composition_estimates=composition,
         reference_support=reference_support,
@@ -603,14 +485,14 @@ def _probabilities(
     array = values.to_numpy(dtype=float)
     if (
         not np.isfinite(array).all()
-        or np.any(array < -analysis_spec.probability_tolerance)
-        or np.any(array > 1 + analysis_spec.probability_tolerance)
+        or np.any(array < 0.0)
+        or np.any(array > 1.0)
         or np.any(
             array.sum(axis=1) > 1 + analysis_spec.probability_tolerance
         )
     ):
         raise GraftAnalysisError("graft_state_probabilities_invalid")
-    return values.clip(lower=0.0, upper=1.0)
+    return values
 
 
 def _labels(values: pd.Series, kind: str) -> np.ndarray:
@@ -682,11 +564,11 @@ def _expression_evidence(
     gene_index = {
         gene: int(analysis.var_names.get_loc(gene)) for gene in present
     }
-    pseudobulk = _sample_profiles(
+    sample_profiles = _sample_profiles(
         analysis.X, samples, matrix_semantics
     )
     reference_result: list[GraftReferenceSupport] = []
-    for sample_id, values in pseudobulk.items():
+    for sample_id, values in sample_profiles.items():
         for profile in reference_panel.profiles:
             shared = sorted(set(profile.gene_values).intersection(gene_index))
             correlation: float | None = None
@@ -727,7 +609,7 @@ def _expression_evidence(
                 )
             )
     program_result: list[GraftProgramEvidence] = []
-    for sample_id, values in pseudobulk.items():
+    for sample_id, values in sample_profiles.items():
         for program in programs.programs:
             shared = sorted(set(program.genes).intersection(gene_index))
             score: float | None = None
@@ -782,10 +664,10 @@ def _sample_profiles(
         rows.append(np.asarray(row, dtype=float))
     values = np.vstack(rows)
     if matrix_semantics is GraftMatrixSemantics.RAW_COUNTS:
-        pseudobulk = ad.AnnData(X=values)
-        sc.pp.normalize_total(pseudobulk, target_sum=10_000)
-        sc.pp.log1p(pseudobulk)
-        values = np.asarray(pseudobulk.X, dtype=float)
+        profiles = ad.AnnData(X=values)
+        sc.pp.normalize_total(profiles, target_sum=10_000)
+        sc.pp.log1p(profiles)
+        values = np.asarray(profiles.X, dtype=float)
     return {
         sample_id: values[index]
         for index, sample_id in enumerate(sample_ids)
@@ -813,99 +695,3 @@ def _runtime_versions() -> dict[str, str]:
         except PackageNotFoundError:
             result[package] = "unavailable"
     return dict(sorted(result.items()))
-
-
-def _input_hash(
-    request: ToolRequestV2,
-    spec: ToolPackageSpecV2,
-) -> str:
-    asset_ref = next(
-        (
-            ref
-            for ref in request.object_inputs
-            if ref.role == "graft_expression_asset"
-        ),
-        None,
-    )
-    payload = {
-        "tool_id": spec.tool_id,
-        "tool_version": spec.version,
-        "environment_spec_id": spec.environment_spec_id,
-        "mode": "expression_analysis",
-        "asset_manifest_sha256": (
-            None if asset_ref is None else asset_ref.sha256
-        ),
-        "object_inputs": [
-            {
-                "role": ref.role,
-                "schema_ref": ref.schema_ref,
-                "object_version": ref.object_version,
-                "sha256": ref.sha256,
-                "media_type": ref.media_type,
-            }
-            for ref in sorted(request.object_inputs, key=lambda value: value.role)
-        ],
-    }
-    return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
-
-
-def _manifest_payload(
-    request: ToolRequestV2,
-    spec: ToolPackageSpecV2,
-    run_id: str,
-    input_hash: str,
-    result_bytes: bytes,
-) -> dict[str, object]:
-    return {
-        "manifest_version": "0.1.0",
-        "tool_id": spec.tool_id,
-        "tool_version": spec.version,
-        "run_id": run_id,
-        "input_hash": input_hash,
-        "inputs": [
-            {
-                "input_id": ref.input_id,
-                "role": ref.role,
-                "schema_ref": ref.schema_ref,
-                "object_version": ref.object_version,
-                "sha256": ref.sha256,
-                "media_type": ref.media_type,
-            }
-            for ref in sorted(request.object_inputs, key=lambda value: value.role)
-        ],
-        "artifacts": [
-            {
-                "filename": "graft_expression_analysis_result.json",
-                "media_type": "application/json",
-                "sha256": hashlib.sha256(result_bytes).hexdigest(),
-            }
-        ],
-    }
-
-
-def _failed_run(
-    request: ToolRequestV2,
-    spec: ToolPackageSpecV2,
-    reasons: list[str],
-    *,
-    input_hash: str | None = None,
-) -> ToolRunV2:
-    return failed_v2_run(
-        request,
-        spec,
-        reasons,
-        result_schema_ref=RESULT_SCHEMA_REF,
-        fingerprint_input_key="graft_expression_inputs",
-        input_hash=input_hash,
-    )
-
-
-def _failed_v1_request(
-    request: ToolRequest,
-    spec: ToolPackageSpecV2,
-) -> ToolRunV2:
-    return _failed_run(
-        request_v2_from_v1(request),
-        spec,
-        ["tool_request_v2_required"],
-    )

@@ -5,7 +5,14 @@ from enum import StrEnum
 import re
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, StrictBool, StrictInt, field_validator, model_validator
+from pydantic import (
+    Field,
+    RootModel,
+    StrictBool,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimType,
@@ -13,6 +20,10 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ReportLanguage,
     SHA256_PATTERN,
     STATEMENT_REF_PATTERN,
+)
+from bridge.tool_packages.p0_11_public_safe_export.artifact_models import (
+    PUBLIC_SCHEMA_MODELS as ARTIFACT_PUBLIC_SCHEMA_MODELS,
+    PublicArtifactAuditResult,
 )
 from bridge.toolkit.contracts import EvidenceState, FrozenModel
 
@@ -205,10 +216,20 @@ class PublicExportResult(FrozenModel):
         return self
 
 
+class PublicSafeExportRunResult(
+    RootModel[PublicExportResult | PublicArtifactAuditResult]
+):
+    pass
+
+
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/public-export-policy-spec/v0.1": PublicExportPolicySpec,
     "bridge://schemas/public-export-request/v0.1": PublicExportRequest,
     "bridge://schemas/public-safe-report/v0.1": PublicSafeReport,
     "bridge://schemas/public-export-manifest/v0.1": PublicExportManifest,
     "bridge://schemas/public-export-result/v0.1": PublicExportResult,
+    (
+        "bridge://schemas/public-safe-export-run-result/v0.1"
+    ): PublicSafeExportRunResult,
 }
+PUBLIC_SCHEMA_MODELS.update(ARTIFACT_PUBLIC_SCHEMA_MODELS)

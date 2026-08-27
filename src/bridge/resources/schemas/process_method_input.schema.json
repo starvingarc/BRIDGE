@@ -1,0 +1,140 @@
+{
+  "$defs": {
+    "ObservationState": {
+      "enum": [
+        "candidate",
+        "unknown",
+        "unavailable"
+      ],
+      "title": "ObservationState",
+      "type": "string"
+    },
+    "ObservationStateAssignment": {
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "minLength": 1,
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/ObservationState"
+        },
+        "state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State Id"
+        }
+      },
+      "required": [
+        "observation_id",
+        "state"
+      ],
+      "title": "ObservationStateAssignment",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/process-method-input/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "biological_unit_assignment_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Assignment Sha256",
+      "type": "string"
+    },
+    "biological_unit_manifest_ref": {
+      "minLength": 1,
+      "title": "Biological Unit Manifest Ref",
+      "type": "string"
+    },
+    "biological_unit_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Manifest Sha256",
+      "type": "string"
+    },
+    "cell_state_profile_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Cell State Profile Id",
+      "type": "string"
+    },
+    "cell_state_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Cell State Profile Sha256",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "data_view_ref": {
+      "minLength": 1,
+      "title": "Data View Ref",
+      "type": "string"
+    },
+    "method_input_id": {
+      "pattern": "^process-method-input:[A-Za-z0-9._:-]+$",
+      "title": "Method Input Id",
+      "type": "string"
+    },
+    "method_input_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Input Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observation_ids_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Observation Ids Sha256",
+      "type": "string"
+    },
+    "observation_states": {
+      "items": {
+        "$ref": "#/$defs/ObservationStateAssignment"
+      },
+      "minItems": 1,
+      "title": "Observation States",
+      "type": "array"
+    },
+    "product_case_ref": {
+      "minLength": 1,
+      "title": "Product Case Ref",
+      "type": "string"
+    },
+    "product_case_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Product Case Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_input_id",
+    "method_input_version",
+    "product_case_ref",
+    "product_case_sha256",
+    "cell_state_profile_id",
+    "cell_state_profile_sha256",
+    "data_view_ref",
+    "observation_ids_sha256",
+    "biological_unit_manifest_ref",
+    "biological_unit_manifest_sha256",
+    "biological_unit_assignment_sha256",
+    "observation_states",
+    "created_at"
+  ],
+  "title": "ProcessMethodInput",
+  "type": "object"
+}

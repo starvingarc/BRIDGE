@@ -18,6 +18,7 @@ This directory contains the deterministic structured-claim verification package.
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/claim_verifier_task_card.md)
 - [Request example](../../../../examples/requests/p0_10_claim_verifier.json)
 - [Validation record](../../../../docs/validation/p0_10_claim_verifier_20260814.md)
+- [Raw JSON Schema runtime validation](../../../../docs/validation/p0_10_jsonschema_runtime_20260827.md)
 - [Package-owned method benchmark](../../../../docs/validation/p0_10_claim_verifier_benchmark_v0.1.md)
 
 Use `bridge-tool describe P0-10` for the installed version, schemas, environment

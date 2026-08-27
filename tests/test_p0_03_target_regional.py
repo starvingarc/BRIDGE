@@ -11,7 +11,11 @@ from jsonschema import Draft202012Validator
 from bridge.tool_packages._configurable_contracts import (
     StateRoleMap as SharedStateRoleMap,
 )
-from bridge.tool_packages.p0_03_target_regional.adapter import ROLE_MODELS, adapter
+from bridge.tool_packages.p0_03_target_regional.adapter import (
+    REQUIRED_ROLES,
+    ROLE_MODELS,
+    adapter,
+)
 from bridge.tool_packages.p0_03_target_regional.models import PUBLIC_SCHEMA_MODELS
 from bridge.toolkit.contracts import (
     ExecutionState,
@@ -38,6 +42,7 @@ ROLE_VERSIONS = {
     "biological_unit_assignment": "0.1.0",
     "annotation_vocabulary": "1.0.0",
     "reference_manifest": "1.0.0",
+    "target_regional_method_spec": "0.1.0",
 }
 
 
@@ -294,9 +299,7 @@ def _prepare(payloads: dict[str, dict]) -> None:
     qc = payloads["qc_readiness_profile"]
     qc["selected_data_view"] = deepcopy(view)
     assessment = payloads["target_regional_assessment_spec"]
-    assessment["state_role_map_sha256"] = _sha(
-        payloads["state_role_map"]
-    )
+    assessment["state_role_map_sha256"] = _sha(payloads["state_role_map"])
     vocabulary = payloads["annotation_vocabulary"]
     reference = payloads["reference_manifest"]
     reference["vocabulary_sha256"] = _sha(vocabulary)
@@ -362,7 +365,7 @@ def _request(
     root = tmp_path / "objects"
     root.mkdir()
     refs = []
-    for index, role in enumerate(ROLE_SCHEMAS, start=1):
+    for index, role in enumerate(sorted(REQUIRED_ROLES), start=1):
         path = root / f"{role}.json"
         raw = _canonical_bytes(values[role])
         path.write_bytes(raw)
@@ -380,7 +383,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-03",
         tool_id="P0-03",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
@@ -404,19 +407,20 @@ def _metric(run, name: str) -> MeasurementResultV2:
     artifact = next(
         item
         for item in run.artifacts
-        if item.kind == "measurement_result_v2"
-        and name in item.path.name
+        if item.kind == "measurement_result_v2" and name in item.path.name
     )
     return MeasurementResultV2.model_validate_json(
         artifact.path.read_text(encoding="utf-8")
     )
 
 
-def test_p0_03_declares_the_eleven_object_v2_contract() -> None:
+def test_p0_03_declares_aggregation_and_optional_expression_contracts() -> None:
     spec = ToolRegistry.load_default().describe("P0-03")
     assert isinstance(spec, ToolPackageSpecV2)
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
-    assert len(ROLE_MODELS) == 11
+    assert len(REQUIRED_ROLES) == 11
+    assert len(ROLE_MODELS) == 12
+    assert ROLE_SCHEMAS["target_regional_method_spec"].endswith("/v0.1")
     assert ROLE_SCHEMAS["cell_state_evidence_profile"].endswith("/v0.3")
     assert ROLE_MODELS["state_role_map"][1] is SharedStateRoleMap
     assert "bridge://schemas/state-role-map/v0.1" not in PUBLIC_SCHEMA_MODELS
@@ -450,7 +454,9 @@ def test_valid_run_publishes_only_three_normalized_ratio_types(
         "regional_fidelity_fraction",
         "whole_product_target_region_fraction",
     }
-    assert set(run.result["input_sha256_by_role"]) == set(ROLE_SCHEMAS)
+    assert set(run.result["input_sha256_by_role"]) == set(ROLE_MODELS)
+    assert run.result["input_sha256_by_role"]["target_regional_method_spec"] is None
+    assert run.result["method_artifact"] is None
     for artifact in run.artifacts:
         assert hashlib.sha256(artifact.path.read_bytes()).hexdigest() == artifact.sha256
 
@@ -483,14 +489,18 @@ def test_upstream_object_checksum_bindings_fail_closed(
     request = _mutate(
         request,
         role,
-        lambda payload: payload.setdefault("warnings", []).append("changed")
-        if role == "qc_readiness_profile"
-        else payload.update(
-            {"scientific_question": "changed"}
-            if role == "measurement_spec"
-            else {"product_scope": "changed"}
-            if role == "annotation_vocabulary"
-            else {"prohibited_source_families": ["source-family:changed"]}
+        lambda payload: (
+            payload.setdefault("warnings", []).append("changed")
+            if role == "qc_readiness_profile"
+            else payload.update(
+                {"scientific_question": "changed"}
+                if role == "measurement_spec"
+                else (
+                    {"product_scope": "changed"}
+                    if role == "annotation_vocabulary"
+                    else {"prohibited_source_families": ["source-family:changed"]}
+                )
+            )
         ),
     )
     result = ToolRegistry.load_default().check_eligibility(request)
@@ -512,6 +522,7 @@ def test_assessment_spec_binds_exact_shared_state_role_map_bytes(
     result = ToolRegistry.load_default().check_eligibility(request)
     assert not result.eligible
     assert "state_role_map_checksum_mismatch" in result.reason_codes
+
 
 @pytest.mark.parametrize(
     "case,expected",
@@ -596,7 +607,10 @@ def test_qc_vocabulary_and_reference_applicability_are_enforced(
             request,
             "target_regional_assessment_spec",
             lambda payload: payload.update(
-                {"composition_views": ["source_specific"], "source_ids": ["source:missing"]}
+                {
+                    "composition_views": ["source_specific"],
+                    "source_ids": ["source:missing"],
+                }
             ),
         )
     result = ToolRegistry.load_default().check_eligibility(request)
@@ -635,7 +649,9 @@ def test_unknown_and_ood_are_not_assessed_without_numbers(
     assert channel["target_identity_fraction"] is None
     assert channel["regional_fidelity_fraction"] is None
     assert channel["whole_product_target_region_fraction"] is None
-    for artifact in [item for item in run.artifacts if item.kind == "measurement_result_v2"]:
+    for artifact in [
+        item for item in run.artifacts if item.kind == "measurement_result_v2"
+    ]:
         metric = MeasurementResultV2.model_validate_json(artifact.path.read_text())
         assert metric.evidence_state.value == "unknown"
         assert metric.raw_value is None
@@ -653,9 +669,7 @@ def test_zero_target_related_denominator_is_unavailable_not_zero(
             if record["view"] == "reconciliation_state":
                 continue
             count = 100 if record["label"] == "state:gamma" else 0
-            record.update(
-                {"count": count, "fraction": count / 100, "denominator": 100}
-            )
+            record.update({"count": count, "fraction": count / 100, "denominator": 100})
 
     run = ToolRegistry.load_default().run(
         _mutate(
@@ -738,7 +752,7 @@ def test_v1_request_is_refused_with_a_typed_failure(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-03",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=tmp_path,
     )
     eligibility = adapter.check_eligibility(request, spec)

@@ -9,8 +9,13 @@ product profile.
 - **Precomputed evidence:** a checksummed GraftCase, GraftAssessmentSpec and
   GraftEvidenceBundle produce a descriptive aggregation.
 - **Expression analysis:** a checksummed H5AD manifest, external analysis spec,
-  reference panel and marker-program collection produce all-row descriptive
-  composition, sample-pseudobulk reference support and program means.
+  aggregation-matched reference panel and marker-program collection produce
+  all-row descriptive composition, sample-profile reference support and program
+  means. This mode accepts exactly one declared graft/animal/timepoint; multiple
+  sample IDs are technical samples, not independent biological replicates.
+- **Profile semantics:** raw counts produce `sample_pseudobulk`; declared
+  log-normalized values produce `sample_mean_log_expression`. The reference must
+  declare the same aggregation and `log1p_cp10k` value semantics.
 - **Boundary:** every provided result remains `candidate/shadow`;
   `domain_score=null` and graft evidence never backfills pre-transplant
   domains.

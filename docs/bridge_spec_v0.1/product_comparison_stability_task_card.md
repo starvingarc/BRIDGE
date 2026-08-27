@@ -5,20 +5,23 @@
 | Task ID | `TASK-COMPARISON` |
 | Task document version | `v0.1` |
 | Date | 2026-08-07 |
-| Package version | `P0-07 0.2.0` |
+| Package version | `P0-07 0.3.0` |
 | Runtime / scientific state | `implemented` / `candidate` |
 | Scope | 同阶段跨方案、真实时间序列及 batch/lot/preparation 稳定性 |
 | Primary unit | 独立 `sample/preparation` |
 | Current result | `bridge://schemas/product-comparison-stability-profile/v0.1` |
 | Detailed runtime contract | [P0-07 Tool Card](../../src/bridge/tool_packages/cards/P0-07.md) |
 
-> v0.2 engineering note: the first executable package consumes checksummed
-> `ComparisonStabilitySpec`, `ComparisonCaseManifest`, and two or more
-> precomputed `ProductEvidenceBundle` objects. It performs deterministic contract,
-> confounding and descriptive-delta checks only. Inferential statistics, Pareto
-> claims, winner/equivalence conclusions and biological thresholds remain
-> unavailable; missing evidence is never converted to zero and all scores remain
-> null.
+> v0.3 engineering note: the executable package retains the v0.2 comparability
+> and descriptive-delta profile. An optional typed method mode now runs the five
+> registry methods that fit the core Python environment: Hedges g,
+> Jensen-Shannon distance, Spearman profile correlation, one-dimensional
+> Wasserstein distance and robust dispersion. Other registered methods remain
+> independent benchmark candidates. No p-value, interval, Pareto,
+> winner/equivalence conclusion or biological threshold is produced; missing
+> evidence is never converted to zero and all scores remain null. Method tasks
+> inherit the comparison and source-evidence gates: only strictly comparable or
+> contextual cases can emit numeric estimates.
 
 ## 1. 任务目标与边界
 
@@ -127,9 +130,9 @@ flowchart LR
 ### 5.1 域级差异与效应量
 
 - 始终先报告原始量、分母和组内 sample/preparation 值，再报告域分数差异。
-- `BRIDGE Comparison Engine` 计算 raw delta、相对变化、配对或非配对效应量、区间和方向一致性。
-- 区间和 permutation/bootstrap 必须保留 preparation 层级；单样本内重采样只能表示测量/细胞抽样敏感性。
-- 标准化效应量只有在量纲和设计适用时发布，不能替代 raw delta。
+- 当前 `CMP-EFFECT` 在两个独立 sample/preparation 序列上计算 raw delta 与 Hedges g；每个序列必须精确覆盖 manifest 组内全部 bundle，禁止遗漏、重复或选择性引用；配对设计、相对变化、区间和方向一致性尚未实现。
+- 后续区间和 permutation/bootstrap 必须保留 preparation 层级；单样本内重采样只能表示测量/细胞抽样敏感性。
+- 标准化效应量不能替代 raw delta，零 pooled variance 时显式返回 `not_assessed`。
 - Pareto 结果不使用加权平均；方向、非劣 margin 和最小可分辨差异由各域 MeasurementSpec 冻结。
 
 ### 5.2 组成比较
@@ -167,9 +170,9 @@ flowchart LR
 
 至少报告：
 
-- 域指标的 preparation 间离散度和区间。
-- soft composition 的 Jensen-Shannon distance；发育图分布适用时可登记 graph-Wasserstein distance。
-- state/program pseudobulk correlation、距离和关键 driver 方向一致性。
+- 当前 `STAB-CV` 只接受显式 ratio scale、非负且 mean/median 分母可定义的 sample/preparation 序列；合法零观测不会自动被拒，分母不可定义时返回 `not_assessed`；区间尚未实现。
+- 当前 `CMP-JS` 调用 SciPy 计算相同标签 probability-mass 向量的 Jensen-Shannon distance，log base 必须大于 1；`CMP-WASS-1D` 仅处理一维有序标量分布且是唯一接受 series weights 的方法，不等同于 graph-Wasserstein。
+- 当前 `CMP-CORR` 调用 SciPy 计算 matched-feature pseudobulk 的 Spearman correlation；driver 方向一致性尚未实现。
 - 细胞和基因下采样漂移。
 - reference、annotation、preprocessing、assay 和方法 swap。
 - batch、cell line、donor、protocol 和 timepoint 的可估计 variance components。
@@ -239,10 +242,11 @@ flowchart LR
 ## 10. 拒答与降级规则
 
 - ProductDefinitionCard、目标阶段或 sample hierarchy 未确认：不运行正式比较。
+- 合同不相容、不可估计或 reference/OOD：方法层返回 typed `not_assessed`，不得绕过主比较门禁产生数值。
 - 合同不相容：返回 `not_comparable`，只允许并列画像。
 - protocol、lab、batch 或 cell line 完全混杂：返回 `not_estimable`，不归因于产品或方案。
 - 每组只有一个独立 preparation：返回 `descriptive_only`。
-- Evidence Sufficiency 不足：保留可用 raw metrics，相应结论返回 `unavailable` 或 `shadow`。
+- Evidence Sufficiency 不足：保留可用 raw metrics，相应结论返回 `unavailable` 或 `shadow`；被引用 source metric 为 `alert`、`missing`、`unknown` 或 `unavailable` 时，方法记录不得给出 numeric estimate。
 - mandatory domain 不完整：不生成 Pareto 方向结论。
 - 独立轨与联合轨冲突：返回 `integration_sensitive` 或 `unstable`。
 - 不同阶段、2D/3D 或不同 assay：只作 contextual comparison，不生成综合排序。

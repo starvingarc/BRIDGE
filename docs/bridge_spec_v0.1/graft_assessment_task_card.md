@@ -18,13 +18,22 @@ P0-12 `0.3.0` 通过同一个 `ToolRequestV2 validate/run` 接口提供三条路
 - 三个 checksummed JSON 对象继续支持预计算 graft evidence 的确定性汇总；
 - 五个 checksummed JSON 对象驱动 H5AD 读取、raw-count normalization、
   复用 P0-01 的表达矩阵结构/计数校验、对全部上传行的描述性 soft
-  composition、sample-pseudobulk reference correlation 与外部
+  composition、aggregation-matched sample-profile reference correlation 与外部
   marker-program mean；固定输出 `qc_state=not_reassessed`，不做置信区间。
+
+当前 expression mode 严格使用“一份 GraftCase = 一个已声明
+animal/graft/timepoint”：H5AD 每行必须显式携带且匹配该 `graft_id`。同一 graft
+可有多个技术 sample，但这些 sample 不构成独立 biological replicate。raw
+counts 按技术 sample 求和后生成 `sample_pseudobulk`；已声明的 log-normalized
+矩阵按技术 sample 求均值并明确记为 `sample_mean_log_expression`，不得混称
+pseudobulk。reference panel 必须声明并匹配该 aggregation 与 value semantics。
 
 表达分析所用 state probability columns、reference profiles、marker
 programs、coverage/容差、on-disk byte 上限与 `n_obs × n_vars` 逻辑矩阵
 上限均由版本化输入提供，并受 package ceiling 约束。organism、gene namespace、
-assay、value semantics 与 source family 进入显式绑定校验。
+assay、value semantics、profile aggregation 与 source family 进入显式绑定校验。
+每个 probability 必须真实位于 `[0,1]`；只允许 `0` 至 `1e-6` 的有限行和
+浮点误差，输入 probability 不做 clip 或修复。
 executor 不训练或调用 cell-state classifier，不在代码中冻结 biological
 vocabulary、marker、阈值或发布规则，也不从文件名推断 preparation
 linkage。两种 provided 结果都保持 `candidate/shadow`、
@@ -110,6 +119,8 @@ missing_fields / user_confirmations
 ```
 
 - `animal_id`、`graft_id` 或 timepoint 缺失时，Agent 只能运行不依赖该字段的模块。
+- 当前 v0.3.0 expression mode 依赖上述三项，因此任何一项缺失均 typed
+  refusal；precomputed compatibility mode 仍按自己的缺失状态规则工作。
 - `originating_preparation_id` 缺失时仍可生成独立 `GraftAssessment`，但 linkage 状态必须为 `provided_unlinked`。
 - 系统不得从文件名、目录、cluster 名或论文惯例推断 graft 关系。
 - 人源细胞已经过物理 sorting 或仅提供人源矩阵时，必须如实记录 species assignment 未重新评测。
@@ -141,8 +152,9 @@ flowchart LR
 
 ### 6.1 GraftCase、Species 与 QC
 
-- 当前 v0.3.0 的 GraftCase validator 只核对已声明 case/assay/linkage 字段与
-  checksummed 输入之间的绑定。
+- 当前 v0.3.0 expression mode 的 GraftCase validator 还要求一个明确
+  `animal/graft/timepoint`，并逐行验证 H5AD `graft_id` 与 case 完全一致；不从
+  sample、文件名或路径推断生物学单位。
 - H5AD 路径复用 P0-01 表达对象 validator 检查非空矩阵、唯一 cell/gene ID、
   finite/nonnegative 值和 raw-count 整数语义；它不运行 QC router，结果固定
   `qc_state=not_reassessed`。
@@ -154,7 +166,8 @@ flowchart LR
 Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，不预设单一分类器。首轮目录包括：
 
 - 内部 marker/gene-program evidence。
-- sample/state pseudobulk reference correlation。
+- aggregation-matched sample-profile reference correlation；raw-count
+  `sample_pseudobulk` 与 log-normalized `sample_mean_log_expression` 是不同语义。
 - CellTypist custom classifier、SingleR 和 scmap。
 - Seurat anchor transfer、MetaNeighbor、scVI/scANVI/scArches。
 - prediction set、方法分歧和 OOD/unknown。
@@ -173,7 +186,7 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 
 - 先使用 GW14-25 snRNA reference 输出 broad DA 与 neurogenesis state support，再在 DA 子集上调用通过验证的 fine mDA mapping。
 - 保存完整 `reference_support_distribution`，不只输出单个标签。
-- pseudobulk correlation、marker/program evidence 与一个监督或映射通道构成互补证据；同一模型的多个输出不算独立证据。
+- aggregation-matched sample-profile correlation、marker/program evidence 与一个监督或映射通道构成互补证据；同一模型的多个输出不算独立证据。
 - dopamine synthesis/handling、axon、synapse、electrophysiology-related、mitochondrial/oxidative 和 maturation programs 分开记录 measured expression 与 inferred activity。
 - CytoTRACE2、trajectory/pseudotime 和 adult reference mapping 只作 `shadow`；输出不得称“等效胎龄”“达到成人成熟”或真实功能。
 
@@ -232,7 +245,9 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 | --- | --- |
 | 用户未提供 graft | `graft_availability=not_provided`；移植前评估不受影响 |
 | graft 已提供但无 preparation linkage | 生成独立 `GraftAssessment`；`provided_unlinked` |
-| 缺少 animal/graft ID | 不发布个体间变异或推断性统计 |
+| expression mode 缺少 animal/graft/timepoint 或包含混合 graft | typed refusal，不发布结果 |
+| 多个 technical sample | 可输出逐 sample 描述性 profile，但不增加 biological replicate 数 |
+| reference aggregation/value semantics 不匹配 | typed refusal，不计算相关性 |
 | timepoint 与 cell line/protocol 完全混杂 | `descriptive_only`；显式列出混杂 |
 | sc/sn MeasurementSpec 不匹配 | 对应结果 `unavailable`，不复用另一模态阈值 |
 | species assignment 不可复核 | 保留提供方状态并标记 `not_reassessed` |
@@ -258,7 +273,7 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-P0-CORE-v0.1` | 当前 v0.3.0：AnnData/Scanpy、结构/计数校验、描述性组成、pseudobulk correlation 与 program mean | `health_check_passed` |
+| `ENV-P0-CORE-v0.1` | 当前 v0.3.0：AnnData/Scanpy、结构/计数校验、描述性组成、aggregation-matched sample-profile correlation 与 program mean | `health_check_passed` |
 | `ENV-GRAFT-PY-v0.1` | 未来 reference mapping、replicate-aware 统计与可视化 | `proposed` |
 | `ENV-GRAFT-CELLTYPIST-v0.1` | CellTypist custom classifier | `proposed_benchmark` |
 | `ENV-GRAFT-BIOC-v0.1` | SingleR、scmap、MetaNeighbor、Seurat、speckle/propeller、muscat 等 | `proposed_isolated` |
