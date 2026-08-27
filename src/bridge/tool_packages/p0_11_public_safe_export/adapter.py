@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +28,7 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ReportDraft,
 )
 from bridge.tool_packages.p0_11_public_safe_export.artifact_audit import (
+    LEAK_PATTERNS,
     ROLE_MODELS as ARTIFACT_ROLE_MODELS,
     check_eligibility as check_artifact_eligibility,
     is_artifact_audit_request,
@@ -80,30 +80,6 @@ FILENAMES = (
     "public_export_manifest.json",
     "public_export_result.json",
 )
-LEAK_PATTERNS = (
-    re.compile(
-        r"(?:/(?:data[0-9]+|mnt|srv|private|internal)/|/"
-        r"Users/|/home/|[A-Za-z]:\\Users\\)",
-        re.I,
-    ),
-    re.compile(
-        r"\b(?:source|server|compute)\s+host(?:name)?\s*"
-        r"(?:is|[:=])\s*[A-Za-z0-9._-]+\b",
-        re.I,
-    ),
-    re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I),
-    re.compile(
-        r"\b(?:api[_-]?key|password|secret|access[_-]?token|"
-        r"refresh[_-]?token|bearer)\b(?:\s*[:=]\s*|\s+)[^\s,;]+",
-        re.I,
-    ),
-    re.compile(r"\b(?:sk-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{8,})\b"),
-    re.compile(r"\b(?:evidence|product-case|sample|preparation):[A-Za-z0-9]", re.I),
-)
-
-
-
-
 @dataclass(frozen=True)
 class ExportBundle:
     public_report: PublicSafeReport

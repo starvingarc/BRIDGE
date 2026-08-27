@@ -8,7 +8,10 @@ import pytest
 
 from bridge.tool_packages.p0_11_public_safe_export.artifact_audit import (
     METHOD_IMPLEMENTATIONS,
+    _audit_artifact,
+    _audit_markdown,
     _audit_svg,
+    _leak_reasons,
     _manifest_ref_syntax_reasons,
     _url_allowed,
 )
@@ -337,3 +340,102 @@ def test_manifest_ref_check_is_syntax_only_not_provenance_authority() -> None:
     assert "manifest-ref syntax" in METHOD_IMPLEMENTATIONS[
         "METHOD-CUSTOM-DETERMINISTIC-RULES"
     ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "-----BEGIN PRIVATE KEY-----",
+        "/opt/review-canary/project/config",
+        "internal-host-canary",
+        "conda activate private-env-canary",
+    ],
+)
+def test_leak_scan_blocks_sensitive_canary_classes(text: str) -> None:
+    assert _leak_reasons(text) == ["public_artifact_leak_pattern_detected"]
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "127.0.0.1",
+        "127.0.0.01",
+        "localhost",
+        "compute-node",
+        "service.internal",
+        "service.localdomain",
+        "UPPER.example.org",
+    ],
+)
+def test_url_policy_rejects_non_public_hosts(host: str) -> None:
+    with pytest.raises(ValueError, match="canonical public DNS"):
+        PublicArtifactAuditPolicy(
+            object_version="0.1.0",
+            policy_id="public-artifact-policy:host-test",
+            policy_version="1.0.0",
+            active=True,
+            allowed_formats=["markdown"],
+            max_file_bytes=1_000_000,
+            allowed_url_schemes=["https"],
+            allowed_url_hosts=[host],
+            json_schema_refs={},
+            csv_column_allowlists={},
+        )
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "https://not-allowlisted.example/path",
+        "https://example.org@not-allowlisted.example/path",
+        "http://example.org/path",
+        "www.example.org/path",
+    ],
+)
+def test_markdown_extended_autolinks_are_checked(target: str) -> None:
+    checks = _audit_markdown(f"See {target}\n".encode(), _svg_policy())
+    url_check = next(
+        check
+        for check in checks
+        if check.method_id == "METHOD-URL-PARSER-ALLOWLIST"
+    )
+    assert url_check.state == "blocked"
+    assert url_check.reason_codes == ["public_artifact_url_not_allowed"]
+
+
+def test_markdown_allowed_bare_https_url_remains_valid() -> None:
+    checks = _audit_markdown(
+        b"See https://example.org/methods.\n",
+        _svg_policy(),
+    )
+    url_check = next(
+        check
+        for check in checks
+        if check.method_id == "METHOD-URL-PARSER-ALLOWLIST"
+    )
+    assert url_check.state == "passed"
+
+
+def test_audit_binds_checks_to_the_hashed_bytes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "report.md"
+    original = b"# Public report\n"
+    replacement = b"# Replaced report\n"
+    path.write_bytes(original)
+    item = PublicArtifactFileRef(
+        artifact_id="public-artifact:markdown",
+        source_artifact_ref="public-source:markdown@1.0.0",
+        path=path,
+        format="markdown",
+        media_type="text/markdown",
+        sha256=hashlib.sha256(original).hexdigest(),
+    )
+    monkeypatch.setattr(
+        "bridge.tool_packages.p0_11_public_safe_export.artifact_audit.read_regular_bytes",
+        lambda _: replacement,
+    )
+
+    with pytest.raises(OSError, match="changed before audit"):
+        _audit_artifact(item, _svg_policy())

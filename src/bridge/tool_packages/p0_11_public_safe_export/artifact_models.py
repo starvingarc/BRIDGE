@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+import ipaddress
 from pathlib import Path
 import re
 from typing import Literal, Self
@@ -21,6 +22,33 @@ HOST_PATTERN = re.compile(
     r"^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)"
     r"(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$"
 )
+PRIVATE_DNS_SUFFIXES = {
+    "corp",
+    "home",
+    "internal",
+    "intranet",
+    "invalid",
+    "lan",
+    "local",
+    "localdomain",
+    "localhost",
+    "onion",
+    "private",
+    "test",
+}
+
+
+def is_public_dns_name(host: str) -> bool:
+    if host != host.lower() or "." not in host or not HOST_PATTERN.fullmatch(host):
+        return False
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        return False
+    suffix = host.rsplit(".", 1)[-1]
+    return suffix[0].isalpha() and suffix not in PRIVATE_DNS_SUFFIXES
 
 
 class PublicArtifactFormat(StrEnum):
@@ -67,7 +95,9 @@ class PublicArtifactAuditPolicy(FrozenModel):
     allowed_formats: list[PublicArtifactFormat] = Field(min_length=1)
     max_file_bytes: StrictInt = Field(ge=1, le=50_000_000)
     allowed_url_schemes: list[Literal["https"]]
-    allowed_url_hosts: list[str]
+    allowed_url_hosts: list[str] = Field(
+        description="Lowercase public DNS names; IP, single-label and private suffixes are forbidden"
+    )
     json_schema_refs: dict[str, str]
     csv_column_allowlists: dict[str, list[str]]
 
@@ -85,8 +115,8 @@ class PublicArtifactAuditPolicy(FrozenModel):
     @field_validator("allowed_url_hosts")
     @classmethod
     def hosts_are_public_names(cls, value: list[str]) -> list[str]:
-        if any(not HOST_PATTERN.fullmatch(host) for host in value):
-            raise ValueError("allowed URL hosts must be DNS names")
+        if any(not is_public_dns_name(host) for host in value):
+            raise ValueError("allowed URL hosts must be canonical public DNS names")
         return value
 
     @field_validator("json_schema_refs")

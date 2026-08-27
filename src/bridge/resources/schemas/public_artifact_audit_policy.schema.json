@@ -27,6 +27,7 @@
       "type": "array"
     },
     "allowed_url_hosts": {
+      "description": "Lowercase public DNS names; IP, single-label and private suffixes are forbidden",
       "items": {
         "type": "string"
       },

@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import stat
 import subprocess
+import tempfile
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -46,6 +47,7 @@ from bridge.tool_packages.p0_11_public_safe_export.artifact_models import (
     PublicArtifactFileRef,
     PublicArtifactFormat,
     PublicArtifactManifest,
+    is_public_dns_name,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -94,8 +96,8 @@ EXPECTED_MEDIA_TYPES = {
 }
 LEAK_PATTERNS = (
     regex.compile(
-        r"(?:/(?:data[0-9]+|mnt|srv|private|internal)/|/"
-        r"Users/|/home/|[A-Za-z]:\\Users\\)",
+        r"(?<![A-Za-z0-9_+./:<-])/(?!/)(?:[A-Za-z0-9._-]+/)*"
+        r"[A-Za-z0-9._-]+|[A-Za-z]:\\Users\\",
         regex.I,
     ),
     regex.compile(
@@ -113,10 +115,32 @@ LEAK_PATTERNS = (
         regex.I,
     ),
     regex.compile(r"\b(?:sk-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{8,})\b"),
+    regex.compile(r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----"),
+    regex.compile(
+        r"\b(?:internal|private|intranet|compute|server|cluster|worker|node|gpu)"
+        r"[-_][A-Za-z0-9][A-Za-z0-9_-]*\b|"
+        r"\b[A-Za-z0-9][A-Za-z0-9_-]*[-_]"
+        r"(?:internal|private|intranet|compute|server|cluster|worker|node|gpu|amax)\b",
+        regex.I,
+    ),
+    regex.compile(
+        r"\b(?:ssh|scp|rsync)\s+(?:[A-Za-z0-9._-]+@)?"
+        r"[A-Za-z0-9][A-Za-z0-9_-]{1,62}\b",
+        regex.I,
+    ),
+    regex.compile(
+        r"\b(?:conda\s+activate|environment\s*(?:name|[:=])|"
+        r"venv\s*(?:name|[:=]))\s*[A-Za-z0-9._-]+\b",
+        regex.I,
+    ),
     regex.compile(
         r"\b(?:evidence|product-case|sample|preparation):[A-Za-z0-9]",
         regex.I,
     ),
+)
+BARE_MARKDOWN_URL = regex.compile(
+    r"(?<![A-Za-z0-9_])(?:https?://|www\.)[^\s<]+",
+    regex.I,
 )
 FORMULA_PREFIX = regex.compile(r"^\s*[=+@-]")
 NUMERIC_CELL = regex.compile(
@@ -498,8 +522,10 @@ def _audit_artifact(
     policy: PublicArtifactAuditPolicy,
 ) -> PublicArtifactAuditRecord:
     raw = read_regular_bytes(item.path)
+    if hashlib.sha256(raw).hexdigest() != item.sha256:
+        raise OSError("public artifact changed before audit")
     checks: list[PublicArtifactCheck] = []
-    detected_media, os_reasons = _os_checks(item)
+    detected_media, os_reasons = _os_checks(item, raw)
     checks.append(_check("METHOD-OS-CLI", os_reasons))
     format_reasons = []
     if detected_media not in EXPECTED_MEDIA_TYPES[item.format]:
@@ -561,31 +587,38 @@ def _check(
     )
 
 
-def _os_checks(item: PublicArtifactFileRef) -> tuple[str, list[str]]:
+def _os_checks(
+    item: PublicArtifactFileRef,
+    raw: bytes,
+) -> tuple[str, list[str]]:
     reasons: list[str] = []
-    try:
-        detected = subprocess.run(
-            ["file", "--brief", "--mime-type", "--", str(item.path)],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        ).stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        detected = "application/octet-stream"
-        reasons.append("public_artifact_file_command_failed")
-    try:
-        output = subprocess.run(
-            ["sha256sum", "--", str(item.path)],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        ).stdout
-        if output.split(maxsplit=1)[0] != item.sha256:
-            reasons.append("public_artifact_sha256sum_mismatch")
-    except (OSError, subprocess.SubprocessError, IndexError):
-        reasons.append("public_artifact_sha256sum_failed")
+    with tempfile.TemporaryDirectory(prefix="bridge-p0-11-audit-") as temp_dir:
+        snapshot = Path(temp_dir) / "artifact"
+        snapshot.write_bytes(raw)
+        snapshot.chmod(0o400)
+        try:
+            detected = subprocess.run(
+                ["file", "--brief", "--mime-type", "--", str(snapshot)],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            detected = "application/octet-stream"
+            reasons.append("public_artifact_file_command_failed")
+        try:
+            output = subprocess.run(
+                ["sha256sum", "--", str(snapshot)],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            ).stdout
+            if output.split(maxsplit=1)[0] != item.sha256:
+                reasons.append("public_artifact_sha256sum_mismatch")
+        except (OSError, subprocess.SubprocessError, IndexError):
+            reasons.append("public_artifact_sha256sum_failed")
     return detected, reasons
 
 
@@ -661,6 +694,13 @@ def _audit_markdown(
                 )
                 if target and not _url_allowed(target, policy):
                     url_reasons.append("public_artifact_url_not_allowed")
+            if token.type == "text":
+                for match in BARE_MARKDOWN_URL.finditer(token.content):
+                    target = match.group(0).rstrip(".,:;!?")
+                    if target.lower().startswith("www.") or not _url_allowed(
+                        target, policy
+                    ):
+                        url_reasons.append("public_artifact_url_not_allowed")
     except (UnicodeDecodeError, ValueError):
         parser_reasons.append("public_artifact_markdown_invalid")
     return [
@@ -688,6 +728,8 @@ def _url_allowed(
     return bool(
         parsed.scheme in policy.allowed_url_schemes
         and parsed.hostname in policy.allowed_url_hosts
+        and parsed.hostname is not None
+        and is_public_dns_name(parsed.hostname)
         and parsed.username is None
         and parsed.password is None
         and port in (None, 443)
