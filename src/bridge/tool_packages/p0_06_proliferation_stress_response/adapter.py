@@ -4,6 +4,8 @@ import hashlib
 from dataclasses import dataclass
 
 from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitAssignmentArtifact,
+    BiologicalUnitManifest,
     DevelopmentWindowSpec,
     ProductCase,
     ProductDefinitionCard,
@@ -22,6 +24,20 @@ from bridge.tool_packages._structured_runtime import (
 )
 from bridge.tool_packages._structured_runtime import (
     publish_json_bundle as _publish_bundle,
+)
+from bridge.tool_packages.p0_06_proliferation_stress_response.method_binding import (
+    ExpressionAssetError,
+    expression_asset_sha256,
+    method_binding_reasons,
+)
+from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
+    ProcessMethodBundle,
+    ProcessMethodInput,
+    ProcessMethodSpec,
+)
+from bridge.tool_packages.p0_06_proliferation_stress_response.method_runtime import (
+    ProcessMethodError,
+    run_process_methods,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     AnalysisScope,
@@ -42,10 +58,13 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
 from bridge.toolkit.contracts import (
     ArtifactManifest,
     CellStateEvidenceProfileV2,
+    CellStateEvidenceProfileV3,
     EligibilityResult,
     ExecutionState,
     FrozenModel,
     ImplementationState,
+    InputAsset,
+    InputLevel,
     StructuredInputRef,
     ToolPackageSpecV2,
     ToolRequest,
@@ -56,7 +75,11 @@ from bridge.toolkit.contracts import (
 RESULT_SCHEMA_REF = (
     "bridge://schemas/proliferation-stress-response-profile/v0.1"
 )
-ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
+CORE_AGGREGATION_METHOD_IDS = {
+    "METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION",
+    "METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION",
+}
+BASE_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
     "product_case": (
         "bridge://schemas/product-case/v0.1",
         "0.1.0",
@@ -94,7 +117,35 @@ ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
     ),
 }
 
-
+METHOD_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
+    **BASE_ROLE_MODELS,
+    "cell_state_evidence_profile": (
+        "bridge://schemas/cell-state-evidence-profile/v0.3",
+        "0.3.0",
+        CellStateEvidenceProfileV3,
+    ),
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        "0.1.0",
+        BiologicalUnitManifest,
+    ),
+    "biological_unit_assignment": (
+        "bridge://schemas/biological-unit-assignment/v0.1",
+        "0.1.0",
+        BiologicalUnitAssignmentArtifact,
+    ),
+    "process_method_spec": (
+        "bridge://schemas/process-method-spec/v0.1",
+        "0.1.0",
+        ProcessMethodSpec,
+    ),
+    "process_method_input": (
+        "bridge://schemas/process-method-input/v0.1",
+        "0.1.0",
+        ProcessMethodInput,
+    ),
+}
+ROLE_MODELS = METHOD_ROLE_MODELS
 
 
 @dataclass(frozen=True)
@@ -109,11 +160,12 @@ class ProliferationStressResponseAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
-        reasons = _envelope_reasons(request, spec)
-        loaded, loading_reasons = _load_inputs(request.object_inputs)
+        mode = _request_mode(request)
+        reasons = _envelope_reasons(request, spec, mode)
+        loaded, loading_reasons = _load_inputs(request.object_inputs, mode)
         reasons.extend(loading_reasons)
         if loaded is not None and not reasons:
-            reasons.extend(_binding_reasons(request, loaded, spec))
+            reasons.extend(_binding_reasons(request, loaded, spec, mode))
         reason_codes = sorted(set(reasons))
         return EligibilityResult(
             tool_id=request.tool_id,
@@ -127,7 +179,8 @@ class ProliferationStressResponseAdapter:
         eligibility = self.check_eligibility(request, spec)
         if not eligibility.eligible:
             return _failed_run(request, spec, eligibility.reason_codes)
-        loaded, reasons = _load_inputs(request.object_inputs)
+        mode = _request_mode(request)
+        loaded, reasons = _load_inputs(request.object_inputs, mode)
         if loaded is None or reasons:
             return _failed_run(request, spec, reasons)
 
@@ -136,6 +189,58 @@ class ProliferationStressResponseAdapter:
         result = _build_result(request, loaded, input_hash)
         result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
         result_sha = hashlib.sha256(result_bytes).hexdigest()
+        method_bundle: ProcessMethodBundle | None = None
+        method_bytes: bytes | None = None
+        method_sha: str | None = None
+        asset_sha: str | None = None
+        if mode == "method_runtime":
+            asset = request.assets[0]
+            try:
+                asset_sha = expression_asset_sha256(asset.path)
+                method_spec = single_object(
+                    request,
+                    loaded,
+                    "process_method_spec",
+                    ProcessMethodSpec,
+                )
+                method_input = single_object(
+                    request,
+                    loaded,
+                    "process_method_input",
+                    ProcessMethodInput,
+                )
+                assignment = single_object(
+                    request,
+                    loaded,
+                    "biological_unit_assignment",
+                    BiologicalUnitAssignmentArtifact,
+                )
+                method_bundle = run_process_methods(
+                    run_id=run_id,
+                    tool_version=spec.version,
+                    asset=asset,
+                    asset_sha256=asset_sha,
+                    method_spec=method_spec,
+                    method_spec_sha256=_input_sha(request, "process_method_spec"),
+                    program_spec_sha256=_input_sha(request, "program_spec"),
+                    method_input=method_input,
+                    method_input_sha256=_input_sha(request, "process_method_input"),
+                    assignment=assignment,
+                    assignment_sha256=_input_sha(request, "biological_unit_assignment"),
+                    biological_unit_manifest_sha256=_input_sha(
+                        request, "biological_unit_manifest"
+                    ),
+                    program_spec=single_object(
+                        request, loaded, "program_spec", ProgramSpec
+                    ),
+                    random_seed=request.random_seed,
+                )
+            except (ExpressionAssetError, ProcessMethodError) as exc:
+                return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+            method_bytes = canonical_json_bytes(
+                method_bundle.model_dump(mode="json"), indent=2
+            )
+            method_sha = hashlib.sha256(method_bytes).hexdigest()
         manifest_bytes = canonical_json_bytes(
             _artifact_manifest_payload(
                 request=request,
@@ -143,18 +248,23 @@ class ProliferationStressResponseAdapter:
                 run_id=run_id,
                 input_hash=input_hash,
                 result_sha=result_sha,
+                method_result_sha=method_sha,
             ),
             indent=2,
         )
+        payloads = {
+            "proliferation_stress_response_profile.json": result_bytes,
+            "artifact_manifest.json": manifest_bytes,
+        }
+        if method_bytes is not None:
+            payloads["process_method_bundle.json"] = method_bytes
         try:
             published = _publish_bundle(
                 request=request,
                 run_id=run_id,
-                payloads={
-                    "proliferation_stress_response_profile.json": result_bytes,
-                    "artifact_manifest.json": manifest_bytes,
-                },
-                inputs_are_unchanged=inputs_unchanged,
+                payloads=payloads,
+                inputs_are_unchanged=lambda refs: inputs_unchanged(refs)
+                and _expression_asset_unchanged(request.assets, asset_sha),
             )
         except PublicationError as exc:
             return _failed_run(
@@ -181,11 +291,25 @@ class ProliferationStressResponseAdapter:
             )
             for path in sorted(published.values(), key=lambda item: item.name)
         ]
+        method_reasons = (
+            sorted(
+                {
+                    reason
+                    for execution in method_bundle.executions
+                    for reason in execution.reason_codes
+                }
+            )
+            if method_bundle is not None
+            else []
+        )
+        execution_state = (
+            ExecutionState.PARTIAL if method_reasons else ExecutionState.SUCCEEDED
+        )
         return ToolRunV2(
             run_id=run_id,
             request=request,
             implementation_state=ImplementationState.IMPLEMENTED,
-            execution_state=ExecutionState.SUCCEEDED,
+            execution_state=execution_state,
             tool_version=spec.version,
             environment_spec_id=spec.environment_spec_id,
             input_hash=input_hash,
@@ -196,37 +320,69 @@ class ProliferationStressResponseAdapter:
             result_schema_ref=RESULT_SCHEMA_REF,
             result=result.model_dump(mode="json"),
             reason_codes=[],
-            warnings=[],
+            warnings=method_reasons,
         )
 
 
 adapter = ProliferationStressResponseAdapter()
 
 
+def _request_mode(request: ToolRequestV2) -> str:
+    method_only_roles = set(METHOD_ROLE_MODELS).difference(BASE_ROLE_MODELS)
+    if request.assets or any(
+        ref.role in method_only_roles for ref in request.object_inputs
+    ):
+        return "method_runtime"
+    return "legacy_aggregation"
+
+
 def _envelope_reasons(
-    request: ToolRequestV2, spec: ToolPackageSpecV2
+    request: ToolRequestV2,
+    spec: ToolPackageSpecV2,
+    mode: str,
 ) -> list[str]:
     reasons: list[str] = []
     if request.tool_version is not None and request.tool_version != spec.version:
         reasons.append("tool_version_mismatch")
-    if request.assets:
-        reasons.append("p0_06_expression_assets_forbidden")
     if request.measurement_spec_ref is not None:
         reasons.append("p0_06_measurement_spec_forbidden")
     if request.parameters:
         reasons.append("p0_06_parameters_forbidden")
+    role_models = (
+        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+    )
     roles = [ref.role for ref in request.object_inputs]
-    for role in ROLE_MODELS:
+    for role in role_models:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
-    if any(role not in ROLE_MODELS for role in roles):
+    if any(role not in role_models for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
-        contract = ROLE_MODELS.get(ref.role)
+        contract = role_models.get(ref.role)
         if contract is not None and ref.schema_ref != contract[0]:
             reasons.append("object_input_schema_mismatch")
         if contract is not None and ref.object_version != contract[1]:
             reasons.append("object_input_version_mismatch")
+    if mode == "legacy_aggregation":
+        if request.assets:
+            reasons.append("p0_06_expression_assets_forbidden")
+    elif len(request.assets) != 1:
+        reasons.append("exactly_one_expression_asset_required")
+    else:
+        asset = request.assets[0]
+        if (
+            asset.input_level is not InputLevel.ANALYSIS_READY
+            or asset.format != "h5ad"
+            or asset.matrix_semantics != "normalized_expression"
+            or asset.checksum is None
+        ):
+            reasons.append("analysis_ready_normalized_h5ad_required")
+        else:
+            try:
+                if expression_asset_sha256(asset.path) != asset.checksum:
+                    reasons.append("expression_asset_checksum_mismatch")
+            except ExpressionAssetError as exc:
+                reasons.append(exc.reason_code)
     if directory_state(request.output_dir) == "other":
         reasons.append("output_dir_not_regular_directory")
     return reasons
@@ -234,20 +390,26 @@ def _envelope_reasons(
 
 def _load_inputs(
     refs: list[StructuredInputRef],
+    mode: str,
 ) -> tuple[LoadedInputs | None, list[str]]:
+    role_models = (
+        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+    )
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: ROLE_MODELS.get(ref.role, ("", "", None))[2],
-        validate_model=_validate_object_version,
+        model_for=lambda ref: role_models.get(ref.role, ("", "", None))[2],
+        validate_model=lambda ref, value: _validate_object_version(
+            ref, value, role_models
+        ),
     )
 
 
-def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> None:
-    expected = (
-        "0.2.0"
-        if isinstance(value, CellStateEvidenceProfileV2)
-        else getattr(value, "object_version", None)
-    )
+def _validate_object_version(
+    ref: StructuredInputRef,
+    value: FrozenModel,
+    role_models: dict[str, tuple[str, str, type[FrozenModel]]],
+) -> None:
+    expected = role_models[ref.role][1]
     if expected != ref.object_version:
         from bridge.tool_packages._structured_runtime import StructuredInputError
 
@@ -258,6 +420,7 @@ def _binding_reasons(
     request: ToolRequestV2,
     loaded: LoadedInputs,
     spec: ToolPackageSpecV2,
+    mode: str,
 ) -> list[str]:
     product_case = single_object(request, loaded, "product_case", ProductCase)
     product_definition = single_object(
@@ -277,7 +440,9 @@ def _binding_reasons(
         request,
         loaded,
         "cell_state_evidence_profile",
-        CellStateEvidenceProfileV2,
+        CellStateEvidenceProfileV3
+        if mode == "method_runtime"
+        else CellStateEvidenceProfileV2,
     )
     protocol = single_object(request, loaded, "protocol_ir", ProtocolIR)
     bundle = single_object(
@@ -297,7 +462,7 @@ def _binding_reasons(
         reasons.append("product_context_binding_mismatch")
     if program_spec.development_window_ref != window.ref:
         reasons.append("development_window_binding_mismatch")
-    if sorted(program_spec.aggregation_method_ids) != sorted(spec.method_ids):
+    if set(program_spec.aggregation_method_ids) != CORE_AGGREGATION_METHOD_IDS:
         reasons.append("program_spec_method_binding_mismatch")
     if (
         cell_state.assay != product_case.assay
@@ -354,6 +519,57 @@ def _binding_reasons(
             or not set(record.process_step_ids).issubset(declared_steps)
         ):
             reasons.append("program_evidence_contract_mismatch")
+    if mode == "method_runtime":
+        asset = request.assets[0]
+        manifest = single_object(
+            request,
+            loaded,
+            "biological_unit_manifest",
+            BiologicalUnitManifest,
+        )
+        if protocol.independent_replicate_count > len(
+            manifest.independence_group_refs
+        ):
+            reasons.append(
+                "protocol_independent_replicate_count_exceeds_manifest"
+            )
+        try:
+            asset_sha = expression_asset_sha256(asset.path)
+        except ExpressionAssetError as exc:
+            reasons.append(exc.reason_code)
+        else:
+            reasons.extend(
+                method_binding_reasons(
+                    product_case=product_case,
+                    cell_state=cell_state,
+                    program_spec=program_spec,
+                    method_spec=single_object(
+                        request,
+                        loaded,
+                        "process_method_spec",
+                        ProcessMethodSpec,
+                    ),
+                    method_input=single_object(
+                        request,
+                        loaded,
+                        "process_method_input",
+                        ProcessMethodInput,
+                    ),
+                    manifest=manifest,
+                    assignment=single_object(
+                        request,
+                        loaded,
+                        "biological_unit_assignment",
+                        BiologicalUnitAssignmentArtifact,
+                    ),
+                    asset=asset,
+                    asset_sha256=asset_sha,
+                    input_sha256_by_role={
+                        ref.role: ref.sha256 for ref in request.object_inputs
+                    },
+                    tool_spec=spec,
+                )
+            )
     return reasons
 
 
@@ -362,6 +578,19 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
         "tool_id": spec.tool_id,
         "tool_version": spec.version,
         "environment_spec_id": spec.environment_spec_id,
+        "random_seed": request.random_seed,
+        "assets": [
+            {
+                "asset_id": asset.asset_id,
+                "format": asset.format,
+                "input_level": asset.input_level.value,
+                "checksum": asset.checksum,
+                "matrix_location": asset.matrix_location,
+                "matrix_semantics": asset.matrix_semantics,
+                "assay": asset.assay,
+            }
+            for asset in sorted(request.assets, key=lambda item: item.asset_id)
+        ],
         "object_inputs": [
             {
                 "role": ref.role,
@@ -543,7 +772,10 @@ def _build_result(
             )
         )
 
-    refs = sorted(request.object_inputs, key=lambda item: item.role)
+    refs = sorted(
+        (ref for ref in request.object_inputs if ref.role in BASE_ROLE_MODELS),
+        key=lambda item: item.role,
+    )
     bindings = [
         ProgramSourceBinding(
             input_id=ref.input_id,
@@ -579,7 +811,23 @@ def _artifact_manifest_payload(
     run_id: str,
     input_hash: str,
     result_sha: str,
+    method_result_sha: str | None,
 ) -> dict[str, object]:
+    artifacts: list[dict[str, str]] = [
+        {
+            "filename": "proliferation_stress_response_profile.json",
+            "media_type": "application/json",
+            "sha256": result_sha,
+        }
+    ]
+    if method_result_sha is not None:
+        artifacts.append(
+            {
+                "filename": "process_method_bundle.json",
+                "media_type": "application/json",
+                "sha256": method_result_sha,
+            }
+        )
     return {
         "manifest_version": "0.1.0",
         "tool_id": spec.tool_id,
@@ -597,14 +845,35 @@ def _artifact_manifest_payload(
             }
             for ref in sorted(request.object_inputs, key=lambda item: item.role)
         ],
-        "artifacts": [
+        "assets": [
             {
-                "filename": "proliferation_stress_response_profile.json",
-                "media_type": "application/json",
-                "sha256": result_sha,
+                "asset_id": asset.asset_id,
+                "sha256": asset.checksum,
+                "format": asset.format,
+                "matrix_semantics": asset.matrix_semantics,
             }
+            for asset in sorted(request.assets, key=lambda item: item.asset_id)
         ],
+        "artifacts": artifacts,
     }
+
+def _input_sha(request: ToolRequestV2, role: str) -> str:
+    return next(ref.sha256 for ref in request.object_inputs if ref.role == role)
+
+
+def _expression_asset_unchanged(
+    assets: list[InputAsset],
+    expected_sha256: str | None,
+) -> bool:
+    if expected_sha256 is None:
+        return not assets
+    if len(assets) != 1:
+        return False
+    try:
+        return expression_asset_sha256(assets[0].path) == expected_sha256
+    except ExpressionAssetError:
+        return False
+
 
 
 

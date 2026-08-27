@@ -29,6 +29,26 @@
       "title": "ProcessAttributionRule",
       "type": "object"
     },
+    "ProgramGeneTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "gene": {
+          "pattern": "^[^\\s]+$",
+          "title": "Gene",
+          "type": "string"
+        },
+        "weight": {
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "gene",
+        "weight"
+      ],
+      "title": "ProgramGeneTarget",
+      "type": "object"
+    },
     "ProgramRule": {
       "additionalProperties": false,
       "properties": {
@@ -73,6 +93,13 @@
             "type": "string"
           },
           "title": "Allowed State Ids",
+          "type": "array"
+        },
+        "g2m_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "G2M Genes",
           "type": "array"
         },
         "gene_set_ref": {
@@ -131,6 +158,20 @@
           },
           "title": "Review Outcomes",
           "type": "object"
+        },
+        "s_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "S Genes",
+          "type": "array"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ProgramGeneTarget"
+          },
+          "title": "Targets",
+          "type": "array"
         }
       },
       "required": [

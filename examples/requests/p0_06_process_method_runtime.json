@@ -1,0 +1,123 @@
+{
+  "assets": [
+    {
+      "assay": "scRNA-seq",
+      "asset_id": "asset:normalized-product-view",
+      "checksum": "1111111111111111111111111111111111111111111111111111111111111111",
+      "format": "h5ad",
+      "input_level": "analysis_ready",
+      "matrix_location": "X",
+      "matrix_semantics": "normalized_expression",
+      "metadata": {},
+      "path": "/absolute/path/to/normalized_product_view.h5ad"
+    }
+  ],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "product-case",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_case.json",
+      "role": "product_case",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "input_id": "product-definition",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/product_definition_card.json",
+      "role": "product_definition_card",
+      "schema_ref": "bridge://schemas/product-definition-card/v0.1",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "input_id": "development-window",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/development_window_spec.json",
+      "role": "development_window_spec",
+      "schema_ref": "bridge://schemas/development-window-spec/v0.1",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
+      "input_id": "program-spec",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/program_spec.json",
+      "role": "program_spec",
+      "schema_ref": "bridge://schemas/program-spec/v0.1",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    {
+      "input_id": "cell-state-profile",
+      "media_type": "application/json",
+      "object_version": "0.3.0",
+      "path": "/absolute/path/to/cell_state_evidence_profile_v3.json",
+      "role": "cell_state_evidence_profile",
+      "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.3",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+    },
+    {
+      "input_id": "protocol",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/protocol_ir.json",
+      "role": "protocol_ir",
+      "schema_ref": "bridge://schemas/protocol-ir/v0.1",
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    {
+      "input_id": "program-evidence",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/program_evidence_bundle.json",
+      "role": "program_evidence_bundle",
+      "schema_ref": "bridge://schemas/program-evidence-bundle/v0.1",
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+    },
+    {
+      "input_id": "biological-unit-manifest",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/biological_unit_manifest.json",
+      "role": "biological_unit_manifest",
+      "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    {
+      "input_id": "biological-unit-assignment",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/biological_unit_assignment.json",
+      "role": "biological_unit_assignment",
+      "schema_ref": "bridge://schemas/biological-unit-assignment/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "process-method-spec",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/process_method_spec.json",
+      "role": "process_method_spec",
+      "schema_ref": "bridge://schemas/process-method-spec/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "process-method-input",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/process_method_input.json",
+      "role": "process_method_input",
+      "schema_ref": "bridge://schemas/process-method-input/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "output_dir": "/absolute/path/to/output",
+  "parameters": {},
+  "random_seed": 17,
+  "request_id": "example-p0-06-method-runtime",
+  "tool_id": "P0-06",
+  "tool_version": "0.3.0"
+}
