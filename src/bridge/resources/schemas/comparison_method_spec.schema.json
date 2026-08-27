@@ -74,7 +74,7 @@
     },
     "jensen_shannon_base": {
       "default": 2.0,
-      "exclusiveMinimum": 0,
+      "exclusiveMinimum": 1,
       "title": "Jensen Shannon Base",
       "type": "number"
     },

@@ -4,6 +4,11 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
+from bridge.tool_packages.p0_07_product_comparison_stability import (
+    methods as comparison_methods,
+)
 from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     ComparisonMethodBundle,
     ComparisonMethodExecutionState,
@@ -11,6 +16,7 @@ from bridge.tool_packages.p0_07_product_comparison_stability.models import (
 )
 from bridge.toolkit.contracts import ExecutionState
 from tests.test_p0_07_product_comparison_stability import (
+    _bundle,
     _payloads,
     _ref,
     _write_request,
@@ -99,6 +105,7 @@ def _method_payloads() -> dict[str, object]:
             "labels": baseline_labels,
             "values": [0.4, 0.5],
             "weights": None,
+            "measurement_scale": "ratio",
             "unit": "fraction",
             "denominator_kind": "eligible_product_cells",
             "source_bundle_refs": baseline_refs,
@@ -112,6 +119,7 @@ def _method_payloads() -> dict[str, object]:
             "labels": comparator_labels,
             "values": [0.6, 0.7],
             "weights": None,
+            "measurement_scale": "ratio",
             "unit": "fraction",
             "denominator_kind": "eligible_product_cells",
             "source_bundle_refs": comparator_refs,
@@ -211,6 +219,21 @@ def _method_payloads() -> dict[str, object]:
     return payloads
 
 
+def _load_method_bundle(run: object) -> ComparisonMethodBundle:
+    path = next(
+        item.path
+        for item in run.artifacts
+        if item.kind == "comparison_method_bundle"
+    )
+    return ComparisonMethodBundle.model_validate_json(path.read_text())
+
+
+def _refresh_manifest_checksum(payloads: dict[str, object]) -> None:
+    payloads["comparison_method_input"]["comparison_manifest_sha256"] = (
+        _payload_sha256(payloads["comparison_case_manifest"])
+    )
+
+
 def test_real_comparison_methods_execute_and_are_deterministic(
     tmp_path: Path,
 ) -> None:
@@ -224,11 +247,7 @@ def test_real_comparison_methods_execute_and_are_deterministic(
     assert first.execution_state is ExecutionState.SUCCEEDED
     assert first.run_id == second.run_id
     assert len(first.artifacts) == 2
-    bundle_path = next(
-        item.path for item in first.artifacts
-        if item.kind == "comparison_method_bundle"
-    )
-    bundle = ComparisonMethodBundle.model_validate_json(bundle_path.read_text())
+    bundle = _load_method_bundle(first)
     assert set(bundle.selected_method_ids) == set(ComparisonMethodId)
     assert all(
         item.execution_state is ComparisonMethodExecutionState.SUCCEEDED
@@ -287,17 +306,220 @@ def test_method_runtime_rejects_sample_value_not_in_source_bundle(
     )
 
 
-def test_method_runtime_rejects_nonpositive_dispersion_series(
+def test_robust_dispersion_accepts_ratio_scale_with_zero_observation(
     tmp_path: Path,
 ) -> None:
     payloads = _method_payloads()
+    metric = payloads["bundle-baseline-1"]["metrics"][0]
+    metric["raw_value"] = 0.0
+    metric["interval"] = [0.0, 0.05]
     payloads["comparison_method_input"]["series"][0]["values"][0] = 0.0
+    registry, request = _write_request(tmp_path, payloads)
+
+    assert registry.check_eligibility(request).eligible
+    bundle = _load_method_bundle(registry.run(request))
+    record = next(
+        item
+        for item in bundle.records
+        if item.method_id is ComparisonMethodId.ROBUST_DISPERSION
+    )
+
+    assert record.assessment_state == "available"
+    assert set(record.estimates) == {
+        "coefficient_of_variation",
+        "median_absolute_deviation_ratio",
+    }
+
+
+def test_robust_dispersion_zero_mean_is_typed_not_assessed(
+    tmp_path: Path,
+) -> None:
+    payloads = _method_payloads()
+    for key in ("bundle-baseline-1", "bundle-baseline-2"):
+        metric = payloads[key]["metrics"][0]
+        metric["raw_value"] = 0.0
+        metric["interval"] = [0.0, 0.0]
+    payloads["comparison_method_input"]["series"][0]["values"] = [0.0, 0.0]
+    registry, request = _write_request(tmp_path, payloads)
+
+    assert registry.check_eligibility(request).eligible
+    bundle = _load_method_bundle(registry.run(request))
+    record = next(
+        item
+        for item in bundle.records
+        if item.method_id is ComparisonMethodId.ROBUST_DISPERSION
+    )
+
+    assert record.assessment_state == "not_assessed"
+    assert record.reason_codes == ["coefficient_of_variation_zero_mean"]
+
+
+def test_methods_follow_reference_ood_gate_before_numeric_execution(
+    tmp_path: Path,
+) -> None:
+    payloads = _method_payloads()
+    payloads["comparison_case_manifest"]["groups"][1]["role"] = "reference_ood"
+    _refresh_manifest_checksum(payloads)
+    registry, request = _write_request(tmp_path, payloads)
+
+    assert registry.check_eligibility(request).eligible
+    run = registry.run(request)
+    bundle = _load_method_bundle(run)
+
+    assert run.result["comparison_eligibility"] == "reference_or_ood"
+    assert all(item.assessment_state == "not_assessed" for item in bundle.records)
+    assert {
+        reason
+        for item in bundle.records
+        for reason in item.reason_codes
+    } == {"comparison_method_reference_or_ood"}
+
+
+def test_methods_propagate_alert_source_state(tmp_path: Path) -> None:
+    payloads = _method_payloads()
+    payloads["bundle-baseline-1"]["metrics"][0]["evidence_state"] = "alert"
+    registry, request = _write_request(tmp_path, payloads)
+
+    assert registry.check_eligibility(request).eligible
+    bundle = _load_method_bundle(registry.run(request))
+
+    assert all(item.assessment_state == "not_assessed" for item in bundle.records)
+    assert {
+        reason
+        for item in bundle.records
+        for reason in item.reason_codes
+    } == {"comparison_method_source_alert"}
+
+
+def test_methods_propagate_missing_source_state(tmp_path: Path) -> None:
+    payloads = _method_payloads()
+    metric = payloads["bundle-baseline-1"]["metrics"][0]
+    metric.update(
+        raw_value=None,
+        interval=None,
+        denominator_value=None,
+        evidence_state="missing",
+    )
+    payloads["comparison_method_spec"]["tasks"] = [
+        item
+        for item in payloads["comparison_method_spec"]["tasks"]
+        if item["method_id"] == "CMP-JS"
+    ]
+    payloads["comparison_method_input"]["series"] = [
+        item
+        for item in payloads["comparison_method_input"]["series"]
+        if item["semantics"] == "probability_mass"
+    ]
+    registry, request = _write_request(tmp_path, payloads)
+
+    assert registry.check_eligibility(request).eligible
+    record = _load_method_bundle(registry.run(request)).records[0]
+
+    assert record.assessment_state == "not_assessed"
+    assert record.reason_codes == ["comparison_method_source_missing"]
+
+
+def test_sample_series_must_cover_every_manifest_bundle(tmp_path: Path) -> None:
+    payloads = _method_payloads()
+    extra = _bundle("baseline-3", "group-baseline", 0.9)
+    payloads["bundle-baseline-3"] = extra
+    payloads["comparison_case_manifest"]["groups"][0]["bundle_refs"].append(
+        _ref(extra["bundle_id"])
+    )
+    _refresh_manifest_checksum(payloads)
     registry, request = _write_request(tmp_path, payloads)
 
     eligibility = registry.check_eligibility(request)
 
     assert not eligibility.eligible
     assert (
-        "robust_dispersion_positive_values_required"
+        "comparison_series_source_bundle_set_mismatch"
         in eligibility.reason_codes
     )
+
+
+def test_sample_series_rejects_duplicate_source_bundle(tmp_path: Path) -> None:
+    payloads = _method_payloads()
+    refs = payloads["comparison_method_input"]["series"][0][
+        "source_bundle_refs"
+    ]
+    refs.append(refs[0])
+    registry, request = _write_request(tmp_path, payloads)
+
+    eligibility = registry.check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == ["structured_input_schema_invalid"]
+
+
+@pytest.mark.parametrize("base", [0.5, 1.0])
+def test_jensen_shannon_rejects_non_distance_log_base(
+    tmp_path: Path,
+    base: float,
+) -> None:
+    payloads = _method_payloads()
+    payloads["comparison_method_spec"]["jensen_shannon_base"] = base
+    registry, request = _write_request(tmp_path, payloads)
+
+    eligibility = registry.check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == [
+        "structured_input_schema_validation_failed"
+    ]
+
+
+def test_jensen_shannon_nonfinite_result_is_typed_not_assessed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payloads = _method_payloads()
+    monkeypatch.setattr(
+        comparison_methods.distance,
+        "jensenshannon",
+        lambda *args, **kwargs: float("nan"),
+    )
+    registry, request = _write_request(tmp_path, payloads)
+
+    bundle = _load_method_bundle(registry.run(request))
+    record = next(
+        item
+        for item in bundle.records
+        if item.method_id is ComparisonMethodId.JENSEN_SHANNON
+    )
+
+    assert record.assessment_state == "not_assessed"
+    assert record.reason_codes == ["jensen_shannon_nonfinite"]
+
+
+def test_non_wasserstein_series_rejects_weights(tmp_path: Path) -> None:
+    payloads = _method_payloads()
+    payloads["comparison_method_input"]["series"][2]["weights"] = [
+        1.0,
+        1.0,
+        1.0,
+    ]
+    registry, request = _write_request(tmp_path, payloads)
+
+    eligibility = registry.check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == ["structured_input_schema_invalid"]
+
+
+def test_robust_dispersion_requires_ratio_scale(tmp_path: Path) -> None:
+    payloads = _method_payloads()
+    payloads["comparison_method_input"]["series"][0][
+        "measurement_scale"
+    ] = "non_ratio"
+    registry, request = _write_request(tmp_path, payloads)
+
+    bundle = _load_method_bundle(registry.run(request))
+    record = next(
+        item
+        for item in bundle.records
+        if item.method_id is ComparisonMethodId.ROBUST_DISPERSION
+    )
+
+    assert record.assessment_state == "not_assessed"
+    assert record.reason_codes == ["robust_dispersion_ratio_scale_required"]

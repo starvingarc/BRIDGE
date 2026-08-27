@@ -34,6 +34,7 @@ from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     ComparisonSeriesSemantics,
     ComparisonStabilitySpec,
     InputChecksumBinding,
+    ProductComparisonStabilityProfile,
     ProductEvidenceBundle,
 )
 from bridge.toolkit.contracts import (
@@ -157,6 +158,12 @@ class ProductComparisonStabilityAdapter:
         method_bundle: ComparisonMethodBundle | None = None
         method_bytes: bytes | None = None
         if mode == "method_runtime":
+            method_input = single_object(
+                request,
+                loaded,
+                "comparison_method_input",
+                ComparisonMethodInput,
+            )
             method_bundle = run_comparison_methods(
                 run_id=run_id,
                 tool_version=spec.version,
@@ -170,15 +177,11 @@ class ProductComparisonStabilityAdapter:
                 method_spec_sha256=_input_sha(
                     request, "comparison_method_spec"
                 ),
-                method_input=single_object(
-                    request,
-                    loaded,
-                    "comparison_method_input",
-                    ComparisonMethodInput,
-                ),
+                method_input=method_input,
                 method_input_sha256=_input_sha(
                     request, "comparison_method_input"
                 ),
+                series_gate_reasons=_series_gate_reasons(method_input, result),
             )
             method_bytes = canonical_json_bytes(
                 method_bundle.model_dump(mode="json"), indent=2
@@ -470,6 +473,11 @@ def _method_binding_reasons(
         ):
             reasons.add("comparison_series_metric_contract_mismatch")
         if series.semantics is ComparisonSeriesSemantics.SAMPLE_VALUES:
+            group = group_by_id.get(series.group_id)
+            if group is None or {
+                item.ref for item in series.source_bundle_refs
+            } != {item.ref for item in group.bundle_refs}:
+                reasons.add("comparison_series_source_bundle_set_mismatch")
             source_by_label = {
                 item.product_case.sample_or_preparation_ref.ref: item
                 for item in bound_sources
@@ -512,12 +520,6 @@ def _method_binding_reasons(
             for item in bound_series
         ):
             reasons.add("comparison_method_series_semantics_mismatch")
-        if task.method_id is ComparisonMethodId.ROBUST_DISPERSION and any(
-            value <= 0
-            for item in bound_series
-            for value in item.values
-        ):
-            reasons.add("robust_dispersion_positive_values_required")
         if len(bound_series) == 2:
             left, right = bound_series
             if (
@@ -541,6 +543,21 @@ def _method_binding_reasons(
             } and left.labels != right.labels:
                 reasons.add("comparison_method_feature_labels_mismatch")
     return sorted(reasons)
+
+
+def _series_gate_reasons(
+    method_input: ComparisonMethodInput,
+    result: ProductComparisonStabilityProfile,
+) -> dict[str, str]:
+    states = {
+        (item.group_id, item.metric_id): item.value_state
+        for item in result.group_summaries
+    }
+    return {
+        series.series_id: f"comparison_method_source_{state}"
+        for series in method_input.series
+        if (state := states[(series.group_id, series.metric_id)]) != "shadow"
+    }
 
 
 def _input_sha(request: ToolRequestV2, role: str) -> str:

@@ -21,22 +21,31 @@ selected from the P0-07 registry:
 | `STAB-CV` | NumPy CV and median absolute-deviation ratio | within-group dispersion |
 
 The method input binds every series to the comparison manifest, metric contract,
-group, source bundles, analysis-unit labels and SHA-256. Sample-level values must
-also equal the cited source-bundle metrics. Outputs include method and package
-provenance plus typed `available` or `not_assessed` states.
+group, source bundles, analysis-unit labels and SHA-256. Sample-level series
+must cover the complete manifest group exactly once and equal the cited bundle
+metrics. Method execution inherits the shared comparability and source-evidence
+gates. Jensen-Shannon uses a base greater than one; only Wasserstein series accept
+weights; STAB-CV requires an explicit ratio scale. Outputs include method and
+package provenance plus typed `available` or `not_assessed` states.
 
 ## Verification
 
-- focused P0-07 and registry suite: **27 passed**;
-- complete repository suite: **1,230 passed**, with eight pre-existing dependency warnings;
-- wheel-only P0-07 method smoke: **3 passed**;
-- installed module resolved from the unpacked wheel, outside the source tree;
-- installed P0-07 exposed version `0.3.0`, eight registered method references and two input modes;
-- tool discovery: exactly **12** packages;
-- public Schema registry: **99** entries, including three new P0-07 method contracts;
-- wheel SHA-256: `8be5ea48acc950aabc62b6e22cf81977ad164b4d747c096f2d401f7136b83ad5`;
-- knowledge snapshot: valid, no dangling method/source references, zero formal-eligible methods;
-- generated Schema/Card checks and `git diff --check`: passed.
+The focused P0-07 suite covers deterministic execution plus these closure
+adversaries:
+
+- reference/OOD comparability blocks every numeric method record;
+- alert and missing source evidence propagate to typed `not_assessed`;
+- omitted and duplicate source bundles are refused for sample-value series;
+- Jensen-Shannon bases at or below one fail schema validation, and non-finite
+  library output becomes typed `not_assessed`;
+- non-Wasserstein weights are refused;
+- ratio-scale zero observations remain executable when the CV and MAD-ratio
+  denominators are defined, while non-ratio inputs are `not_assessed`.
+
+Schema export is checked for idempotence. Repository policy, Tool Card
+validation, privacy/path scans and `git diff --check` are run from the isolated
+server worktree. Exact commit and tree identifiers belong in the PR evidence,
+not this long-lived document.
 
 ## Retained boundaries
 

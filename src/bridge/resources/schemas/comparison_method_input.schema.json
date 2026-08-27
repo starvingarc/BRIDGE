@@ -28,6 +28,16 @@
           "title": "Labels",
           "type": "array"
         },
+        "measurement_scale": {
+          "default": "unknown",
+          "enum": [
+            "ratio",
+            "non_ratio",
+            "unknown"
+          ],
+          "title": "Measurement Scale",
+          "type": "string"
+        },
         "metric_id": {
           "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
           "title": "Metric Id",

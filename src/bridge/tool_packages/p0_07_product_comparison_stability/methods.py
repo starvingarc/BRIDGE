@@ -61,8 +61,9 @@ def _values(series: ComparisonMethodSeries) -> np.ndarray:
 def _not_assessed(
     task: ComparisonMethodTask,
     series: list[ComparisonMethodSeries],
-    reason: str,
+    reasons: str | list[str],
 ) -> ComparisonMethodRecord:
+    reason_codes = [reasons] if isinstance(reasons, str) else sorted(set(reasons))
     return ComparisonMethodRecord(
         task_id=task.task_id,
         method_id=task.method_id,
@@ -73,7 +74,7 @@ def _not_assessed(
         raw_delta_unit=None,
         n_values=[len(item.values) for item in series],
         assessment_state="not_assessed",
-        reason_codes=[reason],
+        reason_codes=reason_codes,
     )
 
 
@@ -112,6 +113,8 @@ def _jensen_shannon(
             base=spec.jensen_shannon_base,
         )
     )
+    if not math.isfinite(estimate):
+        return _not_assessed(task, series, "jensen_shannon_nonfinite")
     return _available(
         task,
         series,
@@ -192,17 +195,24 @@ def _robust_dispersion(
     task: ComparisonMethodTask,
     series: list[ComparisonMethodSeries],
 ) -> ComparisonMethodRecord:
+    if series[0].measurement_scale != "ratio":
+        return _not_assessed(task, series, "robust_dispersion_ratio_scale_required")
     values = _values(series[0])
+    if np.any(values < 0):
+        return _not_assessed(task, series, "robust_dispersion_negative_value")
     mean = float(values.mean())
     median = float(np.median(values))
     if mean == 0.0:
         return _not_assessed(task, series, "coefficient_of_variation_zero_mean")
+    if median == 0.0:
+        return _not_assessed(
+            task, series, "median_absolute_deviation_ratio_zero_median"
+        )
+    mad = float(np.median(np.abs(values - median)))
     estimates = {
-        "coefficient_of_variation": float(values.std(ddof=1) / abs(mean))
+        "coefficient_of_variation": float(values.std(ddof=1) / mean),
+        "median_absolute_deviation_ratio": mad / median,
     }
-    if median != 0.0:
-        mad = float(np.median(np.abs(values - median)))
-        estimates["median_absolute_deviation_ratio"] = mad / abs(median)
     return _available(
         task,
         series,
@@ -216,10 +226,25 @@ def _execute_task(
     series_by_id: dict[str, ComparisonMethodSeries],
     spec: ComparisonMethodSpec,
     comparison_eligibility: str,
+    series_gate_reasons: dict[str, str],
 ) -> ComparisonMethodRecord:
     series = [series_by_id[item] for item in task.series_ids]
-    if comparison_eligibility in {"not_comparable", "not_estimable"}:
-        return _not_assessed(task, series, "comparison_method_not_estimable")
+    if comparison_eligibility not in {
+        "strictly_comparable",
+        "contextual_comparator",
+    }:
+        return _not_assessed(
+            task,
+            series,
+            f"comparison_method_{comparison_eligibility}",
+        )
+    source_reasons = [
+        series_gate_reasons[item]
+        for item in task.series_ids
+        if item in series_gate_reasons
+    ]
+    if source_reasons:
+        return _not_assessed(task, series, source_reasons)
     if task.method_id is ComparisonMethodId.JENSEN_SHANNON:
         return _jensen_shannon(task, series, spec)
     if task.method_id is ComparisonMethodId.WASSERSTEIN_1D:
@@ -240,6 +265,7 @@ def run_comparison_methods(
     method_spec_sha256: str,
     method_input: ComparisonMethodInput,
     method_input_sha256: str,
+    series_gate_reasons: dict[str, str],
 ) -> ComparisonMethodBundle:
     series_by_id = {item.series_id: item for item in method_input.series}
     records = [
@@ -248,6 +274,7 @@ def run_comparison_methods(
             series_by_id,
             method_spec,
             comparison_eligibility,
+            series_gate_reasons,
         )
         for task in method_spec.tasks
     ]

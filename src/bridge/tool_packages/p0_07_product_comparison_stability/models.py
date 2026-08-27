@@ -549,7 +549,7 @@ class ComparisonMethodSpec(FrozenModel):
     comparison_ref: VersionedObjectRef
     status: Literal["candidate"]
     tasks: list[ComparisonMethodTask] = Field(min_length=1)
-    jensen_shannon_base: StrictFloat = Field(default=2.0, gt=0)
+    jensen_shannon_base: StrictFloat = Field(default=2.0, gt=1)
     active: bool
 
     @field_validator("tasks")
@@ -560,14 +560,6 @@ class ComparisonMethodSpec(FrozenModel):
         _unique([item.task_id for item in value], "comparison method task IDs")
         return value
 
-    @field_validator("jensen_shannon_base")
-    @classmethod
-    def logarithm_base_is_valid(cls, value: float) -> float:
-        if value == 1.0:
-            raise ValueError("Jensen-Shannon logarithm base cannot equal one")
-        return value
-
-
 class ComparisonMethodSeries(FrozenModel):
     series_id: str = Field(pattern=r"^comparison-series:[A-Za-z0-9._:-]+$")
     group_id: str = Field(pattern=OBJECT_ID_PATTERN)
@@ -576,6 +568,7 @@ class ComparisonMethodSeries(FrozenModel):
     labels: list[str] = Field(min_length=2)
     values: list[Numeric] = Field(min_length=2)
     weights: list[StrictFloat] | None = None
+    measurement_scale: Literal["ratio", "non_ratio", "unknown"] = "unknown"
     unit: str = Field(min_length=1)
     denominator_kind: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
     source_bundle_refs: list[VersionedObjectRef] = Field(min_length=1)
@@ -615,6 +608,10 @@ class ComparisonMethodSeries(FrozenModel):
                 raise ValueError("series weights must be finite and non-negative")
             if sum(self.weights) <= 0:
                 raise ValueError("series weights must contain positive mass")
+            if self.semantics is not ComparisonSeriesSemantics.ORDERED_VALUES:
+                raise ValueError(
+                    "series weights are only supported for ordered_values"
+                )
         if self.semantics is ComparisonSeriesSemantics.PROBABILITY_MASS:
             if any(value < 0 for value in self.values) or sum(self.values) <= 0:
                 raise ValueError("probability-mass series require non-negative mass")

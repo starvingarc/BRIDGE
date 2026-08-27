@@ -8,11 +8,12 @@ selected comparison-method runtime.
 - **Legacy comparison:** a checksummed ComparisonStabilitySpec,
   ComparisonCaseManifest and two to twenty product-evidence bundles.
 - **Method runtime:** the same objects plus a candidate ComparisonMethodSpec and
-  typed ComparisonMethodInput series.
+  typed ComparisonMethodInput series. Numeric methods run only after the shared
+  comparability and source-evidence gates pass.
 - **Output:** `ProductComparisonStabilityProfile` with comparability state, raw
   summaries and deltas; method mode also writes `ComparisonMethodBundle` with
   Hedges g, Jensen-Shannon distance, Spearman correlation, one-dimensional
-  Wasserstein distance and within-group dispersion when eligible.
+  Wasserstein distance and ratio-scale within-group dispersion when eligible.
 - **Boundary:** it does not fill missing values, rerun upstream analyses, select a
   winner, declare equivalence, compute inferential significance or emit a score.
 
