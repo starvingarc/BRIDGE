@@ -91,12 +91,45 @@ def run_target_regional_methods(
         raise TargetRegionalMethodError("expression_view_observation_count_mismatch")
     if query.observation_ids_sha256 != expected_observation_ids_sha256:
         raise TargetRegionalMethodError("expression_view_observation_identity_mismatch")
+    selected = set(method_spec.selected_method_ids)
     target_profiles = _resolve_profiles(
         reference_manifest, method_spec.target_reference_profile_ids
     )
     regional_profiles = _resolve_profiles(
         reference_manifest, method_spec.regional_reference_profile_ids
     )
+    semantics_reason = _expression_semantics_reason(asset, method_spec)
+    if semantics_reason is not None:
+        evidence = _all_methods_not_assessed(
+            method_spec, target_profiles, regional_profiles, semantics_reason
+        )
+        return TargetRegionalMethodBundle(
+            object_version="0.1.0",
+            bundle_id=f"target-regional-method-bundle:{run_id.removeprefix('run-')}",
+            tool_id="P0-03",
+            tool_version=tool_version,
+            method_spec_ref=method_spec.ref,
+            expression_asset_id=asset.asset_id,
+            expression_asset_sha256=asset_sha256,
+            reference_manifest_ref={
+                "object_id": reference_manifest.snapshot_id,
+                "object_version": reference_manifest.version,
+            },
+            analysis_unit_refs=sorted(query.analysis_unit_refs.tolist()),
+            independence_group_refs=sorted(
+                set(query.independence_by_analysis_unit.values())
+            ),
+            n_observations=query.n_observations,
+            n_genes=len(query.genes),
+            method_evidence=evidence,
+            reference_support=[],
+            continuous_identity_weights=[],
+            program_activity=[],
+            bootstrap_intervals=[],
+            robustness=[],
+            domain_score=None,
+            score_state=ScoreState.UNAVAILABLE,
+        )
     profiles_by_id = {
         profile.profile_id: profile
         for profile in [*target_profiles, *regional_profiles]
@@ -111,7 +144,9 @@ def run_target_regional_methods(
     regional_reference_runs = [
         reference_runs_by_id[profile.profile_id] for profile in regional_profiles
     ]
-    selected = set(method_spec.selected_method_ids)
+    modality_profile_ids, modality_reason = _matched_modality_profile_ids(
+        method_spec, regional_profiles
+    )
     target_support = (
         _reference_support(
             query,
@@ -138,15 +173,27 @@ def run_target_regional_methods(
         else []
     )
     support = [*target_support, *regional_support]
-    weights = (
-        _continuous_identity_weights(
-            query, target_reference_runs, method_spec.minimum_shared_genes
-        )
-        if selected
+    needs_nnls = bool(
+        selected
         & {
             TargetRegionalMethodId.TARGET_NNLS,
             TargetRegionalMethodId.TARGET_BOOTSTRAP,
         }
+    )
+    residual_contract = method_spec.nnls_residual_applicability
+    nnls_reason = (
+        "nnls_residual_applicability_contract_not_supplied"
+        if needs_nnls and residual_contract is None
+        else None
+    )
+    weights = (
+        _continuous_identity_weights(
+            query,
+            target_reference_runs,
+            method_spec.minimum_shared_genes,
+            residual_contract.maximum_residual,
+        )
+        if needs_nnls and residual_contract is not None
         else []
     )
     program_activity, program_missing = (
@@ -165,18 +212,27 @@ def run_target_regional_methods(
         else ([], set())
     )
     target_states = _target_state_ids(state_role_map, assessment_spec)
-    intervals, bootstrap_reason = (
-        _bootstrap_target_weight(
-            weights=weights,
+    applicable_weights = [
+        item for item in weights if item.applicability_state == "shadow"
+    ]
+    if TargetRegionalMethodId.TARGET_BOOTSTRAP not in selected:
+        intervals, bootstrap_reason = [], None
+    elif nnls_reason is not None:
+        intervals, bootstrap_reason = [], nnls_reason
+    elif not applicable_weights and weights:
+        intervals, bootstrap_reason = (
+            [],
+            "nnls_residual_above_applicability_limit",
+        )
+    else:
+        intervals, bootstrap_reason = _bootstrap_target_weight(
+            weights=applicable_weights,
             target_state_ids=target_states,
             replicates=method_spec.bootstrap_replicates,
             independence_by_analysis_unit=query.independence_by_analysis_unit,
             confidence_level=method_spec.bootstrap_confidence_level,
             random_seed=random_seed,
         )
-        if TargetRegionalMethodId.TARGET_BOOTSTRAP in selected
-        else ([], None)
-    )
     robustness = _robustness_records(
         query.analysis_unit_refs,
         regional_support,
@@ -186,6 +242,8 @@ def run_target_regional_methods(
         include_modality=(
             TargetRegionalMethodId.REGIONAL_MODALITY_SENSITIVITY in selected
         ),
+        modality_profile_ids=modality_profile_ids,
+        modality_unavailable_reason=modality_reason,
     )
     evidence = _method_evidence(
         spec=method_spec,
@@ -199,6 +257,8 @@ def run_target_regional_methods(
         intervals=intervals,
         bootstrap_reason=bootstrap_reason,
         robustness=robustness,
+        nnls_reason=nnls_reason,
+        modality_profile_ids=modality_profile_ids,
     )
     score_state = (
         ScoreState.SHADOW
@@ -236,6 +296,85 @@ def run_target_regional_methods(
         domain_score=None,
         score_state=score_state,
     )
+
+
+def _expression_semantics_reason(
+    asset: InputAsset, spec: TargetRegionalMethodSpec
+) -> str | None:
+    contract = spec.expression_semantics_contract
+    if contract is None:
+        return "expression_semantics_contract_not_supplied"
+    if (
+        contract.expression_asset_id != asset.asset_id
+        or contract.matrix_semantics != asset.matrix_semantics
+    ):
+        return "expression_semantics_contract_asset_mismatch"
+    configured_profiles = set(spec.target_reference_profile_ids).union(
+        spec.regional_reference_profile_ids
+    )
+    if not configured_profiles.issubset(contract.reference_profile_ids):
+        return "reference_expression_semantics_missing"
+    return None
+
+
+def _matched_modality_profile_ids(
+    spec: TargetRegionalMethodSpec, profiles: list[ReferenceProfile]
+) -> tuple[set[str], str | None]:
+    if TargetRegionalMethodId.REGIONAL_MODALITY_SENSITIVITY not in set(
+        spec.selected_method_ids
+    ):
+        return set(), None
+    group = spec.modality_comparison_group
+    if group is None:
+        return set(), "matched_modality_group_not_supplied"
+    profile_by_id = {profile.profile_id: profile for profile in profiles}
+    requested = set(group.reference_profile_ids)
+    if not requested.issubset(profile_by_id):
+        return set(), "matched_modality_group_invalid"
+    if len({profile_by_id[profile_id].assay for profile_id in requested}) < 2:
+        return set(), "matched_modality_assays_unavailable"
+    return requested, None
+
+
+def _all_methods_not_assessed(
+    spec: TargetRegionalMethodSpec,
+    target_profiles: list[ReferenceProfile],
+    regional_profiles: list[ReferenceProfile],
+    reason: str,
+) -> list[TargetRegionalMethodEvidence]:
+    target_reference_methods = {
+        TargetRegionalMethodId.TARGET_PSEUDOBULK_CORRELATION,
+        TargetRegionalMethodId.TARGET_NNLS,
+        TargetRegionalMethodId.TARGET_BOOTSTRAP,
+    }
+    regional_reference_methods = {
+        TargetRegionalMethodId.REGIONAL_PSEUDOBULK_CORRELATION,
+        TargetRegionalMethodId.REGIONAL_CROSS_REFERENCE,
+        TargetRegionalMethodId.REGIONAL_MODALITY_SENSITIVITY,
+    }
+    records: list[TargetRegionalMethodEvidence] = []
+    for method_id in sorted(spec.selected_method_ids, key=str):
+        family, implementation, packages = _method_metadata(method_id)
+        profiles = (
+            target_profiles
+            if method_id in target_reference_methods
+            else regional_profiles if method_id in regional_reference_methods else []
+        )
+        records.append(
+            TargetRegionalMethodEvidence(
+                method_id=method_id,
+                execution_state=MethodExecutionState.NOT_ASSESSED,
+                evidence_family=family,
+                implementation=implementation,
+                package_versions=packages,
+                reference_profile_ids=sorted(
+                    profile.profile_id for profile in profiles
+                ),
+                n_analysis_units=0,
+                reason_codes=[reason],
+            )
+        )
+    return records
 
 
 def _load_query_pseudobulk(
@@ -489,6 +628,7 @@ def _continuous_identity_weights(
     query: _QuerySummary,
     references: list[_ReferenceRun],
     minimum_shared_genes: int,
+    maximum_residual: float,
 ) -> list[ContinuousIdentityWeight]:
     query_index = {gene: index for index, gene in enumerate(query.genes)}
     records: list[ContinuousIdentityWeight] = []
@@ -511,7 +651,11 @@ def _continuous_identity_weights(
         for analysis_unit_ref, values in zip(
             query.analysis_unit_refs, query.matrix[:, q_indices], strict=True
         ):
-            fitted, residual = nnls(centroids.T, np.asarray(values, dtype=float))
+            query_values = np.asarray(values, dtype=float)
+            fitted, residual = nnls(centroids.T, query_values)
+            relative_residual = float(residual) / max(
+                float(np.linalg.norm(query_values)), np.finfo(float).eps
+            )
             total = fitted.sum()
             if total <= 0:
                 continue
@@ -522,7 +666,18 @@ def _continuous_identity_weights(
                     profile_id=reference.profile.profile_id,
                     state_id=str(label),
                     weight=float(weight),
-                    residual_norm=float(residual),
+                    residual_norm=relative_residual,
+                    residual_metric="relative_l2_norm",
+                    applicability_state=(
+                        "shadow"
+                        if relative_residual <= maximum_residual
+                        else "unknown"
+                    ),
+                    reason_codes=(
+                        [] if relative_residual <= maximum_residual else [
+                            "nnls_residual_above_applicability_limit"
+                        ]
+                    ),
                 )
                 for label, weight in zip(unique_labels, fitted, strict=True)
             )
@@ -736,6 +891,8 @@ def _robustness_records(
     *,
     include_cross_reference: bool,
     include_modality: bool,
+    modality_profile_ids: set[str],
+    modality_unavailable_reason: str | None,
 ) -> list[RobustnessRecord]:
     records: list[RobustnessRecord] = []
     for analysis_unit_ref in analysis_unit_refs:
@@ -750,16 +907,21 @@ def _robustness_records(
                 _robustness_record("cross_reference", str(analysis_unit_ref), available)
             )
         if include_modality:
-            assay_count = len({item.profile_assay for item in available})
+            matched = [
+                item for item in available if item.profile_id in modality_profile_ids
+            ]
             records.append(
                 _robustness_record(
                     "modality",
                     str(analysis_unit_ref),
-                    available,
+                    matched,
                     unavailable_reason=(
-                        None
-                        if assay_count >= 2
-                        else "matched_modality_references_unavailable"
+                        modality_unavailable_reason
+                        or (
+                            None
+                            if len({item.profile_assay for item in matched}) >= 2
+                            else "matched_modality_references_unavailable"
+                        )
                     ),
                 )
             )
@@ -816,6 +978,8 @@ def _method_evidence(
     intervals: list[SampleBootstrapInterval],
     bootstrap_reason: str | None,
     robustness: list[RobustnessRecord],
+    nnls_reason: str | None,
+    modality_profile_ids: set[str],
 ) -> list[TargetRegionalMethodEvidence]:
     target_reference_methods = {
         TargetRegionalMethodId.TARGET_PSEUDOBULK_CORRELATION,
@@ -842,6 +1006,12 @@ def _method_evidence(
                 else []
             )
         )
+        if method_id is TargetRegionalMethodId.REGIONAL_MODALITY_SENSITIVITY:
+            reference_runs = [
+                run
+                for run in regional_reference_runs
+                if run.profile.profile_id in modality_profile_ids
+            ]
         profile_ids = sorted(run.profile.profile_id for run in reference_runs)
         minimum_shared = (
             min(run.shared_genes for run in reference_runs) if reference_runs else None
@@ -868,10 +1038,27 @@ def _method_evidence(
                 state = MethodExecutionState.PARTIAL
                 reasons = ["reference_profile_gene_coverage_incomplete"]
         elif method_id is TargetRegionalMethodId.TARGET_NNLS:
-            if not weights:
+            applicable = [
+                item for item in weights if item.applicability_state == "shadow"
+            ]
+            unknown = [
+                item for item in weights if item.applicability_state == "unknown"
+            ]
+            if nnls_reason is not None:
                 state = MethodExecutionState.NOT_ASSESSED
-                reasons = ["reference_gene_coverage_insufficient"]
+                reasons = [nnls_reason]
                 n_units = 0
+            elif not applicable:
+                state = MethodExecutionState.NOT_ASSESSED
+                reasons = [
+                    "nnls_residual_above_applicability_limit"
+                    if unknown
+                    else "reference_gene_coverage_insufficient"
+                ]
+                n_units = 0
+            elif unknown:
+                state = MethodExecutionState.PARTIAL
+                reasons = ["nnls_residual_applicability_incomplete"]
         elif method_id in {
             TargetRegionalMethodId.TARGET_DECOUPLER,
             TargetRegionalMethodId.REGIONAL_DECOUPLER,

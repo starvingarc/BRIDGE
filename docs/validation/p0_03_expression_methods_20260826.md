@@ -14,6 +14,10 @@ observation IDs exactly match the P0-01 biological-unit assignment. Target and
 regional evidence use separately declared reference-profile sets. Reference
 matrices, metadata and marker-program files are resolved from the supplied
 `ReferenceManifest` and verified by SHA-256.
+The method spec also carries a synthetic versioned expression-semantics
+contract, an explicitly feature/context-matched modality group and an external
+relative-residual applicability limit. These fixtures test contract propagation,
+not scientific suitability.
 
 The fixture contains one ProductCase, one analysis unit, one independence group,
 two synthetic reference profiles with different assay labels, three synthetic
@@ -26,12 +30,12 @@ laboratory identifiers or unpublished data.
 |---|---|
 | `TRG-PBCORR` | sample-pseudobulk Spearman/cosine and label margin against target references |
 | `REG-PBCORR` | the same calculation against the separate regional references |
-| `TRG-NNLS` | SciPy NNLS state weights with simplex normalization and residual |
+| `TRG-NNLS` | SciPy NNLS state weights with simplex normalization, relative L2 residual and typed applicability |
 | `TRG-DECOUPLER` | decoupler ULM target-program activity and marker coverage |
 | `REG-DECOUPLER` | decoupler ULM regional-program activity and marker coverage |
 | `TRG-BOOTSTRAP` | explicit `descriptive_only` result for one independent unit |
 | `REG-CROSSREF` | cross-reference label agreement and support range |
-| `REG-MODALITY` | scRNA/snRNA reference-sensitivity record |
+| `REG-MODALITY` | declared matched-group scRNA/snRNA sensitivity record |
 
 Pseudobulk grouping comes from `analysis_unit_ref`; the executor does not trust
 an independent H5AD sample column. Bootstrap grouping comes from
@@ -45,13 +49,13 @@ The run publishes the existing ratio artifacts plus one
 versions, input asset checksum, reference manifest, biological units, method
 states and all method outputs. The parent result binds the bundle checksum.
 
-Focused server verification passed 30 P0-03 tests, including the complete
-aggregation path, the eight-method expression path, paired-input refusal and
-asset-replacement protection. The complete repository suite passed 1,232 tests.
-A clean wheel installation passed all 12 `describe` calls, all 12
-`input-contract` calls, 12-tool discovery and the four expression-method
-tests. Public schemas were regenerated from Pydantic models and validated as
-JSON Schema Draft 2020-12. Knowledge and repository-policy gates also passed.
+Server verification uses `tests/test_p0_03_expression_methods.py` for the
+eight-method expression path, missing-semantics refusal, missing matched-group
+refusal, high-residual propagation, paired-input refusal and asset replacement.
+The repository gate reruns the full suite, 12-tool discovery, public-Schema
+parity, knowledge validation, policy checks and `git diff --check` at the exact
+reviewed head. Test counts and wheel hashes are intentionally not copied into
+this durable record; the exact-head CI run is the source of those build facts.
 
 ## Catalog disposition
 

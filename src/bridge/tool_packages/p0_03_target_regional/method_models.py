@@ -28,6 +28,62 @@ class TargetRegionalMethodId(StrEnum):
     REGIONAL_MODALITY_SENSITIVITY = "REG-MODALITY"
 
 
+class ExpressionSemanticsContract(FrozenModel):
+    """Caller-reviewed assertion that query and reference values are comparable."""
+
+    object_version: Literal["0.1.0"]
+    contract_id: str = Field(
+        pattern=r"^expression-semantics-contract:[A-Za-z0-9._:-]+$"
+    )
+    contract_version: str = Field(pattern=VERSION_PATTERN)
+    status: Literal["candidate", "frozen"]
+    expression_asset_id: str = Field(min_length=1)
+    reference_profile_ids: list[str] = Field(min_length=1)
+    matrix_semantics: Literal["normalized_expression"]
+    normalization_method: str = Field(min_length=1)
+    transformation: str = Field(min_length=1)
+    gene_identifier_namespace: str = Field(min_length=1)
+
+    @field_validator("reference_profile_ids")
+    @classmethod
+    def profiles_are_unique(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("expression-semantics profiles must be unique")
+        return value
+
+
+class MatchedModalityComparisonGroup(FrozenModel):
+    """Externally declared feature- and context-matched modality comparison."""
+
+    object_version: Literal["0.1.0"]
+    group_id: str = Field(pattern=r"^modality-comparison-group:[A-Za-z0-9._:-]+$")
+    group_version: str = Field(pattern=VERSION_PATTERN)
+    status: Literal["candidate", "frozen"]
+    reference_profile_ids: list[str] = Field(min_length=2)
+    matched_feature_view_id: str = Field(min_length=1)
+    matched_context_id: str = Field(min_length=1)
+
+    @field_validator("reference_profile_ids")
+    @classmethod
+    def profiles_are_unique(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("modality-comparison profiles must be unique")
+        return value
+
+
+class NnlsResidualApplicabilityContract(FrozenModel):
+    """Externally reviewed applicability limit for the normalized NNLS residual."""
+
+    object_version: Literal["0.1.0"]
+    contract_id: str = Field(
+        pattern=r"^nnls-residual-applicability-contract:[A-Za-z0-9._:-]+$"
+    )
+    contract_version: str = Field(pattern=VERSION_PATTERN)
+    status: Literal["candidate", "frozen"]
+    residual_metric: Literal["relative_l2_norm"]
+    maximum_residual: float = Field(gt=0.0)
+
+
 class TargetRegionalMethodSpec(FrozenModel):
     """External, versioned choices for optional expression-level evidence."""
 
@@ -55,6 +111,9 @@ class TargetRegionalMethodSpec(FrozenModel):
     minimum_program_genes: int = Field(ge=2)
     bootstrap_replicates: int = Field(default=1000, ge=10, le=10000)
     bootstrap_confidence_level: float = Field(default=0.95, gt=0.0, lt=1.0)
+    expression_semantics_contract: ExpressionSemanticsContract | None = None
+    modality_comparison_group: MatchedModalityComparisonGroup | None = None
+    nnls_residual_applicability: NnlsResidualApplicabilityContract | None = None
 
     @field_validator(
         "target_reference_profile_ids",
@@ -180,6 +239,15 @@ class ContinuousIdentityWeight(FrozenModel):
     state_id: str = Field(pattern=OBJECT_ID_PATTERN)
     weight: float = Field(ge=0.0, le=1.0)
     residual_norm: float = Field(ge=0.0)
+    residual_metric: Literal["relative_l2_norm"]
+    applicability_state: Literal["shadow", "unknown"]
+    reason_codes: list[ReasonCode] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def applicability_is_coherent(self) -> Self:
+        if (self.applicability_state == "unknown") != bool(self.reason_codes):
+            raise ValueError("NNLS applicability state and reasons disagree")
+        return self
 
 
 class ProgramActivityRecord(FrozenModel):

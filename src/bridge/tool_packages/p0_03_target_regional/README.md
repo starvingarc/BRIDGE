@@ -8,8 +8,10 @@ This directory contains the target and regional evidence package.
   denominator-explicit ratios.
 - **Expression mode:** the same objects plus one H5AD and one
   `TargetRegionalMethodSpec` → pseudobulk reference support, NNLS weights,
-  decoupler program activity, bootstrap state and reference/modality robustness.
-- **Configuration:** target/regional references, program cards, gene-coverage
+  decoupler program activity, residual-gated NNLS/bootstrap state and matched
+  reference/modality robustness.
+- **Configuration:** target/regional references, expression semantics, matched
+  modality groups, NNLS residual applicability, program cards, gene-coverage
   minima and biological roles are versioned inputs.
 - **Boundary:** transcriptomic regional support is not spatial localization;
   `domain_score` remains null.

@@ -216,6 +216,41 @@ def _expression_request(tmp_path: Path):
         "gene_symbol_column": "gene_symbol",
         "target_reference_profile_ids": [profiles[0]["profile_id"]],
         "regional_reference_profile_ids": [item["profile_id"] for item in profiles],
+        "expression_semantics_contract": {
+            "object_version": "0.1.0",
+            "contract_id": "expression-semantics-contract:fully-synthetic",
+            "contract_version": "1.0.0",
+            "status": "candidate",
+            "expression_asset_id": asset.asset_id,
+            "reference_profile_ids": [
+                item["profile_id"] for item in profiles
+            ],
+            "matrix_semantics": "normalized_expression",
+            "normalization_method": "fully_synthetic_fixture",
+            "transformation": "none",
+            "gene_identifier_namespace": "fully_synthetic_symbol",
+        },
+        "modality_comparison_group": {
+            "object_version": "0.1.0",
+            "group_id": "modality-comparison-group:fully-synthetic",
+            "group_version": "1.0.0",
+            "status": "candidate",
+            "reference_profile_ids": [
+                item["profile_id"] for item in profiles
+            ],
+            "matched_feature_view_id": "feature-view:fully-synthetic",
+            "matched_context_id": "context:fully-synthetic",
+        },
+        "nnls_residual_applicability": {
+            "object_version": "0.1.0",
+            "contract_id": (
+                "nnls-residual-applicability-contract:fully-synthetic"
+            ),
+            "contract_version": "1.0.0",
+            "status": "candidate",
+            "residual_metric": "relative_l2_norm",
+            "maximum_residual": 1.0,
+        },
         "selected_method_ids": [
             "TRG-PBCORR",
             "REG-PBCORR",
@@ -331,3 +366,115 @@ def test_expression_asset_replacement_fails_closed(tmp_path: Path) -> None:
     run = ToolRegistry.load_default().run(request)
     assert run.execution_state is ExecutionState.FAILED
     assert run.reason_codes == ["expression_asset_checksum_mismatch"]
+
+
+def _method_bundle(run) -> TargetRegionalMethodBundle:
+    artifact = next(
+        item for item in run.artifacts if item.kind == "target_regional_method_bundle"
+    )
+    return TargetRegionalMethodBundle.model_validate_json(
+        artifact.path.read_text(encoding="utf-8")
+    )
+
+
+def test_missing_expression_semantics_is_typed_not_assessed(
+    tmp_path: Path,
+) -> None:
+    request = _mutate(
+        _expression_request(tmp_path),
+        "target_regional_method_spec",
+        lambda payload: payload.pop("expression_semantics_contract"),
+    )
+    run = ToolRegistry.load_default().run(request)
+    bundle = _method_bundle(run)
+    assert {
+        item.execution_state.value for item in bundle.method_evidence
+    } == {"not_assessed"}
+    assert {
+        reason
+        for item in bundle.method_evidence
+        for reason in item.reason_codes
+    } == {"expression_semantics_contract_not_supplied"}
+    assert bundle.score_state.value == "unavailable"
+    assert bundle.domain_score is None
+
+
+def test_expression_semantics_asset_mismatch_is_typed_not_assessed(
+    tmp_path: Path,
+) -> None:
+    def replace_asset(payload: dict) -> None:
+        payload["expression_semantics_contract"]["expression_asset_id"] = (
+            "asset:different-view"
+        )
+
+    request = _mutate(
+        _expression_request(tmp_path), "target_regional_method_spec", replace_asset
+    )
+    bundle = _method_bundle(ToolRegistry.load_default().run(request))
+    assert {
+        reason
+        for item in bundle.method_evidence
+        for reason in item.reason_codes
+    } == {"expression_semantics_contract_asset_mismatch"}
+    assert bundle.score_state.value == "unavailable"
+
+
+def test_modality_requires_declared_matched_group(tmp_path: Path) -> None:
+    request = _mutate(
+        _expression_request(tmp_path),
+        "target_regional_method_spec",
+        lambda payload: payload.pop("modality_comparison_group"),
+    )
+    bundle = _method_bundle(ToolRegistry.load_default().run(request))
+    evidence = {
+        item.method_id.value: item for item in bundle.method_evidence
+    }
+    modality = evidence["REG-MODALITY"]
+    assert modality.execution_state.value == "not_assessed"
+    assert modality.reason_codes == ["matched_modality_group_not_supplied"]
+    assert evidence["REG-CROSSREF"].execution_state.value == "succeeded"
+
+
+def test_nnls_requires_external_residual_contract(tmp_path: Path) -> None:
+    request = _mutate(
+        _expression_request(tmp_path),
+        "target_regional_method_spec",
+        lambda payload: payload.pop("nnls_residual_applicability"),
+    )
+    bundle = _method_bundle(ToolRegistry.load_default().run(request))
+    evidence = {
+        item.method_id.value: item for item in bundle.method_evidence
+    }
+    for method_id in ("TRG-NNLS", "TRG-BOOTSTRAP"):
+        assert evidence[method_id].execution_state.value == "not_assessed"
+        assert evidence[method_id].reason_codes == [
+            "nnls_residual_applicability_contract_not_supplied"
+        ]
+    assert evidence["TRG-PBCORR"].execution_state.value == "succeeded"
+    assert not bundle.continuous_identity_weights
+
+
+def test_nnls_residual_limit_propagates_unknown(tmp_path: Path) -> None:
+    def tighten(payload: dict) -> None:
+        payload["nnls_residual_applicability"]["maximum_residual"] = 1e-15
+
+    request = _mutate(
+        _expression_request(tmp_path), "target_regional_method_spec", tighten
+    )
+    bundle = _method_bundle(ToolRegistry.load_default().run(request))
+    evidence = {
+        item.method_id.value: item for item in bundle.method_evidence
+    }
+    assert evidence["TRG-NNLS"].execution_state.value == "not_assessed"
+    assert evidence["TRG-NNLS"].reason_codes == [
+        "nnls_residual_above_applicability_limit"
+    ]
+    assert evidence["TRG-BOOTSTRAP"].execution_state.value == "not_assessed"
+    assert evidence["TRG-BOOTSTRAP"].reason_codes == [
+        "nnls_residual_above_applicability_limit"
+    ]
+    assert bundle.continuous_identity_weights
+    assert {
+        item.applicability_state for item in bundle.continuous_identity_weights
+    } == {"unknown"}
+    assert bundle.domain_score is None

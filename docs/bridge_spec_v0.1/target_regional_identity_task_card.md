@@ -26,6 +26,12 @@ P0-03 v0.3.0 提供两个兼容入口：
 版本化输入给出。代码不包含具体状态名、marker、产品阈值或固定正向角色。下文
 PD-mDA 内容仍是待审核科学候选，改变生物学定义时应更新输入对象而非执行器。
 
+表达模式还要求调用方声明版本化的表达语义合同；该合同把 query、reference、
+归一化/变换和基因标识命名空间绑定为一个可审核的可比性声明。`REG-MODALITY`
+只比较显式匹配的 feature view 与 context group，不再以 assay 名不同代替匹配设计。
+NNLS 的 relative L2 residual 上限同样来自外部 applicability contract；缺少合同或
+超过上限时返回 typed `not_assessed`/`unknown`，不把系数送入 bootstrap。
+
 表达矩阵中的 observation IDs 必须与 P0-01/P0-02 DataView 及
 `BiologicalUnitAssignmentArtifact` 完全一致。Pseudobulk 按其中的
 `analysis_unit_ref` 聚合；bootstrap 按 `independence_group_ref` 重采样。只有
@@ -114,7 +120,7 @@ Spec 使用知识快照中的规范化 `METHOD-*` ID，二者通过 catalog alia
 | --- | --- | --- | --- |
 | 状态角色与组成 | `TRG-ROLEMAP` / soft composition | P0-03 聚合模式直接执行 | target/adjacent/unresolved 分母与比例 |
 | Target reference similarity | `TRG-PBCORR` | P0-03 表达模式直接执行 | Spearman/cosine、margin、shared genes |
-| 连续身份 | `TRG-NNLS` / SciPy | P0-03 表达模式直接执行 | state weights 与 residual |
+| 连续身份 | `TRG-NNLS` / SciPy | P0-03 表达模式直接执行 | state weights、relative L2 residual 与 applicability state |
 | Signed program | `TRG-DECOUPLER` / decoupler ULM | P0-03 表达模式直接执行 | activity、p-value 与 marker coverage |
 | 不确定性 | `TRG-BOOTSTRAP` | P0-03 表达模式直接执行 | independence-group interval 或 `descriptive_only` |
 | 分类/映射/open-set | CellTypist、scANVI、SingleR、scmap、Symphony、scConform | P0-02 benchmark adapter；P0-03 只消费其已绑定 evidence | prediction、similarity、mapping 与 abstention evidence |
@@ -132,7 +138,7 @@ Spec 使用知识快照中的规范化 `METHOD-*` ID，二者通过 catalog alia
 | Regional reference similarity | `REG-PBCORR` | P0-03 表达模式直接执行 | label support、margin、shared genes |
 | Signed regional program | `REG-DECOUPLER` / decoupler ULM | P0-03 表达模式直接执行 | activity 与 coverage |
 | Reference robustness | `REG-CROSSREF` | P0-03 表达模式直接执行 | label agreement 与 support range |
-| Modality robustness | `REG-MODALITY` | P0-03 表达模式直接执行 | scRNA/snRNA agreement 或 typed refusal |
+| Modality robustness | `REG-MODALITY` | P0-03 表达模式直接执行 | declared matched-group agreement 或 typed refusal |
 | 分类、映射与 open-set | CellTypist、scANVI、SingleR、Symphony、scConform | P0-02 benchmark adapter；P0-03 消费已绑定 evidence | regional prediction/mapping evidence |
 | Ontology crosswalk | UBERON/HsapDv | catalog only；当前不执行 | 尚无 runtime artifact |
 
@@ -212,7 +218,7 @@ SpatialData、Squidpy、Tangram、SpaOTsc、CellTrek、CytoSPACE 和 cell2locati
 | --- | --- |
 | StateRoleMap | 湿实验/发育生物学审核；角色、依据、版本和 reviewer 完整 |
 | Target Identity | source/lab/donor holdout、真实 OOD、人工混合、下采样和组成误差 |
-| Regional Fidelity | close-region OOD、region holdout、reference swap、scRNA/snRNA sensitivity 和具体偏移方向准确性 |
+| Regional Fidelity | close-region OOD、region holdout、reference swap、matched scRNA/snRNA sensitivity 和具体偏移方向准确性 |
 | Spatial projection | spatial-cell pseudo-query、held-out genes、leave-section-out、ROI/crop sensitivity、随机种子和 method swap |
 | hEB58 reference | 两切片按同一胚胎处理；标签 provenance、方向、ROI、annotation 与 checksum 冻结 |
 | 拒答 | shared genes 不足、OOD、拟合差或方法冲突时返回 `unknown`/`unavailable`，不强制映射 |

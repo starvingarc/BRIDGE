@@ -75,9 +75,9 @@ scientific methods.
 | Purpose | Measure externally configured target identity and transcriptomic regional support while preserving case, reference and biological-unit provenance. [Scientific task card](bridge_spec_v0.1/target_regional_identity_task_card.md). |
 | Executable implementation | Aggregation: StateRoleMap-based target/regional ratios. Optional expression mode: `TRG-PBCORR`, `REG-PBCORR`, `TRG-NNLS`, `TRG-DECOUPLER`, `REG-DECOUPLER`, `TRG-BOOTSTRAP`, `REG-CROSSREF` and `REG-MODALITY`. P0-02 benchmark adapters remain upstream; spatial catalog candidates are not invoked. |
 | Software | AnnData reads the selected H5AD; NumPy/pandas/SciPy perform pseudobulk, correlation, NNLS and bootstrap; [decoupler](https://decoupler.readthedocs.io/) runs ULM program activity; the shared Pydantic/JSON Schema runtime validates and publishes results. |
-| Input → output | Eleven checksummed core objects → three descriptive ratios. Adding one H5AD and one `TargetRegionalMethodSpec` → checksummed reference support, continuous weights, program activity, interval state and robustness evidence. [Tool Card](../src/bridge/tool_packages/cards/P0-03.md). |
+| Input → output | Eleven checksummed core objects → three descriptive ratios. Adding one H5AD and one `TargetRegionalMethodSpec` with expression-semantics, matched-modality and residual-applicability contracts → checksummed reference support, applicability-typed continuous weights, program activity, interval state and robustness evidence. [Tool Card](../src/bridge/tool_packages/cards/P0-03.md). |
 | Call | Shared CLI/SDK with `tool_id=P0-03`; use the [aggregation request](../examples/requests/p0_03_target_regional_evidence.json) or [expression request](../examples/requests/p0_03_target_regional_expression.json). |
-| Current evidence / status | Synthetic end-to-end execution verifies all eight selected methods, target/regional reference separation, biological-unit binding and typed one-unit bootstrap degradation. Results remain `candidate/shadow`, `domain_score=null`; engineering execution is not biological validation. [Aggregation validation](validation/p0_03_target_regional_20260825.md) · [Expression validation](validation/p0_03_expression_methods_20260826.md). |
+| Current evidence / status | Synthetic end-to-end execution verifies all eight selected methods, target/regional reference separation, biological-unit binding, typed contract refusal, residual gating and one-unit bootstrap degradation. Results remain `candidate/shadow`, `domain_score=null`; engineering execution is not biological validation. [Aggregation validation](validation/p0_03_target_regional_20260825.md) · [Expression validation](validation/p0_03_expression_methods_20260826.md). |
 
 <a id="p0-04"></a>
 ## P0-04 Developmental Compatibility
@@ -157,11 +157,11 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Verify that a structured report preserves cited values, units, states, scope and package-approved wording. [Scientific task card](bridge_spec_v0.1/claim_verifier_task_card.md). |
-| Executable implementation | Deterministic claim verification, exact numeric comparison, controlled rendering, packaged rules and typed release-state aggregation over P0-09 queries. |
+| Executable implementation | Independent Draft 2020-12 validation of the four raw JSON inputs, deterministic claim verification, exact numeric comparison, controlled rendering, packaged rules and typed release-state aggregation over P0-09 queries. |
 | Software | [regex](https://github.com/mrabarnett/mrab-regex) for bounded Unicode matching, Python [Decimal](https://docs.python.org/3/library/decimal.html), Pydantic/jsonschema and the P0-09 query layer. |
 | Input → output | ReportDraft, P0-09 Case graph manifest, packaged ClaimPolicySpec and StatementRegistry → one `ClaimVerificationResult`. [Tool Card](../src/bridge/tool_packages/cards/P0-10.md). |
 | Call | Shared CLI/SDK with `tool_id=P0-10`; start from the [request example](../examples/requests/p0_10_claim_verifier.json). |
-| Current evidence / status | Adversarial fixtures and a package benchmark verify value/wording correspondence, authority binding and fail-closed behavior. `verified` is not biological truth or release permission. [Validation](validation/p0_10_claim_verifier_20260814.md) · [Benchmark](validation/p0_10_claim_verifier_benchmark_v0.1.md). |
+| Current evidence / status | Adversarial fixtures and a package benchmark verify value/wording correspondence, authority binding and fail-closed behavior. `verified` is not biological truth or release permission. [Validation](validation/p0_10_claim_verifier_20260814.md) · [JSON Schema runtime](validation/p0_10_jsonschema_runtime_20260827.md) · [Benchmark](validation/p0_10_claim_verifier_benchmark_v0.1.md). |
 
 <a id="p0-11"></a>
 ## P0-11 Public-safe Export

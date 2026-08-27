@@ -8,9 +8,30 @@
           "title": "Analysis Unit Ref",
           "type": "string"
         },
+        "applicability_state": {
+          "enum": [
+            "shadow",
+            "unknown"
+          ],
+          "title": "Applicability State",
+          "type": "string"
+        },
         "profile_id": {
           "minLength": 1,
           "title": "Profile Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "residual_metric": {
+          "const": "relative_l2_norm",
+          "title": "Residual Metric",
           "type": "string"
         },
         "residual_norm": {
@@ -35,7 +56,9 @@
         "profile_id",
         "state_id",
         "weight",
-        "residual_norm"
+        "residual_norm",
+        "residual_metric",
+        "applicability_state"
       ],
       "title": "ContinuousIdentityWeight",
       "type": "object"
