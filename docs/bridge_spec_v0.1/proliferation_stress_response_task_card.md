@@ -3,22 +3,27 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.2-candidate` |
-| 日期 | 2026-08-25 |
+| 文档版本 | `0.3-candidate` |
+| 日期 | 2026-08-27 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | `ProductCase`、`ProductDefinitionCard`、外部 `DevelopmentWindowSpec`/`ProgramSpec`、`CellStateEvidenceProfileV2`、`ProtocolIR`、预计算 `ProgramEvidenceBundle` |
-| 主要输出 | `ProliferationStressResponseProfile`、`TranscriptomicReviewFlag[]` |
+| 上游输入 | 两种 v0.3 模式共享 `ProductCase`、`ProductDefinitionCard`、外部 `DevelopmentWindowSpec`/`ProgramSpec`、`ProtocolIR` 和 `ProgramEvidenceBundle`；`method_runtime` 另需 P0-02 V3、BiologicalUnit 绑定、方法 spec/input 与一个 normalized H5AD |
+| 主要输出 | 两种模式均输出 `ProliferationStressResponseProfile`；`method_runtime` 另输出绑定 ProgramSpec checksum 的 `ProcessMethodBundle` |
 
-## 0. 当前可执行候选
+## 0. 当前 v0.3 可执行候选
 
-P0-06 `0.2.0` 已提供 `ToolRequestV2 validate/run`，固定接收七个 checksummed JSON 对象。ProductCase、ProductDefinitionCard 与 CellStateEvidenceProfileV2 复用共享合同；DevelopmentWindowSpec 由 P0-04 唯一拥有，P0-06 只消费；ProgramSpec、ProtocolIR 和 ProgramEvidenceBundle 为模块本地公开合同。
+P0-06 `0.3.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
 
-ProgramSpec 外置管理全部 program、gene-set ref/checksum、适用 stage/state/scope、metric、gene-coverage 阈值、LOD 状态、review mapping 和 process-attribution 计数要求。executor 只做 lineage/checksum 绑定、适用性、coverage/LOD、process metadata/confounding 判定与确定性聚合。结果固定为 `descriptive_only`、`candidate/shadow`、`domain_score=null`；未触发 review rule 明确不是安全证据。下文的表达矩阵分析、方法 benchmark 和生物学冻结仍是后续目标，不代表本版本已实现。
+| 模式 | 输入 | 实际执行 | 输出 |
+| --- | --- | --- | --- |
+| `legacy_aggregation` | 七个 checksummed JSON 对象；Cell-State 使用 V2 | 绑定并聚合预计算 `ProgramEvidenceBundle`，不读取表达矩阵 | `ProliferationStressResponseProfile` 与 manifest |
+| `method_runtime` | 十一个 checksummed JSON 对象、恰好一个 checksummed normalized H5AD；Cell-State 使用 V3 | 实际调用 Scanpy `score_genes`、decoupler ULM、Scanpy `score_genes_cell_cycle`，再按 BiologicalUnit 与 candidate state 聚合 | profile、绑定 ProgramSpec checksum 的 `ProcessMethodBundle` 与 manifest |
+
+`ProgramSpec` 是 program gene/weight/phase 内容的唯一事实源，并持有这些内容的 canonical SHA-256、适用 stage/state/scope、coverage/LOD 和 review mapping。`ProcessMethodSpec` 只选择 program ID、方法、scope 与运行参数，不再复制 gene-set 内容。两种模式均保持 `descriptive_only`、`candidate/shadow`、`domain_score=null`；工程执行成功不等于程序、阈值或生物学解释已验证。
 
 ## 1. 任务目标与边界
 
-本模块在已有 Cell-State 与组成证据基础上，描述移植前产品中阶段条件化的增殖、应激及相关转录程序，识别需要复核的信号，并区分生物状态、样本处理影响和证据不足。当前可执行候选只绑定并聚合预计算证据，不读取表达矩阵或重跑单细胞分析，也不制定 0-100 指数。
+本模块在已有 Cell-State 与组成证据基础上，描述移植前产品中阶段条件化的增殖、应激及相关转录程序，识别需要复核的信号，并区分生物状态、样本处理影响和证据不足。当前候选既保留预计算证据聚合，也可在显式 `method_runtime` 模式读取 normalized H5AD 执行已登记的 Scanpy/decoupler 方法；两者都不制定 0-100 指数。
 
 - Proliferation & Stress Response 表示这些增殖、应激及相关转录程序与当前 `ProductDefinitionCard`、目标阶段及参考范围的相容性；它不重新判定细胞身份或计算 off-target 比例。
 - cycling、stress 或其他程序升高必须结合细胞身份、发育阶段、样本处理和 assay 解释，不能自动标记为异常。
@@ -212,6 +217,7 @@ P0 核心候选不依赖 GPU。不同环境只交换版本化 h5ad/Parquet/TSV�
 - `ProductDefinitionCard` 或目标阶段未确认：保留描述性程序画像，阶段条件化结果返回 `unavailable`。
 - Cell-State evidence 不可用：不得强行生成 state-specific 过程结论。
 - 程序 gene coverage 不足或 `ProgramSpec` 不适用：该程序返回 `unavailable`，不补值。
+- `method_runtime` 选中的 program 缺少 gene/weight/phase 内容，或内容与 `gene_set_sha256` 不一致：运行前 typed refusal；不得从 `ProcessMethodSpec` 或代码默认值补齐。
 - 无独立 preparation/replicate：不发布推断性差异，只作 `descriptive_only`。
 - 缺少 ProtocolIR 或与 batch 完全混杂：报告 `cannot_attribute`，不归因工艺。
 - residual pluripotency-like 未完成 spike-in/false-positive 校准：最多返回 `cannot_resolve` 或 `not_assessed`。

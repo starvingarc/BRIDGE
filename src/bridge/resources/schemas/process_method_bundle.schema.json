@@ -525,6 +525,11 @@
       "title": "Program Scores",
       "type": "array"
     },
+    "program_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Program Spec Sha256",
+      "type": "string"
+    },
     "score_state": {
       "const": "unavailable",
       "title": "Score State",
@@ -558,6 +563,7 @@
     "tool_id",
     "tool_version",
     "method_spec_sha256",
+    "program_spec_sha256",
     "method_input_sha256",
     "expression_asset_id",
     "expression_asset_sha256",

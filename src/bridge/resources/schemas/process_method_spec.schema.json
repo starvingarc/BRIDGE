@@ -8,51 +8,6 @@
       "title": "AnalysisScope",
       "type": "string"
     },
-    "CellCycleDefinition": {
-      "additionalProperties": false,
-      "properties": {
-        "g2m_genes": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 2,
-          "title": "G2M Genes",
-          "type": "array"
-        },
-        "gene_set_ref": {
-          "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
-          "title": "Gene Set Ref",
-          "type": "string"
-        },
-        "gene_set_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Gene Set Sha256",
-          "type": "string"
-        },
-        "program_id": {
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-          "title": "Program Id",
-          "type": "string"
-        },
-        "s_genes": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 2,
-          "title": "S Genes",
-          "type": "array"
-        }
-      },
-      "required": [
-        "program_id",
-        "gene_set_ref",
-        "gene_set_sha256",
-        "s_genes",
-        "g2m_genes"
-      ],
-      "title": "CellCycleDefinition",
-      "type": "object"
-    },
     "ProcessMethodId": {
       "enum": [
         "PROC-SCORE-SCANPY",
@@ -63,60 +18,19 @@
       "title": "ProcessMethodId",
       "type": "string"
     },
-    "ProcessProgramDefinition": {
+    "ProcessProgramSelection": {
       "additionalProperties": false,
       "properties": {
-        "gene_set_ref": {
-          "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
-          "title": "Gene Set Ref",
-          "type": "string"
-        },
-        "gene_set_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Gene Set Sha256",
-          "type": "string"
-        },
         "program_id": {
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
           "title": "Program Id",
           "type": "string"
-        },
-        "targets": {
-          "items": {
-            "$ref": "#/$defs/ProgramGeneTarget"
-          },
-          "minItems": 2,
-          "title": "Targets",
-          "type": "array"
         }
       },
       "required": [
-        "program_id",
-        "gene_set_ref",
-        "gene_set_sha256",
-        "targets"
+        "program_id"
       ],
-      "title": "ProcessProgramDefinition",
-      "type": "object"
-    },
-    "ProgramGeneTarget": {
-      "additionalProperties": false,
-      "properties": {
-        "gene": {
-          "pattern": "^[^\\s]+$",
-          "title": "Gene",
-          "type": "string"
-        },
-        "weight": {
-          "title": "Weight",
-          "type": "number"
-        }
-      },
-      "required": [
-        "gene",
-        "weight"
-      ],
-      "title": "ProgramGeneTarget",
+      "title": "ProcessProgramSelection",
       "type": "object"
     }
   },
@@ -130,7 +44,7 @@
     "cell_cycle": {
       "anyOf": [
         {
-          "$ref": "#/$defs/CellCycleDefinition"
+          "$ref": "#/$defs/ProcessProgramSelection"
         },
         {
           "type": "null"
@@ -206,7 +120,7 @@
     },
     "programs": {
       "items": {
-        "$ref": "#/$defs/ProcessProgramDefinition"
+        "$ref": "#/$defs/ProcessProgramSelection"
       },
       "title": "Programs",
       "type": "array"

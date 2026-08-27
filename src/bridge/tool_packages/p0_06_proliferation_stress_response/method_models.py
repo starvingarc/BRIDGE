@@ -8,14 +8,10 @@ from pydantic import Field, StrictFloat, StrictInt, field_validator, model_valid
 
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     AnalysisScope,
-    PublishedRef,
     SafeId,
     Sha256,
 )
 from bridge.toolkit.contracts import FrozenModel
-
-
-GENE_PATTERN = r"^[^\s]+$"
 
 
 def _unique(values: list[object], name: str) -> None:
@@ -48,53 +44,8 @@ class ObservationState(StrEnum):
     UNAVAILABLE = "unavailable"
 
 
-class ProgramGeneTarget(FrozenModel):
-    gene: str = Field(pattern=GENE_PATTERN)
-    weight: StrictFloat
-
-    @field_validator("weight")
-    @classmethod
-    def weight_is_nonzero(cls, value: float) -> float:
-        if value == 0.0:
-            raise ValueError("program target weight cannot be zero")
-        return value
-
-
-class ProcessProgramDefinition(FrozenModel):
+class ProcessProgramSelection(FrozenModel):
     program_id: SafeId
-    gene_set_ref: PublishedRef
-    gene_set_sha256: Sha256
-    targets: list[ProgramGeneTarget] = Field(min_length=2)
-
-    @field_validator("targets")
-    @classmethod
-    def genes_are_unique(
-        cls, value: list[ProgramGeneTarget]
-    ) -> list[ProgramGeneTarget]:
-        _unique([item.gene for item in value], "program target genes")
-        return value
-
-
-class CellCycleDefinition(FrozenModel):
-    program_id: SafeId
-    gene_set_ref: PublishedRef
-    gene_set_sha256: Sha256
-    s_genes: list[str] = Field(min_length=2)
-    g2m_genes: list[str] = Field(min_length=2)
-
-    @field_validator("s_genes", "g2m_genes")
-    @classmethod
-    def phase_genes_are_valid(cls, value: list[str]) -> list[str]:
-        _unique(value, "cell-cycle genes")
-        if any(not gene or any(char.isspace() for char in gene) for gene in value):
-            raise ValueError("cell-cycle genes must be non-empty tokens")
-        return value
-
-    @model_validator(mode="after")
-    def phase_gene_sets_do_not_overlap(self) -> Self:
-        if set(self.s_genes).intersection(self.g2m_genes):
-            raise ValueError("S and G2M gene sets must not overlap")
-        return self
 
 
 class ProcessMethodSpec(FrozenModel):
@@ -113,8 +64,8 @@ class ProcessMethodSpec(FrozenModel):
     )
     selected_method_ids: list[ProcessMethodId] = Field(min_length=1)
     selected_analysis_scopes: list[AnalysisScope] = Field(min_length=1)
-    programs: list[ProcessProgramDefinition] = Field(default_factory=list)
-    cell_cycle: CellCycleDefinition | None = None
+    programs: list[ProcessProgramSelection] = Field(default_factory=list)
+    cell_cycle: ProcessProgramSelection | None = None
     scanpy_ctrl_size: StrictInt = Field(default=50, ge=1, le=500)
     scanpy_n_bins: StrictInt = Field(default=25, ge=2, le=100)
     scanpy_ctrl_as_ref: bool = True
@@ -132,7 +83,7 @@ class ProcessMethodSpec(FrozenModel):
     @classmethod
     def configured_values_are_unique(cls, value: list[object]) -> list[object]:
         keys = [
-            item.program_id if isinstance(item, ProcessProgramDefinition) else item
+            item.program_id if isinstance(item, ProcessProgramSelection) else item
             for item in value
         ]
         _unique(keys, "configured method values")
@@ -146,17 +97,9 @@ class ProcessMethodSpec(FrozenModel):
             ProcessMethodId.DECOUPLER_ULM,
         }
         if selected.intersection(scoring) and not self.programs:
-            raise ValueError("selected program scorers require program definitions")
-        if ProcessMethodId.SCANPY_SCORE_GENES in selected and any(
-            sum(target.weight > 0 for target in program.targets) < 2
-            for program in self.programs
-        ):
-            raise ValueError(
-                "Scanpy program scoring requires at least two positive targets "
-                "per program"
-            )
+            raise ValueError("selected program scorers require program selections")
         if ProcessMethodId.SCANPY_CELL_CYCLE in selected and self.cell_cycle is None:
-            raise ValueError("cell-cycle scoring requires a cell-cycle definition")
+            raise ValueError("cell-cycle scoring requires a cell-cycle selection")
         if (
             ProcessMethodId.CELL_CYCLE_AGGREGATION in selected
             and ProcessMethodId.SCANPY_CELL_CYCLE not in selected
@@ -321,6 +264,7 @@ class ProcessMethodBundle(FrozenModel):
     tool_id: Literal["P0-06"]
     tool_version: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
     method_spec_sha256: Sha256
+    program_spec_sha256: Sha256
     method_input_sha256: Sha256
     expression_asset_id: str = Field(min_length=1)
     expression_asset_sha256: Sha256

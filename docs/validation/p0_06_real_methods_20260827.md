@@ -24,12 +24,17 @@ registered candidates. This runtime does not execute them.
 
 - The method path requires 11 checksummed JSON objects and exactly one
   normalized-expression H5AD.
-- Program genes, weights, analysis scopes, cell-cycle genes, coverage rules,
-  grouping assignments and method parameters come from versioned inputs.
+- `ProgramSpec` is the single source for program genes/weights and S/G2M
+  phase genes. `ProcessMethodSpec` selects program IDs and runtime parameters
+  without copying that biological content.
+- Each selected program's canonical content digest must equal its
+  `gene_set_sha256`; changing a gene, weight or phase gene while retaining the
+  old digest is refused before execution.
 - The H5AD identity and checksum are bound before execution and checked again
   before output publication.
-- Results bind the selected methods, biological units, state scopes, input
-  checksums and software versions.
+- Results bind the exact ProgramSpec and method spec checksums, selected
+  methods, biological units, state scopes, expression asset and software
+  versions.
 - Missing coverage produces typed `not_assessed` records; it is not converted to
   zero.
 - Repeated runs over identical inputs produce the same run and artifact content
@@ -39,18 +44,18 @@ registered candidates. This runtime does not execute them.
 
 | Check | Result |
 |---|---|
-| P0-06 focused and registry tests | 40 passed |
-| Full repository test suite | 1,231 passed |
-| Tool discovery | 12 packages |
-| Clean-wheel import | package loaded outside the source tree |
-| CLI smoke | `list`, `describe P0-06`, and `input-contract P0-06` passed |
-| Wheel SHA-256 | `3c6d9cd5897dfd9e378e4764740e631e5ab248b43af88a389cc149fd3da20784` |
-| Knowledge validation | valid; no dangling method or source references |
-| Repository policy and diff hygiene | passed |
+| P0-06 focused and registry tests | 43 passed |
+| Content-integrity adversaries | gene, weight and phase-gene changes under a stale digest all refused with typed reasons |
+| Generated artifacts | ProgramSpec, ProcessMethodSpec and ProcessMethodBundle schemas regenerated from their repository models |
+| Repository checks | repository policy, `git diff --check` and added-lines privacy scan passed |
 
 The runtime test used a fully synthetic expression matrix with synthetic
 biological-unit and cell-state assignments. No internal or unpublished data are
 part of this record.
+
+These counts describe the focused closure run for this revision. The required
+GitHub repository gate remains the authority for the complete source suite,
+wheel build, 12-tool discovery and clean-install checks.
 
 ## Scientific boundary
 

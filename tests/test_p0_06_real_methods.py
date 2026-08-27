@@ -7,6 +7,7 @@ from pathlib import Path
 
 import anndata as ad
 import numpy as np
+import pytest
 
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
     MethodExecutionState,
@@ -76,6 +77,42 @@ def _canonical_bytes(payload: object) -> bytes:
         sort_keys=True,
         separators=(",", ":"),
     ).encode()
+
+
+def _program_content_sha256(
+    *,
+    targets: list[dict[str, object]] | None = None,
+    s_genes: list[str] | None = None,
+    g2m_genes: list[str] | None = None,
+) -> str:
+    payload = (
+        {
+            "content_type": "weighted_program_targets",
+            "targets": sorted(targets or [], key=lambda item: str(item["gene"])),
+        }
+        if targets is not None
+        else {
+            "content_type": "cell_cycle_phase_genes",
+            "s_genes": sorted(s_genes or []),
+            "g2m_genes": sorted(g2m_genes or []),
+        }
+    )
+    return hashlib.sha256(_canonical_bytes(payload)).hexdigest()
+
+
+def _replace_json_input(
+    request: ToolRequestV2, role: str, payload: object
+) -> tuple[ToolRequestV2, str]:
+    old = next(item for item in request.object_inputs if item.role == role)
+    raw = _canonical_bytes(payload)
+    old.path.write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    replacement = old.model_copy(update={"sha256": digest})
+    refs = [
+        replacement if item.role == role else item
+        for item in request.object_inputs
+    ]
+    return request.model_copy(update={"object_inputs": refs}), digest
 
 
 def _write_ref(root: Path, role: str, payload: object) -> StructuredInputRef:
@@ -221,15 +258,36 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
         "state_specific",
     ]
     program_spec["program_rules"][0]["allowed_state_ids"] = ["state:target"]
+    proliferation_targets = [
+        {"gene": f"PROLIF{index}", "weight": 1.0} for index in range(8)
+    ]
+    program_spec["program_rules"][0]["targets"] = proliferation_targets
+    program_spec["program_rules"][0]["gene_set_sha256"] = (
+        _program_content_sha256(targets=proliferation_targets)
+    )
     program_spec["program_rules"][1]["allowed_analysis_scopes"] = [
         "whole_product",
         "state_specific",
     ]
+    stress_targets = [
+        {"gene": f"STRESS{index}", "weight": 1.0} for index in range(8)
+    ]
+    program_spec["program_rules"][1]["targets"] = stress_targets
+    program_spec["program_rules"][1]["gene_set_sha256"] = (
+        _program_content_sha256(targets=stress_targets)
+    )
+    s_genes = [f"SPHASE{index}" for index in range(6)]
+    g2m_genes = [f"G2MPHASE{index}" for index in range(6)]
     program_spec["program_rules"].append(
         {
             "program_id": "program:cell-cycle",
             "gene_set_ref": "gene-set:cell-cycle-demo",
-            "gene_set_sha256": "d" * 64,
+            "gene_set_sha256": _program_content_sha256(
+                s_genes=s_genes,
+                g2m_genes=g2m_genes,
+            ),
+            "s_genes": s_genes,
+            "g2m_genes": g2m_genes,
             "allowed_analysis_scopes": ["whole_product", "state_specific"],
             "allowed_state_ids": ["state:target"],
             "allowed_stage_ids": ["stage:target"],
@@ -257,32 +315,10 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
         "selected_method_ids": [item.value for item in ProcessMethodId],
         "selected_analysis_scopes": ["whole_product", "state_specific"],
         "programs": [
-            {
-                "program_id": "program:proliferation",
-                "gene_set_ref": "gene-set:proliferation-demo",
-                "gene_set_sha256": "a" * 64,
-                "targets": [
-                    {"gene": f"PROLIF{index}", "weight": 1.0}
-                    for index in range(8)
-                ],
-            },
-            {
-                "program_id": "program:stress",
-                "gene_set_ref": "gene-set:stress-demo",
-                "gene_set_sha256": "b" * 64,
-                "targets": [
-                    {"gene": f"STRESS{index}", "weight": 1.0}
-                    for index in range(8)
-                ],
-            },
+            {"program_id": "program:proliferation"},
+            {"program_id": "program:stress"},
         ],
-        "cell_cycle": {
-            "program_id": "program:cell-cycle",
-            "gene_set_ref": "gene-set:cell-cycle-demo",
-            "gene_set_sha256": "d" * 64,
-            "s_genes": [f"SPHASE{index}" for index in range(6)],
-            "g2m_genes": [f"G2MPHASE{index}" for index in range(6)],
-        },
+        "cell_cycle": {"program_id": "program:cell-cycle"},
         "scanpy_ctrl_size": 5,
         "scanpy_n_bins": 5,
         "scanpy_ctrl_as_ref": True,
@@ -423,9 +459,56 @@ def test_real_method_runtime_executes_and_is_deterministic(tmp_path: Path) -> No
     )
     assert bundle.program_scores
     assert bundle.cell_cycle_summaries
+    assert bundle.program_spec_sha256 == next(
+        item.sha256 for item in request.object_inputs if item.role == "program_spec"
+    )
     assert bundle.evidence_state == "shadow"
     assert bundle.score_state == "unavailable"
     assert bundle.domain_score is None
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected_reason"),
+    [
+        ("gene", "program_gene_set_content_checksum_mismatch"),
+        ("weight", "program_gene_set_content_checksum_mismatch"),
+        ("phase", "cell_cycle_gene_set_content_checksum_mismatch"),
+    ],
+)
+def test_real_method_runtime_rejects_content_under_stale_program_digest(
+    tmp_path: Path,
+    mutation: str,
+    expected_reason: str,
+) -> None:
+    registry = ToolRegistry.load_default()
+    request = _method_request(tmp_path)
+    program_ref = next(
+        item for item in request.object_inputs if item.role == "program_spec"
+    )
+    program_spec = json.loads(program_ref.path.read_text())
+    if mutation == "gene":
+        program_spec["program_rules"][0]["targets"][0]["gene"] = "PROLIF-CHANGED"
+    elif mutation == "weight":
+        program_spec["program_rules"][0]["targets"][0]["weight"] = 2.0
+    else:
+        program_spec["program_rules"][2]["s_genes"][0] = "SPHASE-CHANGED"
+    request, program_sha = _replace_json_input(
+        request, "program_spec", program_spec
+    )
+
+    bundle_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "program_evidence_bundle"
+    )
+    bundle = json.loads(bundle_ref.path.read_text())
+    bundle["program_spec_sha256"] = program_sha
+    request, _ = _replace_json_input(request, "program_evidence_bundle", bundle)
+
+    eligibility = registry.check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert expected_reason in eligibility.reason_codes
 
 
 def test_real_method_runtime_rejects_replaced_expression(tmp_path: Path) -> None:

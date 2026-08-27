@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import math
 from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Annotated, Literal, Self
@@ -17,6 +20,7 @@ PublishedRef = Annotated[
 ]
 Sha256 = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 NonNegativeInt = Annotated[StrictInt, Field(ge=0)]
+GENE_PATTERN = r"^[^\s]+$"
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -77,10 +81,25 @@ class ProcessAttributionRule(FrozenModel):
     minimum_comparable_groups: StrictInt = Field(ge=1)
 
 
+class ProgramGeneTarget(FrozenModel):
+    gene: str = Field(pattern=GENE_PATTERN)
+    weight: StrictFloat
+
+    @field_validator("weight")
+    @classmethod
+    def weight_is_nonzero(cls, value: float) -> float:
+        if not math.isfinite(value) or value == 0.0:
+            raise ValueError("program target weight must be finite and nonzero")
+        return value
+
+
 class ProgramRule(FrozenModel):
     program_id: SafeId
     gene_set_ref: PublishedRef
     gene_set_sha256: Sha256
+    targets: list[ProgramGeneTarget] = Field(default_factory=list)
+    s_genes: list[str] = Field(default_factory=list)
+    g2m_genes: list[str] = Field(default_factory=list)
     allowed_analysis_scopes: list[AnalysisScope] = Field(min_length=1)
     allowed_state_ids: list[SafeId] = Field(default_factory=list)
     allowed_stage_ids: list[SafeId] = Field(min_length=1)
@@ -106,6 +125,22 @@ class ProgramRule(FrozenModel):
     def lists_are_unique(cls, value: list[object], info: object) -> list[object]:
         return _unique(value, getattr(info, "field_name", "values"))
 
+    @field_validator("targets")
+    @classmethod
+    def target_genes_are_unique(
+        cls, value: list[ProgramGeneTarget]
+    ) -> list[ProgramGeneTarget]:
+        _unique([item.gene for item in value], "program target genes")
+        return value
+
+    @field_validator("s_genes", "g2m_genes")
+    @classmethod
+    def phase_genes_are_valid(cls, value: list[str]) -> list[str]:
+        _unique(value, "cell-cycle genes")
+        if any(not gene or any(char.isspace() for char in gene) for gene in value):
+            raise ValueError("cell-cycle genes must be non-empty tokens")
+        return value
+
     @model_validator(mode="after")
     def external_rule_is_complete(self) -> Self:
         if (
@@ -115,7 +150,41 @@ class ProgramRule(FrozenModel):
             raise ValueError("state_specific programs require allowed_state_ids")
         if not set(self.resolvable_lod_states).issubset(self.allowed_lod_states):
             raise ValueError("resolvable_lod_states must be allowed")
+        has_phase_content = bool(self.s_genes or self.g2m_genes)
+        if self.targets and has_phase_content:
+            raise ValueError("program rule cannot mix weighted and phase gene content")
+        if bool(self.s_genes) != bool(self.g2m_genes):
+            raise ValueError("cell-cycle rule requires both S and G2M gene sets")
+        if set(self.s_genes).intersection(self.g2m_genes):
+            raise ValueError("S and G2M gene sets must not overlap")
         return self
+
+
+def program_rule_content_sha256(rule: ProgramRule) -> str | None:
+    if rule.targets:
+        payload = {
+            "content_type": "weighted_program_targets",
+            "targets": [
+                {"gene": item.gene, "weight": item.weight}
+                for item in sorted(rule.targets, key=lambda item: item.gene)
+            ],
+        }
+    elif rule.s_genes and rule.g2m_genes:
+        payload = {
+            "content_type": "cell_cycle_phase_genes",
+            "s_genes": sorted(rule.s_genes),
+            "g2m_genes": sorted(rule.g2m_genes),
+        }
+    else:
+        return None
+    raw = json.dumps(
+        payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
 
 
 class ProgramSpec(FrozenModel):

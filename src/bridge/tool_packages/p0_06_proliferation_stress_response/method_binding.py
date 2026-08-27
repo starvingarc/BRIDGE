@@ -19,6 +19,7 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.method_models impo
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     ProgramSpec,
+    program_rule_content_sha256,
 )
 from bridge.toolkit.contracts import (
     CellStateEvidenceProfileV3,
@@ -191,22 +192,34 @@ def method_binding_reasons(
         rule = rules.get(program.program_id)
         if (
             rule is None
-            or program.gene_set_ref != rule.gene_set_ref
-            or program.gene_set_sha256 != rule.gene_set_sha256
             or not set(method_spec.selected_analysis_scopes).intersection(
                 rule.allowed_analysis_scopes
             )
         ):
             reasons.add("process_program_binding_mismatch")
+            continue
+        content_sha256 = program_rule_content_sha256(rule)
+        if not rule.targets:
+            reasons.add("process_program_content_missing")
+        elif content_sha256 != rule.gene_set_sha256:
+            reasons.add("program_gene_set_content_checksum_mismatch")
+        if (
+            ProcessMethodId.SCANPY_SCORE_GENES
+            in method_spec.selected_method_ids
+            and sum(target.weight > 0 for target in rule.targets) < 2
+        ):
+            reasons.add("scanpy_program_positive_targets_insufficient")
     if method_spec.cell_cycle is not None:
         rule = rules.get(method_spec.cell_cycle.program_id)
         if (
             rule is None
-            or method_spec.cell_cycle.gene_set_ref != rule.gene_set_ref
-            or method_spec.cell_cycle.gene_set_sha256 != rule.gene_set_sha256
             or not set(method_spec.selected_analysis_scopes).intersection(
                 rule.allowed_analysis_scopes
             )
         ):
             reasons.add("cell_cycle_program_binding_mismatch")
+        elif not rule.s_genes or not rule.g2m_genes:
+            reasons.add("cell_cycle_program_content_missing")
+        elif program_rule_content_sha256(rule) != rule.gene_set_sha256:
+            reasons.add("cell_cycle_gene_set_content_checksum_mismatch")
     return sorted(reasons)

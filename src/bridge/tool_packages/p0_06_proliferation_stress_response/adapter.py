@@ -222,6 +222,7 @@ class ProliferationStressResponseAdapter:
                     asset_sha256=asset_sha,
                     method_spec=method_spec,
                     method_spec_sha256=_input_sha(request, "process_method_spec"),
+                    program_spec_sha256=_input_sha(request, "program_spec"),
                     method_input=method_input,
                     method_input_sha256=_input_sha(request, "process_method_input"),
                     assignment=assignment,

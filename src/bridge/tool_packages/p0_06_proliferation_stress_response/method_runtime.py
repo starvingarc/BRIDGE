@@ -294,7 +294,7 @@ def _scanpy_program_scores(
     genes = set(data.genes.tolist())
     for index, program in enumerate(method_spec.programs):
         rule = rules[program.program_id]
-        positive = [item.gene for item in program.targets if item.weight > 0]
+        positive = [item.gene for item in rule.targets if item.weight > 0]
         observed = [gene for gene in positive if gene in genes]
         coverage = len(observed) / len(positive) if positive else 0.0
         reason = None
@@ -321,9 +321,9 @@ def _scanpy_program_scores(
                     "scanpy_score_genes_failed", str(exc)
                 ) from exc
             scores = np.asarray(data.adata.obs[score_name], dtype=float)
-        if any(item.weight != 1.0 for item in program.targets):
+        if any(item.weight != 1.0 for item in rule.targets):
             limitations.add("scanpy_target_weights_not_applied")
-        if any(item.weight < 0 for item in program.targets):
+        if any(item.weight < 0 for item in rule.targets):
             limitations.add("scanpy_negative_targets_not_scored")
         scopes = set(method_spec.selected_analysis_scopes).intersection(
             rule.allowed_analysis_scopes
@@ -354,7 +354,8 @@ def _decoupler_program_scores(
     network_rows: list[dict[str, str | float]] = []
     observed_by_program: dict[str, list[str]] = {}
     for program in method_spec.programs:
-        observed = [item for item in program.targets if item.gene in genes]
+        targets = rules[program.program_id].targets
+        observed = [item for item in targets if item.gene in genes]
         observed_by_program[program.program_id] = [item.gene for item in observed]
         network_rows.extend(
             {
@@ -391,7 +392,7 @@ def _decoupler_program_scores(
     for program in method_spec.programs:
         rule = rules[program.program_id]
         observed = observed_by_program[program.program_id]
-        coverage = len(observed) / len(program.targets)
+        coverage = len(observed) / len(rule.targets)
         available = (
             len(observed) >= method_spec.decoupler_tmin
             and coverage >= rule.minimum_gene_coverage
@@ -412,7 +413,7 @@ def _decoupler_program_scores(
                 scores=scores,
                 groups=_groups(data, scopes, set(rule.allowed_state_ids)),
                 observed_gene_count=len(observed),
-                declared_gene_count=len(program.targets),
+                declared_gene_count=len(rule.targets),
                 score_unit="decoupler_ulm_t_value",
                 spec=method_spec,
                 unavailable_reason=(
@@ -429,14 +430,13 @@ def _cell_cycle_summaries(
     rule: ProgramRule,
     random_seed: int,
 ) -> list[CellCycleSummary]:
-    definition = method_spec.cell_cycle
-    if definition is None:
+    if method_spec.cell_cycle is None:
         return []
     genes = set(data.genes.tolist())
-    s_genes = [gene for gene in definition.s_genes if gene in genes]
-    g2m_genes = [gene for gene in definition.g2m_genes if gene in genes]
-    s_coverage = len(s_genes) / len(definition.s_genes)
-    g2m_coverage = len(g2m_genes) / len(definition.g2m_genes)
+    s_genes = [gene for gene in rule.s_genes if gene in genes]
+    g2m_genes = [gene for gene in rule.g2m_genes if gene in genes]
+    s_coverage = len(s_genes) / len(rule.s_genes)
+    g2m_coverage = len(g2m_genes) / len(rule.g2m_genes)
     reason = None
     if (
         len(s_genes) < 2
@@ -610,6 +610,7 @@ def run_process_methods(
     asset_sha256: str,
     method_spec: ProcessMethodSpec,
     method_spec_sha256: str,
+    program_spec_sha256: str,
     method_input: ProcessMethodInput,
     method_input_sha256: str,
     assignment: BiologicalUnitAssignmentArtifact,
@@ -717,6 +718,7 @@ def run_process_methods(
         tool_id="P0-06",
         tool_version=tool_version,
         method_spec_sha256=method_spec_sha256,
+        program_spec_sha256=program_spec_sha256,
         method_input_sha256=method_input_sha256,
         expression_asset_id=asset.asset_id,
         expression_asset_sha256=asset_sha256,
