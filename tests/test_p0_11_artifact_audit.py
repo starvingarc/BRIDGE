@@ -364,11 +364,15 @@ def test_leak_scan_blocks_sensitive_canary_classes(text: str) -> None:
         "compute-node",
         "service.internal",
         "service.localdomain",
+        "service.example",
+        "service.alt",
+        "home.arpa",
+        "router.home.arpa",
         "UPPER.example.org",
     ],
 )
 def test_url_policy_rejects_non_public_hosts(host: str) -> None:
-    with pytest.raises(ValueError, match="canonical public DNS"):
+    with pytest.raises(ValueError, match="static public-DNS policy"):
         PublicArtifactAuditPolicy(
             object_version="0.1.0",
             policy_id="public-artifact-policy:host-test",

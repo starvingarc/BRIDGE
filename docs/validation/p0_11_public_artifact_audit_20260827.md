@@ -31,9 +31,11 @@ independent modules are integrated.
 
 The artifact matrix executes strict JSON Schema validation, Markdown parsing,
 an HTTPS host allowlist, Pandas/CSV rules, defused SVG parsing, manifest-ref
-syntax checks, checksum, MIME and leak rules. Bare GFM-style URLs are scanned in text tokens. External URLs reject userinfo,
-query, fragment, non-default ports, IP literals, single-label names and private DNS suffixes. SVG `url()` values must point to an
-existing local fragment. Adversarial fixtures cover raw Markdown HTML, CSV
+syntax checks, checksum, MIME and leak rules. Bare GFM-style URLs are scanned in
+text tokens. External URLs reject userinfo, query, fragment, non-default ports,
+IP literals, single-label names, private suffixes, reserved `.example`/`.alt`
+names and the `home.arpa` subtree through static rules; the audit does not resolve
+DNS. SVG `url()` values must point to an existing local fragment. Adversarial fixtures cover raw Markdown HTML, CSV
 formula injection, SVG active content, missing/external SVG resource references,
 ambiguous URLs, sensitive-content canaries and in-run file replacement. Each artifact
 is read once, immediately hash-bound, and all parsers consume those bytes; `file` and

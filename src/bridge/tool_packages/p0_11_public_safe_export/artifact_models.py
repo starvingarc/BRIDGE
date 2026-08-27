@@ -22,8 +22,10 @@ HOST_PATTERN = re.compile(
     r"^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)"
     r"(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$"
 )
-PRIVATE_DNS_SUFFIXES = {
+FORBIDDEN_DNS_SUFFIXES = {
+    "alt",
     "corp",
+    "example",
     "home",
     "internal",
     "intranet",
@@ -36,6 +38,7 @@ PRIVATE_DNS_SUFFIXES = {
     "private",
     "test",
 }
+FORBIDDEN_DNS_SUBTREES = {"home.arpa"}
 
 
 def is_public_dns_name(host: str) -> bool:
@@ -48,7 +51,12 @@ def is_public_dns_name(host: str) -> bool:
     else:
         return False
     suffix = host.rsplit(".", 1)[-1]
-    return suffix[0].isalpha() and suffix not in PRIVATE_DNS_SUFFIXES
+    if not suffix[0].isalpha() or suffix in FORBIDDEN_DNS_SUFFIXES:
+        return False
+    return not any(
+        host == subtree or host.endswith(f".{subtree}")
+        for subtree in FORBIDDEN_DNS_SUBTREES
+    )
 
 
 class PublicArtifactFormat(StrEnum):
@@ -96,7 +104,10 @@ class PublicArtifactAuditPolicy(FrozenModel):
     max_file_bytes: StrictInt = Field(ge=1, le=50_000_000)
     allowed_url_schemes: list[Literal["https"]]
     allowed_url_hosts: list[str] = Field(
-        description="Lowercase public DNS names; IP, single-label and private suffixes are forbidden"
+        description=(
+            "Lowercase dotted DNS names; IP, single-label, private, and selected "
+            "special-use names are forbidden; no DNS lookup is performed"
+        )
     )
     json_schema_refs: dict[str, str]
     csv_column_allowlists: dict[str, list[str]]
@@ -116,7 +127,7 @@ class PublicArtifactAuditPolicy(FrozenModel):
     @classmethod
     def hosts_are_public_names(cls, value: list[str]) -> list[str]:
         if any(not is_public_dns_name(host) for host in value):
-            raise ValueError("allowed URL hosts must be canonical public DNS names")
+            raise ValueError("allowed URL hosts must pass the static public-DNS policy")
         return value
 
     @field_validator("json_schema_refs")
