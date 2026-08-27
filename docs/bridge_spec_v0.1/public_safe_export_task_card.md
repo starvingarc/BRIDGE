@@ -15,8 +15,8 @@ P0-11 为 Agent 的对外展示与导出提供最后一层确定性约束，包�
 
 1. `report_export`：将已获 P0-10 eligible receipt 的报告按冻结白名单
    重建为公开 JSON 候选，并用 candidate hash 绑定人工确认。
-2. `artifact_audit`：在候选 JSON、Markdown、CSV、SVG 或 ZIP 被展示前，
-   核查格式、来源、checksum、内容规则和冻结策略。
+2. `artifact_audit`：在候选 JSON、Markdown、CSV 或 SVG 被展示前，
+   核查格式、source-ref 语法、checksum、内容规则和冻结策略。
 
 模块不上传文件，不重新判断生物学结论，也不授予发布权限。
 
@@ -37,19 +37,18 @@ P0-11 为 Agent 的对外展示与导出提供最后一层确定性约束，包�
 
 | Role | 内容 |
 |---|---|
-| `public_artifact_audit_policy` | 允许的格式、HTTPS host、JSON Schema、CSV 列和文件/归档上限 |
-| `public_artifact_manifest` | 1–20 个 regular file 的绝对路径、格式、媒体类型、来源 ref 与 SHA-256 |
+| `public_artifact_audit_policy` | 允许的格式、HTTPS host、JSON Schema、CSV 列和文件上限 |
+| `public_artifact_manifest` | 1–20 个 regular file 的绝对路径、格式、媒体类型、source-ref 字符串与 SHA-256 |
 
 支持的第一版格式与实际执行工具如下：
 
 | 格式 | 实际执行 |
 |---|---|
-| JSON | 严格 JSON、packaged JSON Schema、canonical bytes、`hashlib` |
+| JSON | 严格 JSON 与 packaged JSON Schema |
 | Markdown | `markdown-it-py`、`regex`、URL allowlist |
 | CSV | Pandas、Python `csv`、列白名单与公式注入规则 |
-| SVG | `defusedxml`、元素/属性白名单与 URL 检查 |
-| ZIP | Python `zipfile`、路径/大小/symlink 规则与 `unzip` 列表复核 |
-| 全部 | provenance/checksum、泄漏规则、`file` 与 `sha256sum` |
+| SVG | `defusedxml`、元素/属性白名单、本地 fragment 与 URL 检查 |
+| 全部 | source-ref 语法、checksum、泄漏规则、`file` 与 `sha256sum` |
 
 输出一个不包含本地路径的 `PublicArtifactAuditResult`。内容违规属于完成的
 审计：`execution_state=succeeded` 且 `audit_state=blocked`；合同、
@@ -60,9 +59,9 @@ checksum、文件状态或运行工具错误才使执行失败。
 - V1 envelope、模式混合、缺失/重复 role、Schema/版本/媒体类型错误；
 - expression asset、MeasurementSpec、自由参数或 inline payload；
 - receipt/policy/report 绑定失败或公开 alias、statement 未获允许；
-- manifest policy 绑定失败、格式未获允许、JSON/CSV 规则缺失；
+- manifest policy 绑定失败、source-ref 语法错误、格式未获允许、JSON/CSV 规则缺失；
 - 非 regular file、空文件、大小越界、checksum 变化或输出目录重叠；
-- Markdown HTML/非允许 URL、CSV 公式、SVG 主动内容、ZIP 穿越或 symlink；
+- Markdown HTML/带 query、fragment、userinfo 或非默认端口的 URL、CSV 公式、SVG 主动内容或无效本地 fragment；
 - 私有路径、主机、邮箱、凭据和内部标识 canary。
 
 ## 5. Agent 调用
@@ -80,7 +79,8 @@ SDK 使用 `ToolRegistry.load_default().check_eligibility(request)` 和
 
 ## 6. 边界
 
-工程验证只证明已登记规则、解析器和命令在测试合同内可重复执行。passed
-不是完全匿名证明；`exported` 不是网络上传、科学发布、临床判断或 GMP
-放行。两个模式均保持 `candidate`、`domain_score=null`、
+工程验证只证明已登记规则、解析器和命令在测试合同内可重复执行。source-ref
+只做字符串语法检查，不验证 producer registry 或来源真实性。passed 不是完全
+匿名证明；`exported` 不是网络上传、科学发布、临床判断或 GMP 放行。两个模式
+均保持 `candidate`、`domain_score=null`、
 `score_state=unavailable`。

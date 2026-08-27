@@ -4,8 +4,8 @@ P0-11 provides two local, deterministic operations:
 
 - `report_export`: rebuild a P0-10-eligible report as an allowlisted JSON
   candidate with explicit hash confirmation.
-- `artifact_audit`: inspect checksummed JSON, Markdown, CSV, SVG and ZIP
-  candidates before an Agent exposes them.
+- `artifact_audit`: inspect checksummed JSON, Markdown, CSV and SVG candidates
+  before an Agent exposes them.
 
 No mode performs a network upload. Results remain `candidate`,
 `domain_score=null` and `score_state=unavailable`.

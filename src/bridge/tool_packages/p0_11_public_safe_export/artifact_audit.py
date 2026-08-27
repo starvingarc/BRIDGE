@@ -4,13 +4,12 @@ import csv
 import hashlib
 import io
 from importlib.metadata import PackageNotFoundError, version
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path
 import shutil
 import stat
 import subprocess
 from typing import Any
 from urllib.parse import urlsplit
-import zipfile
 
 from defusedxml import ElementTree
 from defusedxml.common import DefusedXmlException
@@ -39,6 +38,7 @@ from bridge.tool_packages._structured_runtime import (
 from bridge.tool_packages.p0_11_public_safe_export.artifact_models import (
     ArtifactAuditState,
     ArtifactCheckState,
+    PUBLIC_REF_PATTERN,
     PublicArtifactAuditPolicy,
     PublicArtifactAuditRecord,
     PublicArtifactAuditResult,
@@ -74,29 +74,23 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     ),
 }
 METHOD_IMPLEMENTATIONS = {
-    "METHOD-ARTIFACT-PROVENANCE-CHECK": "BRIDGE manifest/source binding",
     "METHOD-CSV-DETERMINISTIC-RULE": "Python csv parser and formula guard",
-    "METHOD-CUSTOM-DETERMINISTIC-RULES": "BRIDGE leak and control-character rules",
+    "METHOD-CUSTOM-DETERMINISTIC-RULES": (
+        "BRIDGE manifest-ref syntax, leak and control-character rules"
+    ),
     "METHOD-CUSTOM-SVG-INSPECTOR": "defusedxml plus BRIDGE SVG allowlist",
     "METHOD-FORMAT-GATE": "BRIDGE signature and MIME gate",
     "METHOD-JSONSCHEMA-HASHLIB": "jsonschema Draft 2020-12 and hashlib",
     "METHOD-MARKDOWN-PARSER-REGEX": "markdown-it-py and regex",
     "METHOD-OS-CLI": "file and sha256sum",
     "METHOD-PANDAS-CSV-REGEX": "pandas and regex",
-    "METHOD-STDLIB": "Python hashlib, csv and zipfile",
     "METHOD-URL-PARSER-ALLOWLIST": "urllib.parse URL allowlist",
-    "METHOD-ZIPFILE-UNZIP": "Python zipfile and unzip listing",
 }
 EXPECTED_MEDIA_TYPES = {
     PublicArtifactFormat.JSON: {"application/json", "text/plain"},
     PublicArtifactFormat.MARKDOWN: {"text/markdown", "text/plain"},
     PublicArtifactFormat.CSV: {"text/csv", "text/plain"},
     PublicArtifactFormat.SVG: {"image/svg+xml", "text/xml", "application/xml"},
-    PublicArtifactFormat.ZIP: {
-        "application/zip",
-        "application/x-zip",
-        "application/x-zip-compressed",
-    },
 }
 LEAK_PATTERNS = (
     regex.compile(
@@ -127,6 +121,9 @@ LEAK_PATTERNS = (
 FORMULA_PREFIX = regex.compile(r"^\s*[=+@-]")
 NUMERIC_CELL = regex.compile(
     r"^\s*[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?\s*$"
+)
+SVG_URL_REFERENCE = regex.compile(
+    r"url\(\s*(['\"]?)([^'\"\)\s]+)\1\s*\)", regex.I
 )
 ALLOWED_SVG_ELEMENTS = {
     "circle",
@@ -412,13 +409,9 @@ def _binding_reasons(
             Draft202012Validator.check_schema(schema)
         except (KeyError, FileNotFoundError, SchemaError):
             reasons.add("public_artifact_json_schema_invalid")
-    if not {"file", "sha256sum", "unzip"}.issubset(
-        {
-            name
-            for name in ("file", "sha256sum", "unzip")
-            if shutil.which(name)
-        }
-    ):
+    required_tools = {"file", "sha256sum"}
+    available_tools = {name for name in required_tools if shutil.which(name)}
+    if not required_tools.issubset(available_tools):
         reasons.add("public_artifact_os_tool_unavailable")
     output_root = request.output_dir.resolve(strict=False)
     for item in manifest.artifacts:
@@ -505,9 +498,7 @@ def _audit_artifact(
     policy: PublicArtifactAuditPolicy,
 ) -> PublicArtifactAuditRecord:
     raw = read_regular_bytes(item.path)
-    checks = [
-        _check("METHOD-ARTIFACT-PROVENANCE-CHECK", []),
-    ]
+    checks: list[PublicArtifactCheck] = []
     detected_media, os_reasons = _os_checks(item)
     checks.append(_check("METHOD-OS-CLI", os_reasons))
     format_reasons = []
@@ -516,7 +507,10 @@ def _audit_artifact(
     if item.media_type not in EXPECTED_MEDIA_TYPES[item.format]:
         format_reasons.append("public_artifact_declared_media_type_mismatch")
     checks.append(_check("METHOD-FORMAT-GATE", format_reasons))
-    common_reasons = _common_text_reasons(raw, item.format)
+    common_reasons = [
+        *_manifest_ref_syntax_reasons(item.source_artifact_ref),
+        *_common_text_reasons(raw),
+    ]
     checks.append(
         _check("METHOD-CUSTOM-DETERMINISTIC-RULES", common_reasons)
     )
@@ -528,8 +522,6 @@ def _audit_artifact(
         checks.extend(_audit_csv(item, raw, policy))
     elif item.format is PublicArtifactFormat.SVG:
         checks.extend(_audit_svg(raw, policy))
-    else:
-        checks.extend(_audit_zip(item, raw, policy))
     checks.sort(key=lambda value: value.method_id)
     blocked = any(
         value.state is ArtifactCheckState.BLOCKED
@@ -597,12 +589,16 @@ def _os_checks(item: PublicArtifactFileRef) -> tuple[str, list[str]]:
     return detected, reasons
 
 
-def _common_text_reasons(
-    raw: bytes,
-    artifact_format: PublicArtifactFormat,
-) -> list[str]:
-    if artifact_format is PublicArtifactFormat.ZIP:
-        return []
+def _manifest_ref_syntax_reasons(source_ref: str) -> list[str]:
+    if not regex.fullmatch(PUBLIC_REF_PATTERN, source_ref):
+        return ["public_artifact_source_ref_syntax_invalid"]
+    source, version = source_ref.rsplit("@", 1)
+    if source == "public-source:" or not version:
+        return ["public_artifact_source_ref_syntax_invalid"]
+    return []
+
+
+def _common_text_reasons(raw: bytes) -> list[str]:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
@@ -634,7 +630,6 @@ def _audit_json(
         payload = strict_json_loads(raw)
         schema = load_schema(policy.json_schema_refs[item.artifact_id])
         Draft202012Validator(schema).validate(payload)
-        canonical_json_bytes(payload)
     except (
         KeyError,
         FileNotFoundError,
@@ -686,12 +681,18 @@ def _url_allowed(
     policy: PublicArtifactAuditPolicy,
 ) -> bool:
     parsed = urlsplit(target)
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
     return bool(
         parsed.scheme in policy.allowed_url_schemes
         and parsed.hostname in policy.allowed_url_hosts
         and parsed.username is None
         and parsed.password is None
-        and not parsed.fragment.startswith("/")
+        and port in (None, 443)
+        and "?" not in target
+        and "#" not in target
     )
 
 
@@ -747,9 +748,18 @@ def _audit_svg(
     url_reasons: list[str] = []
     try:
         root = ElementTree.fromstring(raw)
+        elements = list(root.iter())
+        element_ids = [
+            element.attrib["id"]
+            for element in elements
+            if "id" in element.attrib
+        ]
+        known_ids = set(element_ids)
+        if len(element_ids) != len(known_ids):
+            svg_reasons.append("public_artifact_svg_duplicate_id")
         if _local_name(root.tag) != "svg":
             svg_reasons.append("public_artifact_svg_root_invalid")
-        for element in root.iter():
+        for element in elements:
             tag = _local_name(element.tag)
             if tag not in ALLOWED_SVG_ELEMENTS:
                 svg_reasons.append("public_artifact_svg_element_forbidden")
@@ -761,8 +771,26 @@ def _audit_svg(
                     svg_reasons.append(
                         "public_artifact_svg_attribute_forbidden"
                     )
-                if name == "href" and value != "" and not value.startswith("#"):
-                    if not _url_allowed(value, policy):
+                references = list(SVG_URL_REFERENCE.finditer(value))
+                if "url(" in value.lower() and not references:
+                    svg_reasons.append("public_artifact_svg_url_invalid")
+                for match in references:
+                    target = match.group(2)
+                    if not target.startswith("#"):
+                        svg_reasons.append(
+                            "public_artifact_svg_external_resource_forbidden"
+                        )
+                    elif target[1:] not in known_ids:
+                        svg_reasons.append(
+                            "public_artifact_svg_local_reference_missing"
+                        )
+                if name == "href" and value:
+                    if value.startswith("#"):
+                        if value[1:] not in known_ids:
+                            svg_reasons.append(
+                                "public_artifact_svg_local_reference_missing"
+                            )
+                    elif not _url_allowed(value, policy):
                         url_reasons.append(
                             "public_artifact_url_not_allowed"
                         )
@@ -784,85 +812,6 @@ def _local_name(name: str) -> str:
     return name.rsplit("}", 1)[-1]
 
 
-def _audit_zip(
-    item: PublicArtifactFileRef,
-    raw: bytes,
-    policy: PublicArtifactAuditPolicy,
-) -> list[PublicArtifactCheck]:
-    zip_reasons: list[str] = []
-    stdlib_reasons: list[str] = []
-    try:
-        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-            infos = archive.infolist()
-            names = [info.filename for info in infos]
-            if len(infos) > policy.max_archive_entries:
-                zip_reasons.append(
-                    "public_artifact_archive_entry_limit_exceeded"
-                )
-            if len(names) != len(set(names)):
-                zip_reasons.append(
-                    "public_artifact_archive_duplicate_entry"
-                )
-            if sum(info.file_size for info in infos) > (
-                policy.max_archive_uncompressed_bytes
-            ):
-                zip_reasons.append(
-                    "public_artifact_archive_size_limit_exceeded"
-                )
-            for info in infos:
-                if _unsafe_archive_name(info.filename):
-                    zip_reasons.append(
-                        "public_artifact_archive_path_unsafe"
-                    )
-                mode = (info.external_attr >> 16) & 0o170000
-                if mode == stat.S_IFLNK:
-                    zip_reasons.append(
-                        "public_artifact_archive_symlink_forbidden"
-                    )
-                if info.flag_bits & 0x1:
-                    zip_reasons.append(
-                        "public_artifact_archive_encrypted"
-                    )
-                zip_reasons.extend(_leak_reasons(info.filename))
-        listed = subprocess.run(
-            ["unzip", "-Z1", str(item.path)],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        ).stdout.splitlines()
-        if sorted(listed) != sorted(names):
-            zip_reasons.append(
-                "public_artifact_archive_listing_mismatch"
-            )
-    except (
-        OSError,
-        UnicodeDecodeError,
-        zipfile.BadZipFile,
-        subprocess.SubprocessError,
-    ):
-        zip_reasons.append("public_artifact_archive_invalid")
-    if hashlib.sha256(raw).hexdigest() != item.sha256:
-        stdlib_reasons.append("public_artifact_hash_mismatch")
-    return [
-        _check("METHOD-STDLIB", stdlib_reasons),
-        _check("METHOD-ZIPFILE-UNZIP", zip_reasons),
-    ]
-
-
-def _unsafe_archive_name(name: str) -> bool:
-    if (
-        not name
-        or "\x00" in name
-        or "\\" in name
-        or name.startswith("/")
-        or bool(PureWindowsPath(name).drive)
-    ):
-        return True
-    parts = PurePosixPath(name).parts
-    return any(part in {"", ".", ".."} for part in parts)
-
-
 def _runtime_versions() -> dict[str, str]:
     result: dict[str, str] = {}
     for package in (
@@ -876,7 +825,7 @@ def _runtime_versions() -> dict[str, str]:
             result[package] = version(package)
         except PackageNotFoundError:
             result[package] = "unavailable"
-    for command in ("file", "sha256sum", "unzip"):
+    for command in ("file", "sha256sum"):
         path = shutil.which(command)
         result[command] = "available" if path else "unavailable"
     return dict(sorted(result.items()))

@@ -11,7 +11,6 @@ output_schema_ref: bridge://schemas/tool-run/v0.2
 result_schema_ref: bridge://schemas/public-safe-export-run-result/v0.1
 adapter_ref: bridge.tool_packages.p0_11_public_safe_export.adapter:adapter
 method_ids:
-  - METHOD-ARTIFACT-PROVENANCE-CHECK
   - METHOD-BRIDGE-ALGORITHM-2AFBC8
   - METHOD-BRIDGE-RULE-ENGINE
   - METHOD-CSV-DETERMINISTIC-RULE
@@ -22,7 +21,5 @@ method_ids:
   - METHOD-MARKDOWN-PARSER-REGEX
   - METHOD-OS-CLI
   - METHOD-PANDAS-CSV-REGEX
-  - METHOD-STDLIB
   - METHOD-URL-PARSER-ALLOWLIST
-  - METHOD-ZIPFILE-UNZIP
 card_ref: bridge://tool-cards/P0-11

@@ -3,10 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-import zipfile
 
 import pytest
 
+from bridge.tool_packages.p0_11_public_safe_export.artifact_audit import (
+    METHOD_IMPLEMENTATIONS,
+    _audit_svg,
+    _manifest_ref_syntax_reasons,
+    _url_allowed,
+)
 from bridge.tool_packages.p0_11_public_safe_export.artifact_models import (
     PublicArtifactAuditPolicy,
     PublicArtifactAuditResult,
@@ -22,13 +27,12 @@ from bridge.toolkit.registry import ToolRegistry
 
 
 CREATED_AT = "2026-08-27T00:00:00Z"
-FORMATS = ("csv", "json", "markdown", "svg", "zip")
+FORMATS = ("csv", "json", "markdown", "svg")
 MEDIA_TYPES = {
     "csv": "text/csv",
     "json": "application/json",
     "markdown": "text/markdown",
     "svg": "image/svg+xml",
-    "zip": "application/zip",
 }
 
 
@@ -54,7 +58,6 @@ def _write_artifacts(root: Path, bad_format: str | None) -> list[PublicArtifactF
         "json": artifacts / "result.json",
         "markdown": artifacts / "report.md",
         "svg": artifacts / "figure.svg",
-        "zip": artifacts / "bundle.zip",
     }
     paths["json"].write_text(
         '{"eligible":true,"reason_codes":[],"tool_id":"P0-11"}\n',
@@ -82,17 +85,15 @@ def _write_artifacts(root: Path, bad_format: str | None) -> list[PublicArtifactF
             if bad_format == "svg"
             else (
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">'
-                "<title>Demo</title><circle cx=\"10\" cy=\"10\" r=\"5\"/>"
+                '<title>Demo</title><defs><clipPath id="clip">'
+                '<rect x="0" y="0" width="20" height="20"/>'
+                '</clipPath></defs><circle cx="10" cy="10" r="5" '
+                'clip-path="url(#clip)"/>'
                 "</svg>\n"
             )
         ),
         encoding="utf-8",
     )
-    with zipfile.ZipFile(paths["zip"], "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(
-            "../escape.txt" if bad_format == "zip" else "notes/readme.txt",
-            "public demo\n",
-        )
     return [
         PublicArtifactFileRef(
             artifact_id=f"public-artifact:{artifact_format}",
@@ -117,8 +118,6 @@ def _request(root: Path, *, bad_format: str | None = None) -> ToolRequestV2:
         active=True,
         allowed_formats=list(FORMATS),
         max_file_bytes=1_000_000,
-        max_archive_entries=20,
-        max_archive_uncompressed_bytes=1_000_000,
         allowed_url_schemes=["https"],
         allowed_url_hosts=["example.org"],
         json_schema_refs={
@@ -190,7 +189,6 @@ def test_artifact_audit_executes_all_registered_first_version_tools(
         f"public-artifact:{artifact_format}" for artifact_format in FORMATS
     ]
     assert result.selected_method_ids == [
-        "METHOD-ARTIFACT-PROVENANCE-CHECK",
         "METHOD-CSV-DETERMINISTIC-RULE",
         "METHOD-CUSTOM-DETERMINISTIC-RULES",
         "METHOD-CUSTOM-SVG-INSPECTOR",
@@ -199,9 +197,7 @@ def test_artifact_audit_executes_all_registered_first_version_tools(
         "METHOD-MARKDOWN-PARSER-REGEX",
         "METHOD-OS-CLI",
         "METHOD-PANDAS-CSV-REGEX",
-        "METHOD-STDLIB",
         "METHOD-URL-PARSER-ALLOWLIST",
-        "METHOD-ZIPFILE-UNZIP",
     ]
     assert result.domain_score is None
     assert result.score_state == "unavailable"
@@ -216,7 +212,6 @@ def test_artifact_audit_executes_all_registered_first_version_tools(
         ("markdown", "public_artifact_markdown_html_forbidden"),
         ("csv", "public_artifact_csv_formula_injection"),
         ("svg", "public_artifact_svg_element_forbidden"),
-        ("zip", "public_artifact_archive_path_unsafe"),
     ],
 )
 def test_unsafe_artifacts_are_successful_blocked_audits(
@@ -263,3 +258,82 @@ def test_artifact_replacement_fails_before_execution(tmp_path: Path) -> None:
     assert run.execution_state is ExecutionState.FAILED
     assert run.reason_codes == ["public_artifact_checksum_mismatch"]
     assert run.artifacts == []
+
+
+def _svg_policy() -> PublicArtifactAuditPolicy:
+    return PublicArtifactAuditPolicy(
+        object_version="0.1.0",
+        policy_id="public-artifact-policy:svg-test",
+        policy_version="1.0.0",
+        active=True,
+        allowed_formats=["svg"],
+        max_file_bytes=1_000_000,
+        allowed_url_schemes=["https"],
+        allowed_url_hosts=["example.org"],
+        json_schema_refs={},
+        csv_column_allowlists={},
+    )
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "http://example.org/file",
+        "https://user@example.org/file",
+        "https://example.org:8443/file",
+        "https://example.org/file?download=1",
+        "https://example.org/file#section",
+    ],
+)
+def test_external_urls_reject_ambiguous_or_stateful_targets(target: str) -> None:
+    assert not _url_allowed(target, _svg_policy())
+
+
+@pytest.mark.parametrize(
+    "target",
+    ["https://example.org/file", "https://example.org:443/file"],
+)
+def test_external_urls_accept_only_plain_https_allowlist_targets(
+    target: str,
+) -> None:
+    assert _url_allowed(target, _svg_policy())
+
+
+@pytest.mark.parametrize(
+    ("target", "reason"),
+    [
+        ("#missing", "public_artifact_svg_local_reference_missing"),
+        (
+            "https://example.org/paint",
+            "public_artifact_svg_external_resource_forbidden",
+        ),
+    ],
+)
+def test_svg_url_references_are_existing_local_fragments_only(
+    target: str,
+    reason: str,
+) -> None:
+    raw = (
+        '<svg xmlns="http://www.w3.org/2000/svg"><defs>'
+        '<linearGradient id="known"/></defs>'
+        f'<circle fill="url({target})" cx="1" cy="1" r="1"/></svg>'
+    ).encode()
+
+    checks = _audit_svg(raw, _svg_policy())
+
+    assert reason in {
+        item
+        for check in checks
+        for item in check.reason_codes
+    }
+
+
+def test_manifest_ref_check_is_syntax_only_not_provenance_authority() -> None:
+    assert _manifest_ref_syntax_reasons("public-source:demo@1.0.0") == []
+    assert _manifest_ref_syntax_reasons("internal-source:demo@1.0.0") == [
+        "public_artifact_source_ref_syntax_invalid"
+    ]
+    assert "METHOD-ARTIFACT-PROVENANCE-CHECK" not in METHOD_IMPLEMENTATIONS
+    assert "manifest-ref syntax" in METHOD_IMPLEMENTATIONS[
+        "METHOD-CUSTOM-DETERMINISTIC-RULES"
+    ]

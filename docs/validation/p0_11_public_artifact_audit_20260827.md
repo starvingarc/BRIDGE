@@ -5,7 +5,7 @@
 This record covers P0-11 v0.3.0 with two callable modes:
 
 - the existing four-object allowlisted JSON report export;
-- the new two-object audit for checksummed JSON, Markdown, CSV, SVG and ZIP
+- the new two-object audit for checksummed JSON, Markdown, CSV and SVG
   candidates.
 
 It validates engineering behavior only. It does not establish complete
@@ -13,7 +13,7 @@ anonymization, scientific validity or release permission.
 
 ## Interface evidence
 
-- `bridge-tool describe P0-11` reports v0.3.0 and 14 registered methods.
+- `bridge-tool describe P0-11` reports v0.3.0 and the narrowed method set.
 - `bridge-tool input-contract P0-11` reports `report_export` and
   `artifact_audit`.
 - Artifact-audit inputs are a frozen policy and a manifest of regular local
@@ -21,23 +21,23 @@ anonymization, scientific validity or release permission.
 - Unsafe content is a completed audit with `audit_state=blocked`; malformed
   contracts or changed files are typed execution failures.
 
-## Verification
+## Reproducible verification
 
-| Check | Result |
-|---|---|
-| P0-11, registry and shared-contract matrix | `103 passed` |
-| Full pytest | `1232 passed, 8 warnings` |
-| Clean-wheel P0-11 matrix | `24 passed`; imports resolved from the wheel install |
-| Tool discovery | Exactly 12 packages |
-| Knowledge validation | Valid; no dangling method or source refs |
-| Repository policy | Passed |
-| Diff hygiene | Passed |
+The focused P0-11, registry and shared-contract tests are run from the server
+environment. Repository policy, knowledge validation, generated Schema parity
+and `git diff --check` are run on the same source tree. This record intentionally
+does not freeze repository-wide test totals or wheel hashes, which change as
+independent modules are integrated.
 
-The artifact matrix executes strict JSON Schema validation, Markdown and URL
-checks, Pandas/CSV rules, defused SVG parsing, ZIP structure checks, provenance,
-checksum, MIME and leak rules. Adversarial fixtures cover raw Markdown HTML,
-CSV formula injection, SVG active content, ZIP path traversal and file
-replacement.
+The artifact matrix executes strict JSON Schema validation, Markdown parsing,
+an HTTPS host allowlist, Pandas/CSV rules, defused SVG parsing, manifest-ref
+syntax checks, checksum, MIME and leak rules. External URLs reject userinfo,
+query, fragment and non-default ports. SVG `url()` values must point to an
+existing local fragment. Adversarial fixtures cover raw Markdown HTML, CSV
+formula injection, SVG active content, missing/external SVG resource references,
+ambiguous URLs and file replacement.
+
+Manifest refs are syntax-checked only. The audit does not contact or validate a
 
 ## Boundary
 

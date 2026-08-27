@@ -218,7 +218,6 @@ def test_registry_declares_executable_v2_contract() -> None:
     assert isinstance(spec, ToolPackageSpecV2)
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert spec.method_ids == [
-        "METHOD-ARTIFACT-PROVENANCE-CHECK",
         "METHOD-BRIDGE-ALGORITHM-2AFBC8",
         "METHOD-BRIDGE-RULE-ENGINE",
         "METHOD-CSV-DETERMINISTIC-RULE",
@@ -229,9 +228,7 @@ def test_registry_declares_executable_v2_contract() -> None:
         "METHOD-MARKDOWN-PARSER-REGEX",
         "METHOD-OS-CLI",
         "METHOD-PANDAS-CSV-REGEX",
-        "METHOD-STDLIB",
         "METHOD-URL-PARSER-ALLOWLIST",
-        "METHOD-ZIPFILE-UNZIP",
     ]
     assert spec.result_schema_ref == "bridge://schemas/public-safe-export-run-result/v0.1"
 

@@ -49,8 +49,7 @@
         "json",
         "markdown",
         "csv",
-        "svg",
-        "zip"
+        "svg"
       ],
       "title": "PublicArtifactFormat",
       "type": "string"

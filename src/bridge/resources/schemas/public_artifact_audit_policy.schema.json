@@ -5,8 +5,7 @@
         "json",
         "markdown",
         "csv",
-        "svg",
-        "zip"
+        "svg"
       ],
       "title": "PublicArtifactFormat",
       "type": "string"
@@ -59,18 +58,6 @@
       "title": "Json Schema Refs",
       "type": "object"
     },
-    "max_archive_entries": {
-      "maximum": 10000,
-      "minimum": 1,
-      "title": "Max Archive Entries",
-      "type": "integer"
-    },
-    "max_archive_uncompressed_bytes": {
-      "maximum": 500000000,
-      "minimum": 1,
-      "title": "Max Archive Uncompressed Bytes",
-      "type": "integer"
-    },
     "max_file_bytes": {
       "maximum": 50000000,
       "minimum": 1,
@@ -100,8 +87,6 @@
     "active",
     "allowed_formats",
     "max_file_bytes",
-    "max_archive_entries",
-    "max_archive_uncompressed_bytes",
     "allowed_url_schemes",
     "allowed_url_hosts",
     "json_schema_refs",

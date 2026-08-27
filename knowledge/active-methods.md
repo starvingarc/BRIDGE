@@ -72,7 +72,6 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 
 ## P0-11: Public-safe Export
 
-- `METHOD-ARTIFACT-PROVENANCE-CHECK` — artifact provenance check ([catalog record](bridge://knowledge/methods/METHOD-ARTIFACT-PROVENANCE-CHECK))
 - `METHOD-BRIDGE-ALGORITHM-2AFBC8` — BRIDGE algorithm ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ALGORITHM-2AFBC8))
 - `METHOD-BRIDGE-RULE-ENGINE` — BRIDGE rule engine ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RULE-ENGINE))
 - `METHOD-CSV-DETERMINISTIC-RULE` — csv + deterministic rule ([catalog record](bridge://knowledge/methods/METHOD-CSV-DETERMINISTIC-RULE))
@@ -83,9 +82,7 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 - `METHOD-MARKDOWN-PARSER-REGEX` — Markdown parser + regex ([catalog record](bridge://knowledge/methods/METHOD-MARKDOWN-PARSER-REGEX))
 - `METHOD-OS-CLI` — OS CLI ([catalog record](bridge://knowledge/methods/METHOD-OS-CLI))
 - `METHOD-PANDAS-CSV-REGEX` — pandas / csv / regex ([catalog record](bridge://knowledge/methods/METHOD-PANDAS-CSV-REGEX))
-- `METHOD-STDLIB` — stdlib ([catalog record](bridge://knowledge/methods/METHOD-STDLIB))
 - `METHOD-URL-PARSER-ALLOWLIST` — URL parser + allowlist ([catalog record](bridge://knowledge/methods/METHOD-URL-PARSER-ALLOWLIST))
-- `METHOD-ZIPFILE-UNZIP` — zipfile / unzip ([catalog record](bridge://knowledge/methods/METHOD-ZIPFILE-UNZIP))
 
 ## P0-12: Optional Graft Assessment
 

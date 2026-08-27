@@ -28,7 +28,6 @@ class PublicArtifactFormat(StrEnum):
     MARKDOWN = "markdown"
     CSV = "csv"
     SVG = "svg"
-    ZIP = "zip"
 
 
 class ArtifactAuditState(StrEnum):
@@ -67,10 +66,6 @@ class PublicArtifactAuditPolicy(FrozenModel):
     active: StrictBool
     allowed_formats: list[PublicArtifactFormat] = Field(min_length=1)
     max_file_bytes: StrictInt = Field(ge=1, le=50_000_000)
-    max_archive_entries: StrictInt = Field(ge=1, le=10_000)
-    max_archive_uncompressed_bytes: StrictInt = Field(
-        ge=1, le=500_000_000
-    )
     allowed_url_schemes: list[Literal["https"]]
     allowed_url_hosts: list[str]
     json_schema_refs: dict[str, str]
