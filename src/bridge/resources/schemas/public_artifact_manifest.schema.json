@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "PublicArtifactFileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "pattern": "^public-artifact:[A-Za-z0-9._:-]+$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/PublicArtifactFormat"
+        },
+        "media_type": {
+          "pattern": "^[A-Za-z0-9!#$&^_.+\\-]+/[A-Za-z0-9!#$&^_.+\\-]+$",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "path": {
+          "format": "path",
+          "pattern": "^/",
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source_artifact_ref": {
+          "pattern": "^public-source:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+          "title": "Source Artifact Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "source_artifact_ref",
+        "path",
+        "format",
+        "media_type",
+        "sha256"
+      ],
+      "title": "PublicArtifactFileRef",
+      "type": "object"
+    },
+    "PublicArtifactFormat": {
+      "enum": [
+        "json",
+        "markdown",
+        "csv",
+        "svg"
+      ],
+      "title": "PublicArtifactFormat",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-artifact-manifest/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/PublicArtifactFileRef"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "manifest_id": {
+      "pattern": "^public-artifact-manifest:[A-Za-z0-9._:-]+$",
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "manifest_version": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "title": "Manifest Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "policy_ref": {
+      "pattern": "^public-artifact-policy:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+      "title": "Policy Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "manifest_id",
+    "manifest_version",
+    "policy_ref",
+    "artifacts",
+    "created_at"
+  ],
+  "title": "PublicArtifactManifest",
+  "type": "object"
+}

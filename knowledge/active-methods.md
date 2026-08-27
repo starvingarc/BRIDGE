@@ -105,6 +105,14 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 
 - `METHOD-BRIDGE-ALGORITHM-2AFBC8` — BRIDGE algorithm ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-ALGORITHM-2AFBC8))
 - `METHOD-BRIDGE-RULE-ENGINE` — BRIDGE rule engine ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RULE-ENGINE))
+- `METHOD-CSV-DETERMINISTIC-RULE` — csv + deterministic rule ([catalog record](bridge://knowledge/methods/METHOD-CSV-DETERMINISTIC-RULE))
+- `METHOD-CUSTOM-DETERMINISTIC-RULES` — custom deterministic rules ([catalog record](bridge://knowledge/methods/METHOD-CUSTOM-DETERMINISTIC-RULES))
+- `METHOD-CUSTOM-SVG-INSPECTOR` — custom SVG inspector ([catalog record](bridge://knowledge/methods/METHOD-CUSTOM-SVG-INSPECTOR))
+- `METHOD-FORMAT-GATE` — format gate ([catalog record](bridge://knowledge/methods/METHOD-FORMAT-GATE))
+- `METHOD-JSONSCHEMA-HASHLIB` — jsonschema / hashlib ([catalog record](bridge://knowledge/methods/METHOD-JSONSCHEMA-HASHLIB))
+- `METHOD-MARKDOWN-PARSER-REGEX` — Markdown parser + regex ([catalog record](bridge://knowledge/methods/METHOD-MARKDOWN-PARSER-REGEX))
+- `METHOD-OS-CLI` — OS CLI ([catalog record](bridge://knowledge/methods/METHOD-OS-CLI))
+- `METHOD-URL-PARSER-ALLOWLIST` — URL parser + allowlist ([catalog record](bridge://knowledge/methods/METHOD-URL-PARSER-ALLOWLIST))
 
 ## P0-12: Optional Graft Assessment
 

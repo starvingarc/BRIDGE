@@ -992,7 +992,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         random_seed_policy="any_integer",
         object_input_modes=[
             _mode(
-                "default",
+                "report_export",
                 _role("report_draft", "bridge://schemas/report-draft/v0.1", V01, 1, 1),
                 _role(
                     "claim_verification_result",
@@ -1015,7 +1015,24 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                     1,
                 ),
-            )
+            ),
+            _mode(
+                "artifact_audit",
+                _role(
+                    "public_artifact_audit_policy",
+                    "bridge://schemas/public-artifact-audit-policy/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "public_artifact_manifest",
+                    "bridge://schemas/public-artifact-manifest/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+            ),
         ],
     ),
     "P0-12": ToolInputContract(

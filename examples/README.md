@@ -23,6 +23,7 @@ before calling `validate` or `run`.
 | P0-09 | [`p0_09_evidence_compiler.json`](requests/p0_09_evidence_compiler.json) | Compilation bundle and evidence-registry request |
 | P0-10 | [`p0_10_claim_verifier.json`](requests/p0_10_claim_verifier.json) | Four-object structured claim-verification request |
 | P0-11 | [`p0_11_public_safe_export.json`](requests/p0_11_public_safe_export.json) | Four-object allowlisted local-export request |
+| P0-11 | [`p0_11_public_artifact_audit.json`](requests/p0_11_public_artifact_audit.json) | Two-object JSON/Markdown/CSV/SVG audit request |
 | P0-12 | [`p0_12_graft_assessment.json`](requests/p0_12_graft_assessment.json) | Optional no-graft request; supplied graft mode uses three objects |
 
 The P0-04 [method-spec example](objects/p0_04_development_method_spec.json)
