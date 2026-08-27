@@ -403,7 +403,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         random_seed_policy="fixed_zero",
         object_input_modes=[
             _mode(
-                "default",
+                "legacy_comparison",
                 _role(
                     "comparison_stability_spec",
                     "bridge://schemas/comparison-stability-spec/v0.1",
@@ -424,6 +424,44 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     V01,
                     2,
                     20,
+                ),
+            ),
+            _mode(
+                "method_runtime",
+                _role(
+                    "comparison_stability_spec",
+                    "bridge://schemas/comparison-stability-spec/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "comparison_case_manifest",
+                    "bridge://schemas/comparison-case-manifest/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "product_evidence_bundle",
+                    "bridge://schemas/product-evidence-bundle/v0.1",
+                    V01,
+                    2,
+                    20,
+                ),
+                _role(
+                    "comparison_method_spec",
+                    "bridge://schemas/comparison-method-spec/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "comparison_method_input",
+                    "bridge://schemas/comparison-method-input/v0.1",
+                    V01,
+                    1,
+                    1,
                 ),
             )
         ],

@@ -489,9 +489,253 @@ class ProductComparisonStabilityProfile(FrozenModel):
         return self
 
 
+class ComparisonMethodId(StrEnum):
+    SAMPLE_EFFECT = "CMP-EFFECT"
+    JENSEN_SHANNON = "CMP-JS"
+    PROFILE_CORRELATION = "CMP-CORR"
+    WASSERSTEIN_1D = "CMP-WASS-1D"
+    ROBUST_DISPERSION = "STAB-CV"
+
+
+class ComparisonSeriesSemantics(StrEnum):
+    PROBABILITY_MASS = "probability_mass"
+    MATCHED_FEATURES = "matched_features"
+    ORDERED_VALUES = "ordered_values"
+    SAMPLE_VALUES = "sample_values"
+
+
+class ComparisonMethodExecutionState(StrEnum):
+    SUCCEEDED = "succeeded"
+    PARTIAL = "partial"
+    NOT_ASSESSED = "not_assessed"
+
+
+class ComparisonMethodTask(FrozenModel):
+    task_id: str = Field(
+        pattern=r"^comparison-method-task:[A-Za-z0-9._:-]+$"
+    )
+    method_id: ComparisonMethodId
+    series_ids: list[str] = Field(min_length=1, max_length=2)
+
+    @field_validator("series_ids")
+    @classmethod
+    def series_ids_are_unique(cls, value: list[str]) -> list[str]:
+        if any(
+            not item.startswith("comparison-series:") or len(item) < 20
+            for item in value
+        ):
+            raise ValueError("series IDs must use the comparison-series namespace")
+        _unique(value, "task series IDs")
+        return value
+
+    @model_validator(mode="after")
+    def arity_matches_method(self) -> Self:
+        expected = (
+            1
+            if self.method_id is ComparisonMethodId.ROBUST_DISPERSION
+            else 2
+        )
+        if len(self.series_ids) != expected:
+            raise ValueError("comparison method task has the wrong series arity")
+        return self
+
+
+class ComparisonMethodSpec(FrozenModel):
+    object_version: Literal["0.1.0"]
+    method_spec_id: str = Field(
+        pattern=r"^comparison-method-spec:[A-Za-z0-9._:-]+$"
+    )
+    method_spec_version: str = Field(pattern=VERSION_PATTERN)
+    comparison_ref: VersionedObjectRef
+    status: Literal["candidate"]
+    tasks: list[ComparisonMethodTask] = Field(min_length=1)
+    jensen_shannon_base: StrictFloat = Field(default=2.0, gt=0)
+    active: bool
+
+    @field_validator("tasks")
+    @classmethod
+    def tasks_are_unique(
+        cls, value: list[ComparisonMethodTask]
+    ) -> list[ComparisonMethodTask]:
+        _unique([item.task_id for item in value], "comparison method task IDs")
+        return value
+
+    @field_validator("jensen_shannon_base")
+    @classmethod
+    def logarithm_base_is_valid(cls, value: float) -> float:
+        if value == 1.0:
+            raise ValueError("Jensen-Shannon logarithm base cannot equal one")
+        return value
+
+
+class ComparisonMethodSeries(FrozenModel):
+    series_id: str = Field(pattern=r"^comparison-series:[A-Za-z0-9._:-]+$")
+    group_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    metric_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    semantics: ComparisonSeriesSemantics
+    labels: list[str] = Field(min_length=2)
+    values: list[Numeric] = Field(min_length=2)
+    weights: list[StrictFloat] | None = None
+    unit: str = Field(min_length=1)
+    denominator_kind: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    source_bundle_refs: list[VersionedObjectRef] = Field(min_length=1)
+    evidence_refs: list[str] = Field(default_factory=list)
+
+    _unit_is_safe = field_validator("unit")(validate_publication_text)
+
+    @field_validator("labels", "evidence_refs")
+    @classmethod
+    def text_lists_are_unique(cls, value: list[str]) -> list[str]:
+        if any(not item.strip() for item in value):
+            raise ValueError("series labels and evidence refs must be non-empty")
+        _unique(value, "series labels/evidence refs")
+        return value
+
+    @field_validator("source_bundle_refs")
+    @classmethod
+    def source_bundles_are_unique(
+        cls, value: list[VersionedObjectRef]
+    ) -> list[VersionedObjectRef]:
+        _unique([item.ref for item in value], "series source bundles")
+        return value
+
+    @model_validator(mode="after")
+    def series_values_are_coherent(self) -> Self:
+        if len(self.labels) != len(self.values):
+            raise ValueError("series labels and values must have equal length")
+        for value in self.values:
+            _finite(value, "series value")
+        if self.weights is not None:
+            if len(self.weights) != len(self.values):
+                raise ValueError("series weights and values must have equal length")
+            if any(
+                value < 0 or not math.isfinite(value)
+                for value in self.weights
+            ):
+                raise ValueError("series weights must be finite and non-negative")
+            if sum(self.weights) <= 0:
+                raise ValueError("series weights must contain positive mass")
+        if self.semantics is ComparisonSeriesSemantics.PROBABILITY_MASS:
+            if any(value < 0 for value in self.values) or sum(self.values) <= 0:
+                raise ValueError("probability-mass series require non-negative mass")
+        return self
+
+
+class ComparisonMethodInput(FrozenModel):
+    object_version: Literal["0.1.0"]
+    method_input_id: str = Field(
+        pattern=r"^comparison-method-input:[A-Za-z0-9._:-]+$"
+    )
+    method_input_version: str = Field(pattern=VERSION_PATTERN)
+    comparison_ref: VersionedObjectRef
+    comparison_manifest_sha256: str = Field(pattern=SHA256_PATTERN)
+    series: list[ComparisonMethodSeries] = Field(min_length=1)
+    created_at: datetime
+
+    _created_at_utc = field_validator("created_at")(_aware_utc)
+
+    @field_validator("series")
+    @classmethod
+    def series_are_unique(
+        cls, value: list[ComparisonMethodSeries]
+    ) -> list[ComparisonMethodSeries]:
+        _unique([item.series_id for item in value], "comparison series IDs")
+        return value
+
+
+class ComparisonMethodRecord(FrozenModel):
+    task_id: str = Field(
+        pattern=r"^comparison-method-task:[A-Za-z0-9._:-]+$"
+    )
+    method_id: ComparisonMethodId
+    series_ids: list[str] = Field(min_length=1, max_length=2)
+    estimates: dict[str, StrictFloat]
+    estimate_units: dict[str, str]
+    raw_delta: StrictFloat | None = None
+    raw_delta_unit: str | None = None
+    n_values: list[StrictInt] = Field(min_length=1, max_length=2)
+    assessment_state: Literal["available", "not_assessed"]
+    reason_codes: list[str]
+
+    @model_validator(mode="after")
+    def result_state_is_coherent(self) -> Self:
+        for name, value in self.estimates.items():
+            if not name or not math.isfinite(value):
+                raise ValueError("method estimates must be named and finite")
+        if set(self.estimate_units) != set(self.estimates):
+            raise ValueError("every method estimate requires one unit")
+        for unit in self.estimate_units.values():
+            validate_publication_text(unit)
+        _finite(self.raw_delta, "method raw delta")
+        if (self.raw_delta is None) != (self.raw_delta_unit is None):
+            raise ValueError("method raw delta and unit must be paired")
+        if self.raw_delta_unit is not None:
+            validate_publication_text(self.raw_delta_unit)
+        available = self.assessment_state == "available"
+        if available != bool(self.estimates):
+            raise ValueError("method estimates and assessment state disagree")
+        if available == bool(self.reason_codes):
+            raise ValueError("method reasons and assessment state disagree")
+        return self
+
+
+class ComparisonMethodExecution(FrozenModel):
+    method_id: ComparisonMethodId
+    method_ref: str = Field(pattern=r"^METHOD-[A-Z0-9-]+$")
+    implementation: str = Field(min_length=1)
+    execution_state: ComparisonMethodExecutionState
+    package_versions: dict[str, str]
+    reason_codes: list[str]
+
+
+class ComparisonMethodBundle(FrozenModel):
+    object_version: Literal["0.1.0"]
+    bundle_id: str = Field(pattern=r"^comparison-method-bundle:[a-f0-9]{16}$")
+    tool_id: Literal["P0-07"]
+    tool_version: str = Field(pattern=VERSION_PATTERN)
+    comparison_ref: VersionedObjectRef
+    comparison_eligibility: Literal[
+        "strictly_comparable",
+        "contextual_comparator",
+        "reference_or_ood",
+        "not_comparable",
+        "not_estimable",
+    ]
+    method_spec_sha256: str = Field(pattern=SHA256_PATTERN)
+    method_input_sha256: str = Field(pattern=SHA256_PATTERN)
+    selected_method_ids: list[ComparisonMethodId] = Field(min_length=1)
+    executions: list[ComparisonMethodExecution] = Field(min_length=1)
+    records: list[ComparisonMethodRecord] = Field(min_length=1)
+    evidence_refs: list[str]
+    evidence_state: Literal["shadow"] = "shadow"
+    score_state: Literal["unavailable"] = "unavailable"
+    domain_score: None = None
+    created_at: datetime
+
+    _created_at_utc = field_validator("created_at")(_aware_utc)
+
+    @model_validator(mode="after")
+    def bundle_is_coherent(self) -> Self:
+        _unique(self.selected_method_ids, "selected method IDs")
+        _unique([item.task_id for item in self.records], "method record task IDs")
+        executed = [item.method_id for item in self.executions]
+        _unique(executed, "method execution IDs")
+        if set(executed) != set(self.selected_method_ids):
+            raise ValueError("executions must match selected methods")
+        if {item.method_id for item in self.records} != set(
+            self.selected_method_ids
+        ):
+            raise ValueError("records must cover selected methods")
+        _unique(self.evidence_refs, "method evidence refs")
+        return self
+
+
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/comparison-stability-spec/v0.1": ComparisonStabilitySpec,
     "bridge://schemas/comparison-case-manifest/v0.1": ComparisonCaseManifest,
     "bridge://schemas/product-evidence-bundle/v0.1": ProductEvidenceBundle,
     "bridge://schemas/product-comparison-stability-profile/v0.1": ProductComparisonStabilityProfile,
+    "bridge://schemas/comparison-method-spec/v0.1": ComparisonMethodSpec,
+    "bridge://schemas/comparison-method-input/v0.1": ComparisonMethodInput,
+    "bridge://schemas/comparison-method-bundle/v0.1": ComparisonMethodBundle,
 }

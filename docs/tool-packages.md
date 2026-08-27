@@ -121,11 +121,11 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Compare product cases only when an explicit comparability and confounding contract permits it. [Scientific task card](bridge_spec_v0.1/product_comparison_stability_task_card.md). |
-| Executable implementation | Deterministic comparability gate, design/confounding check and raw metric deltas/ranges. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no equivalence or ranking engine. |
-| Input → output | ComparisonStabilitySpec, ComparisonCaseManifest and two to twenty product-evidence bundles → `ProductComparisonStabilityProfile`. [Tool Card](../src/bridge/tool_packages/cards/P0-07.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-07`; start from the [request example](../examples/requests/p0_07_product_comparison_stability.json). |
-| Current evidence / status | Fixtures verify eligibility gates, confounding states and descriptive deltas. The package remains `candidate`, `domain_score=null`; it declares no winner, equivalence or stability claim. [Validation](validation/p0_07_product_comparison_stability_v0.2.md). |
+| Executable implementation | Deterministic comparability/confounding gate and raw deltas; optional method mode executes Hedges g, Jensen-Shannon distance, Spearman profile correlation, one-dimensional Wasserstein distance and within-group dispersion. Registered R/Bioconductor, Bayesian, mixed-model and integration candidates are not executed. |
+| Software | [SciPy](https://docs.scipy.org/doc/scipy/) for Jensen-Shannon, Spearman and Wasserstein calls; [NumPy](https://numpy.org/doc/stable/) plus a small BRIDGE Hedges-g implementation; shared Pydantic/JSON Schema runtime. |
+| Input → output | Base spec, manifest and 2–20 product-evidence bundles → `ProductComparisonStabilityProfile`; method mode adds checksummed method spec/input → `ComparisonMethodBundle` artifact. [Tool Card](../src/bridge/tool_packages/cards/P0-07.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-07`; see the [base request](../examples/requests/p0_07_product_comparison_stability.json) and [method-runtime request](../examples/requests/p0_07_comparison_method_runtime.json). |
+| Current evidence / status | Fixtures verify semantic/source binding, actual dispatch, deterministic estimates and explicit refusal/degradation. Results remain `candidate/shadow`, `domain_score=null`; no p-value, winner, equivalence, ranking or stability claim is produced. [Base validation](validation/p0_07_product_comparison_stability_v0.2.md); [method validation](validation/p0_07_real_methods_20260827.md). |
 
 <a id="p0-08"></a>
 ## P0-08 Evidence Sufficiency
