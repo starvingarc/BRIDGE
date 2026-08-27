@@ -271,6 +271,22 @@ def test_method_runtime_rejects_sample_series_without_bound_units(
     assert "comparison_series_analysis_unit_mismatch" in eligibility.reason_codes
 
 
+def test_method_runtime_rejects_sample_value_not_in_source_bundle(
+    tmp_path: Path,
+) -> None:
+    payloads = _method_payloads()
+    payloads["comparison_method_input"]["series"][0]["values"][0] = 0.41
+    registry, request = _write_request(tmp_path, payloads)
+
+    eligibility = registry.check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert (
+        "comparison_series_source_value_mismatch"
+        in eligibility.reason_codes
+    )
+
+
 def test_method_runtime_rejects_nonpositive_dispersion_series(
     tmp_path: Path,
 ) -> None:

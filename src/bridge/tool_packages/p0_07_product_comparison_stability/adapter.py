@@ -470,12 +470,29 @@ def _method_binding_reasons(
         ):
             reasons.add("comparison_series_metric_contract_mismatch")
         if series.semantics is ComparisonSeriesSemantics.SAMPLE_VALUES:
-            expected_labels = {
-                item.product_case.sample_or_preparation_ref.ref
+            source_by_label = {
+                item.product_case.sample_or_preparation_ref.ref: item
                 for item in bound_sources
             }
-            if set(series.labels) != expected_labels:
+            if set(series.labels) != set(source_by_label):
                 reasons.add("comparison_series_analysis_unit_mismatch")
+            else:
+                for label, value in zip(series.labels, series.values, strict=True):
+                    metric = next(
+                        (
+                            item
+                            for item in source_by_label[label].metrics
+                            if item.metric_id == series.metric_id
+                        ),
+                        None,
+                    )
+                    if (
+                        metric is None
+                        or metric.raw_value is None
+                        or value != metric.raw_value
+                    ):
+                        reasons.add("comparison_series_source_value_mismatch")
+                        break
 
     expected_semantics = {
         ComparisonMethodId.SAMPLE_EFFECT: ComparisonSeriesSemantics.SAMPLE_VALUES,

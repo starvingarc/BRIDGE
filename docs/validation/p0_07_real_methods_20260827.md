@@ -21,12 +21,13 @@ selected from the P0-07 registry:
 | `STAB-CV` | NumPy CV and median absolute-deviation ratio | within-group dispersion |
 
 The method input binds every series to the comparison manifest, metric contract,
-group, source bundles, analysis-unit labels and SHA-256. Outputs include method
-and package provenance plus typed `available` or `not_assessed` states.
+group, source bundles, analysis-unit labels and SHA-256. Sample-level values must
+also equal the cited source-bundle metrics. Outputs include method and package
+provenance plus typed `available` or `not_assessed` states.
 
 ## Verification
 
-- focused P0-07 and registry suite: **26 passed**;
+- focused P0-07 and registry suite: **27 passed**;
 - complete repository suite: **1,229 passed**, with eight pre-existing dependency warnings;
 - wheel-only P0-07 method smoke: **3 passed**;
 - installed module resolved from the unpacked wheel, outside the source tree;
