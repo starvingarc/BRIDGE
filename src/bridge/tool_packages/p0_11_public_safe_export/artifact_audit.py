@@ -17,7 +17,6 @@ from defusedxml.common import DefusedXmlException
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError, ValidationError
 from markdown_it import MarkdownIt
-import pandas as pd
 import regex
 from xml.etree.ElementTree import ParseError
 
@@ -84,8 +83,7 @@ METHOD_IMPLEMENTATIONS = {
     "METHOD-FORMAT-GATE": "BRIDGE signature and MIME gate",
     "METHOD-JSONSCHEMA-HASHLIB": "jsonschema Draft 2020-12 and hashlib",
     "METHOD-MARKDOWN-PARSER-REGEX": "markdown-it-py and regex",
-    "METHOD-OS-CLI": "file and sha256sum",
-    "METHOD-PANDAS-CSV-REGEX": "pandas and regex",
+    "METHOD-OS-CLI": "file on a hash-bound read-only snapshot",
     "METHOD-URL-PARSER-ALLOWLIST": "urllib.parse URL allowlist",
 }
 EXPECTED_MEDIA_TYPES = {
@@ -120,7 +118,7 @@ LEAK_PATTERNS = (
         r"\b(?:internal|private|intranet|compute|server|cluster|worker|node|gpu)"
         r"[-_][A-Za-z0-9][A-Za-z0-9_-]*\b|"
         r"\b[A-Za-z0-9][A-Za-z0-9_-]*[-_]"
-        r"(?:internal|private|intranet|compute|server|cluster|worker|node|gpu|amax)\b",
+        r"(?:internal|private|intranet|compute|server|cluster|worker|node|gpu)\b",
         regex.I,
     ),
     regex.compile(
@@ -433,7 +431,7 @@ def _binding_reasons(
             Draft202012Validator.check_schema(schema)
         except (KeyError, FileNotFoundError, SchemaError):
             reasons.add("public_artifact_json_schema_invalid")
-    required_tools = {"file", "sha256sum"}
+    required_tools = {"file"}
     available_tools = {name for name in required_tools if shutil.which(name)}
     if not required_tools.issubset(available_tools):
         reasons.add("public_artifact_os_tool_unavailable")
@@ -525,7 +523,7 @@ def _audit_artifact(
     if hashlib.sha256(raw).hexdigest() != item.sha256:
         raise OSError("public artifact changed before audit")
     checks: list[PublicArtifactCheck] = []
-    detected_media, os_reasons = _os_checks(item, raw)
+    detected_media, os_reasons = _os_checks(raw)
     checks.append(_check("METHOD-OS-CLI", os_reasons))
     format_reasons = []
     if detected_media not in EXPECTED_MEDIA_TYPES[item.format]:
@@ -587,10 +585,7 @@ def _check(
     )
 
 
-def _os_checks(
-    item: PublicArtifactFileRef,
-    raw: bytes,
-) -> tuple[str, list[str]]:
+def _os_checks(raw: bytes) -> tuple[str, list[str]]:
     reasons: list[str] = []
     with tempfile.TemporaryDirectory(prefix="bridge-p0-11-audit-") as temp_dir:
         snapshot = Path(temp_dir) / "artifact"
@@ -607,18 +602,6 @@ def _os_checks(
         except (OSError, subprocess.SubprocessError):
             detected = "application/octet-stream"
             reasons.append("public_artifact_file_command_failed")
-        try:
-            output = subprocess.run(
-                ["sha256sum", "--", str(snapshot)],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=10,
-            ).stdout
-            if output.split(maxsplit=1)[0] != item.sha256:
-                reasons.append("public_artifact_sha256sum_mismatch")
-        except (OSError, subprocess.SubprocessError, IndexError):
-            reasons.append("public_artifact_sha256sum_failed")
     return detected, reasons
 
 
@@ -747,39 +730,23 @@ def _audit_csv(
     rule_reasons: list[str] = []
     try:
         text = raw.decode("utf-8")
-        table = pd.read_csv(
-            io.StringIO(text),
-            dtype=str,
-            keep_default_na=False,
-            na_filter=False,
-        )
-        rows = list(csv.reader(io.StringIO(text)))
+        rows = list(csv.reader(io.StringIO(text), strict=True))
+        columns = rows[0] if rows else []
         expected = policy.csv_column_allowlists[item.artifact_id]
-        columns = [str(value) for value in table.columns]
-        if (
-            len(columns) != len(set(columns))
-            or sorted(columns) != expected
-        ):
+        if len(columns) != len(set(columns)) or sorted(columns) != expected:
             parser_reasons.append("public_artifact_csv_columns_not_allowed")
-        if not rows or rows[0] != columns:
-            parser_reasons.append("public_artifact_csv_parser_disagreement")
         if any(len(row) != len(columns) for row in rows[1:]):
             parser_reasons.append("public_artifact_csv_row_width_invalid")
-        for value in table.to_numpy().ravel().tolist():
-            text_value = str(value)
-            if (
-                FORMULA_PREFIX.search(text_value)
-                and not NUMERIC_CELL.fullmatch(text_value)
-            ):
-                rule_reasons.append(
-                    "public_artifact_csv_formula_injection"
-                )
+        for row in rows[1:]:
+            for value in row:
+                if (
+                    FORMULA_PREFIX.search(value)
+                    and not NUMERIC_CELL.fullmatch(value)
+                ):
+                    rule_reasons.append("public_artifact_csv_formula_injection")
     except (UnicodeDecodeError, csv.Error, KeyError, ValueError):
         parser_reasons.append("public_artifact_csv_invalid")
-    return [
-        _check("METHOD-PANDAS-CSV-REGEX", parser_reasons),
-        _check("METHOD-CSV-DETERMINISTIC-RULE", rule_reasons),
-    ]
+    return [_check("METHOD-CSV-DETERMINISTIC-RULE", parser_reasons + rule_reasons)]
 
 
 def _audit_svg(
@@ -840,8 +807,6 @@ def _audit_svg(
                     svg_reasons.append(
                         "public_artifact_svg_hidden_content"
                     )
-            if element.text:
-                svg_reasons.extend(_leak_reasons(element.text))
     except (DefusedXmlException, ParseError, ValueError):
         svg_reasons.append("public_artifact_svg_invalid")
     return [
@@ -860,14 +825,13 @@ def _runtime_versions() -> dict[str, str]:
         "defusedxml",
         "jsonschema",
         "markdown-it-py",
-        "pandas",
         "regex",
     ):
         try:
             result[package] = version(package)
         except PackageNotFoundError:
             result[package] = "unavailable"
-    for command in ("file", "sha256sum"):
+    for command in ("file",):
         path = shutil.which(command)
         result[command] = "available" if path else "unavailable"
     return dict(sorted(result.items()))

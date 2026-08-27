@@ -1,24 +1,31 @@
 # P0-07 Product Comparison & Stability
 
-This directory contains the deterministic comparability and descriptive-delta
-package.
+This directory contains the deterministic comparability, descriptive-delta and
+selected comparison-method runtime.
 
 ## Interface at a glance
 
-- **Input:** a checksummed ComparisonStabilitySpec, ComparisonCaseManifest and two
-  to twenty precomputed product-evidence bundles.
+- **Legacy comparison:** a checksummed ComparisonStabilitySpec,
+  ComparisonCaseManifest and two to twenty product-evidence bundles.
+- **Method runtime:** the same objects plus a candidate ComparisonMethodSpec and
+  typed ComparisonMethodInput series. Numeric methods run only after the shared
+  comparability and source-evidence gates pass.
 - **Output:** `ProductComparisonStabilityProfile` with comparability state, raw
-  summaries and comparator-minus-baseline descriptive deltas and ranges.
+  summaries and deltas; method mode also writes `ComparisonMethodBundle` with
+  Hedges g, Jensen-Shannon distance, Spearman correlation, one-dimensional
+  Wasserstein distance and ratio-scale within-group dispersion when eligible.
 - **Boundary:** it does not fill missing values, rerun upstream analyses, select a
-  winner, declare equivalence or emit a score.
+  winner, declare equivalence, compute inferential significance or emit a score.
 
 ## Documentation
 
 - [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-07)
 - [Tool Card — authoritative runtime contract](../cards/P0-07.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/product_comparison_stability_task_card.md)
-- [Request example](../../../../examples/requests/p0_07_product_comparison_stability.json)
+- [Legacy comparison request](../../../../examples/requests/p0_07_product_comparison_stability.json)
+- [Method-runtime request](../../../../examples/requests/p0_07_comparison_method_runtime.json)
 - [Validation record](../../../../docs/validation/p0_07_product_comparison_stability_v0.2.md)
+- [Real-method validation](../../../../docs/validation/p0_07_real_methods_20260827.md)
 
-Use `bridge-tool describe P0-07` for the installed version, schemas, environment
-and registered method IDs.
+Use `bridge-tool describe P0-07` and `bridge-tool input-contract P0-07` for the
+installed version, input modes, schemas, environment and registered method IDs.

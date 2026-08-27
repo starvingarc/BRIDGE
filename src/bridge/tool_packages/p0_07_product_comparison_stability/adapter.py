@@ -5,25 +5,36 @@ from dataclasses import dataclass
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
+    PublicationError,
     StructuredInputError,
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
     load_structured_inputs,
     objects_for_role,
+    publish_json_bundle,
+    read_regular_bytes,
     request_v2_from_v1,
     single_object,
-)
-from bridge.tool_packages._structured_runtime import (
-    publish_single_json as _publish_single_json,
 )
 from bridge.tool_packages.p0_07_product_comparison_stability.executor import (
     evaluate_product_comparison,
 )
+from bridge.tool_packages.p0_07_product_comparison_stability.methods import (
+    METHOD_REFS,
+    run_comparison_methods,
+)
 from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     ComparisonCaseManifest,
+    ComparisonGroupRole,
+    ComparisonMethodBundle,
+    ComparisonMethodId,
+    ComparisonMethodInput,
+    ComparisonMethodSpec,
+    ComparisonSeriesSemantics,
     ComparisonStabilitySpec,
     InputChecksumBinding,
+    ProductComparisonStabilityProfile,
     ProductEvidenceBundle,
 )
 from bridge.toolkit.contracts import (
@@ -39,8 +50,9 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
+
 RESULT_SCHEMA_REF = "bridge://schemas/product-comparison-stability-profile/v0.1"
-ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
+BASE_ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "comparison_stability_spec": (
         "bridge://schemas/comparison-stability-spec/v0.1",
         ComparisonStabilitySpec,
@@ -54,6 +66,19 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         ProductEvidenceBundle,
     ),
 }
+METHOD_ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
+    **BASE_ROLE_MODELS,
+    "comparison_method_spec": (
+        "bridge://schemas/comparison-method-spec/v0.1",
+        ComparisonMethodSpec,
+    ),
+    "comparison_method_input": (
+        "bridge://schemas/comparison-method-input/v0.1",
+        ComparisonMethodInput,
+    ),
+}
+# Public union used by repository contract checks and external introspection.
+ROLE_MODELS = METHOD_ROLE_MODELS
 
 
 @dataclass(frozen=True)
@@ -68,11 +93,12 @@ class ProductComparisonStabilityAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
-        reasons = _envelope_reasons(request, spec)
-        loaded, loading_reasons = _load_inputs(request.object_inputs)
+        mode = _request_mode(request)
+        reasons = _envelope_reasons(request, spec, mode)
+        loaded, loading_reasons = _load_inputs(request.object_inputs, mode)
         reasons.extend(loading_reasons)
         if loaded is not None and not reasons:
-            reasons.extend(_binding_reasons(request, loaded))
+            reasons.extend(_binding_reasons(request, loaded, spec, mode))
         reason_codes = sorted(set(reasons))
         return EligibilityResult(
             tool_id=request.tool_id,
@@ -89,7 +115,8 @@ class ProductComparisonStabilityAdapter:
             return _failed_run(
                 request, spec, eligibility.reason_codes, input_hash=input_hash
             )
-        loaded, reasons = _load_inputs(request.object_inputs)
+        mode = _request_mode(request)
+        loaded, reasons = _load_inputs(request.object_inputs, mode)
         if loaded is None or reasons:
             return _failed_run(request, spec, reasons, input_hash=input_hash)
         comparison_spec = single_object(
@@ -109,12 +136,13 @@ class ProductComparisonStabilityAdapter:
             manifest=manifest,
             bundles=bundles,
             input_bindings=[
-                InputChecksumBinding(
-                    role=ref.role,
-                    sha256=ref.sha256,
-                )
+                InputChecksumBinding(role=ref.role, sha256=ref.sha256)
                 for ref in sorted(
-                    request.object_inputs,
+                    (
+                        item
+                        for item in request.object_inputs
+                        if item.role in BASE_ROLE_MODELS
+                    ),
                     key=lambda item: (
                         item.role,
                         item.sha256,
@@ -124,29 +152,86 @@ class ProductComparisonStabilityAdapter:
                 )
             ],
         )
-        payload = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
+        result_bytes = canonical_json_bytes(
+            result.model_dump(mode="json"), indent=2
+        )
+        method_bundle: ComparisonMethodBundle | None = None
+        method_bytes: bytes | None = None
+        if mode == "method_runtime":
+            method_input = single_object(
+                request,
+                loaded,
+                "comparison_method_input",
+                ComparisonMethodInput,
+            )
+            method_bundle = run_comparison_methods(
+                run_id=run_id,
+                tool_version=spec.version,
+                comparison_eligibility=result.comparison_eligibility,
+                method_spec=single_object(
+                    request,
+                    loaded,
+                    "comparison_method_spec",
+                    ComparisonMethodSpec,
+                ),
+                method_spec_sha256=_input_sha(
+                    request, "comparison_method_spec"
+                ),
+                method_input=method_input,
+                method_input_sha256=_input_sha(
+                    request, "comparison_method_input"
+                ),
+                series_gate_reasons=_series_gate_reasons(method_input, result),
+            )
+            method_bytes = canonical_json_bytes(
+                method_bundle.model_dump(mode="json"), indent=2
+            )
+        payloads = {
+            "product_comparison_stability_profile.json": result_bytes,
+        }
+        if method_bytes is not None:
+            payloads["comparison_method_bundle.json"] = method_bytes
         try:
-            output_file = _publish_single_json(
+            published = publish_json_bundle(
                 request=request,
                 run_id=run_id,
-                filename="product_comparison_stability_profile.json",
-                payload=payload,
+                payloads=payloads,
             )
-        except StructuredInputError as exc:
+        except PublicationError as exc:
             return _failed_run(
                 request, spec, [exc.reason_code], input_hash=input_hash
             )
-        artifact = ArtifactManifest(
-            artifact_id=f"artifact:{run_id}:product-comparison-stability-profile",
-            kind="product_comparison_stability_profile",
-            path=output_file,
-            media_type="application/json",
-            sha256=hashlib.sha256(payload).hexdigest(),
-            evidence_ids=result.evidence_refs,
+        evidence_by_name = {
+            "product_comparison_stability_profile.json": result.evidence_refs,
+            "comparison_method_bundle.json": (
+                method_bundle.evidence_refs if method_bundle is not None else []
+            ),
+        }
+        artifacts = [
+            ArtifactManifest(
+                artifact_id=f"artifact:{run_id}:{path.stem}",
+                kind=path.stem,
+                path=path,
+                media_type="application/json",
+                sha256=hashlib.sha256(read_regular_bytes(path)).hexdigest(),
+                evidence_ids=evidence_by_name[name],
+            )
+            for name, path in sorted(published.items())
+        ]
+        method_reasons = (
+            sorted(
+                {
+                    reason
+                    for execution in method_bundle.executions
+                    for reason in execution.reason_codes
+                }
+            )
+            if method_bundle is not None
+            else []
         )
         execution_state = (
             ExecutionState.SUCCEEDED
-            if result.profile_state == "complete"
+            if result.profile_state == "complete" and not method_reasons
             else ExecutionState.PARTIAL
         )
         return ToolRunV2(
@@ -159,20 +244,29 @@ class ProductComparisonStabilityAdapter:
             input_hash=input_hash,
             created_at=manifest.created_at,
             measurements=[],
-            artifacts=[artifact],
+            artifacts=artifacts,
             visualizations=[],
             result_schema_ref=RESULT_SCHEMA_REF,
             result=result.model_dump(mode="json"),
             reason_codes=result.reason_codes,
-            warnings=[],
+            warnings=method_reasons,
         )
 
 
 adapter = ProductComparisonStabilityAdapter()
 
 
+def _request_mode(request: ToolRequestV2) -> str:
+    method_roles = set(METHOD_ROLE_MODELS).difference(BASE_ROLE_MODELS)
+    if any(ref.role in method_roles for ref in request.object_inputs):
+        return "method_runtime"
+    return "legacy_comparison"
+
+
 def _envelope_reasons(
-    request: ToolRequestV2, spec: ToolPackageSpecV2
+    request: ToolRequestV2,
+    spec: ToolPackageSpecV2,
+    mode: str,
 ) -> list[str]:
     reasons: list[str] = []
     if request.tool_version is not None and request.tool_version != spec.version:
@@ -185,16 +279,27 @@ def _envelope_reasons(
         reasons.append("p0_07_parameters_forbidden")
     if request.random_seed != 0:
         reasons.append("p0_07_random_seed_forbidden")
+    role_models = (
+        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+    )
     roles = [ref.role for ref in request.object_inputs]
-    for role in ("comparison_stability_spec", "comparison_case_manifest"):
-        if roles.count(role) != 1:
-            reasons.append(f"exactly_one_{role}_required")
-    if not 2 <= roles.count("product_evidence_bundle") <= 20:
-        reasons.append("two_to_twenty_product_evidence_bundles_required")
-    if any(role not in ROLE_MODELS for role in roles):
+    for role in role_models:
+        count = roles.count(role)
+        expected = (
+            2 <= count <= 20
+            if role == "product_evidence_bundle"
+            else count == 1
+        )
+        if not expected:
+            reasons.append(
+                "two_to_twenty_product_evidence_bundles_required"
+                if role == "product_evidence_bundle"
+                else f"exactly_one_{role}_required"
+            )
+    if any(role not in role_models for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
-        contract = ROLE_MODELS.get(ref.role)
+        contract = role_models.get(ref.role)
         if contract is not None and ref.schema_ref != contract[0]:
             reasons.append("object_input_schema_mismatch")
         if ref.object_version != "0.1.0":
@@ -206,10 +311,14 @@ def _envelope_reasons(
 
 def _load_inputs(
     refs: list[StructuredInputRef],
+    mode: str,
 ) -> tuple[LoadedInputs | None, list[str]]:
+    role_models = (
+        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+    )
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: ROLE_MODELS.get(ref.role, ("", None))[1],
+        model_for=lambda ref: role_models.get(ref.role, ("", None))[1],
         validate_model=_validate_object_version,
     )
 
@@ -220,9 +329,12 @@ def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> Non
 
 
 def _binding_reasons(
-    request: ToolRequestV2, loaded: LoadedInputs
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    tool_spec: ToolPackageSpecV2,
+    mode: str,
 ) -> list[str]:
-    spec = single_object(
+    comparison_spec = single_object(
         request, loaded, "comparison_stability_spec", ComparisonStabilitySpec
     )
     manifest = single_object(
@@ -232,9 +344,9 @@ def _binding_reasons(
         request, loaded, "product_evidence_bundle", ProductEvidenceBundle
     )
     reasons: list[str] = []
-    if spec.comparison_ref != manifest.ref:
+    if comparison_spec.comparison_ref != manifest.ref:
         reasons.append("comparison_spec_manifest_binding_mismatch")
-    if manifest.spec_ref != spec.ref:
+    if manifest.spec_ref != comparison_spec.ref:
         reasons.append("comparison_manifest_spec_binding_mismatch")
     expected_refs = {
         ref.ref for group in manifest.groups for ref in group.bundle_refs
@@ -247,7 +359,9 @@ def _binding_reasons(
     groups = {group.group_id: group for group in manifest.groups}
     case_refs: set[str] = set()
     analysis_units: set[str] = set()
-    contracts = {item.metric_id: item for item in spec.metric_contracts}
+    contracts = {
+        item.metric_id: item for item in comparison_spec.metric_contracts
+    }
     for bundle in bundles:
         if bundle.comparison_ref != manifest.ref:
             reasons.append("bundle_comparison_binding_mismatch")
@@ -267,7 +381,7 @@ def _binding_reasons(
         if analysis_ref in analysis_units:
             reasons.append("duplicate_analysis_unit_ref")
         analysis_units.add(analysis_ref)
-        if set(item.metric_id for item in bundle.metrics) != set(contracts):
+        if {item.metric_id for item in bundle.metrics} != set(contracts):
             reasons.append("bundle_metric_contract_set_mismatch")
         for metric in bundle.metrics:
             contract = contracts.get(metric.metric_id)
@@ -288,7 +402,166 @@ def _binding_reasons(
             )
         ):
             reasons.append("evidence_sufficiency_ref_invalid")
+    if mode == "method_runtime":
+        reasons.extend(
+            _method_binding_reasons(
+                request=request,
+                loaded=loaded,
+                tool_spec=tool_spec,
+                comparison_spec=comparison_spec,
+                manifest=manifest,
+                bundles=bundles,
+            )
+        )
     return reasons
+
+
+def _method_binding_reasons(
+    *,
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    tool_spec: ToolPackageSpecV2,
+    comparison_spec: ComparisonStabilitySpec,
+    manifest: ComparisonCaseManifest,
+    bundles: list[ProductEvidenceBundle],
+) -> list[str]:
+    method_spec = single_object(
+        request, loaded, "comparison_method_spec", ComparisonMethodSpec
+    )
+    method_input = single_object(
+        request, loaded, "comparison_method_input", ComparisonMethodInput
+    )
+    reasons: set[str] = set()
+    if not method_spec.active:
+        reasons.add("comparison_method_spec_inactive")
+    if (
+        method_spec.comparison_ref != manifest.ref
+        or method_input.comparison_ref != manifest.ref
+    ):
+        reasons.add("comparison_method_comparison_ref_mismatch")
+    if method_input.comparison_manifest_sha256 != _input_sha(
+        request, "comparison_case_manifest"
+    ):
+        reasons.add("comparison_method_manifest_checksum_mismatch")
+    if any(
+        METHOD_REFS[task.method_id][0] not in tool_spec.method_ids
+        for task in method_spec.tasks
+    ):
+        reasons.add("comparison_method_not_registered")
+
+    bundle_by_ref = {item.ref.ref: item for item in bundles}
+    group_by_id = {item.group_id: item for item in manifest.groups}
+    contract_by_metric = {
+        item.metric_id: item for item in comparison_spec.metric_contracts
+    }
+    series_by_id = {item.series_id: item for item in method_input.series}
+    for series in method_input.series:
+        sources = [
+            bundle_by_ref.get(item.ref) for item in series.source_bundle_refs
+        ]
+        if any(item is None for item in sources):
+            reasons.add("comparison_series_source_bundle_missing")
+            continue
+        bound_sources = [item for item in sources if item is not None]
+        if any(item.group_id != series.group_id for item in bound_sources):
+            reasons.add("comparison_series_group_mismatch")
+        contract = contract_by_metric.get(series.metric_id)
+        if (
+            contract is None
+            or contract.unit != series.unit
+            or contract.denominator_kind != series.denominator_kind
+        ):
+            reasons.add("comparison_series_metric_contract_mismatch")
+        if series.semantics is ComparisonSeriesSemantics.SAMPLE_VALUES:
+            group = group_by_id.get(series.group_id)
+            if group is None or {
+                item.ref for item in series.source_bundle_refs
+            } != {item.ref for item in group.bundle_refs}:
+                reasons.add("comparison_series_source_bundle_set_mismatch")
+            source_by_label = {
+                item.product_case.sample_or_preparation_ref.ref: item
+                for item in bound_sources
+            }
+            if set(series.labels) != set(source_by_label):
+                reasons.add("comparison_series_analysis_unit_mismatch")
+            else:
+                for label, value in zip(series.labels, series.values, strict=True):
+                    metric = next(
+                        (
+                            item
+                            for item in source_by_label[label].metrics
+                            if item.metric_id == series.metric_id
+                        ),
+                        None,
+                    )
+                    if (
+                        metric is None
+                        or metric.raw_value is None
+                        or value != metric.raw_value
+                    ):
+                        reasons.add("comparison_series_source_value_mismatch")
+                        break
+
+    expected_semantics = {
+        ComparisonMethodId.SAMPLE_EFFECT: ComparisonSeriesSemantics.SAMPLE_VALUES,
+        ComparisonMethodId.JENSEN_SHANNON: ComparisonSeriesSemantics.PROBABILITY_MASS,
+        ComparisonMethodId.PROFILE_CORRELATION: ComparisonSeriesSemantics.MATCHED_FEATURES,
+        ComparisonMethodId.WASSERSTEIN_1D: ComparisonSeriesSemantics.ORDERED_VALUES,
+        ComparisonMethodId.ROBUST_DISPERSION: ComparisonSeriesSemantics.SAMPLE_VALUES,
+    }
+    for task in method_spec.tasks:
+        series = [series_by_id.get(item) for item in task.series_ids]
+        if any(item is None for item in series):
+            reasons.add("comparison_method_task_series_missing")
+            continue
+        bound_series = [item for item in series if item is not None]
+        if any(
+            item.semantics is not expected_semantics[task.method_id]
+            for item in bound_series
+        ):
+            reasons.add("comparison_method_series_semantics_mismatch")
+        if len(bound_series) == 2:
+            left, right = bound_series
+            if (
+                left.metric_id != right.metric_id
+                or left.unit != right.unit
+                or left.denominator_kind != right.denominator_kind
+            ):
+                reasons.add("comparison_method_pair_contract_mismatch")
+            left_group = group_by_id.get(left.group_id)
+            right_group = group_by_id.get(right.group_id)
+            if (
+                left_group is None
+                or left_group.role is not ComparisonGroupRole.BASELINE
+                or right_group is None
+                or right_group.role is ComparisonGroupRole.BASELINE
+            ):
+                reasons.add("comparison_method_pair_role_mismatch")
+            if task.method_id in {
+                ComparisonMethodId.JENSEN_SHANNON,
+                ComparisonMethodId.PROFILE_CORRELATION,
+            } and left.labels != right.labels:
+                reasons.add("comparison_method_feature_labels_mismatch")
+    return sorted(reasons)
+
+
+def _series_gate_reasons(
+    method_input: ComparisonMethodInput,
+    result: ProductComparisonStabilityProfile,
+) -> dict[str, str]:
+    states = {
+        (item.group_id, item.metric_id): item.value_state
+        for item in result.group_summaries
+    }
+    return {
+        series.series_id: f"comparison_method_source_{state}"
+        for series in method_input.series
+        if (state := states[(series.group_id, series.metric_id)]) != "shadow"
+    }
+
+
+def _input_sha(request: ToolRequestV2, role: str) -> str:
+    return next(ref.sha256 for ref in request.object_inputs if ref.role == role)
 
 
 def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
@@ -318,8 +591,6 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
         ],
     }
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
-
-
 
 
 def _failed_run(

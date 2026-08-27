@@ -30,7 +30,7 @@ does not freeze repository-wide test totals or wheel hashes, which change as
 independent modules are integrated.
 
 The artifact matrix executes strict JSON Schema validation, Markdown parsing,
-an HTTPS host allowlist, Pandas/CSV rules, defused SVG parsing, manifest-ref
+an HTTPS host allowlist, strict Python CSV rules, defused SVG parsing, manifest-ref
 syntax checks, checksum, MIME and leak rules. Bare GFM-style URLs are scanned in
 text tokens. External URLs reject userinfo, query, fragment, non-default ports,
 IP literals, single-label names, private suffixes, reserved `.example`/`.alt`
@@ -39,7 +39,7 @@ DNS. SVG `url()` values must point to an existing local fragment. Adversarial fi
 formula injection, SVG active content, missing/external SVG resource references,
 ambiguous URLs, sensitive-content canaries and in-run file replacement. Each artifact
 is read once, immediately hash-bound, and all parsers consume those bytes; `file` and
-`sha256sum` run against a temporary read-only copy with the same digest.
+`file` runs against a temporary read-only copy of the hashlib-bound bytes.
 
 Manifest refs are syntax-checked only. The audit does not contact or validate a
 producer or provenance registry.

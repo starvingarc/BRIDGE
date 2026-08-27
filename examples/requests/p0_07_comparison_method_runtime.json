@@ -1,0 +1,66 @@
+{
+  "assets": [],
+  "measurement_spec_ref": null,
+  "object_inputs": [
+    {
+      "input_id": "comparison-spec",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/comparison_stability_spec.json",
+      "role": "comparison_stability_spec",
+      "schema_ref": "bridge://schemas/comparison-stability-spec/v0.1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "input_id": "comparison-manifest",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/comparison_case_manifest.json",
+      "role": "comparison_case_manifest",
+      "schema_ref": "bridge://schemas/comparison-case-manifest/v0.1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "input_id": "baseline-evidence",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/baseline_product_evidence_bundle.json",
+      "role": "product_evidence_bundle",
+      "schema_ref": "bridge://schemas/product-evidence-bundle/v0.1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "input_id": "comparator-evidence",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/comparator_product_evidence_bundle.json",
+      "role": "product_evidence_bundle",
+      "schema_ref": "bridge://schemas/product-evidence-bundle/v0.1",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "input_id": "comparison-method-spec",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/comparison_method_spec.json",
+      "role": "comparison_method_spec",
+      "schema_ref": "bridge://schemas/comparison-method-spec/v0.1",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "input_id": "comparison-method-input",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/comparison_method_input.json",
+      "role": "comparison_method_input",
+      "schema_ref": "bridge://schemas/comparison-method-input/v0.1",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ],
+  "output_dir": "/absolute/path/to/p0-07-output",
+  "parameters": {},
+  "random_seed": 0,
+  "request_id": "example-p0-07-comparison-method-runtime",
+  "tool_id": "P0-07",
+  "tool_version": "0.3.0"
+}

@@ -28,6 +28,12 @@ qc = [
   "scanpy>=1.10,<1.12",
   "scrublet>=0.2.3,<0.3",
 ]
+process = [
+  "anndata>=0.11,<0.13",
+  "decoupler>=2.1,<2.2",
+  "scanpy>=1.10,<1.12",
+  "scipy>=1.14,<2",
+]
 test = [
   "pytest>=8,<10",
 ]
@@ -43,6 +49,16 @@ evidence = [
   "networkx>=3.5,<3.6",
   "pyarrow>=21,<22",
   "regex>=2025.7,<2027",
+]
+target-regional = [
+  "anndata>=0.11,<0.13",
+  "decoupler>=2.1,<2.2",
+]
+developmental = [
+  "anndata>=0.11,<0.13",
+  "decoupler>=2.1,<2.2",
+  "patsy>=1.0,<1.1",
+  "statsmodels>=0.14,<0.15",
 ]
 
 [project.scripts]

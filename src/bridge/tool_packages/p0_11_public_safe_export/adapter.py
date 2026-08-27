@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-import os
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
@@ -14,9 +11,8 @@ from bridge.tool_packages._structured_runtime import (
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
-    inputs_unchanged,
     load_structured_inputs,
-    read_regular_bytes,
+    publish_json_bundle,
     request_v2_from_v1,
     single_object,
 )
@@ -131,7 +127,7 @@ class PublicSafeExportAdapter:
         bundle = _build_bundle(request, loaded, spec)
         run_id = f"run-{input_hash[:16]}"
         try:
-            output_dir = _publish_bundle(
+            published = publish_json_bundle(
                 request=request,
                 run_id=run_id,
                 payloads=bundle.payloads,
@@ -144,7 +140,7 @@ class PublicSafeExportAdapter:
             ArtifactManifest(
                 artifact_id=f"artifact:{run_id}:{name.removesuffix('.json')}",
                 kind=name.removesuffix(".json"),
-                path=output_dir / name,
+                path=published[name],
                 media_type="application/json",
                 sha256=hashlib.sha256(bundle.payloads[name]).hexdigest(),
                 evidence_ids=[],
@@ -480,59 +476,6 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
         ],
     }
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
-
-
-def _publish_bundle(
-    *,
-    request: ToolRequestV2,
-    run_id: str,
-    payloads: dict[str, bytes],
-) -> Path:
-    output_root = request.output_dir
-    if directory_state(output_root) == "other":
-        raise PublicationError("output_path_invalid")
-    try:
-        output_root.mkdir(parents=True, exist_ok=True)
-    except (OSError, RuntimeError):
-        raise PublicationError("output_path_invalid") from None
-    if directory_state(output_root) != "directory":
-        raise PublicationError("output_path_invalid")
-    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    try:
-        staging.mkdir(mode=0o700)
-        for name in FILENAMES:
-            (staging / name).write_bytes(payloads[name])
-        if not inputs_unchanged(request.object_inputs):
-            raise PublicationError("structured_input_modified_during_run")
-        final = output_root / run_id
-        final_state = directory_state(final)
-        if final_state == "directory":
-            try:
-                matches = (
-                    {path.name for path in final.iterdir()} == set(FILENAMES)
-                    and all(
-                        read_regular_bytes(final / name) == payloads[name]
-                        for name in FILENAMES
-                    )
-                )
-            except (OSError, RuntimeError):
-                matches = False
-            if not matches:
-                raise PublicationError("existing_run_bundle_hash_mismatch")
-            shutil.rmtree(staging)
-        elif final_state == "missing":
-            os.replace(staging, final)
-        else:
-            raise PublicationError("existing_run_bundle_hash_mismatch")
-        if any(read_regular_bytes(final / name) != payloads[name] for name in FILENAMES):
-            raise PublicationError("published_result_hash_mismatch")
-        return final
-    except PublicationError:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    except (OSError, RuntimeError):
-        shutil.rmtree(staging, ignore_errors=True)
-        raise PublicationError("output_path_invalid") from None
 
 
 def _failed_run(

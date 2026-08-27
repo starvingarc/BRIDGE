@@ -1,16 +1,23 @@
 tool_id: P0-03
 name: Target Identity & Regional Fidelity
-version: 0.2.0
-summary: Measure externally defined target-lineage and regional support.
+version: 0.3.0
+summary: Run configured target/regional expression methods and aggregate role-bound evidence.
 implementation_state: implemented
 scientific_status: candidate
 optional: false
-environment_spec_id: ENV-P0-CORE-v0.1
+environment_spec_id: ENV-CELLSTATE-PY-v0.1
 input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
-result_schema_ref: bridge://schemas/target-regional-evidence-result/v0.1
+result_schema_ref: bridge://schemas/target-regional-evidence-result/v0.2
 adapter_ref: bridge.tool_packages.p0_03_target_regional.adapter:adapter
 method_ids:
   - METHOD-BRIDGE-DETERMINISTIC-STATEROLEMAP
   - METHOD-BRIDGE-REGIONAL-STATEROLEMAP
+  - METHOD-BRIDGE-PSEUDOBULK-CORRELATION
+  - METHOD-BRIDGE-REGIONAL-PSEUDOBULK-CORRELATION
+  - METHOD-BRIDGE-NNLS-SIMPLEX
+  - METHOD-DECOUPLER
+  - METHOD-SAMPLE-PRESERVING-BOOTSTRAP
+  - METHOD-BRIDGE-CROSS-REFERENCE-SENSITIVITY
+  - METHOD-SCRNA-SNRNA-SENSITIVITY
 card_ref: bridge://tool-cards/P0-03

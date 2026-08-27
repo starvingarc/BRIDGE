@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import re
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from uuid import uuid4
 
 from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitAssignmentArtifact,
@@ -14,22 +11,35 @@ from bridge.tool_packages._configurable_contracts import (
     ProductCase,
     ProductDefinitionCard,
     StateRoleMap,
+    VersionedObjectRef,
     profile_lineage_reasons,
 )
+from bridge.tool_packages.p0_01_input_qc.io import InputAuditError, sha256_path
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
+    PublicationError,
     StructuredInputError,
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
     inputs_unchanged,
     load_structured_inputs,
-    read_regular_bytes,
+    objects_for_role,
+    publish_json_bundle,
     request_v2_from_v1,
     single_object,
 )
 from bridge.tool_packages.p0_03_target_regional.executor import (
     evaluate_target_regional,
+)
+from bridge.tool_packages.p0_03_target_regional.method_models import (
+    MethodExecutionState,
+    TargetRegionalMethodArtifactBinding,
+    TargetRegionalMethodSpec,
+)
+from bridge.tool_packages.p0_03_target_regional.method_runtime import (
+    TargetRegionalMethodError,
+    run_target_regional_methods,
 )
 from bridge.tool_packages.p0_03_target_regional.models import (
     TargetRegionalAssessmentSpec,
@@ -42,6 +52,8 @@ from bridge.toolkit.contracts import (
     EligibilityResult,
     ExecutionState,
     FrozenModel,
+    InputAsset,
+    InputLevel,
     ImplementationState,
     MeasurementSpecV2,
     QCReadinessProfileV2,
@@ -54,7 +66,7 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/target-regional-evidence-result/v0.1"
+RESULT_SCHEMA_REF = "bridge://schemas/target-regional-evidence-result/v0.2"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "product_case": ("bridge://schemas/product-case/v0.1", ProductCase),
     "product_definition_card": (
@@ -94,7 +106,12 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         "bridge://schemas/reference-manifest/v0.1",
         ReferenceManifest,
     ),
+    "target_regional_method_spec": (
+        "bridge://schemas/target-regional-method-spec/v0.1",
+        TargetRegionalMethodSpec,
+    ),
 }
+REQUIRED_ROLES = frozenset(ROLE_MODELS) - {"target_regional_method_spec"}
 FIXED_OBJECT_VERSIONS = {
     "product_case": "0.1.0",
     "product_definition_card": "0.1.0",
@@ -104,6 +121,7 @@ FIXED_OBJECT_VERSIONS = {
     "qc_readiness_profile": "0.2.0",
     "biological_unit_manifest": "0.1.0",
     "biological_unit_assignment": "0.1.0",
+    "target_regional_method_spec": "0.1.0",
 }
 EVIDENCE_REF = re.compile(r"^evidence:[A-Za-z0-9._:-]+$")
 CELL_STATE_PROFILE_REF = re.compile(r"^cell-state-profile:[A-Za-z0-9._:-]+$")
@@ -148,9 +166,7 @@ class TargetRegionalAdapter:
         product_definition = single_object(
             request, loaded, "product_definition_card", ProductDefinitionCard
         )
-        state_role_map = single_object(
-            request, loaded, "state_role_map", StateRoleMap
-        )
+        state_role_map = single_object(request, loaded, "state_role_map", StateRoleMap)
         assessment_spec = single_object(
             request,
             loaded,
@@ -175,6 +191,12 @@ class TargetRegionalAdapter:
             "biological_unit_manifest",
             BiologicalUnitManifest,
         )
+        biological_unit_assignment = single_object(
+            request,
+            loaded,
+            "biological_unit_assignment",
+            BiologicalUnitAssignmentArtifact,
+        )
         annotation_vocabulary = single_object(
             request,
             loaded,
@@ -186,6 +208,75 @@ class TargetRegionalAdapter:
         )
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
+        method_values = objects_for_role(
+            request,
+            loaded,
+            "target_regional_method_spec",
+            TargetRegionalMethodSpec,
+        )
+        method_bundle = None
+        method_artifact = None
+        method_payload = None
+        method_reasons: list[str] = []
+        if method_values:
+            method_spec = method_values[0]
+            asset = request.assets[0]
+            try:
+                asset_sha256 = sha256_path(asset.path)
+            except (OSError, InputAuditError):
+                return _failed_run(
+                    request,
+                    spec,
+                    ["expression_asset_unreadable"],
+                    input_hash=input_hash,
+                )
+            if asset_sha256 != asset.checksum:
+                return _failed_run(
+                    request,
+                    spec,
+                    ["expression_asset_checksum_mismatch"],
+                    input_hash=input_hash,
+                )
+            try:
+                method_bundle = run_target_regional_methods(
+                    run_id=run_id,
+                    tool_version=spec.version,
+                    asset=asset,
+                    asset_sha256=asset_sha256,
+                    method_spec=method_spec,
+                    assessment_spec=assessment_spec,
+                    state_role_map=state_role_map,
+                    biological_unit_assignment=biological_unit_assignment,
+                    reference_manifest=reference_manifest,
+                    reference_manifest_path=_input_path(request, "reference_manifest"),
+                    random_seed=request.random_seed,
+                    expected_n_observations=cell_state_profile.n_observations,
+                    expected_observation_ids_sha256=(
+                        cell_state_profile.input_data_view.observation_ids_sha256
+                    ),
+                )
+            except TargetRegionalMethodError as exc:
+                return _failed_run(
+                    request, spec, [exc.reason_code], input_hash=input_hash
+                )
+            method_payload = canonical_json_bytes(
+                method_bundle.model_dump(mode="json"), indent=2
+            )
+            method_artifact = TargetRegionalMethodArtifactBinding(
+                bundle_ref=VersionedObjectRef(
+                    object_id=method_bundle.bundle_id, object_version="0.1.0"
+                ),
+                file_name="target_regional_method_bundle.json",
+                sha256=hashlib.sha256(method_payload).hexdigest(),
+                selected_method_ids=sorted(method_spec.selected_method_ids, key=str),
+            )
+            method_reasons = sorted(
+                {
+                    reason
+                    for item in method_bundle.method_evidence
+                    for reason in item.reason_codes
+                }
+            )
         evaluation = evaluate_target_regional(
             run_id=run_id,
             tool_version=spec.version,
@@ -206,6 +297,8 @@ class TargetRegionalAdapter:
             input_sha256_by_role={
                 ref.role: ref.sha256 for ref in request.object_inputs
             },
+            method_artifact=method_artifact,
+            method_reason_codes=method_reasons,
         )
         result_payload = canonical_json_bytes(
             evaluation.result.model_dump(mode="json"), indent=2
@@ -214,13 +307,17 @@ class TargetRegionalAdapter:
             "target_regional_evidence_result.json": result_payload,
             **evaluation.measurement_payloads,
         }
+        if method_payload is not None:
+            payloads["target_regional_method_bundle.json"] = method_payload
         try:
-            output_files = _publish_json_bundle(
+            output_files = publish_json_bundle(
                 request=request,
                 run_id=run_id,
                 payloads=payloads,
+                inputs_are_unchanged=lambda refs: inputs_unchanged(refs)
+                and _assets_unchanged(request.assets),
             )
-        except StructuredInputError as exc:
+        except PublicationError as exc:
             return _failed_run(
                 request,
                 spec,
@@ -238,6 +335,17 @@ class TargetRegionalAdapter:
                 evidence_ids=evaluation.result.evidence_refs,
             )
         ]
+        if method_payload is not None and method_artifact is not None:
+            artifacts.append(
+                ArtifactManifest(
+                    artifact_id=f"artifact:{run_id}:target-regional-method-bundle",
+                    kind="target_regional_method_bundle",
+                    path=output_files[method_artifact.file_name],
+                    media_type="application/json",
+                    sha256=method_artifact.sha256,
+                    evidence_ids=evaluation.result.evidence_refs,
+                )
+            )
         binding_by_file = {
             item.file_name: item for item in evaluation.result.metric_artifacts
         }
@@ -253,9 +361,13 @@ class TargetRegionalAdapter:
                     evidence_ids=evaluation.result.evidence_refs,
                 )
             )
+        method_complete = method_bundle is None or all(
+            item.execution_state is MethodExecutionState.SUCCEEDED
+            for item in method_bundle.method_evidence
+        )
         execution_state = (
             ExecutionState.SUCCEEDED
-            if evaluation.result.result_state == "complete"
+            if evaluation.result.result_state == "complete" and method_complete
             else ExecutionState.PARTIAL
         )
         return ToolRunV2(
@@ -280,22 +392,40 @@ class TargetRegionalAdapter:
 adapter = TargetRegionalAdapter()
 
 
-def _envelope_reasons(
-    request: ToolRequestV2, spec: ToolPackageSpecV2
-) -> list[str]:
+def _envelope_reasons(request: ToolRequestV2, spec: ToolPackageSpecV2) -> list[str]:
     reasons: list[str] = []
     if request.tool_version is not None and request.tool_version != spec.version:
         reasons.append("tool_version_mismatch")
-    if request.assets:
-        reasons.append("p0_03_expression_assets_forbidden")
+    roles = [ref.role for ref in request.object_inputs]
+    method_count = roles.count("target_regional_method_spec")
+    asset_count = len(request.assets)
+    if method_count > 1:
+        reasons.append("at_most_one_target_regional_method_spec_allowed")
+    if bool(method_count) != bool(asset_count):
+        reasons.append("expression_method_inputs_incomplete")
+    if asset_count > 1:
+        reasons.append("at_most_one_expression_asset_allowed")
+    if asset_count == 1:
+        asset = request.assets[0]
+        if asset.input_level is not InputLevel.ANALYSIS_READY:
+            reasons.append("analysis_ready_expression_asset_required")
+        if not re.fullmatch(r"[0-9a-f]{64}", asset.checksum or ""):
+            reasons.append("expression_asset_checksum_required")
+        if asset.assay is None:
+            reasons.append("expression_asset_assay_required")
+        required_metadata = {
+            "data_view_id",
+            "parent_asset_sha256",
+        }
+        if required_metadata - set(asset.metadata):
+            reasons.append("expression_asset_view_metadata_incomplete")
+    elif request.random_seed != 0:
+        reasons.append("p0_03_random_seed_forbidden_without_methods")
     if request.measurement_spec_ref is not None:
         reasons.append("p0_03_measurement_spec_parameter_forbidden")
     if request.parameters:
         reasons.append("p0_03_parameters_forbidden")
-    if request.random_seed != 0:
-        reasons.append("p0_03_random_seed_forbidden")
-    roles = [ref.role for ref in request.object_inputs]
-    for role in ROLE_MODELS:
+    for role in REQUIRED_ROLES:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
     if any(role not in ROLE_MODELS for role in roles):
@@ -381,17 +511,36 @@ def _binding_reasons(
     reference_manifest = single_object(
         request, loaded, "reference_manifest", ReferenceManifest
     )
-    input_sha256_by_role = {
-        ref.role: ref.sha256 for ref in request.object_inputs
-    }
-    reasons = profile_lineage_reasons(
-        product_case=product_case,
-        cell_state_profile=cell_state_profile,
-        measurement_spec=measurement_spec,
-        qc_profile=qc_profile,
-        biological_unit_manifest=biological_unit_manifest,
-        biological_unit_assignment_artifact=biological_unit_assignment,
-        input_sha256_by_role=input_sha256_by_role,
+    reasons: list[str] = []
+    method_values = objects_for_role(
+        request,
+        loaded,
+        "target_regional_method_spec",
+        TargetRegionalMethodSpec,
+    )
+    if method_values:
+        method_spec = method_values[0]
+        asset = request.assets[0]
+        view = cell_state_profile.input_data_view
+        if method_spec.expression_asset_id != asset.asset_id:
+            reasons.append("expression_asset_binding_mismatch")
+        if asset.assay != product_case.assay:
+            reasons.append("expression_asset_assay_mismatch")
+        if asset.metadata.get("data_view_id") != view.view_id:
+            reasons.append("expression_asset_data_view_mismatch")
+        if asset.metadata.get("parent_asset_sha256") != view.parent_asset_sha256:
+            reasons.append("expression_asset_parent_checksum_mismatch")
+    input_sha256_by_role = {ref.role: ref.sha256 for ref in request.object_inputs}
+    reasons.extend(
+        profile_lineage_reasons(
+            product_case=product_case,
+            cell_state_profile=cell_state_profile,
+            measurement_spec=measurement_spec,
+            qc_profile=qc_profile,
+            biological_unit_manifest=biological_unit_manifest,
+            biological_unit_assignment_artifact=biological_unit_assignment,
+            input_sha256_by_role=input_sha256_by_role,
+        )
     )
     if product_case.product_definition_ref != product_definition.ref:
         reasons.append("product_definition_binding_mismatch")
@@ -403,10 +552,7 @@ def _binding_reasons(
         reasons.append("assessment_spec_product_definition_mismatch")
     if assessment_spec.state_role_map_ref != state_role_map.ref:
         reasons.append("state_role_map_binding_mismatch")
-    if (
-        assessment_spec.state_role_map_sha256
-        != input_sha256_by_role["state_role_map"]
-    ):
+    if assessment_spec.state_role_map_sha256 != input_sha256_by_role["state_role_map"]:
         reasons.append("state_role_map_checksum_mismatch")
     if product_case.assay not in product_definition.supported_assays:
         reasons.append("product_case_assay_not_supported")
@@ -416,19 +562,22 @@ def _binding_reasons(
         measurement_spec.applicable_product_cards
         and product_definition.product_definition_id
         not in measurement_spec.applicable_product_cards
-        and product_definition.ref.ref
-        not in measurement_spec.applicable_product_cards
+        and product_definition.ref.ref not in measurement_spec.applicable_product_cards
     ):
         reasons.append("measurement_spec_product_definition_not_applicable")
     if cell_state_profile.assay != product_case.assay:
         reasons.append("cell_state_profile_assay_mismatch")
     if qc_profile.assay != product_case.assay:
         reasons.append("qc_profile_assay_mismatch")
-    if qc_profile.readiness_state in {
-        ReadinessState.BLOCKED,
-        ReadinessState.NOT_ASSESSED,
-        ReadinessState.NOT_APPLICABLE,
-    } or qc_profile.module_eligibility.get("P0-03") != "eligible":
+    if (
+        qc_profile.readiness_state
+        in {
+            ReadinessState.BLOCKED,
+            ReadinessState.NOT_ASSESSED,
+            ReadinessState.NOT_APPLICABLE,
+        }
+        or qc_profile.module_eligibility.get("P0-03") != "eligible"
+    ):
         reasons.append("qc_not_ready_for_target_regional_evidence")
     if (
         cell_state_profile.measurement_spec_sha256
@@ -451,8 +600,7 @@ def _binding_reasons(
         reasons.append("annotation_vocabulary_checksum_mismatch")
     if (
         cell_state_profile.reference_snapshot_ref != reference_manifest.snapshot_id
-        or cell_state_profile.reference_manifest_version
-        != reference_manifest.version
+        or cell_state_profile.reference_manifest_version != reference_manifest.version
     ):
         reasons.append("reference_manifest_binding_mismatch")
     if (
@@ -460,7 +608,10 @@ def _binding_reasons(
         != input_sha256_by_role["reference_manifest"]
     ):
         reasons.append("reference_manifest_checksum_mismatch")
-    if measurement_spec.measurement_spec_id not in reference_manifest.measurement_spec_ids:
+    if (
+        measurement_spec.measurement_spec_id
+        not in reference_manifest.measurement_spec_ids
+    ):
         reasons.append("reference_manifest_measurement_spec_mismatch")
     if measurement_spec.reference_refs and not {
         reference_manifest.snapshot_id,
@@ -490,9 +641,7 @@ def _binding_reasons(
         for item in cell_state_profile.composition.records
     ):
         reasons.append("cell_state_vocabulary_label_mismatch")
-    reasons.extend(
-        _product_case_source_reasons(product_case, biological_unit_manifest)
-    )
+    reasons.extend(_product_case_source_reasons(product_case, biological_unit_manifest))
     if (
         qc_profile.measurement_spec_version != measurement_spec.version
         or qc_profile.measurement_spec_status != measurement_spec.status
@@ -504,10 +653,9 @@ def _binding_reasons(
         for evidence_ref in [*cell_state_profile.evidence_ids, *qc_profile.evidence_ids]
     ):
         reasons.append("unsafe_evidence_reference")
-    if (
-        not CELL_STATE_PROFILE_REF.fullmatch(cell_state_profile.profile_id)
-        or not QC_PROFILE_REF.fullmatch(qc_profile.profile_id)
-    ):
+    if not CELL_STATE_PROFILE_REF.fullmatch(
+        cell_state_profile.profile_id
+    ) or not QC_PROFILE_REF.fullmatch(qc_profile.profile_id):
         reasons.append("unsafe_profile_reference")
     return sorted(set(reasons))
 
@@ -540,6 +688,21 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
             }
             for ref in sorted(request.object_inputs, key=lambda item: item.role)
         ],
+        "assets": [
+            {
+                "asset_id": asset.asset_id,
+                "checksum": asset.checksum,
+                "format": asset.format,
+                "input_level": asset.input_level,
+                "matrix_location": asset.matrix_location,
+                "matrix_semantics": asset.matrix_semantics,
+                "assay": asset.assay,
+                "data_view_id": asset.metadata.get("data_view_id"),
+                "parent_asset_sha256": asset.metadata.get("parent_asset_sha256"),
+            }
+            for asset in sorted(request.assets, key=lambda item: item.asset_id)
+        ],
+        "random_seed": request.random_seed,
     }
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
 
@@ -548,69 +711,18 @@ def _input_version(request: ToolRequestV2, role: str) -> str:
     return next(ref.object_version for ref in request.object_inputs if ref.role == role)
 
 
-def _publish_json_bundle(
-    *, request: ToolRequestV2, run_id: str, payloads: dict[str, bytes]
-) -> dict[str, Path]:
-    if not payloads or any(
-        Path(name).name != name or not name.endswith(".json") for name in payloads
-    ):
-        raise StructuredInputError("output_filename_invalid")
-    if (
-        not run_id
-        or not run_id.isascii()
-        or any(not (character.isalnum() or character in "._-") for character in run_id)
-        or run_id in {".", ".."}
-    ):
-        raise StructuredInputError("output_run_id_invalid")
-    output_root = request.output_dir
-    if directory_state(output_root) == "other":
-        raise StructuredInputError("output_path_invalid")
-    try:
-        output_root.mkdir(parents=True, exist_ok=True)
-    except (OSError, RuntimeError):
-        raise StructuredInputError("output_path_invalid") from None
-    if directory_state(output_root) != "directory":
-        raise StructuredInputError("output_path_invalid")
+def _input_path(request: ToolRequestV2, role: str) -> Path:
+    return next(ref.path for ref in request.object_inputs if ref.role == role)
 
-    staging = output_root / f".{run_id}.staging-{uuid4().hex}"
-    try:
-        staging.mkdir(mode=0o700)
-        for filename, payload in payloads.items():
-            (staging / filename).write_bytes(payload)
-        if not inputs_unchanged(request.object_inputs):
-            raise StructuredInputError("structured_input_modified_during_run")
-        final = output_root / run_id
-        final_state = directory_state(final)
-        if final_state == "directory":
-            expected_names = set(payloads)
-            try:
-                matches = {item.name for item in final.iterdir()} == expected_names
-                matches = matches and all(
-                    read_regular_bytes(final / name) == payload
-                    for name, payload in payloads.items()
-                )
-            except (OSError, RuntimeError):
-                matches = False
-            if not matches:
-                raise StructuredInputError("existing_run_bundle_hash_mismatch")
-            shutil.rmtree(staging)
-        elif final_state == "missing":
-            os.replace(staging, final)
-        else:
-            raise StructuredInputError("existing_run_bundle_hash_mismatch")
-        published = {name: final / name for name in payloads}
-        if any(
-            read_regular_bytes(path) != payloads[name]
-            for name, path in published.items()
-        ):
-            raise StructuredInputError("published_result_hash_mismatch")
-        return published
-    except StructuredInputError:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    except (OSError, RuntimeError):
-        shutil.rmtree(staging, ignore_errors=True)
-        raise StructuredInputError("output_path_invalid") from None
+
+def _assets_unchanged(assets: list[InputAsset]) -> bool:
+    for asset in assets:
+        try:
+            if sha256_path(asset.path) != asset.checksum:
+                return False
+        except (OSError, InputAuditError):
+            return False
+    return True
 
 
 def _failed_run(
@@ -630,9 +742,5 @@ def _failed_run(
     )
 
 
-def _failed_v1_request(
-    request: ToolRequest, spec: ToolPackageSpecV2
-) -> ToolRunV2:
-    return _failed_run(
-        request_v2_from_v1(request), spec, ["tool_request_v2_required"]
-    )
+def _failed_v1_request(request: ToolRequest, spec: ToolPackageSpecV2) -> ToolRunV2:
+    return _failed_run(request_v2_from_v1(request), spec, ["tool_request_v2_required"])

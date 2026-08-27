@@ -15,6 +15,8 @@ SCHEMAS = {
     "comparison_stability_spec": "bridge://schemas/comparison-stability-spec/v0.1",
     "comparison_case_manifest": "bridge://schemas/comparison-case-manifest/v0.1",
     "product_evidence_bundle": "bridge://schemas/product-evidence-bundle/v0.1",
+    "comparison_method_spec": "bridge://schemas/comparison-method-spec/v0.1",
+    "comparison_method_input": "bridge://schemas/comparison-method-input/v0.1",
 }
 
 
@@ -172,7 +174,10 @@ def _payloads(*, replicated: bool = False) -> dict[str, object]:
 def _role(key: str) -> str:
     return (
         key
-        if key in {"comparison_stability_spec", "comparison_case_manifest"}
+        if key in {
+            "comparison_stability_spec", "comparison_case_manifest",
+            "comparison_method_spec", "comparison_method_input",
+        }
         else "product_evidence_bundle"
     )
 
@@ -203,7 +208,7 @@ def _write_request(
         {
             "request_id": f"request-{output_name}",
             "tool_id": "P0-07",
-            "tool_version": "0.2.0",
+            "tool_version": "0.3.0",
             "output_dir": str((tmp_path / output_name).resolve()),
             "assets": [],
             "measurement_spec_ref": None,
@@ -218,7 +223,7 @@ def _write_request(
 def test_registry_exposes_p0_07_v2_runtime() -> None:
     registry = ToolRegistry.load_default()
     spec = registry.describe("P0-07")
-    assert spec.version == "0.2.0"
+    assert spec.version == "0.3.0"
     assert spec.implementation_state.value == "implemented"
     assert registry.request_model("P0-07").__name__ == "ToolRequestV2"
 
@@ -382,7 +387,7 @@ def test_direct_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="legacy-request",
         tool_id="P0-07",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=tmp_path.resolve(),
     )
     eligibility = adapter.check_eligibility(request, spec)

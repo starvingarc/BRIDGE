@@ -10,6 +10,9 @@ from jsonschema import Draft202012Validator
 import pytest
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
+from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
+    PUBLIC_METHOD_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_06_proliferation_stress_response.adapter import adapter
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     PUBLIC_SCHEMA_MODELS,
@@ -30,9 +33,15 @@ adapter_module = importlib.import_module(
     "bridge.tool_packages.p0_06_proliferation_stress_response.adapter"
 )
 CREATED_AT = "2026-08-25T00:00:00Z"
-METHOD_IDS = [
+CORE_METHOD_IDS = [
     "METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION",
     "METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION",
+]
+METHOD_IDS = [
+    *CORE_METHOD_IDS,
+    "METHOD-SCANPY-SCORE-GENES",
+    "METHOD-DECOUPLER",
+    "METHOD-SCANPY-SCORE-GENES-CELL-CYCLE",
 ]
 ROLE_CONTRACTS = {
     "product_case": ("bridge://schemas/product-case/v0.1", "0.1.0"),
@@ -146,7 +155,7 @@ def _payloads() -> dict[str, dict[str, Any]]:
         "program_spec_version": program_spec_ref["object_version"],
         "product_definition_ref": product_definition_ref,
         "development_window_ref": window_ref,
-        "aggregation_method_ids": METHOD_IDS,
+        "aggregation_method_ids": CORE_METHOD_IDS,
         "attribution_rule": {
             "minimum_independent_replicates": 2,
             "minimum_comparable_groups": 2,
@@ -374,7 +383,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-06",
         tool_id="P0-06",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=tmp_path / output_name,
         object_inputs=list(refs.values()),
     )
@@ -710,7 +719,9 @@ def test_existing_output_drift_fails_closed(tmp_path: Path) -> None:
     assert second.reason_codes == ["existing_run_bundle_hash_mismatch"]
 
 
-@pytest.mark.parametrize("schema_ref", sorted(PUBLIC_SCHEMA_MODELS))
+@pytest.mark.parametrize(
+    "schema_ref", sorted(PUBLIC_SCHEMA_MODELS | PUBLIC_METHOD_SCHEMA_MODELS)
+)
 def test_public_schemas_are_generated_and_valid(schema_ref: str) -> None:
     schema = ToolRegistry.load_default().resolve_schema(schema_ref)
 
@@ -725,7 +736,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-06",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=tmp_path / "output",
     )
 

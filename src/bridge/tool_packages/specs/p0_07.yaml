@@ -1,6 +1,6 @@
 tool_id: P0-07
 name: Product Comparison & Stability
-version: 0.2.0
+version: 0.3.0
 summary: Compare products, timepoints and preparations under an explicit comparability
   contract.
 implementation_state: implemented
@@ -15,4 +15,9 @@ method_ids:
   - METHOD-BRIDGE-COMPARABILITY-GATE
   - METHOD-BRIDGE-DESIGN-AND-CONFOUNDING-CHECK
   - METHOD-BRIDGE-RAW-METRIC-DELTA
+  - METHOD-BRIDGE-SAMPLE-LEVEL-EFFECT-SIZE-ENGINE
+  - METHOD-JENSEN-SHANNON-DISTANCE
+  - METHOD-PSEUDOBULK-CORRELATION-DISTANCE
+  - METHOD-WASSERSTEIN-DISTANCE
+  - METHOD-COEFFICIENT-OF-VARIATION-ROBUST-DISPERSION
 card_ref: bridge://tool-cards/P0-07

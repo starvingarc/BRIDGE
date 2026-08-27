@@ -227,7 +227,6 @@ def test_registry_declares_executable_v2_contract() -> None:
         "METHOD-JSONSCHEMA-HASHLIB",
         "METHOD-MARKDOWN-PARSER-REGEX",
         "METHOD-OS-CLI",
-        "METHOD-PANDAS-CSV-REGEX",
         "METHOD-URL-PARSER-ALLOWLIST",
     ]
     assert spec.result_schema_ref == "bridge://schemas/public-safe-export-run-result/v0.1"

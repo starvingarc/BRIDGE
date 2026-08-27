@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "AnalysisScope": {
+      "enum": [
+        "whole_product",
+        "state_specific"
+      ],
+      "title": "AnalysisScope",
+      "type": "string"
+    },
+    "ProcessMethodId": {
+      "enum": [
+        "PROC-SCORE-SCANPY",
+        "PROC-SCORE-DECOUPLER",
+        "PROC-CYCLE-SCANPY",
+        "PROC-CYCLE-AGG"
+      ],
+      "title": "ProcessMethodId",
+      "type": "string"
+    },
+    "ProcessProgramSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "program_id"
+      ],
+      "title": "ProcessProgramSelection",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/process-method-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "active": {
+      "title": "Active",
+      "type": "boolean"
+    },
+    "cell_cycle": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProcessProgramSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "decoupler_tmin": {
+      "default": 5,
+      "maximum": 100,
+      "minimum": 2,
+      "title": "Decoupler Tmin",
+      "type": "integer"
+    },
+    "expression_asset_id": {
+      "minLength": 1,
+      "title": "Expression Asset Id",
+      "type": "string"
+    },
+    "expression_layer": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expression Layer"
+    },
+    "gene_symbol_column": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gene Symbol Column"
+    },
+    "lower_quantile": {
+      "default": 0.1,
+      "exclusiveMaximum": 0.5,
+      "exclusiveMinimum": 0.0,
+      "title": "Lower Quantile",
+      "type": "number"
+    },
+    "method_spec_id": {
+      "pattern": "^process-method-spec:[A-Za-z0-9._:-]+$",
+      "title": "Method Spec Id",
+      "type": "string"
+    },
+    "method_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Spec Version",
+      "type": "string"
+    },
+    "minimum_cells_per_summary": {
+      "default": 10,
+      "minimum": 1,
+      "title": "Minimum Cells Per Summary",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "programs": {
+      "items": {
+        "$ref": "#/$defs/ProcessProgramSelection"
+      },
+      "title": "Programs",
+      "type": "array"
+    },
+    "scanpy_ctrl_as_ref": {
+      "default": true,
+      "title": "Scanpy Ctrl As Ref",
+      "type": "boolean"
+    },
+    "scanpy_ctrl_size": {
+      "default": 50,
+      "maximum": 500,
+      "minimum": 1,
+      "title": "Scanpy Ctrl Size",
+      "type": "integer"
+    },
+    "scanpy_n_bins": {
+      "default": 25,
+      "maximum": 100,
+      "minimum": 2,
+      "title": "Scanpy N Bins",
+      "type": "integer"
+    },
+    "selected_analysis_scopes": {
+      "items": {
+        "$ref": "#/$defs/AnalysisScope"
+      },
+      "minItems": 1,
+      "title": "Selected Analysis Scopes",
+      "type": "array"
+    },
+    "selected_method_ids": {
+      "items": {
+        "$ref": "#/$defs/ProcessMethodId"
+      },
+      "minItems": 1,
+      "title": "Selected Method Ids",
+      "type": "array"
+    },
+    "status": {
+      "const": "candidate",
+      "title": "Status",
+      "type": "string"
+    },
+    "upper_quantile": {
+      "default": 0.9,
+      "exclusiveMaximum": 1.0,
+      "exclusiveMinimum": 0.5,
+      "title": "Upper Quantile",
+      "type": "number"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_spec_id",
+    "method_spec_version",
+    "status",
+    "expression_asset_id",
+    "selected_method_ids",
+    "selected_analysis_scopes",
+    "active"
+  ],
+  "title": "ProcessMethodSpec",
+  "type": "object"
+}

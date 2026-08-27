@@ -199,7 +199,6 @@ def test_artifact_audit_executes_all_registered_first_version_tools(
         "METHOD-JSONSCHEMA-HASHLIB",
         "METHOD-MARKDOWN-PARSER-REGEX",
         "METHOD-OS-CLI",
-        "METHOD-PANDAS-CSV-REGEX",
         "METHOD-URL-PARSER-ALLOWLIST",
     ]
     assert result.domain_score is None

@@ -46,9 +46,9 @@ P0-11 为 Agent 的对外展示与导出提供最后一层确定性约束，包�
 |---|---|
 | JSON | 严格 JSON 与 packaged JSON Schema |
 | Markdown | `markdown-it-py`、GFM 裸 URL 扫描、`regex`、小写 HTTPS 主机白名单与静态 IP/私有/特殊用途域名拒绝（不做 DNS 解析） |
-| CSV | Pandas、Python `csv`、列白名单与公式注入规则 |
+| CSV | Python `csv.reader(strict=True)`、列白名单与公式注入规则 |
 | SVG | `defusedxml`、元素/属性白名单、本地 fragment 与 URL 检查 |
-| 全部 | 单一不可变 bytes、source-ref/checksum 绑定、路径/主机/凭据规则、只读副本上的 `file` 与 `sha256sum` |
+| 全部 | 单一 hashlib 绑定的不可变 bytes、source-ref/checksum 绑定、路径/主机/凭据规则及只读副本上的 `file` |
 
 输出一个不包含本地路径的 `PublicArtifactAuditResult`。内容违规属于完成的
 审计：`execution_state=succeeded` 且 `audit_state=blocked`；合同、
