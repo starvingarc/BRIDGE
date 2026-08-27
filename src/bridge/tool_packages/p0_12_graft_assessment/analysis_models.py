@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import StrEnum
+import math
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
@@ -53,11 +54,6 @@ class AnalysisAvailability(StrEnum):
     UNAVAILABLE = "unavailable"
 
 
-class IntervalState(StrEnum):
-    AVAILABLE = "available"
-    UNAVAILABLE = "unavailable"
-
-
 class GraftExpressionAsset(FrozenModel):
     object_version: Literal["0.1.0"]
     asset_id: SafeId
@@ -67,10 +63,13 @@ class GraftExpressionAsset(FrozenModel):
     sha256: SHA256
     format: Literal["h5ad"]
     assay: GraftAssay
+    organism: SafeId
+    gene_id_namespace: SafeId
     expression_layer: str = Field(
         min_length=1, pattern=r"^(?:X|[A-Za-z][A-Za-z0-9._-]*)$"
     )
     matrix_semantics: GraftMatrixSemantics
+    analysis_value_semantics: Literal["log1p_cp10k"]
     gene_symbol_key: str | None = Field(
         default=None, pattern=r"^[A-Za-z][A-Za-z0-9._-]*$"
     )
@@ -121,10 +120,8 @@ class GraftExpressionAnalysisSpec(FrozenModel):
     minimum_genes: StrictInt = Field(ge=2)
     minimum_reference_genes: StrictInt = Field(ge=3)
     minimum_program_genes: StrictInt = Field(ge=1)
-    bootstrap_resamples: StrictInt = Field(ge=100, le=10_000)
-    confidence_level: UnitFloat
     probability_tolerance: UnitFloat
-    max_file_bytes: StrictInt = Field(ge=1, le=20_000_000_000)
+    max_file_bytes: StrictInt = Field(ge=1, le=2_000_000_000)
     provenance_refs: list[PublishedRef] = Field(min_length=1)
 
     @field_validator(
@@ -138,12 +135,6 @@ class GraftExpressionAnalysisSpec(FrozenModel):
             value, getattr(info, "field_name", "values")
         )
 
-    @model_validator(mode="after")
-    def confidence_level_is_open_interval(self) -> Self:
-        if not 0 < self.confidence_level < 1:
-            raise ValueError("confidence_level must be between zero and one")
-        return self
-
 
 class GraftReferenceProfile(FrozenModel):
     profile_id: SafeId
@@ -153,6 +144,11 @@ class GraftReferenceProfile(FrozenModel):
 class GraftReferencePanel(FrozenModel):
     object_version: Literal["0.1.0"]
     reference_panel_id: SafeId
+    source_family_id: SafeId
+    organism: SafeId
+    gene_id_namespace: SafeId
+    assay: GraftAssay
+    value_semantics: Literal["log1p_cp10k"]
     profiles: list[GraftReferenceProfile] = Field(min_length=1)
     provenance_refs: list[PublishedRef] = Field(min_length=1)
     created_at: datetime
@@ -192,6 +188,10 @@ class GraftMarkerProgram(FrozenModel):
 class GraftMarkerProgramCollection(FrozenModel):
     object_version: Literal["0.1.0"]
     collection_id: SafeId
+    source_family_id: SafeId
+    organism: SafeId
+    gene_id_namespace: SafeId
+    value_semantics: Literal["log1p_cp10k"]
     programs: list[GraftMarkerProgram] = Field(min_length=1)
     provenance_refs: list[PublishedRef] = Field(min_length=1)
     created_at: datetime
@@ -221,19 +221,19 @@ class GraftCompositionEstimate(FrozenModel):
     mean_fraction: UnitFloat
     cell_equivalent: NonNegativeFloat
     denominator_cells: NonNegativeInt
-    denominator_samples: NonNegativeInt
-    interval_state: IntervalState
-    confidence_level: UnitFloat
-    ci_lower: UnitFloat | None = None
-    ci_upper: UnitFloat | None = None
 
     @model_validator(mode="after")
-    def interval_is_coherent(self) -> Self:
-        present = self.ci_lower is not None and self.ci_upper is not None
-        if present != (self.interval_state is IntervalState.AVAILABLE):
-            raise ValueError("interval values must match interval_state")
-        if present and not self.ci_lower <= self.mean_fraction <= self.ci_upper:
-            raise ValueError("composition interval must contain mean")
+    def descriptive_fraction_is_coherent(self) -> Self:
+        if self.denominator_cells < 1:
+            raise ValueError("composition denominator must be positive")
+        expected = self.cell_equivalent / self.denominator_cells
+        if not math.isclose(
+            self.mean_fraction,
+            expected,
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        ):
+            raise ValueError("composition fraction must use all uploaded rows")
         return self
 
 
@@ -285,8 +285,13 @@ class GraftExpressionAnalysisResult(FrozenModel):
     analysis_spec_ref: SafeId
     reference_panel_ref: SafeId
     marker_program_collection_ref: SafeId
+    reference_source_family_id: SafeId
+    marker_source_family_id: SafeId
     assay: GraftAssay
     matrix_semantics: GraftMatrixSemantics
+    analysis_value_semantics: Literal["log1p_cp10k"]
+    qc_state: Literal["not_reassessed"]
+    composition_denominator: Literal["all_uploaded_rows"]
     cell_count: NonNegativeInt
     gene_count: NonNegativeInt
     sample_count: NonNegativeInt

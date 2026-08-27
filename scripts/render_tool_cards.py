@@ -107,10 +107,10 @@ DETAILS = {
     },
     "P0-12": {
         "input": "No objects; three checksummed precomputed graft objects; or five checksummed objects binding a GraftCase, H5AD asset, analysis spec, reference panel and marker-program collection.",
-        "output": "An independent not-provided/descriptive result, or sample-aware soft composition, pseudobulk reference support and marker-program evidence from the declared H5AD.",
+        "output": "An independent not-provided/descriptive result, or all-row descriptive soft composition, sample-pseudobulk reference support and external marker-program means from the declared H5AD.",
         "reject": "Schema, checksum, file, matrix, probability, metadata, method-set or cross-object drift fails closed; missing optional graft metadata degrades explicitly.",
         "visualization": "No visualization output in v0.3.0.",
-        "validation": "Synthetic H5AD and JSON fixtures exercise real file reading, normalization, aggregation, bootstrap intervals, reference/program calculations, deterministic output and no score backfill.",
+        "validation": "Synthetic H5AD and JSON fixtures exercise file reading, shared matrix validation, normalization, descriptive aggregation, external-context binding, reference/program calculations, deterministic output and no score backfill.",
         "details": "docs/bridge_spec_v0.1/graft_assessment_task_card.md",
     },
 }

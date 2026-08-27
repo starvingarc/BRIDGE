@@ -78,10 +78,7 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 ## P0-12: Optional Graft Assessment
 
 - `METHOD-ANNDATA` — AnnData ([catalog record](bridge://knowledge/methods/METHOD-ANNDATA))
-- `METHOD-BRIDGE-GRAFT-QC-ROUTER` — BRIDGE graft QC router ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-GRAFT-QC-ROUTER))
 - `METHOD-BRIDGE-GRAFTCASE-VALIDATOR` — BRIDGE GraftCase Validator ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-GRAFTCASE-VALIDATOR))
-- `METHOD-BRIDGE-MARKER-PROGRAM-EVIDENCE` — BRIDGE marker/program evidence ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-MARKER-PROGRAM-EVIDENCE))
 - `METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-2C3A8F` — BRIDGE pseudobulk reference correlation ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-2C3A8F))
 - `METHOD-BRIDGE-SOFT-COMPOSITION-404672` — BRIDGE soft composition ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SOFT-COMPOSITION-404672))
 - `METHOD-SCANPY` — Scanpy ([catalog record](bridge://knowledge/methods/METHOD-SCANPY))
-- `METHOD-SCIPY-BOOTSTRAP` — SciPy bootstrap ([catalog record](bridge://knowledge/methods/METHOD-SCIPY-BOOTSTRAP))

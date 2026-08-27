@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "GraftAssay": {
+      "enum": [
+        "scRNA-seq",
+        "snRNA-seq"
+      ],
+      "title": "GraftAssay",
+      "type": "string"
+    },
     "GraftReferenceProfile": {
       "additionalProperties": false,
       "properties": {
@@ -28,14 +36,27 @@
   "$id": "bridge://schemas/graft-reference-panel/v0.1",
   "additionalProperties": false,
   "properties": {
+    "assay": {
+      "$ref": "#/$defs/GraftAssay"
+    },
     "created_at": {
       "format": "date-time",
       "title": "Created At",
       "type": "string"
     },
+    "gene_id_namespace": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Gene Id Namespace",
+      "type": "string"
+    },
     "object_version": {
       "const": "0.1.0",
       "title": "Object Version",
+      "type": "string"
+    },
+    "organism": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Organism",
       "type": "string"
     },
     "profiles": {
@@ -59,11 +80,26 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
       "title": "Reference Panel Id",
       "type": "string"
+    },
+    "source_family_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Family Id",
+      "type": "string"
+    },
+    "value_semantics": {
+      "const": "log1p_cp10k",
+      "title": "Value Semantics",
+      "type": "string"
     }
   },
   "required": [
     "object_version",
     "reference_panel_id",
+    "source_family_id",
+    "organism",
+    "gene_id_namespace",
+    "assay",
+    "value_semantics",
     "profiles",
     "provenance_refs",
     "created_at"

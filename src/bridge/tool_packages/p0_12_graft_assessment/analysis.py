@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import hashlib
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+import re
 import stat
 from typing import Any
 
@@ -12,9 +13,12 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy import sparse
-from scipy.stats import bootstrap as scipy_bootstrap
 from scipy.stats import spearmanr
 
+from bridge.tool_packages.p0_01_input_qc.io import (
+    InputAuditError,
+    validate_expression_object,
+)
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
     PublicationError,
@@ -40,11 +44,11 @@ from bridge.tool_packages.p0_12_graft_assessment.analysis_models import (
     GraftProgramEvidence,
     GraftReferencePanel,
     GraftReferenceSupport,
-    IntervalState,
 )
 from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftCase,
     GraftSourceBinding,
+    SAFE_ID_PATTERN,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -63,13 +67,10 @@ from bridge.toolkit.contracts import (
 RESULT_SCHEMA_REF = "bridge://schemas/graft-assessment-run-result/v0.1"
 ANALYSIS_METHOD_IDS = [
     "METHOD-ANNDATA",
-    "METHOD-BRIDGE-GRAFT-QC-ROUTER",
     "METHOD-BRIDGE-GRAFTCASE-VALIDATOR",
-    "METHOD-BRIDGE-MARKER-PROGRAM-EVIDENCE",
     "METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-2C3A8F",
     "METHOD-BRIDGE-SOFT-COMPOSITION-404672",
     "METHOD-SCANPY",
-    "METHOD-SCIPY-BOOTSTRAP",
 ]
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "graft_case": ("bridge://schemas/graft-case/v0.1", GraftCase),
@@ -312,6 +313,20 @@ def _binding_reasons(
         != programs.collection_id
     ):
         reasons.add("graft_marker_program_binding_mismatch")
+    if asset.organism != reference_panel.organism:
+        reasons.add("graft_reference_organism_mismatch")
+    if asset.organism != programs.organism:
+        reasons.add("graft_marker_program_organism_mismatch")
+    if asset.gene_id_namespace != reference_panel.gene_id_namespace:
+        reasons.add("graft_reference_gene_namespace_mismatch")
+    if asset.gene_id_namespace != programs.gene_id_namespace:
+        reasons.add("graft_marker_program_gene_namespace_mismatch")
+    if asset.assay != reference_panel.assay:
+        reasons.add("graft_reference_assay_mismatch")
+    if asset.analysis_value_semantics != reference_panel.value_semantics:
+        reasons.add("graft_reference_value_semantics_mismatch")
+    if asset.analysis_value_semantics != programs.value_semantics:
+        reasons.add("graft_marker_program_value_semantics_mismatch")
     if analysis_spec.method_ids != ANALYSIS_METHOD_IDS:
         reasons.add("graft_analysis_method_binding_mismatch")
     if not set(ANALYSIS_METHOD_IDS).issubset(spec.method_ids):
@@ -443,9 +458,7 @@ def _analyze(
     )
     gene_symbols = _gene_symbols(analysis, asset)
     analysis.var_names = gene_symbols
-    composition, composition_methods, composition_reasons = _composition(
-        probabilities, samples, analysis_spec
-    )
+    composition = _composition(probabilities)
     reference_support, program_evidence = _expression_evidence(
         analysis=analysis,
         samples=samples,
@@ -456,14 +469,12 @@ def _analyze(
     )
     methods = {
         "METHOD-ANNDATA",
-        "METHOD-BRIDGE-GRAFT-QC-ROUTER",
         "METHOD-BRIDGE-GRAFTCASE-VALIDATOR",
-        "METHOD-BRIDGE-MARKER-PROGRAM-EVIDENCE",
         "METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-2C3A8F",
+        "METHOD-BRIDGE-SOFT-COMPOSITION-404672",
         "METHOD-SCANPY",
-        *composition_methods,
     }
-    reasons = set(composition_reasons)
+    reasons: set[str] = set()
     if grafts is None:
         reasons.add("graft_id_not_provided")
     if any(
@@ -501,6 +512,11 @@ def _analyze(
         marker_program_collection_ref=programs.collection_id,
         assay=asset.assay,
         matrix_semantics=asset.matrix_semantics,
+        analysis_value_semantics=asset.analysis_value_semantics,
+        reference_source_family_id=reference_panel.source_family_id,
+        marker_source_family_id=programs.source_family_id,
+        qc_state="not_reassessed",
+        composition_denominator="all_uploaded_rows",
         cell_count=analysis.n_obs,
         gene_count=analysis.n_vars,
         sample_count=len(set(samples.tolist())),
@@ -528,21 +544,37 @@ def _analysis_view(
         if asset.expression_layer == "X"
         else data.layers[asset.expression_layer]
     )
-    matrix = source.copy()
-    values = matrix.data if sparse.issparse(matrix) else np.asarray(matrix)
-    if not np.isfinite(values).all():
-        raise GraftAnalysisError("graft_expression_non_finite")
-    if asset.matrix_semantics is GraftMatrixSemantics.RAW_COUNTS:
-        if (
-            np.any(values < 0)
-            or not np.allclose(values, np.rint(values), atol=1e-8)
-        ):
-            raise GraftAnalysisError("graft_expression_counts_invalid")
     result = ad.AnnData(
-        X=matrix,
+        X=source.copy(),
         obs=data.obs.copy(),
         var=data.var.copy(),
     )
+    try:
+        validate_expression_object(
+            result,
+            require_counts=(
+                asset.matrix_semantics is GraftMatrixSemantics.RAW_COUNTS
+            ),
+        )
+    except InputAuditError as exc:
+        if exc.reason_code == "non_finite_expression_values":
+            reason = "graft_expression_non_finite"
+        elif (
+            asset.matrix_semantics is GraftMatrixSemantics.RAW_COUNTS
+            and exc.reason_code
+            in {
+                "negative_expression_values",
+                "raw_counts_must_be_nonnegative_integers",
+            }
+        ):
+            reason = "graft_expression_counts_invalid"
+        elif exc.reason_code == "duplicate_cell_ids":
+            reason = "graft_expression_cell_ids_invalid"
+        elif exc.reason_code == "duplicate_gene_ids":
+            reason = "graft_expression_gene_ids_invalid"
+        else:
+            reason = "graft_expression_matrix_invalid"
+        raise GraftAnalysisError(reason) from exc
     return result
 
 
@@ -583,7 +615,10 @@ def _labels(values: pd.Series, kind: str) -> np.ndarray:
     if values.isna().any():
         raise GraftAnalysisError(f"graft_{kind}_labels_invalid")
     labels = values.astype(str).to_numpy()
-    if any(not value or value.isspace() for value in labels):
+    if any(
+        re.fullmatch(SAFE_ID_PATTERN, value) is None
+        for value in labels
+    ):
         raise GraftAnalysisError(f"graft_{kind}_labels_invalid")
     return labels
 
@@ -604,50 +639,20 @@ def _gene_symbols(
 
 def _composition(
     probabilities: pd.DataFrame,
-    samples: np.ndarray,
-    analysis_spec: GraftExpressionAnalysisSpec,
-) -> tuple[list[GraftCompositionEstimate], set[str], set[str]]:
-    by_sample = probabilities.groupby(samples, sort=True).mean()
-    sample_count = len(by_sample)
-    methods = {"METHOD-BRIDGE-SOFT-COMPOSITION-404672"}
-    reasons: set[str] = set()
+) -> list[GraftCompositionEstimate]:
+    cell_count = len(probabilities)
     result: list[GraftCompositionEstimate] = []
     for state_id in sorted(probabilities.columns):
-        sample_values = by_sample[state_id].to_numpy(dtype=float)
-        mean = float(sample_values.mean())
-        lower: float | None = None
-        upper: float | None = None
-        interval_state = IntervalState.UNAVAILABLE
-        if sample_count >= 2:
-            interval = scipy_bootstrap(
-                (sample_values,),
-                np.mean,
-                vectorized=False,
-                n_resamples=analysis_spec.bootstrap_resamples,
-                confidence_level=analysis_spec.confidence_level,
-                method="basic",
-                random_state=0,
-            ).confidence_interval
-            lower = float(np.clip(min(interval.low, mean), 0.0, 1.0))
-            upper = float(np.clip(max(interval.high, mean), 0.0, 1.0))
-            interval_state = IntervalState.AVAILABLE
-            methods.add("METHOD-SCIPY-BOOTSTRAP")
-        else:
-            reasons.add("graft_composition_interval_unavailable")
+        cell_equivalent = float(probabilities[state_id].sum())
         result.append(
             GraftCompositionEstimate(
                 state_id=state_id,
-                mean_fraction=mean,
-                cell_equivalent=float(probabilities[state_id].sum()),
-                denominator_cells=len(probabilities),
-                denominator_samples=sample_count,
-                interval_state=interval_state,
-                confidence_level=analysis_spec.confidence_level,
-                ci_lower=lower,
-                ci_upper=upper,
+                mean_fraction=cell_equivalent / cell_count,
+                cell_equivalent=cell_equivalent,
+                denominator_cells=cell_count,
             )
         )
-    return result, methods, reasons
+    return result
 
 
 def _expression_evidence(

@@ -221,52 +221,10 @@
           "title": "Cell Equivalent",
           "type": "number"
         },
-        "ci_lower": {
-          "anyOf": [
-            {
-              "maximum": 1,
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ci Lower"
-        },
-        "ci_upper": {
-          "anyOf": [
-            {
-              "maximum": 1,
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ci Upper"
-        },
-        "confidence_level": {
-          "maximum": 1,
-          "minimum": 0,
-          "title": "Confidence Level",
-          "type": "number"
-        },
         "denominator_cells": {
           "minimum": 0,
           "title": "Denominator Cells",
           "type": "integer"
-        },
-        "denominator_samples": {
-          "minimum": 0,
-          "title": "Denominator Samples",
-          "type": "integer"
-        },
-        "interval_state": {
-          "$ref": "#/$defs/IntervalState"
         },
         "mean_fraction": {
           "maximum": 1,
@@ -284,10 +242,7 @@
         "state_id",
         "mean_fraction",
         "cell_equivalent",
-        "denominator_cells",
-        "denominator_samples",
-        "interval_state",
-        "confidence_level"
+        "denominator_cells"
       ],
       "title": "GraftCompositionEstimate",
       "type": "object"
@@ -313,6 +268,11 @@
           "title": "Analysis Spec Ref",
           "type": "string"
         },
+        "analysis_value_semantics": {
+          "const": "log1p_cp10k",
+          "title": "Analysis Value Semantics",
+          "type": "string"
+        },
         "assay": {
           "$ref": "#/$defs/GraftAssay"
         },
@@ -325,6 +285,11 @@
           "minimum": 0,
           "title": "Cell Count",
           "type": "integer"
+        },
+        "composition_denominator": {
+          "const": "all_uploaded_rows",
+          "title": "Composition Denominator",
+          "type": "string"
         },
         "composition_estimates": {
           "items": {
@@ -368,6 +333,11 @@
           "title": "Marker Program Collection Ref",
           "type": "string"
         },
+        "marker_source_family_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Marker Source Family Id",
+          "type": "string"
+        },
         "matrix_semantics": {
           "$ref": "#/$defs/GraftMatrixSemantics"
         },
@@ -389,6 +359,11 @@
           "title": "Program Evidence",
           "type": "array"
         },
+        "qc_state": {
+          "const": "not_reassessed",
+          "title": "Qc State",
+          "type": "string"
+        },
         "reason_codes": {
           "items": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
@@ -400,6 +375,11 @@
         "reference_panel_ref": {
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
           "title": "Reference Panel Ref",
+          "type": "string"
+        },
+        "reference_source_family_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reference Source Family Id",
           "type": "string"
         },
         "reference_support": {
@@ -482,8 +462,13 @@
         "analysis_spec_ref",
         "reference_panel_ref",
         "marker_program_collection_ref",
+        "reference_source_family_id",
+        "marker_source_family_id",
         "assay",
         "matrix_semantics",
+        "analysis_value_semantics",
+        "qc_state",
+        "composition_denominator",
         "cell_count",
         "gene_count",
         "sample_count",
@@ -735,14 +720,6 @@
       ],
       "title": "GraftSourceBinding",
       "type": "object"
-    },
-    "IntervalState": {
-      "enum": [
-        "available",
-        "unavailable"
-      ],
-      "title": "IntervalState",
-      "type": "string"
     },
     "PreparationGraftLinkage": {
       "additionalProperties": false,

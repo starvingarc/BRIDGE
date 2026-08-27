@@ -11,13 +11,10 @@ input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
 method_ids:
 - METHOD-ANNDATA
-- METHOD-BRIDGE-GRAFT-QC-ROUTER
 - METHOD-BRIDGE-GRAFTCASE-VALIDATOR
-- METHOD-BRIDGE-MARKER-PROGRAM-EVIDENCE
 - METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-2C3A8F
 - METHOD-BRIDGE-SOFT-COMPOSITION-404672
 - METHOD-SCANPY
-- METHOD-SCIPY-BOOTSTRAP
 card_ref: bridge://tool-cards/P0-12
 adapter_ref: bridge.tool_packages.p0_12_graft_assessment.adapter:adapter
 result_schema_ref: bridge://schemas/graft-assessment-run-result/v0.1

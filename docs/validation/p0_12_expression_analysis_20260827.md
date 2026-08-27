@@ -18,31 +18,40 @@ Controls cover:
 - compatibility with the existing no-input and three-object modes;
 - missing declared observation fields;
 - H5AD checksum replacement;
-- negative raw counts;
+- negative and fractional raw counts;
 - probabilities outside the declared tolerance;
-- exact object, case, assay, reference, program and method bindings;
+- unsafe sample identifiers;
+- exact object, case, assay, organism, gene-namespace, value-semantics,
+  reference source-family, program source-family and method bindings;
 - deterministic reruns and immutable publication.
 
 ## Observed behavior
 
 The expression request passes the same registry, CLI and adapter seam used by
-other P0 tools. Scanpy reads the H5AD. Raw counts are summed by sample, then
-normalized and log-transformed before pseudobulk reference correlation and
-marker-program evidence. Cell probabilities are averaged within sample before
-case-level composition and sample bootstrap intervals are calculated.
+other P0 tools. Scanpy reads the H5AD, and the shared P0-01 expression-object
+validator checks matrix structure and raw-count semantics. Raw counts are
+summed by sample, normalized and log-transformed before sample-pseudobulk
+reference correlation. Marker-program output is the mean of the externally
+declared program genes in the same transformed sample profile; it is not an
+independent identity method. Cell probabilities are pooled over all uploaded
+rows for descriptive composition. No biological-unit weighting, confidence
+interval or graft-QC reassessment is performed.
 
-The successful result reports two samples and two grafts, exact source
-bindings, the eight selected method IDs, runtime versions and checksummed JSON
+The successful result reports two samples and two grafts, `qc_state=not_reassessed`,
+`composition_denominator=all_uploaded_rows`,
+`analysis_value_semantics=log1p_cp10k`, reference and marker source-family
+bindings, the selected method IDs, runtime versions and checksummed JSON
 artifacts. Repeated identical input produces the same run and result. Invalid
-counts or probabilities fail without publication; changed H5AD bytes and
-missing metadata are rejected during eligibility.
+counts, probabilities or identifiers fail without publication; changed H5AD
+bytes, missing metadata and external-context mismatches are rejected.
 
 ## Engineering evidence
 
-- P0-12, CLI and registry focused suite: 48 passed.
-- Repository-wide suite: 1236 passed; one pre-existing duplicate-gene warning.
-- Public Schema registry: 102 packaged Schemas, including the P0-12 union result
-  and five expression-analysis object contracts.
+- Focused P0-12 expression, compatibility, registry and knowledge-catalog tests
+  pass through the package runtime.
+- Schema export retains the P0-12 union result and five expression-analysis
+  object contracts in parity with the Pydantic models.
+- Repository policy and diff checks pass.
 - Public tool discovery remains 12 packages.
 - The request example contains documentation placeholders only; no expression
   data or private metadata is committed.

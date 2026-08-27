@@ -9,7 +9,8 @@ from pydantic import Field, StrictFloat, StrictInt, field_validator, model_valid
 from bridge.toolkit.contracts import FrozenModel
 
 
-SafeId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
+SAFE_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+SafeId = Annotated[str, Field(pattern=SAFE_ID_PATTERN)]
 PublishedRef = Annotated[
     str,
     Field(pattern=r"^[A-Za-z][A-Za-z0-9+.-]*(?::[^\s]+)?$"),

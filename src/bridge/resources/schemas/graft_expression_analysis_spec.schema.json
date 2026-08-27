@@ -7,25 +7,13 @@
       "title": "Analysis Spec Id",
       "type": "string"
     },
-    "bootstrap_resamples": {
-      "maximum": 10000,
-      "minimum": 100,
-      "title": "Bootstrap Resamples",
-      "type": "integer"
-    },
-    "confidence_level": {
-      "maximum": 1,
-      "minimum": 0,
-      "title": "Confidence Level",
-      "type": "number"
-    },
     "marker_program_collection_ref": {
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
       "title": "Marker Program Collection Ref",
       "type": "string"
     },
     "max_file_bytes": {
-      "maximum": 20000000000,
+      "maximum": 2000000000,
       "minimum": 1,
       "title": "Max File Bytes",
       "type": "integer"
@@ -103,8 +91,6 @@
     "minimum_genes",
     "minimum_reference_genes",
     "minimum_program_genes",
-    "bootstrap_resamples",
-    "confidence_level",
     "probability_tolerance",
     "max_file_bytes",
     "provenance_refs"

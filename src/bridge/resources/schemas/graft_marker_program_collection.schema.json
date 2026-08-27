@@ -38,9 +38,19 @@
       "title": "Created At",
       "type": "string"
     },
+    "gene_id_namespace": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Gene Id Namespace",
+      "type": "string"
+    },
     "object_version": {
       "const": "0.1.0",
       "title": "Object Version",
+      "type": "string"
+    },
+    "organism": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Organism",
       "type": "string"
     },
     "programs": {
@@ -59,11 +69,25 @@
       "minItems": 1,
       "title": "Provenance Refs",
       "type": "array"
+    },
+    "source_family_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Family Id",
+      "type": "string"
+    },
+    "value_semantics": {
+      "const": "log1p_cp10k",
+      "title": "Value Semantics",
+      "type": "string"
     }
   },
   "required": [
     "object_version",
     "collection_id",
+    "source_family_id",
+    "organism",
+    "gene_id_namespace",
+    "value_semantics",
     "programs",
     "provenance_refs",
     "created_at"

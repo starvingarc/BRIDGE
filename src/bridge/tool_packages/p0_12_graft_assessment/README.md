@@ -9,8 +9,8 @@ product profile.
 - **Precomputed evidence:** a checksummed GraftCase, GraftAssessmentSpec and
   GraftEvidenceBundle produce a descriptive aggregation.
 - **Expression analysis:** a checksummed H5AD manifest, external analysis spec,
-  reference panel and marker-program collection produce sample-aware
-  composition, pseudobulk reference support and program evidence.
+  reference panel and marker-program collection produce all-row descriptive
+  composition, sample-pseudobulk reference support and program means.
 - **Boundary:** every provided result remains `candidate/shadow`;
   `domain_score=null` and graft evidence never backfills pre-transplant
   domains.
