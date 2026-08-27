@@ -3,107 +3,84 @@
 | 字段 | 内容 |
 |---|---|
 | Task ID | `TASK-PUBLIC-SAFE` |
-| Package version | `0.2.0` |
+| Package version | `0.3.0` |
 | Object version | `0.1.0` |
 | Scientific status | `candidate` |
 | Domain score | `null` |
 
 ## 1. 职责
 
-P0-11 将一份已获得 P0-10 eligible receipt 的结构化报告，按冻结策略重新
-构造为最小公开 JSON 候选。它回答“哪些已验证报告字段可以按当前公开策略
-输出”，不回答报告中的生物学结论是否真实、产品是否安全有效或是否应发布。
+P0-11 为 Agent 的对外展示与导出提供最后一层确定性约束，包含两个互不混用
+的输入模式：
 
-第一版仅支持 JSON 和本地不可变写出。不支持 CSV、Markdown、ZIP、PDF、
-HTML、图表、媒体、网络上传或通用匿名化。
+1. `report_export`：将已获 P0-10 eligible receipt 的报告按冻结白名单
+   重建为公开 JSON 候选，并用 candidate hash 绑定人工确认。
+2. `artifact_audit`：在候选 JSON、Markdown、CSV、SVG 或 ZIP 被展示前，
+   核查格式、来源、checksum、内容规则和冻结策略。
 
-## 2. 精确输入
+模块不上传文件，不重新判断生物学结论，也不授予发布权限。
 
-`ToolRequestV2.object_inputs` 必须恰好包含四个 checksummed
-`application/json` 对象：
+## 2. report_export 合同
 
-| Role | Schema | 必需绑定 |
-|---|---|---|
-| `report_draft` | `bridge://schemas/report-draft/v0.1` | `ReportDraft.object_version=0.1.0` |
-| `claim_verification_result` | `bridge://schemas/claim-verification-result/v0.1` | receipt 的 report ref/hash/audience 与 ReportDraft 完全一致，且 `public_export_eligibility=eligible` |
-| `public_export_policy` | `bridge://schemas/public-export-policy-spec/v0.1` | active；冻结目标通道、claim field allowlist、公开 case alias 和 statement allowlist |
-| `public_export_request` | `bridge://schemas/public-export-request/v0.1` | report ref、policy ref、target channel，以及可选 `confirmation_hash` |
+输入为四个 checksummed JSON 对象：`report_draft`、
+`claim_verification_result`、`public_export_policy` 和
+`public_export_request`。receipt 必须与报告 ref、内容 hash 和 audience
+一致；policy 冻结字段、公开 alias、statement 与 target channel。
 
-每个引用必须提供绝对 regular-file path、SHA-256、Schema URI、对象版本和
-媒体类型。输入表达矩阵、MeasurementSpec、自由参数、额外 role 或 inline
-payload 均不属于该合同。
+输出为 `PublicSafeReport`、`PublicExportManifest` 和
+`PublicExportResult`。首次运行返回 `ready_for_confirmation`；只有
+精确 candidate hash 的再次调用返回 `exported`，且仍然只是本地写出。
 
-## 3. 白名单重建
+## 3. artifact_audit 合同
 
-模块从零创建 `PublicSafeReport`，不复制源报告后再删字段。固定公开骨架为：
+输入为两个 checksummed JSON 对象：
 
-- 新的 hash-derived `public_report_id` 和 `public_claim_id`；
-- checksummed source report 和 P0-10 receipt 的 SHA-256；
-- public export policy ref 和目标通道；
-- policy 批准的公开 case alias；
-- claim type、文本和语言；
-- 仅在字段白名单中出现时输出 statement refs、evidence state 和 comparison mode。
+| Role | 内容 |
+|---|---|
+| `public_artifact_audit_policy` | 允许的格式、HTTPS host、JSON Schema、CSV 列和文件/归档上限 |
+| `public_artifact_manifest` | 1–20 个 regular file 的绝对路径、格式、媒体类型、来源 ref 与 SHA-256 |
 
-源 claim/evidence/ProductCase/sample/preparation 标识、value bindings、
-Evidence Graph refs、renderer metadata 和其他未列字段不会进入公开对象。
-缺失 alias 或 statement 未获批准时整次运行失败，不做静默改写。
+支持的第一版格式与实际执行工具如下：
 
-## 4. 确定性泄漏阻断
+| 格式 | 实际执行 |
+|---|---|
+| JSON | 严格 JSON、packaged JSON Schema、canonical bytes、`hashlib` |
+| Markdown | `markdown-it-py`、`regex`、URL allowlist |
+| CSV | Pandas、Python `csv`、列白名单与公式注入规则 |
+| SVG | `defusedxml`、元素/属性白名单与 URL 检查 |
+| ZIP | Python `zipfile`、路径/大小/symlink 规则与 `unzip` 列表复核 |
+| 全部 | provenance/checksum、泄漏规则、`file` 与 `sha256sum` |
 
-白名单重建后，对 report、manifest 和 result 执行固定扫描。以下任一命中
-均返回 `public_payload_leak_detected` 且不发布 artifact：
+输出一个不包含本地路径的 `PublicArtifactAuditResult`。内容违规属于完成的
+审计：`execution_state=succeeded` 且 `audit_state=blocked`；合同、
+checksum、文件状态或运行工具错误才使执行失败。
 
-- 私有数据卷、Unix/macOS user-home 或 Windows user absolute path；
-- 已知私有服务器 hostname；
-- password、secret、API key、access/refresh token、Bearer 或常见 token；
-- 邮箱；
-- 内部 `evidence:`、`product-case:`、`sample:`、
-  `preparation:` 引用。
+## 4. 主要拒答与阻断
 
-扫描器是白名单后的第二道确定性防线，不证明语义上的完全匿名或科学正确。
+- V1 envelope、模式混合、缺失/重复 role、Schema/版本/媒体类型错误；
+- expression asset、MeasurementSpec、自由参数或 inline payload；
+- receipt/policy/report 绑定失败或公开 alias、statement 未获允许；
+- manifest policy 绑定失败、格式未获允许、JSON/CSV 规则缺失；
+- 非 regular file、空文件、大小越界、checksum 变化或输出目录重叠；
+- Markdown HTML/非允许 URL、CSV 公式、SVG 主动内容、ZIP 穿越或 symlink；
+- 私有路径、主机、邮箱、凭据和内部标识 canary。
 
-## 5. 输出与状态
-
-成功运行在一个原子发布目录中产生三个 checksummed JSON artifact：
-
-1. `public_safe_report.json`；
-2. `public_export_manifest.json`；
-3. `public_export_result.json`。
-
-candidate hash 绑定 public report bytes、冻结 policy checksum 和目标通道。
-无确认时结果为 `ready_for_confirmation`。调用者将该 candidate hash 写入
-第二份 `PublicExportRequest.confirmation_hash` 后再次调用；精确匹配返回
-`exported`，但只表示本地不可变包已确认，仍不上传。错误确认返回
-`confirmation_hash_mismatch` 且无输出。
-
-`ToolRunV2.measurements=[]`、`visualizations=[]`，
-`PublicExportResult.domain_score=null`、`score_state=unavailable`。
-
-## 6. 主要拒答
-
-- V1 envelope、缺失/重复 role、Schema/版本/媒体类型/checksum 错误；
-- receipt 与 report ref/hash/audience 不一致或不具备公开资格；
-- policy inactive，请求 report/policy ref 不匹配，目标通道未获允许；
-- 缺少公开 alias 或 statement 不在 allowlist；
-- 泄漏扫描命中或 confirmation hash 不匹配；
-- 输入运行中变化、输出路径不安全、已有 run bundle 内容不同。
-
-## 7. Agent 调用
+## 5. Agent 调用
 
 ```bash
-bridge-tool validate --request /absolute/path/to/p0_11_request.json
-bridge-tool run --request /absolute/path/to/p0_11_request.json
+bridge-tool describe P0-11
+bridge-tool input-contract P0-11
+bridge-tool validate --request /absolute/path/to/request.json
+bridge-tool run --request /absolute/path/to/request.json
 ```
 
 SDK 使用 `ToolRegistry.load_default().check_eligibility(request)` 和
-`.run(request)`。Agent 可以展示候选哈希并请求确认，不能添加白名单字段、
-伪造确认、修改结果或自动上传。
+`.run(request)`。Agent 只能依据 typed state 与 reason code 展示结果，
+不能补写白名单、忽略 blocked finding、伪造确认或自动上传。
 
-## 8. 方法与边界
+## 6. 边界
 
-- `METHOD-BRIDGE-ALGORITHM-2AFBC8`：白名单投影和包编排。
-- `METHOD-BRIDGE-RULE-ENGINE`：固定路径、凭据、邮箱和内部引用扫描。
-
-两者均为 deterministic candidate。它们不产生 P0 科学域测量，不验证
-P0-10 claim 的生物学真实性，也不构成临床、安全、效力、GMP release 或
-公共发布许可。
+工程验证只证明已登记规则、解析器和命令在测试合同内可重复执行。passed
+不是完全匿名证明；`exported` 不是网络上传、科学发布、临床判断或 GMP
+放行。两个模式均保持 `candidate`、`domain_score=null`、
+`score_state=unavailable`。

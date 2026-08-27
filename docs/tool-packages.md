@@ -168,12 +168,12 @@ scientific methods.
 
 | Item | Details |
 |---|---|
-| Purpose | Rebuild an eligible structured report through a field allowlist and confirmation-bound local export. [Scientific task card](bridge_spec_v0.1/public_safe_export_task_card.md). |
-| Executable implementation | Deterministic allowlist projection, packaged rules, leak-canary scan and immutable local JSON export; no network upload. |
-| Software | Shared Pydantic/JSON Schema runtime plus Python regular-expression, JSON, hashing and filesystem utilities; consumes a P0-10 receipt. |
-| Input → output | ReportDraft, eligible P0-10 receipt, PublicExportPolicySpec and PublicExportRequest → `PublicSafeReport`, export manifest and result. [Tool Card](../src/bridge/tool_packages/cards/P0-11.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-11`; start from the [request example](../examples/requests/p0_11_public_safe_export.json). |
-| Current evidence / status | Fixtures verify confirmation binding, allowlisting, leak-canary checks and immutable local output. A passed scan covers frozen rules/canaries only; `exported` means neither uploaded nor scientifically released. [Validation](validation/p0_11_public_safe_export_20260825.md). |
+| Purpose | Prepare local public-facing candidates through an allowlisted report rebuild or a format-aware artifact audit. [Scientific task card](bridge_spec_v0.1/public_safe_export_task_card.md). |
+| Executable implementation | `report_export` rebuilds and confirmation-binds public JSON. `artifact_audit` checks JSON, Markdown, CSV, SVG and ZIP candidates without uploading them. |
+| Software | Pydantic/JSON Schema and `hashlib`; [markdown-it-py](https://markdown-it-py.readthedocs.io/) and [regex](https://github.com/mrabarnett/mrab-regex); [Pandas](https://pandas.pydata.org/), Python `csv` and `zipfile`; [defusedxml](https://github.com/tiran/defusedxml); system `file`, `sha256sum` and `unzip`. |
+| Input → output | Four report-export objects → public report/manifest/result; or audit policy plus artifact manifest → one path-free `PublicArtifactAuditResult`. [Tool Card](../src/bridge/tool_packages/cards/P0-11.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-11`; use the [report example](../examples/requests/p0_11_public_safe_export.json) or [artifact-audit example](../examples/requests/p0_11_public_artifact_audit.json). |
+| Current evidence / status | Fixtures execute every listed first-version parser/check, deterministic reuse, checksum mutation and blocked Markdown/CSV/SVG/ZIP cases. Passed rules are not a privacy proof; `exported` is neither upload nor scientific release. [Report export validation](validation/p0_11_public_safe_export_20260825.md) · [Artifact audit validation](validation/p0_11_public_artifact_audit_20260827.md). |
 
 <a id="p0-12"></a>
 ## P0-12 Optional Graft Assessment

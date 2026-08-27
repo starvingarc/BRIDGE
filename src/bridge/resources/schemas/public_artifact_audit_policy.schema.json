@@ -1,0 +1,112 @@
+{
+  "$defs": {
+    "PublicArtifactFormat": {
+      "enum": [
+        "json",
+        "markdown",
+        "csv",
+        "svg",
+        "zip"
+      ],
+      "title": "PublicArtifactFormat",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-artifact-audit-policy/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "active": {
+      "title": "Active",
+      "type": "boolean"
+    },
+    "allowed_formats": {
+      "items": {
+        "$ref": "#/$defs/PublicArtifactFormat"
+      },
+      "minItems": 1,
+      "title": "Allowed Formats",
+      "type": "array"
+    },
+    "allowed_url_hosts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Url Hosts",
+      "type": "array"
+    },
+    "allowed_url_schemes": {
+      "items": {
+        "const": "https",
+        "type": "string"
+      },
+      "title": "Allowed Url Schemes",
+      "type": "array"
+    },
+    "csv_column_allowlists": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Csv Column Allowlists",
+      "type": "object"
+    },
+    "json_schema_refs": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Json Schema Refs",
+      "type": "object"
+    },
+    "max_archive_entries": {
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Max Archive Entries",
+      "type": "integer"
+    },
+    "max_archive_uncompressed_bytes": {
+      "maximum": 500000000,
+      "minimum": 1,
+      "title": "Max Archive Uncompressed Bytes",
+      "type": "integer"
+    },
+    "max_file_bytes": {
+      "maximum": 50000000,
+      "minimum": 1,
+      "title": "Max File Bytes",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "policy_id": {
+      "pattern": "^public-artifact-policy:[A-Za-z0-9._:-]+$",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "policy_version": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "title": "Policy Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "policy_id",
+    "policy_version",
+    "active",
+    "allowed_formats",
+    "max_file_bytes",
+    "max_archive_entries",
+    "max_archive_uncompressed_bytes",
+    "allowed_url_schemes",
+    "allowed_url_hosts",
+    "json_schema_refs",
+    "csv_column_allowlists"
+  ],
+  "title": "PublicArtifactAuditPolicy",
+  "type": "object"
+}

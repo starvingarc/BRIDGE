@@ -1,0 +1,230 @@
+{
+  "$defs": {
+    "ArtifactAuditState": {
+      "enum": [
+        "passed",
+        "blocked"
+      ],
+      "title": "ArtifactAuditState",
+      "type": "string"
+    },
+    "ArtifactCheckState": {
+      "enum": [
+        "passed",
+        "blocked",
+        "not_applicable"
+      ],
+      "title": "ArtifactCheckState",
+      "type": "string"
+    },
+    "PublicArtifactAuditRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "pattern": "^public-artifact:[A-Za-z0-9._:-]+$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "audit_state": {
+          "$ref": "#/$defs/ArtifactAuditState"
+        },
+        "byte_count": {
+          "minimum": 1,
+          "title": "Byte Count",
+          "type": "integer"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/PublicArtifactCheck"
+          },
+          "minItems": 1,
+          "title": "Checks",
+          "type": "array"
+        },
+        "declared_format": {
+          "$ref": "#/$defs/PublicArtifactFormat"
+        },
+        "declared_media_type": {
+          "pattern": "^[A-Za-z0-9!#$&^_.+\\-]+/[A-Za-z0-9!#$&^_.+\\-]+$",
+          "title": "Declared Media Type",
+          "type": "string"
+        },
+        "detected_media_type": {
+          "pattern": "^[A-Za-z0-9!#$&^_.+\\-]+/[A-Za-z0-9!#$&^_.+\\-]+$",
+          "title": "Detected Media Type",
+          "type": "string"
+        },
+        "source_artifact_ref": {
+          "pattern": "^public-source:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+          "title": "Source Artifact Ref",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "source_artifact_ref",
+        "source_sha256",
+        "declared_format",
+        "declared_media_type",
+        "detected_media_type",
+        "byte_count",
+        "audit_state",
+        "checks"
+      ],
+      "title": "PublicArtifactAuditRecord",
+      "type": "object"
+    },
+    "PublicArtifactCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "implementation": {
+          "minLength": 1,
+          "title": "Implementation",
+          "type": "string"
+        },
+        "method_id": {
+          "pattern": "^METHOD-[A-Z0-9-]+$",
+          "title": "Method Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/ArtifactCheckState"
+        }
+      },
+      "required": [
+        "method_id",
+        "implementation",
+        "state",
+        "reason_codes"
+      ],
+      "title": "PublicArtifactCheck",
+      "type": "object"
+    },
+    "PublicArtifactFormat": {
+      "enum": [
+        "json",
+        "markdown",
+        "csv",
+        "svg",
+        "zip"
+      ],
+      "title": "PublicArtifactFormat",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/public-artifact-audit-result/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "audit_id": {
+      "pattern": "^public-artifact-audit:[a-f0-9]{16}$",
+      "title": "Audit Id",
+      "type": "string"
+    },
+    "audit_state": {
+      "$ref": "#/$defs/ArtifactAuditState"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "manifest_ref": {
+      "pattern": "^public-artifact-manifest:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+      "title": "Manifest Ref",
+      "type": "string"
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifest Sha256",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "policy_ref": {
+      "pattern": "^public-artifact-policy:[A-Za-z0-9._:-]+@[A-Za-z0-9._:-]+$",
+      "title": "Policy Ref",
+      "type": "string"
+    },
+    "policy_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Policy Sha256",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/PublicArtifactAuditRecord"
+      },
+      "minItems": 1,
+      "title": "Records",
+      "type": "array"
+    },
+    "runtime_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Runtime Versions",
+      "type": "object"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "selected_method_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Selected Method Ids",
+      "type": "array"
+    },
+    "tool_id": {
+      "const": "P0-11",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "audit_id",
+    "tool_id",
+    "tool_version",
+    "policy_ref",
+    "policy_sha256",
+    "manifest_ref",
+    "manifest_sha256",
+    "audit_state",
+    "records",
+    "selected_method_ids",
+    "runtime_versions",
+    "created_at"
+  ],
+  "title": "PublicArtifactAuditResult",
+  "type": "object"
+}

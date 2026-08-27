@@ -38,6 +38,8 @@ freeze = [
   "pyarrow>=18,<24",
 ]
 evidence = [
+  "defusedxml>=0.7,<1",
+  "markdown-it-py>=3,<5",
   "networkx>=3.5,<3.6",
   "pyarrow>=21,<22",
   "regex>=2025.7,<2027",

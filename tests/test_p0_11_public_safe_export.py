@@ -206,7 +206,7 @@ def _tool_request(
     return ToolRequestV2(
         request_id=f"request-{root.name}",
         tool_id="P0-11",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=root / "output",
         object_inputs=refs,
     )
@@ -218,10 +218,22 @@ def test_registry_declares_executable_v2_contract() -> None:
     assert isinstance(spec, ToolPackageSpecV2)
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert spec.method_ids == [
+        "METHOD-ARTIFACT-PROVENANCE-CHECK",
         "METHOD-BRIDGE-ALGORITHM-2AFBC8",
         "METHOD-BRIDGE-RULE-ENGINE",
+        "METHOD-CSV-DETERMINISTIC-RULE",
+        "METHOD-CUSTOM-DETERMINISTIC-RULES",
+        "METHOD-CUSTOM-SVG-INSPECTOR",
+        "METHOD-FORMAT-GATE",
+        "METHOD-JSONSCHEMA-HASHLIB",
+        "METHOD-MARKDOWN-PARSER-REGEX",
+        "METHOD-OS-CLI",
+        "METHOD-PANDAS-CSV-REGEX",
+        "METHOD-STDLIB",
+        "METHOD-URL-PARSER-ALLOWLIST",
+        "METHOD-ZIPFILE-UNZIP",
     ]
-    assert spec.result_schema_ref == "bridge://schemas/public-export-result/v0.1"
+    assert spec.result_schema_ref == "bridge://schemas/public-safe-export-run-result/v0.1"
 
 
 def test_candidate_run_rebuilds_three_checksummed_public_json_artifacts(
@@ -367,7 +379,7 @@ def test_checksum_mismatch_and_v1_request_are_typed_refusals(
         ToolRequest(
             request_id="request-v1",
             tool_id="P0-11",
-            tool_version="0.2.0",
+            tool_version="0.3.0",
             output_dir=tmp_path / "v1-output",
         )
     )

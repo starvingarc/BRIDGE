@@ -28,6 +28,12 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ReportAudience,
     ReportDraft,
 )
+from bridge.tool_packages.p0_11_public_safe_export.artifact_audit import (
+    ROLE_MODELS as ARTIFACT_ROLE_MODELS,
+    check_eligibility as check_artifact_eligibility,
+    is_artifact_audit_request,
+    run as run_artifact_audit,
+)
 from bridge.tool_packages.p0_11_public_safe_export.models import (
     PublicClaimField,
     PublicExportManifest,
@@ -52,8 +58,8 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/public-export-result/v0.1"
-ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
+RESULT_SCHEMA_REF = "bridge://schemas/public-safe-export-run-result/v0.1"
+EXPORT_ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "report_draft": ("bridge://schemas/report-draft/v0.1", ReportDraft),
     "claim_verification_result": (
         "bridge://schemas/claim-verification-result/v0.1",
@@ -68,6 +74,7 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         PublicExportRequest,
     ),
 }
+ROLE_MODELS = {**EXPORT_ROLE_MODELS, **ARTIFACT_ROLE_MODELS}
 FILENAMES = (
     "public_safe_report.json",
     "public_export_manifest.json",
@@ -117,6 +124,8 @@ class PublicSafeExportAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
+        if is_artifact_audit_request(request):
+            return check_artifact_eligibility(request, spec)
         reasons = _envelope_reasons(request, spec)
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
@@ -132,6 +141,8 @@ class PublicSafeExportAdapter:
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         if not isinstance(request, ToolRequestV2):
             return _failed_v1_request(request, spec)
+        if is_artifact_audit_request(request):
+            return run_artifact_audit(request, spec)
         eligibility = self.check_eligibility(request, spec)
         input_hash = _input_hash(request, spec)
         if not eligibility.eligible:
@@ -202,13 +213,13 @@ def _envelope_reasons(
     if request.parameters:
         reasons.append("p0_11_parameters_forbidden")
     roles = [ref.role for ref in request.object_inputs]
-    for role in ROLE_MODELS:
+    for role in EXPORT_ROLE_MODELS:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
-    if any(role not in ROLE_MODELS for role in roles):
+    if any(role not in EXPORT_ROLE_MODELS for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
-        contract = ROLE_MODELS.get(ref.role)
+        contract = EXPORT_ROLE_MODELS.get(ref.role)
         if contract is not None and ref.schema_ref != contract[0]:
             reasons.append("object_input_schema_mismatch")
         if ref.object_version != "0.1.0":
@@ -223,7 +234,7 @@ def _load_inputs(
 ) -> tuple[LoadedInputs | None, list[str]]:
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: ROLE_MODELS.get(ref.role, ("", None))[1],
+        model_for=lambda ref: EXPORT_ROLE_MODELS.get(ref.role, ("", None))[1],
         validate_model=_validate_object_version,
     )
 
