@@ -1,5 +1,44 @@
 {
   "$defs": {
+    "OODChannelBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "method_ref": {
+          "pattern": "^METHOD-[A-Z0-9-]+$",
+          "title": "Method Ref",
+          "type": "string"
+        },
+        "reference_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Reference Ref",
+          "type": "string"
+        },
+        "source_family_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Source Family Id",
+          "type": "string"
+        },
+        "upstream_result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Upstream Result Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel_id",
+        "source_family_id",
+        "upstream_result_sha256",
+        "method_ref",
+        "reference_ref"
+      ],
+      "title": "OODChannelBinding",
+      "type": "object"
+    },
     "OODDecisionRule": {
       "additionalProperties": false,
       "properties": {
@@ -48,7 +87,7 @@
         "COMP-HBOOT",
         "RARE-EXACT",
         "RARE-SPIKEIN",
-        "RARE-SCOPIT",
+        "RARE-BINOMIAL-AT-LEAST-ONE",
         "OOD-DISAGREE",
         "OOD-ENSEMBLE"
       ],
@@ -124,6 +163,13 @@
       "const": "0.1.0",
       "title": "Object Version",
       "type": "string"
+    },
+    "ood_channel_bindings": {
+      "items": {
+        "$ref": "#/$defs/OODChannelBinding"
+      },
+      "title": "Ood Channel Bindings",
+      "type": "array"
     },
     "ood_decision_rules": {
       "items": {

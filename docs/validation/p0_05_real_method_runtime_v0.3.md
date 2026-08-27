@@ -49,7 +49,7 @@ or unpublished result was used.
 | `COMP-HBOOT` | seeded NumPy resampling of independence groups | uncertainty over declared groups only |
 | `RARE-EXACT` | Clopper-Pearson rare-state count interval | descriptive count evidence only |
 | `RARE-SPIKEIN` | empirical recovery curve and external acceptance rule | candidate detection limit, not scientific validation |
-| `RARE-SCOPIT` | closed-form at-least-one-cell sample-size calculation | retains independent-sampling and perfect-detection assumptions |
+| `RARE-BINOMIAL-AT-LEAST-ONE` | single-state at-least-one-cell binomial calculation | not SCOPIT; retains independent-sampling and perfect-detection assumptions |
 | `OOD-DISAGREE` | source-family state comparison | disagreement audit, not OOD inference |
 | `OOD-ENSEMBLE` | ordered external-rule coordinator | supplied channel states only; family conflict returns `not_assessed` |
 
@@ -60,21 +60,16 @@ remain conditional candidates and were not executed by this release.
 
 | Gate | Result |
 |---|---|
-| P0-05 legacy and method suites | `22 passed` |
-| P0-05 plus registry/schema/shared-contract checks | `91 passed` |
-| Complete source suite | `1230 passed, 8 existing warnings` |
-| Tool discovery | exactly 12 packages; P0-05 is implemented |
+| P0-05 legacy and method suites | `24 passed` |
+| P0-05 plus registry and knowledge-catalog checks | `46 passed` |
 | Input contracts | `legacy_aggregation` has 6 roles; `method_runtime` has 9 roles |
-| Public schemas | 99 packaged schemas; three new P0-05 method schemas resolve |
-| Clean-wheel smoke | 12-tool list, describe, input-contract, validate and 2-artifact run passed |
-| Wheel SHA-256 | `a7701947f2d667a9090c53837bbeb08478c1cbab629d379b8a2b8bc4e673691d` |
-| Knowledge validation | 354 methods, 387 sources, 396 bindings, no dangling references |
-| Repository policy and diff hygiene | passed |
+| Generated artifacts | P0-05 public schemas, Tool Card and knowledge snapshot regenerated from their repository sources |
+| Repository checks | knowledge validation, repository policy and `git diff --check` passed |
 | Formal-eligible methods | 0 |
 
-The warnings are the existing AnnData duplicate-variable-name warning and
-SciPy sparse-matrix migration warnings from P0-01 fixtures; no warning
-originated in P0-05.
+These counts describe the focused closure run for this revision. The required
+GitHub repository gate remains the authority for the complete source suite,
+wheel build, 12-tool discovery and clean-install checks.
 
 ## Observed semantics
 
@@ -83,10 +78,12 @@ originated in P0-05.
 - Identical checksummed inputs and seed reused the same run and artifact bytes.
   Changing the seed changed the run fingerprint.
 - Bootstrap sampled declared independence groups rather than cells.
-- Spike-in output used `candidate_detection_limit_fraction`; it did not promote
+- Spike-in output reports each fraction's independent-group count and uses `candidate_detection_limit_fraction`; it did not promote
   the supplied engineering acceptance rule to biological validation.
-- OOD coordination counted distinct source families. The implementation treats
-  within-family conflict as `not_assessed`; this boundary was reviewed in code
+- The checksummed MethodSpec fixes each OOD channel's family, upstream-result
+  checksum, method and reference. Runtime input supplies only state/reason, and
+  one upstream result cannot be relabelled as two families. Within-family
+  conflict remains `not_assessed`; this boundary was reviewed in code
   but was not part of the executable fixture reported above.
 - Missing one of the three method objects, changing an independence-group
   binding or replacing an input file prevented execution with typed reasons.
@@ -100,7 +97,7 @@ whole-product denominator review, known-mixture composition error, source-family
 and OOD holdouts, rare-state spike-in/false-positive calibration,
 reference/preprocessing/assay sensitivity, and signed review of every external
 rule object. Cell-count intervals must not be presented as biological-replicate
-inference. The SCOPIT design is optimistic when detection is imperfect.
+inference. The single-state binomial design is optimistic when detection is imperfect and must not be represented as SCOPIT.
 
 Until those gates are independently completed, all method outputs remain
 engineering candidates: `evidence_state=shadow`, `score_state=unavailable`,

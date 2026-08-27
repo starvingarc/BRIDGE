@@ -52,9 +52,9 @@ METHOD_REFS = {
         "METHOD-BRIDGE-SAMPLE-PRESERVING-SPIKE-IN",
         "BRIDGE empirical spike-in recovery curve",
     ),
-    OffTargetMethodId.RARE_SCOPIT: (
-        "METHOD-SCOPIT",
-        "closed-form SCOPIT sample-size calculation",
+    OffTargetMethodId.RARE_BINOMIAL_PLANNER: (
+        "METHOD-SINGLE-STATE-AT-LEAST-ONE-BINOMIAL-PLANNER",
+        "single-state at-least-one binomial sample-size planner",
     ),
     OffTargetMethodId.OOD_DISAGREEMENT: (
         "METHOD-BRIDGE-MODEL-AND-REFERENCE-DISAGREEMENT",
@@ -347,10 +347,13 @@ def _spike_in_calibrations(
         for fraction, fraction_trials in sorted(by_fraction.items()):
             if fraction <= 0.0:
                 continue
+            independence_groups = {
+                item.independence_group_ref for item in fraction_trials
+            }
             detected = sum(item.recovered_spike_count > 0 for item in fraction_trials)
             lower, upper = _clopper_pearson(
                 detected,
-                len(fraction_trials),
+                len(independence_groups),
                 method_spec.confidence_level,
             )
             curve.append(
@@ -358,7 +361,8 @@ def _spike_in_calibrations(
                     spike_fraction=float(fraction),
                     trial_count=len(fraction_trials),
                     detected_trial_count=detected,
-                    detection_rate=float(detected / len(fraction_trials)),
+                    independence_group_count=len(independence_groups),
+                    detection_rate=float(detected / len(independence_groups)),
                     detection_lower=lower,
                     detection_upper=upper,
                 )
@@ -416,7 +420,9 @@ def _spike_in_calibrations(
     )
 
 
-def _planning_records(method_spec: OffTargetMethodSpec) -> list[RarePlanningRecord]:
+def _single_state_planning_records(
+    method_spec: OffTargetMethodSpec,
+) -> list[RarePlanningRecord]:
     records = []
     for target in sorted(method_spec.planning_targets, key=lambda item: item.state_id):
         required = math.ceil(
@@ -430,6 +436,7 @@ def _planning_records(method_spec: OffTargetMethodSpec) -> list[RarePlanningReco
                 desired_detection_probability=target.desired_detection_probability,
                 assumption_codes=[
                     "independent_random_sampling_assumed",
+                    "single_state_at_least_one_cell_target",
                     "perfect_detection_assumed",
                 ],
                 required_observations=max(1, required),
@@ -438,11 +445,19 @@ def _planning_records(method_spec: OffTargetMethodSpec) -> list[RarePlanningReco
     return records
 
 
-def _family_states(method_input: OffTargetMethodInput) -> dict[str, str]:
+def _family_states(
+    method_spec: OffTargetMethodSpec,
+    method_input: OffTargetMethodInput,
+) -> dict[str, str]:
+    bindings = {
+        item.channel_id: item for item in method_spec.ood_channel_bindings
+    }
     by_family: dict[str, set[str]] = defaultdict(set)
     for channel in method_input.ood_channels:
         if channel.state.value != "unavailable":
-            by_family[channel.source_family_id].add(channel.state.value)
+            by_family[bindings[channel.channel_id].source_family_id].add(
+                channel.state.value
+            )
     return {
         family: next(iter(states)) if len(states) == 1 else "conflict"
         for family, states in sorted(by_family.items())
@@ -450,8 +465,11 @@ def _family_states(method_input: OffTargetMethodInput) -> dict[str, str]:
     }
 
 
-def _ood_disagreement(method_input: OffTargetMethodInput) -> OODDisagreementRecord:
-    family_states = _family_states(method_input)
+def _ood_disagreement(
+    method_spec: OffTargetMethodSpec,
+    method_input: OffTargetMethodInput,
+) -> OODDisagreementRecord:
+    family_states = _family_states(method_spec, method_input)
     assessed_channels = sum(
         item.state.value != "unavailable" for item in method_input.ood_channels
     )
@@ -481,7 +499,7 @@ def _ood_ensemble(
     method_spec: OffTargetMethodSpec,
     method_input: OffTargetMethodInput,
 ) -> OODEnsembleRecord:
-    family_states = _family_states(method_input)
+    family_states = _family_states(method_spec, method_input)
     if "conflict" in family_states.values():
         return OODEnsembleRecord(
             decision_state=OODDecisionState.NOT_ASSESSED,
@@ -575,10 +593,10 @@ def execute_methods(
                 method_input,
             )
             spike_in.extend(records)
-        elif method_id is OffTargetMethodId.RARE_SCOPIT:
-            planning.extend(_planning_records(method_spec))
+        elif method_id is OffTargetMethodId.RARE_BINOMIAL_PLANNER:
+            planning.extend(_single_state_planning_records(method_spec))
         elif method_id is OffTargetMethodId.OOD_DISAGREEMENT:
-            disagreement = _ood_disagreement(method_input)
+            disagreement = _ood_disagreement(method_spec, method_input)
             if disagreement.assessment_state == "not_assessed":
                 reasons = disagreement.reason_codes
         elif method_id is OffTargetMethodId.OOD_ENSEMBLE:

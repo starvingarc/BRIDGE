@@ -97,7 +97,7 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Account for whole-product composition, uncertainty, rare-state detectability and supplied OOD evidence under versioned external rules. [Scientific task card](bridge_spec_v0.1/off_target_control_task_card.md). |
-| Executable implementation | Role-aware soft composition plus eight selectors: Clopper-Pearson count intervals, hard/soft sensitivity, independence-group bootstrap, rare-state intervals, empirical spike-in curves, SCOPIT design, source-family disagreement and ordered OOD coordination. |
+| Executable implementation | Role-aware soft composition plus eight selectors: Clopper-Pearson count intervals, hard/soft sensitivity, independence-group bootstrap, rare-state intervals, empirical spike-in curves, single-state at-least-one binomial planning, source-family disagreement and ordered OOD coordination. |
 | Software | Pydantic/JSON Schema runtime, [NumPy](https://numpy.org/) bootstrap and [SciPy](https://scipy.org/) beta quantiles; remaining aggregation, design and coordination code is internal and deterministic. Deep OOD models and rare-cluster discovery tools in the catalog are not invoked. |
 | Input → output | Compatible six-object aggregation → `OffTargetControlProfile`; nine-object method mode adds P0-02 V3, biological-unit lineage and method inputs → checksummed `OffTargetMethodBundle`. [Tool Card](../src/bridge/tool_packages/cards/P0-05.md). |
 | Call | `bridge-tool describe P0-05`, `bridge-tool input-contract P0-05`, then shared validate/run CLI or SDK; start from the [request example](../examples/requests/p0_05_off_target_control.json). |

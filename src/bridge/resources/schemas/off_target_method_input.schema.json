@@ -43,7 +43,17 @@
       "title": "AnalysisUnitComposition",
       "type": "object"
     },
-    "OODChannelRecord": {
+    "OODChannelState": {
+      "enum": [
+        "supported",
+        "unknown",
+        "ood",
+        "unavailable"
+      ],
+      "title": "OODChannelState",
+      "type": "string"
+    },
+    "OODChannelStateRecord": {
       "additionalProperties": false,
       "properties": {
         "channel_id": {
@@ -64,32 +74,16 @@
           "default": null,
           "title": "Reason Id"
         },
-        "source_family_id": {
-          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
-          "title": "Source Family Id",
-          "type": "string"
-        },
         "state": {
           "$ref": "#/$defs/OODChannelState"
         }
       },
       "required": [
         "channel_id",
-        "source_family_id",
         "state"
       ],
-      "title": "OODChannelRecord",
+      "title": "OODChannelStateRecord",
       "type": "object"
-    },
-    "OODChannelState": {
-      "enum": [
-        "supported",
-        "unknown",
-        "ood",
-        "unavailable"
-      ],
-      "title": "OODChannelState",
-      "type": "string"
     },
     "SpikeInTrial": {
       "additionalProperties": false,
@@ -260,7 +254,7 @@
     },
     "ood_channels": {
       "items": {
-        "$ref": "#/$defs/OODChannelRecord"
+        "$ref": "#/$defs/OODChannelStateRecord"
       },
       "title": "Ood Channels",
       "type": "array"

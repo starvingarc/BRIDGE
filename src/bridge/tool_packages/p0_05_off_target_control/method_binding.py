@@ -173,6 +173,27 @@ def method_binding_reasons(
         for item in method_input.spike_in_trials
     ):
         reasons.append("spike_in_independence_group_not_declared")
+    spike_in_group_keys = [
+        (item.state_id, item.spike_fraction, item.independence_group_ref)
+        for item in method_input.spike_in_trials
+    ]
+    if len(spike_in_group_keys) != len(set(spike_in_group_keys)):
+        reasons.append("spike_in_independence_group_reused_within_fraction")
+
+    expected_ood_channels = {
+        item.channel_id: item for item in method_spec.ood_channel_bindings
+    }
+    if set(expected_ood_channels) != {
+        item.channel_id for item in method_input.ood_channels
+    }:
+        reasons.append("ood_channel_set_mismatch")
+    families_by_upstream_hash: dict[str, set[str]] = defaultdict(set)
+    for binding in method_spec.ood_channel_bindings:
+        families_by_upstream_hash[binding.upstream_result_sha256].add(
+            binding.source_family_id
+        )
+    if any(len(families) > 1 for families in families_by_upstream_hash.values()):
+        reasons.append("ood_upstream_result_reused_across_source_families")
     if any(
         item.reason_id is not None and item.reason_id not in allowed_unknown
         for item in method_input.ood_channels

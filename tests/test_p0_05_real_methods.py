@@ -238,7 +238,7 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
             "COMP-HBOOT",
             "RARE-EXACT",
             "RARE-SPIKEIN",
-            "RARE-SCOPIT",
+            "RARE-BINOMIAL-AT-LEAST-ONE",
             "OOD-DISAGREE",
             "OOD-ENSEMBLE",
         ],
@@ -251,6 +251,22 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
                 "expected_frequency_fraction": 0.01,
                 "desired_detection_probability": 0.95,
             }
+        ],
+        "ood_channel_bindings": [
+            {
+                "channel_id": "ood-channel:reference",
+                "source_family_id": "ood-family:reference",
+                "upstream_result_sha256": "5" * 64,
+                "method_ref": "METHOD-REFERENCE-DISTANCE",
+                "reference_ref": "reference:demo",
+            },
+            {
+                "channel_id": "ood-channel:model",
+                "source_family_id": "ood-family:model",
+                "upstream_result_sha256": "6" * 64,
+                "method_ref": "METHOD-OOD-MODEL",
+                "reference_ref": "reference:demo",
+            },
         ],
         "ood_decision_rules": [
             {
@@ -291,13 +307,11 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
         "ood_channels": [
             {
                 "channel_id": "ood-channel:reference",
-                "source_family_id": "ood-family:reference",
                 "state": "ood",
                 "reason_id": "reference_gap",
             },
             {
                 "channel_id": "ood-channel:model",
-                "source_family_id": "ood-family:model",
                 "state": "ood",
                 "reason_id": "reference_gap",
             },
@@ -372,14 +386,17 @@ def test_method_mode_executes_eight_transparent_methods(tmp_path: Path) -> None:
         "COMP-HBOOT",
         "RARE-EXACT",
         "RARE-SPIKEIN",
-        "RARE-SCOPIT",
+        "RARE-BINOMIAL-AT-LEAST-ONE",
         "OOD-DISAGREE",
         "OOD-ENSEMBLE",
     ]
     assert {item["execution_state"] for item in bundle["executions"]} == {"succeeded"}
     assert len(bundle["composition_intervals"]) == 8
     assert len(bundle["hard_soft_sensitivity"]) == 4
-    assert bundle["spike_in_calibrations"][0]["assessment_state"] == "available"
+    calibration = bundle["spike_in_calibrations"][0]
+    assert calibration["assessment_state"] == "available"
+    assert calibration["curve"][0]["trial_count"] == 4
+    assert calibration["curve"][0]["independence_group_count"] == 4
     assert bundle["planning_records"][0]["required_observations"] == 299
     assert bundle["ood_disagreement"]["disagreement"] is False
     assert bundle["ood_ensemble"]["decision_state"] == "ood"
@@ -434,3 +451,49 @@ def test_method_mode_rejects_file_replacement(tmp_path: Path) -> None:
 
     assert not eligibility.eligible
     assert eligibility.reason_codes == ["structured_input_checksum_mismatch"]
+
+
+def test_method_mode_rejects_reused_spike_in_independence_group(
+    tmp_path: Path,
+) -> None:
+    def reuse_group(payload: dict) -> None:
+        payload["spike_in_trials"][1]["independence_group_ref"] = (
+            payload["spike_in_trials"][0]["independence_group_ref"]
+        )
+
+    request = _rewrite_method(
+        _method_request(tmp_path),
+        "off_target_method_input",
+        reuse_group,
+    )
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert (
+        "spike_in_independence_group_reused_within_fraction"
+        in eligibility.reason_codes
+    )
+
+
+def test_method_mode_rejects_one_upstream_result_as_two_ood_families(
+    tmp_path: Path,
+) -> None:
+    def duplicate_upstream(payload: dict) -> None:
+        payload["ood_channel_bindings"][1]["upstream_result_sha256"] = (
+            payload["ood_channel_bindings"][0]["upstream_result_sha256"]
+        )
+
+    request = _rewrite_method(
+        _method_request(tmp_path),
+        "off_target_method_spec",
+        duplicate_upstream,
+    )
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert (
+        "ood_upstream_result_reused_across_source_families"
+        in eligibility.reason_codes
+    )

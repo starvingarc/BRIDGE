@@ -17,7 +17,7 @@ P0-05 回答一个受限问题：在同一个全制剂分母内，外部产品�
 
 兼容模式只聚合已经计算好的细胞状态证据。方法模式进一步执行透明的描述性
 区间、independence-group bootstrap、hard/soft sensitivity、输入 spike-in 的
-候选检测限、SCOPIT 设计计算以及多来源 OOD 状态协调。两种模式均不读取表达
+候选检测限、单状态至少一个细胞的二项采样规划以及多来源 OOD 状态协调。两种模式均不读取表达
 矩阵、不重新注释细胞、不训练 OOD 模型，也不输出临床安全、疗效、potency、
 GMP 放行或产品排序结论。
 
@@ -55,8 +55,8 @@ GMP 放行或产品排序结论。
 | `cell_state_evidence_profile` | 两者 | legacy 为 V2；方法模式为 V3，含 composition 与 DataView lineage |
 | `off_target_evidence_bundle` | 两者 | 上游 ref/hash、分母、state/unknown observations、supplied calibration |
 | `biological_unit_manifest` | 方法 | reviewed analysis-unit 与 independence-group mapping |
-| `off_target_method_spec` | 方法 | 方法选择、置信度、bootstrap 次数、planning target、OOD 规则 |
-| `off_target_method_input` | 方法 | unit-level soft/hard composition、spike-in trials、OOD channels |
+| `off_target_method_spec` | 方法 | 方法选择、置信度、bootstrap 次数、planning target、OOD channel→family→upstream hash/method/reference 绑定与规则 |
+| `off_target_method_input` | 方法 | unit-level soft/hard composition、spike-in trials、仅含 channel ID/state/reason 的 OOD observations |
 
 `OffTargetEvidenceBundle` 是上游计算结果的最小交接面。它包含 soft mass 与
 observed count，但不携带角色判断。完整覆盖状态下，state 与 unknown 的 soft
@@ -75,7 +75,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 6. unknown 只按外部 allowlist 中实际出现的 reason 汇总。
 7. 方法模式核对 DataView、BiologicalUnitManifest、unit-level 与 aggregate counts。
 8. 执行描述性 exact interval、hard/soft sensitivity 与 independence-group bootstrap。
-9. 根据输入 spike-in 及外部规则计算候选检测限与 SCOPIT 设计；按来源族协调 OOD 状态。
+9. 每个 spike-in 浓度只允许每个 independence group 一次，计算候选检测限与单状态二项规划；按 MethodSpec 固定的上游来源族协调 OOD 状态。
 10. 在发布前再次检查所有输入 checksum，原子写入一个或两个 JSON artifact。
 
 相同输入内容与 random seed 产生相同 run ID、input hash 和 artifact hash；
@@ -106,7 +106,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 | `composition_intervals` | descriptive cell-count interval 与 independence-group bootstrap |
 | `hard_soft_sensitivity` | 同一角色 hard fraction 与 soft fraction 的差异 |
 | `rare_intervals` / `spike_in_calibrations` | 稀有状态描述区间、恢复曲线与 candidate detection limit |
-| `planning_records` | SCOPIT 所需观察数及独立随机抽样、完美检测假设 |
+| `planning_records` | 单一预声明状态至少观察一个细胞所需的观察数，以及独立随机抽样、完美检测假设；不是 SCOPIT |
 | `ood_disagreement` / `ood_ensemble` | 来源族分歧与外部有序规则的协调结果 |
 
 ## 6. 缺失、零值与检测语义
@@ -126,7 +126,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 以下情况在 eligibility 阶段 fail closed：V1 请求、表达资产、任意 parameters、
 对象数量/role/Schema/version 不符、checksum 漂移、跨对象引用不一致、未映射
 state、未允许 unknown reason、未声明 calibration、inactive spec、方法对象不完整、
-analysis-unit/independence-group 漂移或 aggregate count 不闭合。
+analysis-unit/independence-group 漂移、同一状态/浓度内重复 spike-in independence group、OOD channel/upstream lineage 不匹配或 aggregate count 不闭合。
 
 本版本不承担：
 
@@ -142,7 +142,7 @@ analysis-unit/independence-group 漂移或 aggregate count 不闭合。
 
 当前工程验证使用完全合成的结构化对象，覆盖两个模式、八个 selector、角色映射
 可替换性、完整/部分分母、analysis-unit 与 independence-group 血缘、exact 与
-bootstrap interval、hard/soft sensitivity、spike-in、SCOPIT、OOD 协调、零/缺失、
+bootstrap interval、hard/soft sensitivity、独立组 spike-in、单状态二项规划、checksummed OOD 协调、零/缺失、
 checksum、seeded deterministic reuse 和篡改。该验证仅证明接口、计算路径与
 fail-closed 语义可执行。
 

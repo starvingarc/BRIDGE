@@ -59,7 +59,7 @@ DETAILS = {
     },
     "P0-05": {
         "input": "Checksummed ProductCase, role and assessment objects, P0-02 evidence and, in method mode, reviewed biological-unit lineage, a method spec and unit-level composition/spike-in/OOD inputs.",
-        "output": "Whole-product composition plus descriptive intervals, independent-unit bootstrap, hard/soft sensitivity, candidate spike-in limits, SCOPIT design and supplied-source OOD coordination.",
+        "output": "Whole-product composition plus descriptive intervals, independent-unit bootstrap, hard/soft sensitivity, candidate spike-in limits, single-state at-least-one binomial planning and checksummed-source OOD coordination.",
         "reject": "Missing full-product denominator, partial method inputs, lineage/count mismatch, undeclared reason/state, checksum drift, or zero observations presented as biological absence.",
         "visualization": "No visualization output in v0.3; the package emits checksummed JSON profiles and method records.",
         "validation": "Synthetic execution of all selectors and refusal paths; real OOD holdouts, known mixtures and spike-in calibration remain scientific follow-up.",

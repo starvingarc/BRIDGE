@@ -33,7 +33,7 @@ class OffTargetMethodId(StrEnum):
     HIERARCHICAL_BOOTSTRAP = "COMP-HBOOT"
     RARE_EXACT = "RARE-EXACT"
     RARE_SPIKE_IN = "RARE-SPIKEIN"
-    RARE_SCOPIT = "RARE-SCOPIT"
+    RARE_BINOMIAL_PLANNER = "RARE-BINOMIAL-AT-LEAST-ONE"
     OOD_DISAGREEMENT = "OOD-DISAGREE"
     OOD_ENSEMBLE = "OOD-ENSEMBLE"
 
@@ -131,11 +131,18 @@ class SpikeInTrial(FrozenModel):
         return self
 
 
-class OODChannelRecord(FrozenModel):
+class OODChannelStateRecord(FrozenModel):
     channel_id: str = Field(pattern=OBJECT_ID_PATTERN)
-    source_family_id: str = Field(pattern=OBJECT_ID_PATTERN)
     state: OODChannelState
     reason_id: str | None = Field(default=None, pattern=REASON_ID_PATTERN)
+
+
+class OODChannelBinding(FrozenModel):
+    channel_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    source_family_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    upstream_result_sha256: str = Field(pattern=SHA256_PATTERN)
+    method_ref: str = Field(pattern=r"^METHOD-[A-Z0-9-]+$")
+    reference_ref: str = Field(pattern=OBJECT_ID_PATTERN)
 
 
 class OffTargetMethodInput(FrozenModel):
@@ -152,7 +159,7 @@ class OffTargetMethodInput(FrozenModel):
     biological_unit_manifest_sha256: str = Field(pattern=SHA256_PATTERN)
     analysis_units: list[AnalysisUnitComposition]
     spike_in_trials: list[SpikeInTrial] = Field(default_factory=list)
-    ood_channels: list[OODChannelRecord] = Field(default_factory=list)
+    ood_channels: list[OODChannelStateRecord] = Field(default_factory=list)
     created_at: datetime
 
     _created_at_utc = field_validator("created_at")(_aware_utc)
@@ -191,22 +198,36 @@ class OffTargetMethodSpec(FrozenModel):
     minimum_spike_in_detection_probability: StrictFloat = Field(gt=0.0, lt=1.0)
     planning_targets: list[RarePlanningTarget] = Field(default_factory=list)
     ood_decision_rules: list[OODDecisionRule] = Field(default_factory=list)
+    ood_channel_bindings: list[OODChannelBinding] = Field(default_factory=list)
     active: bool
 
     @model_validator(mode="after")
     def selections_are_coherent(self) -> Self:
         _unique(self.selected_method_ids, "selected method IDs")
         _unique([item.state_id for item in self.planning_targets], "planning state IDs")
+        _unique(
+            [item.channel_id for item in self.ood_channel_bindings],
+            "OOD channel binding IDs",
+        )
         if (
-            OffTargetMethodId.RARE_SCOPIT in self.selected_method_ids
+            OffTargetMethodId.RARE_BINOMIAL_PLANNER in self.selected_method_ids
             and not self.planning_targets
         ):
-            raise ValueError("RARE-SCOPIT requires planning targets")
+            raise ValueError(
+                "RARE-BINOMIAL-AT-LEAST-ONE requires planning targets"
+            )
         if (
             OffTargetMethodId.OOD_ENSEMBLE in self.selected_method_ids
             and not self.ood_decision_rules
         ):
             raise ValueError("OOD-ENSEMBLE requires ordered decision rules")
+        if (
+            set(self.selected_method_ids).intersection(
+                {OffTargetMethodId.OOD_DISAGREEMENT, OffTargetMethodId.OOD_ENSEMBLE}
+            )
+            and not self.ood_channel_bindings
+        ):
+            raise ValueError("selected OOD methods require channel bindings")
         return self
 
 
@@ -244,6 +265,7 @@ class SpikeInCurvePoint(FrozenModel):
     spike_fraction: StrictFloat
     trial_count: StrictInt
     detected_trial_count: StrictInt
+    independence_group_count: StrictInt
     detection_rate: StrictFloat
     detection_lower: StrictFloat
     detection_upper: StrictFloat

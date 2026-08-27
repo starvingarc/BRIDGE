@@ -209,7 +209,7 @@
         "COMP-HBOOT",
         "RARE-EXACT",
         "RARE-SPIKEIN",
-        "RARE-SCOPIT",
+        "RARE-BINOMIAL-AT-LEAST-ONE",
         "OOD-DISAGREE",
         "OOD-ENSEMBLE"
       ],
@@ -443,6 +443,10 @@
           "title": "Detection Upper",
           "type": "number"
         },
+        "independence_group_count": {
+          "title": "Independence Group Count",
+          "type": "integer"
+        },
         "spike_fraction": {
           "title": "Spike Fraction",
           "type": "number"
@@ -456,6 +460,7 @@
         "spike_fraction",
         "trial_count",
         "detected_trial_count",
+        "independence_group_count",
         "detection_rate",
         "detection_lower",
         "detection_upper"

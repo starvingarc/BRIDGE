@@ -49,7 +49,7 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 - `METHOD-HARD-LABEL-COMPOSITION` — Hard-label composition ([catalog record](bridge://knowledge/methods/METHOD-HARD-LABEL-COMPOSITION))
 - `METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-9669E1` — Sample-preserving hierarchical bootstrap ([catalog record](bridge://knowledge/methods/METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-9669E1))
 - `METHOD-BRIDGE-SAMPLE-PRESERVING-SPIKE-IN` — BRIDGE sample-preserving spike-in ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SAMPLE-PRESERVING-SPIKE-IN))
-- `METHOD-SCOPIT` — SCOPIT ([catalog record](bridge://knowledge/methods/METHOD-SCOPIT))
+- `METHOD-SINGLE-STATE-AT-LEAST-ONE-BINOMIAL-PLANNER` — Single-state at-least-one binomial planner ([catalog record](bridge://knowledge/methods/METHOD-SINGLE-STATE-AT-LEAST-ONE-BINOMIAL-PLANNER))
 - `METHOD-BRIDGE-MODEL-AND-REFERENCE-DISAGREEMENT` — BRIDGE model and reference disagreement ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-MODEL-AND-REFERENCE-DISAGREEMENT))
 - `METHOD-BRIDGE-OOD-ENSEMBLE` — BRIDGE OOD Ensemble ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-OOD-ENSEMBLE))
 
