@@ -56,6 +56,76 @@
       "title": "DevelopmentStageRole",
       "type": "string"
     },
+    "OrdinalGroupHeldoutEvidence": {
+      "additionalProperties": false,
+      "description": "External receipt for source-group-held-out ordinal validation.",
+      "properties": {
+        "evidence_id": {
+          "pattern": "^ordinal-group-heldout-evidence:[A-Za-z0-9._:-]+$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "evidence_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Version",
+          "type": "string"
+        },
+        "grouping_unit": {
+          "const": "source_id",
+          "title": "Grouping Unit",
+          "type": "string"
+        },
+        "held_out_source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Held Out Source Ids",
+          "type": "array"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "reference_profile_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Reference Profile Ids",
+          "type": "array"
+        },
+        "review_state": {
+          "enum": [
+            "candidate",
+            "reviewed"
+          ],
+          "title": "Review State",
+          "type": "string"
+        },
+        "validation_state": {
+          "enum": [
+            "passed",
+            "not_passed"
+          ],
+          "title": "Validation State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "evidence_id",
+        "evidence_version",
+        "review_state",
+        "validation_state",
+        "grouping_unit",
+        "reference_profile_ids",
+        "held_out_source_ids"
+      ],
+      "title": "OrdinalGroupHeldoutEvidence",
+      "type": "object"
+    },
     "ReferenceStageDefinition": {
       "additionalProperties": false,
       "properties": {
@@ -170,6 +240,17 @@
       ],
       "default": null,
       "title": "Observation Id Column"
+    },
+    "ordinal_group_heldout_evidence": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OrdinalGroupHeldoutEvidence"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "program_card_ids": {
       "items": {

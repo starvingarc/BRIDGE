@@ -31,6 +31,7 @@ from bridge.tool_packages.p0_04_developmental_compatibility.method_models import
     DevelopmentProgramActivity,
     DevelopmentTimeTrend,
     MethodExecutionState,
+    OrdinalGroupHeldoutEvidence,
     OrdinalStagePrediction,
     ReferenceStageSupportRecord,
     TimeTrendPoint,
@@ -132,20 +133,31 @@ def run_development_methods(
             stage_by_profile_label=stage_by_profile_label,
             minimum_shared_genes=method_spec.minimum_shared_genes,
         )
-        if not any(item.evidence_state == "shadow" for item in support):
+        available_support = [
+            item for item in support if item.evidence_state == "shadow"
+        ]
+        if not available_support:
             for method_id in selected & reference_consumers:
                 reasons[method_id].add("reference_stage_support_unavailable")
+        elif len(available_support) < len(support):
+            for method_id in selected & reference_consumers:
+                reasons[method_id].add("reference_stage_support_incomplete")
 
     ordinal: list[OrdinalStagePrediction] = []
     if DevelopmentMethodId.ORDINAL_CLASSIFIER in selected:
-        ordinal, reason = _ordinal_predictions(
-            query=query,
-            references=references,
-            stage_by_profile_label=stage_by_profile_label,
-            minimum_shared_genes=method_spec.minimum_shared_genes,
-        )
-        if reason:
-            reasons[DevelopmentMethodId.ORDINAL_CLASSIFIER].add(reason)
+        gate_reason = _ordinal_gate_reason(method_spec, profiles)
+        if gate_reason is not None:
+            reasons[DevelopmentMethodId.ORDINAL_CLASSIFIER].add(gate_reason)
+        else:
+            ordinal, reason = _ordinal_predictions(
+                query=query,
+                references=references,
+                stage_by_profile_label=stage_by_profile_label,
+                minimum_shared_genes=method_spec.minimum_shared_genes,
+                heldout_evidence=method_spec.ordinal_group_heldout_evidence,
+            )
+            if reason:
+                reasons[DevelopmentMethodId.ORDINAL_CLASSIFIER].add(reason)
 
     programs: list[DevelopmentProgramActivity] = []
     unavailable_cards: set[str] = set()
@@ -527,11 +539,62 @@ def _reference_support(
                     evidence_state="shadow",
                 )
             )
+    for unit in query.analysis_unit_refs:
+        unit_ref = str(unit)
+        indices = [
+            index
+            for index, record in enumerate(records)
+            if record.analysis_unit_ref == unit_ref
+        ]
+        unit_records = [records[index] for index in indices]
+        unavailable_reason: str | None = None
+        if len(unit_records) != len(references) or any(
+            record.evidence_state == "unavailable" for record in unit_records
+        ):
+            unavailable_reason = "reference_stage_profile_coverage_incomplete"
+        elif any(record.top_stage_role is None for record in unit_records):
+            unavailable_reason = "reference_stage_role_unavailable"
+        elif len({record.top_stage_role for record in unit_records}) > 1:
+            unavailable_reason = "reference_stage_source_assay_disagreement"
+        if unavailable_reason is None:
+            continue
+        for index in indices:
+            record = records[index]
+            records[index] = record.model_copy(
+                update={
+                    "evidence_state": "unavailable",
+                    "reason_codes": sorted(
+                        {*record.reason_codes, unavailable_reason}
+                    ),
+                }
+            )
+        within_values[unit_ref] = []
     return records, {
         unit: float(np.mean(values))
         for unit, values in sorted(within_values.items())
         if values
     }
+
+
+def _ordinal_gate_reason(
+    spec: DevelopmentMethodSpec, profiles: list[ReferenceProfile]
+) -> str | None:
+    evidence = spec.ordinal_group_heldout_evidence
+    if evidence is None:
+        return "ordinal_group_heldout_evidence_not_supplied"
+    if evidence.review_state != "reviewed":
+        return "ordinal_group_heldout_evidence_not_reviewed"
+    if evidence.validation_state != "passed":
+        return "ordinal_group_heldout_evidence_not_passed"
+    profile_ids = {profile.profile_id for profile in profiles}
+    if set(evidence.reference_profile_ids) != profile_ids:
+        return "ordinal_group_heldout_profile_binding_mismatch"
+    source_ids = {profile.source_id for profile in profiles}
+    if len(source_ids) < 2:
+        return "ordinal_group_heldout_requires_two_sources"
+    if set(evidence.held_out_source_ids) != source_ids:
+        return "ordinal_group_heldout_source_binding_mismatch"
+    return None
 
 
 def _ordinal_predictions(
@@ -540,6 +603,7 @@ def _ordinal_predictions(
     references: list[_ReferenceRun],
     stage_by_profile_label: dict[tuple[str, str], Any],
     minimum_shared_genes: int,
+    heldout_evidence: OrdinalGroupHeldoutEvidence,
 ) -> tuple[list[OrdinalStagePrediction], str | None]:
     if not references:
         return [], "reference_profiles_not_supplied"
@@ -642,6 +706,8 @@ def _ordinal_predictions(
                     str(rank): float(probability)
                     for rank, probability in zip(unique_ranks, row, strict=True)
                 },
+                calibration_state="uncalibrated_baseline",
+                group_heldout_evidence_ref=heldout_evidence.ref,
                 n_reference_rows=len(reference_rows),
                 n_reference_sources=len(sources),
             )
@@ -856,9 +922,7 @@ def _time_trend(
             {"x": frame["timepoint_order"].to_numpy(dtype=float)},
             return_type="dataframe",
         )
-        model = statsmodels.OLS(frame["value"].to_numpy(dtype=float), design).fit(
-            cov_type="HC3"
-        )
+        model = statsmodels.OLS(frame["value"].to_numpy(dtype=float), design).fit()
         unique = (
             frame[
                 ["timepoint_id", "timepoint_order", "timepoint_label"]
@@ -871,7 +935,7 @@ def _time_trend(
             {"x": unique["timepoint_order"].to_numpy(dtype=float)},
             return_type="dataframe",
         )[0]
-        prediction = model.get_prediction(prediction_design).summary_frame(alpha=0.05)
+        prediction = np.asarray(model.predict(prediction_design), dtype=float)
     except (ValueError, np.linalg.LinAlgError, patsy.PatsyError):
         return None, "time_spline_not_estimable"
 
@@ -880,16 +944,14 @@ def _time_trend(
             timepoint_id=str(row.timepoint_id),
             timepoint_order=int(row.timepoint_order),
             timepoint_label=str(row.timepoint_label),
-            fitted_value=float(prediction.iloc[index]["mean"]),
-            lower=float(prediction.iloc[index]["mean_ci_lower"]),
-            upper=float(prediction.iloc[index]["mean_ci_upper"]),
+            fitted_value=float(prediction[index]),
         )
         for index, row in enumerate(unique.itertuples(index=False))
     ]
     if any(
         not math.isfinite(value)
         for point in points
-        for value in (point.fitted_value, point.lower, point.upper)
+        for value in (point.fitted_value,)
     ):
         return None, "time_spline_nonfinite"
     return DevelopmentTimeTrend(
@@ -899,6 +961,7 @@ def _time_trend(
         n_independence_groups=frame["independence_group_ref"].nunique(),
         n_timepoints=n_timepoints,
         spline_degrees_of_freedom=spec.spline_degrees_of_freedom,
+        analysis_state="unadjusted_descriptive",
         fitted_points=points,
     ), None
 
@@ -915,7 +978,7 @@ def _method_evidence(
             {"numpy": _package_version("numpy"), "scipy": _package_version("scipy")},
         ),
         DevelopmentMethodId.ORDINAL_CLASSIFIER: (
-            "scikit-learn cumulative binary logistic ordinal baseline",
+            "scikit-learn uncalibrated cumulative logistic ordinal baseline with external source-group-held-out evidence",
             "ordinal_stage_support",
             {"scikit-learn": _package_version("scikit-learn")},
         ),
@@ -930,7 +993,7 @@ def _method_evidence(
             {"numpy": _package_version("numpy")},
         ),
         DevelopmentMethodId.TIME_PROGRAM: (
-            "decoupler ULM plus statsmodels spline on declared true time",
+            "decoupler ULM plus unadjusted descriptive statsmodels spline on declared true time",
             "time_trend",
             {
                 "decoupler": _package_version("decoupler"),
@@ -939,7 +1002,7 @@ def _method_evidence(
             },
         ),
         DevelopmentMethodId.TIME_GAM_PY: (
-            "statsmodels OLS with a prespecified cubic B-spline basis and HC3 covariance",
+            "unadjusted descriptive statsmodels OLS with a prespecified cubic B-spline basis",
             "time_trend",
             {
                 "statsmodels": _package_version("statsmodels"),

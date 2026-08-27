@@ -4,7 +4,7 @@
 |---|---|---|---|
 | `ENV-P0-CORE-v0.1` | `bridge-p0-core` | health_check_passed | Tool Runtime and P0-01–P0-07, P0-12 core execution |
 | `ENV-EVIDENCE-v0.1` | `bridge-p0-evidence` | health_check_passed | P0-08 to P0-11 deterministic evidence and release services |
-| `ENV-CELLSTATE-PY-v0.1` | `bridge-cellstate-py` | health_check_passed | P0-02 Python benchmark methods |
+| `ENV-CELLSTATE-PY-v0.1` | `bridge-cellstate-py` | health_check_passed | P0-02 Python benchmarks and optional P0-03 expression methods |
 | `ENV-DEVELOPMENT-PY-v0.1` | `bridge-development-py` | health_check_passed | P0-04 reference, program and true-time methods |
 | `ENV-CELLSTATE-BIOC-R46-v0.1` | `bridge-cellstate-bioc-r46` | health_check_passed | P0-02 R/Bioconductor benchmark methods |
 

@@ -46,6 +46,7 @@ def evaluate_developmental_compatibility(
     method_bundle_sha256: str | None = None,
     selected_method_ids: list[str] | None = None,
     method_reason_codes: list[str] | None = None,
+    reference_stage_support_available: bool = False,
 ) -> DevelopmentalCompatibilityResult:
     composition_state = cell_state_profile.composition.state
     selected_method_ids = sorted(set(selected_method_ids or []))
@@ -82,8 +83,7 @@ def evaluate_developmental_compatibility(
     )
     if timepoint_series is None:
         reasons.add("timepoint_series_not_supplied")
-    if not {"TIME-GAM-PY", "TIME-PROGRAM"}.intersection(selected_method_ids):
-        reasons.add("inferential_timecourse_not_supplied")
+    reasons.add("inferential_timecourse_unavailable")
 
     if whole_profile is None:
         result_state = "not_assessed"
@@ -169,10 +169,14 @@ def evaluate_developmental_compatibility(
                 method_bundle_sha256=method_bundle_sha256,
                 selected_method_ids=selected_method_ids,
             )
-            if method_bundle_ref is not None
+            if method_bundle_ref is not None and reference_stage_support_available
             else ReferenceStageSupport(
                 assessment_state="unavailable",
-                reason_code="reference_stage_support_not_supplied",
+                reason_code=(
+                    "reference_stage_support_not_supplied"
+                    if method_bundle_ref is None
+                    else "reference_stage_support_unavailable"
+                ),
             )
         ),
         evidence_state=evidence_state,

@@ -42,6 +42,35 @@ class AnalysisUnitTimepoint(FrozenModel):
     timepoint_label: str = Field(min_length=1)
 
 
+class OrdinalGroupHeldoutEvidence(FrozenModel):
+    """External receipt for source-group-held-out ordinal validation."""
+
+    object_version: Literal["0.1.0"]
+    evidence_id: str = Field(
+        pattern=r"^ordinal-group-heldout-evidence:[A-Za-z0-9._:-]+$"
+    )
+    evidence_version: str = Field(pattern=VERSION_PATTERN)
+    review_state: Literal["candidate", "reviewed"]
+    validation_state: Literal["passed", "not_passed"]
+    grouping_unit: Literal["source_id"]
+    reference_profile_ids: list[str] = Field(min_length=2)
+    held_out_source_ids: list[str] = Field(min_length=2)
+
+    @field_validator("reference_profile_ids", "held_out_source_ids")
+    @classmethod
+    def identifiers_are_unique(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("group-held-out identifiers must be unique")
+        return value
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.evidence_id,
+            object_version=self.evidence_version,
+        )
+
+
 class DevelopmentMethodSpec(FrozenModel):
     """External, versioned choices for optional expression-level evidence."""
 
@@ -70,6 +99,7 @@ class DevelopmentMethodSpec(FrozenModel):
     bootstrap_replicates: StrictInt = Field(default=1000, ge=10, le=10000)
     bootstrap_confidence_level: float = Field(default=0.95, gt=0.0, lt=1.0)
     spline_degrees_of_freedom: StrictInt = Field(default=3, ge=3, le=8)
+    ordinal_group_heldout_evidence: OrdinalGroupHeldoutEvidence | None = None
 
     @field_validator(
         "reference_profile_ids",
@@ -203,6 +233,19 @@ class ReferenceStageSupportRecord(FrozenModel):
     evidence_state: Literal["shadow", "unavailable"]
     reason_codes: list[ReasonCode] = Field(default_factory=list)
 
+    @field_validator("reason_codes")
+    @classmethod
+    def reasons_are_sorted_unique(cls, value: list[str]) -> list[str]:
+        if value != sorted(set(value)):
+            raise ValueError("reference support reasons must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def evidence_state_is_coherent(self) -> Self:
+        if (self.evidence_state == "unavailable") != bool(self.reason_codes):
+            raise ValueError("reference support state and reasons disagree")
+        return self
+
 
 class OrdinalStagePrediction(FrozenModel):
     analysis_unit_ref: str = Field(min_length=1)
@@ -210,6 +253,8 @@ class OrdinalStagePrediction(FrozenModel):
     nearest_label: str = Field(min_length=1)
     nearest_stage_role: DevelopmentStageRole
     rank_probabilities: dict[str, float]
+    calibration_state: Literal["uncalibrated_baseline"]
+    group_heldout_evidence_ref: VersionedObjectRef
     n_reference_rows: StrictInt = Field(ge=1)
     n_reference_sources: StrictInt = Field(ge=1)
 
@@ -261,8 +306,6 @@ class TimeTrendPoint(FrozenModel):
     timepoint_order: StrictInt = Field(ge=0)
     timepoint_label: str = Field(min_length=1)
     fitted_value: float
-    lower: float
-    upper: float
 
 
 class DevelopmentTimeTrend(FrozenModel):
@@ -275,6 +318,7 @@ class DevelopmentTimeTrend(FrozenModel):
     n_independence_groups: StrictInt = Field(ge=1)
     n_timepoints: StrictInt = Field(ge=2)
     spline_degrees_of_freedom: StrictInt = Field(ge=3)
+    analysis_state: Literal["unadjusted_descriptive"]
     fitted_points: list[TimeTrendPoint] = Field(min_length=2)
 
 

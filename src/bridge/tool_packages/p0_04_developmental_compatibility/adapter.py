@@ -33,6 +33,7 @@ from bridge.tool_packages.p0_04_developmental_compatibility.executor import (
 )
 from bridge.tool_packages.p0_04_developmental_compatibility.method_models import (
     DevelopmentMethodArtifactBinding,
+    DevelopmentMethodId,
     DevelopmentMethodSpec,
     MethodExecutionState,
 )
@@ -214,6 +215,7 @@ class DevelopmentalCompatibilityAdapter:
         method_payload = None
         method_binding = None
         method_reasons: list[str] = []
+        reference_stage_support_available = False
         if method_values:
             method_spec = method_values[0]
             asset = request.assets[0]
@@ -274,6 +276,15 @@ class DevelopmentalCompatibilityAdapter:
                     for reason in item.reason_codes
                 }
             )
+            reference_stage_support_available = any(
+                item.method_id is DevelopmentMethodId.PSEUDOBULK_CORRELATION
+                and item.execution_state
+                in {
+                    MethodExecutionState.SUCCEEDED,
+                    MethodExecutionState.PARTIAL,
+                }
+                for item in method_bundle.method_evidence
+            )
 
         result = evaluate_developmental_compatibility(
             run_id=run_id,
@@ -303,6 +314,7 @@ class DevelopmentalCompatibilityAdapter:
                 else [str(item) for item in method_binding.selected_method_ids]
             ),
             method_reason_codes=method_reasons,
+            reference_stage_support_available=reference_stage_support_available,
         )
         result_payload = canonical_json_bytes(
             result.model_dump(mode="json"), indent=2

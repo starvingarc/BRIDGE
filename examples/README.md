@@ -13,6 +13,8 @@ before calling `validate` or `run`.
 | P0-03 | [`p0_03_target_regional_evidence.json`](requests/p0_03_target_regional_evidence.json) | Eleven-object target/regional evidence request |
 | P0-04 | [`p0_04_developmental_compatibility.json`](requests/p0_04_developmental_compatibility.json) | Traceable aggregation plus optional expression-method request |
 | P0-05 | [`p0_05_off_target_control.json`](requests/p0_05_off_target_control.json) | Role-aware whole-product composition request |
+| P0-03 | [`p0_03_target_regional_expression.json`](requests/p0_03_target_regional_expression.json) | Optional H5AD expression-method request |
+| P0-03 | [`p0_03_target_regional_method_spec.json`](objects/p0_03_target_regional_method_spec.json) | External method, reference, program and coverage choices |
 | P0-06 | [`p0_06_proliferation_stress_response.json`](requests/p0_06_proliferation_stress_response.json) | External program, process and precomputed-evidence request |
 | P0-07 | [`p0_07_product_comparison_stability.json`](requests/p0_07_product_comparison_stability.json) | Multi-case comparability and descriptive-delta request |
 | P0-08 | [`p0_08_evidence_sufficiency.json`](requests/p0_08_evidence_sufficiency.json) | Versioned evidence-gate request |

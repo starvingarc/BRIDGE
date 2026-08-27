@@ -26,11 +26,15 @@ from tests.test_p0_04_developmental_compatibility import (
 def _write_reference_profile(
     root: Path,
     *,
+    profile_key: str,
+    source_id: str,
+    assay: str,
+    role: str,
     matrix: np.ndarray,
     genes: list[str],
 ) -> dict:
-    matrix_path = root / "development_reference.npy"
-    metadata_path = root / "development_reference.metadata.json"
+    matrix_path = root / f"development_reference_{profile_key}.npy"
+    metadata_path = root / f"development_reference_{profile_key}.metadata.json"
     np.save(matrix_path, matrix, allow_pickle=False)
     labels = [
         "reference:early",
@@ -53,15 +57,15 @@ def _write_reference_profile(
     }
     metadata_path.write_bytes(_canonical_bytes(metadata))
     return {
-        "profile_id": "reference-profile:development-synthetic",
-        "source_id": "source:development-synthetic",
-        "source_family_id": "source-family:development-synthetic",
-        "evidence_family_id": "evidence-family:development-synthetic",
-        "assay": "scRNA-seq",
+        "profile_id": f"reference-profile:development-synthetic-{profile_key}",
+        "source_id": source_id,
+        "source_family_id": f"source-family:development-synthetic-{profile_key}",
+        "evidence_family_id": f"evidence-family:development-synthetic-{profile_key}",
+        "assay": assay,
         "anatomy": "fully-synthetic",
         "developmental_time": "externally-declared-synthetic-order",
         "label_level": "L2",
-        "role": "primary",
+        "role": role,
         "status": "candidate",
         "n_samples": 6,
         "n_observations": 60,
@@ -71,7 +75,7 @@ def _write_reference_profile(
         "matrix_sha256": sha256_path(matrix_path),
         "metadata_file": metadata_path.name,
         "metadata_sha256": sha256_path(metadata_path),
-        "source_sha256": "a" * 64,
+        "source_sha256": hashlib.sha256(source_id.encode()).hexdigest(),
         "feature_selection": {
             "method": "fully_synthetic_fixture",
             "query_independent": True,
@@ -81,7 +85,9 @@ def _write_reference_profile(
     }
 
 
-def _expression_request(tmp_path: Path):
+def _expression_request(
+    tmp_path: Path, *, second_profile_gene_count: int = 8
+):
     units = [
         (
             f"preparation:unit-{index}@1.0.0",
@@ -115,11 +121,26 @@ def _expression_request(tmp_path: Path):
     reference_matrix = np.vstack(
         [early, early * 0.95, within, within * 0.95, late, late * 0.95]
     )
-    profile = _write_reference_profile(
+    primary_profile = _write_reference_profile(
         objects,
+        profile_key="primary",
+        source_id="source:development-synthetic-primary",
+        assay="scRNA-seq",
+        role="primary",
         matrix=reference_matrix,
         genes=genes,
     )
+    sensitivity_genes = genes[:second_profile_gene_count]
+    sensitivity_profile = _write_reference_profile(
+        objects,
+        profile_key="sensitivity",
+        source_id="source:development-synthetic-sensitivity",
+        assay="snRNA-seq",
+        role="sensitivity",
+        matrix=reference_matrix[:, :second_profile_gene_count],
+        genes=sensitivity_genes,
+    )
+    profiles = [primary_profile, sensitivity_profile]
     marker_payload = {
         "object_version": "0.1.0",
         "cards": [
@@ -145,7 +166,7 @@ def _expression_request(tmp_path: Path):
             {
                 "marker_program_file": marker_path.name,
                 "marker_program_sha256": sha256_path(marker_path),
-                "profiles": [profile],
+                "profiles": profiles,
             }
         ),
     )
@@ -220,7 +241,9 @@ def _expression_request(tmp_path: Path):
         "expression_asset_id": asset.asset_id,
         "observation_id_column": None,
         "gene_symbol_column": "gene_symbol",
-        "reference_profile_ids": [profile["profile_id"]],
+        "reference_profile_ids": [
+            profile["profile_id"] for profile in profiles
+        ],
         "reference_stages": [
             {
                 "profile_id": profile["profile_id"],
@@ -228,6 +251,7 @@ def _expression_request(tmp_path: Path):
                 "ordinal_rank": rank,
                 "stage_role": role,
             }
+            for profile in profiles
             for label, rank, role in (
                 ("reference:early", 0, "earlier"),
                 ("reference:window", 1, "within_window"),
@@ -257,6 +281,20 @@ def _expression_request(tmp_path: Path):
         "bootstrap_replicates": 100,
         "bootstrap_confidence_level": 0.9,
         "spline_degrees_of_freedom": 3,
+        "ordinal_group_heldout_evidence": {
+            "object_version": "0.1.0",
+            "evidence_id": "ordinal-group-heldout-evidence:fully-synthetic",
+            "evidence_version": "1.0.0",
+            "review_state": "reviewed",
+            "validation_state": "passed",
+            "grouping_unit": "source_id",
+            "reference_profile_ids": [
+                profile["profile_id"] for profile in profiles
+            ],
+            "held_out_source_ids": [
+                profile["source_id"] for profile in profiles
+            ],
+        },
     }
     method_path = objects / "development_method_spec.json"
     raw = _canonical_bytes(method_spec)
@@ -304,6 +342,13 @@ def test_expression_mode_executes_six_registered_methods(tmp_path: Path) -> None
     assert len(bundle.independence_group_refs) == 8
     assert bundle.reference_stage_support
     assert bundle.ordinal_stage_predictions
+    assert {
+        item.calibration_state for item in bundle.ordinal_stage_predictions
+    } == {"uncalibrated_baseline"}
+    assert {
+        item.group_heldout_evidence_ref.object_id
+        for item in bundle.ordinal_stage_predictions
+    } == {"ordinal-group-heldout-evidence:fully-synthetic"}
     assert bundle.program_activity
     assert bundle.bootstrap_intervals[0].interval_state == "available"
     assert {
@@ -312,6 +357,10 @@ def test_expression_mode_executes_six_registered_methods(tmp_path: Path) -> None
         ("within_window_reference_support", None),
         ("stage_program_activity", "program-card:development-window"),
     }
+    assert {item.analysis_state for item in bundle.time_trends} == {
+        "unadjusted_descriptive"
+    }
+    assert "inferential_timecourse_unavailable" in run.reason_codes
     assert bundle.domain_score is None
     assert bundle.score_state.value == "shadow"
 
@@ -385,3 +434,102 @@ def test_reference_stage_roles_are_external_configuration(
         item.top_stage_role for item in second_bundle.reference_stage_support
     }
     assert first_roles != second_roles
+
+
+def test_ordinal_requires_external_group_heldout_evidence(
+    tmp_path: Path,
+) -> None:
+    request = _expression_request(tmp_path)
+    request = _mutate(
+        request,
+        "development_method_spec",
+        lambda payload: payload.pop("ordinal_group_heldout_evidence"),
+    )
+    run = ToolRegistry.load_default().run(request)
+    bundle = DevelopmentMethodBundle.model_validate_json(
+        next(
+            item.path
+            for item in run.artifacts
+            if item.kind == "development_method_bundle"
+        ).read_text(encoding="utf-8")
+    )
+    ordinal = next(
+        item
+        for item in bundle.method_evidence
+        if item.method_id.value == "DEV-ORDINAL"
+    )
+    assert ordinal.execution_state.value == "not_assessed"
+    assert ordinal.reason_codes == [
+        "ordinal_group_heldout_evidence_not_supplied"
+    ]
+    assert bundle.ordinal_stage_predictions == []
+
+
+def test_low_reference_profile_coverage_makes_support_unavailable(
+    tmp_path: Path,
+) -> None:
+    run = ToolRegistry.load_default().run(
+        _expression_request(tmp_path, second_profile_gene_count=3)
+    )
+    assert (
+        run.result["reference_stage_support"]["assessment_state"]
+        == "unavailable"
+    )
+    bundle = DevelopmentMethodBundle.model_validate_json(
+        next(
+            item.path
+            for item in run.artifacts
+            if item.kind == "development_method_bundle"
+        ).read_text(encoding="utf-8")
+    )
+    assert bundle.reference_stage_support
+    assert {
+        item.evidence_state for item in bundle.reference_stage_support
+    } == {"unavailable"}
+    assert all(
+        "reference_stage_profile_coverage_incomplete" in item.reason_codes
+        for item in bundle.reference_stage_support
+    )
+
+
+def test_cross_source_assay_stage_disagreement_makes_support_unavailable(
+    tmp_path: Path,
+) -> None:
+    request = _expression_request(tmp_path)
+
+    def configure_disagreement(payload: dict) -> None:
+        payload["selected_method_ids"] = ["DEV-PSEUDOBULK-CORR"]
+        replacement = {
+            "earlier": "later",
+            "within_window": "branch_shift",
+            "later": "earlier",
+        }
+        for item in payload["reference_stages"]:
+            if item["profile_id"].endswith("-sensitivity"):
+                item["stage_role"] = replacement[item["stage_role"]]
+
+    request = _mutate(
+        request,
+        "development_method_spec",
+        configure_disagreement,
+    )
+    run = ToolRegistry.load_default().run(request)
+    assert (
+        run.result["reference_stage_support"]["assessment_state"]
+        == "unavailable"
+    )
+    bundle = DevelopmentMethodBundle.model_validate_json(
+        next(
+            item.path
+            for item in run.artifacts
+            if item.kind == "development_method_bundle"
+        ).read_text(encoding="utf-8")
+    )
+    assert {
+        item.evidence_state for item in bundle.reference_stage_support
+    } == {"unavailable"}
+    assert all(
+        item.reason_codes
+        == ["reference_stage_source_assay_disagreement"]
+        for item in bundle.reference_stage_support
+    )

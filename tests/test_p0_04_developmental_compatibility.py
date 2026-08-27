@@ -611,7 +611,7 @@ def test_real_timepoints_remain_descriptive_without_method_spec(
     )
     assert run.result["analysis_mode"] == "descriptive_timecourse"
     assert len(run.result["timecourse_profiles"]) == 2
-    assert "inferential_timecourse_not_supplied" in run.reason_codes
+    assert "inferential_timecourse_unavailable" in run.reason_codes
 
 
 def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:

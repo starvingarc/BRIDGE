@@ -39,7 +39,8 @@
     "program-card:development-window"
   ],
   "reference_profile_ids": [
-    "reference-profile:development-primary"
+    "reference-profile:development-primary",
+    "reference-profile:development-sensitivity"
   ],
   "reference_stages": [
     {
@@ -59,8 +60,42 @@
       "ordinal_rank": 2,
       "profile_id": "reference-profile:development-primary",
       "stage_role": "later"
+    },
+    {
+      "label": "reference:earlier",
+      "ordinal_rank": 0,
+      "profile_id": "reference-profile:development-sensitivity",
+      "stage_role": "earlier"
+    },
+    {
+      "label": "reference:within-window",
+      "ordinal_rank": 1,
+      "profile_id": "reference-profile:development-sensitivity",
+      "stage_role": "within_window"
+    },
+    {
+      "label": "reference:later",
+      "ordinal_rank": 2,
+      "profile_id": "reference-profile:development-sensitivity",
+      "stage_role": "later"
     }
   ],
+  "ordinal_group_heldout_evidence": {
+    "evidence_id": "ordinal-group-heldout-evidence:example-placeholder",
+    "evidence_version": "1.0.0",
+    "grouping_unit": "source_id",
+    "held_out_source_ids": [
+      "source:development-primary",
+      "source:development-sensitivity"
+    ],
+    "object_version": "0.1.0",
+    "reference_profile_ids": [
+      "reference-profile:development-primary",
+      "reference-profile:development-sensitivity"
+    ],
+    "review_state": "candidate",
+    "validation_state": "not_passed"
+  },
   "selected_method_ids": [
     "DEV-PSEUDOBULK-CORR",
     "DEV-ORDINAL",

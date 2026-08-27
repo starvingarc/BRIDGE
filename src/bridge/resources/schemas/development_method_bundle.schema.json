@@ -231,6 +231,11 @@
     "DevelopmentTimeTrend": {
       "additionalProperties": false,
       "properties": {
+        "analysis_state": {
+          "const": "unadjusted_descriptive",
+          "title": "Analysis State",
+          "type": "string"
+        },
         "card_id": {
           "anyOf": [
             {
@@ -286,6 +291,7 @@
         "n_independence_groups",
         "n_timepoints",
         "spline_degrees_of_freedom",
+        "analysis_state",
         "fitted_points"
       ],
       "title": "DevelopmentTimeTrend",
@@ -308,9 +314,17 @@
           "title": "Analysis Unit Ref",
           "type": "string"
         },
+        "calibration_state": {
+          "const": "uncalibrated_baseline",
+          "title": "Calibration State",
+          "type": "string"
+        },
         "expected_ordinal_rank": {
           "title": "Expected Ordinal Rank",
           "type": "number"
+        },
+        "group_heldout_evidence_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
         },
         "n_reference_rows": {
           "minimum": 1,
@@ -344,6 +358,8 @@
         "nearest_label",
         "nearest_stage_role",
         "rank_probabilities",
+        "calibration_state",
+        "group_heldout_evidence_ref",
         "n_reference_rows",
         "n_reference_sources"
       ],
@@ -503,10 +519,6 @@
           "title": "Fitted Value",
           "type": "number"
         },
-        "lower": {
-          "title": "Lower",
-          "type": "number"
-        },
         "timepoint_id": {
           "minLength": 1,
           "title": "Timepoint Id",
@@ -521,19 +533,13 @@
           "minimum": 0,
           "title": "Timepoint Order",
           "type": "integer"
-        },
-        "upper": {
-          "title": "Upper",
-          "type": "number"
         }
       },
       "required": [
         "timepoint_id",
         "timepoint_order",
         "timepoint_label",
-        "fitted_value",
-        "lower",
-        "upper"
+        "fitted_value"
       ],
       "title": "TimeTrendPoint",
       "type": "object"

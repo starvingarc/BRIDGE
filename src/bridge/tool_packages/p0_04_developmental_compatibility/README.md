@@ -11,6 +11,13 @@ target-related `earlier`, `within_window`, `later`, `branch_shift` and
 executes selected reference, ordinal, program, bootstrap and true-time methods
 from a versioned `DevelopmentMethodSpec`.
 
+The ordinal method is an uncalibrated baseline and runs only when the same
+checksummed method spec supplies a reviewed, passed source-group-held-out
+evidence receipt bound to every selected profile and at least two sources.
+Incomplete reference-profile coverage and cross-source/assay stage-role
+disagreement are unavailable rather than pooled. Time splines are unadjusted
+descriptive fits; inferential time-course evidence remains unavailable.
+
 Outputs are `DevelopmentalCompatibilityResult` and, when requested,
 `DevelopmentMethodBundle`. Both retain `domain_score=null`; method evidence
 is candidate/shadow.
