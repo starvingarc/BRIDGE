@@ -18,6 +18,7 @@ before calling `validate` or `run`.
 | P0-06 | [`p0_06_process_method_runtime.json`](requests/p0_06_process_method_runtime.json) | Normalized H5AD with external program, state and biological-unit contracts |
 | P0-06 | [`p0_06_proliferation_stress_response.json`](requests/p0_06_proliferation_stress_response.json) | External program, process and precomputed-evidence request |
 | P0-07 | [`p0_07_product_comparison_stability.json`](requests/p0_07_product_comparison_stability.json) | Multi-case comparability and descriptive-delta request |
+| P0-07 | [`p0_07_comparison_method_runtime.json`](requests/p0_07_comparison_method_runtime.json) | Candidate descriptive-method runtime with typed numeric series |
 | P0-08 | [`p0_08_evidence_sufficiency.json`](requests/p0_08_evidence_sufficiency.json) | Versioned evidence-gate request |
 | P0-09 | [`p0_09_evidence_compiler.json`](requests/p0_09_evidence_compiler.json) | Compilation bundle and evidence-registry request |
 | P0-10 | [`p0_10_claim_verifier.json`](requests/p0_10_claim_verifier.json) | Four-object structured claim-verification request |

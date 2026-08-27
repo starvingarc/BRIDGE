@@ -82,6 +82,11 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 - `METHOD-BRIDGE-COMPARABILITY-GATE` — BRIDGE Comparability Gate ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-COMPARABILITY-GATE))
 - `METHOD-BRIDGE-DESIGN-AND-CONFOUNDING-CHECK` — BRIDGE Design and Confounding Check ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DESIGN-AND-CONFOUNDING-CHECK))
 - `METHOD-BRIDGE-RAW-METRIC-DELTA` — BRIDGE raw-metric delta ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RAW-METRIC-DELTA))
+- `METHOD-BRIDGE-SAMPLE-LEVEL-EFFECT-SIZE-ENGINE` — BRIDGE sample-level effect-size engine ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SAMPLE-LEVEL-EFFECT-SIZE-ENGINE))
+- `METHOD-JENSEN-SHANNON-DISTANCE` — Jensen-Shannon distance ([catalog record](bridge://knowledge/methods/METHOD-JENSEN-SHANNON-DISTANCE))
+- `METHOD-PSEUDOBULK-CORRELATION-DISTANCE` — Pseudobulk correlation/distance ([catalog record](bridge://knowledge/methods/METHOD-PSEUDOBULK-CORRELATION-DISTANCE))
+- `METHOD-WASSERSTEIN-DISTANCE` — Wasserstein distance ([catalog record](bridge://knowledge/methods/METHOD-WASSERSTEIN-DISTANCE))
+- `METHOD-COEFFICIENT-OF-VARIATION-ROBUST-DISPERSION` — Coefficient of variation / robust dispersion ([catalog record](bridge://knowledge/methods/METHOD-COEFFICIENT-OF-VARIATION-ROBUST-DISPERSION))
 
 ## P0-08: Evidence Sufficiency
 
