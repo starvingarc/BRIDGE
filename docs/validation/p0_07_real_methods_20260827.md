@@ -28,13 +28,13 @@ provenance plus typed `available` or `not_assessed` states.
 ## Verification
 
 - focused P0-07 and registry suite: **27 passed**;
-- complete repository suite: **1,229 passed**, with eight pre-existing dependency warnings;
+- complete repository suite: **1,230 passed**, with eight pre-existing dependency warnings;
 - wheel-only P0-07 method smoke: **3 passed**;
 - installed module resolved from the unpacked wheel, outside the source tree;
 - installed P0-07 exposed version `0.3.0`, eight registered method references and two input modes;
 - tool discovery: exactly **12** packages;
 - public Schema registry: **99** entries, including three new P0-07 method contracts;
-- wheel SHA-256: `58b79dcbbc4190fcff8499f06e218244790b201fe328cd1419e434979b1889bd`;
+- wheel SHA-256: `8be5ea48acc950aabc62b6e22cf81977ad164b4d747c096f2d401f7136b83ad5`;
 - knowledge snapshot: valid, no dangling method/source references, zero formal-eligible methods;
 - generated Schema/Card checks and `git diff --check`: passed.
 
