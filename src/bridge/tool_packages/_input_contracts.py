@@ -101,10 +101,8 @@ class ToolInputContract(FrozenModel):
         if self.request_schema_ref.endswith("/v0.1"):
             if self.object_input_modes:
                 raise ValueError("ToolRequest v0.1 cannot declare object-input modes")
-        elif self.asset_input is not None or not self.object_input_modes:
-            raise ValueError(
-                "ToolRequest v0.2 requires object-input modes and no expression asset"
-            )
+        elif not self.object_input_modes:
+            raise ValueError("ToolRequest v0.2 requires object-input modes")
         return self
 
 
@@ -177,9 +175,18 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
     "P0-03": ToolInputContract(
         tool_id="P0-03",
         request_schema_ref="bridge://schemas/tool-request/v0.2",
+        asset_input=AssetInputContract(
+            min_count=0,
+            max_count=1,
+            formats=["h5ad"],
+            assays=["scRNA-seq", "snRNA-seq"],
+            input_levels=["analysis_ready"],
+            matrix_semantics=["normalized_expression"],
+            required_metadata_keys=["data_view_id", "parent_asset_sha256"],
+        ),
         measurement_spec_ref_policy="forbidden",
         parameters_allowed=False,
-        random_seed_policy="fixed_zero",
+        random_seed_policy="any_integer",
         object_input_modes=[
             _mode(
                 "default",
@@ -248,6 +255,13 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     "bridge://schemas/reference-manifest/v0.1",
                     None,
                     1,
+                    1,
+                ),
+                _role(
+                    "target_regional_method_spec",
+                    "bridge://schemas/target-regional-method-spec/v0.1",
+                    V01,
+                    0,
                     1,
                 ),
             )

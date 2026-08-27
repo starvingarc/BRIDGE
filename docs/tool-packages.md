@@ -72,12 +72,12 @@ scientific methods.
 
 | Item | Details |
 |---|---|
-| Purpose | Aggregate externally defined target-lineage and transcriptomic regional support. [Scientific task card](bridge_spec_v0.1/target_regional_identity_task_card.md). |
-| Executable implementation | Deterministic StateRoleMap and regional StateRoleMap aggregation; biological roles are supplied, not inferred or embedded. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no external biological model. |
-| Input → output | Eleven checksummed case, product, role, measurement, QC, state-evidence, vocabulary and reference objects → three descriptive ratios with applicability, reasons and provenance. [Tool Card](../src/bridge/tool_packages/cards/P0-03.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-03`; start from the [request example](../examples/requests/p0_03_target_regional_evidence.json). |
-| Current evidence / status | Synthetic cases verify deterministic ratios, missing-data behavior and checksummed artifacts. Results remain `candidate/shadow`, `domain_score=null`; this is not biological validation of regional identity. [Validation](validation/p0_03_target_regional_20260825.md). |
+| Purpose | Measure externally configured target identity and transcriptomic regional support while preserving case, reference and biological-unit provenance. [Scientific task card](bridge_spec_v0.1/target_regional_identity_task_card.md). |
+| Executable implementation | Aggregation: StateRoleMap-based target/regional ratios. Optional expression mode: `TRG-PBCORR`, `REG-PBCORR`, `TRG-NNLS`, `TRG-DECOUPLER`, `REG-DECOUPLER`, `TRG-BOOTSTRAP`, `REG-CROSSREF` and `REG-MODALITY`. P0-02 benchmark adapters remain upstream; spatial catalog candidates are not invoked. |
+| Software | AnnData reads the selected H5AD; NumPy/pandas/SciPy perform pseudobulk, correlation, NNLS and bootstrap; [decoupler](https://decoupler.readthedocs.io/) runs ULM program activity; the shared Pydantic/JSON Schema runtime validates and publishes results. |
+| Input → output | Eleven checksummed core objects → three descriptive ratios. Adding one H5AD and one `TargetRegionalMethodSpec` with expression-semantics, matched-modality and residual-applicability contracts → checksummed reference support, applicability-typed continuous weights, program activity, interval state and robustness evidence. [Tool Card](../src/bridge/tool_packages/cards/P0-03.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-03`; use the [aggregation request](../examples/requests/p0_03_target_regional_evidence.json) or [expression request](../examples/requests/p0_03_target_regional_expression.json). |
+| Current evidence / status | Synthetic end-to-end execution verifies all eight selected methods, target/regional reference separation, biological-unit binding, typed contract refusal, residual gating and one-unit bootstrap degradation. Results remain `candidate/shadow`, `domain_score=null`; engineering execution is not biological validation. [Aggregation validation](validation/p0_03_target_regional_20260825.md) · [Expression validation](validation/p0_03_expression_methods_20260826.md). |
 
 <a id="p0-04"></a>
 ## P0-04 Developmental Compatibility

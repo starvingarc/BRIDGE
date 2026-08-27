@@ -87,7 +87,7 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
                 assert set(role.schema_refs).issubset(SCHEMA_REFS)
 
     assert registry.describe_input("P0-01").asset_input.max_count == 1
-    assert len(registry.describe_input("P0-03").object_input_modes[0].roles) == 11
+    assert len(registry.describe_input("P0-03").object_input_modes[0].roles) == 12
     assert [mode.mode_id for mode in registry.describe_input("P0-09").object_input_modes] == [
         "case_initial",
         "case_append",
@@ -148,7 +148,7 @@ def test_shared_product_context_imports_remain_compatible() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 96
+    assert len(SCHEMA_REFS) == 99
     assert {
         "bridge://schemas/claim-verifier-run-result/v0.1",
         "bridge://schemas/verified-report/v0.1",
