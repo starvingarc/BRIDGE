@@ -1061,6 +1061,38 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                 ),
             ),
+            _mode(
+                "expression_analysis",
+                _role("graft_case", "bridge://schemas/graft-case/v0.1", V01, 1, 1),
+                _role(
+                    "graft_expression_asset",
+                    "bridge://schemas/graft-expression-asset/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "graft_expression_analysis_spec",
+                    "bridge://schemas/graft-expression-analysis-spec/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "graft_reference_panel",
+                    "bridge://schemas/graft-reference-panel/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "graft_marker_program_collection",
+                    "bridge://schemas/graft-marker-program-collection/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+            ),
         ],
     ),
 }

@@ -97,6 +97,7 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
     assert [mode.mode_id for mode in registry.describe_input("P0-12").object_input_modes] == [
         "not_provided",
         "graft_assessment",
+        "expression_analysis",
     ]
 
 

@@ -106,11 +106,11 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/public_safe_export_task_card.md",
     },
     "P0-12": {
-        "input": "Optional GraftCase with explicit host/model/animal/timepoint/species/preparation linkage plus modality-matched fetal references.",
-        "output": "Independent GraftAssessment, whole-graft composition, fetal/mDA support, maturation evidence, sensitivity, and optional descriptive linkage record.",
-        "reject": "No graft returns `not_provided`; missing animal IDs or confounded designs force descriptive mode; implicit preparation linkage is forbidden.",
-        "visualization": "Whole-graft composition, mDA/reference support, maturation programs, animal/timepoint variation, sensitivity, and linkage Evidence Graph.",
-        "validation": "Metadata contracts, source/lab/modality holdouts, mixtures, species contamination, downsampling, reference swaps, and no score backfill.",
+        "input": "No objects; three checksummed precomputed graft objects; or five checksummed objects binding a GraftCase, H5AD asset, analysis spec, reference panel and marker-program collection.",
+        "output": "An independent not-provided/descriptive result, or one-declared-graft all-row soft composition, aggregation-matched sample-profile reference support and external marker-program means from the declared H5AD.",
+        "reject": "Schema, checksum, file, matrix, probability, biological-unit, aggregation, method-set or cross-object drift fails closed; expression mode requires one declared graft, animal and timepoint.",
+        "visualization": "No visualization output in v0.3.0.",
+        "validation": "Synthetic H5AD and JSON fixtures exercise single-graft binding, file reading, shared matrix validation, probability non-repair, raw-count pseudobulk and log-normalized sample-mean semantics, external-context binding, deterministic output and no score backfill.",
         "details": "docs/bridge_spec_v0.1/graft_assessment_task_card.md",
     },
 }

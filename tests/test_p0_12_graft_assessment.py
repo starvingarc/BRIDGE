@@ -12,8 +12,10 @@ import pytest
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_12_graft_assessment.adapter import adapter
-from bridge.tool_packages.p0_12_graft_assessment.models import (
+from bridge.tool_packages.p0_12_graft_assessment.run_models import (
     PUBLIC_SCHEMA_MODELS,
+)
+from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftAssessmentResult,
 )
 from bridge.toolkit.contracts import (
@@ -31,7 +33,14 @@ adapter_module = importlib.import_module(
     "bridge.tool_packages.p0_12_graft_assessment.adapter"
 )
 CREATED_AT = "2026-08-25T00:00:00Z"
-METHOD_IDS = [
+PACKAGE_METHOD_IDS = [
+    "METHOD-ANNDATA",
+    "METHOD-BRIDGE-GRAFTCASE-VALIDATOR",
+    "METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-2C3A8F",
+    "METHOD-BRIDGE-SOFT-COMPOSITION-404672",
+    "METHOD-SCANPY",
+]
+PRECOMPUTED_METHOD_IDS = [
     "METHOD-BRIDGE-GRAFTCASE-VALIDATOR",
     "METHOD-BRIDGE-SOFT-COMPOSITION-404672",
 ]
@@ -87,7 +96,7 @@ def _objects() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
             "limited": "limited",
             "uncertain": "unknown",
         },
-        "method_ids": METHOD_IDS,
+        "method_ids": PRECOMPUTED_METHOD_IDS,
         "provenance_refs": ["provenance:assessment-spec"],
     }
     records = [
@@ -203,7 +212,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-12",
         tool_id="P0-12",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=tmp_path / output_name,
         object_inputs=refs,
     )
@@ -214,8 +223,8 @@ def test_registry_declares_executable_v2_contract() -> None:
 
     assert isinstance(spec, ToolPackageSpecV2)
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
-    assert spec.method_ids == METHOD_IDS
-    assert spec.result_schema_ref == "bridge://schemas/graft-assessment-result/v0.1"
+    assert spec.method_ids == PACKAGE_METHOD_IDS
+    assert spec.result_schema_ref == "bridge://schemas/graft-assessment-run-result/v0.1"
     assert spec.adapter_ref.endswith(":adapter")
 
 
@@ -224,7 +233,7 @@ def test_no_graft_is_successful_not_provided_and_deterministic(tmp_path: Path) -
     request = ToolRequestV2(
         request_id="request-no-graft",
         tool_id="P0-12",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=tmp_path / "output",
         object_inputs=[],
     )
@@ -473,7 +482,10 @@ def test_public_schemas_are_generated_and_valid(schema_ref: str) -> None:
 
     Draft202012Validator.check_schema(schema)
     assert schema["$id"] == schema_ref
-    assert schema["additionalProperties"] is False
+    if schema_ref == "bridge://schemas/graft-assessment-run-result/v0.1":
+        assert len(schema["anyOf"]) == 2
+    else:
+        assert schema["additionalProperties"] is False
 
 
 def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
@@ -482,7 +494,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-12",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=tmp_path / "output",
     )
 

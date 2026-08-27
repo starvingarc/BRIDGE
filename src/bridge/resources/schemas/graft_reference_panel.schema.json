@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "GraftAssay": {
+      "enum": [
+        "scRNA-seq",
+        "snRNA-seq"
+      ],
+      "title": "GraftAssay",
+      "type": "string"
+    },
+    "GraftProfileAggregation": {
+      "enum": [
+        "sample_pseudobulk",
+        "sample_mean_log_expression"
+      ],
+      "title": "GraftProfileAggregation",
+      "type": "string"
+    },
+    "GraftReferenceProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "gene_values": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "minProperties": 3,
+          "title": "Gene Values",
+          "type": "object"
+        },
+        "profile_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "gene_values"
+      ],
+      "title": "GraftReferenceProfile",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-reference-panel/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assay": {
+      "$ref": "#/$defs/GraftAssay"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "gene_id_namespace": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Gene Id Namespace",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "organism": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Organism",
+      "type": "string"
+    },
+    "profile_aggregation": {
+      "$ref": "#/$defs/GraftProfileAggregation"
+    },
+    "profiles": {
+      "items": {
+        "$ref": "#/$defs/GraftReferenceProfile"
+      },
+      "minItems": 1,
+      "title": "Profiles",
+      "type": "array"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "reference_panel_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Reference Panel Id",
+      "type": "string"
+    },
+    "source_family_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Family Id",
+      "type": "string"
+    },
+    "value_semantics": {
+      "const": "log1p_cp10k",
+      "title": "Value Semantics",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "reference_panel_id",
+    "source_family_id",
+    "organism",
+    "gene_id_namespace",
+    "assay",
+    "value_semantics",
+    "profile_aggregation",
+    "profiles",
+    "provenance_refs",
+    "created_at"
+  ],
+  "title": "GraftReferencePanel",
+  "type": "object"
+}

@@ -9,7 +9,8 @@ from pydantic import Field, StrictFloat, StrictInt, field_validator, model_valid
 from bridge.toolkit.contracts import FrozenModel
 
 
-SafeId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
+SAFE_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+SafeId = Annotated[str, Field(pattern=SAFE_ID_PATTERN)]
 PublishedRef = Annotated[
     str,
     Field(pattern=r"^[A-Za-z][A-Za-z0-9+.-]*(?::[^\s]+)?$"),
@@ -68,6 +69,7 @@ class GraftCase(FrozenModel):
     graft_case_id: SafeId
     assay_id: SafeId
     specimen_id: SafeId
+    graft_id: SafeId | None = None
     animal_id: SafeId | None = None
     post_transplant_timepoint: SafeId | None = None
     biological_replicate_id: SafeId | None = None

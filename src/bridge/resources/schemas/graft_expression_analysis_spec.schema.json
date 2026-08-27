@@ -1,0 +1,107 @@
+{
+  "$id": "bridge://schemas/graft-expression-analysis-spec/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_spec_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Analysis Spec Id",
+      "type": "string"
+    },
+    "marker_program_collection_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Marker Program Collection Ref",
+      "type": "string"
+    },
+    "max_file_bytes": {
+      "maximum": 2000000000,
+      "minimum": 1,
+      "title": "Max File Bytes",
+      "type": "integer"
+    },
+    "max_matrix_elements": {
+      "maximum": 100000000,
+      "minimum": 1,
+      "title": "Max Matrix Elements",
+      "type": "integer"
+    },
+    "method_ids": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Method Ids",
+      "type": "array"
+    },
+    "minimum_cells": {
+      "minimum": 1,
+      "title": "Minimum Cells",
+      "type": "integer"
+    },
+    "minimum_genes": {
+      "minimum": 2,
+      "title": "Minimum Genes",
+      "type": "integer"
+    },
+    "minimum_program_genes": {
+      "minimum": 1,
+      "title": "Minimum Program Genes",
+      "type": "integer"
+    },
+    "minimum_reference_genes": {
+      "minimum": 3,
+      "title": "Minimum Reference Genes",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "probability_tolerance": {
+      "maximum": 1e-06,
+      "minimum": 0,
+      "title": "Probability Tolerance",
+      "type": "number"
+    },
+    "provenance_refs": {
+      "items": {
+        "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Provenance Refs",
+      "type": "array"
+    },
+    "reference_panel_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Reference Panel Ref",
+      "type": "string"
+    },
+    "required_obs_fields": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Required Obs Fields",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "analysis_spec_id",
+    "reference_panel_ref",
+    "marker_program_collection_ref",
+    "method_ids",
+    "required_obs_fields",
+    "minimum_cells",
+    "minimum_genes",
+    "minimum_reference_genes",
+    "minimum_program_genes",
+    "probability_tolerance",
+    "max_file_bytes",
+    "max_matrix_elements",
+    "provenance_refs"
+  ],
+  "title": "GraftExpressionAnalysisSpec",
+  "type": "object"
+}

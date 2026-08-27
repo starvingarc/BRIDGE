@@ -31,6 +31,7 @@ def test_cli_emits_machine_readable_input_contract(capsys) -> None:
     assert [mode["mode_id"] for mode in payload["object_input_modes"]] == [
         "not_provided",
         "graft_assessment",
+        "expression_analysis",
     ]
 
 

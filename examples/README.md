@@ -24,7 +24,14 @@ before calling `validate` or `run`.
 | P0-10 | [`p0_10_claim_verifier.json`](requests/p0_10_claim_verifier.json) | Four-object structured claim-verification request |
 | P0-11 | [`p0_11_public_safe_export.json`](requests/p0_11_public_safe_export.json) | Four-object allowlisted local-export request |
 | P0-11 | [`p0_11_public_artifact_audit.json`](requests/p0_11_public_artifact_audit.json) | Two-object JSON/Markdown/CSV/SVG audit request |
-| P0-12 | [`p0_12_graft_assessment.json`](requests/p0_12_graft_assessment.json) | Optional no-graft request; supplied graft mode uses three objects |
+| P0-12 | [`p0_12_graft_assessment.json`](requests/p0_12_graft_assessment.json), [`p0_12_expression_analysis.json`](requests/p0_12_expression_analysis.json) | Optional no-graft request and five-object, one-declared-graft H5AD analysis request |
+
+For the P0-12 expression request, the referenced `GraftCase` must declare one
+graft, animal and post-transplant timepoint, and every H5AD observation must
+carry that exact graft ID. The reference panel must declare
+`profile_aggregation=sample_pseudobulk` for raw counts or
+`sample_mean_log_expression` for log-normalized input. Multiple sample IDs are
+treated as technical samples only.
 
 The P0-04 [method-spec example](objects/p0_04_development_method_spec.json)
 shows how reference-stage roles, program cards, method selection and true

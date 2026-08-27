@@ -70,7 +70,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     PUBLIC_SCHEMA_MODELS as P0_10_SCHEMA_MODELS,
 )
-from bridge.tool_packages.p0_12_graft_assessment.models import (
+from bridge.tool_packages.p0_12_graft_assessment.run_models import (
     PUBLIC_SCHEMA_MODELS as P0_12_SCHEMA_MODELS,
 )
 from bridge.tool_packages.p0_11_public_safe_export.models import (

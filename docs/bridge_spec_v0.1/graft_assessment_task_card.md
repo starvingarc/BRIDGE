@@ -3,24 +3,42 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-GRAFT-ASSESSMENT-v0.1` |
-| 文档版本 | `0.2-candidate` |
-| 日期 | 2026-08-25 |
+| 文档版本 | `0.3-candidate` |
+| 日期 | 2026-08-27 |
 | 状态 | `candidate` |
 | 适用范围 | 可选的移植后 graft scRNA-seq/snRNA-seq 独立评估 |
-| 上游输入 | 可选空输入，或 checksummed `GraftCase`、外部 `GraftAssessmentSpec`、预计算 `GraftEvidenceBundle` |
-| 主要输出 | `GraftAssessmentResult` 与 checksummed JSON artifacts |
+| 上游输入 | 空输入；或 checksummed 预计算 graft 三对象；或 GraftCase、H5AD asset manifest、外部分析 spec、reference panel 与 marker-program collection |
+| 主要输出 | `GraftAssessmentResult` 或 `GraftExpressionAnalysisResult` 与 checksummed JSON artifacts |
 
 ## 0. 当前可执行候选
 
-P0-12 `0.2.0` 已提供 `ToolRequestV2` 的 `validate/run`。本版本刻意只收口两条成功路径：
+P0-12 `0.3.0` 通过同一个 `ToolRequestV2 validate/run` 接口提供三条路径：
 
-- `object_inputs=[]` 合法返回 `state=not_provided`，且
-  `pretransplant_evidence_effect=none`；
-- 提供 graft 时必须一次提交三个 checksummed JSON 对象：
-  `GraftCase`、外部版本化 `GraftAssessmentSpec` 和
-  `GraftEvidenceBundle`。
+- `object_inputs=[]` 返回 `state=not_provided`；
+- 三个 checksummed JSON 对象继续支持预计算 graft evidence 的确定性汇总；
+- 五个 checksummed JSON 对象驱动 H5AD 读取、raw-count normalization、
+  复用 P0-01 的表达矩阵结构/计数校验、对全部上传行的描述性 soft
+  composition、aggregation-matched sample-profile reference correlation 与外部
+  marker-program mean；固定输出 `qc_state=not_reassessed`，不做置信区间。
 
-当前 executor 只做 metadata/lineage 绑定、缺失与混杂记录、外部规则校验和确定性聚合；不读取表达矩阵、不重跑 scRNA/snRNA、不从隐式信息推断 preparation linkage。所有角色、状态和允许指标由外部 spec 管理。结果固定为 `candidate/shadow`、`descriptive_only`、`domain_score=null`，绝不回填移植前证据。下文其余分析与验证流程是后续科学冻结目标，不代表当前已实现能力。
+当前 expression mode 严格使用“一份 GraftCase = 一个已声明
+animal/graft/timepoint”：H5AD 每行必须显式携带且匹配该 `graft_id`。同一 graft
+可有多个技术 sample，但这些 sample 不构成独立 biological replicate。raw
+counts 按技术 sample 求和后生成 `sample_pseudobulk`；已声明的 log-normalized
+矩阵按技术 sample 求均值并明确记为 `sample_mean_log_expression`，不得混称
+pseudobulk。reference panel 必须声明并匹配该 aggregation 与 value semantics。
+
+表达分析所用 state probability columns、reference profiles、marker
+programs、coverage/容差、on-disk byte 上限与 `n_obs × n_vars` 逻辑矩阵
+上限均由版本化输入提供，并受 package ceiling 约束。organism、gene namespace、
+assay、value semantics、profile aggregation 与 source family 进入显式绑定校验。
+每个 probability 必须真实位于 `[0,1]`；只允许 `0` 至 `1e-6` 的有限行和
+浮点误差，输入 probability 不做 clip 或修复。
+executor 不训练或调用 cell-state classifier，不在代码中冻结 biological
+vocabulary、marker、阈值或发布规则，也不从文件名推断 preparation
+linkage。两种 provided 结果都保持 `candidate/shadow`、
+`domain_score=null` 和 `pretransplant_evidence_effect=none`。下文更重的
+跨研究验证、映射模型和科学冻结要求仍是后续目标。
 
 ## 1. 任务目标与边界
 
@@ -37,14 +55,14 @@ P0-12 `0.2.0` 已提供 `ToolRequestV2` 的 `validate/run`。本版本刻意只�
 
 ### 2.1 内部数据
 
-| 逻辑资产 ID | Assay 与时间 | 当前规模与命名 | 当前角色 | 关键限制 |
-| --- | --- | --- | --- | --- |
-| `GRAFT-INT-679M-SN-v0.1` | human graft snRNA；6/7/9 MPT | 16,872 nuclei；DA0-4、Glut、Astro、OPC/Oligo、VLMC | 主要内部描述性案例；reference mapping 与可视化开发 | 6M=H9、7M=BJES、9M=PD023，timepoint 与 cell line 完全混杂；未发现可用 animal/graft ID |
-| `GRAFT-INT-1246M-LEGACY-v0.1` | 1/2/4/6 MPT；assay/specimen 待冻结 | 89,139 profiles；历史 neuronal/glial-perivascular 及细状态命名 | 历史方法和数据清点 | 早期 annotation 可靠性不足；sample、animal、assay 与来源合同不完整 |
+内部未发表资产只在受控私有 inventory 中维护。
 
-`GRAFT-INT-679M-SN-v0.1` 的细胞数为：6M H9 4,341、7M BJES 6,938、9M PD023 5,593。历史标签包括 DA0 1,125、DA1 665、DA2 4,908、DA3 2,625、DA4 2,422、Glut 1,696、Astro 2,774、OPC/Oligo 142 和 VLMC 515。这些标签是待重新评测的 annotation 资产，不自动视为 BRIDGE 冻结真值。
-
-`GRAFT-INT-1246M-LEGACY-v0.1` 的时间点规模为：1M 25,114、2M 17,459、4M 29,930、6M 16,636。完成 assay、specimen、sample、animal 和 annotation provenance 审核前保持 `historical_candidate`。
+- 仓库不记录内部逻辑资产 ID、样本/细胞系/时间点映射、精确 profile
+  数量或 annotation 分布。
+- 私有 inventory 必须以 checksum 绑定 assay、specimen、sample、animal、
+  timepoint、annotation 与 provenance；runtime 不读取本任务卡中的资产描述。
+- metadata、independent unit 与 annotation 未冻结的内部材料只能用于私有
+  描述性测试，不能作为 BRIDGE 冻结真值或正式时间比较证据。
 
 ### 2.2 公开数据
 
@@ -62,21 +80,21 @@ P0-12 `0.2.0` 已提供 `ToolRequestV2` 的 `validate/run`。本版本刻意只�
 
 ### 3.1 一级：GW14-25 snRNA broad/neurogenesis reference
 
-- 完整人胎 snRNA 对象包含 GW14/16/18/20/24/25 共 87,467 nuclei 和 15 个 broad cell types。
-- 正式 graft neurogenesis mapping 使用其中 57,666 个 GW14-25 snRNA neurogenesis profiles，包括 9,516 个 `Neuron_DA`，并保留 Glut、GABA、Sero、OMTN、ChAT、RG/Nb/IPC 等相邻或 off-axis 状态。
-- 该 reference 支持 whole-graft broad composition、DA broad identity 和 neuronal lineage context。
-- 合并 sc/sn 的 83,017-profile neurogenesis 派生对象只能作为同一 source family 的派生视图，不能与父 reference 重复计数。
+一级候选 reference 覆盖中孕期 broad/neurogenesis 状态，并保留 DA、相邻
+神经元谱系和 off-axis 状态。精确 profile 数量、内部派生对象 ID 与 crosswalk
+保留在私有 checksum-bound reference manifest 中，不写入公开任务卡。
+该 reference 用于 whole-graft broad composition、DA broad identity 和
+neuronal lineage context；同一 source family 的派生视图不能重复计数。
 
 ### 3.2 二级：GW14-20 fine mDA reference
 
-历史 fine mDA 对象包含 GW14/16/18/20 共 6,442 nuclei、4 个 mDA group 和 14 个 fine subtype。按标准化 barcode 与胎龄回接完整 snRNA 对象后：
+二级候选 reference 提供 fine mDA 分组与 subtype。精确规模、barcode 映射、
+未映射条目和 broad-label 冲突数量仅保留在私有验证 manifest。
 
-- 6,149 个细胞可唯一回接。
-- 6,143 个在完整对象中为 broad `Neuron_DA`。
-- 293 个细胞未回接。
-- 6 个细胞存在 broad-label 冲突。
-
-该对象当前为 `freeze_required`。正式晋升前必须冻结 barcode crosswalk、处理未映射和冲突细胞、核对完整 count view、完成 marker/程序审核，并通过 source/modality holdout 与开放集验证。在此之前，fine subtype mapping 只能进入 `benchmark` 或 `shadow`。
+该对象当前为 `freeze_required`。正式晋升前必须冻结 barcode crosswalk、
+逐项处理未映射和冲突、核对 count view、完成 marker/程序审核，并通过
+source/modality holdout 与开放集验证。在此之前，fine subtype mapping 只能
+进入 `benchmark` 或 `shadow`。
 
 ### 3.3 成人 mDA sensitivity
 
@@ -101,11 +119,16 @@ missing_fields / user_confirmations
 ```
 
 - `animal_id`、`graft_id` 或 timepoint 缺失时，Agent 只能运行不依赖该字段的模块。
+- 当前 v0.3.0 expression mode 依赖上述三项，因此任何一项缺失均 typed
+  refusal；precomputed compatibility mode 仍按自己的缺失状态规则工作。
 - `originating_preparation_id` 缺失时仍可生成独立 `GraftAssessment`，但 linkage 状态必须为 `provided_unlinked`。
 - 系统不得从文件名、目录、cluster 名或论文惯例推断 graft 关系。
 - 人源细胞已经过物理 sorting 或仅提供人源矩阵时，必须如实记录 species assignment 未重新评测。
 
 ## 5. 分析流程
+
+以下流程是科学目标，不代表 v0.3.0 已实现全部节点。当前可执行边界以上文
+“当前可执行候选”和 Tool Card 为准。
 
 ```mermaid
 flowchart LR
@@ -129,17 +152,22 @@ flowchart LR
 
 ### 6.1 GraftCase、Species 与 QC
 
-- `GRAFT-CASE-VALIDATOR` 核对宿主、动物、graft、时间、assay、specimen、sorting、species 和来源关系。
-- 基础 QC 复用 Input Audit & QC 的 `all_cells_view`、`eligible_cells_view` 和 `sensitivity_views`，但使用 graft-specific scRNA/snRNA `MeasurementSpec`。
-- 提供混合物种原始 FASTQ 时，可条件性评测 XenoCell 或双物种 reference mapping；只提供处理后人源矩阵时不得声称重新验证了 host/graft 分离。
-- mixed-species multiplet、ambiguous species 和 host contamination 分开报告，不自动删除原始 counts。
+- 当前 v0.3.0 expression mode 的 GraftCase validator 还要求一个明确
+  `animal/graft/timepoint`，并逐行验证 H5AD `graft_id` 与 case 完全一致；不从
+  sample、文件名或路径推断生物学单位。
+- H5AD 路径复用 P0-01 表达对象 validator 检查非空矩阵、唯一 cell/gene ID、
+  finite/nonnegative 值和 raw-count 整数语义；它不运行 QC router，结果固定
+  `qc_state=not_reassessed`。
+- 当前路径不重新评测 species assignment、mixed-species multiplet 或 host
+  contamination；这些能力在有合格原始输入与独立合同前保持未实现。
 
 ### 6.2 Graft Cell-State Ensemble
 
 Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，不预设单一分类器。首轮目录包括：
 
 - 内部 marker/gene-program evidence。
-- sample/state pseudobulk reference correlation。
+- aggregation-matched sample-profile reference correlation；raw-count
+  `sample_pseudobulk` 与 log-normalized `sample_mean_log_expression` 是不同语义。
 - CellTypist custom classifier、SingleR 和 scmap。
 - Seurat anchor transfer、MetaNeighbor、scVI/scANVI/scArches。
 - prediction set、方法分歧和 OOD/unknown。
@@ -148,17 +176,17 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 
 ### 6.3 Whole-graft Composition
 
-- 主分母为全部 human graft `eligible_cells_view`，不得只分析 DA 富集子集。
-- 报告 DA、other neuronal、astrocyte、OPC/oligo、VLMC/perivascular、progenitor、clear off-axis、role unresolved 和 unknown。
-- 以 soft assignment 为主、hard label 为 sensitivity；保存 count、fraction、区间、分母和 rare-state 检出边界。
-- 单 animal/graft 只作描述性组成。存在独立重复时再评测 propeller、scCODA/sccomp 等 sample-level 组成模型。
+- 当前 v0.3.0 对外部逐行 state probabilities 求和，以全部上传行为唯一分母；不声称这些行已经过 graft QC 或 species 筛选。
+- 输出 `cell_equivalent`、`mean_fraction`、`denominator_cells` 与 `composition_denominator=all_uploaded_rows`。
+- 当前不做 sample weighting、bootstrap、置信区间或组成差异推断。
+- 未来若引入冻结的 `eligible_cells_view` 和独立 animal/graft 单位，再单独评测 inferential composition 方法。
 - Astrocyte、VLMC 和 OPC/oligo 的比例升高不解释为产品改善，也不在缺少阈值证据时施加任意线性惩罚。
 
 ### 6.4 mDA Maturation 与 Subtype
 
 - 先使用 GW14-25 snRNA reference 输出 broad DA 与 neurogenesis state support，再在 DA 子集上调用通过验证的 fine mDA mapping。
 - 保存完整 `reference_support_distribution`，不只输出单个标签。
-- pseudobulk correlation、marker/program evidence 与一个监督或映射通道构成互补证据；同一模型的多个输出不算独立证据。
+- aggregation-matched sample-profile correlation、marker/program evidence 与一个监督或映射通道构成互补证据；同一模型的多个输出不算独立证据。
 - dopamine synthesis/handling、axon、synapse、electrophysiology-related、mitochondrial/oxidative 和 maturation programs 分开记录 measured expression 与 inferred activity。
 - CytoTRACE2、trajectory/pseudotime 和 adult reference mapping 只作 `shadow`；输出不得称“等效胎龄”“达到成人成熟”或真实功能。
 
@@ -166,8 +194,8 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 
 - 以 animal/graft 为分析单位，报告同条件下的组成和状态差异、区间及 reference/preprocessing sensitivity。
 - 有独立 biological replicates 时，可用 sample-level pseudobulk、propeller、muscat/edgeR/limma 或预注册 mixed model。
-- 内部 6/7/9M 数据因 timepoint 与 cell line 完全混杂，固定返回 `descriptive_only`，不能推断时间进展或 cell line 效应。
-- 内部 1/2/4/6M 历史数据在 metadata 和 annotation 冻结前不进入正式时间比较。
+- 私有 time-course inventory 中若 timepoint 与 donor/cell line 完全混杂，固定返回 `descriptive_only`，不能推断时间或 cell-line 效应；具体映射不在仓库公开。
+- 私有历史数据在 metadata、independent unit 和 annotation 冻结前不进入正式时间比较。
 - 不同 assay、host、graft site、sorting 或 preparation 的结果只能作为 contextual comparator，不能直接排名。
 
 ### 6.6 Preparation-Graft Association
@@ -182,6 +210,9 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 - 三类结果均为 `conditional/shadow`，不构成 graft 分数或移植前产品结论。
 
 ## 7. 输出合同
+
+当前 v0.3.0 的精确公开字段以 Tool Card 与 JSON Schema 为准；下列字段是待
+冻结的完整科学输出目标，不表示当前 runtime 已生成。
 
 ### 7.1 `GraftAssessment`
 
@@ -214,7 +245,9 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 | --- | --- |
 | 用户未提供 graft | `graft_availability=not_provided`；移植前评估不受影响 |
 | graft 已提供但无 preparation linkage | 生成独立 `GraftAssessment`；`provided_unlinked` |
-| 缺少 animal/graft ID | 不发布个体间变异或推断性统计 |
+| expression mode 缺少 animal/graft/timepoint 或包含混合 graft | typed refusal，不发布结果 |
+| 多个 technical sample | 可输出逐 sample 描述性 profile，但不增加 biological replicate 数 |
+| reference aggregation/value semantics 不匹配 | typed refusal，不计算相关性 |
 | timepoint 与 cell line/protocol 完全混杂 | `descriptive_only`；显式列出混杂 |
 | sc/sn MeasurementSpec 不匹配 | 对应结果 `unavailable`，不复用另一模态阈值 |
 | species assignment 不可复核 | 保留提供方状态并标记 `not_reassessed` |
@@ -240,7 +273,8 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-GRAFT-PY-v0.1` | AnnData/Scanpy、组成、bootstrap、pseudobulk、scVI/scANVI、统计与可视化 | `proposed` |
+| `ENV-P0-CORE-v0.1` | 当前 v0.3.0：AnnData/Scanpy、结构/计数校验、描述性组成、aggregation-matched sample-profile correlation 与 program mean | `health_check_passed` |
+| `ENV-GRAFT-PY-v0.1` | 未来 reference mapping、replicate-aware 统计与可视化 | `proposed` |
 | `ENV-GRAFT-CELLTYPIST-v0.1` | CellTypist custom classifier | `proposed_benchmark` |
 | `ENV-GRAFT-BIOC-v0.1` | SingleR、scmap、MetaNeighbor、Seurat、speckle/propeller、muscat 等 | `proposed_isolated` |
 | `ENV-GRAFT-SPECIES-v0.1` | XenoCell、双物种 reference 与 species fixture | `proposed_isolated` |
@@ -254,7 +288,7 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 | --- | --- |
 | Metadata | host、animal、graft、timepoint、cell line、assay、specimen、sorting 和 linkage 字段逐项检查 |
 | Reference lineage | source/derived/evidence-family 血缘明确，不重复计数 |
-| Fine mDA crosswalk | 复现 6,149 mapped、293 unmapped 和 6 broad-label conflicts；冲突有审核结论 |
+| Fine mDA crosswalk | 对私有 manifest 中的 mapped、unmapped 与 broad-label conflict 逐项复现并形成审核结论；公开仓库不冻结精确数量 |
 | 数据拆分 | source、lab、donor/cell line、animal 与 modality holdout；禁止 cell-level random split 充当外部验证 |
 | 物种 | human/host/ambiguous/mixed fixture、species contamination 与 mixed-species multiplet 测试 |
 | Cell state | broad、neurogenesis 和 fine subtype 分层评测；包含 leave-one-state-out 与真实 OOD |

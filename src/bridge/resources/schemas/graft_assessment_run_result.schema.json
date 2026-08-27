@@ -1,0 +1,802 @@
+{
+  "$defs": {
+    "AnalysisAvailability": {
+      "enum": [
+        "available",
+        "unavailable"
+      ],
+      "title": "AnalysisAvailability",
+      "type": "string"
+    },
+    "EvidenceStateClass": {
+      "enum": [
+        "usable",
+        "limited",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceStateClass",
+      "type": "string"
+    },
+    "GraftAnalysisMode": {
+      "enum": [
+        "unavailable",
+        "descriptive_only"
+      ],
+      "title": "GraftAnalysisMode",
+      "type": "string"
+    },
+    "GraftAssay": {
+      "enum": [
+        "scRNA-seq",
+        "snRNA-seq"
+      ],
+      "title": "GraftAssay",
+      "type": "string"
+    },
+    "GraftAssessmentResult": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_mode": {
+          "$ref": "#/$defs/GraftAnalysisMode"
+        },
+        "assessment_spec_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assessment Spec Ref"
+        },
+        "confounder_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "title": "Confounder Refs",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_bundle_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Bundle Ref"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/GraftEvidenceState"
+        },
+        "graft_availability": {
+          "$ref": "#/$defs/GraftAvailability"
+        },
+        "graft_case_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Graft Case Ref"
+        },
+        "linkage_state": {
+          "$ref": "#/$defs/GraftLinkageState"
+        },
+        "missing_metadata": {
+          "items": {
+            "enum": [
+              "animal_id",
+              "post_transplant_timepoint",
+              "biological_replicate_id"
+            ],
+            "type": "string"
+          },
+          "title": "Missing Metadata",
+          "type": "array"
+        },
+        "preparation_linkage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreparationGraftLinkage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pretransplant_evidence_effect": {
+          "const": "none",
+          "default": "none",
+          "title": "Pretransplant Evidence Effect",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "required_roles_missing": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Required Roles Missing",
+          "type": "array"
+        },
+        "result_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Result Id",
+          "type": "string"
+        },
+        "result_version": {
+          "const": "0.1.0",
+          "title": "Result Version",
+          "type": "string"
+        },
+        "role_summaries": {
+          "items": {
+            "$ref": "#/$defs/GraftRoleSummary"
+          },
+          "title": "Role Summaries",
+          "type": "array"
+        },
+        "score_state": {
+          "const": "unavailable",
+          "default": "unavailable",
+          "title": "Score State",
+          "type": "string"
+        },
+        "source_bindings": {
+          "items": {
+            "$ref": "#/$defs/GraftSourceBinding"
+          },
+          "title": "Source Bindings",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/GraftResultState"
+        }
+      },
+      "required": [
+        "result_id",
+        "result_version",
+        "state",
+        "graft_availability",
+        "linkage_state",
+        "analysis_mode",
+        "evidence_state",
+        "source_bindings",
+        "role_summaries",
+        "missing_metadata",
+        "confounder_refs",
+        "required_roles_missing",
+        "reason_codes",
+        "created_at"
+      ],
+      "title": "GraftAssessmentResult",
+      "type": "object"
+    },
+    "GraftAvailability": {
+      "enum": [
+        "not_provided",
+        "provided"
+      ],
+      "title": "GraftAvailability",
+      "type": "string"
+    },
+    "GraftCompositionEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "cell_equivalent": {
+          "minimum": 0,
+          "title": "Cell Equivalent",
+          "type": "number"
+        },
+        "denominator_cells": {
+          "minimum": 0,
+          "title": "Denominator Cells",
+          "type": "integer"
+        },
+        "mean_fraction": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Mean Fraction",
+          "type": "number"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "mean_fraction",
+        "cell_equivalent",
+        "denominator_cells"
+      ],
+      "title": "GraftCompositionEstimate",
+      "type": "object"
+    },
+    "GraftEvidenceState": {
+      "enum": [
+        "unavailable",
+        "shadow"
+      ],
+      "title": "GraftEvidenceState",
+      "type": "string"
+    },
+    "GraftExpressionAnalysisResult": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_mode": {
+          "const": "expression_analysis",
+          "title": "Analysis Mode",
+          "type": "string"
+        },
+        "analysis_spec_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Analysis Spec Ref",
+          "type": "string"
+        },
+        "analysis_value_semantics": {
+          "const": "log1p_cp10k",
+          "title": "Analysis Value Semantics",
+          "type": "string"
+        },
+        "animal_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Animal Id",
+          "type": "string"
+        },
+        "assay": {
+          "$ref": "#/$defs/GraftAssay"
+        },
+        "asset_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Asset Ref",
+          "type": "string"
+        },
+        "cell_count": {
+          "minimum": 0,
+          "title": "Cell Count",
+          "type": "integer"
+        },
+        "composition_denominator": {
+          "const": "all_uploaded_rows",
+          "title": "Composition Denominator",
+          "type": "string"
+        },
+        "composition_estimates": {
+          "items": {
+            "$ref": "#/$defs/GraftCompositionEstimate"
+          },
+          "title": "Composition Estimates",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_state": {
+          "const": "shadow",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "gene_count": {
+          "minimum": 0,
+          "title": "Gene Count",
+          "type": "integer"
+        },
+        "graft_case_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Graft Case Ref",
+          "type": "string"
+        },
+        "graft_count": {
+          "minimum": 0,
+          "title": "Graft Count",
+          "type": "integer"
+        },
+        "graft_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Graft Id",
+          "type": "string"
+        },
+        "marker_program_collection_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Marker Program Collection Ref",
+          "type": "string"
+        },
+        "marker_source_family_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Marker Source Family Id",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "$ref": "#/$defs/GraftMatrixSemantics"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "post_transplant_timepoint": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Post Transplant Timepoint",
+          "type": "string"
+        },
+        "pretransplant_evidence_effect": {
+          "const": "none",
+          "default": "none",
+          "title": "Pretransplant Evidence Effect",
+          "type": "string"
+        },
+        "profile_aggregation": {
+          "$ref": "#/$defs/GraftProfileAggregation"
+        },
+        "program_evidence": {
+          "items": {
+            "$ref": "#/$defs/GraftProgramEvidence"
+          },
+          "title": "Program Evidence",
+          "type": "array"
+        },
+        "qc_state": {
+          "const": "not_reassessed",
+          "title": "Qc State",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "reference_panel_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reference Panel Ref",
+          "type": "string"
+        },
+        "reference_source_family_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reference Source Family Id",
+          "type": "string"
+        },
+        "reference_support": {
+          "items": {
+            "$ref": "#/$defs/GraftReferenceSupport"
+          },
+          "title": "Reference Support",
+          "type": "array"
+        },
+        "result_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Result Id",
+          "type": "string"
+        },
+        "runtime_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Runtime Versions",
+          "type": "object"
+        },
+        "sample_count": {
+          "minimum": 0,
+          "title": "Sample Count",
+          "type": "integer"
+        },
+        "sample_unit": {
+          "const": "technical_sample",
+          "title": "Sample Unit",
+          "type": "string"
+        },
+        "score_state": {
+          "const": "unavailable",
+          "default": "unavailable",
+          "title": "Score State",
+          "type": "string"
+        },
+        "selected_method_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Selected Method Ids",
+          "type": "array"
+        },
+        "source_bindings": {
+          "items": {
+            "$ref": "#/$defs/GraftSourceBinding"
+          },
+          "title": "Source Bindings",
+          "type": "array"
+        },
+        "state": {
+          "const": "candidate",
+          "title": "State",
+          "type": "string"
+        },
+        "tool_id": {
+          "const": "P0-12",
+          "title": "Tool Id",
+          "type": "string"
+        },
+        "tool_version": {
+          "title": "Tool Version",
+          "type": "string"
+        },
+        "unassigned_fraction": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Unassigned Fraction",
+          "type": "number"
+        }
+      },
+      "required": [
+        "object_version",
+        "result_id",
+        "tool_id",
+        "tool_version",
+        "state",
+        "evidence_state",
+        "analysis_mode",
+        "graft_case_ref",
+        "asset_ref",
+        "analysis_spec_ref",
+        "reference_panel_ref",
+        "marker_program_collection_ref",
+        "graft_id",
+        "animal_id",
+        "post_transplant_timepoint",
+        "reference_source_family_id",
+        "marker_source_family_id",
+        "assay",
+        "matrix_semantics",
+        "analysis_value_semantics",
+        "profile_aggregation",
+        "qc_state",
+        "sample_unit",
+        "composition_denominator",
+        "cell_count",
+        "gene_count",
+        "sample_count",
+        "graft_count",
+        "unassigned_fraction",
+        "composition_estimates",
+        "reference_support",
+        "program_evidence",
+        "source_bindings",
+        "selected_method_ids",
+        "runtime_versions",
+        "reason_codes",
+        "created_at"
+      ],
+      "title": "GraftExpressionAnalysisResult",
+      "type": "object"
+    },
+    "GraftLinkageState": {
+      "enum": [
+        "not_applicable",
+        "provided_unlinked",
+        "provided_linked"
+      ],
+      "title": "GraftLinkageState",
+      "type": "string"
+    },
+    "GraftMatrixSemantics": {
+      "enum": [
+        "raw_counts",
+        "log_normalized"
+      ],
+      "title": "GraftMatrixSemantics",
+      "type": "string"
+    },
+    "GraftProfileAggregation": {
+      "enum": [
+        "sample_pseudobulk",
+        "sample_mean_log_expression"
+      ],
+      "title": "GraftProfileAggregation",
+      "type": "string"
+    },
+    "GraftProgramEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/AnalysisAvailability"
+        },
+        "gene_count": {
+          "minimum": 0,
+          "title": "Gene Count",
+          "type": "integer"
+        },
+        "gene_coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Gene Coverage",
+          "type": "number"
+        },
+        "mean_expression": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Expression"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "sample_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Sample Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sample_id",
+        "program_id",
+        "availability",
+        "gene_count",
+        "gene_coverage",
+        "reason_codes"
+      ],
+      "title": "GraftProgramEvidence",
+      "type": "object"
+    },
+    "GraftReferenceSupport": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/AnalysisAvailability"
+        },
+        "profile_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "sample_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Sample Id",
+          "type": "string"
+        },
+        "shared_gene_count": {
+          "minimum": 0,
+          "title": "Shared Gene Count",
+          "type": "integer"
+        },
+        "spearman_correlation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spearman Correlation"
+        }
+      },
+      "required": [
+        "sample_id",
+        "profile_id",
+        "availability",
+        "shared_gene_count",
+        "reason_codes"
+      ],
+      "title": "GraftReferenceSupport",
+      "type": "object"
+    },
+    "GraftResultState": {
+      "enum": [
+        "not_provided",
+        "candidate"
+      ],
+      "title": "GraftResultState",
+      "type": "string"
+    },
+    "GraftRoleSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_states": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidence States",
+          "type": "array"
+        },
+        "metric_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Metric Ids",
+          "type": "array"
+        },
+        "record_count": {
+          "minimum": 0,
+          "title": "Record Count",
+          "type": "integer"
+        },
+        "role_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role Id",
+          "type": "string"
+        },
+        "state_class_counts": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/EvidenceStateClass"
+          },
+          "title": "State Class Counts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "role_id",
+        "record_count",
+        "metric_ids",
+        "evidence_states",
+        "state_class_counts",
+        "evidence_ids"
+      ],
+      "title": "GraftRoleSummary",
+      "type": "object"
+    },
+    "GraftSourceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "input_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Input Id",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "role": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_ref": {
+          "minLength": 1,
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "input_id",
+        "role",
+        "schema_ref",
+        "object_version",
+        "source_sha256"
+      ],
+      "title": "GraftSourceBinding",
+      "type": "object"
+    },
+    "PreparationGraftLinkage": {
+      "additionalProperties": false,
+      "properties": {
+        "descriptive_only": {
+          "const": true,
+          "default": true,
+          "title": "Descriptive Only",
+          "type": "boolean"
+        },
+        "linkage_evidence_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Linkage Evidence Refs",
+          "type": "array"
+        },
+        "originating_preparation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Originating Preparation Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "originating_preparation_id",
+        "linkage_evidence_refs"
+      ],
+      "title": "PreparationGraftLinkage",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-assessment-run-result/v0.1",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/GraftAssessmentResult"
+    },
+    {
+      "$ref": "#/$defs/GraftExpressionAnalysisResult"
+    }
+  ],
+  "title": "GraftAssessmentRunResult"
+}

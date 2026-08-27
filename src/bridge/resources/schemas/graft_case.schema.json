@@ -51,6 +51,19 @@
       "title": "Graft Case Id",
       "type": "string"
     },
+    "graft_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Graft Id"
+    },
     "linkage_evidence_refs": {
       "items": {
         "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
