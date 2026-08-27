@@ -46,8 +46,17 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 
 ## P0-04: Developmental Compatibility
 
+- `METHOD-BRIDGE-DETERMINISTIC-EVIDENCE-COORDINATOR` — BRIDGE deterministic evidence coordinator ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DETERMINISTIC-EVIDENCE-COORDINATOR))
 - `METHOD-BRIDGE-DEVELOPMENTSTATEMAP` — BRIDGE DevelopmentStateMap ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DEVELOPMENTSTATEMAP))
 - `METHOD-BRIDGE-SOFT-COMPOSITION-A5E97A` — BRIDGE soft composition ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SOFT-COMPOSITION-A5E97A))
+- `METHOD-BRIDGE-STAGE-PROGRAM-COHERENCE` — BRIDGE stage-program coherence ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-STAGE-PROGRAM-COHERENCE))
+- `METHOD-PSEUDOBULK-CORRELATION-COSINE-BASELINE` — pseudobulk correlation/cosine baseline ([catalog record](bridge://knowledge/methods/METHOD-PSEUDOBULK-CORRELATION-COSINE-BASELINE))
+- `METHOD-SOURCE-AWARE-ORDINAL-CLASSIFIER` — source-aware ordinal classifier ([catalog record](bridge://knowledge/methods/METHOD-SOURCE-AWARE-ORDINAL-CLASSIFIER))
+- `METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-221F0C` — sample-preserving hierarchical bootstrap ([catalog record](bridge://knowledge/methods/METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-221F0C))
+- `METHOD-BRIDGE-SAMPLE-PREPARATION-AGGREGATOR` — BRIDGE sample/preparation aggregator ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SAMPLE-PREPARATION-AGGREGATOR))
+- `METHOD-BRIDGE-DESCRIPTIVE-TREND` — BRIDGE descriptive trend ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DESCRIPTIVE-TREND))
+- `METHOD-PSEUDOBULK-PROGRAM-ACTIVITY-SAMPLE-LEVEL-MODEL` — pseudobulk program activity + sample-level model ([catalog record](bridge://knowledge/methods/METHOD-PSEUDOBULK-PROGRAM-ACTIVITY-SAMPLE-LEVEL-MODEL))
+- `METHOD-STATSMODELS-SPLINE-BASIS` — statsmodels / spline basis ([catalog record](bridge://knowledge/methods/METHOD-STATSMODELS-SPLINE-BASIS))
 
 ## P0-05: Off-target Control
 

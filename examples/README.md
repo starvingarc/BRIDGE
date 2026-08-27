@@ -11,7 +11,7 @@ before calling `validate` or `run`.
 | P0-01 | [`p0_01_analysis_ready.json`](requests/p0_01_analysis_ready.json) | Structure-only audit of normalized expression |
 | P0-02 | [`p0_02_cell_state.json`](requests/p0_02_cell_state.json) | Shadow Cell-State Evidence request and deployment-resolved reference/QC bindings |
 | P0-03 | [`p0_03_target_regional_evidence.json`](requests/p0_03_target_regional_evidence.json) | Eleven-object target/regional evidence request |
-| P0-04 | [`p0_04_developmental_compatibility.json`](requests/p0_04_developmental_compatibility.json) | External developmental-window and state-map request |
+| P0-04 | [`p0_04_developmental_compatibility.json`](requests/p0_04_developmental_compatibility.json) | Traceable aggregation plus optional expression-method request |
 | P0-05 | [`p0_05_off_target_control.json`](requests/p0_05_off_target_control.json) | Role-aware whole-product composition request |
 | P0-03 | [`p0_03_target_regional_expression.json`](requests/p0_03_target_regional_expression.json) | Optional H5AD expression-method request |
 | P0-03 | [`p0_03_target_regional_method_spec.json`](objects/p0_03_target_regional_method_spec.json) | External method, reference, program and coverage choices |
@@ -22,6 +22,10 @@ before calling `validate` or `run`.
 | P0-10 | [`p0_10_claim_verifier.json`](requests/p0_10_claim_verifier.json) | Four-object structured claim-verification request |
 | P0-11 | [`p0_11_public_safe_export.json`](requests/p0_11_public_safe_export.json) | Four-object allowlisted local-export request |
 | P0-12 | [`p0_12_graft_assessment.json`](requests/p0_12_graft_assessment.json) | Optional no-graft request; supplied graft mode uses three objects |
+
+The P0-04 [method-spec example](objects/p0_04_development_method_spec.json)
+shows how reference-stage roles, program cards, method selection and true
+timepoints stay outside executable code.
 
 See the [Tool Package guide](../docs/tool-packages.md) for each tool's purpose,
 inputs, outputs, refusal behavior, Tool Card, scientific task card and validation

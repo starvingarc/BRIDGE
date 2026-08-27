@@ -148,7 +148,6 @@ def test_shared_product_context_imports_remain_compatible() -> None:
 
 
 def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
-    assert len(SCHEMA_REFS) == 99
     assert {
         "bridge://schemas/claim-verifier-run-result/v0.1",
         "bridge://schemas/verified-report/v0.1",

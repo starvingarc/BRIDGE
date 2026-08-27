@@ -768,7 +768,17 @@ def parse_composition(
         if composition.state != "shadow":
             return []
         raw_records = [
-            item.model_dump(mode="python") for item in composition.records
+            {
+                "view": item.view.value,
+                "source_id": item.source_id,
+                "label": item.label,
+                "label_level": item.label_level,
+                "denominator_view": item.denominator_scope.value,
+                "count": item.count,
+                "fraction": item.fraction,
+                "denominator": item.denominator,
+            }
+            for item in composition.records
         ]
     else:
         raw_records = composition.get("records")
