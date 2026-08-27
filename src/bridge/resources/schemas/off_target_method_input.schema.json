@@ -1,0 +1,297 @@
+{
+  "$defs": {
+    "AnalysisUnitComposition": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "denominator_count": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator Count",
+          "type": "integer"
+        },
+        "independence_group_ref": {
+          "minLength": 1,
+          "title": "Independence Group Ref",
+          "type": "string"
+        },
+        "state_observations": {
+          "items": {
+            "$ref": "#/$defs/UnitStateObservation"
+          },
+          "title": "State Observations",
+          "type": "array"
+        },
+        "unknown_observations": {
+          "items": {
+            "$ref": "#/$defs/UnitUnknownObservation"
+          },
+          "title": "Unknown Observations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "analysis_unit_ref",
+        "independence_group_ref",
+        "denominator_count",
+        "state_observations",
+        "unknown_observations"
+      ],
+      "title": "AnalysisUnitComposition",
+      "type": "object"
+    },
+    "OODChannelState": {
+      "enum": [
+        "supported",
+        "unknown",
+        "ood",
+        "unavailable"
+      ],
+      "title": "OODChannelState",
+      "type": "string"
+    },
+    "OODChannelStateRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "reason_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Id"
+        },
+        "state": {
+          "$ref": "#/$defs/OODChannelState"
+        }
+      },
+      "required": [
+        "channel_id",
+        "state"
+      ],
+      "title": "OODChannelStateRecord",
+      "type": "object"
+    },
+    "SpikeInTrial": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_spike_count": {
+          "minimum": 0,
+          "title": "Expected Spike Count",
+          "type": "integer"
+        },
+        "false_positive_count": {
+          "minimum": 0,
+          "title": "False Positive Count",
+          "type": "integer"
+        },
+        "independence_group_ref": {
+          "minLength": 1,
+          "title": "Independence Group Ref",
+          "type": "string"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "recovered_spike_count": {
+          "minimum": 0,
+          "title": "Recovered Spike Count",
+          "type": "integer"
+        },
+        "spike_fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Spike Fraction",
+          "type": "number"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "independence_group_ref",
+        "spike_fraction",
+        "n_observations",
+        "expected_spike_count",
+        "recovered_spike_count",
+        "false_positive_count"
+      ],
+      "title": "SpikeInTrial",
+      "type": "object"
+    },
+    "UnitStateObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "hard_count": {
+          "minimum": 0,
+          "title": "Hard Count",
+          "type": "integer"
+        },
+        "soft_mass": {
+          "minimum": 0.0,
+          "title": "Soft Mass",
+          "type": "number"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "soft_mass",
+        "hard_count"
+      ],
+      "title": "UnitStateObservation",
+      "type": "object"
+    },
+    "UnitUnknownObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "hard_count": {
+          "minimum": 0,
+          "title": "Hard Count",
+          "type": "integer"
+        },
+        "reason_id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Reason Id",
+          "type": "string"
+        },
+        "soft_mass": {
+          "minimum": 0.0,
+          "title": "Soft Mass",
+          "type": "number"
+        }
+      },
+      "required": [
+        "reason_id",
+        "soft_mass",
+        "hard_count"
+      ],
+      "title": "UnitUnknownObservation",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/off-target-method-input/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_units": {
+      "items": {
+        "$ref": "#/$defs/AnalysisUnitComposition"
+      },
+      "title": "Analysis Units",
+      "type": "array"
+    },
+    "biological_unit_manifest_ref": {
+      "minLength": 1,
+      "title": "Biological Unit Manifest Ref",
+      "type": "string"
+    },
+    "biological_unit_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Manifest Sha256",
+      "type": "string"
+    },
+    "cell_state_profile_id": {
+      "minLength": 1,
+      "title": "Cell State Profile Id",
+      "type": "string"
+    },
+    "cell_state_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Cell State Profile Sha256",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "evidence_bundle_ref": {
+      "minLength": 1,
+      "title": "Evidence Bundle Ref",
+      "type": "string"
+    },
+    "evidence_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Evidence Bundle Sha256",
+      "type": "string"
+    },
+    "method_input_id": {
+      "pattern": "^off-target-method-input:[A-Za-z0-9._:-]+$",
+      "title": "Method Input Id",
+      "type": "string"
+    },
+    "method_input_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Input Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "ood_channels": {
+      "items": {
+        "$ref": "#/$defs/OODChannelStateRecord"
+      },
+      "title": "Ood Channels",
+      "type": "array"
+    },
+    "product_case_ref": {
+      "minLength": 1,
+      "title": "Product Case Ref",
+      "type": "string"
+    },
+    "product_case_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Product Case Sha256",
+      "type": "string"
+    },
+    "spike_in_trials": {
+      "items": {
+        "$ref": "#/$defs/SpikeInTrial"
+      },
+      "title": "Spike In Trials",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_input_id",
+    "method_input_version",
+    "product_case_ref",
+    "product_case_sha256",
+    "cell_state_profile_id",
+    "cell_state_profile_sha256",
+    "evidence_bundle_ref",
+    "evidence_bundle_sha256",
+    "biological_unit_manifest_ref",
+    "biological_unit_manifest_sha256",
+    "analysis_units",
+    "created_at"
+  ],
+  "title": "OffTargetMethodInput",
+  "type": "object"
+}

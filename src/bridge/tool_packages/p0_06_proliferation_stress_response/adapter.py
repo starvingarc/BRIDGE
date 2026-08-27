@@ -521,6 +521,18 @@ def _binding_reasons(
             reasons.append("program_evidence_contract_mismatch")
     if mode == "method_runtime":
         asset = request.assets[0]
+        manifest = single_object(
+            request,
+            loaded,
+            "biological_unit_manifest",
+            BiologicalUnitManifest,
+        )
+        if protocol.independent_replicate_count > len(
+            manifest.independence_group_refs
+        ):
+            reasons.append(
+                "protocol_independent_replicate_count_exceeds_manifest"
+            )
         try:
             asset_sha = expression_asset_sha256(asset.path)
         except ExpressionAssetError as exc:
@@ -543,12 +555,7 @@ def _binding_reasons(
                         "process_method_input",
                         ProcessMethodInput,
                     ),
-                    manifest=single_object(
-                        request,
-                        loaded,
-                        "biological_unit_manifest",
-                        BiologicalUnitManifest,
-                    ),
+                    manifest=manifest,
                     assignment=single_object(
                         request,
                         loaded,

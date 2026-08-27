@@ -1,0 +1,365 @@
+{
+  "$defs": {
+    "ExpressionSemanticsContract": {
+      "additionalProperties": false,
+      "description": "Caller-reviewed assertion that query and reference values are comparable.",
+      "properties": {
+        "contract_id": {
+          "pattern": "^expression-semantics-contract:[A-Za-z0-9._:-]+$",
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "expression_asset_id": {
+          "minLength": 1,
+          "title": "Expression Asset Id",
+          "type": "string"
+        },
+        "gene_identifier_namespace": {
+          "minLength": 1,
+          "title": "Gene Identifier Namespace",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "const": "normalized_expression",
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "normalization_method": {
+          "minLength": 1,
+          "title": "Normalization Method",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "reference_profile_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Reference Profile Ids",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "candidate",
+            "frozen"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "transformation": {
+          "minLength": 1,
+          "title": "Transformation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "contract_id",
+        "contract_version",
+        "status",
+        "expression_asset_id",
+        "reference_profile_ids",
+        "matrix_semantics",
+        "normalization_method",
+        "transformation",
+        "gene_identifier_namespace"
+      ],
+      "title": "ExpressionSemanticsContract",
+      "type": "object"
+    },
+    "MatchedModalityComparisonGroup": {
+      "additionalProperties": false,
+      "description": "Externally declared feature- and context-matched modality comparison.",
+      "properties": {
+        "group_id": {
+          "pattern": "^modality-comparison-group:[A-Za-z0-9._:-]+$",
+          "title": "Group Id",
+          "type": "string"
+        },
+        "group_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Group Version",
+          "type": "string"
+        },
+        "matched_context_id": {
+          "minLength": 1,
+          "title": "Matched Context Id",
+          "type": "string"
+        },
+        "matched_feature_view_id": {
+          "minLength": 1,
+          "title": "Matched Feature View Id",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "reference_profile_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Reference Profile Ids",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "candidate",
+            "frozen"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "group_id",
+        "group_version",
+        "status",
+        "reference_profile_ids",
+        "matched_feature_view_id",
+        "matched_context_id"
+      ],
+      "title": "MatchedModalityComparisonGroup",
+      "type": "object"
+    },
+    "NnlsResidualApplicabilityContract": {
+      "additionalProperties": false,
+      "description": "Externally reviewed applicability limit for the normalized NNLS residual.",
+      "properties": {
+        "contract_id": {
+          "pattern": "^nnls-residual-applicability-contract:[A-Za-z0-9._:-]+$",
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "maximum_residual": {
+          "exclusiveMinimum": 0.0,
+          "title": "Maximum Residual",
+          "type": "number"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "residual_metric": {
+          "const": "relative_l2_norm",
+          "title": "Residual Metric",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "candidate",
+            "frozen"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "contract_id",
+        "contract_version",
+        "status",
+        "residual_metric",
+        "maximum_residual"
+      ],
+      "title": "NnlsResidualApplicabilityContract",
+      "type": "object"
+    },
+    "TargetRegionalMethodId": {
+      "enum": [
+        "TRG-PBCORR",
+        "REG-PBCORR",
+        "TRG-NNLS",
+        "TRG-DECOUPLER",
+        "REG-DECOUPLER",
+        "TRG-BOOTSTRAP",
+        "REG-CROSSREF",
+        "REG-MODALITY"
+      ],
+      "title": "TargetRegionalMethodId",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/target-regional-method-spec/v0.1",
+  "additionalProperties": false,
+  "description": "External, versioned choices for optional expression-level evidence.",
+  "properties": {
+    "bootstrap_confidence_level": {
+      "default": 0.95,
+      "exclusiveMaximum": 1.0,
+      "exclusiveMinimum": 0.0,
+      "title": "Bootstrap Confidence Level",
+      "type": "number"
+    },
+    "bootstrap_replicates": {
+      "default": 1000,
+      "maximum": 10000,
+      "minimum": 10,
+      "title": "Bootstrap Replicates",
+      "type": "integer"
+    },
+    "expression_asset_id": {
+      "minLength": 1,
+      "title": "Expression Asset Id",
+      "type": "string"
+    },
+    "expression_semantics_contract": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExpressionSemanticsContract"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "gene_symbol_column": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gene Symbol Column"
+    },
+    "method_spec_id": {
+      "pattern": "^target-regional-method-spec:[A-Za-z0-9._:-]+$",
+      "title": "Method Spec Id",
+      "type": "string"
+    },
+    "method_spec_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Spec Version",
+      "type": "string"
+    },
+    "minimum_program_genes": {
+      "minimum": 2,
+      "title": "Minimum Program Genes",
+      "type": "integer"
+    },
+    "minimum_shared_genes": {
+      "minimum": 2,
+      "title": "Minimum Shared Genes",
+      "type": "integer"
+    },
+    "modality_comparison_group": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MatchedModalityComparisonGroup"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "nnls_residual_applicability": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NnlsResidualApplicabilityContract"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observation_id_column": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observation Id Column"
+    },
+    "regional_program_card_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Regional Program Card Ids",
+      "type": "array"
+    },
+    "regional_reference_profile_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Regional Reference Profile Ids",
+      "type": "array"
+    },
+    "selected_method_ids": {
+      "items": {
+        "$ref": "#/$defs/TargetRegionalMethodId"
+      },
+      "minItems": 1,
+      "title": "Selected Method Ids",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "candidate",
+        "frozen"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "target_program_card_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Target Program Card Ids",
+      "type": "array"
+    },
+    "target_reference_profile_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Target Reference Profile Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_spec_id",
+    "method_spec_version",
+    "status",
+    "expression_asset_id",
+    "selected_method_ids",
+    "minimum_shared_genes",
+    "minimum_program_genes"
+  ],
+  "title": "TargetRegionalMethodSpec",
+  "type": "object"
+}

@@ -11,6 +11,9 @@ This directory contains the program-scoring and evidence-aggregation package.
   normalized H5AD bind P0-02 V3 states, biological units and runtime parameters.
   Program genes, weights and phases live only in the checksummed ProgramSpec;
   the method spec selects program IDs without duplicating that content.
+  Eligibility refuses a ProtocolIR independent-replicate count above the
+  distinct groups in the bound BiologicalUnitManifest; equal or lower counts
+  retain the existing conservative attribution rule.
 - **Output:** `ProliferationStressResponseProfile`; method mode additionally
   emits `ProcessMethodBundle` with Scanpy, decoupler and cell-cycle summaries
   bound to the exact ProgramSpec SHA-256.

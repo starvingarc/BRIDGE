@@ -32,6 +32,10 @@ registered candidates. This runtime does not execute them.
   old digest is refused before execution.
 - The H5AD identity and checksum are bound before execution and checked again
   before output publication.
+- In method mode, the ProtocolIR independent-replicate count may not exceed the
+  distinct groups in the bound BiologicalUnitManifest. A synthetic four-group
+  manifest paired with a declared count of five is refused as
+  `protocol_independent_replicate_count_exceeds_manifest`.
 - Results bind the exact ProgramSpec and method spec checksums, selected
   methods, biological units, state scopes, expression asset and software
   versions.
@@ -44,8 +48,8 @@ registered candidates. This runtime does not execute them.
 
 | Check | Result |
 |---|---|
-| P0-06 focused and registry tests | 43 passed |
-| Content-integrity adversaries | gene, weight and phase-gene changes under a stale digest all refused with typed reasons |
+| P0-06 focused and registry tests | 44 passed |
+| Content-integrity adversaries | gene, weight and phase-gene changes under a stale digest, plus ProtocolIR 5 versus manifest 4 independent groups, all refused with typed reasons |
 | Generated artifacts | ProgramSpec, ProcessMethodSpec and ProcessMethodBundle schemas regenerated from their repository models |
 | Repository checks | repository policy, `git diff --check` and added-lines privacy scan passed |
 

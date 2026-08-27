@@ -9,6 +9,7 @@ import anndata as ad
 import numpy as np
 import pytest
 
+from bridge.tool_packages._configurable_contracts import BiologicalUnitManifest
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
     MethodExecutionState,
     ProcessMethodBundle,
@@ -465,6 +466,57 @@ def test_real_method_runtime_executes_and_is_deterministic(tmp_path: Path) -> No
     assert bundle.evidence_state == "shadow"
     assert bundle.score_state == "unavailable"
     assert bundle.domain_score is None
+
+
+def test_method_runtime_rejects_replicate_count_above_manifest(
+    tmp_path: Path,
+) -> None:
+    registry = ToolRegistry.load_default()
+    request = _method_request(tmp_path)
+
+    manifest_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "biological_unit_manifest"
+    )
+    manifest = BiologicalUnitManifest.model_validate_json(
+        manifest_ref.path.read_text()
+    )
+    assert len(manifest.independence_group_refs) == 4
+
+    program_ref = next(
+        item for item in request.object_inputs if item.role == "program_spec"
+    )
+    program_spec = json.loads(program_ref.path.read_text())
+    program_spec["attribution_rule"]["minimum_independent_replicates"] = 5
+    request, program_sha = _replace_json_input(
+        request, "program_spec", program_spec
+    )
+
+    protocol_ref = next(
+        item for item in request.object_inputs if item.role == "protocol_ir"
+    )
+    protocol = json.loads(protocol_ref.path.read_text())
+    protocol["independent_replicate_count"] = 5
+    request, protocol_sha = _replace_json_input(request, "protocol_ir", protocol)
+
+    bundle_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "program_evidence_bundle"
+    )
+    bundle = json.loads(bundle_ref.path.read_text())
+    bundle["program_spec_sha256"] = program_sha
+    bundle["protocol_context_sha256"] = protocol_sha
+    request, _ = _replace_json_input(request, "program_evidence_bundle", bundle)
+
+    eligibility = registry.check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert (
+        "protocol_independent_replicate_count_exceeds_manifest"
+        in eligibility.reason_codes
+    )
 
 
 @pytest.mark.parametrize(

@@ -15,6 +15,11 @@ environment_specs:
     state: health_check_passed
     yaml_ref: environments/bridge-cellstate-py.yml
     runtime_class: cpu_default_gpu_optional
+  ENV-DEVELOPMENT-PY-v0.1:
+    conda_name: bridge-development-py
+    state: health_check_passed
+    yaml_ref: environments/bridge-development-py.yml
+    runtime_class: cpu_only
   ENV-CELLSTATE-BIOC-R46-v0.1:
     conda_name: bridge-cellstate-bioc-r46
     state: health_check_passed

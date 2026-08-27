@@ -103,10 +103,8 @@ class ToolInputContract(FrozenModel):
         if self.request_schema_ref.endswith("/v0.1"):
             if self.object_input_modes:
                 raise ValueError("ToolRequest v0.1 cannot declare object-input modes")
-        elif self.asset_input is not None or not self.object_input_modes:
-            raise ValueError(
-                "ToolRequest v0.2 requires object-input modes and mode-owned assets"
-            )
+        elif not self.object_input_modes:
+            raise ValueError("ToolRequest v0.2 requires object-input modes")
         return self
 
 
@@ -235,9 +233,18 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
     "P0-03": ToolInputContract(
         tool_id="P0-03",
         request_schema_ref="bridge://schemas/tool-request/v0.2",
+        asset_input=AssetInputContract(
+            min_count=0,
+            max_count=1,
+            formats=["h5ad"],
+            assays=["scRNA-seq", "snRNA-seq"],
+            input_levels=["analysis_ready"],
+            matrix_semantics=["normalized_expression"],
+            required_metadata_keys=["data_view_id", "parent_asset_sha256"],
+        ),
         measurement_spec_ref_policy="forbidden",
         parameters_allowed=False,
-        random_seed_policy="fixed_zero",
+        random_seed_policy="any_integer",
         object_input_modes=[
             _mode(
                 "default",
@@ -308,15 +315,31 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                     1,
                 ),
+                _role(
+                    "target_regional_method_spec",
+                    "bridge://schemas/target-regional-method-spec/v0.1",
+                    V01,
+                    0,
+                    1,
+                ),
             )
         ],
     ),
     "P0-04": ToolInputContract(
         tool_id="P0-04",
         request_schema_ref="bridge://schemas/tool-request/v0.2",
+        asset_input=AssetInputContract(
+            min_count=0,
+            max_count=1,
+            formats=["h5ad"],
+            assays=["scRNA-seq", "snRNA-seq"],
+            input_levels=["analysis_ready"],
+            matrix_semantics=["normalized_expression"],
+            required_metadata_keys=["data_view_id", "parent_asset_sha256"],
+        ),
         measurement_spec_ref_policy="forbidden",
         parameters_allowed=False,
-        random_seed_policy="fixed_zero",
+        random_seed_policy="any_integer",
         object_input_modes=[
             _mode(
                 "default",
@@ -351,14 +374,56 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 ),
                 _role(
                     "cell_state_evidence_profile",
-                    "bridge://schemas/cell-state-evidence-profile/v0.2",
+                    "bridge://schemas/cell-state-evidence-profile/v0.3",
+                    V03,
+                    1,
+                    1,
+                ),
+                _role(
+                    "qc_readiness_profile",
+                    "bridge://schemas/qc-readiness-profile/v0.2",
                     V02,
+                    1,
+                    1,
+                ),
+                _role(
+                    "biological_unit_manifest",
+                    "bridge://schemas/biological-unit-manifest/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "biological_unit_assignment",
+                    "bridge://schemas/biological-unit-assignment/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "annotation_vocabulary",
+                    "bridge://schemas/annotation-vocabulary/v0.1",
+                    None,
+                    1,
+                    1,
+                ),
+                _role(
+                    "reference_manifest",
+                    "bridge://schemas/reference-manifest/v0.1",
+                    None,
                     1,
                     1,
                 ),
                 _role(
                     "development_timepoint_series",
                     "bridge://schemas/development-timepoint-series/v0.1",
+                    V01,
+                    0,
+                    1,
+                ),
+                _role(
+                    "development_method_spec",
+                    "bridge://schemas/development-method-spec/v0.1",
                     V01,
                     0,
                     1,
@@ -374,7 +439,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         random_seed_policy="any_integer",
         object_input_modes=[
             _mode(
-                "default",
+                "legacy_aggregation",
                 _role("product_case", "bridge://schemas/product-case/v0.1", V01, 1, 1),
                 _role(
                     "product_definition_card",
@@ -407,7 +472,63 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                     1,
                 ),
-            )
+            ),
+            _mode(
+                "method_runtime",
+                _role("product_case", "bridge://schemas/product-case/v0.1", V01, 1, 1),
+                _role(
+                    "product_definition_card",
+                    "bridge://schemas/product-definition-card/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "state_role_map", "bridge://schemas/state-role-map/v0.1", V01, 1, 1
+                ),
+                _role(
+                    "off_target_assessment_spec",
+                    "bridge://schemas/off-target-assessment-spec/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "cell_state_evidence_profile",
+                    "bridge://schemas/cell-state-evidence-profile/v0.3",
+                    V03,
+                    1,
+                    1,
+                ),
+                _role(
+                    "off_target_evidence_bundle",
+                    "bridge://schemas/off-target-evidence-bundle/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "biological_unit_manifest",
+                    "bridge://schemas/biological-unit-manifest/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "off_target_method_spec",
+                    "bridge://schemas/off-target-method-spec/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "off_target_method_input",
+                    "bridge://schemas/off-target-method-input/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+            ),
         ],
     ),
     "P0-06": ToolInputContract(

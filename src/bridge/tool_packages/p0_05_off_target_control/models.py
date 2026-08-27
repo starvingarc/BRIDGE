@@ -12,6 +12,9 @@ from bridge.tool_packages._configurable_contracts import (
     StateRoleMap,
     VersionedObjectRef,
 )
+from bridge.tool_packages.p0_05_off_target_control.method_models import (
+    PUBLIC_METHOD_SCHEMA_MODELS,
+)
 from bridge.toolkit.contracts import FrozenModel
 
 OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -282,4 +285,5 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/off-target-assessment-spec/v0.1": OffTargetAssessmentSpec,
     "bridge://schemas/off-target-evidence-bundle/v0.1": OffTargetEvidenceBundle,
     "bridge://schemas/off-target-control-profile/v0.1": OffTargetControlProfile,
+    **PUBLIC_METHOD_SCHEMA_MODELS,
 }

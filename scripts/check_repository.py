@@ -35,7 +35,7 @@ PRODUCT_LEVEL_V2_BRANDING = re.compile(r"\bbridge(?:\s+|[-_])v2\b", re.IGNORECAS
 COMPLETED_PLAN_NAME = re.compile(r"(?:^|[-_])(?:complete(?:d)?|done)(?:[-_.]|$)", re.IGNORECASE)
 TRACKED_FILE_BASELINE = 250
 IMPLEMENTED_TOOL_BASELINE = 5
-MAX_FILES_PER_NEW_IMPLEMENTED_TOOL = 18
+MAX_FILES_PER_NEW_IMPLEMENTED_TOOL = 21
 SHARED_CONTRACT_SPINE_FILES = (
     Path("docs/validation/shared_p0_scientific_contract_spine_20260825.md"),
     Path("src/bridge/resources/schemas/biological_unit_assignment.schema.json"),

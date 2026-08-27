@@ -140,6 +140,7 @@ flowchart LR
 - `ProtocolIR` 至少区分解离/FACS、sorting、冻融、运输、恢复培养、采样时间、batch 和 chemistry。
 - process metadata 完整且存在可比样本时，可报告处理步骤与程序变化的条件化关联。
 - metadata 缺失、处理步骤与 batch 完全混杂或无独立重复时，`attribution_state=cannot_attribute`。
+- `method_runtime` 中 ProtocolIR 声明的独立重复数不得超过已绑定 BiologicalUnitManifest 的实际独立组数；超报在 eligibility 阶段 typed refusal，小于或等于实际数时继续采用现有保守门控。
 - 已发表 dissociation signature 只作为候选 prior；必须验证在 PD-mDA 和当前 assay 中的特异性。
 
 ### 5.4 Transcriptomic CNV shadow
@@ -218,6 +219,7 @@ P0 核心候选不依赖 GPU。不同环境只交换版本化 h5ad/Parquet/TSV�
 - Cell-State evidence 不可用：不得强行生成 state-specific 过程结论。
 - 程序 gene coverage 不足或 `ProgramSpec` 不适用：该程序返回 `unavailable`，不补值。
 - `method_runtime` 选中的 program 缺少 gene/weight/phase 内容，或内容与 `gene_set_sha256` 不一致：运行前 typed refusal；不得从 `ProcessMethodSpec` 或代码默认值补齐。
+- `method_runtime` 的 `ProtocolIR.independent_replicate_count` 大于已绑定 manifest 的独立组数：返回 `protocol_independent_replicate_count_exceeds_manifest`，不得用细胞数或 preparation 数补足 biological replicate。
 - 无独立 preparation/replicate：不发布推断性差异，只作 `descriptive_only`。
 - 缺少 ProtocolIR 或与 batch 完全混杂：报告 `cannot_attribute`，不归因工艺。
 - residual pluripotency-like 未完成 spike-in/false-positive 校准：最多返回 `cannot_resolve` 或 `not_assessed`。
