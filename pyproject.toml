@@ -28,6 +28,12 @@ qc = [
   "scanpy>=1.10,<1.12",
   "scrublet>=0.2.3,<0.3",
 ]
+process = [
+  "anndata>=0.11,<0.13",
+  "decoupler>=2.1,<2.2",
+  "scanpy>=1.10,<1.12",
+  "scipy>=1.14,<2",
+]
 test = [
   "pytest>=8,<10",
 ]

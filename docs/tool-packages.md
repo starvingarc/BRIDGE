@@ -108,12 +108,12 @@ scientific methods.
 
 | Item | Details |
 |---|---|
-| Purpose | Aggregate precomputed, stage-conditioned proliferation, stress-response and related review signals. [Scientific task card](bridge_spec_v0.1/proliferation_stress_response_task_card.md). |
-| Executable implementation | Deterministic sample/state aggregation plus design, confounding and sensitivity audit. Gene-set scoring is upstream under a supplied ProgramSpec. |
-| Software | Shared Pydantic/JSON Schema runtime and Python standard library; no external gene-set engine is run. |
-| Input → output | Case, product, developmental window, ProgramSpec, P0-02 profile, ProtocolIR and evidence bundle → `ProliferationStressResponseProfile`. [Tool Card](../src/bridge/tool_packages/cards/P0-06.md). |
-| Call | Shared CLI/SDK with `tool_id=P0-06`; start from the [request example](../examples/requests/p0_06_proliferation_stress_response.json). |
-| Current evidence / status | Synthetic cases verify deterministic profiles, alerts and unavailable paths. Results remain `candidate/shadow`, `domain_score=null`; they do not establish cell fitness, safety or potency. [Validation](validation/p0_06_proliferation_stress_response_20260825.md). |
+| Purpose | Score externally defined proliferation, stress and cell-cycle programs, then aggregate them by biological unit and cell state. [Scientific task card](bridge_spec_v0.1/proliferation_stress_response_task_card.md). |
+| Executable implementation | [Scanpy score_genes](https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.score_genes.html), [decoupler ULM](https://decoupler.readthedocs.io/en/latest/api/generated/decoupler.mt.ulm.html), [Scanpy cell-cycle scoring](https://scanpy.readthedocs.io/en/stable/api/scanpy.tl.score_genes_cell_cycle.html), deterministic sample/state aggregation and the existing design/confounding audit. |
+| Software | AnnData, Scanpy, decoupler, NumPy, pandas and SciPy, plus the shared Pydantic/JSON Schema runtime. UCell, AUCell, pseudobulk and CNV methods remain independent candidates and are not called by this adapter. |
+| Input → output | Legacy: seven structured evidence objects → `ProliferationStressResponseProfile`. Method runtime: those objects plus P0-02 V3 lineage, biological-unit mapping, method spec/input and one normalized H5AD → the profile and `ProcessMethodBundle`. [Tool Card](../src/bridge/tool_packages/cards/P0-06.md). |
+| Call | Shared CLI/SDK with `tool_id=P0-06`; use the [legacy request](../examples/requests/p0_06_proliferation_stress_response.json) or [method-runtime request](../examples/requests/p0_06_process_method_runtime.json). |
+| Current evidence / status | Synthetic H5AD execution verifies all four runtime selectors, immutable inputs and deterministic artifacts. It is engineering validation only; outputs remain `candidate/shadow`, `domain_score=null` and do not establish cell fitness, safety or potency. [Validation](validation/p0_06_real_methods_20260827.md). |
 
 <a id="p0-07"></a>
 ## P0-07 Product Comparison & Stability

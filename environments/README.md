@@ -2,9 +2,9 @@
 
 | EnvironmentSpec | Conda name | State | Used by |
 |---|---|---|---|
-| `ENV-P0-CORE-v0.1` | `bridge-p0-core` | health_check_passed | Tool Runtime and P0-01–P0-07, P0-12 core execution |
+| `ENV-P0-CORE-v0.1` | `bridge-p0-core` | health_check_passed | Tool Runtime and deterministic core adapters |
 | `ENV-EVIDENCE-v0.1` | `bridge-p0-evidence` | health_check_passed | P0-08 to P0-11 deterministic evidence and release services |
-| `ENV-CELLSTATE-PY-v0.1` | `bridge-cellstate-py` | health_check_passed | P0-02 Python benchmark methods |
+| `ENV-CELLSTATE-PY-v0.1` | `bridge-cellstate-py` | health_check_passed | P0-02 Python methods and P0-06 expression-method runtime |
 | `ENV-CELLSTATE-BIOC-R46-v0.1` | `bridge-cellstate-bioc-r46` | health_check_passed | P0-02 R/Bioconductor benchmark methods |
 
 Create these environments with strict channel priority. After creating the R environment, install Harmony and Symphony from the recorded commits without dependency upgrades:

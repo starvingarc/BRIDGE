@@ -83,6 +83,19 @@ ProgramSpec 外置管理全部 program、gene-set ref/checksum、适用 stage/st
 [Data/Reference Registry](data_reference_registry.md) 维护；仓库外归档工作簿不是运行合同。
 
 ## 4. 分析流程
+### 4.1 当前可执行基线
+
+P0-06 v0.3 提供两种兼容调用：
+
+- `legacy_aggregation` 保留七个结构化对象的预计算证据聚合；
+- `method_runtime` 读取一个 checksummed normalized H5AD，实际执行
+  Scanpy `score_genes`、decoupler ULM、Scanpy
+  `score_genes_cell_cycle`，再按 BiologicalUnit 和 candidate cell state
+  聚合。
+
+程序基因、权重、适用状态/阶段、覆盖要求和运行参数全部来自版本化输入。
+UCell、AUCell、pseudobulk 和 CNV 路径仍是独立候选，不计入当前执行结果。
+
 
 ```mermaid
 flowchart LR
@@ -174,7 +187,7 @@ flowchart LR
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-PROCESS-PY-v0.1` | Scanpy、decoupler、statsmodels、基础聚合、bootstrap 与可视化 | `proposed` |
+| `ENV-CELLSTATE-PY-v0.1` | 当前 Scanpy、decoupler、AnnData 和确定性聚合基线 | `active_candidate` |
 | `ENV-PROCESS-DECOUPLER-BENCH-v0.1` | decoupler 独立版本复核 | `proposed_benchmark_only`；不得与正式结果静默混用 |
 | `ENV-PROCESS-BIOC-v0.1` | UCell、AUCell、singscore、GSVA、escape、muscat、edgeR/limma、DESeq2、dreamlet、tricycle | `proposed_isolated` |
 | `ENV-PROCESS-CNV-v0.1` | inferCNVpy、inferCNV、CopyKAT 兼容性与 shadow benchmark | `proposed_isolated`；需分别冻结 Python/R 依赖和许可 |

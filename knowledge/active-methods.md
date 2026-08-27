@@ -50,6 +50,9 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 
 - `METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION` — BRIDGE sample/state aggregation ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION))
 - `METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION` — Design audit and sensitivity stratification ([catalog record](bridge://knowledge/methods/METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION))
+- `METHOD-SCANPY-SCORE-GENES` — Scanpy score_genes ([catalog record](bridge://knowledge/methods/METHOD-SCANPY-SCORE-GENES))
+- `METHOD-DECOUPLER` — decoupler ([catalog record](bridge://knowledge/methods/METHOD-DECOUPLER))
+- `METHOD-SCANPY-SCORE-GENES-CELL-CYCLE` — Scanpy score_genes_cell_cycle ([catalog record](bridge://knowledge/methods/METHOD-SCANPY-SCORE-GENES-CELL-CYCLE))
 
 ## P0-07: Product Comparison & Stability
 
