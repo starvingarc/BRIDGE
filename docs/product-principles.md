@@ -28,6 +28,20 @@ product capabilities rather than integrated runtime behavior.
 - Conditional comparison under matched product definitions and analysis contracts.
 - Traceable visualizations, claims and versioned evidence records.
 
+## Visualization And User Reading Order
+
+The approved [visualization system](BRIDGE_PRD.md#66-visualization-composer-与-web-交互) organizes the result
+experience around researcher questions: data readiness, product composition,
+identity support, target/regional and developmental fit, off-target/unknown and
+process signals, comparison, and evidence gaps.
+
+The product overview uses domain rows with explicit status, denominator,
+limitations and evidence links. It does not use a total score, radar chart,
+overall rank or pass/fail traffic light. Interactive and static figures must use
+the same checksummed data and preserve missingness, uncertainty, provenance and
+candidate/shadow status. This is an approved design contract; the integrated Web
+runtime is not yet implemented.
+
 ## Current Non-claims
 
 BRIDGE does not currently establish clinical efficacy, clinical safety, validated potency, GMP release, an absolute product ranking or a globally optimal harvest stage. Transcriptomic alerts are review signals, not safety conclusions.

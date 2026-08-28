@@ -5,7 +5,7 @@
 | 项目全称 | Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation |
 | 产品形态 | 科学评估智能体（Scientific Agent） |
 | 文档版本 | `v0.1` |
-| 修订日期 | 2026-08-26 |
+| 修订日期 | 2026-08-28 |
 | 状态 | `current_primary_specification` |
 | 适用范围 | 研究用途的细胞治疗产品转录组评估；PD hPSC-mDA 为首个实例 |
 | 文档权威性 | 本文档是 BRIDGE 当前唯一主规范；Registry 和 Task Card 是受其约束的实施附件 |
@@ -668,20 +668,114 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 
 ### 6.6 Visualization Composer 与 Web 交互
 
-Web 是 BRIDGE 的主要结果载体；具体页面布局、设计系统和前端技术在后续阶段确定。
+截至 2026-08-28，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，但集成式 Web 结果页和 Visualization Composer 尚未实现。当前 P0-01 只产生两类 QC 图，P0-02 只产生组成、reference 支持、marker 和冲突图；其他证据域仍以结构化结果为主。以下内容是后续实现必须遵守的设计合同，不表示对应页面或字段已经存在。
 
-Visualization Composer 接收分析结果、ProductEvidenceObject、Evidence Graph 和 ComparisonRecord，并自动生成核心图表。用户可以选择图表元素或证据节点继续追问，Agent 也可以按需生成下钻视图。
+#### 用户问题与默认阅读顺序
 
-可视化遵循以下顺序：
+使用者不需要先理解 P0 编号。默认结果页依次回答：
 
-1. 优先调用当前 [Tool Package Cards](../src/bridge/tool_packages/cards/) 声明且能绑定 `VisualizationArtifact` 的组件。
-2. 缺少组件时，检索分析工具的官方绘图接口、官方源码示例和绘图 skill。
-3. 在隔离环境中生成候选图表并检查数据绑定、尺度、标签、缺失状态和视觉质量。
-4. 未注册图表可以标记为 `exploratory` 展示，通过审核前不能进入正式报告。
+1. 上传的数据能否支持所请求的分析；
+2. 整个细胞产品由哪些细胞和细胞状态组成；
+3. 这些身份得到多少独立来源和不同方法的支持；
+4. 目标谱系、中脑区域特征和发育阶段是否符合已审核的产品定义；
+5. 是否存在需要复核的非目标、未知、稀有、增殖或应激信号；
+6. 在可比较的前提下，不同产品、批次或时间点有何差异；
+7. 哪些解释有支持、存在冲突或仍缺证据；
+8. 下一步最值得补充什么测量或人工审核。
 
-每个正式 `VisualizationArtifact` 必须绑定 Evidence ID、数据版本、单位、分母、不确定性和证据状态，并支持追溯到底层表格。Web 同时支持 SVG/PNG、CSV 和版本化报告导出。
+首页使用六行“产品证据概览”：数据可用性、细胞组成与身份、目标谱系与区域支持、发育阶段相容性、非目标/未知/稀有状态，以及增殖与应激信号。每行显示文字状态、一个关键观察、分母、独立来源家族数、主要限制和证据下钻入口。不得使用综合总分、总体排名、雷达图或红绿灯式产品等级；缺失或技术上不可评估的证据显示为 `missing` 或 `unavailable`，不得画成 0。
 
-可视化能力可参考 [Scanpy plotting](https://scanpy.readthedocs.io/en/latest/tutorials/plotting/core.html)、[CellRank plotting](https://cellrank.readthedocs.io/en/stable/api/plotting.html)、[LIANA](https://liana-py.readthedocs.io/en/latest/api.html)、[Squidpy](https://squidpy.readthedocs.io/en/stable/api.html)、[Vitessce](https://vitessce.io/docs/) 和 [Cytoscape.js](https://js.cytoscape.org/)。具体组件仍需登记和验证。
+#### 核心图表体系
+
+| 使用者的问题 | 默认主图 | 需要时展开 | 证据来源 | 当前实现 |
+|---|---|---|---|---|
+| 数据能否用于分析？ | 从上传观测到 QC 保留、再到各下游可用数据视图的细胞流向图 | 每个 sample/capture 的 QC 分布；counts–genes、counts–mitochondrial 关系；QC flag 交集；不同 DataView 的敏感性 | Input Audit & QC（P0-01） | 部分实现：已有合并分布图和 counts–genes 静态图 |
+| 产品中有哪些细胞？ | L1/L2/L3 层级组成图，明确分开已知、prediction set、unknown/OOD 和 unresolved | 状态明细表；可选 embedding；所选 DataView 的来源 | Cell-State Evidence（P0-02） | 部分实现：已有 source-aware 组成图 |
+| 细胞状态命名是否可靠？ | source × state 证据点阵图 | 方法一致性、marker 证据、prediction-set coverage、校准、OOD 分布、unknown 原因和敏感性 | Cell-State Evidence（P0-02） | 部分实现：已有 reference、marker 和冲突图；开放集视图缺失 |
+| 是否包含目标谱系和预期中脑区域特征？ | target、acceptable adjacent、off-target、unresolved 组成及区间，并列区域支持证据 | reference correlation、program activity、连续身份权重、残差、方法敏感性和有条件的空间投射 | Target Identity & Regional Fidelity（P0-03） | 尚无正式 `VisualizationArtifact` |
+| 发育阶段是否符合已审核窗口？ | 全产品与 target-related 细胞分别使用各自分母的阶段组成图 | 按 source/modality 分面的阶段支持、sample-level 时间趋势、program 动态和仅用于校准的状态转移图 | Developmental Compatibility（P0-04） | 尚无正式 `VisualizationArtifact` |
+| 是否存在非目标、未知或稀有状态？ | 全产品角色组成和 unknown 原因图，并显示区间 | 零观测上界、rare-state LOD、spike-in recovery 和多来源 OOD 分歧 | Off-target Control（P0-05） | 尚无正式 `VisualizationArtifact` |
+| 是否存在增殖、细胞周期或应激信号？ | sample × program 证据热图，同时显示 reference envelope、gene coverage 和 evidence state | 全产品/状态内分布、S/G2M、方法一致性、制备时间线和复核信号 | Proliferation & Stress Response（P0-06） | 尚无正式 `VisualizationArtifact` |
+| 可比较的产品、批次或时间点有何差异？ | 每个指标分别展示原始差异和效应量区间的 forest plot | 组成差异、program effect、以 preparation 为单位的时间趋势、稳定性、混杂和敏感性 | Product Comparison & Stability（P0-07） | 有条件启用，尚无正式 `VisualizationArtifact` |
+| 每项解释获得多少证据支持？ | domain × Data Readiness / Model Robustness / Prior Applicability 矩阵 | 单个 domain 的判断过程、缺失条件和状态数量 | Evidence Sufficiency（P0-08） | 已有结构化结果；当前有意不产生图 |
+| 一项结论为何能或不能成立？ | 从来源到 Evidence、Claim 和 Requirement 的选中结论有向证据路径 | 冲突、同家族依赖、provenance 和对应表格行 | Evidence Compiler & Reconciler（P0-09） | 已产生受限 Cytoscape projection，但尚未登记为正式图 |
+| 报告能否使用或公开？ | claim 核对表和 public-export readiness 概览 | 被阻止的字段、措辞问题、Evidence refs 和导出 manifest | Claim Verifier / Public-safe Export（P0-10/P0-11） | 已有结构化回执；P0-10 v0.1 不核对图形 |
+| 移植后样本发生了什么？ | 独立的 graft 组成、胎儿 reference 支持和 program 证据视图 | animal/graft/timepoint、fine subtype、方法敏感性和 preparation–graft 来源 | Optional Graft Assessment（P0-12） | 有条件启用，尚无正式 `VisualizationArtifact` |
+
+移植后视图始终与移植前产品证据分开，不得反向改变移植前结论。
+
+#### 阅读、交互与证据状态
+
+大屏采用一张主科学图、紧凑导航/筛选区和证据检查器；手机竖屏一次只显示一张主图，筛选变成 chips 或 bottom sheet，证据详情变成可恢复的 bottom drawer。必要时可为密集矩阵或证据图提供手机横屏检查模式，但竖屏本身仍必须说清主要观察。
+
+选择任一图形元素时必须能看到：
+
+- 精确值、numerator、denominator、单位和区间；
+- evidence state 与 scientific status；
+- 数据、reference、method、Card 和环境版本；
+- Evidence IDs 与来源家族依赖；
+- missing、conflict 和 applicability 原因；
+- 对应的结构化记录或表格行；
+- 只针对该证据的 Agent 追问入口。
+
+关键数值和限制不能只依赖 hover；tap、focus 和键盘选择必须等价。URL 只允许保存公开的 selection、tab、filter 和 drill-down ID，不得包含私有路径、sample ID 或原始 payload。
+
+颜色只能辅助文字、形状和纹理，不能独自承担状态含义：
+
+| 含义 | 视觉约定 |
+|---|---|
+| measured 或与独立来源一致的支持证据 | 低饱和 teal，并显示状态文字 |
+| 冲突或需要复核 | amber，并配冲突符号或轮廓 |
+| unknown 或 OOD | purple，并明确写出 unknown/OOD |
+| alert | vermilion，仅用于已定义的复核信号 |
+| missing 或 unavailable | cool gray；unavailable 可使用纹理 |
+| 背景或未选中内容 | neutral gray/navy |
+
+`negative`、`missing`、`unknown`、`unavailable` 和 `alert` 必须保持不同。没有触发转录组复核信号不能画成绿色“安全通过”。candidate、shadow 和 exploratory 结果在 Web 和导出中持续显示文字标记。所有 active domain 继续保持 `domain_score=null`。
+
+#### 正式图形的数据绑定
+
+正式图必须由 typed、checksummed 的 visualization data artifact 生成。当前公开 `VisualizationArtifact` 仍只包含 `visualization_id`、`component_id`、`data_artifact_id`、`evidence_ids`、`denominator`、`units`、`status` 和 `render_artifact_ids`。以下是后续追加式合同，不能在 Schema 和运行时合并前当作现有字段：
+
+- component 和 component-version；
+- visualization-data Schema URI、object version 和 SHA-256；
+- Evidence IDs 与 mark-to-record lookup key；
+- numerator、denominator、denominator scope、unit 和 interval semantics；
+- evidence state、scientific status、missingness 和 applicability；
+- ProductCase、ProductDefinitionCard、MeasurementSpec 和所选 DataView；
+- reference、method、environment 和 source-family 绑定；
+- 允许的 filter、selection 和 drill-down 状态；
+- 静态 render、表格 fallback、alt text 和 long description；
+- 每个 renderer 使用的 export profile、数据 hash 和配置 hash。
+
+科学工具负责数值和科学状态；Visualization Composer 只负责视图变换和与 renderer 无关的 figure brief；Web 只负责布局、选择和导航，不得重算科学指标。静态 SVG/PDF/PNG 和交互 Web 必须消费同一份绑定数据并表达同一条观察和限制。在至少两个真实图族需要同一接口之前，不建立庞大的通用 chart grammar。
+
+#### 出版、无障碍与实现顺序
+
+正式导出优先使用可编辑 SVG/PDF，PNG 只作为栅格衍生物；采用一致的 Arial/Helvetica-compatible 字体、直接标签和色盲友好配色，不使用 rainbow scale 或仅靠红绿区分。图中必须写明分母、独立实验单位数和区间定义，并同时提供机器可读表格和文字替代。固定字体、排序、尺寸和 metadata，用于确定性图像回归。
+
+组件选择按以下顺序进行：
+
+1. 优先调用当前 Tool Package Card 已声明、可绑定 `VisualizationArtifact` 的组件；
+2. 缺少组件时，查看分析工具的官方绘图接口、官方源码示例和可视化 skill；
+3. 在服务器隔离环境中检查数据绑定、尺度、标签、缺失状态、移动端和视觉质量；
+4. 未登记图形只能以 `exploratory` 展示，通过审核前不得进入正式报告。
+
+可参考 [Scanpy plotting](https://scanpy.readthedocs.io/en/latest/tutorials/plotting/core.html)、[CellRank plotting](https://cellrank.readthedocs.io/en/stable/api/plotting.html)、[LIANA](https://liana-py.readthedocs.io/en/latest/api.html)、[Squidpy](https://squidpy.readthedocs.io/en/stable/api.html)、[Vitessce](https://vitessce.io/docs/) 和 [Cytoscape.js](https://js.cytoscape.org/)，但是否采用仍取决于真实数据绑定、可复现性和任务适用性。
+
+实现按独立 PR 顺序推进：
+
+1. 共享 visualization data binding 和 figure registry；
+2. Input Audit & QC 图；
+3. Cell-State Evidence、prediction-set 和 OOD 图；
+4. Evidence Sufficiency 和选中结论的证据路径；
+5. Target/Regional、Developmental、Off-target、Proliferation/Stress，各工具包一个 PR；
+6. 有条件的 Product Comparison 和 Graft 图；
+7. Web 结果页只消费已登记组件。
+
+P0-02 继续使用现有科学工作线，不新开第二条 P0-02 分支。图形只能继承 producing tool 的证据状态，不得提升 method、state 或 claim。
+
+一个图族只有同时满足以下条件才算完成：科学问题和默认阅读路径已记录；数据 artifact 有 typed Schema、version 和 hash；missing、unknown、unavailable、conflict、alert fixture 完整；每个 mark 可追溯到结构化记录和 Evidence ID；desktop、mobile、静态导出和表格 fallback 表达同一条观察；语义断言和确定性图像检查通过；私有路径和 ID 不进入 URL 或公开导出；精确 Git SHA 在服务器验证；结论不超出 producing tool 的证据。
 
 ### 6.7 解释、建议与迭代
 

@@ -15,6 +15,7 @@ evidence you need.
 
 | I want to… | Start | Continue with |
 |---|---|---|
+| Review the approved result experience and figure system | [Visualization system](BRIDGE_PRD.md#66-visualization-composer-与-web-交互) | [Scientific task cards](bridge_spec_v0.1/README.md) · [high-level contract](tool-contract.md) |
 | Understand the Agent product | [Product requirements](BRIDGE_PRD.md) | [Agent architecture and team boundary](agent-integration.md) · [product principles](product-principles.md) |
 | Run or integrate the current tool layer | [12 P0 Tool Packages](tool-packages.md) | [Request examples](../examples/README.md) · [high-level contract](tool-contract.md) |
 | Review the biology | [Product and scientific principles](product-principles.md) | [P0 specifications](bridge_spec_v0.1/README.md) · [data/reference registry](bridge_spec_v0.1/data_reference_registry.md) |
@@ -41,6 +42,7 @@ the documentation drift. Do not infer current behavior from an overview page.
 
 - [Product requirements](BRIDGE_PRD.md)
 - [Product and scientific principles](product-principles.md)
+- [Visualization system](BRIDGE_PRD.md#66-visualization-composer-与-web-交互)
 - [Agent team integration](agent-integration.md)
 - [Privacy and provenance](privacy-and-provenance.md)
 
