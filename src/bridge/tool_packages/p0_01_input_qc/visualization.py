@@ -162,10 +162,10 @@ def render_analysis_eligibility(
                 flow_axis.plot([index - 0.84, index - 0.16], [0.32, 0.32], color=GRID, lw=2.2, zorder=0)
             flow_axis.scatter(index, 0.32, s=350, color="white", edgecolor=color, linewidth=2.4, zorder=2)
             flow_axis.scatter(index, 0.32, s=62, color=color, edgecolor="none", zorder=3)
-            flow_axis.text(index, 0.03, label, ha="center", va="top", weight="semibold", fontsize=8.2)
+            flow_axis.text(index, 0.03, label, ha="center", va="top", weight="bold", fontsize=8.2)
             flow_axis.text(index, -0.13, value.replace("_", " "), ha="center", va="top", color=MUTED, fontsize=8)
 
-        flow_axis.text(0.0, -0.36, "Candidate QC status (not a filter)", weight="semibold", fontsize=8.3)
+        flow_axis.text(0.0, -0.36, "Candidate QC status (not a filter)", weight="bold", fontsize=8.3)
         bar_left, bar_width = 0.0, 2.0
         eligible, review = _candidate_counts(flags, declared_observations)
         if eligible is None:
@@ -190,7 +190,7 @@ def render_analysis_eligibility(
                 ha="left",
                 va="top",
                 color=TEAL,
-                weight="semibold",
+                weight="bold",
             )
             flow_axis.text(
                 bar_left + bar_width,
@@ -199,7 +199,7 @@ def render_analysis_eligibility(
                 ha="right",
                 va="top",
                 color=AMBER,
-                weight="semibold",
+                weight="bold",
             )
 
         view_axis.axis("off")
@@ -211,7 +211,7 @@ def render_analysis_eligibility(
             y = 0.67 - row * 0.19
             color = _state_color(state)
             view_axis.scatter(0.035, y, s=58, color=color, edgecolor="white", linewidth=0.7)
-            view_axis.text(0.10, y + 0.025, label, va="center", weight="semibold", fontsize=8.3)
+            view_axis.text(0.10, y + 0.025, label, va="center", weight="bold", fontsize=8.3)
             view_axis.text(0.10, y - 0.055, state.replace("_", " "), va="center", color=MUTED, fontsize=8)
         view_axis.text(
             0.0,
@@ -581,7 +581,7 @@ def _hexbin_or_unavailable(
 ):
     if x_values.empty or y_values.empty:
         axis.axis("off")
-        axis.text(0.5, 0.52, "Unavailable", ha="center", va="center", weight="semibold", transform=axis.transAxes)
+        axis.text(0.5, 0.52, "Unavailable", ha="center", va="center", weight="bold", transform=axis.transAxes)
         axis.text(0.5, 0.42, "Required per-observation metric is missing.", ha="center", va="center", color=MUTED, transform=axis.transAxes)
         return None
     hexbin = axis.hexbin(
