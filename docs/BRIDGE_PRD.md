@@ -149,10 +149,10 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 | Jerber population-scale iPSC DA (`EGAS00001002885`; `EGAD00001006157`) | 215 条 iPSC lines；pooled 2D mDA 分化 | scRNA-seq；D11/D30/D52，D52 含 rotenone block | 765,851 cells | donor、batch、timepoint 和扰动鲁棒性 | `available`；需按 donor/batch/condition 去重 |
 | BrainSTEM Toh (`GSE281535`) | hPSC；3D midbrain organoid；midbrain/mDA lineage | scRNA-seq；D20/D25/D30/D40/D50/D60 | 34,702 cells；48 sequencing sublibraries，每个时间点 8 个 | 2D/3D domain shift 和时间点描述 | `available`；在 biological sample/organoid/replicate map 冻结前，48 个 sublibraries 不得称为 48 个生物学重复，只能作 timepoint-level descriptive analysis |
 | Fiorenzano VM organoid (`GSE168323`) | hPSC；3D VM organoid；VM/mDA neurons 及前体 | scRNA-seq；D15/D30/D60/D90/D120 | 91,034 cells | organoid trajectory 和区域比较 | `available`；organoid 不与 2D product 直接排名 |
-| SphereDiff | hPSC；3D sphere differentiation；mDA progenitors | scRNA-seq；D7/D14/D21/D28 | 33,134 profiles；D28 为 9,547 cells | 内部时间序列和 D28 product comparator | `available`；各时间点分开建案，metadata 和披露范围待冻结 |
-| MacroDiff | hPSC；内部两类 mDA differentiation protocol；mDA progenitors | scRNA-seq；Protocol A 为 D14/D21/D28，Protocol B 为 D28 | 57,464 cells；A 36,070，B 21,394 | 内部时间序列和跨 protocol 比较 | `sealed`；两类 protocol 不合并为同一时间序列，细胞系、权限和公开措辞待确认 |
+| SphereDiff（陈跃军组，Cell Stem Cell 研究关联） | hPSC；3D sphere differentiation；mDA progenitors | scRNA-seq；论文原始序列位于受控项目 `HRA008865`；本地 BRIDGE v1 对象为 D28 | 正式 `count_ready` 输入尚未与本地对象一一对应；v1 对象 9,547 cells | v1 历史结果对照；上游输入闭合后再作真实上传验证 | `analysis_ready_only`；关联 Zhang et al., Cell Stem Cell 2025；不得用已注释对象冒充原始计数上传 |
+| MacroDiff（陈跃军组内部数据） | hPSC；内部两类 mDA differentiation protocol；mDA progenitors | scRNA-seq；Protocol A 为 D14/D21/D28，Protocol B 为 D28 | 六个原始计数 capture 共 78,542 个 cell-called barcodes；v1 下游对象 57,464 cells | P0-01 多-capture 真实上传验证；内部时间序列和跨 protocol 比较 | `count_ready_private`、`internal_unpublished`；不把 capture 当生物学重复，不公开原始数据、样本标识或服务器路径 |
 | Tiklová pre-graft RC17 (`GSE118412`) | RC17 hESC；2D VM 分化；VM/mDA progenitors | Smart-seq2/scRNA-seq；D16 | 404 hESC-derived cells | 与长期 graft 显式关联的历史 sanity check | `available`；样本量小且平台较旧；同源 fetal VM 256 cells 作为 reference，不计入产品分母 |
-| Legacy MSK-DA01 local object | 预期为 H9/WA09 clinical-grade mDA floor-plate 体系 | single-cell transcriptomics；D16 | 9,046 cells | 旧结果对齐 | `pending`、`sealed`；本地对象与公开来源待核实 |
+| Studer/MSK-DA01 protocol-linked D16 | 本地 D16 分化样本；已发表 MSK-DA01/Studer floor-plate 方案作为 protocol context | scRNA-seq；D16 | 原始过滤计数矩阵 11,087 个 cell-called barcodes；v1 下游对象 9,046 cells | P0-01 单-capture 真实 MTX 上传验证；已发表方案比较 | `count_ready_private`；Piao et al., Cell Stem Cell 2021 支持产品与方案背景，但当前证据不把本地测序文件声称为该论文公开数据 |
 
 ### 2.4 空间转录组与染色验证
 
@@ -242,7 +242,8 @@ graft 的分析单位为 `animal/graft x post-transplant timepoint`。只有在�
 | Jerber population-scale DA | Jerber et al., *Nature Genetics* (2021) | [10.1038/s41588-021-00801-6](https://doi.org/10.1038/s41588-021-00801-6) |
 | BrainSTEM Toh / `GSE281535` | Toh et al., *Science Advances* (2025) | [10.1126/sciadv.adu7944](https://doi.org/10.1126/sciadv.adu7944) |
 | Fiorenzano / `GSE168323` | Fiorenzano et al., *Nature Communications* (2021) | [10.1038/s41467-021-27464-5](https://doi.org/10.1038/s41467-021-27464-5) |
-| SphereDiff | Zhang et al., *Cell Stem Cell* (2025) | [10.1016/j.stem.2025.10.001](https://doi.org/10.1016/j.stem.2025.10.001) |
+| SphereDiff / Chen 组 Cell Stem Cell 研究 | Zhang et al., *Cell Stem Cell* (2025) | [10.1016/j.stem.2025.10.001](https://doi.org/10.1016/j.stem.2025.10.001) |
+| MSK-DA01 product/protocol context | Piao et al., *Cell Stem Cell* (2021) | [10.1016/j.stem.2021.01.004](https://doi.org/10.1016/j.stem.2021.01.004) |
 | LMX1A/BFP + MPP+ / `GSE249360` | Cardo et al., *Cells* (2023) | [10.3390/cells12242860](https://doi.org/10.3390/cells12242860) |
 | Opioid organoid / `GSE260711` | Kim et al., *Advanced Science* (2024) | [10.1002/advs.202400847](https://doi.org/10.1002/advs.202400847) |
 | FOUNDIN-PD | Bressan et al., *Cell Genomics* (2023) | [10.1016/j.xgen.2023.100261](https://doi.org/10.1016/j.xgen.2023.100261) |

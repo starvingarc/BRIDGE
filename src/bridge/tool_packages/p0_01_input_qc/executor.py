@@ -196,6 +196,7 @@ def _build_staged_run(
         "sensitivity_views": [],
     }
     qc_capture_groups: pd.Series | None = None
+    qc_capture_context: pd.Series | None = None
     metrics: pd.DataFrame | None = None
     flags: pd.DataFrame | None = None
 
@@ -226,6 +227,13 @@ def _build_staged_run(
             group_series, sample_warning = _declared_group(adata.obs, asset.metadata, "sample_id")
             if sample_warning and sample_warning not in warnings:
                 warnings.append(sample_warning)
+        qc_capture_context, context_warning = _declared_group(
+            adata.obs,
+            asset.metadata,
+            "timepoint",
+        )
+        if context_warning and context_warning != "timepoint_not_declared":
+            warnings.append(context_warning)
         cell_qc = {
             "count_metrics_state": "measured",
             "metrics": list(metrics.columns),
@@ -497,6 +505,7 @@ def _build_staged_run(
         metrics=metrics,
         flags=flags,
         capture_groups=qc_capture_groups,
+        capture_context=qc_capture_context,
         measurement_spec=measurement_spec,
         profile=profile_v2,
         metrics_artifact=metrics_artifact,

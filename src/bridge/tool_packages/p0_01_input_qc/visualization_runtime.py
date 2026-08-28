@@ -92,6 +92,7 @@ def write_typed_qc_visualizations(
     metrics: pd.DataFrame | None,
     flags: pd.DataFrame | None,
     capture_groups: pd.Series | None,
+    capture_context: pd.Series | None,
     measurement_spec: MeasurementSpec | None,
     profile: QCReadinessProfileV2,
     metrics_artifact: ArtifactManifest | None,
@@ -106,6 +107,7 @@ def write_typed_qc_visualizations(
         metrics=metrics,
         flags=flags,
         capture_groups=capture_groups,
+        capture_context=capture_context,
         measurement_spec=measurement_spec,
         profile=profile,
         run_id=run_id,
@@ -212,6 +214,7 @@ def _build_records(
     metrics: pd.DataFrame | None,
     flags: pd.DataFrame | None,
     capture_groups: pd.Series | None,
+    capture_context: pd.Series | None,
     measurement_spec: MeasurementSpec | None,
     profile: QCReadinessProfileV2,
     run_id: str,
@@ -349,6 +352,7 @@ def _build_records(
     distribution_records, display_groups = _distribution_records(
         metrics,
         capture_groups,
+        capture_context,
         count_evidence,
         observation_unit,
     )
@@ -376,6 +380,7 @@ def _build_records(
 def _distribution_records(
     metrics: pd.DataFrame | None,
     capture_groups: pd.Series | None,
+    capture_context: pd.Series | None,
     evidence_ids: list[str],
     observation_unit: str,
 ) -> tuple[list[QCVisualizationRecord], pd.Series | None]:
@@ -407,7 +412,13 @@ def _distribution_records(
 
     raw_groups = capture_groups.astype("string")
     unique_groups = sorted(raw_groups.dropna().unique().tolist())
-    mapping = {group: (f"capture_{index:03d}", f"Capture {index}") for index, group in enumerate(unique_groups, 1)}
+    mapping = {
+        group: (
+            f"capture_{index:03d}",
+            _capture_display_label(index, raw_groups.eq(group), capture_context),
+        )
+        for index, group in enumerate(unique_groups, 1)
+    }
     display_groups = raw_groups.map({group: label for group, (_, label) in mapping.items()})
     records: list[QCVisualizationRecord] = []
     for raw_group in unique_groups:
@@ -454,6 +465,21 @@ def _distribution_records(
                     )
                 )
     return records, display_groups
+
+
+def _capture_display_label(
+    index: int,
+    mask: pd.Series,
+    context: pd.Series | None,
+) -> str:
+    fallback = f"Capture {index}"
+    if context is None or len(context) != len(mask):
+        return fallback
+    values = context.reindex(mask.index).loc[mask].dropna().astype(str)
+    unique = [" ".join(value.split()) for value in values.unique() if value.strip()]
+    if len(unique) != 1 or len(unique[0]) > 32:
+        return fallback
+    return f"{unique[0]} · {fallback}"
 
 
 def _relationship_records(

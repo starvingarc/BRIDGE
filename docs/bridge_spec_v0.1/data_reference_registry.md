@@ -132,9 +132,9 @@ P0 中空间结果只称 `Spatial Reference Concordance`，不能称移植后宿
 | `Q-JERBER-v1` | population-scale iPSC DA，scRNA | D11/D30/D52；D52 含 rotenone block | >750,000 | donor/batch/timepoint robustness | 需按 donor、batch、condition 和 study family 去重 |
 | `Q-BRAINSTEM-TOH-v1` | midbrain organoid，scRNA | D20/D25/D30/D40/D50/D60 | 34,702；48 sequencing sublibraries（每个时间点 8 个） | 2D/3D domain shift 和时间点描述 | biological sample/organoid/replicate map 冻结前，不能把 48 sublibraries 当作 48 biological replicates；仅作 `descriptive_only` |
 | `Q-FIORENZANO-v1` | VM organoid，scRNA | D15/D30/D60/D90/D120 | 91,034 | organoid trajectory/region comparator | organoid 不与 2D product 直接总排名 |
-| `Q-SPHEREDIFF-v1` | 3D mDAP，scRNA | D28 | 9,547 | internal/published comparator | source metadata 和 disclosure scope 冻结后使用 |
-| `Q-MACRODIFF-v1` | internal mDA protocol，scRNA | D14/D21/D28 | 57,464 | sealed internal comparator | 权限和 disclosure 未冻结，不进入公开报告 |
-| `Q-LEGACY-MSKDA01-v1` | legacy D16 object | D16 | 9,046 | sealed legacy comparator | accession、原始 input 和样本标签待核实 |
+| `Q-SPHEREDIFF-v1` | 陈跃军组 SphereDiff，3D mDAP scRNA | D28 | v1 下游对象 9,547；上游 `count_ready` 尚不可用 | published-study-linked historical comparator | Zhang et al., Cell Stem Cell 2025 的原始序列位于受控 `HRA008865`；精确本地样本映射闭合前只作 `analysis_ready` 对照 |
+| `Q-MACRODIFF-v1` | 陈跃军组内部 MacroDiff，mDA protocol scRNA | D14/D21/D28 | 原始计数 78,542；v1 下游对象 57,464 | internal unpublished comparator and P0-01 upload fixture | 六个 capture 仅限服务器；不得视为六个生物学重复或进入公开样本级报告 |
+| `Q-LEGACY-MSKDA01-v1` | local Studer-protocol D16 object | D16 | 原始计数 11,087；v1 下游对象 9,046 | published-protocol-linked comparator and P0-01 upload fixture | Piao et al., Cell Stem Cell 2021 支持 MSK-DA01 方案背景；不据此声称本地测序文件是论文公开数据 |
 
 代表文献：
 
@@ -143,6 +143,8 @@ P0 中空间结果只称 `Spatial Reference Concordance`，不能称移植后宿
 - Storm et al., *Lineage tracing of stem cell-derived dopamine grafts in a Parkinson's model reveals shared origin of all graft-derived cells*, Science Advances 2024, [DOI 10.1126/sciadv.adn3057](https://doi.org/10.1126/sciadv.adn3057), `GSE200610`。
 - Maimaitili et al., *Enhanced production of mesencephalic dopaminergic neurons from lineage-restricted human undifferentiated stem cells*, Nature Communications 2023, [DOI 10.1038/s41467-023-43471-0](https://doi.org/10.1038/s41467-023-43471-0), scRNA `GSE227070`；`GSE227071` 为 parent SuperSeries。
 - Jerber et al., *Population-scale single-cell RNA-seq profiling across dopaminergic neuron differentiation*, Nature Genetics 2021, [DOI 10.1038/s41588-021-00801-6](https://doi.org/10.1038/s41588-021-00801-6)。
+- Zhang et al., *3D-generation of high-purity midbrain dopaminergic progenitors and lineage-guided refinement of grafts supports Parkinson's disease cell therapy*, Cell Stem Cell 2025, [DOI 10.1016/j.stem.2025.10.001](https://doi.org/10.1016/j.stem.2025.10.001)。
+- Piao et al., *Preclinical Efficacy and Safety of a Human Embryonic Stem Cell-Derived Midbrain Dopamine Progenitor Product, MSK-DA01*, Cell Stem Cell 2021, [DOI 10.1016/j.stem.2021.01.004](https://doi.org/10.1016/j.stem.2021.01.004)。
 
 ## 八、移植后 graft 后验层
 
@@ -218,7 +220,8 @@ Negative/OOD 数据检验 specificity 和拒答能力，不代表“低质量 PD
 | Development | Chen references、GSE204796、SISBAR、stress calibration、部分 OOD | Card、MeasurementSpec、阈值和 error curve |
 | Public locked | GSE200610、GSE227070、预注册 OOD | 算法冻结后评测 |
 | Domain shift | Jerber、Toh、Fiorenzano、La Manno | cross-source/2D/3D robustness |
-| Sealed internal | MacroDiff、经批准的其他内部 preparations | 一次性最终检查 |
+| Internal unpublished | MacroDiff、经批准的其他内部 preparations | 仅限服务器内方法开发与可视化测试；不公开原始数据或样本标识 |
+| Published study context with local files | SphereDiff、Studer-protocol D16 | SphereDiff 上游为受控数据且本地映射待确认；Studer 本地数据仅以已发表方案作为 protocol context；两者均保留来源和 checksum manifest |
 | Graft context | GSE200610、E-MTAB-14729、GSE204796、Tiklová | 独立后验层，不训练或修改移植前分域评估分数；竞争来源仍遵守 sealed policy |
 | Competitor sealed | E-MTAB-14729 及其他竞争研究公开 query，合法取得后 | BRIDGE 全部冻结后一次性测试；进入全局 clean-room denylist |
 
@@ -231,6 +234,6 @@ Negative/OOD 数据检验 specificity 和拒答能力，不代表“低质量 PD
 3. hEB58 两张切片的方向、ROI、segmentation 和同胚胎关系。
 4. 待返回空间数据的 donor、section、切面和时间合同。
 5. BrainSTEM 研究家族、样本、assay 和重复对象去重。
-6. MacroDiff、legacy MSK-DA01 等内部对象的权限、来源和公开措辞。
+6. MacroDiff 内部未发表对象的权限与公开措辞；SphereDiff `HRA008865` 样本到本地对象的精确对应；Studer-protocol D16 本地数据与已发表方案的边界说明。
 7. 各 graft 的 originating preparation、宿主、animal 和 timepoint map。
 8. 所有待核实 D/timepoint 字段不得由 Agent 按论文惯例补全。

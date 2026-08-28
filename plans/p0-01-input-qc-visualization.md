@@ -116,6 +116,32 @@ copied source enters the wheel.
 8. Build and install the wheel from the exact server SHA, then complete the one
    Draft PR for this data-readiness figure family.
 
+## Implementation and validation status
+
+The figure implementation is active on Draft PR #62. The processed
+fetal-midbrain object and GSE204796 have verified deterministic rendering,
+raw-unit semantics, public-identifier suppression and compressed candidate-view
+storage. GSE204796 remains a supplemental engineering stress test.
+
+Formal product-facing validation now starts from inputs that match the P0-01
+contract rather than from the processed BRIDGE v1 objects:
+
+| Dataset | Formal input | Current action |
+|---|---|---|
+| MacroDiff | Six cell-called raw-count captures combined without cell filtering; 78,542 cells | Run the complete multi-capture figure family and inspect capture/timepoint presentation |
+| Studer-protocol D16 | Original filtered 10x-style MTX; 11,087 cells | Run the complete single-capture figure family and inspect metadata/missing-state behavior |
+| SphereDiff | Upstream counts are controlled under `HRA008865`; exact local mapping unresolved | Keep the 9,547-cell v1 object as an `analysis_ready` historical control and render `count_ready` as unavailable |
+
+The v1 MacroDiff 57,464-cell and Studer 9,046-cell objects are exact downstream
+subsets of the upstream matrices. They may be used for historical comparison,
+but not as the simulated user upload. Piao et al. 2021 supports the published
+MSK-DA01 protocol context; it is not used to assert that the local Studer files
+are the paper data.
+
+Local working objects remain server-only and public figure artifacts must
+suppress sample identifiers and paths. Independent PR review and merge
+authorization remain; Web integration is still outside this plan.
+
 ## Non-goals
 
 - No Web page, responsive/mobile layout, interaction design or JavaScript renderer.

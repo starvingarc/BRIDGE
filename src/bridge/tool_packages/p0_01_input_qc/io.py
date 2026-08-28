@@ -601,13 +601,21 @@ def _read_10x_mtx(asset: InputAsset) -> ad.AnnData:
         raise InputAuditError("10x_gene_name_incomplete", "Gene Expression feature names must be complete")
     adata = ad.AnnData(
         matrix,
-        obs=pd.DataFrame(index=barcodes.iloc[:, 0].astype(str)),
+        obs=pd.DataFrame(
+            index=pd.Index(
+                barcodes.iloc[:, 0].astype(str).to_numpy(),
+                name="barcode",
+            )
+        ),
         var=pd.DataFrame(
             {
                 "feature_id": features.iloc[:, 0].astype(str).to_numpy(),
                 "feature_type": feature_types.loc[gene_expression].to_numpy(),
             },
-            index=gene_names.astype(str),
+            index=pd.Index(
+                gene_names.astype(str).to_numpy(),
+                name="gene_symbol",
+            ),
         ),
     )
     adata.uns["bridge_10x_feature_selection"] = {

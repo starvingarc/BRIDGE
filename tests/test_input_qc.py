@@ -388,12 +388,12 @@ def test_typed_qc_visualization_outputs_are_deterministic(tmp_path: Path) -> Non
 
 
 def test_anonymous_capture_labels_sort_by_numeric_suffix() -> None:
-    labels = ["Capture 1", "Capture 10", "Capture 2", "Unavailable"]
+    labels = ["D14 · Capture 1", "D28 · Capture 10", "D21 · Capture 2", "Unavailable"]
 
     assert sorted(labels, key=_capture_sort_key) == [
-        "Capture 1",
-        "Capture 2",
-        "Capture 10",
+        "D14 · Capture 1",
+        "D21 · Capture 2",
+        "D28 · Capture 10",
         "Unavailable",
     ]
 
@@ -409,8 +409,41 @@ def test_single_flag_combination_uses_a_linear_count_axis(tmp_path: Path) -> Non
         observation_unit="cells",
     )
     svg = svg_path.read_text(encoding="utf-8")
-    assert "No candidate flag" in svg
+    assert "No candidate QC flags observed" in svg
+    assert "Exclusive flag combination" not in svg
     assert "log scale" not in svg
+
+
+def test_declared_timepoint_context_is_shown_without_raw_capture_ids(tmp_path: Path) -> None:
+    input_path = _write_h5ad(tmp_path / "timepoint-context.h5ad", counts=True)
+    adata = ad.read_h5ad(input_path)
+    adata.obs["capture_id"] = ["secret-a"] * 3 + ["secret-b"] * 3
+    adata.obs["timepoint"] = ["D14"] * 3 + ["D28"] * 3
+    adata.write_h5ad(input_path)
+    request = _request(tmp_path, input_path, semantics="raw_counts")
+    asset = request.assets[0].model_copy(
+        update={
+            "metadata": {
+                "sample_id_column": "sample_id",
+                "capture_id_column": "capture_id",
+                "timepoint_column": "timepoint",
+            }
+        }
+    )
+    request = request.model_copy(update={"assets": [asset]})
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    data_path, payload = _artifact_json(run, "qc_visualization_data")
+    serialized = data_path.read_text(encoding="utf-8")
+    assert {"D14 · Capture 1", "D28 · Capture 2"} <= {
+        record["label"].split(":", 1)[0]
+        for record in payload["records"]
+        if record["component_ref"] == "bridge.qc.overview@0.2.0"
+    }
+    assert "secret-a" not in serialized
+    assert "secret-b" not in serialized
 
 
 def test_relationship_svg_contains_no_embedded_raster_images(tmp_path: Path) -> None:
@@ -884,6 +917,7 @@ def test_10x_mtx_is_supported_as_count_ready(tmp_path: Path) -> None:
         request_id="qc-10x",
         tool_id="P0-01",
         output_dir=(tmp_path / "results").resolve(),
+        measurement_spec_ref="QC-scRNA-candidate-v0.1",
         assets=[
             InputAsset(
                 asset_id="asset-10x",
@@ -903,6 +937,10 @@ def test_10x_mtx_is_supported_as_count_ready(tmp_path: Path) -> None:
     assert run.result["input_level"] == "count_ready"
     assert run.result["schema_integrity"]["n_cells"] == 3
     assert run.result["schema_integrity"]["n_genes"] == 3
+    candidate_path = next(item.path for item in run.artifacts if item.kind == "derived_h5ad")
+    candidate = ad.read_h5ad(candidate_path)
+    assert candidate.obs_names.name == "barcode"
+    assert candidate.var_names.name == "gene_symbol"
 
 
 def test_10x_h5_is_supported_as_count_ready(tmp_path: Path) -> None:

@@ -453,6 +453,12 @@ def render_qc_flag_intersections(
 ) -> tuple[Path, Path]:
     flag_columns = [column for column in FLAG_LABELS if column in flags.columns]
     combinations = flag_intersection_table(flags)
+    if len(combinations) == 1 and int(combinations.iloc[0]["n_flags"]) == 0:
+        return _render_no_candidate_flags(
+            len(flags),
+            output_stem,
+            observation_unit=observation_unit,
+        )
     x_values = np.arange(len(combinations))
     colors = [TEAL if row.n_flags == 0 else AMBER for row in combinations.itertuples()]
 
@@ -524,6 +530,55 @@ def render_qc_flag_intersections(
         return _save_figure(fig, output_stem)
 
 
+def _render_no_candidate_flags(
+    declared: int,
+    output_stem: Path,
+    *,
+    observation_unit: str,
+) -> tuple[Path, Path]:
+    with plt.rc_context(FIGURE_RC):
+        fig, axis = plt.subplots(figsize=(7.4, 3.6))
+        fig.subplots_adjust(left=0.08, right=0.96, top=0.69, bottom=0.19)
+        _figure_heading(
+            fig,
+            "QC-flag combinations and observation counts",
+            "No declared observation met any candidate review rule.",
+        )
+        axis.axis("off")
+        axis.plot(
+            [0.0, 1.0],
+            [0.48, 0.48],
+            transform=axis.transAxes,
+            color=TEAL_LIGHT,
+            lw=12,
+            solid_capstyle="round",
+        )
+        axis.text(
+            0.0,
+            0.7,
+            "No candidate QC flags observed",
+            transform=axis.transAxes,
+            fontsize=12,
+            weight="bold",
+        )
+        axis.text(
+            0.0,
+            0.24,
+            f"{declared:,} of {declared:,} declared {observation_unit}",
+            transform=axis.transAxes,
+            color=MUTED,
+            fontsize=9,
+        )
+        fig.text(
+            0.08,
+            0.055,
+            "Candidate thresholds support review; this result is not a biological quality, safety or potency conclusion.",
+            color=MUTED,
+            fontsize=7.8,
+        )
+        return _save_figure(fig, output_stem)
+
+
 def render_unavailable_figure(
     output_stem: Path,
     *,
@@ -556,9 +611,9 @@ def _candidate_counts(
 
 
 def _capture_sort_key(label: str) -> tuple[int, int | str]:
-    prefix = "Capture "
-    if label.startswith(prefix) and label.removeprefix(prefix).isdigit():
-        return 0, int(label.removeprefix(prefix))
+    suffix = label.rsplit("Capture ", 1)
+    if len(suffix) == 2 and suffix[1].isdigit():
+        return 0, int(suffix[1])
     return 1, label
 
 
