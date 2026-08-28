@@ -413,7 +413,7 @@ def _distribution_records(
     for raw_group in unique_groups:
         capture_id, capture_label = mapping[raw_group]
         group_metrics = metrics.loc[raw_groups.to_numpy() == raw_group]
-        for metric_id, metric_label, unit, _ in METRICS:
+        for metric_id, metric_label, record_unit, _, _ in METRICS:
             values = pd.to_numeric(group_metrics[metric_id], errors="coerce").dropna()
             base_id = f"distribution.{capture_id}.{metric_id}"
             if values.empty:
@@ -423,7 +423,7 @@ def _distribution_records(
                         component,
                         "distribution_summary",
                         f"{capture_label}: {metric_label}",
-                        unit,
+                        record_unit,
                         evidence_ids,
                         f"{metric_id}_unavailable",
                         metric_id=metric_id,
@@ -445,7 +445,7 @@ def _distribution_records(
                         "distribution_summary",
                         f"{capture_label}: {metric_label}",
                         "available",
-                        unit,
+                        record_unit,
                         evidence_ids,
                         metric_id=metric_id,
                         capture_id=capture_id,

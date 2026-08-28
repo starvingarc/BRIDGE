@@ -47,11 +47,41 @@ _VIOLIN_DIRECTION = (
 )
 
 METRICS = (
-    ("total_counts", "Total counts", "log10(count + 1)", lambda values: np.log10(values + 1.0)),
-    ("detected_genes", "Detected genes", "log10(genes + 1)", lambda values: np.log10(values + 1.0)),
-    ("mitochondrial_fraction", "Mitochondrial transcripts", "% of counts", lambda values: values * 100.0),
-    ("ribosomal_fraction", "Ribosomal transcripts", "% of counts", lambda values: values * 100.0),
-    ("top_20_gene_fraction", "Top-20 gene concentration", "% of counts", lambda values: values * 100.0),
+    (
+        "total_counts",
+        "Total counts",
+        "counts",
+        "log10(count + 1)",
+        lambda values: np.log10(values + 1.0),
+    ),
+    (
+        "detected_genes",
+        "Detected genes",
+        "genes",
+        "log10(genes + 1)",
+        lambda values: np.log10(values + 1.0),
+    ),
+    (
+        "mitochondrial_fraction",
+        "Mitochondrial transcripts",
+        "fraction",
+        "% of counts",
+        lambda values: values * 100.0,
+    ),
+    (
+        "ribosomal_fraction",
+        "Ribosomal transcripts",
+        "fraction",
+        "% of counts",
+        lambda values: values * 100.0,
+    ),
+    (
+        "top_20_gene_fraction",
+        "Top-20 gene concentration",
+        "fraction",
+        "% of counts",
+        lambda values: values * 100.0,
+    ),
 )
 
 FLAG_LABELS = {
@@ -250,7 +280,9 @@ def render_qc_distributions(
             "Distributions, median and interquartile range are shown separately for each caller-declared capture.",
         )
 
-        for axis, (column, title, unit, transform) in zip(axes, METRICS, strict=True):
+        for axis, (column, title, _, display_unit, transform) in zip(
+            axes, METRICS, strict=True
+        ):
             available_groups = 0
             for position, group in zip(positions, group_order, strict=True):
                 values = pd.to_numeric(metrics.loc[group_values == group, column], errors="coerce").dropna()
@@ -263,7 +295,7 @@ def render_qc_distributions(
                 available_groups += 1
                 _draw_raincloud(axis, transformed, float(position))
             axis.set_title(title, loc="left", fontsize=9.1, weight="bold", pad=8)
-            axis.set_xlabel(unit, fontsize=7.8)
+            axis.set_xlabel(display_unit, fontsize=7.8)
             axis.set_yticks(positions, group_order)
             axis.invert_yaxis()
             axis.xaxis.grid(True, color=GRID, lw=0.65)

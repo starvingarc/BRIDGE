@@ -269,12 +269,30 @@ def test_count_ready_h5ad_writes_immutable_artifacts_and_visualizations(tmp_path
     assert len(run.visualizations) == 2
     assert all(item.evidence_ids for item in run.visualizations)
     assert all(artifact.path.is_file() for artifact in run.artifacts)
+    candidate_path = next(
+        artifact.path for artifact in run.artifacts if artifact.kind == "derived_h5ad"
+    )
+    with h5py.File(candidate_path) as candidate:
+        assert candidate["X/data"].compression == "gzip"
 
     data_path, data_payload = _artifact_json(run, "qc_visualization_data")
     profile = QCVisualizationDataProfile.model_validate(data_payload)
     assert set(record.component_ref for record in profile.records) == set(
         QC_COMPONENT_REFS
     )
+    assert {
+        record.metric_id: record.unit
+        for record in profile.records
+        if record.component_ref == "bridge.qc.overview@0.2.0"
+        and record.statistic == "median"
+    } == {
+        "total_counts": "counts",
+        "detected_genes": "genes",
+        "mitochondrial_fraction": "fraction",
+        "ribosomal_fraction": "fraction",
+        "top_20_gene_fraction": "fraction",
+    }
+
     assert "capture-a" not in data_path.read_text(encoding="utf-8")
     assert "capture_001" in data_path.read_text(encoding="utf-8")
     table_path = next(

@@ -277,7 +277,7 @@ def _build_staged_run(
             for column in metrics.columns:
                 adata.obs[f"bridge_qc_{column}"] = metrics[column].to_numpy()
             derived_path = staging_run_dir / "candidate_qc_view.h5ad"
-            adata.write_h5ad(derived_path)
+            adata.write_h5ad(derived_path, compression="gzip")
             evidence_ids.append(f"evidence:{run_id}:candidate-flags")
             artifacts.append(
                 _artifact(
