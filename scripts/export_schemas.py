@@ -76,6 +76,10 @@ from bridge.tool_packages.p0_12_graft_assessment.run_models import (
 from bridge.tool_packages.p0_11_public_safe_export.models import (
     PUBLIC_SCHEMA_MODELS as P0_11_SCHEMA_MODELS,
 )
+from bridge.toolkit.visualization import (
+    FigureRegistrySnapshot,
+    VisualizationArtifactV2,
+)
 
 
 MODELS = {
@@ -144,6 +148,11 @@ MODELS = {
     "tool_run": ("bridge://schemas/tool-run/v0.1", ToolRun),
     "tool_run_v2": ("bridge://schemas/tool-run/v0.2", ToolRunV2),
     "visualization_artifact": ("bridge://schemas/visualization-artifact/v0.1", VisualizationArtifact),
+    "visualization_artifact_v2": (
+        "bridge://schemas/visualization-artifact/v0.2",
+        VisualizationArtifactV2,
+    ),
+    "figure_registry": ("bridge://schemas/figure-registry/v0.1", FigureRegistrySnapshot),
 }
 
 

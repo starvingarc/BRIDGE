@@ -1,0 +1,237 @@
+{
+  "$defs": {
+    "FigureComponentSpec": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "data_schema_refs": {
+              "uniqueItems": true
+            },
+            "interactions": {
+              "uniqueItems": true
+            },
+            "legacy_component_ids": {
+              "uniqueItems": true
+            },
+            "producer_tool_ids": {
+              "uniqueItems": true
+            },
+            "required_fallbacks": {
+              "uniqueItems": true
+            },
+            "surfaces": {
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "component_id": {
+              "not": {
+                "pattern": "\\.v[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "data_schema_refs": {
+                "minItems": 1
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "registry_state": {
+                "const": "legacy_untyped"
+              }
+            },
+            "required": [
+              "registry_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "data_schema_refs": {
+                "maxItems": 0
+              },
+              "legacy_component_ids": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "component_id": {
+          "pattern": "^bridge\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$",
+          "title": "Component Id",
+          "type": "string"
+        },
+        "component_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "title": "Component Version",
+          "type": "string"
+        },
+        "data_schema_refs": {
+          "items": {
+            "pattern": "^bridge://schemas/[a-z0-9-]+/v[0-9]+\\.[0-9]+$",
+            "type": "string"
+          },
+          "title": "Data Schema Refs",
+          "type": "array"
+        },
+        "default_role": {
+          "$ref": "#/$defs/FigureRole"
+        },
+        "figure_family": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Figure Family",
+          "type": "string"
+        },
+        "interactions": {
+          "items": {
+            "$ref": "#/$defs/VisualizationInteraction"
+          },
+          "title": "Interactions",
+          "type": "array"
+        },
+        "legacy_component_ids": {
+          "items": {
+            "pattern": "^bridge\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$",
+            "type": "string"
+          },
+          "title": "Legacy Component Ids",
+          "type": "array"
+        },
+        "producer_tool_ids": {
+          "items": {
+            "pattern": "^P0-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Producer Tool Ids",
+          "type": "array"
+        },
+        "question": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Question",
+          "type": "string"
+        },
+        "registry_state": {
+          "$ref": "#/$defs/FigureRegistryState"
+        },
+        "required_fallbacks": {
+          "items": {
+            "enum": [
+              "table",
+              "alt_text",
+              "long_description",
+              "static_vector"
+            ],
+            "type": "string"
+          },
+          "title": "Required Fallbacks",
+          "type": "array"
+        },
+        "scientific_status_source": {
+          "const": "producer_run",
+          "default": "producer_run",
+          "title": "Scientific Status Source",
+          "type": "string"
+        },
+        "surfaces": {
+          "items": {
+            "$ref": "#/$defs/FigureSurface"
+          },
+          "minItems": 1,
+          "title": "Surfaces",
+          "type": "array"
+        },
+        "title": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "component_id",
+        "component_version",
+        "title",
+        "question",
+        "figure_family",
+        "producer_tool_ids",
+        "registry_state",
+        "default_role",
+        "surfaces"
+      ],
+      "title": "FigureComponentSpec",
+      "type": "object"
+    },
+    "FigureRegistryState": {
+      "enum": [
+        "legacy_untyped",
+        "typed_candidate"
+      ],
+      "title": "FigureRegistryState",
+      "type": "string"
+    },
+    "FigureRole": {
+      "enum": [
+        "main",
+        "supporting"
+      ],
+      "title": "FigureRole",
+      "type": "string"
+    },
+    "FigureSurface": {
+      "enum": [
+        "desktop",
+        "mobile_portrait",
+        "static_export",
+        "table"
+      ],
+      "title": "FigureSurface",
+      "type": "string"
+    },
+    "VisualizationInteraction": {
+      "enum": [
+        "filter",
+        "select",
+        "drill_down"
+      ],
+      "title": "VisualizationInteraction",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/figure-registry/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "components": {
+      "items": {
+        "$ref": "#/$defs/FigureComponentSpec"
+      },
+      "title": "Components",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "registry_id": {
+      "const": "bridge.figure-registry",
+      "default": "bridge.figure-registry",
+      "title": "Registry Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "components"
+  ],
+  "title": "FigureRegistrySnapshot",
+  "type": "object"
+}

@@ -668,7 +668,11 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 
 ### 6.6 Visualization Composer 与 Web 交互
 
-截至 2026-08-28，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，但集成式 Web 结果页和 Visualization Composer 尚未实现。当前 P0-01 只产生两类 QC 图，P0-02 只产生组成、reference 支持、marker 和冲突图；其他证据域仍以结构化结果为主。以下内容是后续实现必须遵守的设计合同，不表示对应页面或字段已经存在。
+截至 2026-08-28，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
+`VisualizationArtifact` v0.2 数据绑定合同与 figure registry v0.1；集成式 Web
+结果页和 Visualization Composer 仍未实现。当前 P0-01 只产生两类 QC 图，
+P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有组件仍登记为
+`legacy_untyped`；其他证据域仍以结构化结果为主。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经存在。
 
 #### 用户问题与默认阅读顺序
 
@@ -735,7 +739,11 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 
 #### 正式图形的数据绑定
 
-正式图必须由 typed、checksummed 的 visualization data artifact 生成。当前公开 `VisualizationArtifact` 仍只包含 `visualization_id`、`component_id`、`data_artifact_id`、`evidence_ids`、`denominator`、`units`、`status` 和 `render_artifact_ids`。以下是后续追加式合同，不能在 Schema 和运行时合并前当作现有字段：
+正式图必须由 typed、checksummed 的 visualization data artifact 生成。P0-01
+和 P0-02 当前 `ToolRun` 仍使用 byte-compatible 的 `VisualizationArtifact`
+v0.1。独立的 v0.2 合同已经实现下列追加字段，但尚未嵌入 `ToolRun`；只有在
+各图族的后续 PR 提供 package-owned data Schema、表格回退和渲染验证后，figure
+registry 才能从 `legacy_untyped` 升为 `typed_candidate`：
 
 - component 和 component-version；
 - visualization-data Schema URI、object version 和 SHA-256；
@@ -747,6 +755,9 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 - 允许的 filter、selection 和 drill-down 状态；
 - 静态 render、表格 fallback、alt text 和 long description；
 - 每个 renderer 使用的 export profile、数据 hash 和配置 hash。
+
+Web/Agent 可通过 `bridge-tool figures list/show/validate` 或 Python interface
+查询组件及其迁移状态。注册本身不提升图、方法、状态或结论的科学等级。
 
 科学工具负责数值和科学状态；Visualization Composer 只负责视图变换和与 renderer 无关的 figure brief；Web 只负责布局、选择和导航，不得重算科学指标。静态 SVG/PDF/PNG 和交互 Web 必须消费同一份绑定数据并表达同一条观察和限制。在至少两个真实图族需要同一接口之前，不建立庞大的通用 chart grammar。
 

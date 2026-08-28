@@ -110,3 +110,55 @@ def test_cli_knowledge_show_rejects_unknown_id(capsys) -> None:
         "error": "unknown_knowledge_id",
         "knowledge_id": "SOURCE-NOT-REGISTERED",
     }
+
+
+def test_cli_figures_list_filters_by_producer_tool(capsys) -> None:
+    exit_code = main(["figures", "list", "--tool", "P0-01"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert [item["component_id"] for item in payload] == [
+        "bridge.qc.counts_genes",
+        "bridge.qc.overview",
+    ]
+    assert all(item["registry_state"] == "legacy_untyped" for item in payload)
+
+
+def test_cli_figures_show_resolves_legacy_component_id(capsys) -> None:
+    exit_code = main(["figures", "show", "bridge.qc.overview.v0.1"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert payload["component_id"] == "bridge.qc.overview"
+    assert payload["component_version"] == "0.1.0"
+
+
+def test_cli_figures_show_rejects_unknown_component(capsys) -> None:
+    exit_code = main(["figures", "show", "bridge.not.registered@0.1.0"])
+
+    assert exit_code == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "error": "unknown_figure_component",
+        "component_ref": "bridge.not.registered@0.1.0",
+    }
+
+
+def test_cli_figures_validate_reports_migration_state(capsys) -> None:
+    exit_code = main(["figures", "validate"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert payload["valid"] is True
+    assert payload["component_count"] == 7
+    assert payload["typed_candidate_count"] == 0
+    assert payload["legacy_untyped_count"] == 7
+
+
+def test_cli_figures_list_rejects_invalid_tool_id(capsys) -> None:
+    exit_code = main(["figures", "list", "--tool", "P0-99"])
+
+    assert exit_code == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "error": "invalid_tool_id",
+        "tool_id": "P0-99",
+    }

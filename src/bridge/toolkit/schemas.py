@@ -53,6 +53,7 @@ SCHEMA_REFS = {
     "bridge://schemas/evidence-sufficiency-run-result/v0.2": "evidence_sufficiency_run_result_v2.schema.json",
     "bridge://schemas/evidence-validation-record/v0.1": "evidence_validation_record.schema.json",
     "bridge://schemas/freeze-gate-spec/v0.2": "freeze_gate_spec.schema.json",
+    "bridge://schemas/figure-registry/v0.1": "figure_registry.schema.json",
     "bridge://schemas/program-spec/v0.1": "program_spec.schema.json",
     "bridge://schemas/protocol-ir/v0.1": "protocol_ir.schema.json",
     "bridge://schemas/program-evidence-bundle/v0.1": "program_evidence_bundle.schema.json",
@@ -125,6 +126,7 @@ SCHEMA_REFS = {
     "bridge://schemas/tool-run/v0.1": "tool_run.schema.json",
     "bridge://schemas/tool-run/v0.2": "tool_run_v2.schema.json",
     "bridge://schemas/visualization-artifact/v0.1": "visualization_artifact.schema.json",
+    "bridge://schemas/visualization-artifact/v0.2": "visualization_artifact_v2.schema.json",
 }
 
 

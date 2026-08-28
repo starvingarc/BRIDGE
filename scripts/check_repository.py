@@ -51,6 +51,13 @@ SHARED_CONTRACT_SPINE_FILES = (
     Path("tests/p0_biological_units.py"),
     Path("tests/test_shared_p0_contract_spine.py"),
 )
+SHARED_VISUALIZATION_CONTRACT_FILES = (
+    Path("plans/visualization-data-contract.md"),
+    Path("docs/validation/visualization_data_contract_20260828.md"),
+    Path("src/bridge/toolkit/visualization.py"),
+    Path("src/bridge/resources/schemas/figure_registry.schema.json"),
+    Path("src/bridge/resources/schemas/visualization_artifact_v2.schema.json"),
+)
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
 )
@@ -130,10 +137,15 @@ def _tracked_file_budget() -> int:
         (ROOT / relative).is_file()
         for relative in SHARED_CONTRACT_SPINE_FILES
     )
+    visualization_contract_files = sum(
+        (ROOT / relative).is_file()
+        for relative in SHARED_VISUALIZATION_CONTRACT_FILES
+    )
     return (
         TRACKED_FILE_BASELINE
         + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
         + shared_files
+        + visualization_contract_files
     )
 
 

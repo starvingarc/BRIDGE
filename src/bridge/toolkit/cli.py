@@ -36,6 +36,17 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("--request", required=True, type=Path)
 
+    figures_parser = subparsers.add_parser("figures")
+    figure_subparsers = figures_parser.add_subparsers(
+        dest="figures_command",
+        required=True,
+    )
+    figure_list = figure_subparsers.add_parser("list")
+    figure_list.add_argument("--tool")
+    figure_show = figure_subparsers.add_parser("show")
+    figure_show.add_argument("component_ref")
+    figure_subparsers.add_parser("validate")
+
     knowledge_parser = subparsers.add_parser("knowledge")
     knowledge_subparsers = knowledge_parser.add_subparsers(dest="knowledge_command", required=True)
     knowledge_subparsers.add_parser("validate")
@@ -109,6 +120,40 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 4
         _emit(result.model_dump(mode="json"))
         return 0 if result.execution_state.value in {"succeeded", "partial"} else 3
+
+    if args.command == "figures":
+        from bridge.toolkit.visualization import FigureRegistry
+
+        figures = FigureRegistry.load_default()
+        if args.figures_command == "validate":
+            summary = figures.validation_summary()
+            _emit(summary)
+            return 0 if summary["valid"] else 3
+        if args.figures_command == "show":
+            try:
+                component = figures.get(args.component_ref)
+            except KeyError:
+                _emit(
+                    {
+                        "error": "unknown_figure_component",
+                        "component_ref": args.component_ref,
+                    }
+                )
+                return 2
+            _emit(component.model_dump(mode="json"))
+            return 0
+        try:
+            components = figures.list(tool_id=args.tool)
+        except ValueError:
+            _emit({"error": "invalid_tool_id", "tool_id": args.tool})
+            return 2
+        _emit(
+            [
+                component.model_dump(mode="json")
+                for component in components
+            ]
+        )
+        return 0
 
     if args.command == "knowledge":
         from bridge.toolkit.knowledge import KnowledgeRegistry
