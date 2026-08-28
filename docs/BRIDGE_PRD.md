@@ -5,7 +5,7 @@
 | 项目全称 | Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation |
 | 产品形态 | 科学评估智能体（Scientific Agent） |
 | 文档版本 | `v0.1` |
-| 修订日期 | 2026-08-26 |
+| 修订日期 | 2026-08-28 |
 | 状态 | `current_primary_specification` |
 | 适用范围 | 研究用途的细胞治疗产品转录组评估；PD hPSC-mDA 为首个实例 |
 | 文档权威性 | 本文档是 BRIDGE 当前唯一主规范；Registry 和 Task Card 是受其约束的实施附件 |
@@ -668,7 +668,9 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 
 ### 6.6 Visualization Composer 与 Web 交互
 
-Web 是 BRIDGE 的主要结果载体；具体页面布局、设计系统和前端技术在后续阶段确定。
+Web 是 BRIDGE 的主要结果载体。已批准的用户阅读顺序、核心图表、状态语义、移动端和导出要求见 [Visualization System](visualization.md)。该文档是设计合同，不表示当前 Web 已经实现。
+
+默认结果页不按 P0 工具编号组织，而按研究者的问题组织：数据是否可用、产品中有哪些细胞、身份是否获得独立支持、目标区域和发育阶段是否匹配、是否存在非目标/未知/过程复核信号，以及哪些结论仍缺证据。首页以六个证据域行展示状态、关键观察、分母、主要限制和下钻入口，不生成综合总分、雷达图或红绿灯式产品等级。
 
 Visualization Composer 接收分析结果、ProductEvidenceObject、Evidence Graph 和 ComparisonRecord，并自动生成核心图表。用户可以选择图表元素或证据节点继续追问，Agent 也可以按需生成下钻视图。
 
@@ -680,6 +682,8 @@ Visualization Composer 接收分析结果、ProductEvidenceObject、Evidence Gra
 4. 未注册图表可以标记为 `exploratory` 展示，通过审核前不能进入正式报告。
 
 每个正式 `VisualizationArtifact` 必须绑定 Evidence ID、数据版本、单位、分母、不确定性和证据状态，并支持追溯到底层表格。Web 同时支持 SVG/PNG、CSV 和版本化报告导出。
+
+当前公开 `VisualizationArtifact` 只实现最小绑定表面。Visualization System 中列出的 typed data、hash、mark-to-record、交互状态、无障碍和导出字段属于后续追加式合同；在 Schema 和运行时实现前不得作为当前能力。
 
 可视化能力可参考 [Scanpy plotting](https://scanpy.readthedocs.io/en/latest/tutorials/plotting/core.html)、[CellRank plotting](https://cellrank.readthedocs.io/en/stable/api/plotting.html)、[LIANA](https://liana-py.readthedocs.io/en/latest/api.html)、[Squidpy](https://squidpy.readthedocs.io/en/stable/api.html)、[Vitessce](https://vitessce.io/docs/) 和 [Cytoscape.js](https://js.cytoscape.org/)。具体组件仍需登记和验证。
 

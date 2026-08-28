@@ -36,7 +36,7 @@ Every package supports:
 | `ProductCase` | Versioned product instance bound to one definition, measurement contract and optional exact biological-unit manifest |
 | `ProductDefinitionCard` | Versioned product definition and external StateRoleMap reference; it does not freeze state assignments in code |
 | `ArtifactManifest` | Immutable output files, media type, checksum and provenance |
-| `VisualizationArtifact` | Chart component, data binding, Evidence IDs and render files |
+| `VisualizationArtifact` | Current minimum chart component, data binding, Evidence IDs and render files; approved future requirements are documented in the [visualization system](visualization.md) |
 | `KnowledgeHit` | Versioned method/source result returned by local retrieval |
 | `AnnotationVocabulary` | Versioned L1/L2/L3 state hierarchy, aliases and unresolved labels |
 | `ReferenceManifest` | Immutable source-aware reference snapshot and artifact checksums |
@@ -97,6 +97,12 @@ Expression assets declare one of `analysis_ready`, `count_ready` or `droplet_rea
 ## Artifact Rules
 
 Original inputs are read-only. Each run creates a new bundle containing a manifest, structured results, tables, visualization payloads and optional derived data objects. Files include checksum, schema version and source references. A content change creates a new version; an old report remains reproducible.
+
+The approved [visualization system](visualization.md) defines the user reading
+order and additive future data-binding requirements. The current public
+`VisualizationArtifact` remains authoritative until a separately versioned
+Schema and runtime implementation are merged; documentation does not add fields
+to the installed interface.
 
 The versioned JSON contracts in `src/bridge/resources/schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` and package-owned model modules are the Python sources used to generate those schemas.
 
