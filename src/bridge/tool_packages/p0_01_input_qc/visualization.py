@@ -366,6 +366,8 @@ def render_qc_relationships(
             occupancy = np.asarray(hexbin.get_array(), dtype=float)
             if occupancy.size and np.ptp(occupancy) > 0:
                 colorbar = fig.colorbar(hexbin, ax=axis, pad=0.025, fraction=0.046)
+                if colorbar.solids is not None:
+                    colorbar.solids.set_rasterized(False)
                 colorbar.set_label(f"{observation_unit.capitalize()} per hexagon", fontsize=7.5)
                 colorbar.outline.set_visible(False)
             else:

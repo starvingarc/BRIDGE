@@ -35,6 +35,7 @@ from bridge.tool_packages.p0_01_input_qc.visualization import (
     FLAG_LABELS,
     _capture_sort_key,
     render_qc_flag_intersections,
+    render_qc_relationships,
 )
 from bridge.tool_packages.p0_01_input_qc.measurement_specs import load_measurement_spec
 from bridge.toolkit.contracts import (
@@ -392,6 +393,28 @@ def test_single_flag_combination_uses_a_linear_count_axis(tmp_path: Path) -> Non
     svg = svg_path.read_text(encoding="utf-8")
     assert "No candidate flag" in svg
     assert "log scale" not in svg
+
+
+def test_relationship_svg_contains_no_embedded_raster_images(tmp_path: Path) -> None:
+    rng = np.random.default_rng(7)
+    counts = np.exp(rng.normal(8.0, 0.75, 1_000))
+    metrics = pd.DataFrame(
+        {
+            "total_counts": counts,
+            "detected_genes": np.sqrt(counts) * 28.0 + rng.normal(0, 80, 1_000),
+            "mitochondrial_fraction": rng.beta(2.0, 18.0, 1_000),
+        }
+    )
+
+    svg_path, _ = render_qc_relationships(
+        metrics,
+        tmp_path / "relationships",
+        observation_unit="cells",
+    )
+
+    svg = svg_path.read_text(encoding="utf-8")
+    assert "Cells per hexagon" in svg
+    assert "<image" not in svg
 
 
 @pytest.mark.parametrize("reference_source", ["columns", "constants"])
