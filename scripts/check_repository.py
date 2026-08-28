@@ -60,6 +60,7 @@ SHARED_VISUALIZATION_CONTRACT_FILES = (
 )
 P001_VISUALIZATION_FILES = (
     Path("plans/p0-01-input-qc-visualization.md"),
+    Path("docs/validation/p0_01_input_qc_visualization_20260828.md"),
     Path("src/bridge/tool_packages/p0_01_input_qc/visualization_runtime.py"),
     Path("src/bridge/resources/schemas/p0_01_structured_output_index_v2.schema.json"),
     Path("src/bridge/resources/schemas/p0_01_visualization_artifact_set.schema.json"),
