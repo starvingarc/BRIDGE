@@ -691,9 +691,12 @@ P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有
 
 #### 核心图表体系
 
-| 使用者的问题 | 默认主图 | 需要时展开 | 证据来源 | 当前不足 |
+下表第一列是使用者的阅读需求，只用于组织分析路径，不作为图题。正式图题必须直接描述
+所示变量、比较对象和分析范围，避免把技术质量评估表述为对整项分析的笼统可信度判断。
+
+| 使用者关注点（非图题） | 默认主图 | 需要时展开 | 证据来源 | 当前不足 |
 |---|---|---|---|---|
-| 这次分析能信吗？ | 数据流与分析资格图：上传观测数 → 结构有效 → 候选 QC 保留状态 → 可进入状态分析 | 每个 sample/capture 的 QC raincloud/violin；counts–genes/mitochondrial hexbin；QC flag UpSet；不同 QC view 的结果敏感性 | Input Audit & QC（P0-01） | 目前只有汇总直方图和散点图，缺逐 capture、阈值、观测流向和敏感性 |
+| 输入数据是否满足后续分析条件 | **数据质量与分析资格评估**：声明观测数 → 结构与矩阵语义有效 → 候选 QC 状态 → 下游视图可用性 | **各 capture 的质量指标分布**；**文库复杂度与线粒体转录本比例**；**质量标记组合及细胞数量**；不同 QC view 的结果敏感性 | Input Audit & QC（P0-01） | 目前只有汇总直方图和散点图，缺逐 capture、阈值、观测流向和敏感性 |
 | 产品里有什么？ | L1/L2/L3 层级组成图，明确分开已支持、prediction set、unknown/OOD 和 unresolved，并显示区间与分母 | 可展开至每个状态、来源和观测；UMAP 只作探索，不作为身份依据 | Cell-State Evidence（P0-02） | 当前组成图缺 prediction set、区间和层级交互 |
 | 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：分别显示内部参考、Birtele、La Manno 等来源的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布、unknown 原因 | Cell-State Evidence（P0-02） | 当前 forced-label/OOD 问题尚未被直观展示 |
 | 目标细胞和区域身份符合预期吗？ | target / acceptable adjacent / off-target / unresolved 组成区间图 | 区域证据热图、reference correlation、program activity、连续身份权重、NNLS residual；空间投射仅在具备合格数据时出现 | Target Identity & Regional Fidelity（P0-03） | 已有结构化比例和方法结果，但没有正式图形产物 |
@@ -776,7 +779,7 @@ Web/Agent 可通过 `bridge-tool figures list/show/validate` 或 Python interfac
 共享 visualization data binding 和 figure registry 已先行完成。后续实现不按
 P0 编号机械排序，而按上表的使用者问题和完整图表族分别提交 PR：
 
-1. 这次分析能信吗；
+1. 输入数据是否满足后续分析条件；
 2. 产品里有什么；
 3. 这些状态可靠吗；
 4. 目标细胞和区域身份符合预期吗；

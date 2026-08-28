@@ -1,16 +1,21 @@
-# Data Readiness Visualization
+# Input Data Quality and Analysis Eligibility Figures
 
-This is the first user-question figure family in the approved visualization
-roadmap: “Can this analysis be trusted?” It is produced by P0-01, but future
-visualization PRs follow researcher questions rather than P0 numeric order.
+This is the first figure family in the approved visualization roadmap. It is
+organized around a user's need to determine whether the submitted input meets
+the technical conditions of the requested analyses, but that navigation prompt
+is not used as a figure title. It is produced by P0-01; future visualization PRs
+follow researcher needs rather than P0 numeric order.
 
-## Researcher question
+## Analytical scope
 
 Can the uploaded observations support the requested analyses, and which technical
 limitations still need review?
 
-The figures explain input readiness. They do not grade the cell product, declare
-a product safe, remove observations, or change any biological conclusion.
+The figure-family title is **Input Data Quality and Analysis Eligibility**. The
+figures report defined technical measurements and availability states; they do
+not grade the cell product, establish the reliability of every downstream
+analysis, declare a product safe, remove observations, or change a biological
+conclusion.
 
 ## Evidence lock
 
@@ -33,10 +38,10 @@ count-level input remain `unavailable`, never zero.
 
 | Component | Role | Analytical job | Default evidence |
 |---|---|---|---|
-| `bridge.qc.readiness-flow@0.1.0` | main | Composition/flow from declared observations to candidate flags and downstream view availability | counts and explicit unavailable states |
-| `bridge.qc.overview@0.2.0` | supporting | Per-capture distributions of five QC metrics | median, interquartile range, observations and missingness |
-| `bridge.qc.counts-genes@0.2.0` | supporting | Joint counts–genes and counts–mitochondrial relationships | per-observation values with candidate-review overlay |
-| `bridge.qc.flag-intersections@0.1.0` | supporting | Exclusive intersections of candidate QC flags | exact counts and full declared denominator |
+| `bridge.qc.readiness-flow@0.1.0` | main | **Observation retention and analysis eligibility**: declared observations, validated structure/matrix semantics, candidate eligibility and downstream-view availability | counts and explicit unavailable states |
+| `bridge.qc.overview@0.2.0` | supporting | **Quality-metric distributions by capture**: five measured QC variables shown separately for every complete caller-declared capture | median, interquartile range, observations and missingness |
+| `bridge.qc.counts-genes@0.2.0` | supporting | **Library complexity and mitochondrial transcript fraction**: joint counts–genes and counts–mitochondrial relationships | per-observation values with candidate-review overlay |
+| `bridge.qc.flag-intersections@0.1.0` | supporting | **QC-flag combinations and observation counts**: exclusive intersections of candidate QC flags | exact counts and full declared denominator |
 
 The two existing `@0.1.0` static components remain registered as
 `legacy_untyped` for compatibility. The new components are additive
@@ -51,6 +56,8 @@ readiness flow, but no effect or stability result may be invented.
 - Each component must work as a self-contained scientific figure with a clear
   question, one immediate observation and direct labels; P0 IDs and method names
   stay in notes or evidence details rather than leading the title.
+- No figure title may ask whether the complete analysis is “trustworthy”; titles
+  must name the measured variables, comparison unit and technical scope.
 - Deterministic editable SVG is primary; PNG is a raster derivative, and a
   machine-readable table preserves every plotted value and lookup key.
 - Color roles: neutral navy/gray for context, low-saturation teal for measured
