@@ -30,7 +30,7 @@ product capabilities rather than integrated runtime behavior.
 
 ## Visualization And User Reading Order
 
-The approved [visualization system](visualization.md) organizes the result
+The approved [visualization system](BRIDGE_PRD.md#66-visualization-composer-与-web-交互) organizes the result
 experience around researcher questions: data readiness, product composition,
 identity support, target/regional and developmental fit, off-target/unknown and
 process signals, comparison, and evidence gaps.
