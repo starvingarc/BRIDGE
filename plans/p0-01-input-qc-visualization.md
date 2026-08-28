@@ -40,7 +40,7 @@ count-level input remain `unavailable`, never zero.
 |---|---|---|---|
 | `bridge.qc.readiness-flow@0.1.0` | main | **Observation retention and analysis eligibility**: declared observations, validated structure/matrix semantics, candidate eligibility and downstream-view availability | counts and explicit unavailable states |
 | `bridge.qc.overview@0.2.0` | supporting | **Quality-metric distributions by capture**: five measured QC variables shown separately for every complete caller-declared capture | median, interquartile range, observations and missingness |
-| `bridge.qc.counts-genes@0.2.0` | supporting | **Library complexity and mitochondrial transcript fraction**: joint counts–genes and counts–mitochondrial relationships | per-observation values with candidate-review overlay |
+| `bridge.qc.counts_genes@0.2.0` | supporting | **Library complexity and mitochondrial transcript fraction**: joint counts–genes and counts–mitochondrial relationships | per-observation values with candidate-review overlay |
 | `bridge.qc.flag-intersections@0.1.0` | supporting | **QC-flag combinations and observation counts**: exclusive intersections of candidate QC flags | exact counts and full declared denominator |
 
 The two existing `@0.1.0` static components remain registered as

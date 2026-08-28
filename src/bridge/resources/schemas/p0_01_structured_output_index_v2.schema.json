@@ -1,0 +1,364 @@
+{
+  "$defs": {
+    "P001StructuredOutputRecordV2": {
+      "additionalProperties": false,
+      "description": "One machine-discoverable structured P0-01 v0.2 output.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "application/json",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "object_version": {
+          "minLength": 1,
+          "title": "Object Version",
+          "type": "string"
+        },
+        "relative_filename": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Relative Filename",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "qc_readiness_profile_v2",
+            "biological_unit_assignment",
+            "biological_unit_manifest",
+            "qc_visualization_data",
+            "visualization_artifact_set"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_ref": {
+          "minLength": 1,
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "relative_filename",
+        "artifact_id",
+        "sha256",
+        "media_type",
+        "schema_ref",
+        "object_version"
+      ],
+      "title": "P001StructuredOutputRecordV2",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/p0-01-structured-output-index/v0.2",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "properties": {
+        "outputs": {
+          "items": {
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "qc_readiness_profile_v2"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "object_version": {
+                      "const": "0.2.0"
+                    },
+                    "schema_ref": {
+                      "const": "bridge://schemas/qc-readiness-profile/v0.2"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "biological_unit_assignment"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "object_version": {
+                      "const": "0.1.0"
+                    },
+                    "schema_ref": {
+                      "const": "bridge://schemas/biological-unit-assignment/v0.1"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "biological_unit_manifest"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "object_version": {
+                      "const": "0.1.0"
+                    },
+                    "schema_ref": {
+                      "const": "bridge://schemas/biological-unit-manifest/v0.1"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "qc_visualization_data"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "object_version": {
+                      "const": "0.1.0"
+                    },
+                    "schema_ref": {
+                      "const": "bridge://schemas/qc-visualization-data/v0.1"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "visualization_artifact_set"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "object_version": {
+                      "const": "0.1.0"
+                    },
+                    "schema_ref": {
+                      "const": "bridge://schemas/p0-01-visualization-artifact-set/v0.1"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "outputs": {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "qc_readiness_profile_v2"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 1
+        }
+      }
+    },
+    {
+      "properties": {
+        "outputs": {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "biological_unit_assignment"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 0
+        }
+      }
+    },
+    {
+      "properties": {
+        "outputs": {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "biological_unit_manifest"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 0
+        }
+      }
+    },
+    {
+      "properties": {
+        "outputs": {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "qc_visualization_data"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 1
+        }
+      }
+    },
+    {
+      "properties": {
+        "outputs": {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "visualization_artifact_set"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 1
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outputs": {
+            "contains": {
+              "properties": {
+                "role": {
+                  "enum": [
+                    "biological_unit_assignment",
+                    "biological_unit_manifest"
+                  ]
+                }
+              },
+              "required": [
+                "role"
+              ]
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "outputs": {
+            "allOf": [
+              {
+                "contains": {
+                  "properties": {
+                    "role": {
+                      "const": "biological_unit_assignment"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                }
+              },
+              {
+                "contains": {
+                  "properties": {
+                    "role": {
+                      "const": "biological_unit_manifest"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "description": "Additive v0.2 index for the QC profile, lineage and typed figures.",
+  "properties": {
+    "object_version": {
+      "const": "0.2.0",
+      "default": "0.2.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "outputs": {
+      "items": {
+        "$ref": "#/$defs/P001StructuredOutputRecordV2"
+      },
+      "maxItems": 5,
+      "minItems": 3,
+      "title": "Outputs",
+      "type": "array"
+    },
+    "run_id": {
+      "minLength": 1,
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/p0-01-structured-output-index/v0.2",
+      "default": "bridge://schemas/p0-01-structured-output-index/v0.2",
+      "title": "Schema Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "outputs"
+  ],
+  "title": "P001StructuredOutputIndexV2",
+  "type": "object"
+}

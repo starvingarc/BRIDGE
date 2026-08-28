@@ -23,7 +23,12 @@ from bridge.tool_packages._configurable_contracts import (
 from bridge.tool_packages.p0_01_input_qc import executor as input_qc_executor
 from bridge.tool_packages.p0_01_input_qc.io import (
     P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF,
+    P001_STRUCTURED_OUTPUT_INDEX_V2_SCHEMA_REF,
+    P001VisualizationArtifactSet,
     P001StructuredOutputIndex,
+    P001StructuredOutputIndexV2,
+    QC_COMPONENT_REFS,
+    QCVisualizationDataProfile,
     sha256_path,
 )
 from bridge.tool_packages.p0_01_input_qc.measurement_specs import load_measurement_spec
@@ -35,6 +40,7 @@ from bridge.toolkit.contracts import (
 )
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.schemas import load_schema
+from bridge.toolkit.visualization import FigureRegistry
 
 
 def _sha256(path: Path) -> str:
@@ -197,6 +203,26 @@ def test_analysis_ready_h5ad_emits_raw_structure_without_count_flags(tmp_path: P
     assert "measurement_spec_not_selected" in run.result["missing_inputs"]
     assert all(measurement.domain_score is None for measurement in run.measurements)
 
+    _, data_payload = _artifact_json(run, "qc_visualization_data")
+    profile = QCVisualizationDataProfile.model_validate(data_payload)
+    unavailable = [
+        record
+        for record in profile.records
+        if record.evidence_state.value == "unavailable"
+    ]
+    assert profile.source_table_artifact_id is None
+    assert unavailable
+    assert all(record.value is None and record.numerator is None for record in unavailable)
+    _, artifact_set_payload = _artifact_json(run, "visualization_artifact_set")
+    artifact_set = P001VisualizationArtifactSet.model_validate(artifact_set_payload)
+    assert {item.component_ref for item in artifact_set.visualizations} == set(
+        QC_COMPONENT_REFS
+    )
+    assert all(
+        item.scientific_status == "candidate"
+        for item in artifact_set.visualizations
+    )
+
 
 def test_count_ready_h5ad_writes_immutable_artifacts_and_visualizations(tmp_path: Path) -> None:
     input_path = _write_h5ad(tmp_path / "counts.h5ad", counts=True)
@@ -227,10 +253,114 @@ def test_count_ready_h5ad_writes_immutable_artifacts_and_visualizations(tmp_path
         "visualization_data",
         "visualization_svg",
         "visualization_png",
+        "qc_visualization_data",
+        "qc_visualization_table",
+        "qc_visualization_svg",
+        "qc_visualization_png",
+        "visualization_artifact_set",
+        P001_STRUCTURED_OUTPUT_INDEX_V2_SCHEMA_REF,
     }
-    assert run.visualizations
+    assert len(run.visualizations) == 2
     assert all(item.evidence_ids for item in run.visualizations)
     assert all(artifact.path.is_file() for artifact in run.artifacts)
+
+    data_path, data_payload = _artifact_json(run, "qc_visualization_data")
+    profile = QCVisualizationDataProfile.model_validate(data_payload)
+    assert set(record.component_ref for record in profile.records) == set(
+        QC_COMPONENT_REFS
+    )
+    assert "capture-a" not in data_path.read_text(encoding="utf-8")
+    assert "capture_001" in data_path.read_text(encoding="utf-8")
+    table_path = next(
+        artifact.path
+        for artifact in run.artifacts
+        if artifact.kind == "qc_visualization_table"
+    )
+    assert "capture-a" not in table_path.read_text(encoding="utf-8")
+
+    _, artifact_set_payload = _artifact_json(run, "visualization_artifact_set")
+    artifact_set = P001VisualizationArtifactSet.model_validate(artifact_set_payload)
+    registry = FigureRegistry.load_default()
+    for visualization in artifact_set.visualizations:
+        registry.validate_artifact(visualization)
+        assert visualization.data_binding.sha256 == artifact_set.data_profile_sha256
+        assert {render.media_type for render in visualization.renders} == {
+            "image/svg+xml",
+            "image/png",
+        }
+
+    v1_path = next(
+        artifact.path
+        for artifact in run.artifacts
+        if artifact.kind == P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF
+    )
+    v1_index = P001StructuredOutputIndex.model_validate_json(v1_path.read_bytes())
+    assert {
+        record.role for record in v1_index.outputs
+    }.isdisjoint({"qc_visualization_data", "visualization_artifact_set"})
+    v2_path = next(
+        artifact.path
+        for artifact in run.artifacts
+        if artifact.kind == P001_STRUCTURED_OUTPUT_INDEX_V2_SCHEMA_REF
+    )
+    v2_index = P001StructuredOutputIndexV2.model_validate_json(v2_path.read_bytes())
+    assert {
+        record.role for record in v2_index.outputs
+    } >= {
+        "qc_readiness_profile_v2",
+        "qc_visualization_data",
+        "visualization_artifact_set",
+    }
+    for schema_ref, payload in (
+        ("bridge://schemas/qc-visualization-data/v0.1", data_payload),
+        (
+            "bridge://schemas/p0-01-visualization-artifact-set/v0.1",
+            artifact_set_payload,
+        ),
+        (
+            "bridge://schemas/p0-01-structured-output-index/v0.2",
+            json.loads(v2_path.read_text(encoding="utf-8")),
+        ),
+    ):
+        assert not list(Draft202012Validator(load_schema(schema_ref)).iter_errors(payload))
+
+
+def test_typed_qc_visualization_outputs_are_deterministic(tmp_path: Path) -> None:
+    input_path = _write_h5ad(tmp_path / "deterministic-figures.h5ad", counts=True)
+    first_request = _request(
+        tmp_path,
+        input_path,
+        semantics="raw_counts",
+        spec="QC-scRNA-candidate-v0.1",
+    )
+    second_request = first_request.model_copy(
+        update={"output_dir": (tmp_path / "second-results").resolve()}
+    )
+
+    first = ToolRegistry.load_default().run(first_request)
+    second = ToolRegistry.load_default().run(second_request)
+
+    assert first.execution_state is second.execution_state is ExecutionState.SUCCEEDED
+    assert first.run_id == second.run_id
+    deterministic_kinds = {
+        "qc_visualization_data",
+        "qc_visualization_table",
+        "qc_visualization_svg",
+        "qc_visualization_png",
+        "visualization_artifact_set",
+    }
+    first_hashes = {
+        artifact.artifact_id: artifact.sha256
+        for artifact in first.artifacts
+        if artifact.kind in deterministic_kinds
+    }
+    second_hashes = {
+        artifact.artifact_id: artifact.sha256
+        for artifact in second.artifacts
+        if artifact.kind in deterministic_kinds
+    }
+    assert first_hashes == second_hashes
+    assert len(first_hashes) == 11
 
 
 @pytest.mark.parametrize("reference_source", ["columns", "constants"])
@@ -987,6 +1117,18 @@ def test_incomplete_capture_values_never_form_a_pooled_qc_group(
         "state": "unavailable",
         "reason_codes": ["biological_unit_lineage_capture_partition_unavailable"],
     }
+    _, visualization_payload = _artifact_json(run, "qc_visualization_data")
+    visualization_profile = QCVisualizationDataProfile.model_validate(
+        visualization_payload
+    )
+    distribution_records = [
+        record
+        for record in visualization_profile.records
+        if record.component_ref == "bridge.qc.overview@0.2.0"
+    ]
+    assert len(distribution_records) == 1
+    assert distribution_records[0].capture_id is None
+    assert distribution_records[0].missing_reason_codes == ["capture_partition_unavailable"]
 
 
 def test_multiple_complete_captures_are_summarized_separately(tmp_path: Path) -> None:

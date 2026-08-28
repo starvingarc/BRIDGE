@@ -42,7 +42,11 @@ from bridge.tool_packages._configurable_contracts import (
     ProductDefinitionCard,
 )
 from bridge.tool_packages._input_contracts import ToolInputContract
-from bridge.tool_packages.p0_01_input_qc.io import P001StructuredOutputIndex
+from bridge.tool_packages.p0_01_input_qc.io import (
+    P001_VISUALIZATION_SCHEMA_MODELS,
+    P001StructuredOutputIndex,
+    P001StructuredOutputIndexV2,
+)
 from bridge.tool_packages.p0_03_target_regional.models import (
     PUBLIC_SCHEMA_MODELS as P0_03_SCHEMA_MODELS,
 )
@@ -129,6 +133,10 @@ MODELS = {
         "bridge://schemas/p0-01-structured-output-index/v0.1",
         P001StructuredOutputIndex,
     ),
+    "p0_01_structured_output_index_v2": (
+        "bridge://schemas/p0-01-structured-output-index/v0.2",
+        P001StructuredOutputIndexV2,
+    ),
     "qc_readiness_profile": ("bridge://schemas/qc-readiness-profile/v0.1", QCReadinessProfile),
     "qc_readiness_profile_v2": (
         "bridge://schemas/qc-readiness-profile/v0.2",
@@ -167,6 +175,7 @@ def _schema_filename(schema_id: str) -> str:
 
 
 for schema_models in (
+    P001_VISUALIZATION_SCHEMA_MODELS,
     P0_03_SCHEMA_MODELS,
     P0_04_SCHEMA_MODELS,
     P0_05_SCHEMA_MODELS,

@@ -1,0 +1,312 @@
+{
+  "$defs": {
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "QCVisualizationRecord": {
+      "additionalProperties": false,
+      "description": "One public, renderer-independent QC figure datum.",
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "capture_id": {
+          "anyOf": [
+            {
+              "pattern": "^capture_[0-9]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capture Id"
+        },
+        "component_ref": {
+          "enum": [
+            "bridge.qc.readiness-flow@0.1.0",
+            "bridge.qc.overview@0.2.0",
+            "bridge.qc.counts_genes@0.2.0",
+            "bridge.qc.flag-intersections@0.1.0"
+          ],
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "denominator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "denominator_scope": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Scope"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "metric_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric Id"
+        },
+        "missing_reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Reason Codes",
+          "type": "array"
+        },
+        "missingness": {
+          "enum": [
+            "none",
+            "partial",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "record_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "enum": [
+            "eligibility_stage",
+            "view_availability",
+            "distribution_summary",
+            "relationship_summary",
+            "flag_intersection"
+          ],
+          "title": "Record Type",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "eligible",
+            "available",
+            "candidate",
+            "review_required",
+            "unavailable"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "statistic": {
+          "anyOf": [
+            {
+              "enum": [
+                "declared_count",
+                "available_count",
+                "q1",
+                "median",
+                "q3",
+                "threshold",
+                "combination_count"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statistic"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "record_id",
+        "component_ref",
+        "record_type",
+        "label",
+        "state",
+        "unit",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "evidence_ids"
+      ],
+      "title": "QCVisualizationRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/qc-visualization-data/v0.1",
+  "additionalProperties": false,
+  "description": "Versioned QC visualization data and source-table binding.",
+  "properties": {
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observation_unit": {
+      "enum": [
+        "cells",
+        "nuclei",
+        "barcodes"
+      ],
+      "title": "Observation Unit",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:[A-Za-z0-9._:-]+$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "profile_id": {
+      "pattern": "^qc-visualization-data:[A-Za-z0-9._-]+$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/QCVisualizationRecord"
+      },
+      "minItems": 4,
+      "title": "Records",
+      "type": "array"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/qc-visualization-data/v0.1",
+      "default": "bridge://schemas/qc-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "source_columns": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Columns",
+      "type": "array"
+    },
+    "source_table_artifact_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Table Artifact Id"
+    },
+    "source_table_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Table Sha256"
+    }
+  },
+  "required": [
+    "profile_id",
+    "producer_run_ref",
+    "observation_unit",
+    "records"
+  ],
+  "title": "QCVisualizationDataProfile",
+  "type": "object"
+}

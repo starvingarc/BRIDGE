@@ -16,8 +16,11 @@ from bridge.tool_packages.p0_01_input_qc.io import (
     InputAuditError,
     LEGACY_TWO_COLUMN_FEATURE_WARNING,
     P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF,
+    P001_STRUCTURED_OUTPUT_INDEX_V2_SCHEMA_REF,
     P001StructuredOutputIndex,
+    P001StructuredOutputIndexV2,
     P001StructuredOutputRecord,
+    P001StructuredOutputRecordV2,
     build_declared_lineage,
     canonical_json_bytes,
     read_expression_asset,
@@ -34,6 +37,9 @@ from bridge.tool_packages.p0_01_input_qc.metrics import (
 from bridge.tool_packages.p0_01_input_qc.visualization import (
     render_counts_genes_scatter,
     render_qc_overview,
+)
+from bridge.tool_packages.p0_01_input_qc.visualization_runtime import (
+    write_typed_qc_visualizations,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -190,6 +196,8 @@ def _build_staged_run(
         "sensitivity_views": [],
     }
     qc_capture_groups: pd.Series | None = None
+    metrics: pd.DataFrame | None = None
+    flags: pd.DataFrame | None = None
 
     if input_level == "count_ready":
         try:
@@ -481,6 +489,25 @@ def _build_staged_run(
         ),
     )
 
+    metrics_artifact = next(
+        (item for item in artifacts if item.kind == "qc_metrics"),
+        None,
+    )
+    typed_visualizations = write_typed_qc_visualizations(
+        metrics=metrics,
+        flags=flags,
+        capture_groups=qc_capture_groups,
+        measurement_spec=measurement_spec,
+        profile=profile_v2,
+        metrics_artifact=metrics_artifact,
+        staging_run_dir=staging_run_dir,
+        final_run_dir=final_run_dir,
+        run_id=run_id,
+        tool_version=spec.version,
+        observation_unit=observation_unit,
+    )
+    artifacts.extend(typed_visualizations.artifacts)
+
     structured_index = P001StructuredOutputIndex(
         object_version="0.1.0",
         schema_ref=P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF,
@@ -496,6 +523,45 @@ def _build_staged_run(
             structured_index_path,
             v2_evidence_ids,
             logical_path=final_run_dir / structured_index_path.name,
+        )
+    )
+
+    structured_outputs_v2 = [
+        P001StructuredOutputRecordV2.model_validate(item.model_dump(mode="json"))
+        for item in structured_outputs
+    ]
+    structured_outputs_v2.extend(
+        [
+            _structured_output_record_v2(
+                role="qc_visualization_data",
+                artifact=typed_visualizations.data_artifact,
+                schema_ref="bridge://schemas/qc-visualization-data/v0.1",
+                object_version="0.1.0",
+            ),
+            _structured_output_record_v2(
+                role="visualization_artifact_set",
+                artifact=typed_visualizations.artifact_set_artifact,
+                schema_ref="bridge://schemas/p0-01-visualization-artifact-set/v0.1",
+                object_version="0.1.0",
+            ),
+        ]
+    )
+    structured_index_v2 = P001StructuredOutputIndexV2(
+        run_id=run_id,
+        outputs=structured_outputs_v2,
+    )
+    structured_index_v2_path = staging_run_dir / "structured_output_index_v2.json"
+    _write_json(
+        structured_index_v2_path,
+        structured_index_v2.model_dump(mode="json"),
+    )
+    artifacts.append(
+        _artifact(
+            f"artifact:{run_id}:structured-output-index-v2",
+            P001_STRUCTURED_OUTPUT_INDEX_V2_SCHEMA_REF,
+            structured_index_v2_path,
+            v2_evidence_ids,
+            logical_path=final_run_dir / structured_index_v2_path.name,
         )
     )
 
@@ -849,6 +915,24 @@ def _structured_output_record(
     object_version: str,
 ) -> P001StructuredOutputRecord:
     return P001StructuredOutputRecord(
+        role=role,
+        relative_filename=artifact.path.name,
+        artifact_id=artifact.artifact_id,
+        sha256=artifact.sha256,
+        media_type="application/json",
+        schema_ref=schema_ref,
+        object_version=object_version,
+    )
+
+
+def _structured_output_record_v2(
+    *,
+    role: str,
+    artifact: ArtifactManifest,
+    schema_ref: str,
+    object_version: str,
+) -> P001StructuredOutputRecordV2:
+    return P001StructuredOutputRecordV2(
         role=role,
         relative_filename=artifact.path.name,
         artifact_id=artifact.artifact_id,
