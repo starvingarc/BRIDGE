@@ -46,22 +46,22 @@ A data-view sensitivity figure is deferred because P0-01 does not yet receive
 downstream results computed on multiple views. Availability may be shown in the
 readiness flow, but no effect or stability result may be invented.
 
-## Reading and visual contract
+## Analysis-figure contract
 
-- Large screen: readiness flow first; distributions, relationships and flag
-  intersections follow as supporting figures with direct labels.
-- Mobile portrait: the main observation and readiness flow remain first; one
-  supporting figure is shown at a time, with tap/focus selection and a table
-  fallback. No essential value depends on hover.
-- Static export: deterministic editable SVG is primary; PNG is a derivative.
-  Desktop and mobile render profiles consume the same checksummed data.
+- Each component must work as a self-contained scientific figure with a clear
+  question, one immediate observation and direct labels; P0 IDs and method names
+  stay in notes or evidence details rather than leading the title.
+- Deterministic editable SVG is primary; PNG is a raster derivative, and a
+  machine-readable table preserves every plotted value and lookup key.
 - Color roles: neutral navy/gray for context, low-saturation teal for measured
   observations, amber for candidate review, vermilion only for defined alerts,
   and cool gray with pattern/text for unavailable evidence.
 - Typography and marks: Arial/Helvetica-compatible text, direct labels, restrained
   axes, no rainbow scale, no traffic-light grade and no decorative background.
 - Every figure states the denominator, candidate status, main limitation and
-  source/evidence link. Tables preserve exact values and record lookup keys.
+  source/evidence link without relying on hover or an interactive interface.
+- The registry declares only `static_export` and `table` support in this PR.
+  Web layout, mobile adaptation, interaction and renderer work are deferred.
 
 ## Data and artifact contract
 
@@ -73,8 +73,8 @@ state, scientific status, missingness, applicability and Evidence IDs.
 
 The structured-output index will discover both new JSON objects. Existing
 `ToolRun` fields and `VisualizationArtifact` v0.1 records remain byte
-compatible. URLs may contain only public selection/filter/drill-down IDs; no
-local path, raw payload or private sample identifier is permitted.
+compatible. No public artifact may contain a local path, raw payload or private sample
+identifier. Interaction lists remain empty until the later Web implementation.
 
 ## Prior art and implementation boundary
 
@@ -99,7 +99,7 @@ copied source enters the wheel.
    profile or optional lineage pair.
 3. Emit explicit available/unavailable records for all input levels; emit
    per-observation and flag evidence only when count input is eligible.
-4. Render desktop/mobile SVG and PNG plus deterministic TSV table fallbacks.
+4. Render deterministic publication SVG and PNG plus TSV table fallbacks.
 5. Register four typed candidates while retaining the two legacy component
    versions.
 6. Add semantic, Schema, missing-state, traceability, deterministic-render and
@@ -111,7 +111,7 @@ copied source enters the wheel.
 
 ## Non-goals
 
-- No Web page or JavaScript renderer.
+- No Web page, responsive/mobile layout, interaction design or JavaScript renderer.
 - No new QC method, threshold, reference, sample name or biological-state name.
 - No actual row filtering and no claim that candidate flags were reviewed.
 - No doublet, ambient-RNA or downstream sensitivity figure without eligible
@@ -123,7 +123,7 @@ copied source enters the wheel.
 
 The PR is complete only when the data Schemas and renders agree byte-for-byte
 with their bound hashes; unavailable and partial fixtures remain explicit;
-desktop, mobile, vector, raster and table forms preserve the same observation;
+vector, raster and table forms preserve the same observation;
 all marks trace to records and Evidence IDs; repeated renders are deterministic;
 the complete repository and wheel gates pass on the server; and real-data
 figures receive a visual and scientific-boundary review.

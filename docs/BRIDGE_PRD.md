@@ -792,6 +792,10 @@ P0 编号机械排序，而按上表的使用者问题和完整图表族分别�
 数据合同和完整阅读路径决定，而不是由 P0 编号决定。Web 结果页只消费已经登记
 并通过该图表族验收的组件。
 
+当前阶段先完成可独立审阅的科学分析图：确定数据编码、分母、区间、缺失状态、
+静态 SVG/PNG 和表格回退。Web 页面布局、响应式适配、交互控件与前端 renderer
+在分析图通过审核后另行实现；后续 UI 不得改变已经审核的数据语义。
+
 P0-02 继续使用现有科学工作线，不新开第二条 P0-02 分支。图形只能继承 producing tool 的证据状态，不得提升 method、state 或 claim。
 
 一个图族只有同时满足以下条件才算完成：科学问题和默认阅读路径已记录；数据 artifact 有 typed Schema、version 和 hash；missing、unknown、unavailable、conflict、alert fixture 完整；每个 mark 可追溯到结构化记录和 Evidence ID；desktop、mobile、静态导出和表格 fallback 表达同一条观察；语义断言和确定性图像检查通过；私有路径和 ID 不进入 URL 或公开导出；精确 Git SHA 在服务器验证；结论不超出 producing tool 的证据。
