@@ -53,6 +53,7 @@ SHARED_CONTRACT_SPINE_FILES = (
 )
 SHARED_VISUALIZATION_CONTRACT_FILES = (
     Path("plans/visualization-data-contract.md"),
+    Path("docs/validation/visualization_data_contract_20260828.md"),
     Path("src/bridge/toolkit/visualization.py"),
     Path("src/bridge/resources/schemas/figure_registry.schema.json"),
     Path("src/bridge/resources/schemas/visualization_artifact_v2.schema.json"),
