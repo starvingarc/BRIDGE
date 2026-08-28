@@ -87,7 +87,6 @@
           "$ref": "#/$defs/FigureRole"
         },
         "figure_family": {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Figure Family",
           "type": "string"
@@ -117,7 +116,6 @@
           "type": "array"
         },
         "question": {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Question",
           "type": "string"
@@ -153,7 +151,6 @@
           "type": "array"
         },
         "title": {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Title",
           "type": "string"

@@ -19,7 +19,7 @@
       "properties": {
         "alt_text": {
           "maxLength": 240,
-          "minLength": 1,
+          "minLength": 12,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Alt Text",
           "type": "string"
@@ -30,7 +30,7 @@
           "type": "string"
         },
         "long_description": {
-          "minLength": 1,
+          "minLength": 40,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Long Description",
           "type": "string"
@@ -80,7 +80,6 @@
           "type": "string"
         },
         "version": {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Version",
           "type": "string"
@@ -273,7 +272,6 @@
         "interval_semantics": {
           "anyOf": [
             {
-              "minLength": 1,
               "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
               "type": "string"
             },
@@ -467,7 +465,6 @@
           "type": "string"
         },
         "export_profile_id": {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Export Profile Id",
           "type": "string"
@@ -482,13 +479,11 @@
           "type": "string"
         },
         "renderer_id": {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Renderer Id",
           "type": "string"
         },
         "renderer_version": {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Renderer Version",
           "type": "string"
@@ -674,7 +669,6 @@
     "denominator_label": {
       "anyOf": [
         {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "type": "string"
         },
@@ -688,7 +682,6 @@
     "denominator_scope": {
       "anyOf": [
         {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "type": "string"
         },
@@ -718,7 +711,6 @@
       "type": "array"
     },
     "insight_title": {
-      "minLength": 1,
       "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
       "title": "Insight Title",
       "type": "string"
@@ -728,7 +720,6 @@
     },
     "limitations": {
       "items": {
-        "minLength": 1,
         "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
         "type": "string"
       },
@@ -763,7 +754,6 @@
       "type": "string"
     },
     "producer_tool_version": {
-      "minLength": 1,
       "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
       "title": "Producer Tool Version",
       "type": "string"
@@ -777,13 +767,11 @@
       "type": "array"
     },
     "scientific_status": {
-      "minLength": 1,
       "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
       "title": "Scientific Status",
       "type": "string"
     },
     "takeaway": {
-      "minLength": 1,
       "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
       "title": "Takeaway",
       "type": "string"
@@ -791,7 +779,6 @@
     "unit": {
       "anyOf": [
         {
-          "minLength": 1,
           "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "type": "string"
         },

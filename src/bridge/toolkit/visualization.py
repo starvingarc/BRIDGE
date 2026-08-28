@@ -37,7 +37,7 @@ _TOOL_ID = r"^P0-(0[1-9]|1[0-2])$"
 
 _ComponentId = Annotated[str, Field(pattern=_COMPONENT_ID)]
 _EvidenceId = Annotated[str, Field(min_length=1, pattern=_EVIDENCE_ID)]
-_NonBlankText = Annotated[str, Field(min_length=1, pattern=_NON_BLANK_TEXT)]
+_NonBlankText = Annotated[str, Field(pattern=_NON_BLANK_TEXT)]
 _PublicStateId = Annotated[str, Field(min_length=1, pattern=_PUBLIC_STATE_ID)]
 _PublishedRef = Annotated[str, Field(min_length=1, pattern=_PUBLISHED_REF)]
 _SchemaRef = Annotated[str, Field(pattern=_SCHEMA_REF)]

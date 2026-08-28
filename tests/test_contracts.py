@@ -626,3 +626,30 @@ def test_figure_registry_separates_component_id_and_version(
         load_schema("bridge://schemas/figure-registry/v0.1")
     )
     assert list(validator.iter_errors(payload))
+
+
+@pytest.mark.parametrize(
+    ("field_name", "invalid_value", "valid_value"),
+    [
+        ("alt_text", "a" * 11, "a" * 12),
+        ("long_description", "a" * 39, "a" * 40),
+    ],
+)
+def test_visualization_accessibility_preserves_length_boundaries(
+    field_name: str,
+    invalid_value: str,
+    valid_value: str,
+) -> None:
+    validator = Draft202012Validator(
+        load_schema("bridge://schemas/visualization-artifact/v0.2")
+    )
+    payload = _visualization_artifact_v2().model_dump(mode="json")
+    payload["accessibility"][field_name] = invalid_value
+
+    with pytest.raises(ValidationError):
+        VisualizationArtifactV2.model_validate(payload)
+    assert list(validator.iter_errors(payload))
+
+    payload["accessibility"][field_name] = valid_value
+    VisualizationArtifactV2.model_validate(payload)
+    assert not list(validator.iter_errors(payload))
