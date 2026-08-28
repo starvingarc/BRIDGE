@@ -18,6 +18,9 @@ layer that the Agent will call. The conversational Coordinator, AnalysisPlan and
 task-graph runtime, Web application, product-evidence database, Visualization
 Composer and interactive interpretation/recommendation workflow remain target
 product capabilities rather than integrated runtime behavior.
+The shared v0.2 visualization data binding and v0.1 figure registry are now
+available as standalone contracts; they do not constitute a Composer, renderer
+or Web result page.
 
 ## Current Tool-layer Outputs
 
@@ -34,6 +37,9 @@ The approved [visualization system](BRIDGE_PRD.md#66-visualization-composer-与-
 experience around researcher questions: data readiness, product composition,
 identity support, target/regional and developmental fit, off-target/unknown and
 process signals, comparison, and evidence gaps.
+The registry discovers the seven existing P0-01/P0-02 components as
+`legacy_untyped`. Discovery records current capability and does not promote
+their scientific or publication status.
 
 The product overview uses domain rows with explicit status, denominator,
 limitations and evidence links. It does not use a total score, radar chart,

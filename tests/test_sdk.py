@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from bridge import describe_tool, describe_tool_input, list_tools, search_knowledge
+from bridge import (
+    describe_figure_component,
+    describe_tool,
+    describe_tool_input,
+    list_figure_components,
+    list_tools,
+    search_knowledge,
+    validate_figure_registry,
+)
 
 
 def test_python_sdk_lists_and_describes_registered_tools() -> None:
@@ -21,3 +29,18 @@ def test_python_sdk_searches_packaged_knowledge() -> None:
 
     assert hits
     assert all("P0-01" in hit.tool_package_ids for hit in hits)
+
+
+def test_python_sdk_discovers_figure_components() -> None:
+    figures = list_figure_components(tool_id="P0-02")
+
+    assert len(figures) == 5
+    assert all(figure.producer_tool_ids == ["P0-02"] for figure in figures)
+    assert (
+        describe_figure_component("bridge.cell_state.composition-l1.v0.1").title
+        == "Broad cell-state composition"
+    )
+
+
+def test_python_sdk_validates_figure_registry() -> None:
+    assert validate_figure_registry()["typed_candidate_count"] == 0

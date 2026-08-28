@@ -64,3 +64,15 @@ P0-09 treats normalized JSON fact sets and fixed-column Parquet node/edge tables
 An unchanged logical record is idempotent. Changed content appends a new version through an explicit `supersedes` or `invalidates` relation and never overwrites history. Missing evidence creates an `EvidenceRequirement`, not a numeric zero. Shadow and exploratory inputs remain auditable but cannot be promoted to formal evidence. A malformed top-level contract fails without publication; independently invalid sibling records are excluded and recorded by ID/index/digest in a partial bundle without returning raw rejected payloads.
 
 This is an engineering evidence-compilation candidate, not a Claim verifier or scientific release. It emits no domain score, product pass/fail, safety, potency, efficacy, GMP-release, clinical or absolute-ranking conclusion. Evidence Family assignments, Claims, reconciliation rules and any real ProductCase interpretation still require separate scientific review.
+
+## 2026-08-28: Separate Visualization Evidence From Rendering
+
+BRIDGE uses a standalone `VisualizationArtifact` v0.2 contract to bind typed,
+checksummed figure data, evidence semantics, provenance, public interactions,
+accessible fallbacks and deterministic renders. Scientific tools remain the
+owners of values and evidence states; future Web renderers may select and
+present those records but cannot recompute or promote them.
+
+Current P0-01/P0-02 runs retain byte-compatible v0.1 artifacts. Their seven
+registered components remain `legacy_untyped` until component-specific PRs
+provide typed data, table/text fallbacks and renderer validation.

@@ -7,15 +7,18 @@ evidence you need.
 > **Product and current stage:** BRIDGE's final product is a scientific
 > evaluation Agent. The current `main` branch provides its deterministic P0 tool
 > layer: all 12 packages are executable engineering candidates. The end-to-end
-> Agent/Web experience is not yet integrated. No scientific method, state,
-> threshold or score is frozen, and a target capability in the PRD or a task
+> Agent/Web experience is not yet integrated. A shared visualization data
+> contract and figure registry are available, but
+> all current P0-01/P0-02 figure components remain `legacy_untyped`.
+> No scientific method, state, threshold or score is frozen, and a target
+> capability in the PRD or a task
 > card is not current runtime behavior.
 
 ## Find what you need
 
 | I want to… | Start | Continue with |
 |---|---|---|
-| Review the approved result experience and figure system | [Visualization system](BRIDGE_PRD.md#66-visualization-composer-与-web-交互) | [Scientific task cards](bridge_spec_v0.1/README.md) · [high-level contract](tool-contract.md) |
+| Review the approved result experience and figure system | [Visualization system](BRIDGE_PRD.md#66-visualization-composer-与-web-交互) | [v0.2 visualization Schema](../src/bridge/resources/schemas/visualization_artifact_v2.schema.json) · [high-level contract](tool-contract.md) |
 | Understand the Agent product | [Product requirements](BRIDGE_PRD.md) | [Agent architecture and team boundary](agent-integration.md) · [product principles](product-principles.md) |
 | Run or integrate the current tool layer | [12 P0 Tool Packages](tool-packages.md) | [Request examples](../examples/README.md) · [high-level contract](tool-contract.md) |
 | Review the biology | [Product and scientific principles](product-principles.md) | [P0 specifications](bridge_spec_v0.1/README.md) · [data/reference registry](bridge_spec_v0.1/data_reference_registry.md) |

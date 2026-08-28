@@ -8,6 +8,7 @@ from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
 from bridge.toolkit.contracts import (
+    EvidenceState,
     ExecutionState,
     ImplementationState,
     MeasurementResult,
@@ -18,6 +19,88 @@ from bridge.toolkit.contracts import (
     ToolPackageSpec,
 )
 from bridge.toolkit.schemas import load_schema
+from bridge.toolkit.visualization import (
+    FigureRegistry,
+    FigureRegistrySnapshot,
+    VisualizationAccessibility,
+    VisualizationArtifactV2,
+    VisualizationContextBinding,
+    VisualizationDataBinding,
+    VisualizationRenderBinding,
+)
+
+
+_VISUALIZATION_DATA_SHA = "a" * 64
+
+
+def _visualization_artifact_v2() -> VisualizationArtifactV2:
+    return VisualizationArtifactV2(
+        visualization_id="visualization:run-1:qc-overview",
+        component_id="bridge.qc.overview",
+        component_version="0.1.0",
+        data_binding=VisualizationDataBinding(
+            artifact_id="artifact:run-1:qc-data",
+            schema_ref="bridge://schemas/qc-visualization-data/v0.1",
+            object_version="0.1.0",
+            sha256=_VISUALIZATION_DATA_SHA,
+            records_path="records",
+            record_lookup_key="record_id",
+            evidence_ids_field="evidence_ids",
+            value_field="value",
+            numerator_field="numerator",
+            denominator_field="denominator",
+            denominator_scope_field="denominator_scope",
+            unit_field="unit",
+            interval_lower_field="interval_lower",
+            interval_upper_field="interval_upper",
+            interval_semantics="95% bootstrap interval",
+            evidence_state_field="evidence_state",
+            scientific_status_field="scientific_status",
+            missingness_field="missing_reason_codes",
+            applicability_field="applicability",
+        ),
+        producer_tool_id="P0-01",
+        producer_tool_version="0.1.0",
+        producer_run_ref="run:run-1",
+        evidence_ids=["evidence:run-1:qc"],
+        evidence_states=[EvidenceState.MEASURED],
+        scientific_status="candidate",
+        applicability="applicable",
+        denominator_label="declared observations",
+        denominator_scope="selected QC data view",
+        unit="metric-specific",
+        interval_semantics="95% bootstrap interval",
+        context_bindings=[
+            VisualizationContextBinding(
+                role="environment",
+                ref="ENV-P0-CORE-v0.1",
+                version="0.1.0",
+                sha256="b" * 64,
+            )
+        ],
+        insight_title="QC distributions remain reviewable by observation.",
+        takeaway="The figure presents measured QC values without a product score.",
+        limitations=["This candidate contract does not validate biological quality."],
+        accessibility=VisualizationAccessibility(
+            alt_text="Three QC distributions for the declared observations.",
+            long_description=(
+                "The figure compares count depth, detected genes and mitochondrial "
+                "fraction while retaining the declared denominator and limitations."
+            ),
+            table_artifact_id="artifact:run-1:qc-table",
+        ),
+        renders=[
+            VisualizationRenderBinding(
+                artifact_id="artifact:run-1:qc-svg",
+                media_type="image/svg+xml",
+                renderer_id="bridge.matplotlib",
+                renderer_version="0.1.0",
+                export_profile_id="bridge.static-vector.v0.1",
+                data_sha256=_VISUALIZATION_DATA_SHA,
+                config_sha256="c" * 64,
+            )
+        ],
+    )
 
 
 def test_measurement_result_requires_null_score_when_unavailable() -> None:
@@ -253,3 +336,128 @@ def test_cell_state_freeze_contracts_are_exported(schema_ref: str) -> None:
     schema = load_schema(schema_ref)
 
     assert schema["$id"] == schema_ref
+
+
+def test_visualization_v1_schema_remains_minimal() -> None:
+    schema = load_schema("bridge://schemas/visualization-artifact/v0.1")
+
+    assert set(schema["properties"]) == {
+        "visualization_id",
+        "component_id",
+        "data_artifact_id",
+        "evidence_ids",
+        "denominator",
+        "units",
+        "status",
+        "render_artifact_ids",
+    }
+
+
+def test_visualization_v2_schema_matches_model_and_accepts_valid_artifact() -> None:
+    schema_ref = "bridge://schemas/visualization-artifact/v0.2"
+    schema = load_schema(schema_ref)
+    expected = VisualizationArtifactV2.model_json_schema()
+    expected["$id"] = schema_ref
+    artifact = _visualization_artifact_v2()
+
+    assert schema == expected
+    assert not list(
+        Draft202012Validator(schema).iter_errors(
+            artifact.model_dump(mode="json")
+        )
+    )
+
+
+def test_figure_registry_schema_matches_model() -> None:
+    schema_ref = "bridge://schemas/figure-registry/v0.1"
+    schema = load_schema(schema_ref)
+    expected = FigureRegistrySnapshot.model_json_schema()
+    expected["$id"] = schema_ref
+
+    assert schema == expected
+    payload = FigureRegistry.load_default().snapshot.model_dump(mode="json")
+    validator = Draft202012Validator(schema)
+    assert not list(validator.iter_errors(payload))
+
+    payload["components"][0]["legacy_component_ids"] = []
+    assert list(validator.iter_errors(payload))
+
+
+def test_visualization_v2_requires_reasons_for_missing_evidence() -> None:
+    payload = _visualization_artifact_v2().model_dump(mode="json")
+    payload["evidence_states"] = ["missing"]
+    payload["missing_reason_codes"] = []
+
+    with pytest.raises(ValidationError, match="requires reason codes"):
+        VisualizationArtifactV2.model_validate(payload)
+    validator = Draft202012Validator(
+        load_schema("bridge://schemas/visualization-artifact/v0.2")
+    )
+    assert list(validator.iter_errors(payload))
+
+
+def test_visualization_v2_rejects_render_bound_to_different_data() -> None:
+    payload = _visualization_artifact_v2().model_dump(mode="json")
+    payload["renders"][0]["data_sha256"] = "d" * 64
+
+    with pytest.raises(ValidationError, match="exact visualization data hash"):
+        VisualizationArtifactV2.model_validate(payload)
+
+
+def test_visualization_v2_separates_component_id_and_version() -> None:
+    payload = _visualization_artifact_v2().model_dump(mode="json")
+    payload["component_id"] = "bridge.qc.overview.v0.1"
+
+    with pytest.raises(ValidationError, match="must not be embedded"):
+        VisualizationArtifactV2.model_validate(payload)
+    validator = Draft202012Validator(
+        load_schema("bridge://schemas/visualization-artifact/v0.2")
+    )
+    assert list(validator.iter_errors(payload))
+
+
+def test_visualization_data_binding_requires_complete_interval_semantics() -> None:
+    payload = _visualization_artifact_v2().data_binding.model_dump(mode="json")
+    payload["interval_upper_field"] = None
+
+    with pytest.raises(ValidationError, match="interval lower, upper and semantics"):
+        VisualizationDataBinding.model_validate(payload)
+    artifact_payload = _visualization_artifact_v2().model_dump(mode="json")
+    artifact_payload["data_binding"]["interval_upper_field"] = None
+    validator = Draft202012Validator(
+        load_schema("bridge://schemas/visualization-artifact/v0.2")
+    )
+    assert list(validator.iter_errors(artifact_payload))
+
+
+def test_visualization_v2_rejects_private_filesystem_references() -> None:
+    payload = _visualization_artifact_v2().model_dump(mode="json")
+    payload["producer_run_ref"] = "/private/server/run.json"
+
+    with pytest.raises(ValidationError, match="string_pattern_mismatch"):
+        VisualizationArtifactV2.model_validate(payload)
+    validator = Draft202012Validator(
+        load_schema("bridge://schemas/visualization-artifact/v0.2")
+    )
+    assert list(validator.iter_errors(payload))
+
+
+def test_figure_registry_discovers_components_without_promoting_them() -> None:
+    registry = FigureRegistry.load_default()
+
+    assert registry.validation_summary() == {
+        "valid": True,
+        "registry_id": "bridge.figure-registry",
+        "object_version": "0.1.0",
+        "component_count": 7,
+        "typed_candidate_count": 0,
+        "legacy_untyped_count": 7,
+        "producer_tool_ids": ["P0-01", "P0-02"],
+    }
+    assert len(registry.list(tool_id="P0-01")) == 2
+    assert (
+        registry.get("bridge.qc.overview.v0.1").component_ref
+        == "bridge.qc.overview@0.1.0"
+    )
+    with pytest.raises(ValueError, match="has not migrated"):
+        registry.validate_artifact(_visualization_artifact_v2())

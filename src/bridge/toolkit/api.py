@@ -13,6 +13,7 @@ from bridge.toolkit.contracts import (
 )
 from bridge.toolkit.knowledge import KnowledgeRegistry
 from bridge.toolkit.registry import ToolRegistry
+from bridge.toolkit.visualization import FigureComponentSpec, FigureRegistry
 
 
 def list_tools() -> list[ToolPackageSpec | ToolPackageSpecV2]:
@@ -54,3 +55,18 @@ def search_knowledge(
         allowed_use=allowed_use,
         limit=limit,
     )
+
+
+def list_figure_components(
+    *,
+    tool_id: str | None = None,
+) -> list[FigureComponentSpec]:
+    return FigureRegistry.load_default().list(tool_id=tool_id)
+
+
+def describe_figure_component(component_ref: str) -> FigureComponentSpec:
+    return FigureRegistry.load_default().get(component_ref)
+
+
+def validate_figure_registry() -> dict[str, object]:
+    return FigureRegistry.load_default().validation_summary()

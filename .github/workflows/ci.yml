@@ -67,6 +67,9 @@ jobs:
       - name: Validate knowledge snapshot
         run: python -m bridge.toolkit.cli knowledge validate
 
+      - name: Validate figure registry
+        run: python -m bridge.toolkit.cli figures validate
+
       - name: Check repository policy
         run: python scripts/check_repository.py
 

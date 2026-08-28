@@ -35,8 +35,24 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
     VisualizationArtifact,
 )
-from bridge.toolkit.api import describe_tool, list_tools, run_tool, search_knowledge, validate_request
+from bridge.toolkit.api import (
+    describe_figure_component,
+    describe_tool,
+    list_figure_components,
+    list_tools,
+    run_tool,
+    search_knowledge,
+    validate_figure_registry,
+    validate_request,
+)
 from bridge.toolkit.registry import ToolRegistry
+from bridge.toolkit.visualization import (
+    FigureComponentSpec,
+    FigureRegistry,
+    FigureRegistrySnapshot,
+    VisualizationArtifactV2,
+    VisualizationDataBinding,
+)
 
 __all__ = [
     "AnnotationVocabulary",
@@ -51,6 +67,9 @@ __all__ = [
     "CellStateEvidenceProfileV2",
     "CellStateEvidenceProfileV3",
     "EligibilityResult",
+    "FigureComponentSpec",
+    "FigureRegistry",
+    "FigureRegistrySnapshot",
     "KnowledgeHit",
     "InputLevel",
     "IndependenceGroupKind",
@@ -73,9 +92,14 @@ __all__ = [
     "ToolRun",
     "ToolRunV2",
     "VisualizationArtifact",
+    "VisualizationArtifactV2",
+    "VisualizationDataBinding",
+    "describe_figure_component",
     "describe_tool",
+    "list_figure_components",
     "list_tools",
     "run_tool",
     "search_knowledge",
+    "validate_figure_registry",
     "validate_request",
 ]
