@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 import re
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -18,14 +18,30 @@ from bridge.toolkit.contracts import EvidenceState, FrozenModel
 _SHA256 = r"^[0-9a-f]{64}$"
 _VERSION = r"^[0-9]+\.[0-9]+\.[0-9]+$"
 _COMPONENT_ID = r"^bridge\.[a-z0-9]+(?:[._-][a-z0-9]+)+$"
+_EMBEDDED_COMPONENT_VERSION = r"\.v[0-9]+\.[0-9]+(?:\.[0-9]+)?$"
 _PUBLIC_STATE_ID = r"^[A-Za-z][A-Za-z0-9_.-]*$"
+_EVIDENCE_ID = (
+    r"^[A-Za-z0-9][A-Za-z0-9_.-]*"
+    r"(?::[A-Za-z0-9][A-Za-z0-9_.-]*)*$"
+)
+_NON_BLANK_TEXT = r"^[\s\S]*\S[\s\S]*$"
+_BRIDGE_REF_SEGMENT = r"[A-Za-z0-9][A-Za-z0-9._~@+-]*"
+_OPAQUE_REF_ID = r"[A-Za-z0-9][A-Za-z0-9._~:@+-]*"
 _PUBLISHED_REF = (
-    r"^(?:bridge://[A-Za-z0-9._~:/@+%-]+|"
-    r"(?:artifact|run|visualization):[A-Za-z0-9._~:/@+-]+|"
+    rf"^(?:bridge://{_BRIDGE_REF_SEGMENT}(?:/{_BRIDGE_REF_SEGMENT})*|"
+    rf"(?:artifact|run|visualization):{_OPAQUE_REF_ID}|"
     r"[A-Za-z][A-Za-z0-9._-]*)$"
 )
 _SCHEMA_REF = r"^bridge://schemas/[a-z0-9-]+/v[0-9]+\.[0-9]+$"
 _TOOL_ID = r"^P0-(0[1-9]|1[0-2])$"
+
+_ComponentId = Annotated[str, Field(pattern=_COMPONENT_ID)]
+_EvidenceId = Annotated[str, Field(min_length=1, pattern=_EVIDENCE_ID)]
+_NonBlankText = Annotated[str, Field(min_length=1, pattern=_NON_BLANK_TEXT)]
+_PublicStateId = Annotated[str, Field(min_length=1, pattern=_PUBLIC_STATE_ID)]
+_PublishedRef = Annotated[str, Field(min_length=1, pattern=_PUBLISHED_REF)]
+_SchemaRef = Annotated[str, Field(pattern=_SCHEMA_REF)]
+_ToolId = Annotated[str, Field(pattern=_TOOL_ID)]
 
 
 def _all_or_none_json_schema(*fields: str) -> dict[str, object]:
@@ -110,8 +126,8 @@ class VisualizationDataBinding(FrozenModel):
         },
     )
 
-    artifact_id: str = Field(min_length=1, pattern=_PUBLISHED_REF)
-    schema_ref: str = Field(pattern=_SCHEMA_REF)
+    artifact_id: _PublishedRef
+    schema_ref: _SchemaRef
     object_version: str = Field(pattern=_VERSION)
     sha256: str = Field(pattern=_SHA256)
     media_type: Literal["application/json"] = "application/json"
@@ -128,7 +144,7 @@ class VisualizationDataBinding(FrozenModel):
     unit_field: str | None = Field(default=None, pattern=_PUBLIC_STATE_ID)
     interval_lower_field: str | None = Field(default=None, pattern=_PUBLIC_STATE_ID)
     interval_upper_field: str | None = Field(default=None, pattern=_PUBLIC_STATE_ID)
-    interval_semantics: str | None = Field(default=None, min_length=1)
+    interval_semantics: _NonBlankText | None = None
     evidence_state_field: str = Field(min_length=1, pattern=_PUBLIC_STATE_ID)
     scientific_status_field: str = Field(min_length=1, pattern=_PUBLIC_STATE_ID)
     missingness_field: str = Field(min_length=1, pattern=_PUBLIC_STATE_ID)
@@ -171,8 +187,8 @@ class VisualizationContextBinding(FrozenModel):
         "environment",
         "source_family",
     ]
-    ref: str = Field(min_length=1, pattern=_PUBLISHED_REF)
-    version: str = Field(min_length=1)
+    ref: _PublishedRef
+    version: _NonBlankText
     sha256: str = Field(pattern=_SHA256)
 
 
@@ -189,9 +205,9 @@ class VisualizationInteractionContract(FrozenModel):
         },
     )
 
-    filter_ids: list[str] = Field(default_factory=list)
-    selection_ids: list[str] = Field(default_factory=list)
-    drill_down_ids: list[str] = Field(default_factory=list)
+    filter_ids: list[_PublicStateId] = Field(default_factory=list)
+    selection_ids: list[_PublicStateId] = Field(default_factory=list)
+    drill_down_ids: list[_PublicStateId] = Field(default_factory=list)
 
     @field_validator("filter_ids", "selection_ids", "drill_down_ids")
     @classmethod
@@ -200,24 +216,22 @@ class VisualizationInteractionContract(FrozenModel):
         values: list[str],
         info: ValidationInfo,
     ) -> list[str]:
-        for value in values:
-            if re.fullmatch(_PUBLIC_STATE_ID, value) is None:
-                raise ValueError(f"{info.field_name} contains an invalid public ID")
         return _unique(values, info.field_name)
 
 
 class VisualizationAccessibility(FrozenModel):
-    alt_text: str = Field(min_length=12, max_length=240)
-    long_description: str = Field(min_length=40)
-    table_artifact_id: str = Field(min_length=1, pattern=_PUBLISHED_REF)
+    alt_text: _NonBlankText = Field(min_length=12, max_length=240)
+    long_description: _NonBlankText = Field(min_length=40)
+    table_artifact_id: _PublishedRef
+    data_sha256: str = Field(pattern=_SHA256)
 
 
 class VisualizationRenderBinding(FrozenModel):
-    artifact_id: str = Field(min_length=1, pattern=_PUBLISHED_REF)
+    artifact_id: _PublishedRef
     media_type: Literal["image/svg+xml", "application/pdf", "image/png"]
-    renderer_id: str = Field(min_length=1)
-    renderer_version: str = Field(min_length=1)
-    export_profile_id: str = Field(min_length=1)
+    renderer_id: _NonBlankText
+    renderer_version: _NonBlankText
+    export_profile_id: _NonBlankText
     data_sha256: str = Field(pattern=_SHA256)
     config_sha256: str = Field(pattern=_SHA256)
 
@@ -241,7 +255,7 @@ class VisualizationArtifactV2(FrozenModel):
                 {
                     "properties": {
                         "component_id": {
-                            "not": {"pattern": r"\.v[0-9]+\.[0-9]+$"}
+                            "not": {"pattern": _EMBEDDED_COMPONENT_VERSION}
                         }
                     }
                 },
@@ -266,39 +280,64 @@ class VisualizationArtifactV2(FrozenModel):
                         }
                     },
                 },
+                {
+                    "if": {
+                        "required": ["data_binding"],
+                        "properties": {
+                            "data_binding": {
+                                "required": ["numerator_field"],
+                                "properties": {
+                                    "numerator_field": {"type": "string"}
+                                },
+                            }
+                        },
+                    },
+                    "then": {
+                        "required": ["denominator_label", "denominator_scope"],
+                        "properties": {
+                            "denominator_label": {"type": "string"},
+                            "denominator_scope": {"type": "string"},
+                        },
+                    },
+                    "else": {
+                        "properties": {
+                            "denominator_label": {"type": "null"},
+                            "denominator_scope": {"type": "null"},
+                        }
+                    },
+                },
             ]
         },
     )
 
     object_version: Literal["0.2.0"] = "0.2.0"
-    visualization_id: str = Field(min_length=1, pattern=_PUBLISHED_REF)
-    component_id: str = Field(pattern=_COMPONENT_ID)
+    visualization_id: _PublishedRef
+    component_id: _ComponentId
     component_version: str = Field(pattern=_VERSION)
     data_binding: VisualizationDataBinding
-    producer_tool_id: str = Field(pattern=_TOOL_ID)
-    producer_tool_version: str = Field(min_length=1)
-    producer_run_ref: str = Field(min_length=1, pattern=_PUBLISHED_REF)
-    evidence_ids: list[str] = Field(min_length=1)
+    producer_tool_id: _ToolId
+    producer_tool_version: _NonBlankText
+    producer_run_ref: _PublishedRef
+    evidence_ids: list[_EvidenceId] = Field(min_length=1)
     evidence_states: list[EvidenceState] = Field(min_length=1)
-    scientific_status: str = Field(min_length=1)
+    scientific_status: _NonBlankText
     applicability: Literal[
         "applicable",
         "partially_applicable",
         "not_applicable",
         "not_assessed",
     ]
-    missing_reason_codes: list[str] = Field(default_factory=list)
-    denominator_label: str | None = Field(default=None, min_length=1)
-    denominator_scope: str | None = Field(default=None, min_length=1)
-    unit: str | None = Field(default=None, min_length=1)
-    interval_semantics: str | None = Field(default=None, min_length=1)
+    missing_reason_codes: list[_PublicStateId] = Field(default_factory=list)
+    denominator_label: _NonBlankText | None = None
+    denominator_scope: _NonBlankText | None = None
+    unit: _NonBlankText | None = None
     context_bindings: list[VisualizationContextBinding] = Field(default_factory=list)
     interactions: VisualizationInteractionContract = Field(
         default_factory=VisualizationInteractionContract
     )
-    insight_title: str = Field(min_length=1)
-    takeaway: str = Field(min_length=1)
-    limitations: list[str] = Field(min_length=1)
+    insight_title: _NonBlankText
+    takeaway: _NonBlankText
+    limitations: list[_NonBlankText] = Field(min_length=1)
     accessibility: VisualizationAccessibility
     renders: list[VisualizationRenderBinding] = Field(min_length=1)
 
@@ -318,10 +357,15 @@ class VisualizationArtifactV2(FrozenModel):
 
     @model_validator(mode="after")
     def semantics_and_provenance_are_coherent(self) -> Self:
-        if re.search(r"\.v[0-9]+\.[0-9]+$", self.component_id):
+        if re.search(_EMBEDDED_COMPONENT_VERSION, self.component_id):
             raise ValueError("component version must not be embedded in component_id")
         if (self.denominator_label is None) != (self.denominator_scope is None):
             raise ValueError("denominator label and scope must be paired")
+        has_denominator_fields = self.data_binding.numerator_field is not None
+        if has_denominator_fields != (self.denominator_label is not None):
+            raise ValueError(
+                "denominator semantics must accompany numerator/denominator fields"
+            )
         reason_required = {
             EvidenceState.MISSING,
             EvidenceState.UNKNOWN,
@@ -336,6 +380,12 @@ class VisualizationArtifactV2(FrozenModel):
             for item in self.context_bindings
         ]
         _unique(context_keys, "context_bindings")
+        _unique(
+            [item.artifact_id for item in self.renders],
+            "render artifact IDs",
+        )
+        if self.accessibility.data_sha256 != self.data_binding.sha256:
+            raise ValueError("table fallback must bind the exact visualization data hash")
         if any(item.data_sha256 != self.data_binding.sha256 for item in self.renders):
             raise ValueError("every render must bind the exact visualization data hash")
         return self
@@ -357,6 +407,13 @@ class FigureComponentSpec(FrozenModel):
                     "interactions",
                     "required_fallbacks",
                 ),
+                {
+                    "properties": {
+                        "component_id": {
+                            "not": {"pattern": _EMBEDDED_COMPONENT_VERSION}
+                        }
+                    }
+                },
                 {
                     "if": {
                         "required": ["registry_state"],
@@ -380,17 +437,17 @@ class FigureComponentSpec(FrozenModel):
         },
     )
 
-    component_id: str = Field(pattern=_COMPONENT_ID)
+    component_id: _ComponentId
     component_version: str = Field(pattern=_VERSION)
-    legacy_component_ids: list[str] = Field(default_factory=list)
-    title: str = Field(min_length=1)
-    question: str = Field(min_length=1)
-    figure_family: str = Field(min_length=1)
-    producer_tool_ids: list[str] = Field(min_length=1)
+    legacy_component_ids: list[_ComponentId] = Field(default_factory=list)
+    title: _NonBlankText
+    question: _NonBlankText
+    figure_family: _NonBlankText
+    producer_tool_ids: list[_ToolId] = Field(min_length=1)
     registry_state: FigureRegistryState
     default_role: FigureRole
     scientific_status_source: Literal["producer_run"] = "producer_run"
-    data_schema_refs: list[str] = Field(default_factory=list)
+    data_schema_refs: list[_SchemaRef] = Field(default_factory=list)
     surfaces: list[FigureSurface] = Field(min_length=1)
     interactions: list[VisualizationInteraction] = Field(default_factory=list)
     required_fallbacks: list[
@@ -413,22 +470,10 @@ class FigureComponentSpec(FrozenModel):
     ) -> list[object]:
         return _unique(values, info.field_name)
 
-    @field_validator("producer_tool_ids")
-    @classmethod
-    def tool_ids_are_valid(cls, values: list[str]) -> list[str]:
-        if any(re.fullmatch(_TOOL_ID, value) is None for value in values):
-            raise ValueError("producer_tool_ids contains an invalid Tool ID")
-        return values
-
-    @field_validator("data_schema_refs")
-    @classmethod
-    def data_schema_refs_are_valid(cls, values: list[str]) -> list[str]:
-        if any(re.fullmatch(_SCHEMA_REF, value) is None for value in values):
-            raise ValueError("data_schema_refs contains an invalid Schema URI")
-        return values
-
     @model_validator(mode="after")
     def registry_state_is_truthful(self) -> Self:
+        if re.search(_EMBEDDED_COMPONENT_VERSION, self.component_id):
+            raise ValueError("component version must not be embedded in component_id")
         if self.registry_state is FigureRegistryState.LEGACY_UNTYPED:
             if not self.legacy_component_ids or self.data_schema_refs:
                 raise ValueError(
@@ -554,35 +599,55 @@ class FigureRegistry:
     """Read-only discovery and validation for renderer-independent figures."""
 
     def __init__(self, snapshot: FigureRegistrySnapshot) -> None:
-        self.snapshot = snapshot
+        self._snapshot = snapshot.model_copy(deep=True)
         self._by_ref = {
-            component.component_ref: component for component in snapshot.components
+            component.component_ref: component
+            for component in self._snapshot.components
         }
         self._by_legacy = {
             legacy_id: component
-            for component in snapshot.components
+            for component in self._snapshot.components
             for legacy_id in component.legacy_component_ids
         }
 
+    @property
+    def snapshot(self) -> FigureRegistrySnapshot:
+        return self._snapshot.model_copy(deep=True)
+
     @classmethod
     def load_default(cls) -> FigureRegistry:
-        return cls(FigureRegistrySnapshot(components=list(_DEFAULT_COMPONENTS)))
+        return cls(
+            FigureRegistrySnapshot(
+                components=[
+                    component.model_copy(deep=True)
+                    for component in _DEFAULT_COMPONENTS
+                ]
+            )
+        )
 
     def list(self, *, tool_id: str | None = None) -> list[FigureComponentSpec]:
-        components = self.snapshot.components
+        if tool_id is not None and re.fullmatch(_TOOL_ID, tool_id) is None:
+            raise ValueError(f"invalid Tool ID: {tool_id}")
+        components = self._snapshot.components
         if tool_id is not None:
             components = [
                 component
                 for component in components
                 if tool_id in component.producer_tool_ids
             ]
-        return sorted(components, key=lambda item: item.component_ref)
+        return [
+            component.model_copy(deep=True)
+            for component in sorted(components, key=lambda item: item.component_ref)
+        ]
 
     def get(self, component_ref: str) -> FigureComponentSpec:
-        try:
-            return self._by_ref.get(component_ref) or self._by_legacy[component_ref]
-        except KeyError as exc:
-            raise KeyError(component_ref) from exc
+        component = self._by_ref.get(component_ref)
+        if component is None:
+            try:
+                component = self._by_legacy[component_ref]
+            except KeyError as exc:
+                raise KeyError(component_ref) from exc
+        return component.model_copy(deep=True)
 
     def validate_artifact(
         self,
@@ -601,18 +666,61 @@ class FigureRegistry:
             raise ValueError(
                 "visualization data schema is not registered for the component"
             )
+
+        used_interactions = {
+            interaction
+            for interaction, values in (
+                (VisualizationInteraction.FILTER, artifact.interactions.filter_ids),
+                (VisualizationInteraction.SELECT, artifact.interactions.selection_ids),
+                (
+                    VisualizationInteraction.DRILL_DOWN,
+                    artifact.interactions.drill_down_ids,
+                ),
+            )
+            if values
+        }
+        undeclared_interactions = used_interactions.difference(
+            component.interactions
+        )
+        if undeclared_interactions:
+            names = ", ".join(
+                sorted(item.value for item in undeclared_interactions)
+            )
+            raise ValueError(f"figure uses unregistered interactions: {names}")
+
+        fallback_available = {
+            "table": bool(artifact.accessibility.table_artifact_id),
+            "alt_text": bool(artifact.accessibility.alt_text.strip()),
+            "long_description": bool(
+                artifact.accessibility.long_description.strip()
+            ),
+            "static_vector": any(
+                render.media_type in {"image/svg+xml", "application/pdf"}
+                for render in artifact.renders
+            ),
+        }
+        missing_fallbacks = sorted(
+            fallback
+            for fallback in component.required_fallbacks
+            if not fallback_available[fallback]
+        )
+        if missing_fallbacks:
+            raise ValueError(
+                "figure is missing required fallbacks: "
+                + ", ".join(missing_fallbacks)
+            )
         return component
 
     def validation_summary(self) -> dict[str, object]:
-        components = self.snapshot.components
+        components = self._snapshot.components
         typed_count = sum(
             item.registry_state is FigureRegistryState.TYPED_CANDIDATE
             for item in components
         )
         return {
             "valid": True,
-            "registry_id": self.snapshot.registry_id,
-            "object_version": self.snapshot.object_version,
+            "registry_id": self._snapshot.registry_id,
+            "object_version": self._snapshot.object_version,
             "component_count": len(components),
             "typed_candidate_count": typed_count,
             "legacy_untyped_count": len(components) - typed_count,

@@ -152,3 +152,13 @@ def test_cli_figures_validate_reports_migration_state(capsys) -> None:
     assert payload["component_count"] == 7
     assert payload["typed_candidate_count"] == 0
     assert payload["legacy_untyped_count"] == 7
+
+
+def test_cli_figures_list_rejects_invalid_tool_id(capsys) -> None:
+    exit_code = main(["figures", "list", "--tool", "P0-99"])
+
+    assert exit_code == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "error": "invalid_tool_id",
+        "tool_id": "P0-99",
+    }

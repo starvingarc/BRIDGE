@@ -107,6 +107,11 @@ defines the user reading order. Current P0-01/P0-02 runs retain
 migration, but all seven existing components remain `legacy_untyped`.
 They cannot enter the Web/report path as typed figures until a package-owned
 data Schema and renderer validation are delivered in the component's own PR.
+The public Schemas enforce field and item formats. Cross-component identity
+uniqueness, denominator-field coherence, exact data-hash equality and declared
+interaction/fallback capabilities additionally require the standard
+`FigureRegistry` loader and `validate_artifact`; raw JSON Schema acceptance is
+not a complete figure validation.
 
 The versioned JSON contracts in `src/bridge/resources/schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` and package-owned model modules are the Python sources used to generate those schemas.
 

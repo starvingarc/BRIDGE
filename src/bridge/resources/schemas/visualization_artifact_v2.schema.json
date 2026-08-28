@@ -19,18 +19,25 @@
       "properties": {
         "alt_text": {
           "maxLength": 240,
-          "minLength": 12,
+          "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Alt Text",
           "type": "string"
         },
+        "data_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Data Sha256",
+          "type": "string"
+        },
         "long_description": {
-          "minLength": 40,
+          "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Long Description",
           "type": "string"
         },
         "table_artifact_id": {
           "minLength": 1,
-          "pattern": "^(?:bridge://[A-Za-z0-9._~:/@+%-]+|(?:artifact|run|visualization):[A-Za-z0-9._~:/@+-]+|[A-Za-z][A-Za-z0-9._-]*)$",
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
           "title": "Table Artifact Id",
           "type": "string"
         }
@@ -38,7 +45,8 @@
       "required": [
         "alt_text",
         "long_description",
-        "table_artifact_id"
+        "table_artifact_id",
+        "data_sha256"
       ],
       "title": "VisualizationAccessibility",
       "type": "object"
@@ -48,7 +56,7 @@
       "properties": {
         "ref": {
           "minLength": 1,
-          "pattern": "^(?:bridge://[A-Za-z0-9._~:/@+%-]+|(?:artifact|run|visualization):[A-Za-z0-9._~:/@+-]+|[A-Za-z][A-Za-z0-9._-]*)$",
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
           "title": "Ref",
           "type": "string"
         },
@@ -73,6 +81,7 @@
         },
         "version": {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Version",
           "type": "string"
         }
@@ -206,7 +215,7 @@
         },
         "artifact_id": {
           "minLength": 1,
-          "pattern": "^(?:bridge://[A-Za-z0-9._~:/@+%-]+|(?:artifact|run|visualization):[A-Za-z0-9._~:/@+-]+|[A-Za-z][A-Za-z0-9._-]*)$",
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
           "title": "Artifact Id",
           "type": "string"
         },
@@ -265,6 +274,7 @@
           "anyOf": [
             {
               "minLength": 1,
+              "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
               "type": "string"
             },
             {
@@ -408,6 +418,8 @@
       "properties": {
         "drill_down_ids": {
           "items": {
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
             "type": "string"
           },
           "title": "Drill Down Ids",
@@ -415,6 +427,8 @@
         },
         "filter_ids": {
           "items": {
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
             "type": "string"
           },
           "title": "Filter Ids",
@@ -422,6 +436,8 @@
         },
         "selection_ids": {
           "items": {
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
             "type": "string"
           },
           "title": "Selection Ids",
@@ -436,7 +452,7 @@
       "properties": {
         "artifact_id": {
           "minLength": 1,
-          "pattern": "^(?:bridge://[A-Za-z0-9._~:/@+%-]+|(?:artifact|run|visualization):[A-Za-z0-9._~:/@+-]+|[A-Za-z][A-Za-z0-9._-]*)$",
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
           "title": "Artifact Id",
           "type": "string"
         },
@@ -452,6 +468,7 @@
         },
         "export_profile_id": {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Export Profile Id",
           "type": "string"
         },
@@ -466,11 +483,13 @@
         },
         "renderer_id": {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Renderer Id",
           "type": "string"
         },
         "renderer_version": {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Renderer Version",
           "type": "string"
         }
@@ -543,7 +562,7 @@
       "properties": {
         "component_id": {
           "not": {
-            "pattern": "\\.v[0-9]+\\.[0-9]+$"
+            "pattern": "\\.v[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
           }
         }
       }
@@ -571,6 +590,49 @@
             "minItems": 1
           }
         }
+      }
+    },
+    {
+      "else": {
+        "properties": {
+          "denominator_label": {
+            "type": "null"
+          },
+          "denominator_scope": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "data_binding": {
+            "properties": {
+              "numerator_field": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "numerator_field"
+            ]
+          }
+        },
+        "required": [
+          "data_binding"
+        ]
+      },
+      "then": {
+        "properties": {
+          "denominator_label": {
+            "type": "string"
+          },
+          "denominator_scope": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "denominator_label",
+          "denominator_scope"
+        ]
       }
     }
   ],
@@ -613,6 +675,7 @@
       "anyOf": [
         {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "type": "string"
         },
         {
@@ -626,6 +689,7 @@
       "anyOf": [
         {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "type": "string"
         },
         {
@@ -637,6 +701,8 @@
     },
     "evidence_ids": {
       "items": {
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9][A-Za-z0-9_.-]*)*$",
         "type": "string"
       },
       "minItems": 1,
@@ -653,27 +719,17 @@
     },
     "insight_title": {
       "minLength": 1,
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
       "title": "Insight Title",
       "type": "string"
     },
     "interactions": {
       "$ref": "#/$defs/VisualizationInteractionContract"
     },
-    "interval_semantics": {
-      "anyOf": [
-        {
-          "minLength": 1,
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Interval Semantics"
-    },
     "limitations": {
       "items": {
+        "minLength": 1,
+        "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
         "type": "string"
       },
       "minItems": 1,
@@ -682,6 +738,8 @@
     },
     "missing_reason_codes": {
       "items": {
+        "minLength": 1,
+        "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
         "type": "string"
       },
       "title": "Missing Reason Codes",
@@ -695,7 +753,7 @@
     },
     "producer_run_ref": {
       "minLength": 1,
-      "pattern": "^(?:bridge://[A-Za-z0-9._~:/@+%-]+|(?:artifact|run|visualization):[A-Za-z0-9._~:/@+-]+|[A-Za-z][A-Za-z0-9._-]*)$",
+      "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
       "title": "Producer Run Ref",
       "type": "string"
     },
@@ -706,6 +764,7 @@
     },
     "producer_tool_version": {
       "minLength": 1,
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
       "title": "Producer Tool Version",
       "type": "string"
     },
@@ -719,11 +778,13 @@
     },
     "scientific_status": {
       "minLength": 1,
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
       "title": "Scientific Status",
       "type": "string"
     },
     "takeaway": {
       "minLength": 1,
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
       "title": "Takeaway",
       "type": "string"
     },
@@ -731,6 +792,7 @@
       "anyOf": [
         {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "type": "string"
         },
         {
@@ -742,7 +804,7 @@
     },
     "visualization_id": {
       "minLength": 1,
-      "pattern": "^(?:bridge://[A-Za-z0-9._~:/@+%-]+|(?:artifact|run|visualization):[A-Za-z0-9._~:/@+-]+|[A-Za-z][A-Za-z0-9._-]*)$",
+      "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
       "title": "Visualization Id",
       "type": "string"
     }

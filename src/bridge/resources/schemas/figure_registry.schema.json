@@ -26,6 +26,15 @@
           }
         },
         {
+          "properties": {
+            "component_id": {
+              "not": {
+                "pattern": "\\.v[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+              }
+            }
+          }
+        },
+        {
           "else": {
             "properties": {
               "data_schema_refs": {
@@ -68,6 +77,7 @@
         },
         "data_schema_refs": {
           "items": {
+            "pattern": "^bridge://schemas/[a-z0-9-]+/v[0-9]+\\.[0-9]+$",
             "type": "string"
           },
           "title": "Data Schema Refs",
@@ -78,6 +88,7 @@
         },
         "figure_family": {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Figure Family",
           "type": "string"
         },
@@ -90,6 +101,7 @@
         },
         "legacy_component_ids": {
           "items": {
+            "pattern": "^bridge\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$",
             "type": "string"
           },
           "title": "Legacy Component Ids",
@@ -97,6 +109,7 @@
         },
         "producer_tool_ids": {
           "items": {
+            "pattern": "^P0-(0[1-9]|1[0-2])$",
             "type": "string"
           },
           "minItems": 1,
@@ -105,6 +118,7 @@
         },
         "question": {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Question",
           "type": "string"
         },
@@ -140,6 +154,7 @@
         },
         "title": {
           "minLength": 1,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
           "title": "Title",
           "type": "string"
         }

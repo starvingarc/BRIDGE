@@ -142,10 +142,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 2
             _emit(component.model_dump(mode="json"))
             return 0
+        try:
+            components = figures.list(tool_id=args.tool)
+        except ValueError:
+            _emit({"error": "invalid_tool_id", "tool_id": args.tool})
+            return 2
         _emit(
             [
                 component.model_dump(mode="json")
-                for component in figures.list(tool_id=args.tool)
+                for component in components
             ]
         )
         return 0
