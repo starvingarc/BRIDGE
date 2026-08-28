@@ -1,4 +1,8 @@
-# P0-01 Input QC Visualization
+# Data Readiness Visualization
+
+This is the first user-question figure family in the approved visualization
+roadmap: “Can this analysis be trusted?” It is produced by P0-01, but future
+visualization PRs follow researcher questions rather than P0 numeric order.
 
 ## Researcher question
 
@@ -102,8 +106,8 @@ copied source enters the wheel.
    backward-compatibility tests.
 7. Validate public real-data subsets and a multi-capture fixture on the server;
    record five repeated rendering times, median/range, CPU and peak memory.
-8. Build and install the wheel from the exact server SHA, then open one Draft PR
-   for the complete P0-01 figure family.
+8. Build and install the wheel from the exact server SHA, then complete the one
+   Draft PR for this data-readiness figure family.
 
 ## Non-goals
 

@@ -691,20 +691,19 @@ P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有
 
 #### 核心图表体系
 
-| 使用者的问题 | 默认主图 | 需要时展开 | 证据来源 | 当前实现 |
+| 使用者的问题 | 默认主图 | 需要时展开 | 证据来源 | 当前不足 |
 |---|---|---|---|---|
-| 数据能否用于分析？ | 从上传观测到 QC 保留、再到各下游可用数据视图的细胞流向图 | 每个 sample/capture 的 QC 分布；counts–genes、counts–mitochondrial 关系；QC flag 交集；不同 DataView 的敏感性 | Input Audit & QC（P0-01） | 部分实现：已有合并分布图和 counts–genes 静态图 |
-| 产品中有哪些细胞？ | L1/L2/L3 层级组成图，明确分开已知、prediction set、unknown/OOD 和 unresolved | 状态明细表；可选 embedding；所选 DataView 的来源 | Cell-State Evidence（P0-02） | 部分实现：已有 source-aware 组成图 |
-| 细胞状态命名是否可靠？ | source × state 证据点阵图 | 方法一致性、marker 证据、prediction-set coverage、校准、OOD 分布、unknown 原因和敏感性 | Cell-State Evidence（P0-02） | 部分实现：已有 reference、marker 和冲突图；开放集视图缺失 |
-| 是否包含目标谱系和预期中脑区域特征？ | target、acceptable adjacent、off-target、unresolved 组成及区间，并列区域支持证据 | reference correlation、program activity、连续身份权重、残差、方法敏感性和有条件的空间投射 | Target Identity & Regional Fidelity（P0-03） | 尚无正式 `VisualizationArtifact` |
-| 发育阶段是否符合已审核窗口？ | 全产品与 target-related 细胞分别使用各自分母的阶段组成图 | 按 source/modality 分面的阶段支持、sample-level 时间趋势、program 动态和仅用于校准的状态转移图 | Developmental Compatibility（P0-04） | 尚无正式 `VisualizationArtifact` |
-| 是否存在非目标、未知或稀有状态？ | 全产品角色组成和 unknown 原因图，并显示区间 | 零观测上界、rare-state LOD、spike-in recovery 和多来源 OOD 分歧 | Off-target Control（P0-05） | 尚无正式 `VisualizationArtifact` |
-| 是否存在增殖、细胞周期或应激信号？ | sample × program 证据热图，同时显示 reference envelope、gene coverage 和 evidence state | 全产品/状态内分布、S/G2M、方法一致性、制备时间线和复核信号 | Proliferation & Stress Response（P0-06） | 尚无正式 `VisualizationArtifact` |
-| 可比较的产品、批次或时间点有何差异？ | 每个指标分别展示原始差异和效应量区间的 forest plot | 组成差异、program effect、以 preparation 为单位的时间趋势、稳定性、混杂和敏感性 | Product Comparison & Stability（P0-07） | 有条件启用，尚无正式 `VisualizationArtifact` |
-| 每项解释获得多少证据支持？ | domain × Data Readiness / Model Robustness / Prior Applicability 矩阵 | 单个 domain 的判断过程、缺失条件和状态数量 | Evidence Sufficiency（P0-08） | 已有结构化结果；当前有意不产生图 |
-| 一项结论为何能或不能成立？ | 从来源到 Evidence、Claim 和 Requirement 的选中结论有向证据路径 | 冲突、同家族依赖、provenance 和对应表格行 | Evidence Compiler & Reconciler（P0-09） | 已产生受限 Cytoscape projection，但尚未登记为正式图 |
-| 报告能否使用或公开？ | claim 核对表和 public-export readiness 概览 | 被阻止的字段、措辞问题、Evidence refs 和导出 manifest | Claim Verifier / Public-safe Export（P0-10/P0-11） | 已有结构化回执；P0-10 v0.1 不核对图形 |
-| 移植后样本发生了什么？ | 独立的 graft 组成、胎儿 reference 支持和 program 证据视图 | animal/graft/timepoint、fine subtype、方法敏感性和 preparation–graft 来源 | Optional Graft Assessment（P0-12） | 有条件启用，尚无正式 `VisualizationArtifact` |
+| 这次分析能信吗？ | 数据流与分析资格图：上传观测数 → 结构有效 → 候选 QC 保留状态 → 可进入状态分析 | 每个 sample/capture 的 QC raincloud/violin；counts–genes/mitochondrial hexbin；QC flag UpSet；不同 QC view 的结果敏感性 | Input Audit & QC（P0-01） | 目前只有汇总直方图和散点图，缺逐 capture、阈值、观测流向和敏感性 |
+| 产品里有什么？ | L1/L2/L3 层级组成图，明确分开已支持、prediction set、unknown/OOD 和 unresolved，并显示区间与分母 | 可展开至每个状态、来源和观测；UMAP 只作探索，不作为身份依据 | Cell-State Evidence（P0-02） | 当前组成图缺 prediction set、区间和层级交互 |
+| 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：分别显示内部参考、Birtele、La Manno 等来源的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布、unknown 原因 | Cell-State Evidence（P0-02） | 当前 forced-label/OOD 问题尚未被直观展示 |
+| 目标细胞和区域身份符合预期吗？ | target / acceptable adjacent / off-target / unresolved 组成区间图 | 区域证据热图、reference correlation、program activity、连续身份权重、NNLS residual；空间投射仅在具备合格数据时出现 | Target Identity & Regional Fidelity（P0-03） | 已有结构化比例和方法结果，但没有正式图形产物 |
+| 发育阶段合适吗？ | 双分母发育阶段画像：完整产品和 target-related observations 分开显示 | 按 reference source/modality 分面的 stage-support ridge/heatmap；多个真实时间点时显示 sample-level 趋势 | Developmental Compatibility（P0-04） | 不能只给一个“发育年龄”；单时间点必须明确动态证据不可用 |
+| 有没有不想要或无法解释的细胞？ | 完整产品组成与 unknown 原因图 | rare-state 观测值、零观测上界、LOD、spike-in recovery curve；多来源 OOD 分歧 | Off-target Control（P0-05） | 结构化结果已有比例、区间和检出曲线字段，但尚未渲染 |
+| 是否存在增殖、细胞周期或应激信号？ | sample × program 证据热图，同时显示 reference envelope、gene coverage 和 evidence state | whole-product/state-specific 分布、S/G2M、方法一致性、ProtocolIR 时间线和 review flag | Proliferation & Stress Response（P0-06） | 必须写成“需要复核的转录信号”，不能画成安全性或 potency 结论 |
+| 多个批次或工艺有什么差别？ | 逐指标效应量森林图：raw delta、区间、分母和可比性 | composition delta、program heatmap、preparation-level points、batch/lot 距离和敏感性矩阵 | Product Comparison & Stability（P0-07） | 仅在满足可比合同时显示；单个 preparation 只能作描述性比较，不能排名 |
+| 为什么能得出这个判断？ | 领域 × Data Readiness / Model Robustness / Prior Applicability 三轴证据矩阵 | 选择结论后显示“来源 → Evidence → Claim → Requirement”证据链及尚缺证据 | Evidence Sufficiency / Compiler & Reconciler（P0-08/P0-09） | 已有结构化结果；现有图投影按 ID 截断，不适合结论下钻 |
+| 报告能否使用或分享？ | Claim 核对表：数值、单位、分母、区间、措辞和证据引用 | 被阻断的句子、修改建议、公开导出字段清单 | Claim Verifier / Public-safe Export（P0-10/P0-11） | 当前核对工具不检查图表；仍缺机器可读的图表核对回执 |
+| 有移植后数据吗？ | 独立的 graft 组成、reference support 和 program 图 | animal/graft/timepoint、fine subtype、method sensitivity | Optional Graft Assessment（P0-12） | 必须放在独立页，不能反向改变移植前产品结论 |
 
 移植后视图始终与移植前产品证据分开，不得反向改变移植前结论。
 
@@ -774,15 +773,24 @@ Web/Agent 可通过 `bridge-tool figures list/show/validate` 或 Python interfac
 
 可参考 [Scanpy plotting](https://scanpy.readthedocs.io/en/latest/tutorials/plotting/core.html)、[CellRank plotting](https://cellrank.readthedocs.io/en/stable/api/plotting.html)、[LIANA](https://liana-py.readthedocs.io/en/latest/api.html)、[Squidpy](https://squidpy.readthedocs.io/en/stable/api.html)、[Vitessce](https://vitessce.io/docs/) 和 [Cytoscape.js](https://js.cytoscape.org/)，但是否采用仍取决于真实数据绑定、可复现性和任务适用性。
 
-实现按独立 PR 顺序推进：
+共享 visualization data binding 和 figure registry 已先行完成。后续实现不按
+P0 编号机械排序，而按上表的使用者问题和完整图表族分别提交 PR：
 
-1. 共享 visualization data binding 和 figure registry；
-2. Input Audit & QC 图；
-3. Cell-State Evidence、prediction-set 和 OOD 图；
-4. Evidence Sufficiency 和选中结论的证据路径；
-5. Target/Regional、Developmental、Off-target、Proliferation/Stress，各工具包一个 PR；
-6. 有条件的 Product Comparison 和 Graft 图；
-7. Web 结果页只消费已登记组件。
+1. 这次分析能信吗；
+2. 产品里有什么；
+3. 这些状态可靠吗；
+4. 目标细胞和区域身份符合预期吗；
+5. 发育阶段合适吗；
+6. 有没有不想要或无法解释的细胞；
+7. 是否存在增殖、细胞周期或应激信号；
+8. 多个批次或工艺有什么差别；
+9. 为什么能得出这个判断；
+10. 报告能否使用或分享；
+11. 有移植后数据吗。
+
+一个图表族可以消费一个或多个 Tool Package 的结构化结果；PR 边界由用户问题、
+数据合同和完整阅读路径决定，而不是由 P0 编号决定。Web 结果页只消费已经登记
+并通过该图表族验收的组件。
 
 P0-02 继续使用现有科学工作线，不新开第二条 P0-02 分支。图形只能继承 producing tool 的证据状态，不得提升 method、state 或 claim。
 
