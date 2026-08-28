@@ -117,11 +117,17 @@ def test_cli_figures_list_filters_by_producer_tool(capsys) -> None:
 
     payload = json.loads(capsys.readouterr().out)
     assert exit_code == 0
-    assert [item["component_id"] for item in payload] == [
-        "bridge.qc.counts_genes",
-        "bridge.qc.overview",
+    assert [
+        (item["component_id"], item["component_version"], item["registry_state"])
+        for item in payload
+    ] == [
+        ("bridge.qc.counts_genes", "0.1.0", "legacy_untyped"),
+        ("bridge.qc.counts_genes", "0.2.0", "typed_candidate"),
+        ("bridge.qc.flag-intersections", "0.1.0", "typed_candidate"),
+        ("bridge.qc.overview", "0.1.0", "legacy_untyped"),
+        ("bridge.qc.overview", "0.2.0", "typed_candidate"),
+        ("bridge.qc.readiness-flow", "0.1.0", "typed_candidate"),
     ]
-    assert all(item["registry_state"] == "legacy_untyped" for item in payload)
 
 
 def test_cli_figures_show_resolves_legacy_component_id(capsys) -> None:
@@ -149,8 +155,8 @@ def test_cli_figures_validate_reports_migration_state(capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert exit_code == 0
     assert payload["valid"] is True
-    assert payload["component_count"] == 7
-    assert payload["typed_candidate_count"] == 0
+    assert payload["component_count"] == 11
+    assert payload["typed_candidate_count"] == 4
     assert payload["legacy_untyped_count"] == 7
 
 
