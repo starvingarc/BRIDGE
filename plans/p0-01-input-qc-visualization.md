@@ -126,11 +126,11 @@ storage. GSE204796 remains a supplemental engineering stress test.
 Formal product-facing validation now starts from inputs that match the P0-01
 contract rather than from the processed BRIDGE v1 objects:
 
-| Dataset | Formal input | Current action |
+| Dataset | Formal input | Validation result |
 |---|---|---|
-| MacroDiff | Six cell-called raw-count captures combined without cell filtering; 78,542 cells | Run the complete multi-capture figure family and inspect capture/timepoint presentation |
-| Studer-protocol D16 | Original filtered 10x-style MTX; 11,087 cells | Run the complete single-capture figure family and inspect metadata/missing-state behavior |
-| SphereDiff | Upstream counts are controlled under `HRA008865`; exact local mapping unresolved | Keep the 9,547-cell v1 object as an `analysis_ready` historical control and render `count_ready` as unavailable |
+| MacroDiff | Six cell-called unnormalized count captures combined without cell filtering; 78,542 cells | Complete figure family passed two exact-wheel runs; all 18 core outputs were byte-identical |
+| Studer-protocol D16 | Original filtered 10x-style MTX; 11,087 cells | Complete figure family passed two exact-wheel runs; all 18 core outputs were byte-identical |
+| SphereDiff | Upstream counts are controlled under `HRA008865`; exact local mapping unresolved | The 9,547-cell v1 object remains an `analysis_ready` historical control; formal `count_ready` input remains unavailable |
 
 The v1 MacroDiff 57,464-cell and Studer 9,046-cell objects are exact downstream
 subsets of the upstream matrices. They may be used for historical comparison,

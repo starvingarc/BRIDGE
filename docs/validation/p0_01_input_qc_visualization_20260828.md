@@ -96,10 +96,59 @@ without an exact sample map and access authorization.
 The private source-input manifest has SHA-256
 `5ee8d2b808e3d11d595a8388b9d34be5bbeae1b8986dc471a58817fffd358d94`.
 It records server-only paths, per-file hashes and barcode correspondence; none
-of these private fields may enter public figures. The MacroDiff and Studer runs
-remain outstanding at this commit. SphereDiff is blocked only for formal
-`count_ready` testing and does not block validation of honest unavailable-state
-rendering.
+of these private fields may enter public figures. SphereDiff is blocked only for
+formal `count_ready` testing and does not block validation of honest
+unavailable-state rendering.
+
+### Exact-wheel results
+
+Both eligible uploads were validated with a wheel built from the same clean
+server commit. The installed package was loaded from the isolated validation
+environment rather than from the source worktree.
+
+| Item | Value |
+|---|---|
+| Validated implementation commit | `88268b95cfe6857cb56b151bfcba7f20b35c5dc7` |
+| Wheel SHA-256 | `c14de8d77657c7f26b16797ad5c750beb1212809c8ea9930ba6c03151c687c90` |
+| Runtime | Python 3.12.13; NumPy 2.2.6; pandas 2.3.3; SciPy 1.16.3; AnnData 0.12.19; Matplotlib 3.10.9; PyArrow 21.0.0; h5py 3.14.0 |
+| Server | x86_64; Intel Xeon Gold 6330; 112 visible CPUs |
+
+| Result | MacroDiff | Studer-protocol D16 |
+|---|---:|---:|
+| Run ID | `run-155afe6da2d72b33` | `run-58fd6c6f8a81a8c6` |
+| Declared cells | 78,542 | 11,087 |
+| Candidate-eligible | 77,946 | 10,315 |
+| Flagged for review, not removed | 596 | 772 |
+| Mutually exclusive flag combinations | 310 high mitochondrial; 264 high detected genes; 22 low detected genes + high mitochondrial | 682 high detected genes; 86 high mitochondrial; 4 low detected genes + high mitochondrial |
+| First/repeat wall time | 4:14.77 / 4:00.45 | 1:08.50 / 1:06.36 |
+| First/repeat peak RSS | 8.30 / 8.29 GiB | 2.27 / 2.25 GiB |
+
+Both inputs had unique observation and gene identifiers, non-negative integer
+counts and complete caller-declared sample/capture metadata. The six MacroDiff
+captures were displayed as D14, D21 and four D28 captures without exposing raw
+capture identifiers. The Studer input was displayed as one D16 capture. Missing
+upstream library reports remained `not_assessed`. Cell calling and ambient-RNA
+assessment remained `not_assessed` because these were cell-called `count_ready`
+inputs rather than unfiltered droplets; Scrublet remained `not_assessed` because
+it was not requested. Count-based QC was eligible, downstream scientific modules
+remained conditional, and `domain_score` remained `null`.
+
+Each upload was run twice in the same wheel environment. The 18 core outputs for
+each run were byte-identical across repeats: five SVGs, five PNGs, typed JSON,
+Parquet, TSV, the visualization artifact set, the metrics table, the compressed
+candidate-view H5AD and both readiness profiles. Formal artifact hashes were:
+
+| Public/derived artifact | MacroDiff SHA-256 | Studer-protocol D16 SHA-256 |
+|---|---|---|
+| Typed visualization JSON | `edb755c8f30f5e228347c45506a3e7dd21b2d3454b808f286ed972205aacc0a1` | `e89d873fb924e9048b752b583ff4f00bc2315bc6f41c26e4f97ff17ada902c81` |
+| Table fallback TSV | `3dddfd1af2cb152b2d8911df331d7d4e1acdd5162679f92c4b8974c9c7450118` | `96d023dc7bc5548bb9c2ff69824b2d2f92c4383b4b3e21745ab0e4c836130122` |
+| Visualization artifact set | `f8f9a12e5c832f64fb364fd2babef71837bd0c8cd3e603db1f0e0bbe7ee1785e` | `f1e65233455b6b95e2a6dea527150bba253b776ebbb955bbdee2873322ef2e04` |
+| Candidate-view H5AD | `f7a84b52e1169f4b55379a51c1abe0787e769e6fe21edd90a4958a8522c7250a` | `90c6e9a9c6d8e42244b9754857a2df526425e00b9dda36237ea7b7583c8b306d` |
+
+The final figures were inspected from the server. Capture ordering, denominators,
+threshold labels and review-flag wording were legible at publication scale. A
+scan of the 16 public JSON, TSV, artifact-set and SVG files found no server path,
+user/dataset name or raw cell barcode.
 
 ## Supplemental public-data engineering stress test
 
