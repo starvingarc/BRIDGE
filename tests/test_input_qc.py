@@ -31,6 +31,11 @@ from bridge.tool_packages.p0_01_input_qc.io import (
     QCVisualizationDataProfile,
     sha256_path,
 )
+from bridge.tool_packages.p0_01_input_qc.visualization import (
+    FLAG_LABELS,
+    _capture_sort_key,
+    render_qc_flag_intersections,
+)
 from bridge.tool_packages.p0_01_input_qc.measurement_specs import load_measurement_spec
 from bridge.toolkit.contracts import (
     ExecutionState,
@@ -361,6 +366,32 @@ def test_typed_qc_visualization_outputs_are_deterministic(tmp_path: Path) -> Non
     }
     assert first_hashes == second_hashes
     assert len(first_hashes) == 11
+
+
+def test_anonymous_capture_labels_sort_by_numeric_suffix() -> None:
+    labels = ["Capture 1", "Capture 10", "Capture 2", "Unavailable"]
+
+    assert sorted(labels, key=_capture_sort_key) == [
+        "Capture 1",
+        "Capture 2",
+        "Capture 10",
+        "Unavailable",
+    ]
+
+
+def test_single_flag_combination_uses_a_linear_count_axis(tmp_path: Path) -> None:
+    flags = pd.DataFrame(
+        {column: [False] * 8 for column in FLAG_LABELS}
+    )
+
+    svg_path, _ = render_qc_flag_intersections(
+        flags,
+        tmp_path / "single-combination",
+        observation_unit="cells",
+    )
+    svg = svg_path.read_text(encoding="utf-8")
+    assert "No candidate flag" in svg
+    assert "log scale" not in svg
 
 
 @pytest.mark.parametrize("reference_source", ["columns", "constants"])

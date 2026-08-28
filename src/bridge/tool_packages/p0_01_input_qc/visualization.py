@@ -233,7 +233,7 @@ def render_qc_distributions(
     if len(metrics) != len(groups):
         raise ValueError("metrics and groups must contain the same observations")
     group_values = groups.astype("string").fillna("Unavailable").to_numpy()
-    group_order = sorted(pd.unique(group_values).tolist())
+    group_order = sorted(pd.unique(group_values).tolist(), key=_capture_sort_key)
     positions = np.arange(len(group_order))
 
     with plt.rc_context(FIGURE_RC):
@@ -436,7 +436,11 @@ def render_qc_flag_intersections(
 
         counts = combinations["count"].to_numpy(dtype=int)
         bar_axis.bar(x_values, counts, width=0.68, color=colors, edgecolor="none")
-        use_log_scale = counts.min(initial=1) > 0 and counts.max(initial=1) / counts.min(initial=1) >= 100
+        use_log_scale = (
+            len(counts) > 1
+            and counts.min() > 0
+            and counts.max() / counts.min() >= 100
+        )
         if use_log_scale:
             bar_axis.set_yscale("log")
         for x_value, (count, row) in enumerate(zip(counts, combinations.itertuples(), strict=True)):
@@ -515,6 +519,13 @@ def _candidate_counts(
         return None, None
     eligible = int(flags["bridge_qc_candidate_eligible"].fillna(False).astype(bool).sum())
     return eligible, max(declared_observations - eligible, 0)
+
+
+def _capture_sort_key(label: str) -> tuple[int, int | str]:
+    prefix = "Capture "
+    if label.startswith(prefix) and label.removeprefix(prefix).isdigit():
+        return 0, int(label.removeprefix(prefix))
+    return 1, label
 
 
 def _review_mask(flags: pd.DataFrame | None, index: pd.Index) -> pd.Series:
