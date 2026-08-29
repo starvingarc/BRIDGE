@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from jsonschema import Draft202012Validator
+from matplotlib.colors import to_rgb
 from scipy import sparse
 from scipy.io import mmwrite
 
@@ -20,6 +21,7 @@ from bridge.tool_packages._configurable_contracts import (
     biological_unit_assignment_reasons,
     observation_ids_sha256,
 )
+from bridge.tool_packages.p0_01_input_qc import visualization as qc_visualization
 from bridge.tool_packages.p0_01_input_qc import executor as input_qc_executor
 from bridge.tool_packages.p0_01_input_qc.io import (
     P001_STRUCTURED_OUTPUT_INDEX_SCHEMA_REF,
@@ -32,8 +34,11 @@ from bridge.tool_packages.p0_01_input_qc.io import (
     sha256_path,
 )
 from bridge.tool_packages.p0_01_input_qc.visualization import (
+    AMBER,
     FLAG_LABELS,
+    UNAVAILABLE,
     _capture_sort_key,
+    render_qc_distributions,
     render_qc_flag_intersections,
     render_qc_relationships,
 )
@@ -304,6 +309,9 @@ def test_count_ready_h5ad_writes_immutable_artifacts_and_visualizations(tmp_path
 
     _, artifact_set_payload = _artifact_json(run, "visualization_artifact_set")
     artifact_set = P001VisualizationArtifactSet.model_validate(artifact_set_payload)
+    assert [item.component_ref for item in artifact_set.visualizations] == list(
+        QC_COMPONENT_REFS
+    )
     registry = FigureRegistry.load_default()
     for visualization in artifact_set.visualizations:
         registry.validate_artifact(visualization)
@@ -398,6 +406,78 @@ def test_anonymous_capture_labels_sort_by_numeric_suffix() -> None:
     ]
 
 
+def test_figure_status_colors_meet_text_contrast_on_white() -> None:
+    def relative_luminance(color: str) -> float:
+        channels = [
+            value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+            for value in to_rgb(color)
+        ]
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+    for color in (AMBER, UNAVAILABLE):
+        contrast = 1.05 / (relative_luminance(color) + 0.05)
+        assert contrast >= 4.5
+
+
+def test_distribution_labels_include_each_capture_denominator(tmp_path: Path) -> None:
+    metrics = pd.DataFrame(
+        {
+            "total_counts": [100, 200, 300, 400],
+            "detected_genes": [50, 80, 100, 120],
+            "mitochondrial_fraction": [0.01, 0.02, 0.03, 0.04],
+            "ribosomal_fraction": [0.05, 0.06, 0.07, 0.08],
+            "top_20_gene_fraction": [0.10, 0.11, 0.12, 0.13],
+        }
+    )
+    groups = pd.Series(
+        ["D14 · Capture 1", "D14 · Capture 1", "D21 · Capture 2", "D21 · Capture 2"]
+    )
+
+    svg_path, _ = render_qc_distributions(
+        metrics,
+        groups,
+        tmp_path / "distributions",
+        observation_unit="cells",
+    )
+
+    svg = svg_path.read_text(encoding="utf-8")
+    assert "D14 · Capture 1  n=2" in svg
+    assert "D21 · Capture 2  n=2" in svg
+
+
+def test_flag_combination_indices_appear_only_below_matrix(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flags = pd.DataFrame(False, index=range(4), columns=list(FLAG_LABELS))
+    flags.loc[1, "flag_high_mitochondrial_fraction"] = True
+    flags.loc[2, "flag_high_detected_genes"] = True
+    flags.loc[3, ["flag_low_detected_genes", "flag_high_mitochondrial_fraction"]] = True
+    captured: dict[str, object] = {}
+
+    def capture_figure(figure, output_stem: Path) -> tuple[Path, Path]:
+        captured["figure"] = figure
+        return output_stem.with_suffix(".svg"), output_stem.with_suffix(".png")
+
+    monkeypatch.setattr(qc_visualization, "_save_figure", capture_figure)
+    qc_visualization.render_qc_flag_intersections(
+        flags,
+        tmp_path / "flag-combinations",
+        observation_unit="cells",
+    )
+
+    figure = captured["figure"]
+    bar_axis, matrix_axis = figure.axes
+    assert not any(label.get_visible() for label in bar_axis.get_xticklabels())
+    assert [label.get_text() for label in matrix_axis.get_xticklabels()] == [
+        "1",
+        "2",
+        "3",
+        "4",
+    ]
+    qc_visualization.plt.close(figure)
+
+
 def test_single_flag_combination_uses_a_linear_count_axis(tmp_path: Path) -> None:
     flags = pd.DataFrame(
         {column: [False] * 8 for column in FLAG_LABELS}
@@ -412,6 +492,7 @@ def test_single_flag_combination_uses_a_linear_count_axis(tmp_path: Path) -> Non
     assert "No candidate QC flags observed" in svg
     assert "Exclusive flag combination" not in svg
     assert "log scale" not in svg
+    assert "100.0%" in svg
 
 
 def test_declared_timepoint_context_is_shown_without_raw_capture_ids(tmp_path: Path) -> None:
@@ -466,6 +547,32 @@ def test_relationship_svg_contains_no_embedded_raster_images(tmp_path: Path) -> 
     svg = svg_path.read_text(encoding="utf-8")
     assert "Cells per hexagon" in svg
     assert "<image" not in svg
+    assert "candidate-review overlay is unavailable" in svg
+
+
+def test_relationship_caption_discloses_deterministic_review_subsample(
+    tmp_path: Path,
+) -> None:
+    metrics = pd.DataFrame(
+        {
+            "total_counts": np.arange(1, 81) * 100,
+            "detected_genes": np.arange(1, 81) * 10,
+            "mitochondrial_fraction": np.linspace(0.01, 0.20, 80),
+        }
+    )
+    flags = pd.DataFrame(False, index=metrics.index, columns=list(FLAG_LABELS))
+    flags["flag_high_mitochondrial_fraction"] = True
+
+    svg_path, _ = render_qc_relationships(
+        metrics,
+        tmp_path / "relationships-with-review",
+        flags=flags,
+        observation_unit="cells",
+    )
+
+    svg = svg_path.read_text(encoding="utf-8")
+    assert "deterministic subset of candidate-review observations" in svg
+    assert "capped at 60 per panel" in svg
 
 
 @pytest.mark.parametrize("reference_source", ["columns", "constants"])

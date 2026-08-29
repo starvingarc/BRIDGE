@@ -18,9 +18,9 @@ GRID = "#DCE4E7"
 PALE = "#F3F6F6"
 TEAL = "#2B7A78"
 TEAL_LIGHT = "#8FC4BF"
-AMBER = "#C88A2C"
+AMBER = "#9B6518"
 VERMILION = "#B9553F"
-UNAVAILABLE = "#AAB5BC"
+UNAVAILABLE = "#5F707A"
 
 FIGURE_RC = {
     "font.family": "sans-serif",
@@ -216,7 +216,8 @@ def render_analysis_eligibility(
             flow_axis.text(
                 bar_left,
                 -0.63,
-                f"Candidate-eligible  {eligible:,}",
+                f"Candidate-eligible  {eligible:,} "
+                f"({_format_percentage(eligible, declared_observations)})",
                 ha="left",
                 va="top",
                 color=TEAL,
@@ -225,7 +226,8 @@ def render_analysis_eligibility(
             flow_axis.text(
                 bar_left + bar_width,
                 -0.63,
-                f"Flagged for review  {review:,}",
+                f"Flagged for review  {review:,} "
+                f"({_format_percentage(review, declared_observations)})",
                 ha="right",
                 va="top",
                 color=AMBER,
@@ -265,6 +267,10 @@ def render_qc_distributions(
     group_values = groups.astype("string").fillna("Unavailable").to_numpy()
     group_order = sorted(pd.unique(group_values).tolist(), key=_capture_sort_key)
     positions = np.arange(len(group_order))
+    group_labels = [
+        f"{group}  n={int(np.sum(group_values == group)):,}"
+        for group in group_order
+    ]
 
     with plt.rc_context(FIGURE_RC):
         fig, axes = plt.subplots(
@@ -304,7 +310,7 @@ def render_qc_distributions(
                 _draw_raincloud(axis, transformed, float(position))
             axis.set_title(title, loc="left", fontsize=9.1, weight="bold", pad=8)
             axis.set_xlabel(display_unit, fontsize=7.8)
-            axis.set_yticks(positions, group_order)
+            axis.set_yticks(positions, group_labels)
             axis.invert_yaxis()
             axis.xaxis.grid(True, color=GRID, lw=0.65)
             axis.set_axisbelow(True)
@@ -331,13 +337,24 @@ def render_qc_relationships(
     candidate_rules: Mapping[str, float] | None = None,
     observation_unit: str,
 ) -> tuple[Path, Path]:
+    review_overlay_available = flags is not None and any(
+        column in flags.columns for column in FLAG_LABELS
+    )
+    subtitle = (
+        "Hexagons show observation density; amber outlines show a deterministic "
+        "subset of candidate-review observations, capped at 60 per panel."
+        if review_overlay_available
+        else (
+            "Hexagons show observation density; the candidate-review overlay is unavailable."
+        )
+    )
     with plt.rc_context(FIGURE_RC):
         fig, axes = plt.subplots(1, 2, figsize=(9.6, 4.6))
         fig.subplots_adjust(left=0.08, right=0.96, top=0.74, bottom=0.19, wspace=0.34)
         _figure_heading(
             fig,
             "Library complexity and mitochondrial transcript fraction",
-            "Hexagons preserve observation density; amber outlines identify candidate-review observations.",
+            subtitle,
         )
         review_mask = _review_mask(flags, metrics.index)
         counts = pd.to_numeric(metrics["total_counts"], errors="coerce")
@@ -424,7 +441,8 @@ def render_qc_relationships(
         fig.text(
             0.08,
             0.045,
-            f"Denominator: {len(metrics):,} declared {observation_unit}. Candidate thresholds support review and do not remove observations.",
+            f"Denominator: {len(metrics):,} declared {observation_unit}. "
+            "Review thresholds were predefined for this run and do not remove observations.",
             color=MUTED,
             fontsize=7.8,
         )
@@ -491,9 +509,15 @@ def render_qc_flag_intersections(
         )
         if use_log_scale:
             bar_axis.set_yscale("log")
-        for x_value, (count, row) in enumerate(zip(counts, combinations.itertuples(), strict=True)):
-            y_value = count * 1.16 if use_log_scale else count + max(counts.max(initial=0) * 0.025, 0.5)
-            label = f"{count:,}"
+        for x_value, (count, row) in enumerate(
+            zip(counts, combinations.itertuples(), strict=True)
+        ):
+            y_value = (
+                count * 1.16
+                if use_log_scale
+                else count + max(counts.max(initial=0) * 0.025, 0.5)
+            )
+            label = f"{count:,}\n({_format_percentage(count, len(flags))})"
             if row.n_flags == 0:
                 label += "\nNo candidate flag"
             bar_axis.text(x_value, y_value, label, ha="center", va="bottom", fontsize=7.8)
@@ -524,6 +548,7 @@ def render_qc_flag_intersections(
         matrix_axis.set_yticks(y_values, [FLAG_LABELS[column] for column in flag_columns])
         matrix_axis.invert_yaxis()
         matrix_axis.set_xticks(x_values, [str(index + 1) for index in x_values])
+        bar_axis.tick_params(axis="x", bottom=False, labelbottom=False)
         matrix_axis.set_xlabel("Exclusive flag combination")
         matrix_axis.tick_params(axis="y", length=0)
         matrix_axis.spines[["top", "right", "bottom", "left"]].set_visible(False)
@@ -572,7 +597,7 @@ def _render_no_candidate_flags(
         axis.text(
             0.0,
             0.24,
-            f"{declared:,} of {declared:,} declared {observation_unit}",
+            f"{declared:,} of {declared:,} declared {observation_unit} (100.0%)",
             transform=axis.transAxes,
             color=MUTED,
             fontsize=9,
@@ -616,6 +641,14 @@ def _candidate_counts(
         return None, None
     eligible = int(flags["bridge_qc_candidate_eligible"].fillna(False).astype(bool).sum())
     return eligible, max(declared_observations - eligible, 0)
+
+
+def _format_percentage(count: int, total: int) -> str:
+    if total <= 0:
+        return "unavailable"
+    percentage = 100.0 * count / total
+    precision = 2 if 0.0 < percentage < 1.0 else 1
+    return f"{percentage:.{precision}f}%"
 
 
 def _capture_sort_key(label: str) -> tuple[int, int | str]:

@@ -39,9 +39,9 @@ count-level input remain `unavailable`, never zero.
 | Component | Role | Analytical job | Default evidence |
 |---|---|---|---|
 | `bridge.qc.readiness-flow@0.1.0` | main | **Observation retention and analysis eligibility**: declared observations, validated structure/matrix semantics, candidate eligibility and downstream-view availability | counts and explicit unavailable states |
+| `bridge.qc.flag-intersections@0.1.0` | supporting | **QC-flag combinations and observation counts**: exclusive intersections of candidate QC flags | exact counts and full declared denominator |
 | `bridge.qc.overview@0.2.0` | supporting | **Quality-metric distributions by capture**: five measured QC variables shown separately for every complete caller-declared capture | median, interquartile range, observations and missingness |
 | `bridge.qc.counts_genes@0.2.0` | supporting | **Library complexity and mitochondrial transcript fraction**: joint counts–genes and counts–mitochondrial relationships | per-observation values with candidate-review overlay |
-| `bridge.qc.flag-intersections@0.1.0` | supporting | **QC-flag combinations and observation counts**: exclusive intersections of candidate QC flags | exact counts and full declared denominator |
 
 The two existing `@0.1.0` static components remain registered as
 `legacy_untyped` for compatibility. The new components are additive
@@ -137,10 +137,15 @@ The v1 MacroDiff 57,464-cell and Studer 9,046-cell objects are exact downstream
 subsets of the upstream matrices. They may be used for historical comparison,
 but not as the simulated user upload. Piao et al. 2021 supports the published
 MSK-DA01 protocol context; it does not define the Studer sequencing object's
-dataset identity.
+dataset identity. The final figure review added per-capture denominators,
+counts with percentages, an explicit deterministic 60-observation cap for the
+candidate-review overlay, one shared set of intersection indices and
+white-background text contrast of at least 4.5:1 for review and unavailable
+states. These changes affect presentation only; measurements, candidate rules
+and evidence states are unchanged.
 
 Published figure artifacts use anonymized labels and approved aggregate fields.
-Independent PR review and merge authorization remain; Web integration is still outside this plan.
+Final exact-commit verification remains; Web integration is still outside this plan.
 
 ## Non-goals
 

@@ -86,9 +86,9 @@ P001_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF = (
 )
 QC_COMPONENT_REFS = (
     "bridge.qc.readiness-flow@0.1.0",
+    "bridge.qc.flag-intersections@0.1.0",
     "bridge.qc.overview@0.2.0",
     "bridge.qc.counts_genes@0.2.0",
-    "bridge.qc.flag-intersections@0.1.0",
 )
 
 _QCComponentRef = Literal[
