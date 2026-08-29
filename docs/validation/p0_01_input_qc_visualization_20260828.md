@@ -145,6 +145,36 @@ denominators, threshold labels and review-flag wording were legible. The
 publication scan confirmed that the 16 JSON, TSV, artifact-set and SVG files
 used anonymized capture labels and typed aggregate records.
 
+### Final presentation audit — 2026-08-29
+
+The final readability pass was validated from implementation commit
+`f9e574831af431fe115f4c29a8c1e8d92e5aaefe`. Its wheel SHA-256 was
+`4517909ac527a1528195657ac1e5733e42dcfb08e269bfa352403a68cdb94969`.
+The installed package was imported from an isolated Python 3.12
+`site-packages` environment.
+
+| Result | MacroDiff | Studer-protocol D16 |
+|---|---:|---:|
+| Run ID | `run-155afe6da2d72b33` | `run-58fd6c6f8a81a8c6` |
+| First/repeat wall time | 3:07.66 / 3:08.38 | 0:55.98 / 0:55.82 |
+| First/repeat peak RSS | 8,698,840 / 8,698,692 KiB | 2,370,932 / 2,370,536 KiB |
+| Repeat identity | 18/18 core files byte-identical | 18/18 core files byte-identical |
+| Visualization artifact-set SHA-256 | `6d99939dae60fb3461007e50de1531b1320dcf35e463851e155a43ea0a0d2d3b` | `1d0e6a99716c90d1fe6d060eaa56761648fd87d0e40cd7fc00ec90650b2bc0f0` |
+
+The observation-retention figure now shows counts with percentages; each
+capture-distribution row shows its own `n`; the flag-intersection figure uses
+one shared set of lower-axis indices; and the relationship figure discloses
+that amber outlines are a deterministic subset capped at 60 per panel. Review
+and unavailable colors have at least 4.5:1 contrast against white. Both real
+datasets were inspected at publication scale, with no label collision,
+clipping or misleading unavailable state.
+
+Relative to the preceding implementation, QC metrics, candidate-view H5AD,
+both readiness profiles and typed visualization JSON/Parquet/TSV remained
+byte-identical for both datasets. Only the intended figures and path-binding
+indexes changed. No MeasurementSpec, candidate rule, evidence state or
+scientific conclusion changed.
+
 ## Supplemental public-data engineering stress test
 
 The repository's
@@ -225,7 +255,7 @@ record rather than a runtime guarantee.
 
 | Gate | Result |
 |---|---|
-| Complete installed-wheel repository suite | `1375 passed, 20 warnings` |
+| Complete installed-wheel repository suite | `1380 passed, 20 warnings` |
 | Tool discovery | 12 packages, `P0-01` through `P0-12` |
 | Figure registry | valid; 11 components; 4 typed candidates; 7 legacy untyped |
 | Knowledge snapshot | valid; 354 methods; 396 bindings; 0 formal-eligible methods |
