@@ -8,8 +8,10 @@ evidence you need.
 > evaluation Agent. The current `main` branch provides its deterministic P0 tool
 > layer: all 12 packages are executable engineering candidates. The end-to-end
 > Agent/Web experience is not yet integrated. A shared visualization data
-> contract and figure registry are available, but
-> all current P0-01/P0-02 figure components remain `legacy_untyped`.
+> contract and figure registry are available. P0-01 now provides four
+> `typed_candidate` figure components, alongside two compatibility
+> `legacy_untyped` components; the current P0-02 figure components remain
+> `legacy_untyped`.
 > No scientific method, state, threshold or score is frozen, and a target
 > capability in the PRD or a task
 > card is not current runtime behavior.

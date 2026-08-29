@@ -47,11 +47,9 @@ scientific validation.
 
 ## Data and claims
 
-- Never commit private data, internal sample identifiers, server/user paths,
-  credentials, restricted full text or unpublished material without explicit
-  authorization.
-- Fixtures must be synthetic, de-identified, public or explicitly authorized and
-  must state their source class and checksum.
+- Repository contributions consist of code, schemas, documentation and minimal
+  fixtures that are synthetic, de-identified, public or explicitly authorized.
+  Each fixture states its source class and checksum.
 - Keep `missing`, `unknown`, `unavailable`, `negative` and `alert` distinct.
 - Do not add clinical efficacy, safety, potency, GMP-release, absolute ranking or
   score claims without a separately versioned and validated authority.

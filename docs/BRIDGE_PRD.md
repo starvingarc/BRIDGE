@@ -149,10 +149,10 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 | Jerber population-scale iPSC DA (`EGAS00001002885`; `EGAD00001006157`) | 215 条 iPSC lines；pooled 2D mDA 分化 | scRNA-seq；D11/D30/D52，D52 含 rotenone block | 765,851 cells | donor、batch、timepoint 和扰动鲁棒性 | `available`；需按 donor/batch/condition 去重 |
 | BrainSTEM Toh (`GSE281535`) | hPSC；3D midbrain organoid；midbrain/mDA lineage | scRNA-seq；D20/D25/D30/D40/D50/D60 | 34,702 cells；48 sequencing sublibraries，每个时间点 8 个 | 2D/3D domain shift 和时间点描述 | `available`；在 biological sample/organoid/replicate map 冻结前，48 个 sublibraries 不得称为 48 个生物学重复，只能作 timepoint-level descriptive analysis |
 | Fiorenzano VM organoid (`GSE168323`) | hPSC；3D VM organoid；VM/mDA neurons 及前体 | scRNA-seq；D15/D30/D60/D90/D120 | 91,034 cells | organoid trajectory 和区域比较 | `available`；organoid 不与 2D product 直接排名 |
-| SphereDiff | hPSC；3D sphere differentiation；mDA progenitors | scRNA-seq；D7/D14/D21/D28 | 33,134 profiles；D28 为 9,547 cells | 内部时间序列和 D28 product comparator | `available`；各时间点分开建案，metadata 和披露范围待冻结 |
-| MacroDiff | hPSC；内部两类 mDA differentiation protocol；mDA progenitors | scRNA-seq；Protocol A 为 D14/D21/D28，Protocol B 为 D28 | 57,464 cells；A 36,070，B 21,394 | 内部时间序列和跨 protocol 比较 | `sealed`；两类 protocol 不合并为同一时间序列，细胞系、权限和公开措辞待确认 |
+| SphereDiff（陈跃军组，Cell Stem Cell 研究关联） | hPSC；3D sphere differentiation；mDA progenitors | scRNA-seq；论文原始序列位于受控项目 `HRA008865`；BRIDGE v1 对象为 D28 | v1 对象 9,547 cells；`count_ready` 对应关系尚未闭合 | 已发表研究关联的历史比较 | `analysis_ready_only`；关联 Zhang et al., Cell Stem Cell 2025；完成样本对应后再进入 `count_ready` 分析 |
+| MacroDiff（陈跃军组内部数据） | hPSC；内部两类 mDA differentiation protocol；mDA progenitors | scRNA-seq；Protocol A 为 D14/D21/D28，Protocol B 为 D28 | 六个 `count_ready` capture 共 78,542 个 cell-called barcodes；v1 下游对象 57,464 cells | 内部时间序列和跨 protocol 证据 | `restricted_internal`、`internal_unpublished`；capture 结构本身不证明 biological-replicate independence |
 | Tiklová pre-graft RC17 (`GSE118412`) | RC17 hESC；2D VM 分化；VM/mDA progenitors | Smart-seq2/scRNA-seq；D16 | 404 hESC-derived cells | 与长期 graft 显式关联的历史 sanity check | `available`；样本量小且平台较旧；同源 fetal VM 256 cells 作为 reference，不计入产品分母 |
-| Legacy MSK-DA01 local object | 预期为 H9/WA09 clinical-grade mDA floor-plate 体系 | single-cell transcriptomics；D16 | 9,046 cells | 旧结果对齐 | `pending`、`sealed`；本地对象与公开来源待核实 |
+| Studer/MSK-DA01 protocol-linked D16 | D16 分化样本；已发表 MSK-DA01/Studer floor-plate 方案作为 protocol context | scRNA-seq；D16 | `count_ready` 矩阵 11,087 个 cell-called barcodes；v1 下游对象 9,046 cells | 已发表方案背景比较 | `restricted_source`；Piao et al., Cell Stem Cell 2021 支持产品与方案背景，但不确定该测序对象的论文数据归属 |
 
 ### 2.4 空间转录组与染色验证
 
@@ -242,7 +242,8 @@ graft 的分析单位为 `animal/graft x post-transplant timepoint`。只有在�
 | Jerber population-scale DA | Jerber et al., *Nature Genetics* (2021) | [10.1038/s41588-021-00801-6](https://doi.org/10.1038/s41588-021-00801-6) |
 | BrainSTEM Toh / `GSE281535` | Toh et al., *Science Advances* (2025) | [10.1126/sciadv.adu7944](https://doi.org/10.1126/sciadv.adu7944) |
 | Fiorenzano / `GSE168323` | Fiorenzano et al., *Nature Communications* (2021) | [10.1038/s41467-021-27464-5](https://doi.org/10.1038/s41467-021-27464-5) |
-| SphereDiff | Zhang et al., *Cell Stem Cell* (2025) | [10.1016/j.stem.2025.10.001](https://doi.org/10.1016/j.stem.2025.10.001) |
+| SphereDiff / Chen 组 Cell Stem Cell 研究 | Zhang et al., *Cell Stem Cell* (2025) | [10.1016/j.stem.2025.10.001](https://doi.org/10.1016/j.stem.2025.10.001) |
+| MSK-DA01 product/protocol context | Piao et al., *Cell Stem Cell* (2021) | [10.1016/j.stem.2021.01.004](https://doi.org/10.1016/j.stem.2021.01.004) |
 | LMX1A/BFP + MPP+ / `GSE249360` | Cardo et al., *Cells* (2023) | [10.3390/cells12242860](https://doi.org/10.3390/cells12242860) |
 | Opioid organoid / `GSE260711` | Kim et al., *Advanced Science* (2024) | [10.1002/advs.202400847](https://doi.org/10.1002/advs.202400847) |
 | FOUNDIN-PD | Bressan et al., *Cell Genomics* (2023) | [10.1016/j.xgen.2023.100261](https://doi.org/10.1016/j.xgen.2023.100261) |
@@ -691,20 +692,22 @@ P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有
 
 #### 核心图表体系
 
-| 使用者的问题 | 默认主图 | 需要时展开 | 证据来源 | 当前实现 |
+下表第一列是使用者的阅读需求，只用于组织分析路径，不作为图题。正式图题必须直接描述
+所示变量、比较对象和分析范围，避免把技术质量评估表述为对整项分析的笼统可信度判断。
+
+| 使用者关注点（非图题） | 默认主图 | 需要时展开 | 证据来源 | 当前不足 |
 |---|---|---|---|---|
-| 数据能否用于分析？ | 从上传观测到 QC 保留、再到各下游可用数据视图的细胞流向图 | 每个 sample/capture 的 QC 分布；counts–genes、counts–mitochondrial 关系；QC flag 交集；不同 DataView 的敏感性 | Input Audit & QC（P0-01） | 部分实现：已有合并分布图和 counts–genes 静态图 |
-| 产品中有哪些细胞？ | L1/L2/L3 层级组成图，明确分开已知、prediction set、unknown/OOD 和 unresolved | 状态明细表；可选 embedding；所选 DataView 的来源 | Cell-State Evidence（P0-02） | 部分实现：已有 source-aware 组成图 |
-| 细胞状态命名是否可靠？ | source × state 证据点阵图 | 方法一致性、marker 证据、prediction-set coverage、校准、OOD 分布、unknown 原因和敏感性 | Cell-State Evidence（P0-02） | 部分实现：已有 reference、marker 和冲突图；开放集视图缺失 |
-| 是否包含目标谱系和预期中脑区域特征？ | target、acceptable adjacent、off-target、unresolved 组成及区间，并列区域支持证据 | reference correlation、program activity、连续身份权重、残差、方法敏感性和有条件的空间投射 | Target Identity & Regional Fidelity（P0-03） | 尚无正式 `VisualizationArtifact` |
-| 发育阶段是否符合已审核窗口？ | 全产品与 target-related 细胞分别使用各自分母的阶段组成图 | 按 source/modality 分面的阶段支持、sample-level 时间趋势、program 动态和仅用于校准的状态转移图 | Developmental Compatibility（P0-04） | 尚无正式 `VisualizationArtifact` |
-| 是否存在非目标、未知或稀有状态？ | 全产品角色组成和 unknown 原因图，并显示区间 | 零观测上界、rare-state LOD、spike-in recovery 和多来源 OOD 分歧 | Off-target Control（P0-05） | 尚无正式 `VisualizationArtifact` |
-| 是否存在增殖、细胞周期或应激信号？ | sample × program 证据热图，同时显示 reference envelope、gene coverage 和 evidence state | 全产品/状态内分布、S/G2M、方法一致性、制备时间线和复核信号 | Proliferation & Stress Response（P0-06） | 尚无正式 `VisualizationArtifact` |
-| 可比较的产品、批次或时间点有何差异？ | 每个指标分别展示原始差异和效应量区间的 forest plot | 组成差异、program effect、以 preparation 为单位的时间趋势、稳定性、混杂和敏感性 | Product Comparison & Stability（P0-07） | 有条件启用，尚无正式 `VisualizationArtifact` |
-| 每项解释获得多少证据支持？ | domain × Data Readiness / Model Robustness / Prior Applicability 矩阵 | 单个 domain 的判断过程、缺失条件和状态数量 | Evidence Sufficiency（P0-08） | 已有结构化结果；当前有意不产生图 |
-| 一项结论为何能或不能成立？ | 从来源到 Evidence、Claim 和 Requirement 的选中结论有向证据路径 | 冲突、同家族依赖、provenance 和对应表格行 | Evidence Compiler & Reconciler（P0-09） | 已产生受限 Cytoscape projection，但尚未登记为正式图 |
-| 报告能否使用或公开？ | claim 核对表和 public-export readiness 概览 | 被阻止的字段、措辞问题、Evidence refs 和导出 manifest | Claim Verifier / Public-safe Export（P0-10/P0-11） | 已有结构化回执；P0-10 v0.1 不核对图形 |
-| 移植后样本发生了什么？ | 独立的 graft 组成、胎儿 reference 支持和 program 证据视图 | animal/graft/timepoint、fine subtype、方法敏感性和 preparation–graft 来源 | Optional Graft Assessment（P0-12） | 有条件启用，尚无正式 `VisualizationArtifact` |
+| 输入数据是否满足后续分析条件 | **数据质量与分析资格评估**：声明观测数 → 结构与矩阵语义有效 → 候选 QC 状态 → 下游视图可用性 | **各 capture 的质量指标分布**；**文库复杂度与线粒体转录本比例**；**质量标记组合及细胞数量**；不同 QC view 的结果敏感性 | Input Audit & QC（P0-01） | 目前只有汇总直方图和散点图，缺逐 capture、阈值、观测流向和敏感性 |
+| 产品里有什么？ | L1/L2/L3 层级组成图，明确分开已支持、prediction set、unknown/OOD 和 unresolved，并显示区间与分母 | 可展开至每个状态、来源和观测；UMAP 只作探索，不作为身份依据 | Cell-State Evidence（P0-02） | 当前组成图缺 prediction set、区间和层级交互 |
+| 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：分别显示内部参考、Birtele、La Manno 等来源的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布、unknown 原因 | Cell-State Evidence（P0-02） | 当前 forced-label/OOD 问题尚未被直观展示 |
+| 目标细胞和区域身份符合预期吗？ | target / acceptable adjacent / off-target / unresolved 组成区间图 | 区域证据热图、reference correlation、program activity、连续身份权重、NNLS residual；空间投射仅在具备合格数据时出现 | Target Identity & Regional Fidelity（P0-03） | 已有结构化比例和方法结果，但没有正式图形产物 |
+| 发育阶段合适吗？ | 双分母发育阶段画像：完整产品和 target-related observations 分开显示 | 按 reference source/modality 分面的 stage-support ridge/heatmap；多个真实时间点时显示 sample-level 趋势 | Developmental Compatibility（P0-04） | 不能只给一个“发育年龄”；单时间点必须明确动态证据不可用 |
+| 有没有不想要或无法解释的细胞？ | 完整产品组成与 unknown 原因图 | rare-state 观测值、零观测上界、LOD、spike-in recovery curve；多来源 OOD 分歧 | Off-target Control（P0-05） | 结构化结果已有比例、区间和检出曲线字段，但尚未渲染 |
+| 是否存在增殖、细胞周期或应激信号？ | sample × program 证据热图，同时显示 reference envelope、gene coverage 和 evidence state | whole-product/state-specific 分布、S/G2M、方法一致性、ProtocolIR 时间线和 review flag | Proliferation & Stress Response（P0-06） | 必须写成“需要复核的转录信号”，不能画成安全性或 potency 结论 |
+| 多个批次或工艺有什么差别？ | 逐指标效应量森林图：raw delta、区间、分母和可比性 | composition delta、program heatmap、preparation-level points、batch/lot 距离和敏感性矩阵 | Product Comparison & Stability（P0-07） | 仅在满足可比合同时显示；单个 preparation 只能作描述性比较，不能排名 |
+| 为什么能得出这个判断？ | 领域 × Data Readiness / Model Robustness / Prior Applicability 三轴证据矩阵 | 选择结论后显示“来源 → Evidence → Claim → Requirement”证据链及尚缺证据 | Evidence Sufficiency / Compiler & Reconciler（P0-08/P0-09） | 已有结构化结果；现有图投影按 ID 截断，不适合结论下钻 |
+| 报告能否使用或分享？ | Claim 核对表：数值、单位、分母、区间、措辞和证据引用 | 被阻断的句子、修改建议、公开导出字段清单 | Claim Verifier / Public-safe Export（P0-10/P0-11） | 当前核对工具不检查图表；仍缺机器可读的图表核对回执 |
+| 有移植后数据吗？ | 独立的 graft 组成、reference support 和 program 图 | animal/graft/timepoint、fine subtype、method sensitivity | Optional Graft Assessment（P0-12） | 必须放在独立页，不能反向改变移植前产品结论 |
 
 移植后视图始终与移植前产品证据分开，不得反向改变移植前结论。
 
@@ -769,24 +772,37 @@ Web/Agent 可通过 `bridge-tool figures list/show/validate` 或 Python interfac
 
 1. 优先调用当前 Tool Package Card 已声明、可绑定 `VisualizationArtifact` 的组件；
 2. 缺少组件时，查看分析工具的官方绘图接口、官方源码示例和可视化 skill；
-3. 在服务器隔离环境中检查数据绑定、尺度、标签、缺失状态、移动端和视觉质量；
+3. 在隔离可复现环境中检查数据绑定、尺度、标签、缺失状态、移动端和视觉质量；
 4. 未登记图形只能以 `exploratory` 展示，通过审核前不得进入正式报告。
 
 可参考 [Scanpy plotting](https://scanpy.readthedocs.io/en/latest/tutorials/plotting/core.html)、[CellRank plotting](https://cellrank.readthedocs.io/en/stable/api/plotting.html)、[LIANA](https://liana-py.readthedocs.io/en/latest/api.html)、[Squidpy](https://squidpy.readthedocs.io/en/stable/api.html)、[Vitessce](https://vitessce.io/docs/) 和 [Cytoscape.js](https://js.cytoscape.org/)，但是否采用仍取决于真实数据绑定、可复现性和任务适用性。
 
-实现按独立 PR 顺序推进：
+共享 visualization data binding 和 figure registry 已先行完成。后续实现不按
+P0 编号机械排序，而按上表的使用者问题和完整图表族分别提交 PR：
 
-1. 共享 visualization data binding 和 figure registry；
-2. Input Audit & QC 图；
-3. Cell-State Evidence、prediction-set 和 OOD 图；
-4. Evidence Sufficiency 和选中结论的证据路径；
-5. Target/Regional、Developmental、Off-target、Proliferation/Stress，各工具包一个 PR；
-6. 有条件的 Product Comparison 和 Graft 图；
-7. Web 结果页只消费已登记组件。
+1. 输入数据是否满足后续分析条件；
+2. 产品里有什么；
+3. 这些状态可靠吗；
+4. 目标细胞和区域身份符合预期吗；
+5. 发育阶段合适吗；
+6. 有没有不想要或无法解释的细胞；
+7. 是否存在增殖、细胞周期或应激信号；
+8. 多个批次或工艺有什么差别；
+9. 为什么能得出这个判断；
+10. 报告能否使用或分享；
+11. 有移植后数据吗。
+
+一个图表族可以消费一个或多个 Tool Package 的结构化结果；PR 边界由用户问题、
+数据合同和完整阅读路径决定，而不是由 P0 编号决定。Web 结果页只消费已经登记
+并通过该图表族验收的组件。
+
+当前阶段先完成可独立审阅的科学分析图：确定数据编码、分母、区间、缺失状态、
+静态 SVG/PNG 和表格回退。Web 页面布局、响应式适配、交互控件与前端 renderer
+在分析图通过审核后另行实现；后续 UI 不得改变已经审核的数据语义。
 
 P0-02 继续使用现有科学工作线，不新开第二条 P0-02 分支。图形只能继承 producing tool 的证据状态，不得提升 method、state 或 claim。
 
-一个图族只有同时满足以下条件才算完成：科学问题和默认阅读路径已记录；数据 artifact 有 typed Schema、version 和 hash；missing、unknown、unavailable、conflict、alert fixture 完整；每个 mark 可追溯到结构化记录和 Evidence ID；desktop、mobile、静态导出和表格 fallback 表达同一条观察；语义断言和确定性图像检查通过；私有路径和 ID 不进入 URL 或公开导出；精确 Git SHA 在服务器验证；结论不超出 producing tool 的证据。
+一个图族只有同时满足以下条件才算完成：科学问题和默认阅读路径已记录；数据 artifact 有 typed Schema、version 和 hash；missing、unknown、unavailable、conflict、alert fixture 完整；每个 mark 可追溯到结构化记录和 Evidence ID；desktop、mobile、静态导出和表格 fallback 表达同一条观察；语义断言和确定性图像检查通过；发布 artifact 仅含逻辑 ID 和批准字段；精确 Git SHA 完成可复现验证；结论不超出 producing tool 的证据。
 
 ### 6.7 解释、建议与迭代
 
@@ -844,4 +860,4 @@ Claim Verifier 检查：
 | D | [Conda Environment Contracts](../environments/README.md) | 工具运行所需的通用 Conda 环境合同 |
 | E | [P0 Scientific Specifications](bridge_spec_v0.1/README.md) | 各分析任务合同、验证要求和发布状态 |
 | F | [Public JSON Schemas](../src/bridge/resources/schemas/) | 当前 Agent、证据、比较、可视化和运行对象合同 |
-| G | [Validation Records](validation/) | 当前服务器集成和科学 pilot 证据 |
+| G | [Validation Records](validation/) | 当前工程集成和科学 pilot 证据 |

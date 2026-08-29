@@ -10,7 +10,14 @@ from typing import Literal, Self
 import anndata as ad
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from scipy import sparse
 from scipy.io import mmread
 
@@ -26,9 +33,11 @@ from bridge.tool_packages._configurable_contracts import (
 from bridge.toolkit.contracts import (
     BiologicalUnitKind,
     DataViewBinding,
+    EvidenceState,
     IndependenceGroupKind,
     InputAsset,
 )
+from bridge.toolkit.visualization import VisualizationArtifactV2
 
 LINEAGE_METADATA_KEY = "biological_unit_lineage"
 _LINEAGE_SCHEMA_VERSION = "0.1.0"
@@ -51,6 +60,113 @@ _P001_OUTPUT_ROLE_CONTRACTS = {
         "0.1.0",
     ),
 }
+
+P001_STRUCTURED_OUTPUT_INDEX_V2_SCHEMA_REF = (
+    "bridge://schemas/p0-01-structured-output-index/v0.2"
+)
+_P001_OUTPUT_ROLE_CONTRACTS_V2 = {
+    **_P001_OUTPUT_ROLE_CONTRACTS,
+    "qc_visualization_data": (
+        "bridge://schemas/qc-visualization-data/v0.1",
+        "0.1.0",
+    ),
+    "visualization_artifact_set": (
+        "bridge://schemas/p0-01-visualization-artifact-set/v0.1",
+        "0.1.0",
+    ),
+}
+_LINEAGE_OUTPUT_ROLES = {
+    "biological_unit_assignment",
+    "biological_unit_manifest",
+}
+
+QC_VISUALIZATION_DATA_SCHEMA_REF = "bridge://schemas/qc-visualization-data/v0.1"
+P001_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF = (
+    "bridge://schemas/p0-01-visualization-artifact-set/v0.1"
+)
+QC_COMPONENT_REFS = (
+    "bridge.qc.readiness-flow@0.1.0",
+    "bridge.qc.flag-intersections@0.1.0",
+    "bridge.qc.overview@0.2.0",
+    "bridge.qc.counts_genes@0.2.0",
+)
+
+_QCComponentRef = Literal[
+    "bridge.qc.readiness-flow@0.1.0",
+    "bridge.qc.overview@0.2.0",
+    "bridge.qc.counts_genes@0.2.0",
+    "bridge.qc.flag-intersections@0.1.0",
+]
+
+
+def _structured_index_json_schema(
+    contracts: dict[str, tuple[str, str]],
+    required_roles: set[str],
+) -> dict[str, object]:
+    role_contracts = [
+        {
+            "if": {
+                "properties": {"role": {"const": role}},
+                "required": ["role"],
+            },
+            "then": {
+                "properties": {
+                    "schema_ref": {"const": schema_ref},
+                    "object_version": {"const": object_version},
+                }
+            },
+        }
+        for role, (schema_ref, object_version) in contracts.items()
+    ]
+    cardinality = [
+        {
+            "properties": {
+                "outputs": {
+                    "contains": {
+                        "properties": {"role": {"const": role}},
+                        "required": ["role"],
+                    },
+                    "minContains": int(role in required_roles),
+                    "maxContains": 1,
+                }
+            }
+        }
+        for role in contracts
+    ]
+    paired_lineage = {
+        "if": {
+            "properties": {
+                "outputs": {
+                    "contains": {
+                        "properties": {"role": {"enum": sorted(_LINEAGE_OUTPUT_ROLES)}},
+                        "required": ["role"],
+                    }
+                }
+            }
+        },
+        "then": {
+            "properties": {
+                "outputs": {
+                    "allOf": [
+                        {
+                            "contains": {
+                                "properties": {"role": {"const": role}},
+                                "required": ["role"],
+                            }
+                        }
+                        for role in sorted(_LINEAGE_OUTPUT_ROLES)
+                    ]
+                }
+            }
+        },
+    }
+    return {
+        "allOf": [
+            {"properties": {"outputs": {"items": {"allOf": role_contracts}}}},
+            *cardinality,
+            paired_lineage,
+        ]
+    }
 
 
 class P001StructuredOutputRecord(BaseModel):
@@ -77,98 +193,10 @@ class P001StructuredOutputIndex(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         frozen=True,
-        json_schema_extra={
-            "allOf": [
-                {
-                    "properties": {
-                        "outputs": {
-                            "items": {
-                                "allOf": [
-                                    {
-                                        "if": {
-                                            "properties": {"role": {"const": role}},
-                                            "required": ["role"],
-                                        },
-                                        "then": {
-                                            "properties": {
-                                                "schema_ref": {"const": schema_ref},
-                                                "object_version": {"const": object_version},
-                                            }
-                                        },
-                                    }
-                                    for role, (
-                                        schema_ref,
-                                        object_version,
-                                    ) in _P001_OUTPUT_ROLE_CONTRACTS.items()
-                                ]
-                            }
-                        }
-                    }
-                },
-                *[
-                    {
-                        "properties": {
-                            "outputs": {
-                                "contains": {
-                                    "properties": {"role": {"const": role}},
-                                    "required": ["role"],
-                                },
-                                "minContains": int(role == "qc_readiness_profile_v2"),
-                                "maxContains": 1,
-                            }
-                        }
-                    }
-                    for role in _P001_OUTPUT_ROLE_CONTRACTS
-                ],
-                {
-                    "if": {
-                        "properties": {
-                            "outputs": {
-                                "contains": {
-                                    "properties": {
-                                        "role": {
-                                            "enum": [
-                                                "biological_unit_assignment",
-                                                "biological_unit_manifest",
-                                            ]
-                                        }
-                                    },
-                                    "required": ["role"],
-                                }
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "outputs": {
-                                "allOf": [
-                                    {
-                                        "contains": {
-                                            "properties": {
-                                                "role": {
-                                                    "const": "biological_unit_assignment"
-                                                }
-                                            },
-                                            "required": ["role"],
-                                        }
-                                    },
-                                    {
-                                        "contains": {
-                                            "properties": {
-                                                "role": {
-                                                    "const": "biological_unit_manifest"
-                                                }
-                                            },
-                                            "required": ["role"],
-                                        }
-                                    },
-                                ]
-                            }
-                        }
-                    },
-                },
-            ]
-        },
+        json_schema_extra=_structured_index_json_schema(
+            _P001_OUTPUT_ROLE_CONTRACTS,
+            {"qc_readiness_profile_v2"},
+        ),
     )
 
     object_version: Literal["0.1.0"]
@@ -203,6 +231,232 @@ class P001StructuredOutputIndex(BaseModel):
         if roles & lineage_roles and not lineage_roles <= roles:
             raise ValueError("biological unit assignment and manifest must be indexed together")
         return self
+
+
+class P001StructuredOutputRecordV2(BaseModel):
+    """One machine-discoverable structured P0-01 v0.2 output."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: Literal[
+        "qc_readiness_profile_v2",
+        "biological_unit_assignment",
+        "biological_unit_manifest",
+        "qc_visualization_data",
+        "visualization_artifact_set",
+    ]
+    relative_filename: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+    artifact_id: str = Field(min_length=1)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    media_type: Literal["application/json"]
+    schema_ref: str = Field(min_length=1)
+    object_version: str = Field(min_length=1)
+
+
+class P001StructuredOutputIndexV2(BaseModel):
+    """Additive v0.2 index for the QC profile, lineage and typed figures."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        json_schema_extra=_structured_index_json_schema(
+            _P001_OUTPUT_ROLE_CONTRACTS_V2,
+            {
+                "qc_readiness_profile_v2",
+                "qc_visualization_data",
+                "visualization_artifact_set",
+            },
+        ),
+    )
+
+    object_version: Literal["0.2.0"] = "0.2.0"
+    schema_ref: Literal[
+        "bridge://schemas/p0-01-structured-output-index/v0.2"
+    ] = P001_STRUCTURED_OUTPUT_INDEX_V2_SCHEMA_REF
+    run_id: str = Field(min_length=1)
+    outputs: list[P001StructuredOutputRecordV2] = Field(min_length=3, max_length=5)
+
+    @model_validator(mode="after")
+    def outputs_are_coherent(self) -> Self:
+        for field in ("role", "relative_filename", "artifact_id"):
+            values = [getattr(item, field) for item in self.outputs]
+            if len(values) != len(set(values)):
+                raise ValueError(f"structured output {field} values must be unique")
+        for item in self.outputs:
+            expected = _P001_OUTPUT_ROLE_CONTRACTS_V2[item.role]
+            if (item.schema_ref, item.object_version) != expected:
+                raise ValueError(
+                    f"structured output {item.role} uses the wrong schema or object version"
+                )
+        roles = {item.role for item in self.outputs}
+        required = {
+            "qc_readiness_profile_v2",
+            "qc_visualization_data",
+            "visualization_artifact_set",
+        }
+        if not required <= roles:
+            raise ValueError("structured output v0.2 index is missing required roles")
+        if roles & _LINEAGE_OUTPUT_ROLES and not _LINEAGE_OUTPUT_ROLES <= roles:
+            raise ValueError("biological unit assignment and manifest must be indexed together")
+        return self
+
+
+class QCVisualizationRecord(BaseModel):
+    """One public, renderer-independent QC figure datum."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    record_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+    component_ref: _QCComponentRef
+    record_type: Literal[
+        "eligibility_stage",
+        "view_availability",
+        "distribution_summary",
+        "relationship_summary",
+        "flag_intersection",
+    ]
+    label: str = Field(min_length=1)
+    state: Literal[
+        "eligible",
+        "available",
+        "candidate",
+        "review_required",
+        "unavailable",
+    ]
+    metric_id: str | None = Field(default=None, pattern=r"^[A-Za-z][A-Za-z0-9_.-]*$")
+    capture_id: str | None = Field(default=None, pattern=r"^capture_[0-9]{3}$")
+    statistic: Literal[
+        "declared_count",
+        "available_count",
+        "q1",
+        "median",
+        "q3",
+        "threshold",
+        "combination_count",
+    ] | None = None
+    value: float | int | None = None
+    numerator: int | None = Field(default=None, ge=0)
+    denominator: int | None = Field(default=None, ge=0)
+    denominator_scope: str | None = None
+    unit: str = Field(min_length=1)
+    evidence_state: EvidenceState
+    scientific_status: Literal["candidate"] = "candidate"
+    missingness: Literal["none", "partial", "unavailable"]
+    applicability: Literal[
+        "applicable",
+        "partially_applicable",
+        "not_applicable",
+        "not_assessed",
+    ]
+    evidence_ids: list[str] = Field(min_length=1)
+    missing_reason_codes: list[str] = Field(default_factory=list)
+
+    @field_validator("evidence_ids", "missing_reason_codes")
+    @classmethod
+    def list_values_are_unique(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("record evidence and reason lists must be unique")
+        if any(not value.strip() for value in values):
+            raise ValueError("record evidence and reason values must be non-empty")
+        return values
+
+    @model_validator(mode="after")
+    def quantitative_and_missingness_semantics_are_coherent(self) -> Self:
+        denominator_fields = (
+            self.numerator,
+            self.denominator,
+            self.denominator_scope,
+        )
+        if any(value is not None for value in denominator_fields) and not all(
+            value is not None for value in denominator_fields
+        ):
+            raise ValueError("numerator, denominator and denominator scope must be paired")
+        if self.numerator is not None and self.numerator > self.denominator:
+            raise ValueError("record numerator cannot exceed its denominator")
+        unavailable = self.evidence_state in {
+            EvidenceState.MISSING,
+            EvidenceState.UNKNOWN,
+            EvidenceState.UNAVAILABLE,
+        }
+        if unavailable:
+            if not self.missing_reason_codes:
+                raise ValueError("unavailable records require a reason code")
+            if self.value is not None or self.numerator is not None:
+                raise ValueError("unavailable records must not encode a quantitative zero")
+        elif self.value is None and self.numerator is None:
+            raise ValueError("available records require a value or numerator")
+        if (self.missingness == "unavailable") != unavailable:
+            raise ValueError("record missingness must agree with evidence state")
+        return self
+
+
+class QCVisualizationDataProfile(BaseModel):
+    """Versioned QC visualization data and source-table binding."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    object_version: Literal["0.1.0"] = "0.1.0"
+    schema_ref: Literal["bridge://schemas/qc-visualization-data/v0.1"] = (
+        QC_VISUALIZATION_DATA_SCHEMA_REF
+    )
+    profile_id: str = Field(pattern=r"^qc-visualization-data:[A-Za-z0-9._-]+$")
+    producer_run_ref: str = Field(pattern=r"^run:[A-Za-z0-9._:-]+$")
+    observation_unit: Literal["cells", "nuclei", "barcodes"]
+    source_table_artifact_id: str | None = None
+    source_table_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    source_columns: list[str] = Field(default_factory=list)
+    records: list[QCVisualizationRecord] = Field(min_length=4)
+
+    @model_validator(mode="after")
+    def profile_is_complete_and_public(self) -> Self:
+        if (self.source_table_artifact_id is None) != (self.source_table_sha256 is None):
+            raise ValueError("source table artifact ID and hash must be paired")
+        if self.source_table_artifact_id is None and self.source_columns:
+            raise ValueError("source columns require a source table")
+        record_ids = [record.record_id for record in self.records]
+        if len(record_ids) != len(set(record_ids)):
+            raise ValueError("visualization record IDs must be unique")
+        component_refs = {record.component_ref for record in self.records}
+        if component_refs != set(QC_COMPONENT_REFS):
+            raise ValueError("visualization data must cover all four QC components")
+        if len(self.source_columns) != len(set(self.source_columns)):
+            raise ValueError("source columns must be unique")
+        return self
+
+
+class P001VisualizationArtifactSet(BaseModel):
+    """Four typed P0-01 figure contracts bound to one exact data profile."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    object_version: Literal["0.1.0"] = "0.1.0"
+    schema_ref: Literal[
+        "bridge://schemas/p0-01-visualization-artifact-set/v0.1"
+    ] = P001_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF
+    artifact_set_id: str = Field(pattern=r"^p0-01-visualizations:[A-Za-z0-9._-]+$")
+    data_profile_artifact_id: str = Field(min_length=1)
+    data_profile_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    visualizations: list[VisualizationArtifactV2] = Field(min_length=4, max_length=4)
+
+    @model_validator(mode="after")
+    def artifact_set_is_exactly_bound(self) -> Self:
+        component_refs = [artifact.component_ref for artifact in self.visualizations]
+        if len(component_refs) != len(set(component_refs)):
+            raise ValueError("visualization component references must be unique")
+        if set(component_refs) != set(QC_COMPONENT_REFS):
+            raise ValueError("artifact set must contain the four QC figure components")
+        for artifact in self.visualizations:
+            if artifact.data_binding.artifact_id != self.data_profile_artifact_id:
+                raise ValueError("visualization must bind the artifact-set data profile")
+            if artifact.data_binding.sha256 != self.data_profile_sha256:
+                raise ValueError("visualization must bind the exact data-profile hash")
+        return self
+
+
+P001_VISUALIZATION_SCHEMA_MODELS = {
+    QC_VISUALIZATION_DATA_SCHEMA_REF: QCVisualizationDataProfile,
+    P001_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF: P001VisualizationArtifactSet,
+}
 
 
 class InputAuditError(ValueError):
@@ -347,13 +601,21 @@ def _read_10x_mtx(asset: InputAsset) -> ad.AnnData:
         raise InputAuditError("10x_gene_name_incomplete", "Gene Expression feature names must be complete")
     adata = ad.AnnData(
         matrix,
-        obs=pd.DataFrame(index=barcodes.iloc[:, 0].astype(str)),
+        obs=pd.DataFrame(
+            index=pd.Index(
+                barcodes.iloc[:, 0].astype(str).to_numpy(),
+                name="barcode",
+            )
+        ),
         var=pd.DataFrame(
             {
                 "feature_id": features.iloc[:, 0].astype(str).to_numpy(),
                 "feature_type": feature_types.loc[gene_expression].to_numpy(),
             },
-            index=gene_names.astype(str),
+            index=pd.Index(
+                gene_names.astype(str).to_numpy(),
+                name="gene_symbol",
+            ),
         ),
     )
     adata.uns["bridge_10x_feature_selection"] = {

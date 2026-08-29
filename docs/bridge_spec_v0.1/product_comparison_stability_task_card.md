@@ -96,8 +96,9 @@ Pareto 判断必须逐域使用冻结方向、区间和最小可分辨差异；�
 | `Q-BRAINSTEM-TOH-v1` | midbrain organoid；D20/D25/D30/D40/D50/D60 | 34,702；48 sequencing sublibraries（每个时间点 8 个） | 3D 时间点描述与 domain shift | biological sample/organoid/replicate map 冻结前只作 `descriptive_only`；48 sublibraries 不是 48 biological replicates；organoid 不与 2D product 直接排名 |
 | `Q-FIORENZANO-v1` | VM organoid；D15-D120 | 91,034 | 3D trajectory comparator | 只作 contextual comparator |
 | `Q-GSE200610-D16-v1` | RC17 VM；D16 | 8,166 | 单时间点临床相关 comparator | 不等于患者 GMP lot；默认描述性 |
-| `Q-SPHEREDIFF-v1` | 3D mDAP；D28 | 9,547 | 内部/已发表 comparator | source metadata 和 disclosure 需冻结 |
-| `Q-MACRODIFF-v1` | 内部 mDA；D14/D21/D28 | 57,464 | 内部方案与时间序列比较 | sealed；权限、sample map 和披露范围待冻结 |
+| `Q-SPHEREDIFF-v1` | 陈跃军组 3D mDAP；D28 | v1 对象 9,547 | Cell Stem Cell 2025 研究关联比较 | 上游受控 `HRA008865` 与分析对象尚未一一对应；当前只作历史 `analysis_ready` 对照 |
+| `Q-MACRODIFF-v1` | 陈跃军组内部 mDA；D14/D21/D28 | v1 对象 57,464；P0-01 原始计数 78,542 | 内部未发表方案与时间序列比较 | 六个 capture 不等于六个独立 preparation；replicate independence 未建立 |
+| `Q-LEGACY-MSKDA01-v1` | Studer-protocol D16 | v1 对象 9,046；P0-01 原始计数 11,087 | 已发表 MSK-DA01/Studer 方案背景比较 | Piao et al. 2021 支持方案背景，不定义该测序对象的论文数据身份 |
 | `Q-EMTAB14729-v1`（E-MTAB-14729） | Boost/Boost+；D16/D25/D40 | 26,303 | 最终 competitor test | sealed；六个 group 不是六个独立 lot，不参与方法选择或调参 |
 
 在完整 replicate map 冻结前，上述多数公开数据默认进入 `descriptive_only`。`Q-EMTAB14729-v1` 只在分析合同冻结后运行。

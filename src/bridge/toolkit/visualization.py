@@ -534,6 +534,35 @@ def _legacy_component(
     )
 
 
+def _typed_component(
+    component_id: str,
+    component_version: str,
+    *,
+    title: str,
+    question: str,
+    figure_family: str,
+    default_role: FigureRole = FigureRole.SUPPORTING,
+) -> FigureComponentSpec:
+    return FigureComponentSpec(
+        component_id=component_id,
+        component_version=component_version,
+        title=title,
+        question=question,
+        figure_family=figure_family,
+        producer_tool_ids=["P0-01"],
+        registry_state=FigureRegistryState.TYPED_CANDIDATE,
+        default_role=default_role,
+        data_schema_refs=["bridge://schemas/qc-visualization-data/v0.1"],
+        surfaces=[FigureSurface.STATIC_EXPORT, FigureSurface.TABLE],
+        required_fallbacks=[
+            "table",
+            "alt_text",
+            "long_description",
+            "static_vector",
+        ],
+    )
+
+
 _DEFAULT_COMPONENTS = (
     _legacy_component(
         "bridge.qc.overview",
@@ -550,6 +579,35 @@ _DEFAULT_COMPONENTS = (
         question="Do count depth, detected genes and mitochondrial signal reveal QC structure?",
         figure_family="scatter",
         tool_id="P0-01",
+    ),
+    _typed_component(
+        "bridge.qc.readiness-flow",
+        "0.1.0",
+        title="Observation retention and analysis eligibility",
+        question="Which submitted observations meet the defined technical input conditions?",
+        figure_family="eligibility_flow",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.qc.overview",
+        "0.2.0",
+        title="Quality-metric distributions by capture",
+        question="How are five technical QC measurements distributed across declared captures?",
+        figure_family="distribution_raincloud_small_multiples",
+    ),
+    _typed_component(
+        "bridge.qc.counts_genes",
+        "0.2.0",
+        title="Library complexity and mitochondrial transcript fraction",
+        question="How do library complexity and mitochondrial transcript fraction vary across observations?",
+        figure_family="density_hexbin_small_multiples",
+    ),
+    _typed_component(
+        "bridge.qc.flag-intersections",
+        "0.1.0",
+        title="QC-flag combinations and observation counts",
+        question="Which candidate QC flags occur alone or together?",
+        figure_family="set_intersection",
     ),
     _legacy_component(
         "bridge.cell_state.composition-l1",
