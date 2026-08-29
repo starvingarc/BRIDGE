@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 import matplotlib
@@ -63,13 +64,13 @@ _COMPONENT_METADATA = {
         "slug": "capture-distributions",
         "title": "Quality-metric distributions by capture",
         "unit": "metric-specific",
-        "denominator": False,
+        "denominator": True,
     },
     "bridge.qc.counts_genes@0.2.0": {
         "slug": "metric-relationships",
         "title": "Library complexity and mitochondrial transcript fraction",
         "unit": "counts, detected genes and percent",
-        "denominator": False,
+        "denominator": True,
     },
     "bridge.qc.flag-intersections@0.1.0": {
         "slug": "flag-intersections",
@@ -78,6 +79,12 @@ _COMPONENT_METADATA = {
         "denominator": True,
     },
 }
+
+
+_PUBLIC_TIMEPOINT = re.compile(
+    r"^(?:D|Day|GW|W|Week)[ _-]?[0-9]{1,3}(?:\.[0-9]+)?$",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -221,9 +228,15 @@ def _build_records(
     declared: int,
     observation_unit: str,
 ) -> tuple[list[QCVisualizationRecord], pd.Series | None]:
-    structure_evidence = [f"evidence:{run_id}:structure"]
-    count_evidence = [f"evidence:{run_id}:count-metrics"]
-    flag_evidence = [f"evidence:{run_id}:candidate-flags"]
+    structure_evidence = _component_evidence(
+        profile.evidence_ids, "bridge.qc.readiness-flow@0.1.0", run_id
+    )
+    count_evidence = _component_evidence(
+        profile.evidence_ids, "bridge.qc.counts_genes@0.2.0", run_id
+    )
+    flag_evidence = _component_evidence(
+        profile.evidence_ids, "bridge.qc.flag-intersections@0.1.0", run_id
+    )
     records: list[QCVisualizationRecord] = [
         _available_record(
             "eligibility.declared",
@@ -477,7 +490,7 @@ def _capture_display_label(
         return fallback
     values = context.reindex(mask.index).loc[mask].dropna().astype(str)
     unique = [" ".join(value.split()) for value in values.unique() if value.strip()]
-    if len(unique) != 1 or len(unique[0]) > 32:
+    if len(unique) != 1 or _PUBLIC_TIMEPOINT.fullmatch(unique[0]) is None:
         return fallback
     return f"{unique[0]} · {fallback}"
 
@@ -849,6 +862,7 @@ def _visualization_contract(
     }
     if uses_denominator:
         binding_kwargs = {
+            "value_field": "value",
             "numerator_field": "numerator",
             "denominator_field": "denominator",
             "denominator_scope_field": "denominator_scope",
@@ -948,8 +962,14 @@ def _component_text(
     elif component_ref == "bridge.qc.counts_genes@0.2.0":
         takeaway = "Observation density and candidate thresholds are shown without applying a hard filter."
     else:
-        combinations = sum(record.record_type == "flag_intersection" for record in records)
-        takeaway = f"{combinations} mutually exclusive non-zero candidate-flag combination(s) are reported."
+        combinations = sum(
+            record.record_type == "flag_intersection" and record.state == "candidate"
+            for record in records
+        )
+        takeaway = (
+            f"{combinations} mutually exclusive candidate-review combination(s) are reported."
+            if combinations else "No candidate QC flag was observed."
+        )
     description = (
         f"{title}. The denominator is {declared:,} declared {observation_unit}. "
         f"{takeaway} Missing technical evidence is displayed as unavailable rather than zero."

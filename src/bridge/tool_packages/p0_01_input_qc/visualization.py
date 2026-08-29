@@ -286,11 +286,19 @@ def render_qc_distributions(
             available_groups = 0
             for position, group in zip(positions, group_order, strict=True):
                 values = pd.to_numeric(metrics.loc[group_values == group, column], errors="coerce").dropna()
-                if values.empty:
-                    continue
                 transformed = transform(values.to_numpy(dtype=float))
                 transformed = transformed[np.isfinite(transformed)]
                 if not len(transformed):
+                    axis.text(
+                        0.02,
+                        position,
+                        "Unavailable",
+                        transform=axis.get_yaxis_transform(),
+                        ha="left",
+                        va="center",
+                        color=UNAVAILABLE,
+                        fontsize=7.4,
+                    )
                     continue
                 available_groups += 1
                 _draw_raincloud(axis, transformed, float(position))
