@@ -149,10 +149,10 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 | Jerber population-scale iPSC DA (`EGAS00001002885`; `EGAD00001006157`) | 215 条 iPSC lines；pooled 2D mDA 分化 | scRNA-seq；D11/D30/D52，D52 含 rotenone block | 765,851 cells | donor、batch、timepoint 和扰动鲁棒性 | `available`；需按 donor/batch/condition 去重 |
 | BrainSTEM Toh (`GSE281535`) | hPSC；3D midbrain organoid；midbrain/mDA lineage | scRNA-seq；D20/D25/D30/D40/D50/D60 | 34,702 cells；48 sequencing sublibraries，每个时间点 8 个 | 2D/3D domain shift 和时间点描述 | `available`；在 biological sample/organoid/replicate map 冻结前，48 个 sublibraries 不得称为 48 个生物学重复，只能作 timepoint-level descriptive analysis |
 | Fiorenzano VM organoid (`GSE168323`) | hPSC；3D VM organoid；VM/mDA neurons 及前体 | scRNA-seq；D15/D30/D60/D90/D120 | 91,034 cells | organoid trajectory 和区域比较 | `available`；organoid 不与 2D product 直接排名 |
-| SphereDiff（陈跃军组，Cell Stem Cell 研究关联） | hPSC；3D sphere differentiation；mDA progenitors | scRNA-seq；论文原始序列位于受控项目 `HRA008865`；本地 BRIDGE v1 对象为 D28 | 正式 `count_ready` 输入尚未与本地对象一一对应；v1 对象 9,547 cells | v1 历史结果对照；上游输入闭合后再作真实上传验证 | `analysis_ready_only`；关联 Zhang et al., Cell Stem Cell 2025；不得用已注释对象冒充原始计数上传 |
-| MacroDiff（陈跃军组内部数据） | hPSC；内部两类 mDA differentiation protocol；mDA progenitors | scRNA-seq；Protocol A 为 D14/D21/D28，Protocol B 为 D28 | 六个原始计数 capture 共 78,542 个 cell-called barcodes；v1 下游对象 57,464 cells | P0-01 多-capture 真实上传验证；内部时间序列和跨 protocol 比较 | `count_ready_private`、`internal_unpublished`；不把 capture 当生物学重复，不公开原始数据、样本标识或服务器路径 |
+| SphereDiff（陈跃军组，Cell Stem Cell 研究关联） | hPSC；3D sphere differentiation；mDA progenitors | scRNA-seq；论文原始序列位于受控项目 `HRA008865`；BRIDGE v1 对象为 D28 | v1 对象 9,547 cells；`count_ready` 对应关系尚未闭合 | 已发表研究关联的历史比较 | `analysis_ready_only`；关联 Zhang et al., Cell Stem Cell 2025；完成样本对应后再进入 `count_ready` 分析 |
+| MacroDiff（陈跃军组内部数据） | hPSC；内部两类 mDA differentiation protocol；mDA progenitors | scRNA-seq；Protocol A 为 D14/D21/D28，Protocol B 为 D28 | 六个 `count_ready` capture 共 78,542 个 cell-called barcodes；v1 下游对象 57,464 cells | 内部时间序列和跨 protocol 证据 | `restricted_internal`、`internal_unpublished`；capture 结构本身不证明 biological-replicate independence |
 | Tiklová pre-graft RC17 (`GSE118412`) | RC17 hESC；2D VM 分化；VM/mDA progenitors | Smart-seq2/scRNA-seq；D16 | 404 hESC-derived cells | 与长期 graft 显式关联的历史 sanity check | `available`；样本量小且平台较旧；同源 fetal VM 256 cells 作为 reference，不计入产品分母 |
-| Studer/MSK-DA01 protocol-linked D16 | 本地 D16 分化样本；已发表 MSK-DA01/Studer floor-plate 方案作为 protocol context | scRNA-seq；D16 | 原始过滤计数矩阵 11,087 个 cell-called barcodes；v1 下游对象 9,046 cells | P0-01 单-capture 真实 MTX 上传验证；已发表方案比较 | `count_ready_private`；Piao et al., Cell Stem Cell 2021 支持产品与方案背景，但当前证据不把本地测序文件声称为该论文公开数据 |
+| Studer/MSK-DA01 protocol-linked D16 | D16 分化样本；已发表 MSK-DA01/Studer floor-plate 方案作为 protocol context | scRNA-seq；D16 | `count_ready` 矩阵 11,087 个 cell-called barcodes；v1 下游对象 9,046 cells | 已发表方案背景比较 | `restricted_source`；Piao et al., Cell Stem Cell 2021 支持产品与方案背景，但不确定该测序对象的论文数据归属 |
 
 ### 2.4 空间转录组与染色验证
 
@@ -772,7 +772,7 @@ Web/Agent 可通过 `bridge-tool figures list/show/validate` 或 Python interfac
 
 1. 优先调用当前 Tool Package Card 已声明、可绑定 `VisualizationArtifact` 的组件；
 2. 缺少组件时，查看分析工具的官方绘图接口、官方源码示例和可视化 skill；
-3. 在服务器隔离环境中检查数据绑定、尺度、标签、缺失状态、移动端和视觉质量；
+3. 在隔离可复现环境中检查数据绑定、尺度、标签、缺失状态、移动端和视觉质量；
 4. 未登记图形只能以 `exploratory` 展示，通过审核前不得进入正式报告。
 
 可参考 [Scanpy plotting](https://scanpy.readthedocs.io/en/latest/tutorials/plotting/core.html)、[CellRank plotting](https://cellrank.readthedocs.io/en/stable/api/plotting.html)、[LIANA](https://liana-py.readthedocs.io/en/latest/api.html)、[Squidpy](https://squidpy.readthedocs.io/en/stable/api.html)、[Vitessce](https://vitessce.io/docs/) 和 [Cytoscape.js](https://js.cytoscape.org/)，但是否采用仍取决于真实数据绑定、可复现性和任务适用性。
@@ -802,7 +802,7 @@ P0 编号机械排序，而按上表的使用者问题和完整图表族分别�
 
 P0-02 继续使用现有科学工作线，不新开第二条 P0-02 分支。图形只能继承 producing tool 的证据状态，不得提升 method、state 或 claim。
 
-一个图族只有同时满足以下条件才算完成：科学问题和默认阅读路径已记录；数据 artifact 有 typed Schema、version 和 hash；missing、unknown、unavailable、conflict、alert fixture 完整；每个 mark 可追溯到结构化记录和 Evidence ID；desktop、mobile、静态导出和表格 fallback 表达同一条观察；语义断言和确定性图像检查通过；私有路径和 ID 不进入 URL 或公开导出；精确 Git SHA 在服务器验证；结论不超出 producing tool 的证据。
+一个图族只有同时满足以下条件才算完成：科学问题和默认阅读路径已记录；数据 artifact 有 typed Schema、version 和 hash；missing、unknown、unavailable、conflict、alert fixture 完整；每个 mark 可追溯到结构化记录和 Evidence ID；desktop、mobile、静态导出和表格 fallback 表达同一条观察；语义断言和确定性图像检查通过；发布 artifact 仅含逻辑 ID 和批准字段；精确 Git SHA 完成可复现验证；结论不超出 producing tool 的证据。
 
 ### 6.7 解释、建议与迭代
 
@@ -860,4 +860,4 @@ Claim Verifier 检查：
 | D | [Conda Environment Contracts](../environments/README.md) | 工具运行所需的通用 Conda 环境合同 |
 | E | [P0 Scientific Specifications](bridge_spec_v0.1/README.md) | 各分析任务合同、验证要求和发布状态 |
 | F | [Public JSON Schemas](../src/bridge/resources/schemas/) | 当前 Agent、证据、比较、可视化和运行对象合同 |
-| G | [Validation Records](validation/) | 当前服务器集成和科学 pilot 证据 |
+| G | [Validation Records](validation/) | 当前工程集成和科学 pilot 证据 |

@@ -80,8 +80,9 @@ state, scientific status, missingness, applicability and Evidence IDs.
 
 The structured-output index will discover both new JSON objects. Existing
 `ToolRun` fields and `VisualizationArtifact` v0.1 records remain byte
-compatible. No public artifact may contain a local path, raw payload or private sample
-identifier. Interaction lists remain empty until the later Web implementation.
+compatible. Public artifacts contain logical lookup keys, approved aggregate
+fields and anonymized capture labels. Interaction lists remain empty until the
+later Web implementation.
 
 ## Prior art and implementation boundary
 
@@ -111,9 +112,9 @@ copied source enters the wheel.
    versions.
 6. Add semantic, Schema, missing-state, traceability, deterministic-render and
    backward-compatibility tests.
-7. Validate public real-data subsets and a multi-capture fixture on the server;
+7. Validate public real-data subsets and a multi-capture fixture;
    record five repeated rendering times, median/range, CPU and peak memory.
-8. Build and install the wheel from the exact server SHA, then complete the one
+8. Build and install the wheel from the exact Git SHA, then complete the one
    Draft PR for this data-readiness figure family.
 
 ## Implementation and validation status
@@ -130,17 +131,16 @@ contract rather than from the processed BRIDGE v1 objects:
 |---|---|---|
 | MacroDiff | Six cell-called unnormalized count captures combined without cell filtering; 78,542 cells | Complete figure family passed two exact-wheel runs; all 18 core outputs were byte-identical |
 | Studer-protocol D16 | Original filtered 10x-style MTX; 11,087 cells | Complete figure family passed two exact-wheel runs; all 18 core outputs were byte-identical |
-| SphereDiff | Upstream counts are controlled under `HRA008865`; exact local mapping unresolved | The 9,547-cell v1 object remains an `analysis_ready` historical control; formal `count_ready` input remains unavailable |
+| SphereDiff | Upstream counts are controlled under `HRA008865`; exact sample mapping unresolved | The 9,547-cell v1 object remains an `analysis_ready` historical control; formal `count_ready` input remains unavailable |
 
 The v1 MacroDiff 57,464-cell and Studer 9,046-cell objects are exact downstream
 subsets of the upstream matrices. They may be used for historical comparison,
 but not as the simulated user upload. Piao et al. 2021 supports the published
-MSK-DA01 protocol context; it is not used to assert that the local Studer files
-are the paper data.
+MSK-DA01 protocol context; it does not define the Studer sequencing object's
+dataset identity.
 
-Local working objects remain server-only and public figure artifacts must
-suppress sample identifiers and paths. Independent PR review and merge
-authorization remain; Web integration is still outside this plan.
+Published figure artifacts use anonymized labels and approved aggregate fields.
+Independent PR review and merge authorization remain; Web integration is still outside this plan.
 
 ## Non-goals
 
@@ -158,5 +158,5 @@ The PR is complete only when the data Schemas and renders agree byte-for-byte
 with their bound hashes; unavailable and partial fixtures remain explicit;
 vector, raster and table forms preserve the same observation;
 all marks trace to records and Evidence IDs; repeated renders are deterministic;
-the complete repository and wheel gates pass on the server; and real-data
+the complete repository and wheel gates pass; and real-data
 figures receive a visual and scientific-boundary review.

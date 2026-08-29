@@ -7,10 +7,10 @@
 | Registry 版本 | `DATA-REF-v0.1` |
 | 审计日期 | 2026-08-03 |
 | 覆盖范围 | 当前可用于 BRIDGE 构建、校准、评测、OOD challenge 和 graft 后验分析的数据 |
-| 详细研究主表 | 内部工作簿含受控技术字段，不提交仓库；本文件保存公开安全的事实摘要 |
+| 详细研究主表 | 内部工作簿保存受控技术字段；本文件保存公开科学事实摘要 |
 | 机器可读基础矩阵 | [BRIDGE foundation materials](../registries/BRIDGE_foundation_materials_matrix_20260713.tsv) |
 
-本 registry 是脱敏的逻辑资产目录。它不记录服务器路径、个人目录和未公开样本级 metadata。
+本 registry 记录脱敏的逻辑资产、公开科学 metadata 和稳定资产 ID。
 
 ## 一、卡片字段
 
@@ -132,9 +132,9 @@ P0 中空间结果只称 `Spatial Reference Concordance`，不能称移植后宿
 | `Q-JERBER-v1` | population-scale iPSC DA，scRNA | D11/D30/D52；D52 含 rotenone block | >750,000 | donor/batch/timepoint robustness | 需按 donor、batch、condition 和 study family 去重 |
 | `Q-BRAINSTEM-TOH-v1` | midbrain organoid，scRNA | D20/D25/D30/D40/D50/D60 | 34,702；48 sequencing sublibraries（每个时间点 8 个） | 2D/3D domain shift 和时间点描述 | biological sample/organoid/replicate map 冻结前，不能把 48 sublibraries 当作 48 biological replicates；仅作 `descriptive_only` |
 | `Q-FIORENZANO-v1` | VM organoid，scRNA | D15/D30/D60/D90/D120 | 91,034 | organoid trajectory/region comparator | organoid 不与 2D product 直接总排名 |
-| `Q-SPHEREDIFF-v1` | 陈跃军组 SphereDiff，3D mDAP scRNA | D28 | v1 下游对象 9,547；上游 `count_ready` 尚不可用 | published-study-linked historical comparator | Zhang et al., Cell Stem Cell 2025 的原始序列位于受控 `HRA008865`；精确本地样本映射闭合前只作 `analysis_ready` 对照 |
-| `Q-MACRODIFF-v1` | 陈跃军组内部 MacroDiff，mDA protocol scRNA | D14/D21/D28 | 原始计数 78,542；v1 下游对象 57,464 | internal unpublished comparator and P0-01 upload fixture | 六个 capture 仅限服务器；不得视为六个生物学重复或进入公开样本级报告 |
-| `Q-LEGACY-MSKDA01-v1` | local Studer-protocol D16 object | D16 | 原始计数 11,087；v1 下游对象 9,046 | published-protocol-linked comparator and P0-01 upload fixture | Piao et al., Cell Stem Cell 2021 支持 MSK-DA01 方案背景；不据此声称本地测序文件是论文公开数据 |
+| `Q-SPHEREDIFF-v1` | 陈跃军组 SphereDiff，3D mDAP scRNA | D28 | v1 下游对象 9,547；上游 `count_ready` 尚不可用 | published-study-linked historical comparator | Zhang et al., Cell Stem Cell 2025 的原始序列位于受控 `HRA008865`；精确样本映射闭合前只作 `analysis_ready` 对照 |
+| `Q-MACRODIFF-v1` | 陈跃军组内部 MacroDiff，mDA protocol scRNA | D14/D21/D28 | 原始计数 78,542；v1 下游对象 57,464 | internal unpublished comparator | 六个 capture 不代表六个独立 biological preparations；公开报告仅使用聚合证据 |
+| `Q-LEGACY-MSKDA01-v1` | Studer-protocol D16 object | D16 | 原始计数 11,087；v1 下游对象 9,046 | published-protocol-linked comparator | Piao et al., Cell Stem Cell 2021 支持 MSK-DA01 方案背景，不定义该测序对象的论文数据身份 |
 
 代表文献：
 
@@ -220,8 +220,8 @@ Negative/OOD 数据检验 specificity 和拒答能力，不代表“低质量 PD
 | Development | Chen references、GSE204796、SISBAR、stress calibration、部分 OOD | Card、MeasurementSpec、阈值和 error curve |
 | Public locked | GSE200610、GSE227070、预注册 OOD | 算法冻结后评测 |
 | Domain shift | Jerber、Toh、Fiorenzano、La Manno | cross-source/2D/3D robustness |
-| Internal unpublished | MacroDiff、经批准的其他内部 preparations | 仅限服务器内方法开发与可视化测试；不公开原始数据或样本标识 |
-| Published study context with local files | SphereDiff、Studer-protocol D16 | SphereDiff 上游为受控数据且本地映射待确认；Studer 本地数据仅以已发表方案作为 protocol context；两者均保留来源和 checksum manifest |
+| Internal unpublished | MacroDiff、经批准的其他内部 preparations | 受控方法开发与可视化评估；公开记录限于聚合证据 |
+| Published study context | SphereDiff、Studer-protocol D16 | SphereDiff 上游为受控数据且样本映射待确认；Studer 仅以已发表方案作为 protocol context；两者均保留来源和 checksum manifest |
 | Graft context | GSE200610、E-MTAB-14729、GSE204796、Tiklová | 独立后验层，不训练或修改移植前分域评估分数；竞争来源仍遵守 sealed policy |
 | Competitor sealed | E-MTAB-14729 及其他竞争研究公开 query，合法取得后 | BRIDGE 全部冻结后一次性测试；进入全局 clean-room denylist |
 
@@ -234,6 +234,6 @@ Negative/OOD 数据检验 specificity 和拒答能力，不代表“低质量 PD
 3. hEB58 两张切片的方向、ROI、segmentation 和同胚胎关系。
 4. 待返回空间数据的 donor、section、切面和时间合同。
 5. BrainSTEM 研究家族、样本、assay 和重复对象去重。
-6. MacroDiff 内部未发表对象的权限与公开措辞；SphereDiff `HRA008865` 样本到本地对象的精确对应；Studer-protocol D16 本地数据与已发表方案的边界说明。
+6. MacroDiff 的 biological preparation hierarchy；SphereDiff `HRA008865` 样本与分析对象的精确对应；Studer-protocol D16 测序来源与已发表方案的边界。
 7. 各 graft 的 originating preparation、宿主、animal 和 timepoint map。
 8. 所有待核实 D/timepoint 字段不得由 Agent 按论文惯例补全。
