@@ -126,10 +126,10 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 | 数据家族 | Assay 与材料 | 发育时间与解剖范围 | 当前规模 | 主要用途 | 状态与限制 |
 | --- | --- | --- | ---: | --- | --- |
 | Chen vMB scRNA | scRNA-seq，whole cells | GW7/8/9/12/16/20；人胚腹侧中脑 | 61,455 cells | 早期区域、祖细胞和目标/邻近程序 | `available`；需冻结样本表、ROI 和 annotation |
-| Chen vMB snRNA | snRNA-seq，nuclei | GW14/16/18/20/24/25；人胚腹侧中脑 | 87,467 nuclei | 中晚期神经元和 DA subtype coverage | `available`；与 scRNA 为不同胚胎 |
-| Chen vMB combined | scRNA-seq + snRNA-seq 整合对象 | 12 个非配对胚胎、10 个孕周；腹侧中脑 | 148,922 profiles | state ontology、reference mapping 和发育背景 | 派生对象；年龄与模态存在混杂 |
+| Chen vMB snRNA | snRNA-seq，nuclei | GW14/16/18/20/24/25；人胚腹侧中脑 | 87,467 nuclei | graft snRNA 身份支持；跨模态发育轨迹的一条分模态轨道 | `available`；与 scRNA 为不同胚胎，不进入移植前身份默认流程 |
+| Chen vMB combined | scRNA-seq + snRNA-seq 整合对象 | 12 个非配对胚胎、10 个孕周；腹侧中脑 | 148,922 profiles | state ontology，以及发育路径、方向和分支的候选 reference | 派生对象；年龄与模态存在混杂，必须分模态验证 |
 | Chen RG/Nb states | 从 Chen sc/sn 派生的状态集 | 腹侧中脑；14 个区域 RG/Nb states | 15,095 profiles | mFP/mBIP/mBMP 目标和邻近状态 | 不作为独立 reference 计数 |
-| Chen neurogenesis states | 从 Chen sc/sn 派生的神经发生状态集 | 腹侧中脑发育 | 83,017 profiles | DA/GABA/Glut/RG/Nb 状态和发育程序 | candidate；不是因果谱系真值 |
+| Chen neurogenesis states | 从 Chen sc/sn 派生的神经发生状态集 | 腹侧中脑发育 | 83,017 profiles | DA/GABA/Glut/RG/Nb 状态，以及发育路径和分支方向候选 | candidate；不是因果谱系真值 |
 | Braun et al., 2023 (`EGAS00001004107`; HCA `cbd2911f-252b-4428-abde-69e270aefdfc`) | scRNA-seq；论文另含 spatial | PCW5-14；第一孕期全脑多区域 | 1,548,209 cells | 全脑区域和广谱离轴背景 | `available`；全脑 reference 不替代 vMB reference |
 | Zeng et al., 2023 (`GSE155121`) | scRNA-seq；PCW4 10x spatial | PCW3-12；全胚、全头和全脑 | 400,141 human cells | 早期胚胎、神经管、脑和非神经背景 | `available`；区域与年龄标签需冻结 |
 | La Manno et al., 2016 (`GSE76381`) | 人胎 VM scRNA-seq | PCW6-11；腹侧中脑 | 1,977 fetal cells | 独立经典 VM 发育 reference | `available`；旧平台且样本量较小 |
@@ -699,9 +699,9 @@ P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有
 |---|---|---|---|---|
 | 输入数据是否满足后续分析条件 | **数据质量与分析资格评估**：声明观测数 → 结构与矩阵语义有效 → 候选 QC 状态 → 下游视图可用性 | **各 capture 的质量指标分布**；**文库复杂度与线粒体转录本比例**；**质量标记组合及细胞数量**；不同 QC view 的结果敏感性 | Input Audit & QC（P0-01） | 目前只有汇总直方图和散点图，缺逐 capture、阈值、观测流向和敏感性 |
 | 产品里有什么？ | L1/L2/L3 层级组成图，明确分开已支持、prediction set、unknown/OOD 和 unresolved，并显示区间与分母 | 可展开至每个状态、来源和观测；UMAP 只作探索，不作为身份依据 | Cell-State Evidence（P0-02） | 当前组成图缺 prediction set、区间和层级交互 |
-| 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：分别显示内部参考、Birtele、La Manno 等来源的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布、unknown 原因 | Cell-State Evidence（P0-02） | 当前 forced-label/OOD 问题尚未被直观展示 |
+| 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：移植前分别显示本组 scRNA、Chen + Braun + Zeng 整合 scRNA、空间 reference 及 Birtele/La Manno external-source evidence 的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布、unknown 原因；单核细胞身份 reference 只在独立 graft 视图出现 | Cell-State Evidence（P0-02） | 当前 forced-label/OOD、reference 血缘和空间支持尚未被直观展示 |
 | 目标细胞和区域身份符合预期吗？ | target / acceptable adjacent / off-target / unresolved 组成区间图 | 区域证据热图、reference correlation、program activity、连续身份权重、NNLS residual；空间投射仅在具备合格数据时出现 | Target Identity & Regional Fidelity（P0-03） | 已有结构化比例和方法结果，但没有正式图形产物 |
-| 发育阶段合适吗？ | 双分母发育阶段画像：完整产品和 target-related observations 分开显示 | 按 reference source/modality 分面的 stage-support ridge/heatmap；多个真实时间点时显示 sample-level 趋势 | Developmental Compatibility（P0-04） | 不能只给一个“发育年龄”；单时间点必须明确动态证据不可用 |
+| 发育阶段合适吗？ | 双分母发育阶段画像：完整产品和 target-related observations 分开显示 | 按 reference source/modality 分面的 stage-support ridge/heatmap；sc/sn 分模态发育路径与分支图；多个真实时间点时显示 sample-level 趋势 | Developmental Compatibility（P0-04） | 不能只给一个“发育年龄”；单时间点必须明确动态证据不可用 |
 | 有没有不想要或无法解释的细胞？ | 完整产品组成与 unknown 原因图 | rare-state 观测值、零观测上界、LOD、spike-in recovery curve；多来源 OOD 分歧 | Off-target Control（P0-05） | 结构化结果已有比例、区间和检出曲线字段，但尚未渲染 |
 | 是否存在增殖、细胞周期或应激信号？ | sample × program 证据热图，同时显示 reference envelope、gene coverage 和 evidence state | whole-product/state-specific 分布、S/G2M、方法一致性、ProtocolIR 时间线和 review flag | Proliferation & Stress Response（P0-06） | 必须写成“需要复核的转录信号”，不能画成安全性或 potency 结论 |
 | 多个批次或工艺有什么差别？ | 逐指标效应量森林图：raw delta、区间、分母和可比性 | composition delta、program heatmap、preparation-level points、batch/lot 距离和敏感性矩阵 | Product Comparison & Stability（P0-07） | 仅在满足可比合同时显示；单个 preparation 只能作描述性比较，不能排名 |
@@ -710,6 +710,14 @@ P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有
 | 有移植后数据吗？ | 独立的 graft 组成、reference support 和 program 图 | animal/graft/timepoint、fine subtype、method sensitivity | Optional Graft Assessment（P0-12） | 必须放在独立页，不能反向改变移植前产品结论 |
 
 移植后视图始终与移植前产品证据分开，不得反向改变移植前结论。
+
+移植前 reference 按三个互补问题组织：本组腹侧中脑 scRNA 用于细粒度状态，
+Chen + Braun + Zeng 的整合 whole-cell scRNA 用于 broad brain-region 与 off-axis
+context，空间转录组用于解剖与区域支持。整合对象包含本组旧版细胞，空间对象的
+初始标签迁移也依赖本组 scRNA，因此 Web 必须显示依赖关系，不能把三者当作三个
+完全独立的支持票。单核 reference 作为细胞身份参考主要用于用户另行提供的 graft
+snRNA，只出现在独立移植后结果中；sc/sn 整合对象另作为 P0-04 发育路径与分支
+方向的候选 reference，在发育视图中按模态分轨展示，不进入 P0-02 身份共识。
 
 #### 阅读、交互与证据状态
 

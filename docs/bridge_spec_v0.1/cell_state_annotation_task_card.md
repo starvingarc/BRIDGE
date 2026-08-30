@@ -3,10 +3,10 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-CELL-STATE-v0.1` |
-| 文档版本 | `0.1` |
-| 日期 | 2026-08-06 |
+| 文档版本 | `0.2-draft` |
+| 日期 | 2026-08-31 |
 | 状态 | `candidate` |
-| 适用范围 | 移植前 scRNA-seq / snRNA-seq；PD hPSC-mDA 为首个实例 |
+| 适用范围 | 移植前产品 scRNA-seq 为首版主路径；移植前 snRNA 仅作条件性跨模态分析，移植后 graft snRNA 由 P0-12 独立评估 |
 | Annotation snapshot | `BRIDGE-PD-vMB-ANNOTATION-v0.1-draft` |
 | 主要输出 | `CellStateEvidenceProfile` |
 | 当前实现 | P0-02 v0.4.9 可执行 shadow baseline；科学冻结合同与 pilot harness 已建立 |
@@ -46,22 +46,42 @@ L3 包含：`RG_mFP`、`RG_mBMP`、`RG_mBIP`、`Nb_mFP`、`Nb_mBMP`、`Nb_mBIP`�
 
 | Reference ID | assay 与范围 | 规模 | 主要用途 | 限制 |
 | --- | --- | ---: | --- | --- |
-| `REF-CHEN-VMB-SC-v1` | scRNA-seq；GW7/8/9/12/16/20；人腹侧中脑 | 61,455 | 早期区域、祖细胞及 target/adjacent evidence | 与 snRNA 不是配对纵向数据 |
-| `REF-CHEN-VMB-SN-v1` | snRNA-seq；GW14/16/18/20/24/25；人腹侧中脑 | 87,467 | 中晚期神经元与 DA 状态 | 与胎龄耦合，需模态敏感性分析 |
-| `REF-CHEN-VMB-COMBINED-v1` | scRNA + snRNA 派生对象；GW7-GW25 | 148,922 | 跨模态 sensitivity view | source 对象的并集，不是独立证据，不进入来源共识 |
-| `REF-CHEN-RGNB-v1` | combined 的 RG/Nb 派生子集 | 15,095 | L2 区域和谱系状态 | 父子层级待人工复核 |
-| `REF-CHEN-NEUROGENESIS-v1` | combined 的 neurogenesis 派生子集 | 83,017 | 发育和轨迹背景 | 不代表 causal lineage truth |
+| `REF-CHEN-VMB-SC-v1` | scRNA-seq；GW7/8/9/12/16/20；人腹侧中脑 | 61,455 | 移植前细胞身份、早期区域、祖细胞及 target/adjacent evidence 的首要 reference | 与 snRNA 不是配对纵向数据；样本、标签和预处理版本仍需审核 |
+| `REF-LEGACY-STEP1-FULL-v1` | whole-cell scRNA；本组旧版 63,033 + Braun 2023 1,548,209 + Zeng 2023 400,141 | 2,011,383 | 移植前全脑背景、broad identity、区域和 off-axis source context | 含本组细胞，不能与本组 reference 重复计为独立来源；parent manifest、标签与 preprocessing 待核对 |
+| `REF-SPATIAL-HEB58-v1` | Visium HD；GW7；同一胚胎的 section 2/9 | 385,361 retained profiles | 移植前解剖、区域与 marker 空间支持 | 两张切片不是两个生物重复；初始标签迁移依赖本组单细胞 reference，不能作为完全独立身份验证 |
+| `REF-CHEN-VMB-SN-v1` | snRNA-seq；GW14/16/18/20/24/25；人腹侧中脑 | 87,467 | 用户提供移植后 graft snRNA 时的 assay-matched broad/neurogenesis reference | 不进入移植前默认流程；与胎龄耦合且与 scRNA 不是配对数据 |
+| `REF-CHEN-VMB-COMBINED-v1` | scRNA + snRNA 派生对象；GW7-GW25 | 148,922 | ontology 与跨模态 sensitivity；向 P0-04 提供发育路径/分支候选 reference | source 对象的并集，不是移植前细胞身份主 reference，也不进入独立来源共识 |
+| `REF-CHEN-RGNB-v1` | combined 的 RG/Nb 派生子集 | 15,095 | L2 ontology 与 sensitivity | 移植前正式使用前需生成或确认 scRNA-only profile；父子层级待人工复核 |
+| `REF-CHEN-NEUROGENESIS-v1` | combined 的 neurogenesis 派生子集 | 83,017 | 发育路径、分支方向与 modality sensitivity 候选 | modality/age 不平衡；不是移植前细胞身份默认 reference，也不代表 causal lineage truth |
 | `REF-CHEN-NEUROGENESIS-SUBSUB-v1-draft` | neurogenesis 的 vMB 派生子集 | 77,382 | L3 shadow evidence | 模型版本和命名依据待冻结 |
 | `REF-LAMANNO-2016-v1` | scRNA-seq；PCW6-11；人胎腹侧中脑 | 1,977 | scRNA 小型独立 VM primary source | 平台较旧、样本量有限 |
 | `REF-BIRTELE-v1` | 人胎腹侧中脑 scRNA 与原代培养；6-11 周 post-conception | 13 个 GEO samples；processed CSV 可用 | external-source VM reference 候选 | 转换器及验证过的 conversion manifest 已建立；raw reads 因隐私不可用；资产仍为 `conditionally_approved_source_holdout` / `biological_review_in_progress`，不构成 state 或 method freeze |
 | `REF-BRAUN-2023-v1` | scRNA-seq；PCW5-14；第一孕期全脑 | 1,548,209 | 全脑区域与 off-axis 背景 | 不能替代腹侧中脑产品定义 |
 | `REF-ZENG-2023-v1` | scRNA-seq；PCW3-12；全胚、头和脑 | 400,141 | 早期发育和 OOD 背景 | 本地统一标签仍需冻结 |
 
+`REF-CHEN-VMB-SC-v1`、`REF-LEGACY-STEP1-FULL-v1` 和
+`REF-SPATIAL-HEB58-v1` 构成移植前主 reference 的三个互补视角：本组腹侧
+中脑细粒度状态、公开数据整合后的 broad/off-axis 背景，以及空间解剖支持。
+三者必须分栏显示来源和依赖关系，不能按“reference 数量”简单投票。
+`REF-CHEN-VMB-SN-v1` 作为细胞身份 reference 主要服务于用户提供的移植后 graft
+snRNA，并由 P0-12 产生独立结果；它不因覆盖更晚胎龄而自动提高移植前产品证据。
+scRNA 与 snRNA 的整合对象可由 P0-04 单独用于候选发育路径分析，但不进入本模块
+的分类共识。
+
 `source`、`derived`、`holdout` 和 `competitor` 必须分别登记。查询必须声明 `source_family_id`，运行时排除同 source-family reference；派生对象不能与父对象重复计数，同一 source family 的细胞不能随机拆分后充当外部验证。
 
 ## 4. 分析流程
 
-当前可执行 baseline 固定为两条互补通道：source-specific pseudobulk Spearman/cosine support，以及版本化 marker/program evidence。它们分别保存，不转换为概率、不按工具数投票，也不设置未经验证的 OOD 阈值。这里的 pseudobulk correlation 是 sample-by-label reference similarity summary，不是 replicate-aware differential-expression inference，不输出 DE effect 或 FDR。scRNA 与 snRNA 使用独立 `MeasurementSpec`；Chen combined 对象只作 sensitivity。
+当前可执行 baseline 固定为两条互补通道：source-specific pseudobulk
+Spearman/cosine support，以及版本化 marker/program evidence。移植前主路径优先
+使用本组腹侧中脑 scRNA，再以 Chen + Braun + Zeng 的整合 scRNA 检查 broad、
+regional 与 off-axis context，并把空间 reference 作为单独的解剖证据层。它们
+分别保存，不转换为概率、不按工具数投票，也不设置未经验证的 OOD 阈值。这里的
+pseudobulk correlation 是 sample-by-label reference similarity summary，不是
+replicate-aware differential-expression inference，不输出 DE effect 或 FDR。
+scRNA 与 snRNA 使用独立 `MeasurementSpec`；Chen combined 对象不进入细胞身份
+共识，只向 P0-04 提供经分模态验证的发育路径候选 reference；graft snRNA 则转交
+P0-12。
 
 ```mermaid
 flowchart LR
@@ -189,7 +209,8 @@ Cell-State 使用隔离的 Python 与 R 环境。环境间通过 checksummed spa
 ## 9. Web 必备可视化
 
 - 内部 L1/L2/L3 annotation hierarchy 与冻结状态。
-- 每种方法的 embedding overlay、prediction set 和 unknown reason。
+- 移植前 reference 分面：本组 scRNA、Chen + Braun + Zeng 整合 scRNA、空间 reference，以及独立 external-source evidence；单核 reference 不混入该图。
+- 每种方法的 embedding overlay、prediction set 和 unknown reason；embedding 仅作探索，不作为身份依据。
 - 方法一致性热图，并按 evidence family 标出共享依赖。
 - holdout confusion matrix、层级错误、校准曲线和 prediction-set coverage。
 - OOD dashboard、稀有状态 LOD 与失败原因。

@@ -16,9 +16,17 @@ This candidate is the prerequisite for later Target Identity, Regional Fidelity,
 Developmental Compatibility and Off-target Control analyses. It is not a released
 cell-state method.
 
-## Current evidence and unresolved biology
+## Current reference routing and unresolved biology
 
-- Chen vMB scRNA-seq provides 61,455 cells for broad L1 development work.
+- Chen vMB scRNA-seq provides 61,455 cells and is the primary pre-transplant
+  reference for ventral-midbrain identity and fine cell-state evidence.
+- The existing 2,011,383-cell whole-cell scRNA reference integrates the legacy
+  Chen snapshot with Braun 2023 and Zeng 2023. It provides broad brain-region and
+  off-axis context after lineage review; because it contains Chen cells, it is
+  not an independent vote in addition to the Chen reference.
+- The current GW7 spatial reference contains 385,361 retained segmented profiles
+  from two sections of one embryo. It supplies a separate anatomical evidence
+  view, but its initial label transfer depended on the Chen scRNA reference.
 - Chen RG/Nb scRNA-seq provides 11,366 cells for seven priority L2 development
   states.
 - Development OOD includes cortical organoid, neural crest, motor-neuron and
@@ -28,7 +36,11 @@ cell-state method.
   labels.
 - Fine RG/Nb support is incomplete. Unresolved Nb boundaries remain
   `provisional` or `unavailable` and cannot support formal regional claims.
-- snRNA-seq remains a cross-modality shadow analysis.
+- The 87,467-nucleus GW14-25 reference is primarily reserved for an optional,
+  separate post-transplant graft snRNA assessment. It is not part of the default
+  pre-transplant cell-identity reference route. The 148,922-profile scRNA/snRNA
+  integrated object is a candidate developmental-path, direction and branch
+  reference for P0-04, but remains excluded from the P0-02 identity consensus.
 
 No method, state, threshold or product role is frozen. Current observations do not
 support formal target-cell, regional-fidelity or off-target composition claims.

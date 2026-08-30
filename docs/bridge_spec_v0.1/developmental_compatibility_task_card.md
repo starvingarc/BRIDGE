@@ -3,8 +3,8 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-DEVELOPMENT-v0.1` |
-| Task document version | `0.3` |
-| 日期 | 2026-08-27 |
+| Task document version | `0.4-draft` |
+| 日期 | 2026-08-31 |
 | Package version | `P0-04 0.3.0` |
 | Runtime / scientific state | `implemented` / `candidate shadow` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
@@ -20,6 +20,9 @@
 > Package v0.3 executes transparent reference, program, uncertainty and
 > declared true-time methods as candidate/shadow evidence. Lineage calibration,
 > isolated R/trajectory methods and `domain_score` remain unavailable.
+> The v0.4 design registers the integrated scRNA/snRNA reference for
+> developmental-path and branch-direction evaluation only; it does not change
+> the current runtime or the cell-identity reference route.
 
 ## 1. 任务目标与边界
 
@@ -57,9 +60,10 @@
 
 | 资产 | 主要内容 | 本模块用途 | 关键限制 |
 | --- | --- | --- | --- |
-| Chen vMB scRNA reference | GW7/8/9/12/16/20；61,455 cells | 早中期状态轴 | 与 snRNA reference 的胎龄不重叠完整 |
-| Chen vMB snRNA reference | GW14/16/18/20/24/25；87,467 nuclei | 中晚期状态轴 | assay 与胎龄耦合 |
-| Chen neurogenesis derived set | GW7-GW25；83,017 profiles | 状态、阶段和历史轨迹候选 | 派生对象，不作独立证据重复计数 |
+| Chen vMB scRNA reference | GW7/8/9/12/16/20；61,455 cells | scRNA 内的早中期状态与路径轨道 | 与 snRNA reference 仅在 GW16/GW20 重叠 |
+| Chen vMB snRNA reference | GW14/16/18/20/24/25；87,467 nuclei | snRNA 内的中晚期状态与路径轨道 | assay 与胎龄耦合；不进入移植前细胞身份默认流程 |
+| Chen vMB sc/sn integrated reference | 12 个非配对胚胎、10 个孕周；148,922 profiles | 发育路径、方向和分支结构候选 | 必须分模态重建并检查重叠阶段；不作独立来源或因果谱系真值 |
+| Chen neurogenesis derived set | GW7-GW25；83,017 profiles | 神经发生路径和分支的候选子集 | 派生对象、年龄/模态不均衡，不作独立证据重复计数 |
 | La Manno VM reference | PCW6-11；1,977 cells | 独立来源敏感性 | 规模小、平台较旧 |
 | 体外 mDA 时间序列 | D0-D120 的多研究 2D/3D 数据 | 真实时间趋势和过程比较 | 方案、cell line、平台及重复结构不同 |
 | SISBAR lineage assets | 三个相邻阶段的独立 split-barcoding 实验 | 轨迹方法校准 | 不能拼成一条连续克隆轨迹 |
@@ -129,9 +133,28 @@ reference label 的角色/顺序、program card、真实时间点和方法。当
 
 ### 5.4 轨迹与转变方法
 
-DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellAlign、TrAGEDy 和 scVelo 纳入方法目录，但初始状态为 `benchmark`、`conditional` 或 `shadow`。它们可用于方向、分支、动态程序或跨时间耦合的校验，不默认进入正式 Developmental Compatibility 指标。
+`REF-CHEN-VMB-COMBINED-v1` 登记为发育路径 reference 候选，不是细胞身份
+reference，也不是谱系追踪真值。由于 scRNA 覆盖 GW7/8/9/12/16/20，snRNA 覆盖
+GW14/16/18/20/24/25，年龄与模态并不正交，因此不得直接把全部 profiles 拟合成
+一条无模态差异的 GW7-GW25 pseudotime。
 
-现有 DPT、Palantir 和 CellRank 产物登记为 `historical_candidate`。由于 scRNA/snRNA 与胎龄耦合，并且 root/terminal state 含人工设定，必须重新按冻结合同验证。
+首轮方法比较保持四层，且不合成总排名：
+
+1. `SysVI` 作为 cells/nuclei 表征候选，先检查已知状态、样本和年龄结构是否保留；
+   integration 只是预处理，不增加一张独立生物证据票。
+2. `DPT + PAGA` 作为透明路径基线，在经审核的 neurogenesis 子集内分别重建
+   scRNA 与 snRNA 轨道；root 只能来自预先确认的早期 RG 状态。
+3. `Palantir` 作为分支与 terminal-state sensitivity；terminal states 必须预先
+   审核并显式传入，不能沿用自动推断结果。
+4. `moscot TemporalProblem` 作为真实时间耦合候选，先在两种模态内分别运行，
+   再以 GW16/GW20 检查跨模态方向一致性；`CellRank RealTimeKernel` 可消费该转移
+   结构。由 DPT/Palantir 构建的 `PseudotimeKernel` 仅是下游摘要，不算独立方法。
+
+Slingshot、VIA、WOT、tradeSeq、CellAlign 和 TrAGEDy 保持 benchmark/shadow。
+scVelo 只在 scRNA 且存在经过验证的 spliced/unspliced layers 时评估，不在
+count-only 的 sc/sn 整合对象上运行。现有 DPT、Palantir 和 CellRank 产物保留为
+`historical_candidate`；当前尚未证明 snRNA 轨道内部具有一致的孕周方向，需按下述
+sample-level 合同重建后才能进入用户结果。
 
 ### 5.5 SISBAR 校准轨
 
@@ -155,6 +178,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 | `reference_stage_support` | 按 source/modality 保存的阶段支持分布 |
 | `top_supported_reference_interval` | 最高支持的 reference 区间及不作胎龄换算的说明 |
 | `timecourse_profile` | 真实 D/Stage 的组成、程序趋势、重复结构和统计模式 |
+| `trajectory_reference_support` | candidate/shadow 的参考路径位置、分支支持、分模态一致性和不确定性；不作胎龄换算 |
 | `sensitivity` | reference、modality、preprocessing、方法和 QC view 敏感性 |
 | `evidence_state` | `available` / `shadow` / `unavailable` |
 | `domain_score` | 固定为 `null`，等待独立 `ScoreContract` |
@@ -169,6 +193,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
 | `ENV-DEVELOPMENT-PY-v0.1` | composition、pseudobulk、scikit-learn、decoupler、statsmodels/Patsy | `health_check_passed`；v0.3 执行环境 |
+| `ENV-DEVELOPMENT-SYSVI-v0.1` | SysVI reference representation 与分模态检查 | `proposed_reference_build` |
 | `ENV-DEVELOPMENT-CELLRANK-v0.1` | CellRank 条件性轨迹验证 | `proposed_conditional` |
 | `ENV-DEVELOPMENT-VELOCITY-v0.1` | RNA velocity 研究性验证 | `proposed_exploratory`；独立冻结稳定版本 |
 | `ENV-DEVELOPMENT-VIA-v0.1` | VIA shadow benchmark | `proposed_shadow` |
@@ -183,6 +208,8 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 - 双分母阶段组成图，显示区间、unknown 与分母。
 - 按真实 `D/Stage` 排列的 sample-level 时间轴。
 - 按 reference source/modality 分面的 stage-support 热图或 ridge plot。
+- scRNA 与 snRNA 分轨的发育路径/分支图，GW16/GW20 对齐位置和不一致性明确标注。
+- 单时间点产品只显示其在 reference path 上的支持分布与不确定性，不画成自身动态轨迹。
 - 发育程序动态热图与 sample-level trend。
 - reference、modality、preprocessing、方法和 QC view 敏感性图。
 - SISBAR alluvial/transition matrix，仅显示在 calibration 视图。
@@ -200,6 +227,8 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 - reference profile 覆盖不足或 source/modality 的 top stage role 冲突：
   对应 analysis unit 为 `unavailable`，不得用可用 source 静默补齐。
 - 缺少 lineage barcode：不输出克隆关系、命运或 observed transition。
+- 任一模态内的年龄方向不稳定，或 GW16/GW20 对齐不一致：trajectory reference
+  support 返回 `unavailable`，不得以整合后的总体趋势掩盖。
 - sealed competitor test 不参与任何方法选择、reference 构建、prior 或阈值调整。
 
 ## 10. Benchmark 与冻结要求
@@ -212,6 +241,8 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 | 时间序列 | 单时间点正确降级；重复不足不发布 inferential 结果；样本层模型不把 cell 当重复 |
 | SISBAR adapter | barcode 唯一性、join rate、experiment/replicate 隔离和 observed transition 重建 |
 | 轨迹校准 | 对 SISBAR observed transitions 评测 edge recovery、方向一致性与校准度 |
+| sc/sn 路径 | 在 scRNA、snRNA 内分别按 sample-level 真实孕周检验方向；检查 GW16/GW20 对齐、root/terminal sensitivity、分支拓扑和下采样稳定性 |
+| 方法独立性 | integration 不计作证据票；同一 pseudotime 的 CellRank downstream kernel 不计作独立方法 |
 | 数据隔离 | sealed competitor test 到 reference、prior、训练、调参和阈值的数据流为零 |
 | 工程冻结 | tool、environment、window、reference、MeasurementSpec、参数、seed、schema 和验收阈值均版本化 |
 
@@ -219,15 +250,18 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 ## 11. 主要官方来源
 
+- SysVI cells/nuclei integration: https://docs.scvi-tools.org/en/latest/tutorials/notebooks/scrna/sysVI.html ; https://pmc.ncbi.nlm.nih.gov/articles/PMC10635119/
 - Scanpy DPT/PAGA: https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.dpt.html ; https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.paga.html
-- Palantir: https://palantir.readthedocs.io/
-- CellRank RealTimeKernel: https://cellrank.readthedocs.io/en/stable/api/_autosummary/kernels/cellrank.kernels.RealTimeKernel.html
+- Palantir paper and repository: https://www.nature.com/articles/s41587-019-0068-4 ; https://github.com/dpeerlab/Palantir
+- CellRank kernels: https://cellrank.readthedocs.io/en/stable/api/kernels.html
+- moscot temporal optimal transport: https://www.nature.com/articles/s41586-024-08453-2 ; https://github.com/theislab/moscot
+- Trajectory-method benchmark: https://www.nature.com/articles/s41587-019-0071-9
 - scVelo: https://scvelo.readthedocs.io/
 - Slingshot / tradeSeq: https://bioconductor.org/packages/slingshot/ ; https://bioconductor.org/packages/tradeSeq/
 - speckle/propeller: https://bioconductor.org/packages/speckle/
 - scCODA: https://pertpy.readthedocs.io/en/latest/tutorials/notebooks/sccoda.html
 - RAPToR: https://github.com/LBMC/RAPToR ; https://www.nature.com/articles/s41592-022-01540-0
-- moscot / WOT: https://moscot.readthedocs.io/en/stable/ ; https://github.com/broadinstitute/wot
+- WOT: https://github.com/broadinstitute/wot
 - VIA: https://github.com/ShobiStassen/VIA
 - CellAlign / TrAGEDy: https://www.nature.com/articles/nmeth.4628 ; https://github.com/No2Ross/TrAGEDy
 - SISBAR / GSE221592: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE221592 ; https://www.sciencedirect.com/science/article/pii/S1934590923000449
