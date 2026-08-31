@@ -1,0 +1,520 @@
+{
+  "$defs": {
+    "CellStateEvidenceChannelRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "$ref": "#/$defs/MatrixAssessmentState"
+        },
+        "channel": {
+          "$ref": "#/$defs/EvidenceChannel"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "statistics": {
+          "items": {
+            "$ref": "#/$defs/CellStateEvidenceStatistic"
+          },
+          "title": "Statistics",
+          "type": "array"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "assessment_state",
+        "evidence_state",
+        "summary",
+        "evidence_ids"
+      ],
+      "title": "CellStateEvidenceChannelRecord",
+      "type": "object"
+    },
+    "CellStateEvidenceMatrixRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "$ref": "#/$defs/MatrixAssessmentState"
+        },
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/CellStateEvidenceChannelRecord"
+          },
+          "minItems": 1,
+          "title": "Channels",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_role": {
+          "$ref": "#/$defs/EvidenceRole"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "source_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "state_id": {
+          "pattern": "^L[12]:[A-Za-z0-9_]+$",
+          "title": "State Id",
+          "type": "string"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "source_id",
+        "assessment_state",
+        "evidence_role",
+        "evidence_state",
+        "summary",
+        "evidence_ids",
+        "channels"
+      ],
+      "title": "CellStateEvidenceMatrixRecord",
+      "type": "object"
+    },
+    "CellStateEvidenceRow": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "level": {
+          "enum": [
+            "L1",
+            "L2"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "order": {
+          "minimum": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "primary_n_observations": {
+          "minimum": 0,
+          "title": "Primary N Observations",
+          "type": "integer"
+        },
+        "review_notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Notes",
+          "type": "array"
+        },
+        "review_state": {
+          "minLength": 1,
+          "title": "Review State",
+          "type": "string"
+        },
+        "row_group": {
+          "minLength": 1,
+          "title": "Row Group",
+          "type": "string"
+        },
+        "state_id": {
+          "pattern": "^L[12]:[A-Za-z0-9_]+$",
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "display_name",
+        "level",
+        "row_group",
+        "order",
+        "primary_n_observations",
+        "review_state",
+        "evidence_ids"
+      ],
+      "title": "CellStateEvidenceRow",
+      "type": "object"
+    },
+    "CellStateEvidenceSource": {
+      "additionalProperties": false,
+      "properties": {
+        "assay": {
+          "minLength": 1,
+          "title": "Assay",
+          "type": "string"
+        },
+        "availability": {
+          "$ref": "#/$defs/SourceAvailability"
+        },
+        "dependency_source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dependency Source Ids",
+          "type": "array"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "limitation": {
+          "minLength": 1,
+          "title": "Limitation",
+          "type": "string"
+        },
+        "n_observations": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Observations"
+        },
+        "observation_unit": {
+          "minLength": 1,
+          "title": "Observation Unit",
+          "type": "string"
+        },
+        "relationship": {
+          "$ref": "#/$defs/SourceRelationship"
+        },
+        "scope": {
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        },
+        "short_name": {
+          "maxLength": 24,
+          "minLength": 1,
+          "title": "Short Name",
+          "type": "string"
+        },
+        "source_family_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Family Id",
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_family_id",
+        "display_name",
+        "short_name",
+        "assay",
+        "scope",
+        "relationship",
+        "availability",
+        "observation_unit",
+        "evidence_ids",
+        "limitation"
+      ],
+      "title": "CellStateEvidenceSource",
+      "type": "object"
+    },
+    "CellStateEvidenceStatistic": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "metric_id",
+        "value",
+        "unit"
+      ],
+      "title": "CellStateEvidenceStatistic",
+      "type": "object"
+    },
+    "EvidenceChannel": {
+      "enum": [
+        "annotation_observation",
+        "marker_program",
+        "reference_prediction",
+        "spatial_marker",
+        "external_holdout",
+        "ood_assessment"
+      ],
+      "title": "EvidenceChannel",
+      "type": "string"
+    },
+    "EvidenceRole": {
+      "enum": [
+        "primary_annotation",
+        "derived_context",
+        "dependent_spatial_concordance",
+        "literature_prior",
+        "external_holdout"
+      ],
+      "title": "EvidenceRole",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "MatrixAssessmentState": {
+      "enum": [
+        "source_anchored",
+        "support",
+        "opposition",
+        "conflict",
+        "not_assessed"
+      ],
+      "title": "MatrixAssessmentState",
+      "type": "string"
+    },
+    "SourceAvailability": {
+      "enum": [
+        "available",
+        "review_pending",
+        "holdout_not_run"
+      ],
+      "title": "SourceAvailability",
+      "type": "string"
+    },
+    "SourceRelationship": {
+      "enum": [
+        "primary",
+        "derived_contains_primary",
+        "dependent_label_transfer",
+        "independent_external"
+      ],
+      "title": "SourceRelationship",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/cell-state-evidence-matrix-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "alt_text": {
+      "minLength": 40,
+      "title": "Alt Text",
+      "type": "string"
+    },
+    "denominator": {
+      "exclusiveMinimum": 0,
+      "title": "Denominator",
+      "type": "integer"
+    },
+    "denominator_unit": {
+      "const": "state cards",
+      "default": "state cards",
+      "title": "Denominator Unit",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "long_description": {
+      "minLength": 80,
+      "title": "Long Description",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "primary_source_id": {
+      "title": "Primary Source Id",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:[A-Za-z0-9._:-]+$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "profile_id": {
+      "pattern": "^cell-state-evidence-matrix:[A-Za-z0-9._-]+$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/CellStateEvidenceMatrixRecord"
+      },
+      "minItems": 2,
+      "title": "Records",
+      "type": "array"
+    },
+    "review_state": {
+      "minLength": 1,
+      "title": "Review State",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/cell-state-evidence-matrix-data/v0.1",
+      "default": "bridge://schemas/cell-state-evidence-matrix-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "scientific_status": {
+      "const": "candidate",
+      "default": "candidate",
+      "title": "Scientific Status",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/CellStateEvidenceSource"
+      },
+      "minItems": 2,
+      "title": "Sources",
+      "type": "array"
+    },
+    "states": {
+      "items": {
+        "$ref": "#/$defs/CellStateEvidenceRow"
+      },
+      "minItems": 1,
+      "title": "States",
+      "type": "array"
+    }
+  },
+  "required": [
+    "profile_id",
+    "producer_run_ref",
+    "primary_source_id",
+    "review_state",
+    "denominator",
+    "sources",
+    "states",
+    "records",
+    "evidence_ids",
+    "limitations",
+    "alt_text",
+    "long_description"
+  ],
+  "title": "CellStateEvidenceMatrixData",
+  "type": "object"
+}

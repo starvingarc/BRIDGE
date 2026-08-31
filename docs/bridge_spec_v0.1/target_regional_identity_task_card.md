@@ -73,7 +73,7 @@ NNLS 的 relative L2 residual 上限同样来自外部 applicability contract；
 | `REF-LAMANNO-2016-v1` | scRNA-seq；PCW6-11；人胎腹侧中脑；1,977 cells | 独立 VM sensitivity reference | 平台较旧、规模较小 |
 | `REF-BRAUN-2023-v1` | scRNA-seq；PCW5-14；第一孕期全脑 | forebrain/midbrain/hindbrain 区域背景 | 全脑 reference 不能替代 VM 产品定义 |
 | `REF-ZENG-2023-v1` | scRNA-seq；PCW3-12；全胚、全头和全脑 | 早期区域与非神经背景 | 区域标签与版本仍需冻结 |
-| `REF-SPATIAL-HEB58-ANNOT-v0.1-draft` | Visium HD segmented profiles；GW7 人胚中脑；2 sections；385,361 profiles、18,085 genes、20 个最终标签 | 空间 marker、区域锚定和投射 benchmark | `available + freeze_required`；两张切片来自同一胚胎，不能作为两个生物重复 |
+| `REF-SPATIAL-HEB58-ANNOT-v0.1-draft` | Visium HD segmented profiles；GW7 人胚中脑；2 sections；385,361 profiles、18,085 genes、20 个最终标签 | 当前工作标签的正 marker QA 与 candidate label-program lookup；未来 mapping benchmark 仅在 P0-03 applicability gate 通过后启用 | `available + freeze_required`；两张切片来自同一胚胎，不能作为两个生物重复；当前不构成 calibration、解剖定位、独立验证或产品映射 |
 | `REF-SPATIAL-CHEN-CS-v1` | 计划中的冠状/矢状空间数据；单时间点 | 后续切面和 ROI 稳健性 | `pending_data` |
 
 `REF-SPATIAL-HEB58-ANNOT-v0.1-draft` 的最终 `cell_type` 覆盖中脑 FP/BP/AP/RP、MHB、后脑、前脑/间脑及非神经状态。对象同时保留两套模型初注释和人工空间修订标签；正式冻结前需补齐标签定义、人工修订记录、切片方向、ROI、处理版本和 checksum。
@@ -145,24 +145,25 @@ Spec 使用知识快照中的规范化 `METHOD-*` ID，二者通过 catalog alia
 区域偏移必须报告具体方向；reference coverage 不足时返回 `unknown` 或
 `unavailable`。
 
-### 7.2 空间参考校准与投射
+### 7.2 空间 reference QA 与候选 mapping
 
 空间问题按任务分别比较，不再以 Tangram 为中心排列，也不生成跨任务总排名：
 
 | 任务 | 首轮候选 | 条件候选或敏感性 | 解释边界 |
 | --- | --- | --- | --- |
 | segmentation sensitivity | 当前 segmentation、Bin2cell、ENACT | 有原始 2 µm bins 时加入 FICTURE 无分割对照 | 比较边界、marker 保留和小区域稳定性；不把 segmented profile 称为已验证单细胞 |
-| 标签复核 | 当前双 reference prediction、marker/anti-marker、RCTD reject/doublet | 无 | final 对象的 20 个 `cell_type` 是当前工作标签；不重新聚类或命名 |
+| 标签复核 | 当前双 reference 的 `Uncertain` 层、正 marker supporting-expression panel、RCTD reject/doublet | anti-marker 为 `not_recorded` | final 对象的 20 个 `cell_type` 是当前工作标签；没有版本化 crosswalk 时不声称两套 prediction 的直接标签分歧 |
 | spatial domain | BANKSY、CellCharter | 标签稳定后再评估 NicheCompass；Novae 仅作 zero-shot sensitivity | 评估空间连续性和 domain 稳定性，不直接证明细胞身份 |
-| scRNA → spatial mapping | 聚合尺度 cell2location、RCTD | Tangram 只作 ROI/held-out-gene 验证；DestVI 为条件候选 | 产品投射显示概率、residual、OOD 和适用性；不表示产品具有真实组织坐标 |
+| scRNA → spatial mapping | 聚合尺度 cell2location、RCTD | Tangram 只作 ROI/held-out-gene 验证；DestVI 为条件候选 | 保留方法原生输出：cell2location posterior absolute abundance（如 mean/q05）、RCTD weights/proportions 与 singlet/doublet/reject state、Tangram cell×voxel mapping matrix；不统称概率，也不假设每种方法都有 native OOD |
 | section alignment | PASTE2、moscot | STAligner embedding sensitivity | 仅在切片连续性、方向和重叠 ROI 均确认后运行 |
 | spatial trajectory | `deferred` | spaTrack 仅在后续存在明确问题和合格设计时评估 | hEB58 两张切片来自同一胚胎，不是时间序列或两个生物学重复 |
 
-当前 P0-02 分支只绘制 hEB58 reference calibration：两张 section 同比例展示，
-同时显示 20 个现有标签、两套 reference 的 `Uncertain`、方法分歧和已有
-marker 证据。原对象没有人工 confidence 字段，审核状态必须写
-`not_recorded`，不得补造数值。P0-03 后续 PR 才实现产品到空间 reference 的
-投射与方法比较。
+当前 P0-02 分支只绘制 hEB58 reference/figure QA 和 candidate
+label-program lookup：两张 section 同比例展示，保留 20 个现有工作标签、两套
+reference 的 `Uncertain` 及正 marker supporting-expression panel。没有版本化
+crosswalk 时不声称直接标签分歧；原对象没有 anti-marker 或人工 confidence 字段，
+均写 `not_recorded`。产品分组相似度是标签级 lookup，不是 calibration、逐位置
+推断、解剖定位或独立验证。P0-03 后续 PR 才实现产品到空间 reference 的方法比较。
 
 LungChat 不登记为 BRIDGE 分析方法，仅借鉴其参数、表格、图形和运行记录的组织
 方式。CellChat 只在以后出现明确的 hEB58 通讯问题且空间 QC 合格时单独评估。
@@ -195,7 +196,11 @@ LungChat 不登记为 BRIDGE 分析方法，仅借鉴其参数、表格、图形
 
 ### 8.3 `SpatialReferenceProjectionProfile`
 
-保存 `shared_gene_coverage`、ROI/location probability、projection entropy、reconstruction/holdout fit、residual、section consistency、method disagreement、`applicability_state` 和全部 provenance。若适用性 gate 未通过，不发布定向区域结论。
+保存 `shared_gene_coverage`、方法原生 mapping output、可定义时的 entropy、
+reconstruction/holdout fit、residual、reject state、section consistency、
+method disagreement、`applicability_state` 和全部 provenance。cell2location、
+RCTD、Tangram 的 abundance、weight/state 与 mapping matrix 分开建模；没有 native
+OOD 或 residual 的方法不得补造。若适用性 gate 未通过，不发布定向区域结论。
 
 ## 9. 运行环境
 
@@ -214,8 +219,8 @@ PASTE2/moscot 必须按任务建立隔离环境、合成 fixture 和资源记录
 - 完整制剂 target/acceptable adjacent/unresolved 组成及区间。
 - target-related 区域组成与 product-wide regional-support 并列图。
 - 前脑、间脑、中脑亚区、MHB 和后脑的区域证据热图。
-- hEB58 两张切片同尺度的 reference calibration 图，分开显示工作标签、reference uncertainty 与 marker 支持。
-- 只有空间适用性门禁通过后，才显示产品到 reference 的 projection probability、residual 与 OOD。
+- hEB58 两张切片同尺度的 reference/figure QA 图，分开显示工作标签、reference uncertainty 与正 marker support，并明确“reference only；no product cells mapped”。
+- 只有空间适用性门禁通过后，才显示产品到 reference 的方法原生 mapping output；residual、reject、entropy 或 OOD 仅在对应方法定义并验证时出现。
 - shared-gene coverage、holdout fit、entropy/residual 及 section sensitivity。
 - 方法一致性、共享 evidence family、冲突和 missing evidence 下钻。
 
@@ -229,7 +234,7 @@ PASTE2/moscot 必须按任务建立隔离环境、合成 fixture 和资源记录
 | Target Identity | source/lab/donor holdout、真实 OOD、人工混合、下采样和组成误差 |
 | Regional Fidelity | close-region OOD、region holdout、reference swap、matched scRNA/snRNA sensitivity 和具体偏移方向准确性 |
 | Spatial projection | spatial-cell pseudo-query、held-out genes、leave-section-out、ROI/crop sensitivity、随机种子和 method swap |
-| hEB58 reference | 两切片按同一胚胎处理；标签 provenance、方向、ROI、annotation 与 checksum 冻结 |
+| hEB58 reference | 两切片按同一胚胎处理；工作标签 provenance、方向、ROI、正 marker panel、缺失 anti-marker、annotation 与 checksum 审核 |
 | 拒答 | shared genes 不足、OOD、拟合差或方法冲突时返回 `unknown`/`unavailable`，不强制映射 |
 | 一致性 | cell-level 图与 sample/state 聚合结果可追溯，独立运行与联合比较不改写原始 evidence |
 | 方法比较 | segmentation、标签、domain、mapping、alignment 分任务报告；禁止跨任务总排名 |

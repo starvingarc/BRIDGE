@@ -156,6 +156,56 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
 - Historical local runs are diagnostic only and are not current formal evidence.
 - Runtime remains fail-closed without approved review, gate and release records.
 
+## Product-centred visualization workstream — 2026-08-31
+
+- The default user-facing result is a product-to-in-vivo correspondence composer:
+  one product and one observation grouping, with each evidence axis supplied by
+  its own typed, versioned producer result.
+- P0-02 produces only the cell-identity/reference-evidence axis. P0-03 may later
+  supply the anatomical-space axis and P0-04 the developmental-stage axis.
+  Each missing axis remains `not_assessed` with a producer-specific reason.
+- Studer-protocol D16 is the first review case because all 9,046 barcodes in its
+  historical analysis object trace to the registered 11,087-barcode raw-count
+  input. This establishes barcode lineage, not the biological identity or review
+  status of its stored labels, clusters or UMAP. The same display design has also
+  been exercised on MacroDiff and SphereDiff: all 57,464 retained MacroDiff
+  barcodes trace to six registered count-ready captures, whereas the 9,547-cell
+  SphereDiff object remains a historical analysis-ready control because its formal
+  count-ready source is unresolved. These are display-generalisation checks, not
+  input-QC reproduction or independent cell-identity validation.
+- The first review case demonstrates two grouping views. The cluster view preserves
+  clusters already stored in the historical analysis object and reports
+  group-level reference similarity without forcing one identity per cluster. The
+  label view preserves an `Idents`-derived provided grouping, cross-tabulates it
+  against stored clusters, and keeps the original strings. Manual-review and
+  user-submission provenance are pending; neither view is a calibrated
+  probability, prediction set or cell-level assignment.
+- Every displayed value retains its native semantics. Calibrated probabilities,
+  prediction sets, mixture weights, similarities and distances are labelled
+  separately; correlations and uncalibrated scores are not called probabilities.
+- The final-RDS age labels and historical relabelling provenance are not yet
+  reconciled. The developmental axis is therefore `not_assessed`; no stage
+  support calculation or stage graphic is allowed before reconciliation.
+- The current hEB58 panel is a candidate label-program lookup: product-group
+  pseudobulk is compared with the mean expression programs of 20 current spatial
+  work labels. The score is dependent on those labels and is not calibration,
+  cell-to-location projection, anatomical localization, independent validation or
+  a tissue coordinate. Product-to-space results require a validated P0-03 mapping
+  method.
+- CapybaraBrain is an isolated public-preprint method-comparison channel. Its
+  official repository must be pinned. Before any run, a complete parameter vector
+  must freeze `TOPK`, `alpha`, `min_weight`, hybrid/majority-vote settings,
+  lineage map, input transform and reference hashes because the paper, README and
+  code defaults conflict. Its 93-program output is a post-normalized NNLS
+  reconstruction coefficient, not a probability, posterior or similarity.
+  `discrete/hybrid/transitioning/unknown/unassigned/heterogeneous` are repository
+  enum labels, not six independently validated biological states; `transitioning`
+  reflects a curated lineage-map rule, not developmental direction. A missing
+  CellTypist model blocks only the final A9 refinement/agreement step, while a
+  missing integration embedding blocks only that display. Fetal atlas, HDNA and
+  PCA/kNN remain separate artifacts.
+- The source-by-state matrix is an evidence drill-down, not the first product view.
+
 ## P0-02 external-source preparation closeout — 2026-08-13
 
 - Rebased the P0-02 history on `origin/main`, preserving the completed P0-06

@@ -10,8 +10,10 @@ evidence you need.
 > Agent/Web experience is not yet integrated. A shared visualization data
 > contract and figure registry are available. P0-01 now provides four
 > `typed_candidate` figure components, alongside two compatibility
-> `legacy_untyped` components; the current P0-02 figure components remain
-> `legacy_untyped`.
+> `legacy_untyped` components. This P0-02 visualization workstream defines a
+> package-owned source-by-state data contract, semantic validator, table fallback
+> and deterministic renderer, but does not register a new runnable component;
+> all five current P0-02 runtime components remain `legacy_untyped`.
 > No scientific method, state, threshold or score is frozen, and a target
 > capability in the PRD or a task
 > card is not current runtime behavior.
