@@ -87,15 +87,23 @@ reference。
 
 | Asset ID | Assay 与材料 | 时间与真实解剖范围 | 规模 | P0 用途 | 当前状态 | 关键限制 |
 | --- | --- | --- | ---: | --- | --- | --- |
-| `REF-CHEN-VMB-SC-v1` | scRNA-seq，whole cells | GW7/8/9/12/16/20；人胚腹侧中脑 | 61,455 cells | 移植前产品的首要细胞身份、早期区域、祖细胞和目标/相邻程序 reference | `ready_freeze_required` | 需冻结样本表、annotation 和 ROI |
+| `REF-CHEN-VMB-SC-v1` | scRNA-seq，whole cells | final RDS：GW7/8/9/12/16/20；人胚腹侧中脑 | 61,455 cells | 移植前产品的首要细胞身份、早期区域、祖细胞和目标/相邻程序 reference | `ready_freeze_required + metadata_reconciliation_required` | final RDS 与历史 notebook 的胎龄重标注未解释一致；身份校准可继续，发育 benchmark 暂不运行 |
 | `REF-CHEN-VMB-SN-v1` | snRNA-seq，nuclei | GW14/16/18/20/24/25；人胚腹侧中脑 | 87,467 nuclei | graft snRNA 的 broad/neurogenesis reference；同时作为 P0-04 跨模态发育轨迹的一条分模态轨道 | `ready_freeze_required` | 与 scRNA 为不同胚胎，不能称配对数据；不得作为移植前默认细胞身份 reference |
-| `REF-CHEN-VMB-COMBINED-v1` | scRNA + snRNA integrated | 12 个非配对胚胎、10 个孕周；腹侧中脑 | 148,922 profiles | ontology、发育路径/方向、分支结构与跨模态 trajectory sensitivity | `ready_with_caveat` | 年龄与模态耦合；必须分模态验证，不是细胞身份主 reference、独立证据来源或因果谱系真值 |
+| `REF-CHEN-VMB-COMBINED-v1` | scRNA + snRNA integrated | 12 个非配对胚胎、10 个登记孕周；腹侧中脑 | 148,922 profiles | ontology、发育路径/方向、分支结构与跨模态 trajectory sensitivity | `ready_with_caveat + metadata_reconciliation_required` | 年龄与模态耦合；胎龄映射闭合后仍须分模态验证；不是细胞身份主 reference、独立证据来源或因果谱系真值 |
 | `REF-CHEN-RGNB-v1` | derived sc/sn profiles | 14 个区域 RG/Nb states | 15,095 profiles | L2 ontology 与 modality sensitivity | `ready_with_caveat` | 当前来自合并对象；移植前正式使用前需生成或确认 scRNA-only profiles，并冻结 parent manifest |
 | `REF-CHEN-NEUROGENESIS-v1` | derived sc/sn profiles | vMB neurogenesis states | 83,017 profiles | 发育路径、分支方向与 modality sensitivity | `candidate_P0` | modality/age imbalance；不是移植前细胞身份默认 reference，也不是因果谱系真值 |
 | `REF-BRAUN-2023-v1` | whole-cell scRNA；论文另有 spatial | PCW5-14；第一孕期全脑多区域 | 1,548,209 cells | broad regional/off-axis background | `processed_ready` | 全脑 reference 不能替代 vMB 产品真值 |
 | `REF-ZENG-2023-v1` | scRNA；论文另有 PCW4 spatial | PCW3-12；全胚、全头、全脑 | 400,141 cells | early embryo、neural tube、brain 与 non-neural background | `processed_ready` | 本地 harmonization 的年龄和区域标签需冻结 |
 | `REF-LAMANNO-2016-v1` | human fetal VM scRNA | PCW6-11；腹侧中脑 | 1,977 fetal cells | 经典独立 VM 发育 reference | `ready_small` | 旧平台、样本量有限；需单独报告 platform shift |
 | `REF-BIRTELE-2022-v1` | fetal VM scRNA 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 77,804 cells；25,032 genes；13 个 GEO samples | 原代胎儿 VM maturation external-source 候选 | `conditionally_approved_source_holdout`；P0-02 `biological_review_in_progress` | 仅允许 source-level holdout、stage-level description 与 provisional-group sensitivity；raw reads 因隐私不可用，公开记录仍不足以把 13 个矩阵无歧义映射到 biological units，当前均为 `not_estimable` replicates；不构成科学冻结 |
+
+2026-08-31 对 final RDS 的直接读取确认 scRNA 各年龄观测数为：GW7 6,644、
+GW8 7,730、GW9 6,333、GW12 6,366、GW16 20,454、GW20 13,928，合计
+61,455。历史 integration notebook 另记录 GW6/9/12 → GW8/9/10、GW11 → GW12
+的重标注步骤；最终样本表与转换 manifest 尚未说明两者关系。因此发育路径、真实
+时间耦合和 D16 产品软定位保持 `not_assessed`，不影响本轮按 final 对象完成身份与
+图形校准。当前 processed scRNA H5AD 只有 `counts` layer；RNA velocity 也保持
+`not_assessed`。
 
 上表 Chen vMB family 是受控、未发表的内部 reference，本 registry 未记录其公开
 accession 或 primary paper。相关 pilot 观察只能由 BRIDGE 的版本化验证记录支持，
@@ -126,11 +134,18 @@ accession 或 primary paper。相关 pilot 观察只能由 BRIDGE 的版本化�
 
 | Asset ID | 数据 | 时间/位置 | 规模 | 当前用途 | 状态与限制 |
 | --- | --- | --- | ---: | --- | --- |
-| `REF-SPATIAL-HEB58-v1` | Visium HD，segmented profiles | GW7 人胚中脑，section 2/9 | 联合对象 408,539；去除 background 后 385,361 profiles；18,085 probes | 移植前 marker 空间特异性、解剖锚定与空间投射校准 | 两张切片来自同一胚胎，必须分 section 展示且不能当两个生物重复；方向与 ROI 待审核；初始标签迁移依赖本组单细胞 reference |
+| `REF-SPATIAL-HEB58-v1` | Visium HD，segmented profiles | GW7 人胚中脑，section 2/9 | 上游登记 411,161；basic-filter joint H5AD 408,539；去背景 final H5AD 385,361 profiles；18,085 probes | 移植前 marker 空间特异性、解剖锚定与空间投射校准 | 上游 411,161 的源 manifest/hash 待补；两张切片来自同一胚胎，必须分 section 展示且不能当两个生物重复；初始标签迁移依赖本组单细胞 reference |
 | `REF-SPATIAL-CHEN-CS-v1` | 计划中的冠状/矢状空间 | 人胚中脑；单时间点 | 数据等待返回 | donor/section-aware spatial reference | `pending_data`；返回后登记 assay、donor、section、ROI 和 QC |
 | `REF-IF-CHEN-MARKERS-v1` | IF/IHC marker validation | 人胚中脑，GW/PCW 与切面待冻结 | 进行中 | marker 解剖定位和正交支持 | 在样本、抗体批次和成像合同冻结前不进入量化 |
 | `REF-SPATIAL-ZENG-PCW4-v1` | 公开空间数据 | PCW4，全胚/全头/早期脑 | 论文级可用 | early anatomy context | 需独立下载、版本和 ROI 审计 |
 | `REF-SPATIAL-PUBLIC-RESERVE-v1` | transformed spatial objects / large R objects | 早期发育脑，具体范围逐项核实 | 多个储备对象 | P1/P2 reference swap | 当前未形成 BRIDGE-ready contract |
+
+当前可复核对象把三个计数阶段分开保存：上游登记为 225,107 + 186,054 =
+411,161；basic-filter joint H5AD 为 223,428 + 185,111 = 408,539；去背景 final
+H5AD 为 209,932 + 175,429 = 385,361。正式图以 final H5AD 的 385,361 个
+segmented profiles 为分母。final 对象包含 20 个当前 `cell_type` 标签、两套
+reference prediction 及其 score/margin，但没有人工 annotation confidence 字段；
+该审核状态显示为 `not_recorded`。
 
 P0 中空间结果只称 `Spatial Reference Concordance`，不能称移植后宿主微环境相容性。
 

@@ -72,6 +72,14 @@
 完整数据条目、规模、角色和状态由 tracked
 [Data/Reference Registry](data_reference_registry.md) 维护。仓库外归档工作簿不是运行合同。
 
+2026-08-31 资产核对确认：最新 scRNA final RDS 含 61,455 个 cells，`Age`
+为 GW7/8/9/12/16/20；当前 processed scRNA H5AD 只有 `counts` layer。历史
+integration notebook 同时记录了 GW6/9/12 → GW8/9/10、GW11 → GW12 的
+重标注步骤。两套胎龄记录尚未由最终样本表和转换 manifest 解释一致，因此当前
+reference 可用于身份与图形校准，但发育路径 benchmark 必须保持
+`not_assessed`。RNA velocity 同样为 `not_assessed`；仅在另有经过核验的
+spliced/unspliced 资产时重新评估。
+
 ## 4. 分析流程
 
 ```mermaid
@@ -133,28 +141,28 @@ reference label 的角色/顺序、program card、真实时间点和方法。当
 
 ### 5.4 轨迹与转变方法
 
-`REF-CHEN-VMB-COMBINED-v1` 登记为发育路径 reference 候选，不是细胞身份
-reference，也不是谱系追踪真值。由于 scRNA 覆盖 GW7/8/9/12/16/20，snRNA 覆盖
-GW14/16/18/20/24/25，年龄与模态并不正交，因此不得直接把全部 profiles 拟合成
-一条无模态差异的 GW7-GW25 pseudotime。
+`REF-CHEN-VMB-COMBINED-v1` 只登记为发育路径候选，不是细胞身份 reference
+或谱系追踪真值。scRNA 与 snRNA 来自 12 个非配对胚胎，只有 GW16/GW20
+重叠；不得将全部 profiles 拟合成一条忽略 assay 的 GW7-GW25 pseudotime。
+方法按问题分组比较，不做跨任务总排名：
 
-首轮方法比较保持四层，且不合成总排名：
+| 问题 | 首轮方法 | 进入用户结果前必须回答 |
+| --- | --- | --- |
+| scRNA/snRNA 表征校准 | 不整合基线、Scanorama、scVI、SysVI、scANVI + scArches reference-query、Seurat RPCA；CCA 仅作过校正压力测试 | 在相同胎龄/谱系内检查技术混合，同时保留稀有状态、marker、真实胎龄顺序和路径结构；不整合允许成为最终选择 |
+| 静态表达拓扑 | PAGA/DPT 透明基线、Palantir → CellRank 2 `PseudotimeKernel`、StaVia、scFates | scRNA 与 snRNA 分别建图；root/terminal 预先审核；输出拓扑、分支支持与稳定性，不把 pseudotime 写成真实时间 |
+| 真实时间耦合 | sample/state centroid 与 ordinal 基线、moscot → CellRank 2 `RealTimeKernel`；WOT 独立校验 | 在每种模态内使用真实胎龄和 donor/timepoint unit；GW16/GW20 只检查跨模态一致性 |
+| D16 产品软定位 | 分别投向 scRNA 和 snRNA reference 的 source-aware support 与 out-of-reference 距离 | 输出支持分布和不确定性；不把体外 D16 插入胎儿胎龄轴，也不换算“对应孕周” |
 
-1. `SysVI` 作为 cells/nuclei 表征候选，先检查已知状态、样本和年龄结构是否保留；
-   integration 只是预处理，不增加一张独立生物证据票。
-2. `DPT + PAGA` 作为透明路径基线，在经审核的 neurogenesis 子集内分别重建
-   scRNA 与 snRNA 轨道；root 只能来自预先确认的早期 RG 状态。
-3. `Palantir` 作为分支与 terminal-state sensitivity；terminal states 必须预先
-   审核并显式传入，不能沿用自动推断结果。
-4. `moscot TemporalProblem` 作为真实时间耦合候选，先在两种模态内分别运行，
-   再以 GW16/GW20 检查跨模态方向一致性；`CellRank RealTimeKernel` 可消费该转移
-   结构。由 DPT/Palantir 构建的 `PseudotimeKernel` 仅是下游摘要，不算独立方法。
+ssSTACAS、scPoli、scCRAFT 和 ScNucAdapt 只在首轮出现 partial-overlap、
+开放集或标签转移问题时进入第二层。Slingshot、VIA、tradeSeq、CellAlign 和
+TrAGEDy 保持 benchmark/shadow。由同一 pseudotime 构建的 CellRank
+`PseudotimeKernel` 是下游摘要，不算独立证据。
 
-Slingshot、VIA、WOT、tradeSeq、CellAlign 和 TrAGEDy 保持 benchmark/shadow。
-scVelo 只在 scRNA 且存在经过验证的 spliced/unspliced layers 时评估，不在
-count-only 的 sc/sn 整合对象上运行。现有 DPT、Palantir 和 CellRank 产物保留为
-`historical_candidate`；当前尚未证明 snRNA 轨道内部具有一致的孕周方向，需按下述
-sample-level 合同重建后才能进入用户结果。
+当前 processed H5AD 没有 spliced/unspliced layer，因此 scVelo/veloVI 不进入
+首轮比较。若后续找到可追溯的原始层，再单独核验 scRNA velocity；snRNA velocity
+不作为主证据。Bonsai 仅登记为后续 expression-topology sensitivity，不解释方向、
+胎龄或空间位置，且其非商业许可必须在运行前复核。现有 DPT、Palantir 和 CellRank
+产物保留为 `historical_candidate`，不能替代按 sample-level 合同重建。
 
 ### 5.5 SISBAR 校准轨
 
@@ -229,6 +237,8 @@ sample-level 合同重建后才能进入用户结果。
 - 缺少 lineage barcode：不输出克隆关系、命运或 observed transition。
 - 任一模态内的年龄方向不稳定，或 GW16/GW20 对齐不一致：trajectory reference
   support 返回 `unavailable`，不得以整合后的总体趋势掩盖。
+- final RDS、最终样本表和历史 notebook 的胎龄重标注未对齐：
+  轨迹 benchmark 与产品软定位均返回 `not_assessed`。
 - sealed competitor test 不参与任何方法选择、reference 构建、prior 或阈值调整。
 
 ## 10. Benchmark 与冻结要求
@@ -243,6 +253,7 @@ sample-level 合同重建后才能进入用户结果。
 | 轨迹校准 | 对 SISBAR observed transitions 评测 edge recovery、方向一致性与校准度 |
 | sc/sn 路径 | 在 scRNA、snRNA 内分别按 sample-level 真实孕周检验方向；检查 GW16/GW20 对齐、root/terminal sensitivity、分支拓扑和下采样稳定性 |
 | 方法独立性 | integration 不计作证据票；同一 pseudotime 的 CellRank downstream kernel 不计作独立方法 |
+| 元数据门禁 | final RDS、样本表、notebook 重标注和派生对象的胎龄/观测数一致；不一致时不运行路径 benchmark |
 | 数据隔离 | sealed competitor test 到 reference、prior、训练、调参和阈值的数据流为零 |
 | 工程冻结 | tool、environment、window、reference、MeasurementSpec、参数、seed、schema 和验收阈值均版本化 |
 
@@ -250,11 +261,14 @@ sample-level 合同重建后才能进入用户结果。
 
 ## 11. 主要官方来源
 
+- scIB integration benchmark: https://www.nature.com/articles/s41592-021-01336-8
 - SysVI cells/nuclei integration: https://docs.scvi-tools.org/en/latest/tutorials/notebooks/scrna/sysVI.html ; https://pmc.ncbi.nlm.nih.gov/articles/PMC10635119/
 - Scanpy DPT/PAGA: https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.dpt.html ; https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.paga.html
 - Palantir paper and repository: https://www.nature.com/articles/s41587-019-0068-4 ; https://github.com/dpeerlab/Palantir
-- CellRank kernels: https://cellrank.readthedocs.io/en/stable/api/kernels.html
+- CellRank 2: https://www.nature.com/articles/s41592-024-02303-9
 - moscot temporal optimal transport: https://www.nature.com/articles/s41586-024-08453-2 ; https://github.com/theislab/moscot
+- StaVia: https://genomebiology.biomedcentral.com/articles/10.1186/s13059-024-03347-y
+- scFates: https://pmc.ncbi.nlm.nih.gov/articles/PMC9805561/
 - Trajectory-method benchmark: https://www.nature.com/articles/s41587-019-0071-9
 - scVelo: https://scvelo.readthedocs.io/
 - Slingshot / tradeSeq: https://bioconductor.org/packages/slingshot/ ; https://bioconductor.org/packages/tradeSeq/
@@ -262,7 +276,7 @@ sample-level 合同重建后才能进入用户结果。
 - scCODA: https://pertpy.readthedocs.io/en/latest/tutorials/notebooks/sccoda.html
 - RAPToR: https://github.com/LBMC/RAPToR ; https://www.nature.com/articles/s41592-022-01540-0
 - WOT: https://github.com/broadinstitute/wot
-- VIA: https://github.com/ShobiStassen/VIA
 - CellAlign / TrAGEDy: https://www.nature.com/articles/nmeth.4628 ; https://github.com/No2Ross/TrAGEDy
 - SISBAR / GSE221592: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE221592 ; https://www.sciencedirect.com/science/article/pii/S1934590923000449
 - CoSpar: https://cospar.readthedocs.io/en/latest/
+- Bonsai: https://www.nature.com/articles/s41587-026-03220-2

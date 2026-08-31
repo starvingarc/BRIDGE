@@ -125,15 +125,20 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 
 | 数据家族 | Assay 与材料 | 发育时间与解剖范围 | 当前规模 | 主要用途 | 状态与限制 |
 | --- | --- | --- | ---: | --- | --- |
-| Chen vMB scRNA | scRNA-seq，whole cells | GW7/8/9/12/16/20；人胚腹侧中脑 | 61,455 cells | 早期区域、祖细胞和目标/邻近程序 | `available`；需冻结样本表、ROI 和 annotation |
+| Chen vMB scRNA | scRNA-seq，whole cells | final RDS：GW7/8/9/12/16/20；人胚腹侧中脑 | 61,455 cells | 早期区域、祖细胞和目标/邻近程序 | `available`；final RDS 与历史 notebook 的胎龄重标注未解释一致，身份校准可继续，发育 benchmark 暂不运行 |
 | Chen vMB snRNA | snRNA-seq，nuclei | GW14/16/18/20/24/25；人胚腹侧中脑 | 87,467 nuclei | graft snRNA 身份支持；跨模态发育轨迹的一条分模态轨道 | `available`；与 scRNA 为不同胚胎，不进入移植前身份默认流程 |
-| Chen vMB combined | scRNA-seq + snRNA-seq 整合对象 | 12 个非配对胚胎、10 个孕周；腹侧中脑 | 148,922 profiles | state ontology，以及发育路径、方向和分支的候选 reference | 派生对象；年龄与模态存在混杂，必须分模态验证 |
+| Chen vMB combined | scRNA-seq + snRNA-seq 整合对象 | 12 个非配对胚胎、10 个登记孕周；腹侧中脑 | 148,922 profiles | state ontology，以及发育路径、方向和分支的候选 reference | 派生对象；胎龄映射闭合后仍须分模态验证，不合成一条无 assay 差异的 GW7-GW25 轨迹 |
 | Chen RG/Nb states | 从 Chen sc/sn 派生的状态集 | 腹侧中脑；14 个区域 RG/Nb states | 15,095 profiles | mFP/mBIP/mBMP 目标和邻近状态 | 不作为独立 reference 计数 |
 | Chen neurogenesis states | 从 Chen sc/sn 派生的神经发生状态集 | 腹侧中脑发育 | 83,017 profiles | DA/GABA/Glut/RG/Nb 状态，以及发育路径和分支方向候选 | candidate；不是因果谱系真值 |
 | Braun et al., 2023 (`EGAS00001004107`; HCA `cbd2911f-252b-4428-abde-69e270aefdfc`) | scRNA-seq；论文另含 spatial | PCW5-14；第一孕期全脑多区域 | 1,548,209 cells | 全脑区域和广谱离轴背景 | `available`；全脑 reference 不替代 vMB reference |
 | Zeng et al., 2023 (`GSE155121`) | scRNA-seq；PCW4 10x spatial | PCW3-12；全胚、全头和全脑 | 400,141 human cells | 早期胚胎、神经管、脑和非神经背景 | `available`；区域与年龄标签需冻结 |
 | La Manno et al., 2016 (`GSE76381`) | 人胎 VM scRNA-seq | PCW6-11；腹侧中脑 | 1,977 fetal cells | 独立经典 VM 发育 reference | `available`；旧平台且样本量较小 |
 | Birtele et al., 2022 (`GSE192405`) | 人胎 VM scRNA-seq 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 13 个 GEO samples；processed CSV 可用 | 原代胎儿 VM maturation external-source 候选 | `converted_conditionally_approved`；raw reads 不公开；仅允许 source/stage-level holdout 与 provisional-group sensitivity，不允许 biological-replicate 或 donor-level inference |
+
+2026-08-31 final RDS 核对确认上述 scRNA 的 61,455 个 cells；当前 processed
+H5AD 只有 `counts` layer。历史 notebook 中的 GW6/9/12 → GW8/9/10、
+GW11 → GW12 重标注尚未由最终样本表和转换 manifest 解释一致，因此发育路径、
+真实时间耦合、产品软定位和 RNA velocity 均保持 `not_assessed`。
 
 旧 Step1 reference 由 Chen legacy scRNA、Braun 和 Zeng 构建，full object 为 2,011,383 profiles。其 350,000-cell train、100,000-cell technical holdout 和 523,478-profile regional RG 仅用于旧流程复现、软件回归和血缘审计，不视为新 BRIDGE 的独立生物学验证。
 
@@ -158,11 +163,16 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 
 | 数据家族 | 数据类型 | 时间与解剖范围 | 当前规模/状态 | BRIDGE 用途 | 关键限制 |
 | --- | --- | --- | --- | --- | --- |
-| Chen hEB58 | Visium HD segmented tissue profiles | GW7；人胚中脑，section 2/9 | 225,107 + 186,054 = 411,161 profiles；18,085 probes；`available` | marker 空间特异性、解剖锚定和算法可行性 | 两张切片来自同一胚胎；方向和 ROI 待冻结 |
+| Chen hEB58 | Visium HD segmented tissue profiles | GW7；人胚中脑，section 2/9 | 上游登记 411,161；basic-filter joint 408,539；去背景 final 385,361 profiles；18,085 probes | marker 空间特异性、解剖锚定和算法可行性 | 两张切片来自同一胚胎；final 20 个标签作为当前工作标签；人工 confidence 未记录；方向和 ROI 待审核 |
 | Chen 冠状/矢状空间数据 | 人胚中脑空间转录组 | 单时间点；冠状和矢状切面 | `pending`；数据等待返回 | donor/section-aware anatomical reference | 返回后需登记 assay、donor、section、ROI 和 QC |
 | Chen 人胚中脑 marker 染色 | IF/IHC | 具体 GW/PCW、切面和 ROI 待样本表冻结 | 实验进行中 | 验证 mDA、底板、区域边界和非目标 marker | 样本、抗体批次和成像条件冻结前不进入量化 |
 | Braun 2023 spatial | 论文公开空间数据 | PCW5-14 第一孕期全脑 | 论文级可用；本地 spatial 版本待冻结 | 全脑解剖和区域 context | 不以论文图像代替可运行 snapshot |
 | Zeng 2023 PCW4 spatial | 10x spatial | PCW4；全胚/全头/早期脑 | 公开数据；待独立版本与 ROI 审计 | early anatomy context | 不与体外产品直接比较 |
+
+hEB58 三个计数阶段分别为 225,107 + 186,054 = 411,161（上游登记）、
+223,428 + 185,111 = 408,539（basic-filter joint H5AD）和
+209,932 + 175,429 = 385,361（去背景 final H5AD）。当前图形以 final
+segmented profiles 为分母；411,161 的源 manifest/hash 仍待补。
 
 空间和染色数据当前主要用于 reference 构建和正交验证。单一胚胎的多张切片不视为多个生物学重复。
 
@@ -718,6 +728,30 @@ context，空间转录组用于解剖与区域支持。整合对象包含本组�
 完全独立的支持票。单核 reference 作为细胞身份参考主要用于用户另行提供的 graft
 snRNA，只出现在独立移植后结果中；sc/sn 整合对象另作为 P0-04 发育路径与分支
 方向的候选 reference，在发育视图中按模态分轨展示，不进入 P0-02 身份共识。
+
+#### 参考校准与方法问题分层
+
+P0-02 的来源 × 细胞状态证据矩阵之前，先显示一张 hEB58 空间 reference
+校准图：两张 section 同比例并列，主图按谱系/解剖家族着色，下钻保留 20 个当前
+标签；同时显示两套 reference prediction 的 `Uncertain`、可比较的方法分歧和
+已有 marker/anti-marker 证据。该图的 385,361 个观测统一称 segmented
+profiles。人工 confidence 未记录时显示 `not_recorded`，不生成替代分数；两张
+section 不作为两个生物学重复，也不构成发育时间序列。
+
+发育与空间方法按科学问题分层，不共享一个排行榜：
+
+| 科学问题 | 用户看到的结果 | 所属实现 |
+| --- | --- | --- |
+| scRNA/snRNA 表征校准 | 技术混合与状态、marker、胎龄顺序和路径保持的并列敏感性 | P0-04 后续 PR；不整合是合法候选 |
+| 静态表达拓扑 | scRNA 与 snRNA 分轨的节点、分支、root/terminal 和稳定性 | P0-04 后续 PR；不解释真实时间 |
+| 真实时间耦合 | 每种模态内按 donor/timepoint 的转移支持及 GW16/GW20 一致性 | P0-04 后续 PR；元数据闭合前不可用 |
+| D16 产品软定位 | 分别针对 scRNA、snRNA reference 的支持分布与参考外程度 | P0-04 后续 PR；不把 D16 插入胎龄轴 |
+| 空间 reference 校准 | segmentation、标签、marker、reference uncertainty 与空间域敏感性 | 当前 P0-02 只完成 reference 图；P0-03 后续实测 |
+| 产品到空间 reference 投射 | 概率、residual、OOD、ROI/section 稳健性和适用性 | P0-03 后续 PR；不表示产品具有真实组织坐标 |
+
+空间 segmentation、标签复核、spatial domain、scRNA → spatial mapping、
+section alignment 和 spatial trajectory 分任务报告；hEB58 当前 spatial
+trajectory 为 `deferred`，所有任务禁止合成总排名。
 
 #### 阅读、交互与证据状态
 

@@ -3,8 +3,8 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-TARGET-IDENTITY-v0.1`；`TASK-REGIONAL-FIDELITY-v0.1` |
-| 文档版本 | `0.3 expression-method candidate update` |
-| 日期 | 2026-08-26 |
+| 文档版本 | `0.4 spatial-method candidate update` |
+| 日期 | 2026-08-31 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA progenitor |
 | 上游输入 | 11 个 checksummed 核心 JSON；表达模式另加 1 个 analysis-ready H5AD 与 1 个 `TargetRegionalMethodSpec` |
@@ -145,19 +145,27 @@ Spec 使用知识快照中的规范化 `METHOD-*` ID，二者通过 catalog alia
 区域偏移必须报告具体方向；reference coverage 不足时返回 `unknown` 或
 `unavailable`。
 
-### 7.2 Spatial Reference Projection
+### 7.2 空间参考校准与投射
 
-| 方法 | 在 BRIDGE 中的候选角色 | 关键限制 |
-| --- | --- | --- |
-| BRIDGE correlation/cosine/kNN baseline | 透明的 cell/state-to-spatial-profile 基线 | 需做 shared-gene、distance 和 OOD gate |
-| Tangram | 直接空间投射首轮候选；输出 cell/cluster-to-location probability | 官方要求 sc/sn 与空间数据来自相同组织/区域；跨样本产品投射需严格适用性检查 |
-| SpaOTsc | optimal transport 独立校验候选 | 依赖较旧，需隔离环境；映射质量必须单独验证 |
-| CellTrek | R/Seurat cell charting benchmark | 共嵌入和参数敏感性需测试；不默认优于透明基线 |
-| CytoSPACE | optimization-based assignment benchmark | hard assignment 可能强制映射 OOD 细胞，必须设置拒答/残差通道 |
-| cell2location | 空间 reference 构建、注释与区域 abundance 校验 | 主要解决空间数据的 cell-type abundance，不作为产品细胞直接坐标投射主方法 |
-| SpatialData / Squidpy | 空间对象管理、邻域/marker/ROI 质控和可视化 | 属于 reference QC，不单独证明产品区域身份 |
+空间问题按任务分别比较，不再以 Tangram 为中心排列，也不生成跨任务总排名：
 
-Web 可以突出展示 cell-level 投射图；正式可比较 raw metrics 先按 sample/state 聚合，并同时显示拟合质量和不确定性。
+| 任务 | 首轮候选 | 条件候选或敏感性 | 解释边界 |
+| --- | --- | --- | --- |
+| segmentation sensitivity | 当前 segmentation、Bin2cell、ENACT | 有原始 2 µm bins 时加入 FICTURE 无分割对照 | 比较边界、marker 保留和小区域稳定性；不把 segmented profile 称为已验证单细胞 |
+| 标签复核 | 当前双 reference prediction、marker/anti-marker、RCTD reject/doublet | 无 | final 对象的 20 个 `cell_type` 是当前工作标签；不重新聚类或命名 |
+| spatial domain | BANKSY、CellCharter | 标签稳定后再评估 NicheCompass；Novae 仅作 zero-shot sensitivity | 评估空间连续性和 domain 稳定性，不直接证明细胞身份 |
+| scRNA → spatial mapping | 聚合尺度 cell2location、RCTD | Tangram 只作 ROI/held-out-gene 验证；DestVI 为条件候选 | 产品投射显示概率、residual、OOD 和适用性；不表示产品具有真实组织坐标 |
+| section alignment | PASTE2、moscot | STAligner embedding sensitivity | 仅在切片连续性、方向和重叠 ROI 均确认后运行 |
+| spatial trajectory | `deferred` | spaTrack 仅在后续存在明确问题和合格设计时评估 | hEB58 两张切片来自同一胚胎，不是时间序列或两个生物学重复 |
+
+当前 P0-02 分支只绘制 hEB58 reference calibration：两张 section 同比例展示，
+同时显示 20 个现有标签、两套 reference 的 `Uncertain`、方法分歧和已有
+marker 证据。原对象没有人工 confidence 字段，审核状态必须写
+`not_recorded`，不得补造数值。P0-03 后续 PR 才实现产品到空间 reference 的
+投射与方法比较。
+
+LungChat 不登记为 BRIDGE 分析方法，仅借鉴其参数、表格、图形和运行记录的组织
+方式。CellChat 只在以后出现明确的 hEB58 通讯问题且空间 QC 合格时单独评估。
 
 ## 8. 输出合同
 
@@ -195,9 +203,9 @@ P0-03 v0.3.0 的聚合与当前表达方法均在冻结的
 `ENV-CELLSTATE-PY-v0.1` 中运行。AnnData 负责 H5AD I/O，NumPy/pandas/SciPy
 负责 pseudobulk、correlation、NNLS 和 bootstrap，decoupler 负责 ULM。
 
-SpatialData、Squidpy、Tangram、SpaOTsc、CellTrek、CytoSPACE 和 cell2location
-仍是空间阶段候选。它们尚无 P0-03 runtime artifact，也不属于当前环境；进入实现
-时必须分别冻结兼容环境和 fixture。
+空间候选当前均无 P0-03 runtime artifact。Bin2cell/ENACT/FICTURE、BANKSY/
+CellCharter/NicheCompass、cell2location/RCTD/Tangram/DestVI 及
+PASTE2/moscot 必须按任务建立隔离环境、合成 fixture 和资源记录。
 
 所有运行保留环境 ID、软件版本、随机种子、资源记录和输出 checksum。安装成功不等于方法通过科学验证。
 
@@ -206,7 +214,8 @@ SpatialData、Squidpy、Tangram、SpaOTsc、CellTrek、CytoSPACE 和 cell2locati
 - 完整制剂 target/acceptable adjacent/unresolved 组成及区间。
 - target-related 区域组成与 product-wide regional-support 并列图。
 - 前脑、间脑、中脑亚区、MHB 和后脑的区域证据热图。
-- hEB58 两张切片上的 cell-level Spatial Reference Projection、概率和 uncertainty overlay。
+- hEB58 两张切片同尺度的 reference calibration 图，分开显示工作标签、reference uncertainty 与 marker 支持。
+- 只有空间适用性门禁通过后，才显示产品到 reference 的 projection probability、residual 与 OOD。
 - shared-gene coverage、holdout fit、entropy/residual 及 section sensitivity。
 - 方法一致性、共享 evidence family、冲突和 missing evidence 下钻。
 
@@ -223,14 +232,18 @@ SpatialData、Squidpy、Tangram、SpaOTsc、CellTrek、CytoSPACE 和 cell2locati
 | hEB58 reference | 两切片按同一胚胎处理；标签 provenance、方向、ROI、annotation 与 checksum 冻结 |
 | 拒答 | shared genes 不足、OOD、拟合差或方法冲突时返回 `unknown`/`unavailable`，不强制映射 |
 | 一致性 | cell-level 图与 sample/state 聚合结果可追溯，独立运行与联合比较不改写原始 evidence |
+| 方法比较 | segmentation、标签、domain、mapping、alignment 分任务报告；禁止跨任务总排名 |
 
 未完成这些验证前，输出保持 raw metrics 或 `shadow`。0-100 `domain_score` 的公式、方向和阈值在独立 ScoreContract 中另行开发。
 
 ## 12. 主要官方来源
 
-- [Tangram documentation](https://tangram-sc.readthedocs.io/)、[Tangram source](https://github.com/broadinstitute/Tangram)、[Tangram paper](https://www.nature.com/articles/s41592-021-01264-7)
-- [SpaOTsc source](https://github.com/zcang/SpaOTsc)、[SpaOTsc paper](https://www.nature.com/articles/s41467-020-15968-5)
-- [CellTrek source](https://github.com/navinlabcode/CellTrek)、[CellTrek paper](https://www.nature.com/articles/s41587-022-01233-1)
-- [CytoSPACE source](https://github.com/digitalcytometry/cytospace)、[CytoSPACE paper](https://www.nature.com/articles/s41587-023-01697-9)
-- [cell2location documentation](https://cell2location.readthedocs.io/)、[SpatialData](https://spatialdata.scverse.org/)、[Squidpy](https://squidpy.readthedocs.io/)
+- [Spatial integration benchmark](https://www.nature.com/articles/s41592-022-01480-9)
+- [Bin2cell](https://doi.org/10.1093/bioinformatics/btae546)、[ENACT](https://doi.org/10.1093/bioinformatics/btaf094)、[FICTURE](https://www.nature.com/articles/s41592-024-02415-2)
+- [BANKSY](https://www.nature.com/articles/s41588-024-01664-3)、[CellCharter](https://www.nature.com/articles/s41588-023-01588-4)
+- [NicheCompass](https://www.nature.com/articles/s41588-025-02120-6)
+- [RCTD](https://www.nature.com/articles/s41587-021-00830-w)、[cell2location](https://www.nature.com/articles/s41587-021-01139-4)
+- [Tangram documentation](https://tangram-sc.readthedocs.io/)、[Tangram paper](https://www.nature.com/articles/s41592-021-01264-7)
+- [PASTE2](https://pmc.ncbi.nlm.nih.gov/articles/PMC9881963/)、[moscot](https://www.nature.com/articles/s41586-024-08453-2)
+- [SpatialData](https://spatialdata.scverse.org/)、[Squidpy](https://squidpy.readthedocs.io/)
 - [La Manno et al. 2016](https://doi.org/10.1016/j.cell.2016.09.027)、[Kirkeby et al. 2017](https://doi.org/10.1016/j.stem.2016.09.004)、[CORIN sorting study](https://pmc.ncbi.nlm.nih.gov/articles/PMC3964289/)
