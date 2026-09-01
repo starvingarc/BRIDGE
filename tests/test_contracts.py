@@ -470,10 +470,10 @@ def test_figure_registry_discovers_legacy_and_typed_qc_components() -> None:
         "valid": True,
         "registry_id": "bridge.figure-registry",
         "object_version": "0.1.0",
-        "component_count": 16,
-        "typed_candidate_count": 9,
+        "component_count": 19,
+        "typed_candidate_count": 12,
         "legacy_untyped_count": 7,
-        "producer_tool_ids": ["P0-01", "P0-02", "P0-03", "P0-04"],
+        "producer_tool_ids": ["P0-01", "P0-02", "P0-03", "P0-04", "P0-05"],
     }
     assert len(registry.list(tool_id="P0-01")) == 6
     assert (
@@ -577,9 +577,9 @@ def test_figure_registry_returns_defensive_copies() -> None:
     registry.list()[0].producer_tool_ids.clear()
     registry.snapshot.components.clear()
 
-    assert registry.validation_summary()["component_count"] == 16
+    assert registry.validation_summary()["component_count"] == 19
     assert len(registry.list(tool_id="P0-01")) == 6
-    assert FigureRegistry.load_default().validation_summary()["component_count"] == 16
+    assert FigureRegistry.load_default().validation_summary()["component_count"] == 19
 
 
 def test_typed_figure_validation_enforces_interactions_and_fallbacks() -> None:

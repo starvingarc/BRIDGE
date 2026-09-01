@@ -714,6 +714,43 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-04",
         data_schema_ref="bridge://schemas/developmental-compatibility-visualization-data/v0.1",
     ),
+    _typed_component(
+        "bridge.off-target-control.product-accounting",
+        "0.1.0",
+        title="Declared product-role accounting",
+        question=(
+            "How are observations accounted for under the declared product roles, "
+            "and how much identity remains unresolved?"
+        ),
+        figure_family="denominator_aware_composition_ledger",
+        tool_id="P0-05",
+        data_schema_ref="bridge://schemas/off-target-control-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.off-target-control.rare-state-detectability",
+        "0.1.0",
+        title="Rare-state observations and distinct detection boundaries",
+        question=(
+            "Which monitored rare states were observed, and what can the separately "
+            "supplied or candidate detection boundaries support?"
+        ),
+        figure_family="rare_state_detection_boundary_fingerprint",
+        tool_id="P0-05",
+        data_schema_ref="bridge://schemas/off-target-control-visualization-data/v0.1",
+    ),
+    _typed_component(
+        "bridge.off-target-control.ood-source-agreement",
+        "0.1.0",
+        title="Supplied OOD channel states by declared source family",
+        question=(
+            "How do the supplied OOD channel states differ across their declared "
+            "source families, and what external coordination rule was applied?"
+        ),
+        figure_family="source_family_channel_state_matrix",
+        tool_id="P0-05",
+        data_schema_ref="bridge://schemas/off-target-control-visualization-data/v0.1",
+    ),
 )
 
 

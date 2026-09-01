@@ -7,11 +7,11 @@
 | 日期 | 2026-08-25 |
 | 状态 | `candidate / executable shadow` |
 | 上游 | P0-02 V2/V3、预计算 evidence bundle 与可选方法运行对象 |
-| 输出 | `OffTargetControlProfile v0.1`；方法模式另含 `OffTargetMethodBundle v0.1` |
+| 输出 | `OffTargetControlProfile v0.1`；方法模式另含 `OffTargetMethodBundle v0.1`；两种模式均含 typed visualization data、精确 TSV 与静态图 |
 
 ## 1. 生物学问题与当前边界
 
-P0-05 回答一个受限问题：在同一个全制剂分母内，外部产品定义所声明的
+P0-05 回答一个受限问题：在同一个声明主分母内，外部产品定义所声明的
 `target`、`acceptable_adjacent`、`known_off_target` 和
 `role_unresolved` 组成、unknown 原因以及预声明稀有状态的检测边界是什么。
 
@@ -76,7 +76,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 7. 方法模式核对 DataView、BiologicalUnitManifest、unit-level 与 aggregate counts。
 8. 执行描述性 exact interval、hard/soft sensitivity 与 independence-group bootstrap。
 9. 每个 spike-in 浓度只允许每个 independence group 一次，计算候选检测限与单状态二项规划；按 MethodSpec 固定的上游来源族协调 OOD 状态。
-10. 在发布前再次检查所有输入 checksum，原子写入一个或两个 JSON artifact。
+10. 从同一 typed visualization data 生成精确 TSV 与 SVG/PNG/PDF，在发布前再次检查输入 checksum 并原子写入全部 artifact。
 
 相同输入内容与 random seed 产生相同 run ID、input hash 和 artifact hash；
 方法模式下 random seed 是运行指纹的一部分。
@@ -105,7 +105,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 | `executions` | selector、canonical method ref、实际实现、包版本、状态与 reason code |
 | `composition_intervals` | descriptive cell-count interval 与 independence-group bootstrap |
 | `hard_soft_sensitivity` | 同一角色 hard fraction 与 soft fraction 的差异 |
-| `rare_intervals` / `spike_in_calibrations` | 稀有状态描述区间、恢复曲线与 candidate detection limit |
+| `rare_intervals` / `spike_in_calibrations` | 稀有状态描述区间、检出命中率曲线与 candidate detection limit |
 | `planning_records` | 单一预声明状态至少观察一个细胞所需的观察数，以及独立随机抽样、完美检测假设；不是 SCOPIT |
 | `ood_disagreement` / `ood_ensemble` | 来源族分歧与外部有序规则的协调结果 |
 

@@ -89,6 +89,12 @@ P004_VISUALIZATION_FILES = (
     Path("src/bridge/tool_packages/p0_04_developmental_compatibility/visualization.py"),
     Path("src/bridge/tool_packages/p0_04_developmental_compatibility/visualization_data.py"),
 )
+P005_VISUALIZATION_FILES = (
+    Path("src/bridge/resources/schemas/off_target_control_visualization_data.schema.json"),
+    Path("src/bridge/resources/schemas/p0_05_visualization_artifact_set.schema.json"),
+    Path("src/bridge/tool_packages/p0_05_off_target_control/visualization.py"),
+    Path("src/bridge/tool_packages/p0_05_off_target_control/visualization_data.py"),
+)
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
 )
@@ -188,9 +194,14 @@ def _tracked_file_budget() -> int:
         (ROOT / relative).is_file()
         for relative in P004_VISUALIZATION_FILES
     )
+    p005_visualization_files = sum(
+        (ROOT / relative).is_file()
+        for relative in P005_VISUALIZATION_FILES
+    )
     return (
         TRACKED_FILE_BASELINE
         + p004_visualization_files
+        + p005_visualization_files
         + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
         + shared_files
         + visualization_contract_files
