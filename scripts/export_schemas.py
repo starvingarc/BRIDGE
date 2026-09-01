@@ -56,6 +56,9 @@ from bridge.tool_packages.p0_02_cell_state.visualization_data import (
 from bridge.tool_packages.p0_03_target_regional.models import (
     PUBLIC_SCHEMA_MODELS as P0_03_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_03_target_regional.visualization_data import (
+    PUBLIC_VISUALIZATION_SCHEMA_MODELS as P0_03_VISUALIZATION_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     PUBLIC_SCHEMA_MODELS as P0_07_SCHEMA_MODELS,
 )
@@ -185,6 +188,7 @@ for schema_models in (
     P0_02_HIERARCHY_SCHEMA_MODELS,
     P0_02_SCHEMA_MODELS,
     P0_03_SCHEMA_MODELS,
+    P0_03_VISUALIZATION_SCHEMA_MODELS,
     P0_04_SCHEMA_MODELS,
     P0_05_SCHEMA_MODELS,
     P0_06_SCHEMA_MODELS,

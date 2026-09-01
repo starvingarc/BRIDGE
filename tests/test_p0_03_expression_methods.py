@@ -478,3 +478,29 @@ def test_nnls_residual_limit_propagates_unknown(tmp_path: Path) -> None:
         item.applicability_state for item in bundle.continuous_identity_weights
     } == {"unknown"}
     assert bundle.domain_score is None
+
+
+def test_reference_visualization_recognizes_selected_cross_reference_method(
+    tmp_path: Path,
+) -> None:
+    def configure(payload: dict) -> None:
+        payload["selected_method_ids"] = ["REG-CROSSREF"]
+        payload.pop("expression_semantics_contract")
+
+    run = ToolRegistry.load_default().run(
+        _mutate(
+            _expression_request(tmp_path),
+            "target_regional_method_spec",
+            configure,
+        )
+    )
+    profile_path = next(
+        item.path
+        for item in run.artifacts
+        if item.kind == "target_regional_visualization_data"
+    )
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    assert profile["reference_records"] == []
+    assert profile["reference_support_reason_codes"] == [
+        "expression_semantics_contract_not_supplied"
+    ]

@@ -53,6 +53,7 @@ evidence = [
   "regex>=2025.7,<2027",
 ]
 target-regional = [
+  "matplotlib>=3.9,<4",
   "anndata>=0.11,<0.13",
   "decoupler>=2.1,<2.2",
 ]

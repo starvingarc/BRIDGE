@@ -542,6 +542,8 @@ def _typed_component(
     question: str,
     figure_family: str,
     default_role: FigureRole = FigureRole.SUPPORTING,
+    tool_id: str = "P0-01",
+    data_schema_ref: str = "bridge://schemas/qc-visualization-data/v0.1",
 ) -> FigureComponentSpec:
     return FigureComponentSpec(
         component_id=component_id,
@@ -549,10 +551,10 @@ def _typed_component(
         title=title,
         question=question,
         figure_family=figure_family,
-        producer_tool_ids=["P0-01"],
+        producer_tool_ids=[tool_id],
         registry_state=FigureRegistryState.TYPED_CANDIDATE,
         default_role=default_role,
-        data_schema_refs=["bridge://schemas/qc-visualization-data/v0.1"],
+        data_schema_refs=[data_schema_ref],
         surfaces=[FigureSurface.STATIC_EXPORT, FigureSurface.TABLE],
         required_fallbacks=[
             "table",
@@ -649,6 +651,31 @@ _DEFAULT_COMPONENTS = (
         question="Do reviewed marker programs support the proposed cell-state labels?",
         figure_family="evidence_matrix",
         tool_id="P0-02",
+    ),
+    _typed_component(
+        "bridge.target-regional.product-roles",
+        "0.1.0",
+        title="Product composition relative to the declared regional identity",
+        question=(
+            "How much of the product supports intended, adjacent, non-target "
+            "or unresolved states, and which regional states contribute?"
+        ),
+        figure_family="denominator_aware_composition_fingerprint",
+        tool_id="P0-03",
+        data_schema_ref="bridge://schemas/target-regional-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.target-regional.reference-fingerprint",
+        "0.1.0",
+        title="Reference support for cell states and midbrain regional identity",
+        question=(
+            "Which cell and regional states are supported across reference "
+            "sources and assays?"
+        ),
+        figure_family="reference_state_evidence_matrix",
+        tool_id="P0-03",
+        data_schema_ref="bridge://schemas/target-regional-visualization-data/v0.1",
     ),
 )
 

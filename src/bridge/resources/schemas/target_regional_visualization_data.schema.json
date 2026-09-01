@@ -1,0 +1,903 @@
+{
+  "$defs": {
+    "CompositionCategory": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved",
+        "unknown",
+        "ood",
+        "unavailable"
+      ],
+      "title": "CompositionCategory",
+      "type": "string"
+    },
+    "CompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific"
+      ],
+      "title": "CompositionView",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "InputChecksumBindings": {
+      "additionalProperties": false,
+      "properties": {
+        "annotation_vocabulary": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Annotation Vocabulary",
+          "type": "string"
+        },
+        "biological_unit_assignment": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Biological Unit Assignment",
+          "type": "string"
+        },
+        "biological_unit_manifest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Biological Unit Manifest",
+          "type": "string"
+        },
+        "cell_state_evidence_profile": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cell State Evidence Profile",
+          "type": "string"
+        },
+        "measurement_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Measurement Spec",
+          "type": "string"
+        },
+        "product_case": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Case",
+          "type": "string"
+        },
+        "product_definition_card": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Definition Card",
+          "type": "string"
+        },
+        "qc_readiness_profile": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Qc Readiness Profile",
+          "type": "string"
+        },
+        "reference_manifest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Reference Manifest",
+          "type": "string"
+        },
+        "state_role_map": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "State Role Map",
+          "type": "string"
+        },
+        "target_regional_assessment_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Target Regional Assessment Spec",
+          "type": "string"
+        },
+        "target_regional_method_spec": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Regional Method Spec"
+        }
+      },
+      "required": [
+        "product_case",
+        "product_definition_card",
+        "state_role_map",
+        "target_regional_assessment_spec",
+        "measurement_spec",
+        "cell_state_evidence_profile",
+        "qc_readiness_profile",
+        "biological_unit_manifest",
+        "biological_unit_assignment",
+        "annotation_vocabulary",
+        "reference_manifest"
+      ],
+      "title": "InputChecksumBindings",
+      "type": "object"
+    },
+    "ProductRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved"
+      ],
+      "title": "ProductRole",
+      "type": "string"
+    },
+    "ProductRoleCompositionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/CompositionCategory"
+        },
+        "channel_assessment_state": {
+          "enum": [
+            "complete",
+            "partial",
+            "not_assessed"
+          ],
+          "title": "Channel Assessment State",
+          "type": "string"
+        },
+        "channel_id": {
+          "pattern": "^channel\\.[0-9]{2}$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "channel_reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Channel Reason Codes",
+          "type": "array"
+        },
+        "component_ref": {
+          "const": "bridge.target-regional.product-roles@0.1.0",
+          "default": "bridge.target-regional.product-roles@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "composition_view": {
+          "$ref": "#/$defs/CompositionView"
+        },
+        "contributing_state_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Contributing State Ids",
+          "type": "array"
+        },
+        "count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count"
+        },
+        "denominator_scope": {
+          "const": "selected_product_view",
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "fraction_of_product": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction Of Product"
+        },
+        "interval_lower": {
+          "default": null,
+          "title": "Interval Lower",
+          "type": "null"
+        },
+        "interval_state": {
+          "const": "not_estimable",
+          "title": "Interval State",
+          "type": "string"
+        },
+        "interval_upper": {
+          "default": null,
+          "title": "Interval Upper",
+          "type": "null"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unknown",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "product_denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Product Denominator",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_labels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Labels",
+          "type": "array"
+        },
+        "unit": {
+          "const": "observations",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "channel_id",
+        "composition_view",
+        "label_level",
+        "category",
+        "display_name",
+        "channel_assessment_state",
+        "product_denominator",
+        "denominator_scope",
+        "unit",
+        "interval_state",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "ProductRoleCompositionRecord",
+      "type": "object"
+    },
+    "ReferenceStateSupportRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "anatomy": {
+          "minLength": 1,
+          "title": "Anatomy",
+          "type": "string"
+        },
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.target-regional.reference-fingerprint@0.1.0",
+          "default": "bridge.target-regional.reference-fingerprint@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "developmental_time": {
+          "minLength": 1,
+          "title": "Developmental Time",
+          "type": "string"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_scope": {
+          "enum": [
+            "target_identity",
+            "regional_fidelity"
+          ],
+          "title": "Evidence Scope",
+          "type": "string"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "maximum_spearman_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum Spearman Support"
+        },
+        "median_spearman_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median Spearman Support"
+        },
+        "minimum_spearman_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum Spearman Support"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "n_analysis_units": {
+          "minimum": 0,
+          "title": "N Analysis Units",
+          "type": "integer"
+        },
+        "n_available_analysis_units": {
+          "minimum": 0,
+          "title": "N Available Analysis Units",
+          "type": "integer"
+        },
+        "profile_assay": {
+          "minLength": 1,
+          "title": "Profile Assay",
+          "type": "string"
+        },
+        "profile_id": {
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "range_semantics": {
+          "const": "analysis_unit_range_not_confidence_interval",
+          "title": "Range Semantics",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "shared_genes": {
+          "minimum": 0,
+          "title": "Shared Genes",
+          "type": "integer"
+        },
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "state_id": {
+          "minLength": 1,
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_scope",
+        "profile_id",
+        "source_id",
+        "profile_assay",
+        "anatomy",
+        "developmental_time",
+        "state_id",
+        "display_name",
+        "n_analysis_units",
+        "n_available_analysis_units",
+        "shared_genes",
+        "range_semantics",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "ReferenceStateSupportRecord",
+      "type": "object"
+    },
+    "RegionalStateCompositionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "channel_assessment_state": {
+          "enum": [
+            "complete",
+            "partial",
+            "not_assessed"
+          ],
+          "title": "Channel Assessment State",
+          "type": "string"
+        },
+        "channel_id": {
+          "pattern": "^channel\\.[0-9]{2}$",
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "channel_reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Channel Reason Codes",
+          "type": "array"
+        },
+        "component_ref": {
+          "const": "bridge.target-regional.product-roles@0.1.0",
+          "default": "bridge.target-regional.product-roles@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "composition_view": {
+          "$ref": "#/$defs/CompositionView"
+        },
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator_scope": {
+          "const": "selected_product_view",
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "const": "inferred",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "fraction_of_product": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fraction Of Product",
+          "type": "number"
+        },
+        "fraction_of_target_related": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction Of Target Related"
+        },
+        "interval_lower": {
+          "default": null,
+          "title": "Interval Lower",
+          "type": "null"
+        },
+        "interval_state": {
+          "const": "not_estimable",
+          "title": "Interval State",
+          "type": "string"
+        },
+        "interval_upper": {
+          "default": null,
+          "title": "Interval Upper",
+          "type": "null"
+        },
+        "is_target_region": {
+          "title": "Is Target Region",
+          "type": "boolean"
+        },
+        "is_target_related": {
+          "title": "Is Target Related",
+          "type": "boolean"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "missingness": {
+          "const": "available",
+          "title": "Missingness",
+          "type": "string"
+        },
+        "product_denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Product Denominator",
+          "type": "integer"
+        },
+        "product_role": {
+          "$ref": "#/$defs/ProductRole"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "state_id": {
+          "minLength": 1,
+          "title": "State Id",
+          "type": "string"
+        },
+        "target_related_denominator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Related Denominator"
+        },
+        "unit": {
+          "const": "observations",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "channel_id",
+        "composition_view",
+        "label_level",
+        "state_id",
+        "display_name",
+        "product_role",
+        "is_target_related",
+        "is_target_region",
+        "channel_assessment_state",
+        "count",
+        "product_denominator",
+        "fraction_of_product",
+        "denominator_scope",
+        "unit",
+        "interval_state",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "RegionalStateCompositionRecord",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/target-regional-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "assay": {
+      "enum": [
+        "scRNA-seq",
+        "snRNA-seq"
+      ],
+      "title": "Assay",
+      "type": "string"
+    },
+    "assessment_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "data_view_id": {
+      "minLength": 1,
+      "title": "Data View Id",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/InputChecksumBindings"
+    },
+    "n_observations": {
+      "exclusiveMinimum": 0,
+      "title": "N Observations",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:[A-Za-z0-9._:-]+$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "minLength": 1,
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_records": {
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ProductRoleCompositionRecord"
+          },
+          {
+            "$ref": "#/$defs/RegionalStateCompositionRecord"
+          }
+        ]
+      },
+      "minItems": 1,
+      "title": "Product Records",
+      "type": "array"
+    },
+    "profile_id": {
+      "pattern": "^target-regional-visualization-data:[a-f0-9]{16}$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "reference_records": {
+      "items": {
+        "$ref": "#/$defs/ReferenceStateSupportRecord"
+      },
+      "title": "Reference Records",
+      "type": "array"
+    },
+    "reference_support_applicability": {
+      "enum": [
+        "applicable",
+        "partially_applicable",
+        "not_assessed"
+      ],
+      "title": "Reference Support Applicability",
+      "type": "string"
+    },
+    "reference_support_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reference Support Reason Codes",
+      "type": "array"
+    },
+    "reference_support_state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "role_map_review_state": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "Role Map Review State",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/target-regional-visualization-data/v0.1",
+      "default": "bridge://schemas/target-regional-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "spatial_projection_state": {
+      "const": "not_assessed",
+      "title": "Spatial Projection State",
+      "type": "string"
+    },
+    "state_role_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    }
+  },
+  "required": [
+    "profile_id",
+    "producer_run_ref",
+    "producer_tool_version",
+    "product_case_ref",
+    "product_definition_ref",
+    "state_role_map_ref",
+    "assessment_spec_ref",
+    "data_view_id",
+    "assay",
+    "n_observations",
+    "role_map_review_state",
+    "input_sha256_by_role",
+    "spatial_projection_state",
+    "product_records",
+    "reference_support_state",
+    "reference_support_applicability",
+    "evidence_ids"
+  ],
+  "title": "TargetRegionalVisualizationDataV1",
+  "type": "object"
+}

@@ -17,6 +17,7 @@ dependencies:
   - scanpy=1.11.5
   - pyarrow=21.0.0
   - scikit-learn=1.7.2
+  - matplotlib=3.11.1
   - pip:
       - celltypist==1.7.1
       - scvi-tools==1.4.0.post1
