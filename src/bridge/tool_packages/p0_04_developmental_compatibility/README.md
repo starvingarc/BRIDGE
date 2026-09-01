@@ -8,19 +8,21 @@ state identities, marker sets, stage conversions or score thresholds.
 The base path aggregates the current P0-02 composition into whole-product and
 target-related `earlier`, `within_window`, `later`, `branch_shift` and
 `unresolved` roles. The optional expression path reads a checksummed H5AD and
-executes selected reference, ordinal, program, bootstrap and true-time methods
-from a versioned `DevelopmentMethodSpec`.
+executes selected reference, ordinal, program and bootstrap methods from a
+versioned `DevelopmentMethodSpec`.
 
 The ordinal method is an uncalibrated baseline and runs only when the same
 checksummed method spec supplies a reviewed, passed source-group-held-out
 evidence receipt bound to every selected profile and at least two sources.
 Incomplete reference-profile coverage and cross-source/assay stage-role
-disagreement are unavailable rather than pooled. Time splines are unadjusted
-descriptive fits; inferential time-course evidence remains unavailable.
+disagreement are unavailable rather than pooled. Ordered sampling-point labels
+are categorical; continuous-time and inferential time-course evidence remain
+unavailable until a numeric time contract exists.
 
-Outputs are `DevelopmentalCompatibilityResult` and, when requested,
-`DevelopmentMethodBundle`. Both retain `domain_score=null`; method evidence
-is candidate/shadow.
+Outputs include `DevelopmentalCompatibilityResult`, typed visualization data,
+three exact table fallbacks and deterministic SVG/PNG/PDF figures. Expression
+mode also emits `DevelopmentMethodBundle`. All results retain
+`domain_score=null`; method evidence is candidate/shadow.
 
 ## Documentation
 

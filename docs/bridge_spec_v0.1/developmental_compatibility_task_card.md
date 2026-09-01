@@ -3,27 +3,30 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-DEVELOPMENT-v0.1` |
-| Task document version | `0.3` |
-| 日期 | 2026-08-27 |
-| Package version | `P0-04 0.3.0` |
+| Task document version | `0.4` |
+| 日期 | 2026-09-01 |
+| Package version | `P0-04 0.4.0` |
 | Runtime / scientific state | `implemented` / `candidate shadow` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
 | Current input | checksummed `ProductCase`、`ProductDefinitionCard`、`DevelopmentWindowSpec`、`DevelopmentStateMap`、`MeasurementSpecV2`、`CellStateEvidenceProfileV3`；可选 timepoint series、H5AD 与 `DevelopmentMethodSpec` |
 | Current result | `bridge://schemas/developmental-compatibility-result/v0.2` |
 | Detailed runtime contract | [P0-04 Tool Card](../../src/bridge/tool_packages/cards/P0-04.md) |
 
-> v0.2 engineering note: the first executable package is a conservative
-> composition-only candidate. It consumes versioned, checksummed ProductCase,
-> ProductDefinitionCard, DevelopmentWindowSpec, DevelopmentStateMap,
-> MeasurementSpecV2 and CellStateEvidenceProfileV2 JSON objects, with an optional
-> declared timepoint series. State roles and channel selection remain external.
-> Package v0.3 executes transparent reference, program, uncertainty and
-> declared true-time methods as candidate/shadow evidence. Lineage calibration,
-> isolated R/trajectory methods and `domain_score` remain unavailable.
+> Package v0.4 keeps stage roles and channel selection external, executes
+> transparent reference, program and uncertainty methods, and publishes typed
+> data plus three deterministic figures. Ordered sampling-point labels are
+> categorical: continuous-time analysis remains unavailable because the current
+> contract does not record numeric time, unit and origin. Lineage calibration,
+> isolated trajectory methods and `domain_score` remain unavailable.
+
+The current package is a developmental-window and reference-similarity profile,
+not a biological-age estimator. It does not convert in-vitro days to GW/PCW,
+infer future fate or calibrate OOD. Reference correlation, ordinal support,
+window composition and ordered sampling points remain separate evidence families.
 
 ## 1. 任务目标与边界
 
-本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。v0.3 已封装可调用的透明基线方法，但不制定 0-100 分数。
+本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。v0.4 已封装可调用的透明基线方法，但不制定 0-100 分数。
 
 - 发育相容性是相对于 `ProductDefinitionCard` 的条件化证据，不寻找跨产品通用的最优阶段。
 - 人胎 reference 定义生物学状态轴；体外时间序列只用于过程校准和同条件比较。
@@ -76,7 +79,7 @@ flowchart LR
     B --> C["双分母阶段组成"]
     B --> D["分来源与分模态 reference-stage support"]
     B --> E{"是否存在真实多时间点"}
-    E -->|否| F["static_profile；动态证据 unavailable"]
+    E -->|否| F["static_profile；动态证据 not_assessed"]
     E -->|是| G["descriptive_timecourse；inferential unavailable"]
     C --> I["方法与 reference 敏感性"]
     D --> I
@@ -88,44 +91,45 @@ flowchart LR
 
 ## 5. 方法组合
 
-v0.3 的 `DevelopmentMethodSpec` 以版本化外部对象选择 reference profile、
-reference label 的角色/顺序、program card、真实时间点和方法。当前直接执行
+v0.4 的 `DevelopmentMethodSpec` 以版本化外部对象选择 reference profile、
+reference label 的角色/顺序、program card、采样点顺序和方法。当前直接执行
 `DEV-PSEUDOBULK-CORR`、`DEV-ORDINAL`、`DEV-PROGRAM`、
-`DEV-BOOTSTRAP`、`TIME-PROGRAM` 和 `TIME-GAM-PY`；运行结果记录软件
-版本、覆盖度、独立单位和 reason code。
+`DEV-BOOTSTRAP`；运行结果记录软件版本、覆盖度、独立单位和 reason code。
+`TIME-PROGRAM` 和 `TIME-GAM-PY` 保留为兼容性枚举，但在数值时间合同形成
+前返回 typed `not_assessed`。
 
 ### 5.1 窗口组成
 
 - 读取 Cell-State soft composition，并按 `DevelopmentStateMap` 聚合为 `earlier`、`within_window`、`later`、`branch_shift` 和 `unresolved`。
 - 主分母为 target-related cells；同时报告全部 eligible product cells 的组成，不能只展示富集后的目标子集。
-- 区间使用 sample-preserving bootstrap。只有一个独立样本时，区间只能描述细胞抽样或注释不确定性，不能代表批次间生物变异。
+- 当前输出为精确 numerator、denominator 和 fraction，不发布组成区间。
+- `branch_shift` 与 `unresolved` 不属于 earlier → within-window → later 连续轴。
 
 ### 5.2 Reference-stage support
 
 - 对每个 sample/preparation 构建 pseudobulk，并分别对每个 reference source 与 modality 计算阶段支持分布。
-- source-aware ordinal classifier 作为独立阶段映射通道。v0.3 不在运行时完成
+- source-aware ordinal classifier 作为独立阶段映射通道。v0.4 不在运行时完成
   校准或 held-out benchmark；只有外部、版本化、已审核且通过的
   source-group-held-out evidence receipt 精确绑定所有选定 profile 和至少两个
   source 时才执行，否则返回 typed `not_assessed`。
-- 输出 `top_supported_reference_interval` 及完整支持分布；该区间只表示 reference 相似性，不表示胎龄换算。
+- 当前输出每个分析单位、来源和 assay 的 top label、runner-up、Spearman/cosine similarity、margin 和 shared genes；不输出完整阶段支持分布或最高支持区间。
 - RAPToR 作为 `shadow` 候选，必须使用 BRIDGE 自有 reference 重新验证后才可解释。
-- v0.3 直接执行 sample/preparation pseudobulk 的 Spearman/cosine 支持，以及
+- v0.4 直接执行 sample/preparation pseudobulk 的 Spearman/cosine 支持，以及
   scikit-learn 累积二分类 logistic ordinal baseline。ordinal 输出明确标记为
   `uncalibrated_baseline` 并引用 gate receipt；两者均只输出 reference
   support，不作胎龄换算。
 - 任一选定 profile 覆盖不足，或同一 analysis unit 在不同 source/assay 的
-  top stage role 不一致时，该 unit 的 reference support 为 `unavailable`，
-  也不进入其后的 bootstrap 或 time spline。
+  top stage role 不一致时，该 unit 的综合 reference support 为 `unavailable`；
+  分来源记录仍保留用于审计，不进行平均或静默补齐。
 
-### 5.3 真实时间点趋势
+### 5.3 有序采样点
 
-- 按真实 `D/Stage` 展示阶段组成和发育程序趋势，不使用 pseudotime 代替实验时间。
-- 有独立 biological replicates 时，可比较 propeller/speckle 与 scCODA/pertpy-scCODA 等组成模型；模型单位是 sample/preparation，不是 cell。
-- 样本层 spline 用于真实时间的未调整描述。v0.3 使用 statsmodels OLS 和
-  预先声明的 Patsy cubic B-spline basis，只输出
-  `analysis_state=unadjusted_descriptive` 的 fitted trend，不输出置信区间、
-  调整后效应或推断性结论。少于四个时间点、独立单位不足或重复
-  independence group 时返回 typed `not_assessed`。
+- 当前接口按外部提供的 sampling-point ID、顺序和标签展示聚合阶段组成。
+- `timepoint_order` 只用于确定类别顺序，不能作为连续数值时间进入拟合。
+- 缺少数值时间、单位、起算基准或逐独立样本观测时，连续趋势统一返回
+  `not_assessed`；pseudotime 不能替代实验时间。
+- 后续若增加数值时间合同，模型单位必须是 sample/preparation，不是 cell，
+  且原始点必须与描述性拟合同时展示。
 
 ### 5.4 轨迹与转变方法
 
@@ -147,14 +151,14 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 | 字段 | 含义 |
 | --- | --- |
-| `analysis_mode` | `static_profile` / `descriptive_timecourse`；v0.3 不产生 `inferential_timecourse` |
+| `analysis_mode` | `static_profile` / `descriptive_timecourse`；v0.4 不产生 `inferential_timecourse` |
 | `window_spec_id` | 研究者确认的窗口、版本和确认记录 |
 | `target_related_denominator` | target-related cells/weights、数量与视图 |
 | `whole_product_denominator` | 全部 eligible product cells、数量与视图 |
-| `stage_fractions` | 两套分母下的 window、earlier、later、branch-shift、unresolved 比例及区间 |
-| `reference_stage_support` | 按 source/modality 保存的阶段支持分布 |
-| `top_supported_reference_interval` | 最高支持的 reference 区间及不作胎龄换算的说明 |
-| `timecourse_profile` | 真实 D/Stage 的组成、程序趋势、重复结构和统计模式 |
+| `stage_fractions` | 两套分母下的 earlier、window、later、branch-shift、unresolved 精确计数与比例 |
+| `reference_stage_support` | method-bundle binding 与可用性状态 |
+| `method bundle` | 分 source/assay 的 top-stage similarity、runner-up、margin、覆盖度及方法状态 |
+| `timecourse_profile` | 按外部采样点顺序聚合的双分母组成与独立组数量 |
 | `sensitivity` | reference、modality、preprocessing、方法和 QC view 敏感性 |
 | `evidence_state` | `available` / `shadow` / `unavailable` |
 | `domain_score` | 固定为 `null`，等待独立 `ScoreContract` |
@@ -168,7 +172,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-DEVELOPMENT-PY-v0.1` | composition、pseudobulk、scikit-learn、decoupler、statsmodels/Patsy | `health_check_passed`；v0.3 执行环境 |
+| `ENV-DEVELOPMENT-PY-v0.2` | composition、pseudobulk、scikit-learn、decoupler、Matplotlib | `health_check_passed`；v0.4 执行环境 |
 | `ENV-DEVELOPMENT-CELLRANK-v0.1` | CellRank 条件性轨迹验证 | `proposed_conditional` |
 | `ENV-DEVELOPMENT-VELOCITY-v0.1` | RNA velocity 研究性验证 | `proposed_exploratory`；独立冻结稳定版本 |
 | `ENV-DEVELOPMENT-VIA-v0.1` | VIA shadow benchmark | `proposed_shadow` |
@@ -180,14 +184,16 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 ## 8. Web 必备可视化
 
-- 双分母阶段组成图，显示区间、unknown 与分母。
-- 按真实 `D/Stage` 排列的 sample-level 时间轴。
-- 按 reference source/modality 分面的 stage-support 热图或 ridge plot。
-- 发育程序动态热图与 sample-level trend。
-- reference、modality、preprocessing、方法和 QC view 敏感性图。
-- SISBAR alluvial/transition matrix，仅显示在 calibration 视图。
+- 双分母阶段画像，显示精确计数、各自分母，并将 `branch_shift` 和
+  `unresolved` 与有序阶段分开。
+- 分 reference source/assay 的 top-stage similarity summary，直接显示
+  runner-up、margin、shared genes、冲突和 unavailable；不称概率或年龄。
+- 按外部声明顺序排列的聚合采样点组成；单采样点和缺少数值时间轴时明确显示
+  连续动态证据 `not_assessed`。
+- 完整 stage-support heatmap、发育程序参考包络、逐样本趋势、方法敏感性和
+  SISBAR transition 仍为后续合同，不在当前图形中暗示已实现。
 
-每张正式图绑定 Evidence ID、输入版本、分母、单位、窗口、reference、方法和缺失状态。单时间点界面必须明确显示动态证据 `unavailable`。
+每张正式图绑定 Evidence ID、输入版本、分母、单位、窗口、reference、方法和缺失状态。单时间点界面必须明确显示动态证据 `not_assessed`。
 
 ## 9. 拒答与降级规则
 
@@ -195,6 +201,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 - Cell-State evidence 不可用或 target-related 分母不足：相应组成返回 `unavailable`。
 - 单时间点：`analysis_mode=static_profile`，不输出时间进展或转变证据。
 - 无足够独立重复：最多 `descriptive_timecourse`，细胞数不能代替 biological replicate。
+- 缺少数值实验时间、单位或起算基准：连续时间方法返回 `not_assessed`。
 - ordinal 缺少通过审核且精确绑定的 source-group-held-out receipt：该方法
   `not_assessed`，不得把运行内拟合解释为已校准预测。
 - reference profile 覆盖不足或 source/modality 的 top stage role 冲突：

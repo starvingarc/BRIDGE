@@ -6,7 +6,8 @@
 | `ENV-P0-CORE-v0.2` | `bridge-p0-core-v0.2` | health_check_passed | P0-02 runtime with optional exploratory grouping |
 | `ENV-EVIDENCE-v0.1` | `bridge-p0-evidence` | health_check_passed | P0-08 to P0-11 deterministic evidence and release services |
 | `ENV-CELLSTATE-PY-v0.1` | `bridge-cellstate-py` | health_check_passed | P0-02 Python benchmarks, optional P0-03 expression methods, and P0-06 expression-method runtime |
-| `ENV-DEVELOPMENT-PY-v0.1` | `bridge-development-py` | health_check_passed | P0-04 reference, program and true-time methods |
+| `ENV-DEVELOPMENT-PY-v0.1` | `bridge-development-py` | health_check_passed | Historical P0-04 v0.3 runtime |
+| `ENV-DEVELOPMENT-PY-v0.2` | `bridge-development-py-v0.2` | health_check_passed | P0-04 reference/program methods and deterministic figures; continuous time unavailable |
 | `ENV-CELLSTATE-BIOC-R46-v0.1` | `bridge-cellstate-bioc-r46` | health_check_passed | P0-02 R/Bioconductor benchmark methods |
 
 Create these environments with strict channel priority. After creating the R environment, install Harmony and Symphony from the recorded commits without dependency upgrades:
@@ -14,6 +15,7 @@ Create these environments with strict channel priority. After creating the R env
 ```bash
 CONDA_CHANNEL_PRIORITY=strict conda env create --file environments/bridge-cellstate-py.yml
 CONDA_CHANNEL_PRIORITY=strict conda env create --file environments/bridge-development-py.yml
+CONDA_CHANNEL_PRIORITY=strict conda env create --file environments/bridge-development-py-v0.2.yml
 CONDA_CHANNEL_PRIORITY=strict conda env create --file environments/bridge-cellstate-bioc-r46.yml
 conda run --name bridge-cellstate-bioc-r46 Rscript environments/install-cellstate-bioc-r46.R
 ```

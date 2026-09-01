@@ -677,6 +677,43 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-03",
         data_schema_ref="bridge://schemas/target-regional-visualization-data/v0.1",
     ),
+    _typed_component(
+        "bridge.developmental-compatibility.window-composition",
+        "0.1.0",
+        title="Cell-state composition relative to the declared developmental window",
+        question=(
+            "How are product cell states distributed before, within and after "
+            "the declared window, or outside that ordered axis?"
+        ),
+        figure_family="dual_denominator_developmental_composition",
+        tool_id="P0-04",
+        data_schema_ref="bridge://schemas/developmental-compatibility-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.developmental-compatibility.reference-stage-summary",
+        "0.1.0",
+        title="Highest expression-similarity labels in each selected reference",
+        question=(
+            "Which supplied reference-stage labels have the highest expression "
+            "similarity within each source and assay?"
+        ),
+        figure_family="source_separated_reference_stage_summary",
+        tool_id="P0-04",
+        data_schema_ref="bridge://schemas/developmental-compatibility-visualization-data/v0.1",
+    ),
+    _typed_component(
+        "bridge.developmental-compatibility.observed-sampling-points",
+        "0.1.0",
+        title="Cell-state composition across declared product sampling points",
+        question=(
+            "How does categorical stage-role composition differ across "
+            "the product sampling points that were actually supplied?"
+        ),
+        figure_family="categorical_sampling_point_matrix",
+        tool_id="P0-04",
+        data_schema_ref="bridge://schemas/developmental-compatibility-visualization-data/v0.1",
+    ),
 )
 
 

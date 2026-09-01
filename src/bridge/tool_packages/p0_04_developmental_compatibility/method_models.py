@@ -38,7 +38,10 @@ class ReferenceStageDefinition(FrozenModel):
 class AnalysisUnitTimepoint(FrozenModel):
     analysis_unit_ref: str = Field(min_length=1)
     timepoint_id: str = Field(min_length=1)
-    timepoint_order: StrictInt = Field(ge=0)
+    timepoint_order: StrictInt = Field(
+        ge=0,
+        description="Categorical display order; not a numeric time value.",
+    )
     timepoint_label: str = Field(min_length=1)
 
 
@@ -145,7 +148,6 @@ class DevelopmentMethodSpec(FrozenModel):
             DevelopmentMethodId.PSEUDOBULK_CORRELATION,
             DevelopmentMethodId.ORDINAL_CLASSIFIER,
             DevelopmentMethodId.SAMPLE_BOOTSTRAP,
-            DevelopmentMethodId.TIME_GAM_PY,
         }
         if selected & reference_methods:
             if not self.reference_profile_ids or not self.reference_stages:
@@ -159,16 +161,9 @@ class DevelopmentMethodSpec(FrozenModel):
                 )
         program_methods = {
             DevelopmentMethodId.PROGRAM_ACTIVITY,
-            DevelopmentMethodId.TIME_PROGRAM,
         }
         if selected & program_methods and not self.program_card_ids:
             raise ValueError("program methods require program cards")
-        time_methods = {
-            DevelopmentMethodId.TIME_PROGRAM,
-            DevelopmentMethodId.TIME_GAM_PY,
-        }
-        if selected & time_methods and not self.analysis_unit_timepoints:
-            raise ValueError("time methods require analysis-unit timepoints")
         return self
 
     @property

@@ -1,11 +1,11 @@
 tool_id: P0-04
 name: Developmental Compatibility
-version: 0.3.0
-summary: Aggregate reviewed developmental roles and optionally execute reference, program, uncertainty, and true-time methods.
+version: 0.4.0
+summary: Aggregate reviewed developmental roles, reference evidence, uncertainty, and ordered sampling-point summaries.
 implementation_state: implemented
 scientific_status: candidate
 optional: false
-environment_spec_id: ENV-DEVELOPMENT-PY-v0.1
+environment_spec_id: ENV-DEVELOPMENT-PY-v0.2
 input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
 result_schema_ref: bridge://schemas/developmental-compatibility-result/v0.2
@@ -19,7 +19,4 @@ method_ids:
   - METHOD-SOURCE-AWARE-ORDINAL-CLASSIFIER
   - METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-221F0C
   - METHOD-BRIDGE-SAMPLE-PREPARATION-AGGREGATOR
-  - METHOD-BRIDGE-DESCRIPTIVE-TREND
-  - METHOD-PSEUDOBULK-PROGRAM-ACTIVITY-SAMPLE-LEVEL-MODEL
-  - METHOD-STATSMODELS-SPLINE-BASIS
 card_ref: bridge://tool-cards/P0-04

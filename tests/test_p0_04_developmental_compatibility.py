@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 from copy import deepcopy
+from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from jsonschema import Draft202012Validator
@@ -13,11 +16,16 @@ from bridge.tool_packages.p0_04_developmental_compatibility.adapter import (
     ROLE_MODELS,
     adapter,
 )
+from bridge.tool_packages.p0_04_developmental_compatibility.visualization_data import (
+    ReferenceStageSimilarityRecord,
+    _reference_summary,
+)
 from bridge.tool_packages.p0_04_developmental_compatibility.models import (
     PUBLIC_SCHEMA_MODELS,
 )
 from bridge.toolkit.contracts import (
     ExecutionState,
+    EvidenceState,
     StructuredInputRef,
     ToolRequest,
     ToolRequestV2,
@@ -502,7 +510,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-04",
         tool_id="P0-04",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
@@ -527,7 +535,7 @@ def _mutate(request: ToolRequestV2, role: str, change) -> ToolRequestV2:
 def test_registry_exposes_current_traceable_contract() -> None:
     registry = ToolRegistry.load_default()
     spec = registry.describe("P0-04")
-    assert spec.version == "0.3.0"
+    assert spec.version == "0.4.0"
     assert spec.implementation_state.value == "implemented"
     assert spec.result_schema_ref.endswith("/v0.2")
     assert ROLE_SCHEMAS["cell_state_evidence_profile"].endswith("/v0.3")
@@ -553,7 +561,23 @@ def test_valid_aggregation_reports_two_denominators_and_no_score(
     assert run.result["reference_stage_support"]["assessment_state"] == "unavailable"
     assert run.result["domain_score"] is None
     assert run.result["score_state"] == "unavailable"
-    assert len(run.artifacts) == 1
+    assert len(run.artifacts) == 15
+    assert {artifact.kind for artifact in run.artifacts} == {
+        "developmental_compatibility_result",
+        "developmental_compatibility_visualization_data",
+        "visualization_table",
+        "visualization_render",
+        "visualization_artifact_set",
+    }
+    assert sum(item.kind == "visualization_table" for item in run.artifacts) == 3
+    assert sum(item.kind == "visualization_render" for item in run.artifacts) == 9
+    for artifact in run.artifacts:
+        if artifact.kind == "visualization_table":
+            text = artifact.path.read_text(encoding="utf-8")
+            assert list(csv.DictReader(StringIO(text), delimiter="\t"))
+            assert "\\n" not in text
+        if artifact.kind == "visualization_render" and artifact.media_type == "image/svg+xml":
+            assert b"\\n" not in artifact.path.read_bytes()
 
 
 def test_same_inputs_reuse_deterministic_bundle(tmp_path: Path) -> None:
@@ -563,7 +587,7 @@ def test_same_inputs_reuse_deterministic_bundle(tmp_path: Path) -> None:
     second = registry.run(request)
     assert first.run_id == second.run_id
     assert first.result == second.result
-    assert first.artifacts[0].sha256 == second.artifacts[0].sha256
+    assert [item.sha256 for item in first.artifacts] == [item.sha256 for item in second.artifacts]
 
 
 def test_required_lineage_and_checksum_fail_closed(tmp_path: Path) -> None:
@@ -620,9 +644,252 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="legacy-request",
         tool_id="P0-04",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path.resolve(),
     )
     eligibility = adapter.check_eligibility(request, spec)
     assert not eligibility.eligible
     assert eligibility.reason_codes == ["tool_request_v2_required"]
+
+
+def _artifact_json(run, kind: str) -> dict:
+    artifact = next(item for item in run.artifacts if item.kind == kind)
+    return json.loads(artifact.path.read_text(encoding="utf-8"))
+
+
+def test_reference_similarity_keeps_partial_numeric_evidence() -> None:
+    record = ReferenceStageSimilarityRecord(
+        record_id="reference.partial",
+        analysis_unit_ref="preparation:unit@1.0.0",
+        profile_id="reference-profile:development",
+        source_id="source:development",
+        assay="scRNA-seq",
+        anatomy="ventral midbrain",
+        reference_scope="registered stages",
+        top_label="reference:window",
+        top_stage_role="within_window",
+        top_ordinal_rank=1,
+        top_spearman_support=None,
+        top_cosine_support=None,
+        margin=None,
+        shared_genes=12,
+        output_semantics="uncalibrated_similarity_not_age_or_probability",
+        evidence_ids=["evidence:partial"],
+        evidence_state=EvidenceState.INFERRED,
+        scientific_status="candidate",
+        missingness="available",
+        applicability="partially_applicable",
+        reason_codes=["similarity_metric_partially_unavailable"],
+    )
+    assert record.top_label == "reference:window"
+    assert record.top_spearman_support is None
+    assert record.margin is None
+
+    result = SimpleNamespace(
+        reference_stage_support=SimpleNamespace(reason_code=None)
+    )
+    available = record.model_copy(
+        update={
+            "top_spearman_support": 0.72,
+            "top_cosine_support": 0.69,
+            "applicability": "applicable",
+            "reason_codes": [],
+        }
+    )
+    assert _reference_summary(result=result, records=[available]) == (
+        EvidenceState.INFERRED,
+        "applicable",
+        [],
+    )
+    assert _reference_summary(result=result, records=[record]) == (
+        EvidenceState.INFERRED,
+        "partially_applicable",
+        ["similarity_metric_partially_unavailable"],
+    )
+    unavailable = record.model_copy(
+        update={
+            "evidence_state": EvidenceState.UNAVAILABLE,
+            "reason_codes": ["reference_source_unavailable"],
+        }
+    )
+    assert _reference_summary(result=result, records=[available, unavailable]) == (
+        EvidenceState.UNAVAILABLE,
+        "partially_applicable",
+
+        ["reference_source_unavailable"],
+    )
+
+def test_visualization_preserves_cell_state_resolution_classes(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+
+    def set_resolution_classes(payload: dict) -> None:
+        records = [
+            item
+            for item in payload["composition"]["records"]
+            if item["view"] != "reconciliation_state"
+        ]
+        consensus_counts = {
+            "state:early": 2,
+            "state:window": 2,
+            "state:late": 1,
+            "state:branch": 1,
+            "state:unresolved": 1,
+        }
+        for item in records:
+            item["count"] = consensus_counts[item["label"]]
+            item["fraction"] = item["count"] / 12
+        for state, count in (
+            ("candidate", 7),
+            ("unknown", 1),
+            ("ood", 1),
+            ("unresolved", 2),
+            ("unavailable", 1),
+        ):
+            records.append(
+                {
+                    "view": "reconciliation_state",
+                    "source_id": None,
+                    "label": (
+                        "consensus_supported"
+                        if state == "candidate"
+                        else f"resolution:{state}"
+                    ),
+                    "label_level": "L2",
+                    "state_evidence_state": state,
+                    "denominator_scope": "selected_data_view",
+                    "count": count,
+                    "fraction": count / 12,
+                    "denominator": 12,
+                }
+            )
+        payload["composition"]["records"] = records
+
+    request = _mutate(
+        request, "cell_state_evidence_profile", set_resolution_classes
+    )
+    run = ToolRegistry.load_default().run(request)
+    data = _artifact_json(
+        run, "developmental_compatibility_visualization_data"
+    )
+    counts = {
+        item["resolution_state"]: item["count"]
+        for item in data["resolution_records"]
+    }
+    assert counts == {
+        "supported": 7,
+        "unknown": 1,
+        "ood": 1,
+        "unresolved": 2,
+        "unavailable": 1,
+    }
+    assert sum(counts.values()) == 12
+
+
+def test_zero_target_denominator_remains_missing_not_zero(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    request = _mutate(
+        request,
+        "development_state_map",
+        lambda payload: [
+            item.update(target_related=False) for item in payload["assignments"]
+        ],
+    )
+    run = ToolRegistry.load_default().run(request)
+    data = _artifact_json(
+        run, "developmental_compatibility_visualization_data"
+    )
+    target_records = [
+        item
+        for item in data["stage_records"]
+        if item["denominator_kind"] == "target_related"
+    ]
+    assert target_records
+    assert {item["denominator"] for item in target_records} == {0}
+    assert all(item["fraction"] is None for item in target_records)
+    assert {item["missingness"] for item in target_records} == {"unavailable"}
+    whole_records = [
+        item for item in data["stage_records"]
+        if item["denominator_kind"] == "whole_product"
+    ]
+    assert all(
+        "target_related_denominator_zero" not in item["reason_codes"]
+        for item in whole_records
+    )
+    assert all(
+        "target_related_denominator_zero" in item["reason_codes"]
+        for item in target_records
+    )
+
+
+def test_one_sampling_point_is_not_presented_as_dynamic_change(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path, include_series=True)
+    request = _mutate(
+        request,
+        "development_timepoint_series",
+        lambda payload: payload.update(records=payload["records"][:1]),
+    )
+    run = ToolRegistry.load_default().run(request)
+    artifact_set = _artifact_json(run, "visualization_artifact_set")
+    component = next(
+        item
+        for item in artifact_set["visualizations"]
+        if item["component_id"]
+        == "bridge.developmental-compatibility.observed-sampling-points"
+    )
+    assert component["applicability"] == "not_assessed"
+    assert (
+        "single_sampling_point_dynamic_change_unavailable"
+        in component["missing_reason_codes"]
+    )
+
+
+def test_supplied_but_unusable_series_is_not_reported_as_absent(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path, include_series=True)
+    request = _mutate(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update(
+            composition={"state": "unavailable", "records": []}
+        ),
+    )
+    run = ToolRegistry.load_default().run(request)
+    artifact_set = _artifact_json(run, "visualization_artifact_set")
+    components = {
+        item["component_id"]: item
+        for item in artifact_set["visualizations"]
+    }
+
+    for component_id in (
+        "bridge.developmental-compatibility.window-composition",
+        "bridge.developmental-compatibility.observed-sampling-points",
+    ):
+        component = components[component_id]
+        table_id = component["accessibility"]["table_artifact_id"]
+        table_artifact = next(
+            artifact
+            for artifact in run.artifacts
+            if artifact.artifact_id == table_id
+        )
+        rows = list(
+            csv.DictReader(
+                StringIO(table_artifact.path.read_text(encoding="utf-8")),
+                delimiter="\t",
+            )
+        )
+        assert rows
+        assert rows[0]["assessment_applicability"] == component["applicability"]
+
+    time_component = components[
+        "bridge.developmental-compatibility.observed-sampling-points"
+    ]
+    assert (
+        "timepoint_series_not_supplied"
+        not in time_component["missing_reason_codes"]
+    )
+    assert "sampling_point_composition_unavailable" in (
+        time_component["missing_reason_codes"]
+    )

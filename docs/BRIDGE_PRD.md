@@ -669,11 +669,12 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 
 ### 6.6 Visualization Composer 与 Web 交互
 
-截至 2026-08-28，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
+截至 2026-09-01，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
 `VisualizationArtifact` v0.2 数据绑定合同与 figure registry v0.1；集成式 Web
-结果页和 Visualization Composer 仍未实现。当前 P0-01 只产生两类 QC 图，
-P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有组件仍登记为
-`legacy_untyped`；其他证据域仍以结构化结果为主。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经存在。
+结果页和 Visualization Composer 仍未实现。输入质量、产品目标与区域支持、发育
+阶段已有 typed 静态图形；细胞状态图仍为 `legacy_untyped`，其后的证据域仍以
+结构化结果为主。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经
+存在。
 
 #### 用户问题与默认阅读顺序
 
@@ -701,7 +702,7 @@ P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有
 | 产品里有什么？ | L1/L2/L3 层级组成图，明确分开已支持、prediction set、unknown/OOD 和 unresolved，并显示区间与分母 | 可展开至每个状态、来源和观测；UMAP 只作探索，不作为身份依据 | Cell-State Evidence（P0-02） | 当前组成图缺 prediction set、区间和层级交互 |
 | 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：分别显示内部参考、Birtele、La Manno 等来源的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布、unknown 原因 | Cell-State Evidence（P0-02） | 当前 forced-label/OOD 问题尚未被直观展示 |
 | 目标细胞和区域身份符合预期吗？ | target / acceptable adjacent / off-target / unresolved 组成图，并列具名区域状态 | 区域证据热图、reference correlation、program activity、连续身份权重、NNLS residual；空间投射仅在具备合格数据时出现 | Target Identity & Regional Fidelity（P0-03） | 已有 typed 产品组成和分来源 reference-support 图；program、residual、方法敏感性与合格空间投射仍待补充 |
-| 发育阶段合适吗？ | 双分母发育阶段画像：完整产品和 target-related observations 分开显示 | 按 reference source/modality 分面的 stage-support ridge/heatmap；多个真实时间点时显示 sample-level 趋势 | Developmental Compatibility（P0-04） | 不能只给一个“发育年龄”；单时间点必须明确动态证据不可用 |
+| 发育阶段合适吗？ | 申明窗口下的双分母阶段画像：完整产品和目标相关子集分开显示 | 分来源、分 assay 的 top-stage similarity summary；按实际采样点显示聚合组成 | Developmental Compatibility（P0-04） | 当前不能给单一“发育年龄”、完整阶段支持分布或连续轨迹；无数值时间轴时动态趋势必须明确为不可评估 |
 | 有没有不想要或无法解释的细胞？ | 完整产品组成与 unknown 原因图 | rare-state 观测值、零观测上界、LOD、spike-in recovery curve；多来源 OOD 分歧 | Off-target Control（P0-05） | 结构化结果已有比例、区间和检出曲线字段，但尚未渲染 |
 | 是否存在增殖、细胞周期或应激信号？ | sample × program 证据热图，同时显示 reference envelope、gene coverage 和 evidence state | whole-product/state-specific 分布、S/G2M、方法一致性、ProtocolIR 时间线和 review flag | Proliferation & Stress Response（P0-06） | 必须写成“需要复核的转录信号”，不能画成安全性或 potency 结论 |
 | 多个批次或工艺有什么差别？ | 逐指标效应量森林图：raw delta、区间、分母和可比性 | composition delta、program heatmap、preparation-level points、batch/lot 距离和敏感性矩阵 | Product Comparison & Stability（P0-07） | 仅在满足可比合同时显示；单个 preparation 只能作描述性比较，不能排名 |

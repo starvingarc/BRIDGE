@@ -34,7 +34,6 @@ from bridge.tool_packages.p0_04_developmental_compatibility.method_models import
     OrdinalGroupHeldoutEvidence,
     OrdinalStagePrediction,
     ReferenceStageSupportRecord,
-    TimeTrendPoint,
 )
 from bridge.tool_packages.p0_04_developmental_compatibility.roles import (
     DevelopmentStageRole,
@@ -124,7 +123,6 @@ def run_development_methods(
     reference_consumers = {
         DevelopmentMethodId.PSEUDOBULK_CORRELATION,
         DevelopmentMethodId.SAMPLE_BOOTSTRAP,
-        DevelopmentMethodId.TIME_GAM_PY,
     }
     if selected & reference_consumers:
         support, within_support = _reference_support(
@@ -161,10 +159,7 @@ def run_development_methods(
 
     programs: list[DevelopmentProgramActivity] = []
     unavailable_cards: set[str] = set()
-    if selected & {
-        DevelopmentMethodId.PROGRAM_ACTIVITY,
-        DevelopmentMethodId.TIME_PROGRAM,
-    }:
+    if DevelopmentMethodId.PROGRAM_ACTIVITY in selected:
         programs, unavailable_cards = _program_activity(
             root=root,
             manifest=reference_manifest,
@@ -172,11 +167,9 @@ def run_development_methods(
             spec=method_spec,
         )
         if unavailable_cards:
-            for method_id in selected & {
-                DevelopmentMethodId.PROGRAM_ACTIVITY,
-                DevelopmentMethodId.TIME_PROGRAM,
-            }:
-                reasons[method_id].add("stage_program_coverage_insufficient")
+            reasons[DevelopmentMethodId.PROGRAM_ACTIVITY].add(
+                "stage_program_coverage_insufficient"
+            )
 
     intervals: list[DevelopmentBootstrapInterval] = []
     if DevelopmentMethodId.SAMPLE_BOOTSTRAP in selected:
@@ -191,36 +184,13 @@ def run_development_methods(
             reasons[DevelopmentMethodId.SAMPLE_BOOTSTRAP].add(reason)
 
     trends: list[DevelopmentTimeTrend] = []
-    if DevelopmentMethodId.TIME_GAM_PY in selected:
-        trend, reason = _time_trend(
-            metric_name="within_window_reference_support",
-            card_id=None,
-            values_by_analysis_unit=within_support,
-            spec=method_spec,
-            independence_by_analysis_unit=query.independence_by_analysis_unit,
+    for method_id in selected & {
+        DevelopmentMethodId.TIME_GAM_PY,
+        DevelopmentMethodId.TIME_PROGRAM,
+    }:
+        reasons[method_id].add(
+            "numeric_experimental_time_contract_unavailable"
         )
-        if trend is not None:
-            trends.append(trend)
-        if reason:
-            reasons[DevelopmentMethodId.TIME_GAM_PY].add(reason)
-    if DevelopmentMethodId.TIME_PROGRAM in selected:
-        by_card: dict[str, dict[str, float]] = {}
-        for record in programs:
-            by_card.setdefault(record.card_id, {})[record.analysis_unit_ref] = (
-                record.activity
-            )
-        for card_id in sorted(method_spec.program_card_ids):
-            trend, reason = _time_trend(
-                metric_name="stage_program_activity",
-                card_id=card_id,
-                values_by_analysis_unit=by_card.get(card_id, {}),
-                spec=method_spec,
-                independence_by_analysis_unit=query.independence_by_analysis_unit,
-            )
-            if trend is not None:
-                trends.append(trend)
-            if reason:
-                reasons[DevelopmentMethodId.TIME_PROGRAM].add(reason)
 
     outputs = _MethodOutputs(
         reference_support=support,
@@ -874,98 +844,6 @@ def _bootstrap_within_window_support(
     ], None
 
 
-def _time_trend(
-    *,
-    metric_name: str,
-    card_id: str | None,
-    values_by_analysis_unit: dict[str, float],
-    spec: DevelopmentMethodSpec,
-    independence_by_analysis_unit: dict[str, str],
-) -> tuple[DevelopmentTimeTrend | None, str | None]:
-    time_by_unit = {
-        item.analysis_unit_ref: item for item in spec.analysis_unit_timepoints
-    }
-    missing = sorted(set(values_by_analysis_unit) - set(time_by_unit))
-    if missing:
-        raise DevelopmentMethodError("analysis_unit_timepoint_binding_missing")
-    rows = [
-        {
-            "analysis_unit_ref": unit,
-            "independence_group_ref": independence_by_analysis_unit[unit],
-            "timepoint_id": time_by_unit[unit].timepoint_id,
-            "timepoint_order": time_by_unit[unit].timepoint_order,
-            "timepoint_label": time_by_unit[unit].timepoint_label,
-            "value": value,
-        }
-        for unit, value in sorted(values_by_analysis_unit.items())
-    ]
-    if not rows:
-        return None, "time_metric_unavailable"
-    frame = pd.DataFrame(rows)
-    if frame["independence_group_ref"].duplicated().any():
-        return None, "repeated_independence_group_requires_mixed_model"
-    n_timepoints = frame["timepoint_order"].nunique()
-    if n_timepoints < 4:
-        return None, "four_timepoints_required_for_spline"
-    if len(frame) <= spec.spline_degrees_of_freedom + 1:
-        return None, "independent_units_insufficient_for_spline"
-
-    patsy = _require_module("patsy")
-    statsmodels = _require_module("statsmodels.api")
-    try:
-        design = patsy.dmatrix(
-            (
-                "bs(x, df="
-                f"{spec.spline_degrees_of_freedom}, "
-                "degree=3, include_intercept=False)"
-            ),
-            {"x": frame["timepoint_order"].to_numpy(dtype=float)},
-            return_type="dataframe",
-        )
-        model = statsmodels.OLS(frame["value"].to_numpy(dtype=float), design).fit()
-        unique = (
-            frame[
-                ["timepoint_id", "timepoint_order", "timepoint_label"]
-            ]
-            .drop_duplicates()
-            .sort_values("timepoint_order")
-        )
-        prediction_design = patsy.build_design_matrices(
-            [design.design_info],
-            {"x": unique["timepoint_order"].to_numpy(dtype=float)},
-            return_type="dataframe",
-        )[0]
-        prediction = np.asarray(model.predict(prediction_design), dtype=float)
-    except (ValueError, np.linalg.LinAlgError, patsy.PatsyError):
-        return None, "time_spline_not_estimable"
-
-    points = [
-        TimeTrendPoint(
-            timepoint_id=str(row.timepoint_id),
-            timepoint_order=int(row.timepoint_order),
-            timepoint_label=str(row.timepoint_label),
-            fitted_value=float(prediction[index]),
-        )
-        for index, row in enumerate(unique.itertuples(index=False))
-    ]
-    if any(
-        not math.isfinite(value)
-        for point in points
-        for value in (point.fitted_value,)
-    ):
-        return None, "time_spline_nonfinite"
-    return DevelopmentTimeTrend(
-        metric_name=metric_name,
-        card_id=card_id,
-        n_analysis_units=len(frame),
-        n_independence_groups=frame["independence_group_ref"].nunique(),
-        n_timepoints=n_timepoints,
-        spline_degrees_of_freedom=spec.spline_degrees_of_freedom,
-        analysis_state="unadjusted_descriptive",
-        fitted_points=points,
-    ), None
-
-
 def _method_evidence(
     spec: DevelopmentMethodSpec,
     query: _QuerySummary,
@@ -993,21 +871,14 @@ def _method_evidence(
             {"numpy": _package_version("numpy")},
         ),
         DevelopmentMethodId.TIME_PROGRAM: (
-            "decoupler ULM plus unadjusted descriptive statsmodels spline on declared true time",
+            "Compatibility alias; continuous time requires a numeric experimental-time contract",
             "time_trend",
-            {
-                "decoupler": _package_version("decoupler"),
-                "statsmodels": _package_version("statsmodels"),
-                "patsy": _package_version("patsy"),
-            },
+            {},
         ),
         DevelopmentMethodId.TIME_GAM_PY: (
-            "unadjusted descriptive statsmodels OLS with a prespecified cubic B-spline basis",
+            "Compatibility alias; continuous time requires a numeric experimental-time contract",
             "time_trend",
-            {
-                "statsmodels": _package_version("statsmodels"),
-                "patsy": _package_version("patsy"),
-            },
+            {},
         ),
     }
     output_counts = {
