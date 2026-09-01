@@ -66,6 +66,14 @@ P001_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/p0_01_visualization_artifact_set.schema.json"),
     Path("src/bridge/resources/schemas/qc_visualization_data.schema.json"),
 )
+P002_VISUALIZATION_FILES = (
+    Path("environments/bridge-p0-core-v0.2.yml"),
+    Path("src/bridge/resources/schemas/cell_state_evidence_matrix_data.schema.json"),
+    Path("src/bridge/resources/schemas/hierarchical_cell_state_composition_data.schema.json"),
+    Path("src/bridge/tool_packages/p0_02_cell_state/grouping.py"),
+    Path("src/bridge/tool_packages/p0_02_cell_state/hierarchical_composition.py"),
+    Path("src/bridge/tool_packages/p0_02_cell_state/visualization_data.py"),
+)
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
 )
@@ -153,12 +161,17 @@ def _tracked_file_budget() -> int:
         (ROOT / relative).is_file()
         for relative in P001_VISUALIZATION_FILES
     )
+    p002_visualization_files = sum(
+        (ROOT / relative).is_file()
+        for relative in P002_VISUALIZATION_FILES
+    )
     return (
         TRACKED_FILE_BASELINE
         + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
         + shared_files
         + visualization_contract_files
         + p001_visualization_files
+        + p002_visualization_files
     )
 
 

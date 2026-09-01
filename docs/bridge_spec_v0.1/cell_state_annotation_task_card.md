@@ -9,7 +9,7 @@
 | 适用范围 | 移植前 scRNA-seq / snRNA-seq；PD hPSC-mDA 为首个实例 |
 | Annotation snapshot | `BRIDGE-PD-vMB-ANNOTATION-v0.1-draft` |
 | 主要输出 | `CellStateEvidenceProfile` |
-| 当前实现 | P0-02 v0.4.9 可执行 shadow baseline；科学冻结合同与 pilot harness 已建立 |
+| 当前实现 | P0-02 v0.5.0 可执行 shadow baseline；科学冻结合同与 pilot harness 已建立 |
 
 ## 1. 任务目标
 
