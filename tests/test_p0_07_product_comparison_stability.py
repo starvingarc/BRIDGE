@@ -189,6 +189,25 @@ def _payloads(*, replicated: bool = False) -> dict[str, object]:
     }
 
 
+def _declare_independence(
+    payloads: dict[str, object],
+    *,
+    scope: str = "independence-scope:demo",
+) -> None:
+    for key, bundle in payloads.items():
+        if not key.startswith("bundle-"):
+            continue
+        slug = bundle["bundle_id"].split(":")[-1]
+        bundle["product_case"].update(
+            biological_unit_manifest_ref=_ref(
+                f"biological-unit-manifest:{slug}"
+            ),
+            biological_unit_manifest_sha256=(slug[0] * 64),
+            independence_scope_ref=_ref(scope),
+            independence_group_refs=[_ref(f"independence-group:{slug}")],
+        )
+
+
 def _add_comparator_group(
     payloads: dict[str, object],
     *,
@@ -344,7 +363,9 @@ def test_valid_run_is_descriptive_shadow_without_rank(tmp_path: Path) -> None:
     run = registry.run(request)
     assert run.execution_state.value == "succeeded"
     assert len(run.artifacts) == 16
+    assert run.result_schema_ref.endswith("/v0.2")
     result = run.result
+    assert result["object_version"] == "0.2.0"
     assert result["comparison_eligibility"] == "strictly_comparable"
     assert result["comparison_mode"] == "descriptive_only"
     contrast = result["metric_contrasts"][0]
@@ -484,18 +505,34 @@ def test_reference_ood_group_is_not_rankable(tmp_path: Path) -> None:
     assert run.result["metric_contrasts"][0]["delta_comparator_minus_baseline"] is None
 
 
-def test_replicated_groups_report_descriptive_ranges(tmp_path: Path) -> None:
+def test_multiple_analysis_units_do_not_imply_independence(tmp_path: Path) -> None:
     registry, request = _write_request(tmp_path, _payloads(replicated=True))
     run = registry.run(request)
     assert run.execution_state.value == "succeeded"
     assert all(
-        group["independent_preparation_count"] == 2
+        group["analysis_unit_count"] == 2
+        and group["independence_state"] == "not_recorded"
+        and group["declared_independence_group_count"] is None
         for group in run.result["stability_results"]
     )
     assert all(
-        group["metric_stability"][0]["state"] == "replicated_descriptive"
+        group["metric_stability"][0]["state"] == "multiple_analysis_units"
+        and group["metric_stability"][0]["range_semantics"] == "observed_min_max"
         for group in run.result["stability_results"]
     )
+
+
+def test_declared_independence_requires_one_group_per_analysis_unit(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads(replicated=True)
+    _declare_independence(payloads)
+    registry, request = _write_request(tmp_path, payloads)
+    groups = registry.run(request).result["stability_results"]
+
+    assert all(group["independence_state"] == "declared" for group in groups)
+    assert all(group["declared_independence_group_count"] == 2 for group in groups)
+    assert all(len(group["independence_group_refs"]) == 2 for group in groups)
 
 
 def test_visualization_preserves_preparation_values_and_descriptive_semantics(
@@ -514,11 +551,15 @@ def test_visualization_preserves_preparation_values_and_descriptive_semantics(
         item.interval_semantics == "not_declared" and not item.render_interval
         for item in profile.preparation_records
     )
-    assert {item.independence_state for item in profile.preparation_records} == {
-        "not_recorded"
-    }
+    assert {
+        item.analysis_unit_independence_binding_state
+        for item in profile.preparation_records
+    } == {"not_recorded"}
     assert all(
-        item.declared_independence_group_count is None
+        item.biological_unit_manifest_ref is None
+        and item.biological_unit_manifest_sha256 is None
+        and item.analysis_unit_independence_scope_ref is None
+        and not item.analysis_unit_independence_group_refs
         for item in profile.preparation_records
     )
     difference = profile.difference_records[0]
@@ -640,12 +681,38 @@ def test_visualization_only_counts_complete_nonoverlapping_independence(
             independence_group_refs=[_ref(f"independence-group:{slug}")],
         )
     _, declared = _build_visualization(tmp_path / "declared", payloads)
-    assert {item.independence_state for item in declared.preparation_records} == {
-        "declared"
-    }
     assert {
-        item.declared_independence_group_count for item in declared.preparation_records
-    } == {2}
+        item.analysis_unit_independence_binding_state
+        for item in declared.preparation_records
+    } == {"declared"}
+    assert all(
+        item.biological_unit_manifest_ref is not None
+        and item.biological_unit_manifest_sha256 is not None
+        and item.analysis_unit_independence_scope_ref
+        == "independence-scope:demo@1.0.0"
+        and len(item.analysis_unit_independence_group_refs) == 1
+        for item in declared.preparation_records
+    )
+    assert {
+        (
+            item.analysis_unit_ref,
+            item.biological_unit_manifest_ref,
+            tuple(item.analysis_unit_independence_group_refs),
+        )
+        for item in declared.preparation_records
+    } == {
+        (
+            f"preparation:{slug}@1.0.0",
+            f"biological-unit-manifest:{slug}@1.0.0",
+            (f"independence-group:{slug}@1.0.0",),
+        )
+        for slug in (
+            "baseline-1",
+            "baseline-2",
+            "comparator-1",
+            "comparator-2",
+        )
+    }
 
     shared_payloads = _payloads(replicated=True)
     for key, bundle in shared_payloads.items():
@@ -662,20 +729,20 @@ def test_visualization_only_counts_complete_nonoverlapping_independence(
             independence_group_refs=[_ref(f"independence-group:{group_id}")],
         )
     _, shared = _build_visualization(tmp_path / "shared", shared_payloads)
-    assert {item.independence_state for item in shared.preparation_records} == {
-        "declared"
-    }
     assert {
-        item.declared_independence_group_count for item in shared.preparation_records
-    } == {1}
+        item.analysis_unit_independence_binding_state
+        for item in shared.preparation_records
+    } == {"declared"}
     assert all(
-        "declared_independence_group_shared_by_analysis_units"
-        in item.reason_codes
+        len(item.analysis_unit_independence_group_refs) == 1
         for item in shared.preparation_records
     )
     assert all(
         item.analysis_unit_coverage_state == "multiple_analysis_units"
+        and item.independence_state == "inconsistent"
         and item.applicability == "partially_applicable"
+        and "independence_groups_not_one_to_one_with_analysis_units"
+        in item.reason_codes
         for item in shared.stability_records
     )
 
@@ -684,12 +751,16 @@ def test_visualization_only_counts_complete_nonoverlapping_independence(
             _ref("independence-group:overlap")
         ]
     _, inconsistent = _build_visualization(tmp_path / "inconsistent", payloads)
-    assert {item.independence_state for item in inconsistent.preparation_records} == {
-        "inconsistent"
-    }
-    assert all(
-        item.declared_independence_group_count is None
+    assert {
+        item.analysis_unit_independence_binding_state
         for item in inconsistent.preparation_records
+    } == {"declared"}
+    assert all(
+        item.independence_state == "inconsistent"
+        and item.declared_independence_group_count is None
+        and "independence_group_overlap_across_comparison_groups"
+        in item.reason_codes
+        for item in inconsistent.stability_records
     )
 
 

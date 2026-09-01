@@ -227,6 +227,7 @@ def _execute_task(
     spec: ComparisonMethodSpec,
     comparison_eligibility: str,
     series_gate_reasons: dict[str, str],
+    task_gate_reasons: dict[str, list[str]],
 ) -> ComparisonMethodRecord:
     series = [series_by_id[item] for item in task.series_ids]
     if comparison_eligibility not in {
@@ -238,13 +239,14 @@ def _execute_task(
             series,
             f"comparison_method_{comparison_eligibility}",
         )
-    source_reasons = [
+    gate_reasons = list(task_gate_reasons.get(task.task_id, []))
+    gate_reasons.extend(
         series_gate_reasons[item]
         for item in task.series_ids
         if item in series_gate_reasons
-    ]
-    if source_reasons:
-        return _not_assessed(task, series, source_reasons)
+    )
+    if gate_reasons:
+        return _not_assessed(task, series, gate_reasons)
     if task.method_id is ComparisonMethodId.JENSEN_SHANNON:
         return _jensen_shannon(task, series, spec)
     if task.method_id is ComparisonMethodId.WASSERSTEIN_1D:
@@ -266,6 +268,7 @@ def run_comparison_methods(
     method_input: ComparisonMethodInput,
     method_input_sha256: str,
     series_gate_reasons: dict[str, str],
+    task_gate_reasons: dict[str, list[str]],
 ) -> ComparisonMethodBundle:
     series_by_id = {item.series_id: item for item in method_input.series}
     records = [
@@ -275,6 +278,7 @@ def run_comparison_methods(
             method_spec,
             comparison_eligibility,
             series_gate_reasons,
+            task_gate_reasons,
         )
         for task in method_spec.tasks
     ]

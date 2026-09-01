@@ -7,6 +7,10 @@ from typing import Literal, Self
 
 from pydantic import Field, StrictFloat, field_validator, model_validator
 
+from bridge.tool_packages.p0_07_product_comparison_stability.independence import (
+    ComparisonIndependence,
+    summarize_independence,
+)
 from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     ComparisonCaseManifest,
     ComparisonField,
@@ -53,13 +57,6 @@ _METHOD_ROLES = {
     ComparisonMethodId.WASSERSTEIN_1D: "ordered_distribution_distance",
     ComparisonMethodId.ROBUST_DISPERSION: "within_group_dispersion",
 }
-_IndependenceSummary = tuple[
-    Literal["declared", "not_recorded", "inconsistent"],
-    int | None,
-    str | None,
-    list[str],
-    list[str],
-]
 
 
 def _sorted_unique(values: list[str], field_name: str) -> list[str]:
@@ -163,10 +160,15 @@ class PreparationMetricRecord(_VisualizationRecord):
     product_case_ref: str = Field(min_length=1)
     analysis_unit_ref: str = Field(min_length=1)
     source_unit_kind: Literal["sample", "preparation"]
-    independence_state: Literal["declared", "not_recorded", "inconsistent"]
-    independence_scope_ref: str | None = None
-    independence_group_refs: list[str] = Field(default_factory=list)
-    declared_independence_group_count: int | None = Field(default=None, ge=1)
+    analysis_unit_independence_binding_state: Literal[
+        "declared", "not_recorded", "inconsistent"
+    ]
+    biological_unit_manifest_ref: str | None = None
+    biological_unit_manifest_sha256: str | None = Field(
+        default=None, pattern=_SHA256
+    )
+    analysis_unit_independence_scope_ref: str | None = None
+    analysis_unit_independence_group_refs: list[str] = Field(default_factory=list)
     timepoint_basis: Literal["in_vitro_day", "declared_stage", "not_applicable"]
     timepoint_label: str = Field(min_length=1)
     timepoint_order: int | None = Field(default=None, ge=0)
@@ -184,10 +186,10 @@ class PreparationMetricRecord(_VisualizationRecord):
         Literal["sufficient", "limited", "insufficient", "not_assessed"] | None
     ) = None
 
-    @field_validator("independence_group_refs")
+    @field_validator("analysis_unit_independence_group_refs")
     @classmethod
     def independence_groups_are_sorted(cls, values: list[str]) -> list[str]:
-        return _sorted_unique(values, "independence_group_refs")
+        return _sorted_unique(values, "analysis_unit_independence_group_refs")
 
     @model_validator(mode="after")
     def source_semantics_are_coherent(self) -> Self:
@@ -212,16 +214,21 @@ class PreparationMetricRecord(_VisualizationRecord):
         )
         if self.assessment_state != expected_assessment:
             raise ValueError("metric assessment state does not match source state")
-        if self.independence_state == "declared":
-            if (
-                self.independence_scope_ref is None
-                or not self.independence_group_refs
-                or self.declared_independence_group_count
-                != len(self.independence_group_refs)
-            ):
+        binding_values = (
+            self.biological_unit_manifest_ref,
+            self.biological_unit_manifest_sha256,
+            self.analysis_unit_independence_scope_ref,
+        )
+        if self.analysis_unit_independence_binding_state == "declared":
+            if any(value is None for value in binding_values) or len(
+                self.analysis_unit_independence_group_refs
+            ) != 1:
                 raise ValueError("declared independence requires complete bindings")
-        elif self.declared_independence_group_count is not None:
-            raise ValueError("undeclared independence cannot carry a count")
+        elif self.analysis_unit_independence_binding_state == "not_recorded":
+            if any(value is not None for value in binding_values) or (
+                self.analysis_unit_independence_group_refs
+            ):
+                raise ValueError("unrecorded independence cannot carry bindings")
         return self
 
 
@@ -602,7 +609,7 @@ def build_product_comparison_visualization_data(
             *(method_bundle.evidence_refs if method_bundle is not None else []),
         }
     )
-    independence = _independence_by_group(groups, grouped)
+    independence = summarize_independence(groups, grouped)
     design_records = _design_records(spec, groups, grouped, independence, evidence_ids)
     preparation_records = _preparation_records(groups, grouped, independence)
     stability_records = _stability_records(groups, preparation_records, independence)
@@ -620,7 +627,7 @@ def build_product_comparison_visualization_data(
     }
     if any(item.source_interval is not None for item in preparation_records):
         limitations.add("source_interval_semantics_not_declared_not_rendered")
-    states = {item[0] for item in independence.values()}
+    states = {item.state for item in independence.by_group_id.values()}
     if "not_recorded" in states:
         limitations.add("independence_not_recorded")
     if "inconsistent" in states:
@@ -628,10 +635,12 @@ def build_product_comparison_visualization_data(
     if "declared" in states:
         limitations.add("independence_declared_not_verified_by_visualization")
     if any(
-        "declared_independence_group_shared_by_analysis_units" in item.reason_codes
-        for item in preparation_records
+        item.state == "inconsistent"
+        for item in independence.by_group_id.values()
     ):
-        limitations.add("analysis_units_share_declared_independence_group")
+        limitations.add(
+            "analysis_units_do_not_have_one_to_one_independence_bindings"
+        )
     if method_records:
         limitations.add("method_estimands_are_task_specific_not_rankable")
 
@@ -741,7 +750,7 @@ def _design_records(
     spec: ComparisonStabilitySpec,
     groups,
     grouped: dict[str, list[ProductEvidenceBundle]],
-    independence: dict[str, _IndependenceSummary],
+    independence: ComparisonIndependence,
     evidence_ids: list[str],
 ) -> list[ComparisonDesignRecord]:
     records: list[ComparisonDesignRecord] = []
@@ -860,26 +869,30 @@ def _design_records(
         )
         index += 1
 
-    independence_states = [independence[group.group_id][0] for group in groups]
+    independence_states = [
+        independence.by_group_id[group.group_id].state for group in groups
+    ]
     state = (
         independence_states[0] if len(set(independence_states)) == 1 else "inconsistent"
     )
-    values_by_group = [
-        GroupDesignValue(
-            group_id=group.group_id,
-            values=sorted(
-                [
-                    *(
-                        [independence[group.group_id][2]]
-                        if independence[group.group_id][2] is not None
-                        else []
-                    ),
-                    *independence[group.group_id][3],
-                ]
-            ),
+    values_by_group = []
+    for group in groups:
+        summary = independence.by_group_id[group.group_id]
+        values_by_group.append(
+            GroupDesignValue(
+                group_id=group.group_id,
+                values=sorted(
+                    [
+                        *(
+                            [summary.independence_scope_ref]
+                            if summary.independence_scope_ref is not None
+                            else []
+                        ),
+                        *summary.independence_group_refs,
+                    ]
+                ),
+            )
         )
-        for group in groups
-    ]
     records.append(
         ComparisonDesignRecord(
             record_id=f"design.{index:02d}",
@@ -900,7 +913,9 @@ def _design_records(
                 {
                     reason
                     for group in groups
-                    for reason in independence[group.group_id][4]
+                    for reason in independence.by_group_id[
+                        group.group_id
+                    ].reason_codes
                 }
             ),
             dimension_kind="independence",
@@ -913,92 +928,17 @@ def _design_records(
     return records
 
 
-def _independence_by_group(
-    groups,
-    grouped: dict[str, list[ProductEvidenceBundle]],
-) -> dict[str, _IndependenceSummary]:
-    candidates: dict[str, tuple[str, str | None, list[str], list[str]]] = {}
-    ref_owners: dict[str, set[str]] = defaultdict(set)
-    for group in groups:
-        scopes: set[str] = set()
-        refs: list[str] = []
-        any_binding = False
-        complete = True
-        for bundle in grouped[group.group_id]:
-            case = bundle.product_case
-            bound = (
-                case.biological_unit_manifest_ref is not None
-                or case.biological_unit_manifest_sha256 is not None
-                or case.independence_scope_ref is not None
-                or bool(case.independence_group_refs)
-            )
-            any_binding = any_binding or bound
-            if not (
-                case.biological_unit_manifest_ref is not None
-                and case.biological_unit_manifest_sha256 is not None
-                and case.independence_scope_ref is not None
-                and case.independence_group_refs
-            ):
-                complete = False
-                continue
-            scopes.add(case.independence_scope_ref.ref)
-            for ref in case.independence_group_refs:
-                refs.append(ref.ref)
-                ref_owners[ref.ref].add(group.group_id)
-
-        unique_refs = sorted(set(refs))
-        reasons: set[str] = set()
-        if not any_binding:
-            state = "not_recorded"
-            reasons.add("independence_not_recorded")
-        elif not complete or len(scopes) != 1:
-            state = "inconsistent"
-            reasons.add("independence_binding_inconsistent")
-        else:
-            state = "declared"
-            if len(refs) != len(unique_refs):
-                reasons.add("declared_independence_group_shared_by_analysis_units")
-        candidates[group.group_id] = (
-            state,
-            next(iter(scopes), None),
-            unique_refs,
-            sorted(reasons),
-        )
-
-    cross_group_overlap = {
-        group_id
-        for owners in ref_owners.values()
-        if len(owners) > 1
-        for group_id in owners
-    }
-    result: dict[str, _IndependenceSummary] = {}
-    for group in groups:
-        state, scope, refs, reasons = candidates[group.group_id]
-        if group.group_id in cross_group_overlap:
-            state = "inconsistent"
-            reasons = sorted(
-                {*reasons, "independence_group_overlap_across_comparison_groups"}
-            )
-        result[group.group_id] = (
-            state,
-            len(refs) if state == "declared" else None,
-            scope,
-            refs,
-            reasons,
-        )
-    return result
-
 
 def _preparation_records(
     groups,
     grouped: dict[str, list[ProductEvidenceBundle]],
-    independence: dict[str, _IndependenceSummary],
+    independence: ComparisonIndependence,
 ) -> list[PreparationMetricRecord]:
     records: list[PreparationMetricRecord] = []
     index = 1
     for group in groups:
-        state, count, scope, refs, independence_reasons = independence[group.group_id]
         for bundle in grouped[group.group_id]:
+            unit_independence = independence.by_bundle_ref[bundle.ref.ref]
             for metric in sorted(bundle.metrics, key=lambda item: item.metric_id):
                 evidence_ids = sorted({*bundle.evidence_refs, *metric.evidence_refs})
                 numeric = metric.raw_value is not None
@@ -1013,7 +953,7 @@ def _preparation_records(
                     if assessment == "available"
                     else ("partially_applicable" if numeric else "not_assessed")
                 )
-                reasons = set(independence_reasons)
+                reasons = set(unit_independence.reason_codes)
                 if assessment != "available":
                     reasons.add(f"metric_evidence_{metric.evidence_state.value}")
                 records.append(
@@ -1033,10 +973,21 @@ def _preparation_records(
                             bundle.product_case.sample_or_preparation_ref.ref
                         ),
                         source_unit_kind=bundle.product_case.source_unit_kind,
-                        independence_state=state,
-                        independence_scope_ref=scope,
-                        independence_group_refs=refs,
-                        declared_independence_group_count=count,
+                        analysis_unit_independence_binding_state=(
+                            unit_independence.state
+                        ),
+                        biological_unit_manifest_ref=(
+                            unit_independence.biological_unit_manifest_ref
+                        ),
+                        biological_unit_manifest_sha256=(
+                            unit_independence.biological_unit_manifest_sha256
+                        ),
+                        analysis_unit_independence_scope_ref=(
+                            unit_independence.independence_scope_ref
+                        ),
+                        analysis_unit_independence_group_refs=list(
+                            unit_independence.independence_group_refs
+                        ),
                         timepoint_basis=bundle.timepoint.basis,
                         timepoint_label=bundle.timepoint.label,
                         timepoint_order=bundle.timepoint.order,
@@ -1163,7 +1114,7 @@ def _difference_records(
 def _stability_records(
     groups,
     preparations: list[PreparationMetricRecord],
-    independence: dict[str, _IndependenceSummary],
+    independence: ComparisonIndependence,
 ) -> list[MetricStabilityVisualizationRecord]:
     records: list[MetricStabilityVisualizationRecord] = []
     index = 1
@@ -1172,9 +1123,10 @@ def _stability_records(
             item for item in preparations if item.group_id == group.group_id
         ]
         analysis_count = len({item.analysis_unit_ref for item in group_preparations})
-        independence_state, count, _, _, independence_reasons = independence[
-            group.group_id
-        ]
+        group_independence = independence.by_group_id[group.group_id]
+        independence_state = group_independence.state
+        count = group_independence.declared_independence_group_count
+        independence_reasons = set(group_independence.reason_codes)
         metric_contracts = sorted(
             {
                 (item.metric_id, item.unit, item.denominator_kind)
@@ -1207,14 +1159,8 @@ def _stability_records(
             else:
                 coverage = "multiple_analysis_units"
                 coverage_reasons = set()
-            shared = (
-                "declared_independence_group_shared_by_analysis_units"
-                in independence_reasons
-            )
             independence_supports_units = (
-                independence_state == "declared"
-                and count == analysis_count
-                and not shared
+                independence_state == "declared" and count == analysis_count
             )
             evidence_ids = sorted({ref for item in rows for ref in item.evidence_ids})
             records.append(

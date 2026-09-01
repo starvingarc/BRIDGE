@@ -18,6 +18,7 @@ from bridge.toolkit.contracts import ExecutionState
 from tests.test_p0_07_product_comparison_stability import (
     _build_visualization,
     _bundle,
+    _declare_independence,
     _payloads,
     _ref,
     _write_request,
@@ -39,6 +40,7 @@ def _bundle_refs(payloads: dict[str, object], group_id: str) -> list[dict[str, s
 
 def _method_payloads() -> dict[str, object]:
     payloads = _payloads(replicated=True)
+    _declare_independence(payloads)
     baseline_refs = _bundle_refs(payloads, "group-baseline")
     comparator_refs = _bundle_refs(payloads, "group-comparator")
     baseline_labels = [
@@ -271,6 +273,109 @@ def test_real_comparison_methods_execute_and_are_deterministic(
     assert bundle.evidence_state == "shadow"
     assert bundle.score_state == "unavailable"
     assert bundle.domain_score is None
+
+
+def test_effect_and_dispersion_require_declared_independent_units(
+    tmp_path: Path,
+) -> None:
+    payloads = _method_payloads()
+    for key, bundle in payloads.items():
+        if not key.startswith("bundle-"):
+            continue
+        case = bundle["product_case"]
+        case["biological_unit_manifest_ref"] = None
+        case["biological_unit_manifest_sha256"] = None
+        case["independence_scope_ref"] = None
+        case["independence_group_refs"] = []
+    registry, request = _write_request(tmp_path, payloads)
+
+    assert registry.check_eligibility(request).eligible
+    bundle = _load_method_bundle(registry.run(request))
+    by_method = {item.method_id: item for item in bundle.records}
+
+    assert by_method[ComparisonMethodId.SAMPLE_EFFECT].assessment_state == "not_assessed"
+    assert by_method[ComparisonMethodId.SAMPLE_EFFECT].reason_codes == [
+        "sample_effect_independence_not_recorded"
+    ]
+    assert (
+        by_method[ComparisonMethodId.ROBUST_DISPERSION].assessment_state
+        == "not_assessed"
+    )
+    assert by_method[ComparisonMethodId.ROBUST_DISPERSION].reason_codes == [
+        "dispersion_independence_not_recorded"
+    ]
+    assert all(
+        by_method[method_id].assessment_state == "available"
+        for method_id in (
+            ComparisonMethodId.JENSEN_SHANNON,
+            ComparisonMethodId.PROFILE_CORRELATION,
+            ComparisonMethodId.WASSERSTEIN_1D,
+        )
+    )
+
+
+def test_shared_independence_group_blocks_effect_and_dispersion(
+    tmp_path: Path,
+) -> None:
+    payloads = _method_payloads()
+    shared = payloads["bundle-baseline-1"]["product_case"][
+        "independence_group_refs"
+    ]
+    payloads["bundle-baseline-2"]["product_case"][
+        "independence_group_refs"
+    ] = shared
+    registry, request = _write_request(tmp_path, payloads)
+
+    bundle = _load_method_bundle(registry.run(request))
+    by_method = {item.method_id: item for item in bundle.records}
+
+    assert by_method[ComparisonMethodId.SAMPLE_EFFECT].reason_codes == [
+        "sample_effect_independence_binding_inconsistent"
+    ]
+    assert by_method[ComparisonMethodId.ROBUST_DISPERSION].reason_codes == [
+        "dispersion_independence_binding_inconsistent"
+    ]
+    assert all(
+        by_method[method_id].assessment_state == "available"
+        for method_id in (
+            ComparisonMethodId.JENSEN_SHANNON,
+            ComparisonMethodId.PROFILE_CORRELATION,
+            ComparisonMethodId.WASSERSTEIN_1D,
+        )
+    )
+
+
+def test_partial_cross_group_overlap_blocks_all_independence_gated_methods(
+    tmp_path: Path,
+) -> None:
+    payloads = _method_payloads()
+    shared_ref = payloads["bundle-baseline-1"]["product_case"][
+        "independence_group_refs"
+    ][0]
+    comparator_case = payloads["bundle-comparator-1"]["product_case"]
+    comparator_case["independence_group_refs"] = [
+        shared_ref,
+        comparator_case["independence_group_refs"][0],
+    ]
+    registry, request = _write_request(tmp_path, payloads)
+
+    bundle = _load_method_bundle(registry.run(request))
+    by_method = {item.method_id: item for item in bundle.records}
+
+    assert by_method[ComparisonMethodId.SAMPLE_EFFECT].reason_codes == [
+        "sample_effect_independence_binding_inconsistent"
+    ]
+    assert by_method[ComparisonMethodId.ROBUST_DISPERSION].reason_codes == [
+        "dispersion_independence_binding_inconsistent"
+    ]
+    assert all(
+        by_method[method_id].assessment_state == "available"
+        for method_id in (
+            ComparisonMethodId.JENSEN_SHANNON,
+            ComparisonMethodId.PROFILE_CORRELATION,
+            ComparisonMethodId.WASSERSTEIN_1D,
+        )
+    )
 
 
 def test_method_runtime_rejects_sample_series_without_bound_units(

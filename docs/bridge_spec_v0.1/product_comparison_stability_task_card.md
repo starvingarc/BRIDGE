@@ -9,7 +9,7 @@
 | Runtime / scientific state | `implemented` / `candidate` |
 | Scope | 同阶段跨方案、真实时间序列及 batch/lot/preparation 稳定性 |
 | Primary unit | 已声明的 `sample/preparation`；仅完整显式绑定时报告 independence |
-| Current result | `bridge://schemas/product-comparison-stability-profile/v0.1` |
+| Current result | `bridge://schemas/product-comparison-stability-profile/v0.2` |
 | Detailed runtime contract | [P0-07 Tool Card](../../src/bridge/tool_packages/cards/P0-07.md) |
 
 > v0.4 engineering note: the executable package retains the comparability,
@@ -17,8 +17,11 @@
 > comparison eligibility, declared sample/preparation metrics and method-specific evidence.
 > Observed group ranges are descriptive minima and maxima, not confidence
 > intervals; raw deltas have no interval. Missing evidence is never converted to
-> zero, bundle counts do not establish independent replication, methods remain on
-> separate scales, and all scores and ranks remain null.
+> zero, bundle counts do not establish independent replication, and observed
+> ranges do not establish stability. Hedges-g and dispersion remain
+> `not_assessed` unless each analysis unit has a complete one-to-one independence
+> binding with no overlap across groups. Methods remain on separate scales, and
+> all scores and ranks remain null.
 
 ## 1. 任务目标与边界
 

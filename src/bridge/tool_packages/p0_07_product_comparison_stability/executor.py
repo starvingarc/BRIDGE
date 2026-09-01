@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from bridge.tool_packages.p0_07_product_comparison_stability.independence import (
+    GroupIndependence,
+    summarize_independence,
+)
 from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     ComparisonCaseManifest,
     ComparisonField,
@@ -40,6 +44,7 @@ def evaluate_product_comparison(
         group.group_id: [bundles_by_ref[ref.ref] for ref in group.bundle_refs]
         for group in manifest.groups
     }
+    independence = summarize_independence(manifest.groups, grouped)
     field_mismatches = _field_mismatches(spec, grouped)
     missing_confounder_metadata, confounded = _confounding(
         spec, manifest.groups, grouped
@@ -52,6 +57,11 @@ def evaluate_product_comparison(
         for factor in missing_confounder_metadata
     )
     reasons.update(f"complete_confounding_{factor.value}" for factor in confounded)
+    reasons.update(
+        reason
+        for summary in independence.by_group_id.values()
+        for reason in summary.reason_codes
+    )
 
     if any(group.role is ComparisonGroupRole.REFERENCE_OOD for group in manifest.groups):
         eligibility = "reference_or_ood"
@@ -89,7 +99,12 @@ def evaluate_product_comparison(
         for metric in spec.metric_contracts
     ]
     stability = [
-        _group_stability(group, spec.metric_contracts, grouped[group.group_id])
+        _group_stability(
+            group,
+            spec.metric_contracts,
+            grouped[group.group_id],
+            independence.by_group_id[group.group_id],
+        )
         for group in manifest.groups
     ]
     summary_reasons = {
@@ -120,7 +135,7 @@ def evaluate_product_comparison(
         }
     )
     return ProductComparisonStabilityProfile(
-        object_version="0.1.0",
+        object_version="0.2.0",
         result_id=f"product-comparison-stability:{run_id.removeprefix('run-')}",
         tool_id="P0-07",
         tool_version=tool_version,
@@ -322,21 +337,31 @@ def _group_stability(
     group: ComparisonGroup,
     contracts: list[MetricContract],
     bundles: list[ProductEvidenceBundle],
+    independence: GroupIndependence,
 ) -> GroupStability:
     batch_count = len({ref.ref for bundle in bundles for ref in bundle.batch_refs})
     return GroupStability(
         group_id=group.group_id,
-        independent_preparation_count=len(bundles),
+        analysis_unit_count=independence.analysis_unit_count,
+        independence_state=independence.state,
+        independence_scope_ref=independence.independence_scope_ref,
+        independence_group_refs=list(independence.independence_group_refs),
+        declared_independence_group_count=(
+            independence.declared_independence_group_count
+        ),
         batch_count=batch_count,
         metric_stability=[
-            _metric_stability(contract, bundles) for contract in contracts
+            _metric_stability(contract, bundles, independence.analysis_unit_count)
+            for contract in contracts
         ],
+        reason_codes=list(independence.reason_codes),
     )
 
 
 def _metric_stability(
     contract: MetricContract,
     bundles: list[ProductEvidenceBundle],
+    analysis_unit_count: int,
 ) -> MetricStability:
     metrics = [
         next(metric for metric in bundle.metrics if metric.metric_id == contract.metric_id)
@@ -353,27 +378,28 @@ def _metric_stability(
         state = "unavailable"
         observed_range = None
         width = None
-        reasons.add("stability_metric_unavailable")
-    elif len(values) < len(metrics):
+        reasons.add("analysis_unit_metric_unavailable")
+    elif len(values) < analysis_unit_count:
         state = "incomplete"
         observed_range = (min(values), max(values))
         width = max(values) - min(values)
-        reasons.add("stability_metric_incomplete")
-    elif len(values) == 1:
-        state = "single_preparation"
+        reasons.add("analysis_unit_metric_incomplete")
+    elif analysis_unit_count == 1:
+        state = "single_analysis_unit"
         observed_range = (values[0], values[0])
         width = 0.0
-        reasons.add("single_preparation_descriptive_only")
+        reasons.add("single_analysis_unit_descriptive_only")
     else:
-        state = "replicated_descriptive"
+        state = "multiple_analysis_units"
         observed_range = (min(values), max(values))
         width = max(values) - min(values)
     return MetricStability(
         metric_id=contract.metric_id,
         state=state,
-        observed_preparation_count=len(values),
-        expected_preparation_count=len(metrics),
+        assessed_analysis_unit_count=len(values),
+        analysis_unit_count=analysis_unit_count,
         observed_range=observed_range,
         range_width=width,
+        range_semantics="observed_min_max",
         reason_codes=sorted(reasons),
     )

@@ -16,6 +16,9 @@ from bridge.tool_packages._structured_runtime import (
     request_v2_from_v1,
     single_object,
 )
+from bridge.tool_packages.p0_07_product_comparison_stability.independence import (
+    summarize_independence,
+)
 from bridge.tool_packages.p0_07_product_comparison_stability.executor import (
     evaluate_product_comparison,
 )
@@ -55,7 +58,7 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/product-comparison-stability-profile/v0.1"
+RESULT_SCHEMA_REF = "bridge://schemas/product-comparison-stability-profile/v0.2"
 BASE_ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "comparison_stability_spec": (
         "bridge://schemas/comparison-stability-spec/v0.1",
@@ -184,6 +187,12 @@ class ProductComparisonStabilityAdapter:
                 method_input=method_input,
                 method_input_sha256=_input_sha(request, "comparison_method_input"),
                 series_gate_reasons=_series_gate_reasons(method_input, result),
+                task_gate_reasons=_method_independence_gate_reasons(
+                    manifest=manifest,
+                    bundles=bundles,
+                    method_spec=method_spec,
+                    method_input=method_input,
+                ),
             )
             method_bytes = canonical_json_bytes(
                 method_bundle.model_dump(mode="json"), indent=2
@@ -608,6 +617,57 @@ def _series_gate_reasons(
         for series in method_input.series
         if (state := states[(series.group_id, series.metric_id)]) != "shadow"
     }
+
+
+def _method_independence_gate_reasons(
+    *,
+    manifest: ComparisonCaseManifest,
+    bundles: list[ProductEvidenceBundle],
+    method_spec: ComparisonMethodSpec,
+    method_input: ComparisonMethodInput,
+) -> dict[str, list[str]]:
+    bundle_by_ref = {bundle.ref.ref: bundle for bundle in bundles}
+    grouped = {
+        group.group_id: [bundle_by_ref[ref.ref] for ref in group.bundle_refs]
+        for group in manifest.groups
+    }
+    independence = summarize_independence(manifest.groups, grouped)
+    series_by_id = {series.series_id: series for series in method_input.series}
+    gated_methods = {
+        ComparisonMethodId.SAMPLE_EFFECT: "sample_effect",
+        ComparisonMethodId.ROBUST_DISPERSION: "dispersion",
+    }
+    result: dict[str, list[str]] = {}
+    for task in method_spec.tasks:
+        prefix = gated_methods.get(task.method_id)
+        if prefix is None:
+            continue
+        group_ids = {
+            series_by_id[series_id].group_id for series_id in task.series_ids
+        }
+        summaries = [
+            independence.by_group_id[group_id] for group_id in sorted(group_ids)
+        ]
+        reasons: set[str] = set()
+        if any(summary.state == "not_recorded" for summary in summaries):
+            reasons.add(f"{prefix}_independence_not_recorded")
+        if any(summary.state == "inconsistent" for summary in summaries):
+            reasons.add(f"{prefix}_independence_binding_inconsistent")
+        if (
+            task.method_id is ComparisonMethodId.SAMPLE_EFFECT
+            and all(summary.state == "declared" for summary in summaries)
+            and len(
+                {
+                    summary.independence_scope_ref
+                    for summary in summaries
+                }
+            )
+            != 1
+        ):
+            reasons.add("sample_effect_independence_scope_mismatch")
+        if reasons:
+            result[task.task_id] = sorted(reasons)
+    return result
 
 
 def _artifact_manifest_payload(

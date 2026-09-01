@@ -819,6 +819,34 @@
     "PreparationMetricRecord": {
       "additionalProperties": false,
       "properties": {
+        "analysis_unit_independence_binding_state": {
+          "enum": [
+            "declared",
+            "not_recorded",
+            "inconsistent"
+          ],
+          "title": "Analysis Unit Independence Binding State",
+          "type": "string"
+        },
+        "analysis_unit_independence_group_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Analysis Unit Independence Group Refs",
+          "type": "array"
+        },
+        "analysis_unit_independence_scope_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Analysis Unit Independence Scope Ref"
+        },
         "analysis_unit_ref": {
           "minLength": 1,
           "title": "Analysis Unit Ref",
@@ -841,6 +869,31 @@
           "title": "Assessment State",
           "type": "string"
         },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Ref"
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
         "bundle_ref": {
           "minLength": 1,
           "title": "Bundle Ref",
@@ -851,19 +904,6 @@
           "default": "bridge.product-comparison.metric-differences@0.1.0",
           "title": "Component Ref",
           "type": "string"
-        },
-        "declared_independence_group_count": {
-          "anyOf": [
-            {
-              "minimum": 1,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Declared Independence Group Count"
         },
         "denominator_kind": {
           "minLength": 1,
@@ -900,34 +940,6 @@
         },
         "group_role": {
           "$ref": "#/$defs/ComparisonGroupRole"
-        },
-        "independence_group_refs": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Independence Group Refs",
-          "type": "array"
-        },
-        "independence_scope_ref": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Independence Scope Ref"
-        },
-        "independence_state": {
-          "enum": [
-            "declared",
-            "not_recorded",
-            "inconsistent"
-          ],
-          "title": "Independence State",
-          "type": "string"
         },
         "interval_semantics": {
           "const": "not_declared",
@@ -1090,7 +1102,7 @@
         "product_case_ref",
         "analysis_unit_ref",
         "source_unit_kind",
-        "independence_state",
+        "analysis_unit_independence_binding_state",
         "timepoint_basis",
         "timepoint_label",
         "metric_id",
