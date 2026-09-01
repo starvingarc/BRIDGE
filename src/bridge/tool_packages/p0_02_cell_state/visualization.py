@@ -10,8 +10,12 @@ matplotlib.rcParams["svg.hashsalt"] = "bridge-p0-02-v0.1"
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.patches import FancyBboxPatch
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.patches import FancyBboxPatch, Rectangle
 
+from bridge.tool_packages.p0_02_cell_state.hierarchical_composition import (
+    HierarchicalCellStateCompositionDataV1,
+)
 from bridge.tool_packages.p0_02_cell_state.visualization_data import (
     CellStateEvidenceMatrixData,
     CellStateEvidenceMatrixRecord,
@@ -706,3 +710,567 @@ def _save_matrix_figure(fig, output_stem: Path) -> tuple[Path, Path, Path]:
     )
     plt.close(fig)
     return svg, png, pdf
+
+_REFERENCE_RC = {
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+    "font.size": 8.5,
+    "axes.labelcolor": "#20343F",
+    "text.color": "#20343F",
+    "xtick.color": "#5E707A",
+    "ytick.color": "#20343F",
+    "svg.fonttype": "none",
+    "pdf.fonttype": 42,
+}
+_REFERENCE_BACKGROUND = "#FCFBF8"
+_REFERENCE_INK = "#20343F"
+_REFERENCE_MUTED = "#667982"
+_REFERENCE_GRID = "#DCE4E3"
+_REFERENCE_CMAP = LinearSegmentedColormap.from_list(
+    "bridge_reference_correspondence",
+    ["#F6F4EF", "#DCEDE8", "#A8D9D0", "#62B9B5", "#187A7C"],
+)
+_GROUP_COLORS = (
+    "#75C7C1",
+    "#F0A39E",
+    "#E9C66A",
+    "#9AB9E8",
+    "#B69ED7",
+    "#8BC6A7",
+    "#DEA4C6",
+    "#91BDD9",
+    "#D9AE78",
+    "#AAB8B4",
+)
+
+
+def render_hierarchical_composition(
+    profile: HierarchicalCellStateCompositionDataV1,
+    output_stem: Path,
+) -> tuple[Path, Path, Path]:
+    """Render a fixed-order group-by-reference evidence matrix."""
+
+    rows, states, matrix, conflict, unavailable = _reference_matrix(profile)
+    n_rows, n_states = matrix.shape
+    width = max(12.8, 7.6 + 0.47 * n_states)
+    height = max(6.3, 3.5 + 0.56 * n_rows)
+    y = np.arange(n_rows)
+
+    with plt.rc_context(_REFERENCE_RC):
+        fig = plt.figure(figsize=(width, height), facecolor=_REFERENCE_BACKGROUND)
+        grid = fig.add_gridspec(
+            1,
+            4,
+            left=0.045,
+            right=0.975,
+            bottom=0.19,
+            top=0.77,
+            width_ratios=(2.7, 2.3, max(5.2, 0.52 * n_states), 3.75),
+            wspace=0.04,
+        )
+        label_axis = fig.add_subplot(grid[0, 0])
+        share_axis = fig.add_subplot(grid[0, 1], sharey=label_axis)
+        matrix_axis = fig.add_subplot(grid[0, 2], sharey=label_axis)
+        summary_axis = fig.add_subplot(grid[0, 3], sharey=label_axis)
+
+        fig.text(
+            0.045,
+            0.955,
+            "Reference-state correspondence across product groups",
+            ha="left",
+            va="top",
+            fontsize=17,
+            weight="bold",
+            color="#172B36",
+        )
+        fig.text(
+            0.045,
+            0.912,
+            _grouping_subtitle(profile),
+            ha="left",
+            va="top",
+            fontsize=9.3,
+            color=_REFERENCE_MUTED,
+        )
+        fig.text(
+            0.045,
+            0.875,
+            (
+                f"n = {profile.whole_product_denominator:,} "
+                f"{profile.observation_unit} · candidate reference evidence · "
+                "values are correspondence fractions, not identity probabilities"
+            ),
+            ha="left",
+            va="top",
+            fontsize=8.7,
+            color=_REFERENCE_MUTED,
+        )
+
+        _draw_group_labels(label_axis, rows, y)
+        _draw_group_shares(share_axis, rows, y)
+        image = _draw_reference_cells(matrix_axis, matrix, states, y)
+        _draw_reference_summary(
+            summary_axis,
+            rows,
+            states,
+            matrix,
+            conflict,
+            unavailable,
+            y,
+        )
+
+        colorbar = fig.colorbar(
+            image,
+            ax=matrix_axis,
+            orientation="horizontal",
+            fraction=0.05,
+            pad=0.30,
+            aspect=28,
+        )
+        colorbar.set_label("Fraction of each product group", fontsize=7.7)
+        colorbar.set_ticks([0, 0.25, 0.5, 0.75, 1])
+        colorbar.set_ticklabels(["0", "25%", "50%", "75%", "100%"])
+        colorbar.ax.tick_params(labelsize=7, length=2)
+        colorbar.outline.set_linewidth(0.5)
+        colorbar.outline.set_edgecolor(_REFERENCE_GRID)
+
+        fig.text(
+            0.045,
+            0.075,
+            (
+                "A cell contributes to a broad reference state only when its "
+                "candidate set resolves to one state. Multiple candidates and "
+                "unavailable correspondence remain separate."
+            ),
+            ha="left",
+            va="bottom",
+            fontsize=7.6,
+            color=_REFERENCE_MUTED,
+        )
+        fig.text(
+            0.975,
+            0.075,
+            "Unknown / OOD and detail beyond the reviewed vocabulary: not assessed",
+            ha="right",
+            va="bottom",
+            fontsize=7.6,
+            weight="bold",
+            color=_REFERENCE_MUTED,
+        )
+        return _save_matrix_figure(fig, output_stem)
+
+
+def write_hierarchical_composition_table(
+    profile: HierarchicalCellStateCompositionDataV1,
+    path: Path,
+) -> Path:
+    """Write whole-product and group-level evidence in one long-form table."""
+
+    base = {
+        "object_version": profile.object_version,
+        "schema_ref": profile.schema_ref,
+        "profile_id": profile.profile_id,
+        "producer_run_ref": profile.producer_run_ref,
+        "scientific_status": profile.scientific_status,
+        "observation_unit": profile.observation_unit,
+        "whole_product_denominator": profile.whole_product_denominator,
+        "denominator_scope": profile.denominator_scope,
+        "input_view_ref": profile.input_view_ref,
+        "input_view_sha256": profile.input_view_sha256,
+        "annotation_vocabulary_ref": profile.annotation_vocabulary_ref,
+        "annotation_vocabulary_sha256": profile.annotation_vocabulary_sha256,
+        "grouping_state": profile.grouping.state,
+        "grouping_source": profile.grouping.source,
+        "grouping_key": profile.grouping.grouping_key,
+        "grouping_hash": profile.grouping.grouping_hash,
+        "grouping_reason_codes_json": _json_cell(profile.grouping.reason_codes),
+    }
+    display_names = {
+        record.state_id: record.display_name
+        for record in profile.composition_records
+        if record.state_id is not None
+    }
+    rows: list[dict[str, object]] = []
+    for record in sorted(profile.composition_records, key=lambda item: item.order):
+        rows.append(
+            {
+                **base,
+                "scope": "whole_product",
+                "group_id": None,
+                "group_display_name": None,
+                "record_id": record.record_id,
+                "partition_id": record.partition_id,
+                "state_id": record.state_id,
+                "display_name": record.display_name,
+                "reference_level": record.level,
+                "parent_state_id": record.parent_state_id,
+                "resolution_state": record.resolution_state,
+                "evidence_state": record.evidence_state.value,
+                "applicability": record.applicability,
+                "missingness": record.missingness,
+                "count": record.count,
+                "group_denominator": None,
+                "group_fraction": None,
+                "record_whole_product_denominator": record.whole_product_denominator,
+                "whole_product_fraction": record.whole_product_fraction,
+                "parent_denominator": record.parent_denominator,
+                "parent_fraction": record.parent_fraction,
+                "supporting_source_ids_json": _json_cell(
+                    record.supporting_source_ids
+                ),
+                "prediction_sets_json": _json_cell(
+                    [item.model_dump(mode="json") for item in record.prediction_sets]
+                ),
+                "evidence_ids_json": _json_cell(record.evidence_ids),
+                "reason_codes_json": _json_cell(record.reason_codes),
+            }
+        )
+    groups = {group.group_id: group for group in profile.groups}
+    for record in profile.group_records:
+        group = groups[record.group_id]
+        rows.append(
+            {
+                **base,
+                "scope": "product_group",
+                "group_id": record.group_id,
+                "group_display_name": group.display_name,
+                "record_id": record.record_id,
+                "partition_id": "root" if record.level == "L1" else record.parent_state_id,
+                "state_id": record.state_id,
+                "display_name": (
+                    display_names.get(record.state_id, "")
+                    if record.state_id is not None
+                    else record.resolution_state.replace("_", " ")
+                ),
+                "reference_level": record.level,
+                "parent_state_id": record.parent_state_id,
+                "resolution_state": record.resolution_state,
+                "evidence_state": record.evidence_state.value,
+                "applicability": record.applicability,
+                "missingness": record.missingness,
+                "count": record.count,
+                "group_denominator": record.group_denominator,
+                "group_fraction": record.group_fraction,
+                "record_whole_product_denominator": record.whole_product_denominator,
+                "whole_product_fraction": record.whole_product_fraction,
+                "parent_denominator": None,
+                "parent_fraction": None,
+                "supporting_source_ids_json": "[]",
+                "prediction_sets_json": _json_cell(
+                    [item.model_dump(mode="json") for item in record.prediction_sets]
+                ),
+                "evidence_ids_json": _json_cell(record.evidence_ids),
+                "reason_codes_json": _json_cell(record.reason_codes),
+            }
+        )
+    pd.DataFrame(rows).to_csv(path, sep="\t", index=False)
+    return path
+
+
+def _reference_matrix(profile: HierarchicalCellStateCompositionDataV1):
+    states = [
+        record
+        for record in sorted(profile.composition_records, key=lambda item: item.order)
+        if record.record_kind == "state" and record.level == "L1"
+    ]
+    if profile.groups:
+        records = {
+            (record.group_id, record.state_id): record
+            for record in profile.group_records
+            if record.level == "L1" and record.state_id is not None
+        }
+        statuses = {
+            (record.group_id, record.resolution_state): record
+            for record in profile.group_records
+            if record.level == "L1" and record.state_id is None
+        }
+        matrix = np.asarray(
+            [
+                [
+                    records[(group.group_id, state.state_id)].group_fraction
+                    for state in states
+                ]
+                for group in profile.groups
+            ],
+            dtype=float,
+        )
+        conflict = np.asarray(
+            [
+                statuses[(group.group_id, "source_conflict")].group_fraction
+                for group in profile.groups
+            ],
+            dtype=float,
+        )
+        unavailable = np.asarray(
+            [
+                statuses[(group.group_id, "unavailable")].group_fraction
+                for group in profile.groups
+            ],
+            dtype=float,
+        )
+        return list(profile.groups), states, matrix, conflict, unavailable
+
+    whole = {
+        "display_name": "Whole product",
+        "count": profile.whole_product_denominator,
+        "whole_product_fraction": 1.0,
+    }
+    matrix = np.asarray(
+        [[state.whole_product_fraction or 0.0 for state in states]],
+        dtype=float,
+    )
+    status = {
+        record.resolution_state: record.whole_product_fraction or 0.0
+        for record in profile.composition_records
+        if record.record_kind == "resolution" and record.partition_id == "root"
+    }
+    return (
+        [whole],
+        states,
+        matrix,
+        np.asarray([status.get("source_conflict", 0.0)]),
+        np.asarray([status.get("unavailable", 0.0)]),
+    )
+
+
+def _draw_group_labels(axis, rows, y: np.ndarray) -> None:
+    axis.set_xlim(0, 1)
+    axis.set_ylim(len(rows) - 0.5, -0.5)
+    axis.axis("off")
+    axis.set_title(
+        "Submitted or exploratory group",
+        loc="left",
+        pad=12,
+        fontsize=8,
+        weight="bold",
+        color=_REFERENCE_MUTED,
+    )
+    for index, (row, position) in enumerate(zip(rows, y, strict=True)):
+        display_name = (
+            row["display_name"] if isinstance(row, dict) else row.display_name
+        )
+        count = row["count"] if isinstance(row, dict) else row.count
+        axis.add_patch(
+            Rectangle(
+                (0.0, position - 0.30),
+                0.025,
+                0.60,
+                color=_GROUP_COLORS[index % len(_GROUP_COLORS)],
+                lw=0,
+            )
+        )
+        axis.text(
+            0.06,
+            position - 0.08,
+            str(display_name),
+            ha="left",
+            va="center",
+            fontsize=8.3,
+            weight="bold",
+            color=_REFERENCE_INK,
+        )
+        axis.text(
+            0.06,
+            position + 0.20,
+            f"n = {int(count):,}",
+            ha="left",
+            va="center",
+            fontsize=7.1,
+            color=_REFERENCE_MUTED,
+        )
+
+
+def _draw_group_shares(axis, rows, y: np.ndarray) -> None:
+    fractions = np.asarray(
+        [
+            (
+                row["whole_product_fraction"]
+                if isinstance(row, dict)
+                else row.whole_product_fraction
+            )
+            for row in rows
+        ],
+        dtype=float,
+    )
+    colors = [_GROUP_COLORS[index % len(_GROUP_COLORS)] for index in range(len(rows))]
+    axis.barh(y, 100 * fractions, height=0.44, color=colors, edgecolor="white", lw=0.4)
+    axis.set_xlim(0, 100)
+    axis.set_ylim(len(rows) - 0.5, -0.5)
+    axis.set_yticks([])
+    axis.set_xticks([0, 25, 50, 75, 100])
+    axis.set_xticklabels(["0", "25", "50", "75", "100"], fontsize=6.8)
+    axis.set_xlabel("Share of product (%)", fontsize=7.5, labelpad=7)
+    axis.set_title(
+        "Whole-product share",
+        pad=12,
+        fontsize=8,
+        weight="bold",
+        color=_REFERENCE_MUTED,
+    )
+    axis.grid(axis="x", color=_REFERENCE_GRID, lw=0.55, zorder=0)
+    axis.spines[["top", "right", "left"]].set_visible(False)
+    axis.spines["bottom"].set_color(_REFERENCE_GRID)
+    for position, fraction in zip(y, fractions, strict=True):
+        axis.text(
+            min(100 * fraction + 1.2, 91),
+            position,
+            f"{100 * fraction:.1f}%",
+            ha="left",
+            va="center",
+            fontsize=7,
+            color=_REFERENCE_INK,
+        )
+
+
+def _draw_reference_cells(axis, matrix, states, y):
+    image = axis.imshow(
+        matrix,
+        aspect="auto",
+        interpolation="nearest",
+        cmap=_REFERENCE_CMAP,
+        vmin=0,
+        vmax=1,
+    )
+    axis.set_ylim(len(y) - 0.5, -0.5)
+    axis.set_yticks([])
+    axis.set_xticks(
+        np.arange(len(states)),
+        [_display_state(record.display_name) for record in states],
+        rotation=52,
+        ha="left",
+        rotation_mode="anchor",
+        fontsize=7,
+    )
+    axis.xaxis.tick_top()
+    axis.tick_params(axis="x", pad=5, length=0)
+    axis.set_title(
+        "Broad reference states",
+        pad=12,
+        fontsize=8,
+        weight="bold",
+        color=_REFERENCE_MUTED,
+    )
+    axis.set_xticks(np.arange(-0.5, len(states), 1), minor=True)
+    axis.set_yticks(np.arange(-0.5, len(y), 1), minor=True)
+    axis.grid(which="minor", color=_REFERENCE_BACKGROUND, linewidth=1.0)
+    axis.tick_params(which="minor", bottom=False, left=False)
+    for row_index, values in enumerate(matrix):
+        top = _top_indices(values)
+        for rank, column_index in enumerate(top, start=1):
+            axis.add_patch(
+                Rectangle(
+                    (column_index - 0.47, row_index - 0.47),
+                    0.94,
+                    0.94,
+                    fill=False,
+                    edgecolor="#18343F" if rank == 1 else "#6C7C84",
+                    linewidth=1.0 if rank == 1 else 0.65,
+                )
+            )
+            axis.text(
+                column_index,
+                row_index,
+                str(rank),
+                ha="center",
+                va="center",
+                fontsize=6.8,
+                weight="bold",
+                color="#132B35",
+            )
+    for spine in axis.spines.values():
+        spine.set_visible(False)
+    return image
+
+
+def _draw_reference_summary(
+    axis,
+    rows,
+    states,
+    matrix,
+    conflict,
+    unavailable,
+    y,
+) -> None:
+    axis.set_xlim(0, 1)
+    axis.set_ylim(len(rows) - 0.5, -0.5)
+    axis.axis("off")
+    axis.set_title(
+        "Leading correspondence and assessment",
+        loc="left",
+        pad=12,
+        fontsize=8,
+        weight="bold",
+        color=_REFERENCE_MUTED,
+    )
+    for row_index, (position, values) in enumerate(zip(y, matrix, strict=True)):
+        top = _top_indices(values)
+        if top:
+            first = top[0]
+            first_text = (
+                f"1  {_display_state(states[first].display_name)}  "
+                f"{100 * values[first]:.1f}%"
+            )
+            if len(top) > 1:
+                second = top[1]
+                separation = values[first] - values[second]
+                second_text = (
+                    f"2  {_display_state(states[second].display_name)}  "
+                    f"{100 * values[second]:.1f}%  ·  Δ {100 * separation:.1f} pp"
+                )
+            else:
+                second_text = "2  —"
+        else:
+            first_text = "No single broad state resolved"
+            second_text = ""
+        resolved = float(values.sum())
+        axis.text(
+            0,
+            position - 0.18,
+            first_text,
+            ha="left",
+            va="center",
+            fontsize=7.3,
+            weight="bold",
+            color=_REFERENCE_INK,
+        )
+        axis.text(
+            0,
+            position + 0.05,
+            second_text,
+            ha="left",
+            va="center",
+            fontsize=6.9,
+            color=_REFERENCE_MUTED,
+        )
+        axis.text(
+            0,
+            position + 0.27,
+            (
+                f"resolved {100 * resolved:.1f}% · multiple "
+                f"{100 * conflict[row_index]:.1f}% · unavailable "
+                f"{100 * unavailable[row_index]:.1f}%"
+            ),
+            ha="left",
+            va="center",
+            fontsize=6.5,
+            color=_REFERENCE_MUTED,
+        )
+
+
+def _top_indices(values: np.ndarray) -> list[int]:
+    positive = [int(index) for index in np.flatnonzero(values > 0)]
+    return sorted(positive, key=lambda index: (-float(values[index]), index))[:2]
+
+
+def _grouping_subtitle(profile: HierarchicalCellStateCompositionDataV1) -> str:
+    if profile.grouping.source == "user_label":
+        return "User-provided group labels are preserved; reference evidence does not overwrite them."
+    if profile.grouping.source == "exploratory_leiden":
+        return "Exploratory expression groups organize the view; clustering does not assign identity."
+    return "No reliable grouping was available; the complete post-QC product is shown as one row."
+
+
+def _display_state(value: str) -> str:
+    if value.startswith(("RG_", "Nb_", "IPC_")):
+        return value
+    return value.replace("_", " ")

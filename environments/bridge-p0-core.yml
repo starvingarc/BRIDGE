@@ -23,4 +23,6 @@ dependencies:
   - jsonschema=4.25
   - cryptography=46.0
   - pip:
+      - igraph==1.0.0
+      - leidenalg==0.12.0
       - scrublet==0.2.3

@@ -68,6 +68,9 @@ P001_VISUALIZATION_FILES = (
 )
 P002_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/cell_state_evidence_matrix_data.schema.json"),
+    Path("src/bridge/resources/schemas/hierarchical_cell_state_composition_data.schema.json"),
+    Path("src/bridge/tool_packages/p0_02_cell_state/grouping.py"),
+    Path("src/bridge/tool_packages/p0_02_cell_state/hierarchical_composition.py"),
     Path("src/bridge/tool_packages/p0_02_cell_state/visualization_data.py"),
 )
 PACKAGED_ADAPTER_REF = re.compile(

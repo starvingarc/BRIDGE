@@ -15,6 +15,11 @@ from bridge.tool_packages.p0_01_input_qc.io import (
     sha256_path,
     validate_expression_object,
 )
+from bridge.tool_packages.p0_02_cell_state.grouping import resolve_product_grouping
+from bridge.tool_packages.p0_02_cell_state.hierarchical_composition import (
+    HierarchicalCellStateCompositionDataV1,
+    build_hierarchical_composition,
+)
 from bridge.tool_packages.p0_02_cell_state.measurement_specs import load_measurement_spec
 from bridge.tool_packages.p0_02_cell_state.metrics import (
     composition_records,
@@ -41,10 +46,12 @@ from bridge.tool_packages.p0_02_cell_state.qc import (
     validate_upstream_qc_unchanged,
 )
 from bridge.tool_packages.p0_02_cell_state.visualization import (
+    render_hierarchical_composition,
     render_composition,
     render_conflicts,
     render_marker_evidence,
     render_reference_support,
+    write_hierarchical_composition_table,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -243,6 +250,15 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         support_frames.extend(l2_support)
         coverage_records.extend(l2_coverage)
 
+    grouping = resolve_product_grouping(
+        adata,
+        asset,
+        request,
+        threads=workers,
+    )
+    warnings.extend(grouping.reason_codes)
+    warnings.extend(grouping.warnings)
+
     marker, marker_summary = marker_program_evidence(
         query,
         genes,
@@ -278,6 +294,30 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         f"evidence:{run_id}:marker-program",
         f"evidence:{run_id}:source-reconciliation",
     ]
+    input_view_ref = asset.asset_id
+    input_view_sha256 = input_hash
+    try:
+        hierarchical_composition = build_hierarchical_composition(
+            evidence=evidence,
+            vocabulary=vocabulary,
+            grouping=grouping,
+            run_id=run_id,
+            input_view_ref=input_view_ref,
+            input_view_sha256=input_view_sha256,
+            annotation_vocabulary_sha256=manifest.vocabulary_sha256,
+            observation_unit=(
+                "nuclei" if asset.assay == "snRNA-seq" else "cells"
+            ),
+            evidence_ids=evidence_ids,
+        )
+    except ValueError as exc:
+        return _failed_run(
+            request,
+            spec,
+            input_hash,
+            "hierarchical_composition_generation_failed",
+            str(exc),
+        )
     profile = CellStateEvidenceProfile(
         profile_id=f"cell-state-profile:{run_id}",
         assay=asset.assay or "unknown",
@@ -293,7 +333,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
             "L2": {
                 "state": "shadow" if not l2_evidence.empty else "unavailable",
                 "n_observations": int(len(l2_evidence)),
-                "eligibility": "L1 prediction set contains Radial_Glia or Neuroblast",
+                "eligibility": "L1 prediction set resolves to one refinable parent",
             },
             "L3": {"state": "shadow_not_executed"},
         },
@@ -397,6 +437,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         run_dir,
         run_id,
         profile,
+        hierarchical_composition,
         evidence,
         support_frame,
         marker,
@@ -518,11 +559,20 @@ def _run_l2(
         if label.level == "L2" and label.status == "candidate":
             for parent in label.parent_state_ids:
                 children.setdefault(parent, set()).add(label.state_id)
-    allowed_labels = {
-        row.observation_id: set().union(*(children.get(parent, set()) for parent in row.prediction_set))
-        for row in l1_evidence[["observation_id", "prediction_set"]].itertuples()
-    }
-    eligible = np.asarray([bool(allowed_labels[observation_id]) for observation_id in observation_ids])
+    allowed_parents: dict[str, str | None] = {}
+    allowed_labels: dict[str, set[str]] = {}
+    for row in l1_evidence[["observation_id", "prediction_set"]].itertuples():
+        prediction_set = sorted(set(row.prediction_set))
+        parent = (
+            prediction_set[0]
+            if len(prediction_set) == 1 and prediction_set[0] in children
+            else None
+        )
+        allowed_parents[row.observation_id] = parent
+        allowed_labels[row.observation_id] = children.get(parent, set())
+    eligible = np.asarray(
+        [allowed_parents[observation_id] is not None for observation_id in observation_ids]
+    )
     if not eligible.any():
         return pd.DataFrame(), [], [], []
     summaries: list[pd.DataFrame] = []
@@ -576,6 +626,15 @@ def _run_l2(
             "open_set_state": "l2_open_set_state",
         }
     )
+    reconciled["l2_parent_state_id"] = [
+        allowed_parents[observation_id]
+        for observation_id in reconciled["observation_id"]
+    ]
+    for source_id, summary in zip(source_ids, summaries, strict=True):
+        indexed = summary.set_index("observation_id")
+        reconciled[f"{source_id}__top_label"] = reconciled[
+            "observation_id"
+        ].map(indexed["top_label"])
     composition = composition_records(
         reconciled.rename(
             columns={
@@ -665,6 +724,7 @@ def _write_outputs(
     run_dir: Path,
     run_id: str,
     profile: CellStateEvidenceProfile,
+    hierarchical_composition: HierarchicalCellStateCompositionDataV1,
     evidence: pd.DataFrame,
     support: pd.DataFrame,
     marker: pd.DataFrame,
@@ -674,6 +734,8 @@ def _write_outputs(
     profile_path = run_dir / "cell_state_evidence_profile.json"
     evidence_path = run_dir / "cell_state_evidence.parquet"
     support_path = run_dir / "source_specific_support.parquet"
+    hierarchy_path = run_dir / "hierarchical_cell_state_composition.json"
+    hierarchy_table_path = run_dir / "hierarchical_cell_state_composition.tsv"
     marker_path = run_dir / "marker_program_evidence.parquet"
     composition_path = run_dir / "shadow_composition.parquet"
     _write_json(profile_path, profile.model_dump(mode="json"))
@@ -693,14 +755,76 @@ def _write_outputs(
         )
     marker.to_parquet(marker_path, index=False)
     composition.to_parquet(composition_path, index=False)
+    _write_json(
+        hierarchy_path,
+        hierarchical_composition.model_dump(mode="json"),
+    )
+    write_hierarchical_composition_table(
+        hierarchical_composition,
+        hierarchy_table_path,
+    )
     artifacts = [
         _artifact(f"artifact:{run_id}:profile", "cell_state_profile", profile_path, evidence_ids),
         _artifact(f"artifact:{run_id}:evidence", "cell_state_evidence", evidence_path, evidence_ids),
         _artifact(f"artifact:{run_id}:support", "reference_support", support_path, [evidence_ids[0]]),
         _artifact(f"artifact:{run_id}:marker", "marker_program_evidence", marker_path, [evidence_ids[1]]),
         _artifact(f"artifact:{run_id}:composition", "shadow_composition", composition_path, [evidence_ids[2]]),
+        _artifact(
+            f"artifact:{run_id}:hierarchical-composition-data",
+            "hierarchical_cell_state_composition",
+            hierarchy_path,
+            evidence_ids,
+        ),
+        _artifact(
+            f"artifact:{run_id}:hierarchical-composition-table",
+            "hierarchical_cell_state_composition_table",
+            hierarchy_table_path,
+            evidence_ids,
+        ),
     ]
-    visualizations: list[VisualizationArtifact] = []
+    hierarchy_svg, hierarchy_png, hierarchy_pdf = render_hierarchical_composition(
+        hierarchical_composition,
+        run_dir / "hierarchical_cell_state_composition",
+    )
+    hierarchy_render_ids = [
+        f"artifact:{run_id}:hierarchical-composition-svg",
+        f"artifact:{run_id}:hierarchical-composition-png",
+        f"artifact:{run_id}:hierarchical-composition-pdf",
+    ]
+    artifacts.extend(
+        [
+            _artifact(
+                hierarchy_render_ids[0],
+                "visualization_svg",
+                hierarchy_svg,
+                evidence_ids,
+            ),
+            _artifact(
+                hierarchy_render_ids[1],
+                "visualization_png",
+                hierarchy_png,
+                evidence_ids,
+            ),
+            _artifact(
+                hierarchy_render_ids[2],
+                "visualization_pdf",
+                hierarchy_pdf,
+                evidence_ids,
+            ),
+        ]
+    )
+    visualizations: list[VisualizationArtifact] = [
+        VisualizationArtifact(
+            visualization_id=f"visualization:{run_id}:hierarchical-composition",
+            component_id="bridge.cell_state.hierarchical-composition.v0.1",
+            data_artifact_id=f"artifact:{run_id}:hierarchical-composition-data",
+            evidence_ids=evidence_ids,
+            denominator="all observations in the declared post-QC input view",
+            units="count and fraction",
+            status="candidate",
+            render_artifact_ids=hierarchy_render_ids,
+        )
+    ]
     renders = [
         (
             "composition-l1",
@@ -877,8 +1001,10 @@ def _artifact(artifact_id: str, kind: str, path: Path, evidence_ids: list[str]) 
     media_types = {
         ".json": "application/json",
         ".parquet": "application/vnd.apache.parquet",
+        ".pdf": "application/pdf",
         ".svg": "image/svg+xml",
         ".png": "image/png",
+        ".tsv": "text/tab-separated-values",
     }
     return ArtifactManifest(
         artifact_id=artifact_id,
