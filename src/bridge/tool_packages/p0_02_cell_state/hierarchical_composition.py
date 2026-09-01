@@ -4,7 +4,7 @@ import math
 from typing import Any, Literal, Self
 
 import pandas as pd
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from bridge.tool_packages.p0_02_cell_state.grouping import GroupingOutcome
 from bridge.toolkit.contracts import (
@@ -46,6 +46,39 @@ class PredictionSetSummary(FrozenModel):
 
 
 class HierarchicalCompositionRecord(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "oneOf": [
+                {
+                    "properties": {
+                        "record_kind": {"const": "state"},
+                        "state_id": {"type": "string"},
+                        "resolution_state": {"const": "resolved"},
+                    },
+                    "required": [
+                        "record_kind",
+                        "state_id",
+                        "resolution_state",
+                    ],
+                },
+                {
+                    "properties": {
+                        "record_kind": {"const": "resolution"},
+                        "state_id": {"type": "null"},
+                        "resolution_state": {
+                            "enum": [
+                                "source_conflict",
+                                "subtype_unresolved",
+                                "unavailable",
+                                "not_assessed",
+                            ]
+                        },
+                    },
+                    "required": ["record_kind", "resolution_state"],
+                },
+            ]
+        }
+    )
     record_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
     record_kind: Literal["state", "resolution"]
     partition_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
@@ -137,8 +170,12 @@ class HierarchicalCompositionRecord(FrozenModel):
                 raise ValueError("parent fraction does not match its count")
         if self.record_kind == "state" and self.state_id is None:
             raise ValueError("state records require state_id")
+        if self.record_kind == "state" and self.resolution_state != "resolved":
+            raise ValueError("state records must use resolved semantics")
         if self.record_kind == "resolution" and self.state_id is not None:
             raise ValueError("resolution records cannot claim a state identity")
+        if self.record_kind == "resolution" and self.resolution_state == "resolved":
+            raise ValueError("resolution records cannot use resolved semantics")
         if self.level == "L2" and self.parent_state_id is None:
             raise ValueError("L2 records require a parent state")
         if self.level != "L2" and self.parent_state_id is not None:
@@ -191,6 +228,32 @@ class ProductGroup(FrozenModel):
 
 
 class GroupStateCorrespondenceRecord(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "oneOf": [
+                {
+                    "properties": {
+                        "state_id": {"type": "string"},
+                        "resolution_state": {"const": "resolved"},
+                    },
+                    "required": ["state_id", "resolution_state"],
+                },
+                {
+                    "properties": {
+                        "state_id": {"type": "null"},
+                        "resolution_state": {
+                            "enum": [
+                                "source_conflict",
+                                "subtype_unresolved",
+                                "unavailable",
+                            ]
+                        },
+                    },
+                    "required": ["resolution_state"],
+                },
+            ]
+        }
+    )
     record_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
     group_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
     state_id: str | None = Field(
@@ -252,6 +315,10 @@ class GroupStateCorrespondenceRecord(FrozenModel):
             abs_tol=1e-12,
         ):
             raise ValueError("parent fraction does not match its count")
+        if self.state_id is not None and self.resolution_state != "resolved":
+            raise ValueError("named group-state rows must use resolved semantics")
+        if self.state_id is None and self.resolution_state == "resolved":
+            raise ValueError("group resolution rows cannot use resolved semantics")
         if self.level == "L2" and self.parent_state_id is None:
             raise ValueError("L2 group records require a parent state")
         if self.level == "L1" and self.parent_state_id is not None:

@@ -16,6 +16,39 @@
     },
     "GroupStateCorrespondenceRecord": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "resolution_state": {
+              "const": "resolved"
+            },
+            "state_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "state_id",
+            "resolution_state"
+          ]
+        },
+        {
+          "properties": {
+            "resolution_state": {
+              "enum": [
+                "source_conflict",
+                "subtype_unresolved",
+                "unavailable"
+              ]
+            },
+            "state_id": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "resolution_state"
+          ]
+        }
+      ],
       "properties": {
         "applicability": {
           "const": "applicable",
@@ -179,6 +212,48 @@
     },
     "HierarchicalCompositionRecord": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "record_kind": {
+              "const": "state"
+            },
+            "resolution_state": {
+              "const": "resolved"
+            },
+            "state_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "record_kind",
+            "state_id",
+            "resolution_state"
+          ]
+        },
+        {
+          "properties": {
+            "record_kind": {
+              "const": "resolution"
+            },
+            "resolution_state": {
+              "enum": [
+                "source_conflict",
+                "subtype_unresolved",
+                "unavailable",
+                "not_assessed"
+              ]
+            },
+            "state_id": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "record_kind",
+            "resolution_state"
+          ]
+        }
+      ],
       "properties": {
         "applicability": {
           "enum": [
