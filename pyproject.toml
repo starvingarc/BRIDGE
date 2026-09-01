@@ -48,6 +48,7 @@ freeze = [
 evidence = [
   "defusedxml>=0.7,<1",
   "markdown-it-py>=3,<5",
+  "matplotlib>=3.9,<4",
   "networkx>=3.5,<3.6",
   "pyarrow>=21,<22",
   "regex>=2025.7,<2027",

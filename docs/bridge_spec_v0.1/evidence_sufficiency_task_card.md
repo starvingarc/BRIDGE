@@ -5,19 +5,21 @@
 | Task ID | `TASK-EVIDENCE-SUFFICIENCY` |
 | Task document version | `v0.1` |
 | Date | 2026-08-07 |
-| Package version | `P0-08 0.3.0` |
+| Package version | `P0-08 0.4.0` |
 | Analysis unit | `product case x domain x MeasurementSpec` |
 | Runtime / scientific state | `implemented` / `candidate` |
 | Current result | `bridge://schemas/evidence-sufficiency-run-result/v0.2` |
+| Per-domain handoff | `bridge://schemas/evidence-sufficiency-profile/v0.2` |
+| Visualization data | `bridge://schemas/evidence-sufficiency-visualization-data/v0.1` |
 | Detailed runtime contract | [P0-08 Tool Card](../../src/bridge/tool_packages/cards/P0-08.md) |
 
 ## 0. 当前实现绑定（候选）
 
-P0-08 `v0.3.0` 已实现为确定性候选工具，使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同为 `bridge://schemas/evidence-sufficiency-run-result/v0.2`；候选 gate rule 与 reason-code catalog 使用 additive `object_version=0.2.0`，历史 v0.1 资源和 Schema 保持字节不变。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析、不生成 `MeasurementResult` 或可视化。
+P0-08 `v0.4.0` 已实现为确定性候选工具，使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同为 `bridge://schemas/evidence-sufficiency-run-result/v0.2`；每个域另输出一个符合 `bridge://schemas/evidence-sufficiency-profile/v0.2` 的 canonical 单对象 JSON，作为 P0-09-ready producer handoff，组合 wrapper 仅是 `noncanonical_convenience_projection`。P0-09 接受 v0.2 属于该工具包后续独立 PR。候选 gate rule 与 reason-code catalog 使用 additive `object_version=0.2.0`，历史 v0.1 资源和 Schema 保持字节不变。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析，也不生成新的 `MeasurementResult`。
 
-这是一项工程可执行性进展，不是科学确认。`ENV-EVIDENCE-v0.1` 已通过服务器工程健康检查，所有已选内部方法记录仍为 `formal_eligible=false`；真实 ProductCase 的三轴状态尚未由此实现得到验证。当前没有批准的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
+这是一项工程可执行性进展，不是科学确认。`ENV-EVIDENCE-v0.2` 明确声明确定性门控和 Matplotlib 静态渲染依赖；所有已选内部方法记录仍为 `formal_eligible=false`。当前没有批准的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
 
-完整输入角色、字段、eligibility、artifact、reason code、失败与幂等行为见 `src/bridge/tool_packages/cards/P0-08.md`；合成对象的可复现工程验证见 `docs/validation/p0_08_evidence_sufficiency_20260813.md`。
+完整输入角色、字段、eligibility、artifact、reason code、失败与幂等行为见 `src/bridge/tool_packages/cards/P0-08.md`。
 
 ## 1. 任务目标与边界
 
@@ -139,15 +141,15 @@ LLM 可以解释 reason code、帮助研究者补充缺失信息和生成湿实�
 
 | 工具/组件 | 角色 | 当前状态 | 运行方式 | 关键边界 |
 | --- | --- | --- | --- | --- |
-| `BRIDGE-EVIDENCE-SUFFICIENCY-ENGINE-v0.1` | 三轴规则与最终门控 | `adopted_spec`；实现 `proposed/candidate` | `ENV-EVIDENCE-v0.1`，CPU | 只读取冻结合同和结果，不计算生物指标 |
-| Pydantic | 对象、枚举和 JSON Schema 校验 | `shortlisted` | `ENV-EVIDENCE-v0.1` | schema 合格不代表科学证据充分 |
+| `BRIDGE-EVIDENCE-SUFFICIENCY-ENGINE-v0.1` | 三轴规则与最终门控 | `adopted_spec`；实现 `proposed/candidate` | `ENV-EVIDENCE-v0.2`，CPU | 只读取冻结合同和结果，不计算生物指标 |
+| Pydantic | 对象、枚举和 JSON Schema 校验 | `shortlisted` | `ENV-EVIDENCE-v0.2` | schema 合格不代表科学证据充分 |
 | Pandera | MeasurementResult/benchmark 表格合同候选 | `catalog_only` | `ENV-EVIDENCE-SCHEMA-v0.1` | 非 P0 必需依赖 |
-| SciPy bootstrap | 检查区间方法和验证 fixture | `shortlisted/conditional` | `ENV-EVIDENCE-v0.1` | 本模块不擅自对产品细胞重采样 |
-| scikit-learn calibration | 校准记录、reliability 和 proper-score 校验 | `shortlisted/conditional` | `ENV-EVIDENCE-v0.1` | 单一指标不能代表完整校准 |
+| SciPy bootstrap | 检查区间方法和验证 fixture | `shortlisted/conditional` | `ENV-EVIDENCE-v0.2` | 本模块不擅自对产品细胞重采样 |
+| scikit-learn calibration | 校准记录、reliability 和 proper-score 校验 | `shortlisted/conditional` | `ENV-EVIDENCE-v0.2` | 单一指标不能代表完整校准 |
 | scConform outputs | marginal/classwise prediction-set coverage、set size 与 hierarchy diagnostics | `external_result_only`；`conditional` | 上游 Cell-State benchmark 环境 | scConform 是 base-classifier coverage layer，不是独立 standalone OOD detector；本模块不重跑或放宽 exchangeability 假设 |
 | Lopez-De-Castro conformal annotator outputs | conformal annotation/rejection candidate evidence | `external_result_only`；`conditional` | 独立上游 benchmark 环境 | 与 scConform 分开登记；只有 source-aware 外部验证后才能用于 OOD robustness |
 | scIB/scib-metrics outputs | integration 与 biological-conservation 稳健性输入 | `external_result_only`；`conditional` | 上游 Comparison benchmark 环境 | batch removal 和 biology conservation 必须同时看 |
-| `BRIDGE-PRIOR-APPLICABILITY-MATCHER-v0.1` | 上下文、覆盖和版本规则匹配 | `adopted_spec`；实现 `proposed/candidate` | `ENV-EVIDENCE-v0.1`，CPU | 不根据数据库条目数量计算支持度 |
+| `BRIDGE-PRIOR-APPLICABILITY-MATCHER-v0.1` | 上下文、覆盖和版本规则匹配 | `adopted_spec`；实现 `proposed/candidate` | `ENV-EVIDENCE-v0.2`，CPU | 不根据数据库条目数量计算支持度 |
 | OAK | ontology traversal/crosswalk 候选 | `proposed_optional`；`catalog_only` | `knowledge_curator` | 不作为 P0 正式门控依赖 |
 
 正式门控不依赖 GPU，也不要求联网。所有外部工具只通过版本化结果和 Evidence IDs 交换信息。
@@ -170,13 +172,13 @@ measurement_evidence_state_counts
 created_at / deterministic_run_ref
 ```
 
-顶层 `EvidenceSufficiencyRunResultV2.source_object_bindings` 对本次每个 `StructuredInputRef` 恰有一个 path-free binding：request-local input ID、role、logical object ID、object version、Schema ID 和 exact source SHA-256。Profile/Summary 仅为 RunResult v0.2 的嵌套类型，不另注册公开 Schema。案例级 `CaseEvidenceReadinessSummaryV2` 包含各域 `sufficient/limited/insufficient/not_assessed` 数量、八种 MeasurementResult evidence-state 的 domain-profile reference 数量、`score_state` 数量和阻塞原因列表。同一个 MeasurementResult 跨域复用时会在每个 profile 各计一次，不能解释为独立证据数、投票或权重。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
+顶层 `EvidenceSufficiencyRunResultV2.source_object_bindings` 对本次每个 `StructuredInputRef` 恰有一个 path-free binding：request-local input ID、role、logical object ID、object version、Schema ID 和 exact source SHA-256。每个 `EvidenceSufficiencyProfileV2` 同时以稳定序号文件名单独输出，作为 P0-09-ready canonical handoff；多 profile wrapper 仅用于便利浏览。P0-09 对 v0.2 的接受和比较逻辑在其独立 PR 中实现，当前不放宽 formal family-proof 阻断。案例级 `CaseEvidenceReadinessSummaryV2` 包含各域 `sufficient/limited/insufficient/not_assessed` 数量、八种 MeasurementResult evidence-state 的 domain-profile reference 数量、`score_state` 数量和阻塞原因列表。同一个 MeasurementResult 跨域复用时会在每个 profile 各计一次，不能解释为独立证据数、投票或权重。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
 
 ## 8. 运行环境
 
 | 环境 | 组件 | 当前状态 |
 | --- | --- | --- |
-| `ENV-EVIDENCE-v0.1` | Pydantic、pandas、SciPy、scikit-learn 与确定性门控 | `health_check_passed` |
+| `ENV-EVIDENCE-v0.2` | Pydantic、pandas、SciPy、scikit-learn、Matplotlib 与确定性门控/静态渲染 | `health_check_passed` |
 | `ENV-EVIDENCE-SCHEMA-v0.1` | Pandera 及 schema fixture | `proposed_optional`；不阻塞 P0 |
 | upstream benchmark environments | scConform、Lopez-De-Castro conformal annotator、scIB 和其他域级 benchmark | `external_result_only` |
 | `knowledge_curator` | OAK 与 ontology 审核工具 | `proposed_optional` |
@@ -185,15 +187,11 @@ created_at / deterministic_run_ref
 
 ## 9. Web 必备可视化
 
-- domain x 三轴状态矩阵，状态文字和颜色同时编码。
-- 单域 gate trace，显示每个输入、规则、reason code 和最终状态。
-- Data Readiness 下钻：输入级别、基因覆盖、分母、LOD 和缺失 metadata。
-- Model Robustness 下钻：holdout、calibration、OOD、下采样和方法敏感性。
-- Prior Applicability 下钻：context match、crosswalk、覆盖、版本和证据家族。
-- missing/negative/unknown/unavailable/alert 状态矩阵。
-- 案例运行摘要，只显示域状态计数和阻塞原因。
+- **域级证据条件矩阵**：分别显示输入数据、方法验证、reference/prior 和当前解释条件。`adequate` 仅指满足所绑定 MeasurementSpec 的输入要求，`validated_applicable` 仅指声明的方法使用范围，`sufficient` 仅指当前候选解释规则。
+- **解释所需证据清单**：只读取 profile 的 `missing_requirements`、`blocking_reasons` 和 `limiting_reasons`；`review_required` 与 reason catalog severity 分开呈现。图中不建立单个 source 到 reason 的因果边。
+- **MeasurementResult 八状态矩阵**：完整显示 `measured/inferred/prior_only/negative/missing/unknown/unavailable/alert` 的 domain-profile reference 数量。数量不是独立证据、样本数、投票或权重。
 
-不得使用综合仪表盘、总等级或 Evidence Confidence Score。每个图表必须绑定 ProductCase、domain、MeasurementSpec、gate-rule version 和 Evidence IDs。
+三图均由同一 typed JSON 生成完整 TSV、SVG、PNG 和 PDF；静态容量超限时保留完整 table fallback，不进行 top-N 截断。每张图绑定 ProductCase、domain、MeasurementSpec、gate-rule、reason catalog 原始字节 hash 和 Evidence IDs。不得使用综合仪表盘、总等级、Evidence Confidence Score、交通灯、产品通过/失败或放行措辞。
 
 ## 10. 拒答与失败规则
 

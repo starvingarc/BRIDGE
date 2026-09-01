@@ -96,6 +96,23 @@ def test_evidence_environment_is_self_contained_and_pinned() -> None:
     } <= _conda_dependencies(spec)
 
 
+def test_evidence_visualization_environment_is_self_contained_and_pinned() -> None:
+    index = _load_yaml("environments/index.yaml")["environment_specs"]
+    entry = index["ENV-EVIDENCE-v0.2"]
+    spec = _load_yaml(entry["yaml_ref"])
+
+    assert entry["conda_name"] == spec["name"] == "bridge-p0-evidence-v0.2"
+    assert entry["state"] == "health_check_passed"
+    assert spec["channels"] == ["conda-forge", "nodefaults"]
+    assert "matplotlib=3.11.1" in _conda_dependencies(spec)
+    assert _conda_dependencies(
+        _load_yaml("environments/bridge-p0-evidence.yml")
+    ).isdisjoint({"matplotlib=3.11.1"})
+    assert ToolRegistry.load_default().describe("P0-08").environment_spec_id == (
+        "ENV-EVIDENCE-v0.2"
+    )
+
+
 def test_active_environment_contracts_do_not_name_machine_local_environments() -> None:
     paths = sorted((REPO_ROOT / "environments").glob("*"))
     specs = [

@@ -827,6 +827,43 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-07",
         data_schema_ref="bridge://schemas/product-comparison-visualization-data/v0.1",
     ),
+    _typed_component(
+        "bridge.evidence-sufficiency.domain-axes",
+        "0.1.0",
+        title="Evidence conditions for interpretation by analysis domain",
+        question=(
+            "What are the data, method-validation, reference/prior and candidate "
+            "interpretation states for each analysis domain?"
+        ),
+        figure_family="domain_scoped_evidence_axis_matrix",
+        tool_id="P0-08",
+        data_schema_ref="bridge://schemas/evidence-sufficiency-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.evidence-sufficiency.interpretation-requirements",
+        "0.1.0",
+        title="Evidence gaps and interpretation limits by analysis domain",
+        question=(
+            "Which root missing, limiting, blocking or review-required conditions "
+            "constrain interpretation in each domain?"
+        ),
+        figure_family="domain_interpretation_requirement_ledger",
+        tool_id="P0-08",
+        data_schema_ref="bridge://schemas/evidence-sufficiency-visualization-data/v0.1",
+    ),
+    _typed_component(
+        "bridge.evidence-sufficiency.measurement-states",
+        "0.1.0",
+        title="Upstream measurement-result states linked to each analysis domain",
+        question=(
+            "How many bound MeasurementResult references occupy each of the eight "
+            "evidence states within each domain profile?"
+        ),
+        figure_family="domain_measurement_result_state_matrix",
+        tool_id="P0-08",
+        data_schema_ref="bridge://schemas/evidence-sufficiency-visualization-data/v0.1",
+    ),
 )
 
 

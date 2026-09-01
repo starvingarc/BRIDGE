@@ -133,11 +133,11 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Decide whether existing domain evidence is ready for interpretation under a versioned gate specification. [Scientific task card](bridge_spec_v0.1/evidence_sufficiency_task_card.md). |
-| Executable implementation | Deterministic gate executor, packaged rule registry and validator applying Data Readiness → Model Robustness → Prior Applicability → sufficiency. |
-| Software | Shared Pydantic/JSON Schema runtime, Python standard library and packaged JSON rule/reason-code resources. |
-| Input → output | GateRuleSpec plus one to five domain bundles → `EvidenceSufficiencyRunResultV2`, per-domain profiles, gate trace and case summary. [Tool Card](../src/bridge/tool_packages/cards/P0-08.md). |
+| Executable implementation | Deterministic gate executor, packaged rule registry and validator, canonical per-domain handoff objects, and table-backed static evidence figures. |
+| Software | Shared Pydantic/JSON Schema runtime, Matplotlib, Python standard library and packaged JSON rule/reason-code resources. |
+| Input → output | GateRuleSpec plus one to five domain bundles → `EvidenceSufficiencyRunResultV2`, canonical v0.2 profile objects, gate trace, case summary, typed visualization data, three TSV tables and three SVG/PNG/PDF figure sets. [Tool Card](../src/bridge/tool_packages/cards/P0-08.md). |
 | Call | Shared CLI/SDK with `tool_id=P0-08`; start from the [request example](../examples/requests/p0_08_evidence_sufficiency.json). |
-| Current evidence / status | Fixtures verify gate precedence, checksum failure and distinct sufficiency states. The module creates no measurement or score and remains a non-formal candidate. [Validation](validation/p0_08_evidence_sufficiency_20260813.md). |
+| Current evidence / status | The module creates no measurement or score and remains a non-formal candidate. Axis terms apply only to the bound MeasurementSpec, declared context and current candidate interpretation rules; record and evidence-family counts are not independent evidence. |
 
 <a id="p0-09"></a>
 ## P0-09 Evidence Compiler & Reconciler
