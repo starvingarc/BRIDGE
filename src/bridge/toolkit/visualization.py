@@ -788,6 +788,45 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-06",
         data_schema_ref="bridge://schemas/proliferation-stress-visualization-data/v0.1",
     ),
+    _typed_component(
+        "bridge.product-comparison.comparability",
+        "0.1.0",
+        title="Comparison eligibility and declared confounding structure",
+        question=(
+            "What declared design conditions support or prevent interpretation "
+            "of between-product differences?"
+        ),
+        figure_family="comparison_eligibility_and_confounding_matrix",
+        tool_id="P0-07",
+        data_schema_ref="bridge://schemas/product-comparison-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.product-comparison.metric-differences",
+        "0.1.0",
+        title="Declared analysis-unit values and descriptive group differences",
+        question=(
+            "What declared sample/preparation values and raw group differences were observed "
+            "for each metric under its own unit and denominator?"
+        ),
+        figure_family="declared_analysis_unit_estimation_small_multiples",
+        tool_id="P0-07",
+        data_schema_ref="bridge://schemas/product-comparison-visualization-data/v0.1",
+    ),
+    _typed_component(
+        "bridge.product-comparison.method-evidence",
+        "0.1.0",
+        title=(
+            "Method-specific descriptive effect, distance, and dispersion evidence"
+        ),
+        question=(
+            "Which method-specific effect, distance, similarity and dispersion "
+            "estimates were assessable, and on which separate scales?"
+        ),
+        figure_family="method_separated_comparison_evidence",
+        tool_id="P0-07",
+        data_schema_ref="bridge://schemas/product-comparison-visualization-data/v0.1",
+    ),
 )
 
 

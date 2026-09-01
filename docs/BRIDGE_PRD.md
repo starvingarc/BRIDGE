@@ -669,12 +669,12 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 
 ### 6.6 Visualization Composer 与 Web 交互
 
-截至 2026-09-01，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
+截至 2026-09-02，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
 `VisualizationArtifact` v0.2 数据绑定合同与 figure registry v0.1；集成式 Web
 结果页和 Visualization Composer 仍未实现。输入质量、产品目标与区域支持、发育
-阶段已有 typed 静态图形；细胞状态图仍为 `legacy_untyped`，其后的证据域仍以
-结构化结果为主。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经
-存在。
+阶段、非目标组成、增殖与应激信号以及产品比较已有 typed 静态图形；细胞状态图
+仍为 `legacy_untyped`。以下内容是后续实现必须遵守的设计合同，不表示对应页面
+已经存在。
 
 #### 用户问题与默认阅读顺序
 
@@ -705,7 +705,7 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 | 发育阶段合适吗？ | 申明窗口下的双分母阶段画像：完整产品和目标相关子集分开显示 | 分来源、分 assay 的 top-stage similarity summary；按实际采样点显示聚合组成 | Developmental Compatibility（P0-04） | 当前不能给单一“发育年龄”、完整阶段支持分布或连续轨迹；无数值时间轴时动态趋势必须明确为不可评估 |
 | 有没有不想要或无法解释的细胞？ | 声明分母下的产品角色与 identity-unknown 账本 | rare-state 观测与分开命名的检测边界；spike-in 检出命中率；按声明来源族展示的 OOD channel 状态 | Off-target Control（P0-05） | 已有 typed 数据、精确表格及三组确定性静态图；后续 Web 只消费这些记录，不重算科学结果 |
 | 是否存在增殖、细胞周期或应激信号？ | 按阶段和细胞状态呈现的 program 证据与复核状态矩阵，同时显示 gene coverage、适用性和证据状态 | 按方法和声明分析单位分开的 program score 摘要；G1/S/G2M phase composition 与 S/G2M score evidence | Proliferation & Stress Response（P0-06） | 已有 typed 数据、精确表格及三组确定性静态图；当前无数值 reference envelope、ProtocolIR 时间线、数值 LOD/UCB 或 spike-in recovery curve，也无 CNV 图。只能表述为需要复核的转录信号，不能解释为安全性或 potency 结论 |
-| 多个批次或工艺有什么差别？ | 逐指标效应量森林图：raw delta、区间、分母和可比性 | composition delta、program heatmap、preparation-level points、batch/lot 距离和敏感性矩阵 | Product Comparison & Stability（P0-07） | 仅在满足可比合同时显示；单个 preparation 只能作描述性比较，不能排名 |
+| 多个批次或工艺有什么差别？ | 比较资格与混杂结构图：先显示哪些差异可以解释；再按指标展示 declared sample/preparation values、observed range、raw delta、单位和分母 | 各方法的 effect、distance、similarity 和 dispersion 分开显示；composition、program、batch/lot 距离及敏感性矩阵仅在上游提供相应记录时出现 | Product Comparison & Stability（P0-07） | 已有 typed 数据、精确表格及三组确定性静态图；observed range 不是置信区间，raw delta 暂无区间，单个 preparation 只能作描述性比较，不能排名 |
 | 为什么能得出这个判断？ | 领域 × Data Readiness / Model Robustness / Prior Applicability 三轴证据矩阵 | 选择结论后显示“来源 → Evidence → Claim → Requirement”证据链及尚缺证据 | Evidence Sufficiency / Compiler & Reconciler（P0-08/P0-09） | 已有结构化结果；现有图投影按 ID 截断，不适合结论下钻 |
 | 报告能否使用或分享？ | Claim 核对表：数值、单位、分母、区间、措辞和证据引用 | 被阻断的句子、修改建议、公开导出字段清单 | Claim Verifier / Public-safe Export（P0-10/P0-11） | 当前核对工具不检查图表；仍缺机器可读的图表核对回执 |
 | 有移植后数据吗？ | 独立的 graft 组成、reference support 和 program 图 | animal/graft/timepoint、fine subtype、method sensitivity | Optional Graft Assessment（P0-12） | 必须放在独立页，不能反向改变移植前产品结论 |

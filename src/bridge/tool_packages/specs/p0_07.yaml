@@ -1,6 +1,6 @@
 tool_id: P0-07
 name: Product Comparison & Stability
-version: 0.3.0
+version: 0.4.0
 summary: Compare products, timepoints and preparations under an explicit comparability
   contract.
 implementation_state: implemented
@@ -9,7 +9,7 @@ optional: false
 environment_spec_id: ENV-P0-CORE-v0.1
 input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
-result_schema_ref: bridge://schemas/product-comparison-stability-profile/v0.1
+result_schema_ref: bridge://schemas/product-comparison-stability-profile/v0.2
 adapter_ref: bridge.tool_packages.p0_07_product_comparison_stability.adapter:adapter
 method_ids:
   - METHOD-BRIDGE-COMPARABILITY-GATE

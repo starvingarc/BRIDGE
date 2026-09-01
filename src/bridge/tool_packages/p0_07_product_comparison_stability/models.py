@@ -489,6 +489,169 @@ class ProductComparisonStabilityProfile(FrozenModel):
         return self
 
 
+MetricStabilityV1 = MetricStability
+GroupStabilityV1 = GroupStability
+ProductComparisonStabilityProfileV1 = ProductComparisonStabilityProfile
+
+
+class MetricStabilityV2(FrozenModel):
+    metric_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    state: Literal[
+        "multiple_analysis_units",
+        "single_analysis_unit",
+        "incomplete",
+        "unavailable",
+    ]
+    assessed_analysis_unit_count: StrictInt = Field(ge=0)
+    analysis_unit_count: StrictInt = Field(ge=1)
+    observed_range: tuple[Numeric, Numeric] | None = None
+    range_width: StrictFloat | None = Field(default=None, ge=0.0)
+    range_semantics: Literal["observed_min_max"] = "observed_min_max"
+    reason_codes: list[str]
+
+    @model_validator(mode="after")
+    def analysis_unit_range_is_coherent(self) -> Self:
+        if self.assessed_analysis_unit_count > self.analysis_unit_count:
+            raise ValueError("assessed analysis units exceed declared analysis units")
+        present = self.observed_range is not None and self.range_width is not None
+        if self.assessed_analysis_unit_count == 0:
+            if present:
+                raise ValueError("unavailable analysis units cannot carry a range")
+            expected = "unavailable"
+        else:
+            if not present:
+                raise ValueError("assessed analysis units require an observed range")
+            lower, upper = self.observed_range
+            if lower > upper:
+                raise ValueError("observed range lower bound exceeds upper bound")
+            if not math.isclose(
+                self.range_width,
+                float(upper) - float(lower),
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                raise ValueError("range width does not match observed min-max")
+            expected = (
+                "incomplete"
+                if self.assessed_analysis_unit_count < self.analysis_unit_count
+                else (
+                    "single_analysis_unit"
+                    if self.analysis_unit_count == 1
+                    else "multiple_analysis_units"
+                )
+            )
+        if self.state != expected:
+            raise ValueError("analysis-unit range state disagrees with counts")
+        _unique(self.reason_codes, "metric stability reason codes")
+        return self
+
+
+class GroupStabilityV2(FrozenModel):
+    group_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    analysis_unit_count: StrictInt = Field(ge=1)
+    independence_state: Literal["declared", "not_recorded", "inconsistent"]
+    independence_scope_ref: str | None = None
+    independence_group_refs: list[str]
+    declared_independence_group_count: StrictInt | None = Field(default=None, ge=1)
+    batch_count: StrictInt = Field(ge=0)
+    metric_stability: list[MetricStabilityV2] = Field(min_length=1)
+    reason_codes: list[str]
+
+    @model_validator(mode="after")
+    def independence_and_counts_are_coherent(self) -> Self:
+        _unique(self.independence_group_refs, "independence group references")
+        _unique(self.reason_codes, "group stability reason codes")
+        if any(
+            item.analysis_unit_count != self.analysis_unit_count
+            for item in self.metric_stability
+        ):
+            raise ValueError("metric analysis-unit counts disagree with group")
+        if self.independence_state == "declared":
+            if (
+                self.independence_scope_ref is None
+                or self.declared_independence_group_count
+                != len(self.independence_group_refs)
+                or self.declared_independence_group_count
+                != self.analysis_unit_count
+            ):
+                raise ValueError(
+                    "declared independence requires one group per analysis unit"
+                )
+        elif (
+            self.independence_scope_ref is not None
+            or self.declared_independence_group_count is not None
+        ):
+            raise ValueError(
+                "unestablished independence cannot carry a scope or declared count"
+            )
+        return self
+
+
+class ProductComparisonStabilityProfileV2(FrozenModel):
+    object_version: Literal["0.2.0"]
+    result_id: str = Field(pattern=r"^product-comparison-stability:[a-f0-9]{16}$")
+    tool_id: Literal["P0-07"]
+    tool_version: str = Field(pattern=VERSION_PATTERN)
+    comparison_ref: VersionedObjectRef
+    spec_ref: VersionedObjectRef
+    input_bindings: list[InputChecksumBinding] = Field(min_length=4)
+    comparison_eligibility: Literal[
+        "strictly_comparable",
+        "contextual_comparator",
+        "reference_or_ood",
+        "not_comparable",
+        "not_estimable",
+    ]
+    comparison_mode: Literal["descriptive_only"]
+    profile_state: Literal["complete", "partial", "not_assessed"]
+    group_summaries: list[GroupMetricSummary] = Field(min_length=2)
+    metric_contrasts: list[MetricContrast]
+    stability_results: list[GroupStabilityV2] = Field(min_length=2)
+    confounded_factors: list[ConfoundingFactor]
+    evidence_refs: list[str]
+    reason_codes: list[str]
+    overall_score: None = None
+    overall_rank: None = None
+    domain_score: None = None
+    score_state: Literal["unavailable"] = "unavailable"
+
+    @field_validator("input_bindings")
+    @classmethod
+    def input_bindings_are_unique(
+        cls, value: list[InputChecksumBinding]
+    ) -> list[InputChecksumBinding]:
+        _unique(
+            [(item.role, item.sha256) for item in value],
+            "input bindings",
+        )
+        return value
+
+    @field_validator("confounded_factors", "evidence_refs", "reason_codes")
+    @classmethod
+    def set_like_outputs_are_unique(cls, value: list[object]) -> list[object]:
+        _unique(value, "set-like output")
+        return value
+
+    @model_validator(mode="after")
+    def assessment_state_is_coherent(self) -> Self:
+        estimable = self.comparison_eligibility in {
+            "strictly_comparable",
+            "contextual_comparator",
+        }
+        if not estimable and any(
+            item.contrast_state == "shadow" for item in self.metric_contrasts
+        ):
+            raise ValueError("non-estimable comparison cannot carry numeric deltas")
+        if self.profile_state == "not_assessed" and estimable:
+            raise ValueError("estimable comparison cannot be wholly not_assessed")
+        return self
+
+
+MetricStability = MetricStabilityV2
+GroupStability = GroupStabilityV2
+ProductComparisonStabilityProfile = ProductComparisonStabilityProfileV2
+
+
 class ComparisonMethodId(StrEnum):
     SAMPLE_EFFECT = "CMP-EFFECT"
     JENSEN_SHANNON = "CMP-JS"
@@ -731,7 +894,8 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/comparison-stability-spec/v0.1": ComparisonStabilitySpec,
     "bridge://schemas/comparison-case-manifest/v0.1": ComparisonCaseManifest,
     "bridge://schemas/product-evidence-bundle/v0.1": ProductEvidenceBundle,
-    "bridge://schemas/product-comparison-stability-profile/v0.1": ProductComparisonStabilityProfile,
+    "bridge://schemas/product-comparison-stability-profile/v0.1": ProductComparisonStabilityProfileV1,
+    "bridge://schemas/product-comparison-stability-profile/v0.2": ProductComparisonStabilityProfile,
     "bridge://schemas/comparison-method-spec/v0.1": ComparisonMethodSpec,
     "bridge://schemas/comparison-method-input/v0.1": ComparisonMethodInput,
     "bridge://schemas/comparison-method-bundle/v0.1": ComparisonMethodBundle,

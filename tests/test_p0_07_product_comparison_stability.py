@@ -1,15 +1,35 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 from pathlib import Path
 
 import pytest
 
 from bridge.tool_packages.p0_07_product_comparison_stability.adapter import adapter
+from bridge.tool_packages.p0_07_product_comparison_stability.models import (
+    ComparisonCaseManifest,
+    ComparisonMethodBundle,
+    ComparisonMethodInput,
+    ComparisonMethodSpec,
+    ComparisonStabilitySpec,
+    ProductComparisonStabilityProfile,
+    ProductEvidenceBundle,
+)
+from bridge.tool_packages.p0_07_product_comparison_stability.visualization_data import (
+    MetricDifferenceRecord,
+    MetricStabilityVisualizationRecord,
+    P007VisualizationArtifactSet,
+    ProductComparisonVisualizationDataV1,
+    build_product_comparison_visualization_data,
+)
 from bridge.toolkit.contracts import ToolRequest
 from bridge.toolkit.registry import ToolRegistry
 
+adapter_module = importlib.import_module(
+    "bridge.tool_packages.p0_07_product_comparison_stability.adapter"
+)
 
 SCHEMAS = {
     "comparison_stability_spec": "bridge://schemas/comparison-stability-spec/v0.1",
@@ -96,9 +116,7 @@ def _payloads(*, replicated: bool = False) -> dict[str, object]:
         bundles.update(
             {
                 "bundle-baseline-2": _bundle("baseline-2", "group-baseline", 0.5),
-                "bundle-comparator-2": _bundle(
-                    "comparator-2", "group-comparator", 0.7
-                ),
+                "bundle-comparator-2": _bundle("comparator-2", "group-comparator", 0.7),
             }
         )
     baseline_refs = [
@@ -171,12 +189,56 @@ def _payloads(*, replicated: bool = False) -> dict[str, object]:
     }
 
 
+def _declare_independence(
+    payloads: dict[str, object],
+    *,
+    scope: str = "independence-scope:demo",
+) -> None:
+    for key, bundle in payloads.items():
+        if not key.startswith("bundle-"):
+            continue
+        slug = bundle["bundle_id"].split(":")[-1]
+        bundle["product_case"].update(
+            biological_unit_manifest_ref=_ref(
+                f"biological-unit-manifest:{slug}"
+            ),
+            biological_unit_manifest_sha256=(slug[0] * 64),
+            independence_scope_ref=_ref(scope),
+            independence_group_refs=[_ref(f"independence-group:{slug}")],
+        )
+
+
+def _add_comparator_group(
+    payloads: dict[str, object],
+    *,
+    slug: str,
+    value: float,
+    protocol_ref: str = "protocol:shared",
+) -> None:
+    group_id = f"group-{slug}"
+    bundle = _bundle(slug, group_id, value)
+    bundle["protocol_refs"] = [_ref(protocol_ref)]
+    payloads[f"bundle-{slug}"] = bundle
+    payloads["comparison_case_manifest"]["groups"].append(
+        {
+            "group_id": group_id,
+            "role": "comparator",
+            "product_definition_ref": _ref("product-definition:demo"),
+            "target_stage_ref": _ref("target-stage:demo"),
+            "bundle_refs": [_ref(bundle["bundle_id"])],
+        }
+    )
+
+
 def _role(key: str) -> str:
     return (
         key
-        if key in {
-            "comparison_stability_spec", "comparison_case_manifest",
-            "comparison_method_spec", "comparison_method_input",
+        if key
+        in {
+            "comparison_stability_spec",
+            "comparison_case_manifest",
+            "comparison_method_spec",
+            "comparison_method_input",
         }
         else "product_evidence_bundle"
     )
@@ -208,7 +270,7 @@ def _write_request(
         {
             "request_id": f"request-{output_name}",
             "tool_id": "P0-07",
-            "tool_version": "0.3.0",
+            "tool_version": "0.4.0",
             "output_dir": str((tmp_path / output_name).resolve()),
             "assets": [],
             "measurement_spec_ref": None,
@@ -220,10 +282,77 @@ def _write_request(
     return registry, request
 
 
+def _build_visualization(
+    tmp_path: Path, payloads: dict[str, object]
+) -> tuple[object, object]:
+    registry, request = _write_request(tmp_path, payloads)
+    run = registry.run(request)
+    method_spec = (
+        ComparisonMethodSpec.model_validate(payloads["comparison_method_spec"])
+        if "comparison_method_spec" in payloads
+        else None
+    )
+    method_input = (
+        ComparisonMethodInput.model_validate(payloads["comparison_method_input"])
+        if "comparison_method_input" in payloads
+        else None
+    )
+    method_artifact = next(
+        (item for item in run.artifacts if item.kind == "comparison_method_bundle"),
+        None,
+    )
+    method_bundle = (
+        ComparisonMethodBundle.model_validate_json(method_artifact.path.read_text())
+        if method_artifact is not None
+        else None
+    )
+    profile = build_product_comparison_visualization_data(
+        run_id=run.run_id,
+        tool_version=run.tool_version,
+        result=ProductComparisonStabilityProfile.model_validate(run.result),
+        spec=ComparisonStabilitySpec.model_validate(
+            payloads["comparison_stability_spec"]
+        ),
+        manifest=ComparisonCaseManifest.model_validate(
+            payloads["comparison_case_manifest"]
+        ),
+        bundles=[
+            ProductEvidenceBundle.model_validate(value)
+            for key, value in payloads.items()
+            if key.startswith("bundle-")
+        ],
+        method_spec=method_spec,
+        method_input=method_input,
+        method_bundle=method_bundle,
+        method_bundle_sha256=(
+            method_artifact.sha256 if method_artifact is not None else None
+        ),
+    )
+    return run, profile
+
+
+def _load_visualization_data(run: object) -> ProductComparisonVisualizationDataV1:
+    artifact = next(
+        item
+        for item in run.artifacts
+        if item.kind == "product_comparison_visualization_data"
+    )
+    return ProductComparisonVisualizationDataV1.model_validate_json(
+        artifact.path.read_text()
+    )
+
+
+def _load_visualization_artifact_set(run: object) -> P007VisualizationArtifactSet:
+    artifact = next(
+        item for item in run.artifacts if item.kind == "visualization_artifact_set"
+    )
+    return P007VisualizationArtifactSet.model_validate_json(artifact.path.read_text())
+
+
 def test_registry_exposes_p0_07_v2_runtime() -> None:
     registry = ToolRegistry.load_default()
     spec = registry.describe("P0-07")
-    assert spec.version == "0.3.0"
+    assert spec.version == "0.4.0"
     assert spec.implementation_state.value == "implemented"
     assert registry.request_model("P0-07").__name__ == "ToolRequestV2"
 
@@ -233,7 +362,10 @@ def test_valid_run_is_descriptive_shadow_without_rank(tmp_path: Path) -> None:
     assert registry.check_eligibility(request).eligible
     run = registry.run(request)
     assert run.execution_state.value == "succeeded"
+    assert len(run.artifacts) == 16
+    assert run.result_schema_ref.endswith("/v0.2")
     result = run.result
+    assert result["object_version"] == "0.2.0"
     assert result["comparison_eligibility"] == "strictly_comparable"
     assert result["comparison_mode"] == "descriptive_only"
     contrast = result["metric_contrasts"][0]
@@ -254,7 +386,10 @@ def test_run_is_deterministic_across_order_and_paths(tmp_path: Path) -> None:
     second = second_registry.run(second_request)
     assert first.run_id == second.run_id
     assert first.result == second.result
-    assert first.artifacts[0].sha256 == second.artifacts[0].sha256
+    assert len(first.artifacts) == len(second.artifacts) == 16
+    assert [item.sha256 for item in first.artifacts] == [
+        item.sha256 for item in second.artifacts
+    ]
 
 
 def test_missing_metric_is_null_not_zero(tmp_path: Path) -> None:
@@ -326,7 +461,10 @@ def test_contextual_stage_mismatch_keeps_shadow_delta(tmp_path: Path) -> None:
     run = registry.run(request)
     assert run.result["comparison_eligibility"] == "contextual_comparator"
     assert run.result["metric_contrasts"][0]["contrast_state"] == "shadow"
-    assert "contextual_comparison_only" in run.result["metric_contrasts"][0]["reason_codes"]
+    assert (
+        "contextual_comparison_only"
+        in run.result["metric_contrasts"][0]["reason_codes"]
+    )
 
 
 def test_required_assay_mismatch_is_not_comparable(tmp_path: Path) -> None:
@@ -367,18 +505,409 @@ def test_reference_ood_group_is_not_rankable(tmp_path: Path) -> None:
     assert run.result["metric_contrasts"][0]["delta_comparator_minus_baseline"] is None
 
 
-def test_replicated_groups_report_descriptive_ranges(tmp_path: Path) -> None:
+def test_multiple_analysis_units_do_not_imply_independence(tmp_path: Path) -> None:
     registry, request = _write_request(tmp_path, _payloads(replicated=True))
     run = registry.run(request)
     assert run.execution_state.value == "succeeded"
     assert all(
-        group["independent_preparation_count"] == 2
+        group["analysis_unit_count"] == 2
+        and group["independence_state"] == "not_recorded"
+        and group["declared_independence_group_count"] is None
         for group in run.result["stability_results"]
     )
     assert all(
-        group["metric_stability"][0]["state"] == "replicated_descriptive"
+        group["metric_stability"][0]["state"] == "multiple_analysis_units"
+        and group["metric_stability"][0]["range_semantics"] == "observed_min_max"
         for group in run.result["stability_results"]
     )
+
+
+def test_declared_independence_requires_one_group_per_analysis_unit(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads(replicated=True)
+    _declare_independence(payloads)
+    registry, request = _write_request(tmp_path, payloads)
+    groups = registry.run(request).result["stability_results"]
+
+    assert all(group["independence_state"] == "declared" for group in groups)
+    assert all(group["declared_independence_group_count"] == 2 for group in groups)
+    assert all(len(group["independence_group_refs"]) == 2 for group in groups)
+
+
+def test_visualization_preserves_preparation_values_and_descriptive_semantics(
+    tmp_path: Path,
+) -> None:
+    _, profile = _build_visualization(tmp_path, _payloads(replicated=True))
+
+    assert len(profile.preparation_records) == 4
+    assert sorted(item.raw_value for item in profile.preparation_records) == [
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+    ]
+    assert all(
+        item.interval_semantics == "not_declared" and not item.render_interval
+        for item in profile.preparation_records
+    )
+    assert {
+        item.analysis_unit_independence_binding_state
+        for item in profile.preparation_records
+    } == {"not_recorded"}
+    assert all(
+        item.biological_unit_manifest_ref is None
+        and item.biological_unit_manifest_sha256 is None
+        and item.analysis_unit_independence_scope_ref is None
+        and not item.analysis_unit_independence_group_refs
+        for item in profile.preparation_records
+    )
+    difference = profile.difference_records[0]
+    assert difference.raw_delta == pytest.approx(0.2)
+    assert difference.uncertainty_state == "not_available"
+    assert difference.preparation_record_ids == [
+        item.record_id
+        for item in profile.preparation_records
+    ]
+    assert difference.stability_record_ids == [
+        item.record_id for item in profile.stability_records
+    ]
+    assert profile.producer_run_ref.startswith("run:run-")
+    ranges = {item.group_id: item for item in profile.stability_records}
+    assert ranges["group-baseline"].observed_min == pytest.approx(0.4)
+    assert ranges["group-baseline"].observed_max == pytest.approx(0.5)
+    assert ranges["group-baseline"].range_width == pytest.approx(0.1)
+    assert ranges["group-comparator"].observed_min == pytest.approx(0.6)
+    assert ranges["group-comparator"].observed_max == pytest.approx(0.7)
+    assert ranges["group-comparator"].range_width == pytest.approx(0.1)
+    assert {item.analysis_unit_coverage_state for item in ranges.values()} == {
+        "multiple_analysis_units"
+    }
+    assert profile.overall_score is None
+    assert profile.overall_rank is None
+    assert profile.domain_score is None
+
+
+@pytest.mark.parametrize("state", ["missing", "alert"])
+def test_visualization_keeps_partial_preparation_evidence_without_zero_fill(
+    tmp_path: Path,
+    state: str,
+) -> None:
+    payloads = _payloads(replicated=True)
+    metric = payloads["bundle-comparator-1"]["metrics"][0]
+    if state == "missing":
+        metric.update(
+            raw_value=None,
+            interval=None,
+            denominator_value=None,
+            evidence_state="missing",
+        )
+    else:
+        metric["evidence_state"] = "alert"
+
+    _, profile = _build_visualization(tmp_path, payloads)
+
+    row = next(
+        item
+        for item in profile.preparation_records
+        if item.analysis_unit_ref == "preparation:comparator-1@1.0.0"
+    )
+    if state == "missing":
+        assert row.raw_value is None
+        assert row.missingness == "unavailable"
+    else:
+        assert row.raw_value == pytest.approx(0.6)
+        assert row.evidence_state.value == "alert"
+    assert row.assessment_state == "not_assessed"
+    assert profile.difference_records[0].raw_delta is None
+    comparator = next(
+        item
+        for item in profile.stability_records
+        if item.group_id == "group-comparator"
+    )
+    assert comparator.assessed_analysis_unit_count == 1
+    assert comparator.analysis_unit_coverage_state == "incomplete"
+    assert comparator.observed_min == pytest.approx(0.7)
+    assert comparator.observed_max == pytest.approx(0.7)
+
+
+def test_visualization_marks_contextual_and_blocked_comparisons(
+    tmp_path: Path,
+) -> None:
+    contextual = _payloads()
+    spec = contextual["comparison_stability_spec"]
+    spec["required_equal_fields"].remove("target_stage")
+    spec["contextual_fields"] = ["target_stage"]
+    other = _ref("target-stage:other")
+    contextual["bundle-comparator-1"]["target_stage_ref"] = other
+    contextual["comparison_case_manifest"]["groups"][1]["target_stage_ref"] = other
+    _, contextual_profile = _build_visualization(tmp_path / "contextual", contextual)
+    target_stage = next(
+        item
+        for item in contextual_profile.design_records
+        if item.dimension_id == "target_stage"
+    )
+    assert target_stage.design_state == "contextual_mismatch"
+    assert contextual_profile.difference_records[0].raw_delta == pytest.approx(0.2)
+    assert (
+        contextual_profile.difference_records[0].applicability == "partially_applicable"
+    )
+
+    blocked = _payloads()
+    blocked["bundle-comparator-1"]["product_case"]["assay"] = "snRNA-seq"
+    _, blocked_profile = _build_visualization(tmp_path / "blocked", blocked)
+    assay = next(
+        item for item in blocked_profile.design_records if item.dimension_id == "assay"
+    )
+    assert assay.design_state == "required_mismatch"
+    assert assay.blocks_numeric_difference
+    assert blocked_profile.difference_records[0].raw_delta is None
+    assert len(blocked_profile.preparation_records) == 2
+
+
+def test_visualization_only_counts_complete_nonoverlapping_independence(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads(replicated=True)
+    for key, bundle in payloads.items():
+        if not key.startswith("bundle-"):
+            continue
+        slug = bundle["bundle_id"].split(":")[-1]
+        case = bundle["product_case"]
+        case.update(
+            biological_unit_manifest_ref=_ref(f"biological-unit-manifest:{slug}"),
+            biological_unit_manifest_sha256=(slug[0] * 64),
+            independence_scope_ref=_ref("independence-scope:demo"),
+            independence_group_refs=[_ref(f"independence-group:{slug}")],
+        )
+    _, declared = _build_visualization(tmp_path / "declared", payloads)
+    assert {
+        item.analysis_unit_independence_binding_state
+        for item in declared.preparation_records
+    } == {"declared"}
+    assert all(
+        item.biological_unit_manifest_ref is not None
+        and item.biological_unit_manifest_sha256 is not None
+        and item.analysis_unit_independence_scope_ref
+        == "independence-scope:demo@1.0.0"
+        and len(item.analysis_unit_independence_group_refs) == 1
+        for item in declared.preparation_records
+    )
+    assert {
+        (
+            item.analysis_unit_ref,
+            item.biological_unit_manifest_ref,
+            tuple(item.analysis_unit_independence_group_refs),
+        )
+        for item in declared.preparation_records
+    } == {
+        (
+            f"preparation:{slug}@1.0.0",
+            f"biological-unit-manifest:{slug}@1.0.0",
+            (f"independence-group:{slug}@1.0.0",),
+        )
+        for slug in (
+            "baseline-1",
+            "baseline-2",
+            "comparator-1",
+            "comparator-2",
+        )
+    }
+
+    shared_payloads = _payloads(replicated=True)
+    for key, bundle in shared_payloads.items():
+        if not key.startswith("bundle-"):
+            continue
+        slug = bundle["bundle_id"].split(":")[-1]
+        group_id = bundle["group_id"]
+        bundle["product_case"].update(
+            biological_unit_manifest_ref=_ref(
+                f"biological-unit-manifest:{slug}"
+            ),
+            biological_unit_manifest_sha256=(slug[0] * 64),
+            independence_scope_ref=_ref("independence-scope:demo"),
+            independence_group_refs=[_ref(f"independence-group:{group_id}")],
+        )
+    _, shared = _build_visualization(tmp_path / "shared", shared_payloads)
+    assert {
+        item.analysis_unit_independence_binding_state
+        for item in shared.preparation_records
+    } == {"declared"}
+    assert all(
+        len(item.analysis_unit_independence_group_refs) == 1
+        for item in shared.preparation_records
+    )
+    assert all(
+        item.analysis_unit_coverage_state == "multiple_analysis_units"
+        and item.independence_state == "inconsistent"
+        and item.applicability == "partially_applicable"
+        and "independence_groups_not_one_to_one_with_analysis_units"
+        in item.reason_codes
+        for item in shared.stability_records
+    )
+
+    for key in ("bundle-baseline-1", "bundle-comparator-1"):
+        payloads[key]["product_case"]["independence_group_refs"] = [
+            _ref("independence-group:overlap")
+        ]
+    _, inconsistent = _build_visualization(tmp_path / "inconsistent", payloads)
+    assert {
+        item.analysis_unit_independence_binding_state
+        for item in inconsistent.preparation_records
+    } == {"declared"}
+    assert all(
+        item.independence_state == "inconsistent"
+        and item.declared_independence_group_count is None
+        and "independence_group_overlap_across_comparison_groups"
+        in item.reason_codes
+        for item in inconsistent.stability_records
+    )
+
+
+def test_any_baseline_comparator_confounding_blocks_all_numeric_deltas(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    _add_comparator_group(
+        payloads,
+        slug="comparator-b",
+        value=0.9,
+        protocol_ref="protocol:exclusive",
+    )
+    registry, request = _write_request(tmp_path, payloads)
+
+    run = registry.run(request)
+    profile = _load_visualization_data(run)
+
+    assert run.result["comparison_eligibility"] == "not_estimable"
+    assert all(
+        item["delta_comparator_minus_baseline"] is None
+        for item in run.result["metric_contrasts"]
+    )
+    protocol = next(
+        item for item in profile.design_records if item.dimension_id == "protocol"
+    )
+    assert protocol.design_state == "completely_confounded"
+    assert protocol.blocks_numeric_difference
+    assert all(item.raw_delta is None for item in profile.difference_records)
+
+
+def test_visualization_artifact_links_and_capacity_fallback_are_explicit(
+    tmp_path: Path,
+) -> None:
+    payloads = _payloads()
+    for index in range(2, 5):
+        _add_comparator_group(
+            payloads,
+            slug=f"comparator-{index}",
+            value=0.6 + 0.1 * index,
+        )
+    registry, request = _write_request(tmp_path, payloads)
+
+    run = registry.run(request)
+    profile = _load_visualization_data(run)
+    artifact_set = _load_visualization_artifact_set(run)
+    data_artifact = next(
+        item
+        for item in run.artifacts
+        if item.kind == "product_comparison_visualization_data"
+    )
+
+    assert artifact_set.data_profile_artifact_id == data_artifact.artifact_id
+    assert artifact_set.data_profile_sha256 == data_artifact.sha256
+    assert all(
+        item.data_binding.artifact_id == data_artifact.artifact_id
+        and item.data_binding.sha256 == data_artifact.sha256
+        for item in artifact_set.visualizations
+    )
+    metric = next(
+        item
+        for item in artifact_set.visualizations
+        if item.component_ref
+        == "bridge.product-comparison.metric-differences@0.1.0"
+    )
+    comparability = next(
+        item
+        for item in artifact_set.visualizations
+        if item.component_ref
+        == "bridge.product-comparison.comparability@0.1.0"
+    )
+    assert metric.data_binding.records_path == "difference_records"
+    assert "static_render_requires_table_fallback" in metric.missing_reason_codes
+    assert (
+        "static_render_requires_table_fallback"
+        in comparability.missing_reason_codes
+    )
+    linked_preparations = {
+        record_id
+        for difference in profile.difference_records
+        for record_id in difference.preparation_record_ids
+    }
+    assert linked_preparations == {
+        item.record_id for item in profile.preparation_records
+    }
+    table_artifact = next(
+        item
+        for item in run.artifacts
+        if item.artifact_id == metric.accessibility.table_artifact_id
+    )
+    table = table_artifact.path.read_text()
+    assert all(
+        record_type in table
+        for record_type in (
+            "preparation_metric",
+            "metric_difference",
+            "metric_stability",
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    ("attribute", "reason_code"),
+    [
+        ("build_product_comparison_visualization_data", "visualization_data_invalid"),
+        ("prepare_product_comparison_visualizations", "visualization_render_failed"),
+    ],
+)
+def test_visualization_failure_leaves_no_partial_run_bundle(
+    tmp_path: Path,
+    monkeypatch,
+    attribute: str,
+    reason_code: str,
+) -> None:
+    registry, request = _write_request(tmp_path, _payloads())
+
+    def fail(**_kwargs):
+        raise ValueError("forced visualization failure")
+
+    monkeypatch.setattr(adapter_module, attribute, fail)
+    run = registry.run(request)
+
+    assert run.execution_state.value == "failed"
+    assert reason_code in run.reason_codes
+    assert not request.output_dir.exists()
+
+
+def test_visualization_models_reject_false_delta_and_range(
+    tmp_path: Path,
+) -> None:
+    _, profile = _build_visualization(tmp_path, _payloads(replicated=True))
+    difference = profile.difference_records[0].model_dump(mode="json")
+    difference["raw_delta"] = 0.9
+    with pytest.raises(ValueError, match="raw delta"):
+        MetricDifferenceRecord.model_validate(difference)
+
+    stability = profile.stability_records[0].model_dump(mode="json")
+    stability["range_width"] = 9.0
+    with pytest.raises(ValueError, match="range width"):
+        MetricStabilityVisualizationRecord.model_validate(stability)
+
+    payload = profile.model_dump(mode="json")
+    payload["difference_records"][0]["preparation_record_ids"][-1] = (
+        "preparation.999"
+    )
+    with pytest.raises(ValueError, match="preparation links"):
+        ProductComparisonVisualizationDataV1.model_validate(payload)
 
 
 def test_direct_v1_request_is_typed_refusal(tmp_path: Path) -> None:
@@ -387,7 +916,7 @@ def test_direct_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="legacy-request",
         tool_id="P0-07",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path.resolve(),
     )
     eligibility = adapter.check_eligibility(request, spec)
