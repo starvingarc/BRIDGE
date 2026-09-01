@@ -124,6 +124,8 @@ def resolve_product_grouping(
                     start=next_group,
                 )
             }
+            if next_group - 1 + len(local_to_public) > _MAX_GROUPS:
+                return _not_generated("exploratory_grouping_too_many_groups")
             next_group += len(local_to_public)
             labels.loc[subset.obs_names] = [
                 local_to_public[str(value)] for value in selected
@@ -131,6 +133,7 @@ def resolve_product_grouping(
             records.append(
                 {
                     "preparation_id": str(preparation),
+                    "public_group_ids": list(local_to_public.values()),
                     **partition,
                 }
             )
@@ -147,6 +150,7 @@ def resolve_product_grouping(
     method = {
         "method_id": "BRIDGE-EXPLORATORY-LEIDEN",
         "method_version": "0.1.0",
+        "n_groups": int(labels.nunique()),
         "parameters": {
             "normalization_target_sum": 10_000,
             "n_highly_variable_genes": 2_000,

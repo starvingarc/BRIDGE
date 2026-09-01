@@ -294,6 +294,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         f"evidence:{run_id}:marker-program",
         f"evidence:{run_id}:source-reconciliation",
     ]
+    hierarchy_evidence_ids = [evidence_ids[0], evidence_ids[2]]
     input_view_ref = asset.asset_id
     input_view_sha256 = input_hash
     try:
@@ -308,7 +309,8 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
             observation_unit=(
                 "nuclei" if asset.assay == "snRNA-seq" else "cells"
             ),
-            evidence_ids=evidence_ids,
+            evidence_ids=hierarchy_evidence_ids,
+            source_conflict_assessed=len(primary_source_ids) >= 2,
         )
     except ValueError as exc:
         return _failed_run(
@@ -443,6 +445,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         marker,
         composition_frame,
         evidence_ids,
+        hierarchy_evidence_ids,
     )
     if profile_v3 is not None:
         profile_v3_path = run_dir / "cell_state_evidence_profile_v3.json"
@@ -730,6 +733,7 @@ def _write_outputs(
     marker: pd.DataFrame,
     composition: pd.DataFrame,
     evidence_ids: list[str],
+    hierarchy_evidence_ids: list[str],
 ) -> tuple[list[ArtifactManifest], list[VisualizationArtifact]]:
     profile_path = run_dir / "cell_state_evidence_profile.json"
     evidence_path = run_dir / "cell_state_evidence.parquet"
@@ -773,13 +777,13 @@ def _write_outputs(
             f"artifact:{run_id}:hierarchical-composition-data",
             "hierarchical_cell_state_composition",
             hierarchy_path,
-            evidence_ids,
+            hierarchy_evidence_ids,
         ),
         _artifact(
             f"artifact:{run_id}:hierarchical-composition-table",
             "hierarchical_cell_state_composition_table",
             hierarchy_table_path,
-            evidence_ids,
+            hierarchy_evidence_ids,
         ),
     ]
     hierarchy_svg, hierarchy_png, hierarchy_pdf = render_hierarchical_composition(
@@ -797,19 +801,19 @@ def _write_outputs(
                 hierarchy_render_ids[0],
                 "visualization_svg",
                 hierarchy_svg,
-                evidence_ids,
+                hierarchy_evidence_ids,
             ),
             _artifact(
                 hierarchy_render_ids[1],
                 "visualization_png",
                 hierarchy_png,
-                evidence_ids,
+                hierarchy_evidence_ids,
             ),
             _artifact(
                 hierarchy_render_ids[2],
                 "visualization_pdf",
                 hierarchy_pdf,
-                evidence_ids,
+                hierarchy_evidence_ids,
             ),
         ]
     )
@@ -818,7 +822,7 @@ def _write_outputs(
             visualization_id=f"visualization:{run_id}:hierarchical-composition",
             component_id="bridge.cell_state.hierarchical-composition.v0.1",
             data_artifact_id=f"artifact:{run_id}:hierarchical-composition-data",
-            evidence_ids=evidence_ids,
+            evidence_ids=hierarchy_evidence_ids,
             denominator="all observations in the declared post-QC input view",
             units="count and fraction",
             status="candidate",

@@ -67,6 +67,7 @@ P001_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/qc_visualization_data.schema.json"),
 )
 P002_VISUALIZATION_FILES = (
+    Path("environments/bridge-p0-core-v0.2.yml"),
     Path("src/bridge/resources/schemas/cell_state_evidence_matrix_data.schema.json"),
     Path("src/bridge/resources/schemas/hierarchical_cell_state_composition_data.schema.json"),
     Path("src/bridge/tool_packages/p0_02_cell_state/grouping.py"),

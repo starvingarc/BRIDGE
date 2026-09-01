@@ -216,6 +216,8 @@ class GroupStateCorrespondenceRecord(FrozenModel):
     group_fraction: float = Field(ge=0, le=1)
     whole_product_denominator: int = Field(gt=0)
     whole_product_fraction: float = Field(ge=0, le=1)
+    parent_denominator: int = Field(gt=0)
+    parent_fraction: float = Field(ge=0, le=1)
     evidence_state: EvidenceState
     scientific_status: Literal["candidate"] = "candidate"
     applicability: Literal["applicable"] = "applicable"
@@ -226,7 +228,11 @@ class GroupStateCorrespondenceRecord(FrozenModel):
 
     @model_validator(mode="after")
     def fractions_are_coherent(self) -> Self:
-        if self.count > min(self.group_denominator, self.whole_product_denominator):
+        if self.count > min(
+            self.group_denominator,
+            self.whole_product_denominator,
+            self.parent_denominator,
+        ):
             raise ValueError("group-state count exceeds a denominator")
         if not math.isclose(
             self.group_fraction,
@@ -240,6 +246,12 @@ class GroupStateCorrespondenceRecord(FrozenModel):
             abs_tol=1e-12,
         ):
             raise ValueError("whole-product fraction does not match its count")
+        if not math.isclose(
+            self.parent_fraction,
+            self.count / self.parent_denominator,
+            abs_tol=1e-12,
+        ):
+            raise ValueError("parent fraction does not match its count")
         if self.level == "L2" and self.parent_state_id is None:
             raise ValueError("L2 group records require a parent state")
         if self.level == "L1" and self.parent_state_id is not None:
@@ -264,6 +276,7 @@ class HierarchicalCellStateCompositionDataV1(FrozenModel):
     input_view_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     annotation_vocabulary_ref: str = Field(min_length=1)
     annotation_vocabulary_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_conflict_assessed: bool
     grouping: ProductGroupingProvenance
     groups: list[ProductGroup] = Field(default_factory=list)
     composition_records: list[HierarchicalCompositionRecord] = Field(min_length=2)
@@ -299,27 +312,105 @@ class HierarchicalCellStateCompositionDataV1(FrozenModel):
         group_ids = [group.group_id for group in self.groups]
         if len(group_ids) != len(set(group_ids)):
             raise ValueError("product group IDs must be unique")
+        group_record_ids = [record.record_id for record in self.group_records]
+        if len(group_record_ids) != len(set(group_record_ids)):
+            raise ValueError("group record IDs must be unique")
         if self.grouping.state == "not_generated":
             if self.groups or self.group_records:
                 raise ValueError("unavailable grouping cannot carry group results")
         else:
             if sum(group.count for group in self.groups) != self.whole_product_denominator:
                 raise ValueError("product groups must conserve all observations")
-            if {record.group_id for record in self.group_records} - set(group_ids):
-                raise ValueError("group records must reference declared groups")
+            if {record.group_id for record in self.group_records} != set(group_ids):
+                raise ValueError("every declared group requires group records")
             groups_by_id = {group.group_id: group for group in self.groups}
-            root_records: dict[str, list[GroupStateCorrespondenceRecord]] = {}
-            for record in self.group_records:
-                if record.level == "L1":
-                    root_records.setdefault(record.group_id, []).append(record)
-            if set(root_records) != set(group_ids):
-                raise ValueError("every product group requires an L1 partition")
-            for group_id, records in root_records.items():
+            broad_state_ids = {
+                record.state_id
+                for record in self.composition_records
+                if record.record_kind == "state" and record.level == "L1"
+            }
+            refined_by_parent: dict[str, set[str]] = {}
+            for record in self.composition_records:
+                if (
+                    record.record_kind == "state"
+                    and record.level == "L2"
+                    and record.parent_state_id is not None
+                ):
+                    refined_by_parent.setdefault(record.parent_state_id, set()).add(
+                        record.state_id
+                    )
+            records_by_group = {
+                group_id: [
+                    record
+                    for record in self.group_records
+                    if record.group_id == group_id
+                ]
+                for group_id in group_ids
+            }
+            expected_root_statuses = {"unavailable"}
+            if self.source_conflict_assessed:
+                expected_root_statuses.add("source_conflict")
+            for group_id, records in records_by_group.items():
                 group = groups_by_id[group_id]
                 if any(record.group_denominator != group.count for record in records):
                     raise ValueError("group-record denominators must match group size")
-                if sum(record.count for record in records) != group.count:
+                root = [record for record in records if record.level == "L1"]
+                root_state_ids = {
+                    record.state_id for record in root if record.state_id is not None
+                }
+                root_statuses = {
+                    record.resolution_state
+                    for record in root
+                    if record.state_id is None
+                }
+                if root_state_ids != broad_state_ids:
+                    raise ValueError("group broad-state rows are incomplete")
+                if root_statuses != expected_root_statuses:
+                    raise ValueError("group broad-state status rows are incomplete")
+                if len(root) != len(broad_state_ids) + len(expected_root_statuses):
+                    raise ValueError("group broad-state rows must be unique")
+                if sum(record.count for record in root) != group.count:
                     raise ValueError("each group L1 partition must conserve observations")
+                broad_counts = {
+                    record.state_id: record.count
+                    for record in root
+                    if record.state_id is not None
+                }
+                for parent_state_id, child_state_ids in refined_by_parent.items():
+                    parent_count = broad_counts.get(parent_state_id, 0)
+                    refined = [
+                        record
+                        for record in records
+                        if record.level == "L2"
+                        and record.parent_state_id == parent_state_id
+                    ]
+                    if parent_count == 0:
+                        if refined:
+                            raise ValueError("empty parent cannot carry refined rows")
+                        continue
+                    refined_state_ids = {
+                        record.state_id
+                        for record in refined
+                        if record.state_id is not None
+                    }
+                    refined_statuses = {
+                        record.resolution_state
+                        for record in refined
+                        if record.state_id is None
+                    }
+                    if refined_state_ids != child_state_ids:
+                        raise ValueError("group refined-state rows are incomplete")
+                    if refined_statuses != {"subtype_unresolved", "unavailable"}:
+                        raise ValueError("group refined-state status rows are incomplete")
+                    if len(refined) != len(child_state_ids) + 2:
+                        raise ValueError("group refined-state rows must be unique")
+                    if any(
+                        record.parent_denominator != parent_count
+                        for record in refined
+                    ):
+                        raise ValueError("group refined denominators must match parent")
+                    if sum(record.count for record in refined) != parent_count:
+                        raise ValueError("each group refined partition must conserve parent")
         if len(self.evidence_ids) != len(set(self.evidence_ids)):
             raise ValueError("profile evidence IDs must be unique")
         return self
@@ -336,6 +427,7 @@ def build_hierarchical_composition(
     annotation_vocabulary_sha256: str,
     observation_unit: str,
     evidence_ids: list[str],
+    source_conflict_assessed: bool,
 ) -> HierarchicalCellStateCompositionDataV1:
     denominator = len(evidence)
     labels_by_id = {label.state_id: label for label in vocabulary.labels}
@@ -394,13 +486,16 @@ def build_hierarchical_composition(
             composition.extend(child_records)
 
     conflict_count = sum(len(values) > 1 for values in l1_sets)
-    unavailable_count = sum(len(values) == 0 for values in l1_sets)
-    composition.extend(
-        [
+    unavailable_count = sum(
+        len(values) == 0 if source_conflict_assessed else len(values) != 1
+        for values in l1_sets
+    )
+    if source_conflict_assessed:
+        composition.append(
             _resolution_record(
                 record_id="resolution:l1-source-conflict",
                 partition_id="root",
-                display_name="Multiple L1 states remain possible",
+                display_name="Multiple broad states remain possible",
                 order=order,
                 resolution_state="source_conflict",
                 evidence_state=EvidenceState.ALERT,
@@ -413,7 +508,28 @@ def build_hierarchical_composition(
                 ),
                 evidence_ids=evidence_ids,
                 reason_codes=["cross_source_state_disagreement"],
-            ),
+            )
+        )
+    else:
+        composition.append(
+            HierarchicalCompositionRecord(
+                record_id="resolution:l1-source-conflict-not-assessed",
+                record_kind="resolution",
+                partition_id="nonquantitative",
+                display_name="Multiple-source agreement not assessed",
+                level="status",
+                order=order,
+                resolution_state="not_assessed",
+                evidence_state=EvidenceState.UNAVAILABLE,
+                scientific_status="candidate",
+                applicability="not_assessed",
+                missingness="unavailable",
+                evidence_ids=evidence_ids,
+                reason_codes=["source_conflict_requires_multiple_primary_sources"],
+            )
+        )
+    composition.extend(
+        [
             _resolution_record(
                 record_id="resolution:l1-unavailable",
                 partition_id="root",
@@ -450,8 +566,10 @@ def build_hierarchical_composition(
         evidence=evidence,
         grouping=grouping,
         l1_labels=l1_labels,
+        children=children,
         whole_denominator=denominator,
         evidence_ids=evidence_ids,
+        source_conflict_assessed=source_conflict_assessed,
     )
     unit = (
         "nuclei"
@@ -470,6 +588,7 @@ def build_hierarchical_composition(
         input_view_sha256=input_view_sha256,
         annotation_vocabulary_ref=vocabulary.vocabulary_id,
         annotation_vocabulary_sha256=annotation_vocabulary_sha256,
+        source_conflict_assessed=source_conflict_assessed,
         grouping=ProductGroupingProvenance(
             state=grouping.state,
             source=grouping.source,
@@ -705,8 +824,10 @@ def _group_records(
     evidence: pd.DataFrame,
     grouping: GroupingOutcome,
     l1_labels: list[Any],
+    children: dict[str, list[str]],
     whole_denominator: int,
     evidence_ids: list[str],
+    source_conflict_assessed: bool,
 ) -> tuple[list[ProductGroup], list[GroupStateCorrespondenceRecord]]:
     if grouping.labels is None:
         return [], []
@@ -733,6 +854,11 @@ def _group_records(
         subset = evidence.loc[mask]
         l1_sets = _sets(subset["prediction_set"])
         l1_assignment = [values[0] if len(values) == 1 else None for values in l1_sets]
+        l2_sets = (
+            _sets(subset["l2_prediction_set"])
+            if "l2_prediction_set" in subset
+            else [[] for _ in range(len(subset))]
+        )
         for label in l1_labels:
             state_count = sum(value == label.state_id for value in l1_assignment)
             records.append(
@@ -744,6 +870,7 @@ def _group_records(
                     resolution_state="resolved",
                     count=state_count,
                     group_denominator=count,
+                    parent_denominator=count,
                     whole_denominator=whole_denominator,
                     evidence_state=EvidenceState.INFERRED,
                     prediction_sets=_prediction_summaries(
@@ -753,8 +880,21 @@ def _group_records(
                     evidence_ids=evidence_ids,
                 )
             )
-        records.extend(
-            [
+            if state_count and label.state_id in children:
+                records.extend(
+                    _group_refined_records(
+                        group_id=group_id,
+                        group_count=count,
+                        whole_denominator=whole_denominator,
+                        parent_state_id=label.state_id,
+                        child_state_ids=children[label.state_id],
+                        l1_assignment=l1_assignment,
+                        l2_sets=l2_sets,
+                        evidence_ids=evidence_ids,
+                    )
+                )
+        if source_conflict_assessed:
+            records.append(
                 _group_record(
                     group_id=group_id,
                     state_id=None,
@@ -763,6 +903,7 @@ def _group_records(
                     resolution_state="source_conflict",
                     count=sum(len(values) > 1 for values in l1_sets),
                     group_denominator=count,
+                    parent_denominator=count,
                     whole_denominator=whole_denominator,
                     evidence_state=EvidenceState.ALERT,
                     prediction_sets=_prediction_summaries(
@@ -771,24 +912,114 @@ def _group_records(
                     ),
                     evidence_ids=evidence_ids,
                     reason_codes=["cross_source_state_disagreement"],
+                )
+            )
+        records.append(
+            _group_record(
+                group_id=group_id,
+                state_id=None,
+                level="L1",
+                parent_state_id=None,
+                resolution_state="unavailable",
+                count=sum(
+                    len(values) == 0 if source_conflict_assessed else len(values) != 1
+                    for values in l1_sets
                 ),
-                _group_record(
-                    group_id=group_id,
-                    state_id=None,
-                    level="L1",
-                    parent_state_id=None,
-                    resolution_state="unavailable",
-                    count=sum(len(values) == 0 for values in l1_sets),
-                    group_denominator=count,
-                    whole_denominator=whole_denominator,
-                    evidence_state=EvidenceState.UNAVAILABLE,
-                    prediction_sets=[],
-                    evidence_ids=evidence_ids,
-                    reason_codes=["no_applicable_reference_label"],
-                ),
-            ]
+                group_denominator=count,
+                parent_denominator=count,
+                whole_denominator=whole_denominator,
+                evidence_state=EvidenceState.UNAVAILABLE,
+                prediction_sets=[],
+                evidence_ids=evidence_ids,
+                reason_codes=["no_applicable_reference_label"],
+            )
         )
     return groups, records
+
+
+def _group_refined_records(
+    *,
+    group_id: str,
+    group_count: int,
+    whole_denominator: int,
+    parent_state_id: str,
+    child_state_ids: list[str],
+    l1_assignment: list[str | None],
+    l2_sets: list[list[str]],
+    evidence_ids: list[str],
+) -> list[GroupStateCorrespondenceRecord]:
+    parent_mask = [value == parent_state_id for value in l1_assignment]
+    parent_count = sum(parent_mask)
+    records: list[GroupStateCorrespondenceRecord] = []
+    for state_id in child_state_ids:
+        state_count = sum(
+            in_parent and len(values) == 1 and values[0] == state_id
+            for in_parent, values in zip(parent_mask, l2_sets, strict=True)
+        )
+        records.append(
+            _group_record(
+                group_id=group_id,
+                state_id=state_id,
+                level="L2",
+                parent_state_id=parent_state_id,
+                resolution_state="resolved",
+                count=state_count,
+                group_denominator=group_count,
+                parent_denominator=parent_count,
+                whole_denominator=whole_denominator,
+                evidence_state=EvidenceState.INFERRED,
+                prediction_sets=_prediction_summaries(
+                    [
+                        values
+                        for in_parent, values in zip(parent_mask, l2_sets, strict=True)
+                        if in_parent and state_id in values
+                    ],
+                    parent_count,
+                ),
+                evidence_ids=evidence_ids,
+            )
+        )
+    for resolution_state, predicate, evidence_state, reason_code in (
+        (
+            "subtype_unresolved",
+            lambda values: len(values) > 1,
+            EvidenceState.ALERT,
+            "multiple_l2_states_remain_possible",
+        ),
+        (
+            "unavailable",
+            lambda values: len(values) == 0,
+            EvidenceState.UNAVAILABLE,
+            "l2_reference_correspondence_unavailable",
+        ),
+    ):
+        selected = [
+            values
+            for in_parent, values in zip(parent_mask, l2_sets, strict=True)
+            if in_parent and predicate(values)
+        ]
+        records.append(
+            _group_record(
+                group_id=group_id,
+                state_id=None,
+                level="L2",
+                parent_state_id=parent_state_id,
+                resolution_state=resolution_state,
+                count=len(selected),
+                group_denominator=group_count,
+                parent_denominator=parent_count,
+                whole_denominator=whole_denominator,
+                evidence_state=evidence_state,
+                prediction_sets=(
+                    _prediction_summaries(selected, parent_count)
+                    if resolution_state == "subtype_unresolved"
+                    else []
+                ),
+                evidence_ids=evidence_ids,
+                reason_codes=[reason_code],
+            )
+        )
+    return records
 
 
 def _group_record(
@@ -805,6 +1036,7 @@ def _group_record(
     ],
     count: int,
     group_denominator: int,
+    parent_denominator: int,
     whole_denominator: int,
     evidence_state: EvidenceState,
     prediction_sets: list[PredictionSetSummary],
@@ -813,7 +1045,7 @@ def _group_record(
 ) -> GroupStateCorrespondenceRecord:
     identity = state_id or resolution_state
     return GroupStateCorrespondenceRecord(
-        record_id=f"{group_id}:{level}:{identity}",
+        record_id=f"{group_id}:{parent_state_id or 'root'}:{level}:{identity}",
         group_id=group_id,
         state_id=state_id,
         level=level,
@@ -824,6 +1056,8 @@ def _group_record(
         group_fraction=count / group_denominator,
         whole_product_denominator=whole_denominator,
         whole_product_fraction=count / whole_denominator,
+        parent_denominator=parent_denominator,
+        parent_fraction=count / parent_denominator,
         evidence_state=evidence_state,
         prediction_sets=prediction_sets,
         evidence_ids=evidence_ids,

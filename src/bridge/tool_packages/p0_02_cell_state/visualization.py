@@ -750,7 +750,9 @@ def render_hierarchical_composition(
 ) -> tuple[Path, Path, Path]:
     """Render a fixed-order group-by-reference evidence matrix."""
 
-    rows, states, matrix, conflict, unavailable = _reference_matrix(profile)
+    rows, states, broad_count, matrix, conflict, unavailable = _reference_matrix(
+        profile
+    )
     n_rows, n_states = matrix.shape
     width = max(12.8, 7.6 + 0.47 * n_states)
     height = max(6.3, 3.5 + 0.56 * n_rows)
@@ -808,11 +810,14 @@ def render_hierarchical_composition(
 
         _draw_group_labels(label_axis, rows, y)
         _draw_group_shares(share_axis, rows, y)
-        image = _draw_reference_cells(matrix_axis, matrix, states, y)
+        image = _draw_reference_cells(
+            matrix_axis, matrix, states, broad_count, y
+        )
         _draw_reference_summary(
             summary_axis,
             rows,
             states,
+            broad_count,
             matrix,
             conflict,
             unavailable,
@@ -874,7 +879,8 @@ def write_hierarchical_composition_table(
         "scientific_status": profile.scientific_status,
         "observation_unit": profile.observation_unit,
         "whole_product_denominator": profile.whole_product_denominator,
-        "denominator_scope": profile.denominator_scope,
+        "profile_denominator_scope": profile.denominator_scope,
+        "source_conflict_assessed": profile.source_conflict_assessed,
         "input_view_ref": profile.input_view_ref,
         "input_view_sha256": profile.input_view_sha256,
         "annotation_vocabulary_ref": profile.annotation_vocabulary_ref,
@@ -908,6 +914,7 @@ def write_hierarchical_composition_table(
                 "evidence_state": record.evidence_state.value,
                 "applicability": record.applicability,
                 "missingness": record.missingness,
+                "denominator_scope": record.denominator_scope,
                 "count": record.count,
                 "group_denominator": None,
                 "group_fraction": None,
@@ -948,13 +955,18 @@ def write_hierarchical_composition_table(
                 "evidence_state": record.evidence_state.value,
                 "applicability": record.applicability,
                 "missingness": record.missingness,
+                "denominator_scope": (
+                    "resolved broad-state observations within product group"
+                    if record.level == "L2"
+                    else "product group observations"
+                ),
                 "count": record.count,
                 "group_denominator": record.group_denominator,
                 "group_fraction": record.group_fraction,
                 "record_whole_product_denominator": record.whole_product_denominator,
                 "whole_product_fraction": record.whole_product_fraction,
-                "parent_denominator": None,
-                "parent_fraction": None,
+                "parent_denominator": record.parent_denominator,
+                "parent_fraction": record.parent_fraction,
                 "supporting_source_ids_json": "[]",
                 "prediction_sets_json": _json_cell(
                     [item.model_dump(mode="json") for item in record.prediction_sets]
@@ -971,13 +983,14 @@ def _reference_matrix(profile: HierarchicalCellStateCompositionDataV1):
     states = [
         record
         for record in sorted(profile.composition_records, key=lambda item: item.order)
-        if record.record_kind == "state" and record.level == "L1"
+        if record.record_kind == "state"
     ]
+    broad_count = sum(record.level == "L1" for record in states)
     if profile.groups:
         records = {
             (record.group_id, record.state_id): record
             for record in profile.group_records
-            if record.level == "L1" and record.state_id is not None
+            if record.state_id is not None
         }
         statuses = {
             (record.group_id, record.resolution_state): record
@@ -987,7 +1000,11 @@ def _reference_matrix(profile: HierarchicalCellStateCompositionDataV1):
         matrix = np.asarray(
             [
                 [
-                    records[(group.group_id, state.state_id)].group_fraction
+                    (
+                        records[(group.group_id, state.state_id)].group_fraction
+                        if (group.group_id, state.state_id) in records
+                        else 0.0
+                    )
                     for state in states
                 ]
                 for group in profile.groups
@@ -996,7 +1013,11 @@ def _reference_matrix(profile: HierarchicalCellStateCompositionDataV1):
         )
         conflict = np.asarray(
             [
-                statuses[(group.group_id, "source_conflict")].group_fraction
+                (
+                    statuses[(group.group_id, "source_conflict")].group_fraction
+                    if profile.source_conflict_assessed
+                    else np.nan
+                )
                 for group in profile.groups
             ],
             dtype=float,
@@ -1008,7 +1029,14 @@ def _reference_matrix(profile: HierarchicalCellStateCompositionDataV1):
             ],
             dtype=float,
         )
-        return list(profile.groups), states, matrix, conflict, unavailable
+        return (
+            list(profile.groups),
+            states,
+            broad_count,
+            matrix,
+            conflict,
+            unavailable,
+        )
 
     whole = {
         "display_name": "Whole product",
@@ -1027,8 +1055,15 @@ def _reference_matrix(profile: HierarchicalCellStateCompositionDataV1):
     return (
         [whole],
         states,
+        broad_count,
         matrix,
-        np.asarray([status.get("source_conflict", 0.0)]),
+        np.asarray(
+            [
+                status.get("source_conflict", 0.0)
+                if profile.source_conflict_assessed
+                else np.nan
+            ]
+        ),
         np.asarray([status.get("unavailable", 0.0)]),
     )
 
@@ -1122,7 +1157,7 @@ def _draw_group_shares(axis, rows, y: np.ndarray) -> None:
         )
 
 
-def _draw_reference_cells(axis, matrix, states, y):
+def _draw_reference_cells(axis, matrix, states, broad_count, y):
     image = axis.imshow(
         matrix,
         aspect="auto",
@@ -1143,8 +1178,10 @@ def _draw_reference_cells(axis, matrix, states, y):
     )
     axis.xaxis.tick_top()
     axis.tick_params(axis="x", pad=5, length=0)
+    for label in axis.get_xticklabels()[:broad_count]:
+        label.set_weight("bold")
     axis.set_title(
-        "Broad reference states",
+        "Broad and eligible refined reference states",
         pad=12,
         fontsize=8,
         weight="bold",
@@ -1153,9 +1190,11 @@ def _draw_reference_cells(axis, matrix, states, y):
     axis.set_xticks(np.arange(-0.5, len(states), 1), minor=True)
     axis.set_yticks(np.arange(-0.5, len(y), 1), minor=True)
     axis.grid(which="minor", color=_REFERENCE_BACKGROUND, linewidth=1.0)
+    if 0 < broad_count < len(states):
+        axis.axvline(broad_count - 0.5, color="#566B75", lw=1.2)
     axis.tick_params(which="minor", bottom=False, left=False)
     for row_index, values in enumerate(matrix):
-        top = _top_indices(values)
+        top = _top_indices(values[:broad_count])
         for rank, column_index in enumerate(top, start=1):
             axis.add_patch(
                 Rectangle(
@@ -1186,6 +1225,7 @@ def _draw_reference_summary(
     axis,
     rows,
     states,
+    broad_count,
     matrix,
     conflict,
     unavailable,
@@ -1203,7 +1243,8 @@ def _draw_reference_summary(
         color=_REFERENCE_MUTED,
     )
     for row_index, (position, values) in enumerate(zip(y, matrix, strict=True)):
-        top = _top_indices(values)
+        broad_values = values[:broad_count]
+        top = _top_indices(broad_values)
         if top:
             first = top[0]
             first_text = (
@@ -1222,7 +1263,12 @@ def _draw_reference_summary(
         else:
             first_text = "No single broad state resolved"
             second_text = ""
-        resolved = float(values.sum())
+        resolved = float(broad_values.sum())
+        conflict_text = (
+            "not assessed"
+            if np.isnan(conflict[row_index])
+            else f"{100 * conflict[row_index]:.1f}%"
+        )
         axis.text(
             0,
             position - 0.18,
@@ -1246,9 +1292,8 @@ def _draw_reference_summary(
             0,
             position + 0.27,
             (
-                f"resolved {100 * resolved:.1f}% · multiple "
-                f"{100 * conflict[row_index]:.1f}% · unavailable "
-                f"{100 * unavailable[row_index]:.1f}%"
+                f"resolved {100 * resolved:.1f}% · multiple {conflict_text} · "
+                f"unavailable {100 * unavailable[row_index]:.1f}%"
             ),
             ha="left",
             va="center",
