@@ -9,6 +9,10 @@ from typing import Callable
 import pytest
 
 from bridge.tool_packages.p0_05_off_target_control.adapter import adapter
+from bridge.tool_packages.p0_05_off_target_control.visualization_data import (
+    OffTargetControlVisualizationDataV1,
+    P005VisualizationArtifactSet,
+)
 from bridge.toolkit.contracts import (
     ExecutionState,
     ImplementationState,
@@ -17,6 +21,8 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
 )
 from bridge.toolkit.registry import ToolRegistry
+from bridge.toolkit.schemas import load_schema
+from bridge.toolkit.visualization import FigureRegistry
 
 
 ROLE_SCHEMAS = {
@@ -243,7 +249,7 @@ def _request(tmp_path: Path) -> ToolRequestV2:
     return ToolRequestV2(
         request_id="request-p0-05",
         tool_id="P0-05",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path / "output",
         object_inputs=refs,
     )
@@ -275,7 +281,7 @@ def test_registry_exposes_executable_p0_05() -> None:
     spec = ToolRegistry.load_default().describe("P0-05")
 
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
-    assert spec.version == "0.3.0"
+    assert spec.version == "0.4.0"
     assert spec.result_schema_ref == (
         "bridge://schemas/off-target-control-profile/v0.1"
     )
@@ -302,7 +308,7 @@ def test_happy_run_aggregates_external_roles_and_publishes_checksum(
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.measurements == []
-    assert len(run.artifacts) == 1
+    assert len(run.artifacts) == 15
     assert _role(run.result, "target")["fraction"] == pytest.approx(0.7)
     assert _role(run.result, "known_off_target")["fraction"] == pytest.approx(0.2)
     assert run.result["unknown_profile"]["fraction"] == pytest.approx(0.1)
@@ -313,6 +319,89 @@ def test_happy_run_aggregates_external_roles_and_publishes_checksum(
     assert hashlib.sha256(run.artifacts[0].path.read_bytes()).hexdigest() == (
         run.artifacts[0].sha256
     )
+    visualization_data = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visualization_data.path.read_text(encoding="utf-8"))
+    assert {
+        item["category"] for item in payload["product_records"]
+    } == {
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved",
+        "identity_unknown",
+    }
+    assert sum(
+        item["observed_count"] for item in payload["product_records"]
+    ) == payload["denominator_count"]
+    assert payload["ood_component_applicability"] == "not_assessed"
+    assert payload["ood_channel_records"] == []
+    artifact_set = next(
+        item
+        for item in run.artifacts
+        if item.kind == "visualization_artifact_set"
+    )
+    typed_set = P005VisualizationArtifactSet.model_validate_json(
+        artifact_set.path.read_text(encoding="utf-8")
+    )
+    figure_registry = FigureRegistry.load_default()
+    for artifact in typed_set.visualizations:
+        figure_registry.validate_artifact(artifact)
+    assert load_schema(
+        "bridge://schemas/off-target-control-visualization-data/v0.1"
+    )
+    assert load_schema(
+        "bridge://schemas/p0-05-visualization-artifact-set/v0.1"
+    )
+
+
+def test_product_figure_discloses_soft_mass_denominator(
+    tmp_path: Path,
+) -> None:
+    def unequal_soft_mass(payload: dict) -> None:
+        payload["denominator"]["total_soft_mass"] = 8.0
+        payload["state_observations"][0]["soft_mass"] = 5.0
+
+    request = _rewrite(
+        _request(tmp_path), "off_target_evidence_bundle", unequal_soft_mass
+    )
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    target = next(
+        item for item in payload["product_records"] if item["category"] == "target"
+    )
+    assert target["fraction"] == pytest.approx(5.0 / 8.0)
+    svg = next(
+        item
+        for item in run.artifacts
+        if item.path.name == "off_target_control_product-accounting.svg"
+    ).path.read_text(encoding="utf-8")
+    assert "Cell count n=10" in svg
+    assert "total soft-assignment mass=8.00 (percentage denominator)" in svg
+    artifact_set = next(
+        item
+        for item in run.artifacts
+        if item.kind == "visualization_artifact_set"
+    )
+    typed_set = P005VisualizationArtifactSet.model_validate_json(
+        artifact_set.path.read_text(encoding="utf-8")
+    )
+    product_figure = next(
+        item
+        for item in typed_set.visualizations
+        if item.component_id == "bridge.off-target-control.product-accounting"
+    )
+    assert "total soft-assignment mass=8" in product_figure.denominator_label
 
 
 def test_role_mapping_is_external_not_inferred_from_state_name(
@@ -374,6 +463,146 @@ def test_partial_coverage_withholds_fractions(tmp_path: Path) -> None:
     assert run.result["rare_state_profile"][0]["detection_state"] == (
         "cannot_exclude"
     )
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    assert {
+        reason
+        for item in payload["unknown_reason_records"]
+        for reason in item["reason_codes"]
+    } == {"identity_unknown_coverage_not_complete"}
+
+
+def test_not_assessed_coverage_is_preserved_in_visualization(
+    tmp_path: Path,
+) -> None:
+    request = _rewrite(
+        _request(tmp_path),
+        "off_target_evidence_bundle",
+        lambda payload: payload.update(
+            {
+                "composition_coverage_state": "not_assessed",
+                "unknown_coverage_state": "not_assessed",
+            }
+        ),
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    assert payload["composition_coverage_state"] == "not_assessed"
+    assert payload["unknown_coverage_state"] == "not_assessed"
+    assert payload["product_component_applicability"] == "not_assessed"
+    assert payload["product_component_state"] == "unavailable"
+    assert all(item["fraction"] is None for item in payload["product_records"])
+
+
+def test_empty_upstream_evidence_ids_fail_before_visualization(
+    tmp_path: Path,
+) -> None:
+    request = _rewrite(
+        _request(tmp_path),
+        "cell_state_evidence_profile",
+        lambda payload: payload.update({"evidence_ids": []}),
+    )
+    profile_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "cell_state_evidence_profile"
+    )
+    request = _rewrite(
+        request,
+        "off_target_evidence_bundle",
+        lambda payload: payload.update({"cell_state_profile_sha256": profile_sha}),
+    )
+
+    registry = ToolRegistry.load_default()
+    eligibility = registry.check_eligibility(request)
+    run = registry.run(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == [
+        "cell_state_evidence_ids_required_for_visualization"
+    ]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == eligibility.reason_codes
+
+
+def test_invalid_upstream_evidence_id_fails_before_visualization(
+    tmp_path: Path,
+) -> None:
+    request = _rewrite(
+        _request(tmp_path),
+        "cell_state_evidence_profile",
+        lambda payload: payload.update({"evidence_ids": ["evidence/one"]}),
+    )
+    profile_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "cell_state_evidence_profile"
+    )
+    request = _rewrite(
+        request,
+        "off_target_evidence_bundle",
+        lambda payload: payload.update({"cell_state_profile_sha256": profile_sha}),
+    )
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == [
+        "cell_state_evidence_ids_invalid_for_visualization"
+    ]
+
+
+def test_rare_state_reason_does_not_pollute_product_component(
+    tmp_path: Path,
+) -> None:
+    request = _rewrite(
+        _request(tmp_path),
+        "off_target_evidence_bundle",
+        lambda payload: payload.update({"rare_state_calibrations": []}),
+    )
+    run = ToolRegistry.load_default().run(request)
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+
+    assert "rare_state_calibration_missing" in payload["rare_component_reason_codes"]
+    assert "rare_state_calibration_missing" not in payload["product_component_reason_codes"]
+
+
+def test_complete_product_coverage_cannot_hide_fraction(
+    tmp_path: Path,
+) -> None:
+    run = ToolRegistry.load_default().run(_request(tmp_path))
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    payload["product_records"][0].update(
+        {"assessment_state": "not_assessed", "fraction": None}
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="product assessment state must match coverage state",
+    ):
+        OffTargetControlVisualizationDataV1.model_validate(payload)
 
 
 def test_zero_observation_is_cannot_exclude_not_absent(
@@ -480,6 +709,23 @@ def test_missing_rare_observation_is_not_assessed(tmp_path: Path) -> None:
     assert record["detection_state"] == "not_assessed"
     assert record["observed_count"] is None
     assert record["reason_codes"] == ["rare_state_observation_missing"]
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    visual_record = payload["rare_state_records"][0]
+    assert visual_record["observed_count"] is None
+    assert visual_record["count_fraction"] is None
+    svg = next(
+        item
+        for item in run.artifacts
+        if item.path.name == "off_target_control_rare-state-detectability.svg"
+    )
+    svg_text = svg.path.read_text(encoding="utf-8")
+    assert "not assessed" in svg_text
+    assert "0/10" not in svg_text
 
 
 @pytest.mark.parametrize(

@@ -5,6 +5,17 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
+import pytest
+
+from bridge.tool_packages.p0_05_off_target_control.visualization import (
+    prepare_off_target_control_visualizations,
+)
+from bridge.tool_packages.p0_05_off_target_control.visualization_data import (
+    OffTargetControlVisualizationDataV1,
+    PRODUCT_COMPONENT_REF,
+    RARE_COMPONENT_REF,
+    P005VisualizationArtifactSet,
+)
 from bridge.toolkit.contracts import ExecutionState, StructuredInputRef, ToolRequestV2
 from bridge.toolkit.registry import ToolRegistry
 from p0_biological_units import bind_reviewed_biological_units
@@ -375,7 +386,7 @@ def test_method_mode_executes_eight_transparent_methods(tmp_path: Path) -> None:
     )
 
     assert first.execution_state is ExecutionState.SUCCEEDED
-    assert len(first.artifacts) == 2
+    assert len(first.artifacts) == 16
     method_artifact = next(
         item for item in first.artifacts if item.kind == "off_target_method_bundle"
     )
@@ -403,8 +414,113 @@ def test_method_mode_executes_eight_transparent_methods(tmp_path: Path) -> None:
     assert bundle["evidence_state"] == "shadow"
     assert bundle["score_state"] == "unavailable"
     assert bundle["domain_score"] is None
-    assert first.artifacts[1].sha256 == second.artifacts[1].sha256
+    assert {
+        item.path.name: item.sha256 for item in first.artifacts
+    } == {
+        item.path.name: item.sha256 for item in second.artifacts
+    }
+    visualization = next(
+        item
+        for item in first.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    figure_data = json.loads(visualization.path.read_text(encoding="utf-8"))
+    rare = figure_data["rare_state_records"][0]
+    assert "supplied_validated_detection_limit_fraction" in rare
+    assert "supplied_zero_observation_upper_bound_fraction" in rare
+    assert "spike_in_candidate_detection_limit_fraction" in rare
+    assert "detection_hit_rate" in figure_data["spike_in_detection_records"][0]
+    assert {
+        item["upstream_result_sha256"]
+        for item in figure_data["ood_channel_records"]
+    } == {"5" * 64, "6" * 64}
+    artifact_set = next(
+        item
+        for item in first.artifacts
+        if item.kind == "visualization_artifact_set"
+    )
+    typed_set = P005VisualizationArtifactSet.model_validate_json(
+        artifact_set.path.read_text(encoding="utf-8")
+    )
+    product_figure = next(
+        item
+        for item in typed_set.visualizations
+        if item.component_ref == PRODUCT_COMPONENT_REF
+    )
+    rare_figure = next(
+        item
+        for item in typed_set.visualizations
+        if item.component_ref == RARE_COMPONENT_REF
+    )
+    assert rare_figure.data_binding.unit_field == "unit"
+    assert {item["unit"] for item in figure_data["rare_state_records"]} == {"cells"}
+    assert product_figure.data_binding.numerator_field == "soft_mass"
+    assert product_figure.data_binding.denominator_field == "denominator_soft_mass"
+    assert product_figure.data_binding.interval_lower_field == "soft_interval_lower"
+    assert product_figure.data_binding.interval_upper_field == "soft_interval_upper"
     assert first.run_id != different_seed.run_id
+
+
+def test_method_mode_partial_coverage_withholds_intervals(tmp_path: Path) -> None:
+    request = _rewrite_method(
+        _method_request(tmp_path),
+        "off_target_evidence_bundle",
+        lambda payload: payload.update(
+            {
+                "composition_coverage_state": "partial",
+                "unknown_coverage_state": "partial",
+            }
+        ),
+    )
+    evidence_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "off_target_evidence_bundle"
+    )
+    request = _rewrite_method(
+        request,
+        "off_target_method_input",
+        lambda payload: payload.update({"evidence_bundle_sha256": evidence_sha}),
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    method_artifact = next(
+        item for item in run.artifacts if item.kind == "off_target_method_bundle"
+    )
+    bundle = json.loads(method_artifact.path.read_text(encoding="utf-8"))
+    execution = {
+        item["method_id"]: item for item in bundle["executions"]
+    }
+    for method_id in ("COMP-EXACT", "COMP-HARD-SENS", "COMP-HBOOT", "RARE-EXACT"):
+        assert execution[method_id]["execution_state"] == "not_assessed"
+        assert execution[method_id]["reason_codes"] == [
+            "composition_coverage_not_complete"
+        ]
+    assert bundle["hard_soft_sensitivity"] == []
+    assert all(
+        item["assessment_state"] == "not_assessed"
+        and item["estimate"] is None
+        and item["lower"] is None
+        and item["upper"] is None
+        for item in [
+            *bundle["composition_intervals"],
+            *bundle["rare_intervals"],
+        ]
+    )
+    visualization = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    figure_data = json.loads(visualization.path.read_text(encoding="utf-8"))
+    assert all(item["fraction"] is None for item in figure_data["product_records"])
+    assert all(
+        item["count_interval_state"] == "not_assessed"
+        for item in figure_data["rare_state_records"]
+    )
+
 
 
 def test_method_mode_requires_all_three_additional_objects(tmp_path: Path) -> None:
@@ -497,3 +613,223 @@ def test_method_mode_rejects_one_upstream_result_as_two_ood_families(
         "ood_upstream_result_reused_across_source_families"
         in eligibility.reason_codes
     )
+
+
+def test_method_mode_requires_reviewed_biological_unit_lineage(
+    tmp_path: Path,
+) -> None:
+    request = _method_request(tmp_path)
+    request = _rewrite_method(
+        request,
+        "biological_unit_manifest",
+        lambda payload: payload.update(
+            {
+                "generator_tool_id": "P0-01",
+                "lineage_state": "declared",
+                "review_gate_ref": None,
+                "review_gate_sha256": None,
+            }
+        ),
+    )
+    manifest_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "biological_unit_manifest"
+    )
+    request = _rewrite_method(
+        request,
+        "product_case",
+        lambda payload: payload.update(
+            {"biological_unit_manifest_sha256": manifest_sha}
+        ),
+    )
+    product_case_sha = next(
+        item.sha256 for item in request.object_inputs if item.role == "product_case"
+    )
+    request = _rewrite_method(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload["input_data_view"].update(
+            {"biological_unit_manifest_sha256": manifest_sha}
+        ),
+    )
+    profile_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "cell_state_evidence_profile"
+    )
+    request = _rewrite_method(
+        request,
+        "off_target_evidence_bundle",
+        lambda payload: payload.update(
+            {
+                "product_case_sha256": product_case_sha,
+                "cell_state_profile_sha256": profile_sha,
+            }
+        ),
+    )
+    evidence_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "off_target_evidence_bundle"
+    )
+    request = _rewrite_method(
+        request,
+        "off_target_method_input",
+        lambda payload: payload.update(
+            {
+                "product_case_sha256": product_case_sha,
+                "cell_state_profile_sha256": profile_sha,
+                "evidence_bundle_sha256": evidence_sha,
+                "biological_unit_manifest_sha256": manifest_sha,
+            }
+        ),
+    )
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert "biological_unit_lineage_not_reviewed" in eligibility.reason_codes
+
+
+def test_mixed_channel_availability_marks_family_partially_applicable(
+    tmp_path: Path,
+) -> None:
+    request = _rewrite_method(
+        _method_request(tmp_path),
+        "off_target_method_spec",
+        lambda payload: payload["ood_channel_bindings"][1].update(
+            {"source_family_id": "ood-family:reference"}
+        ),
+    )
+    request = _rewrite_method(
+        request,
+        "off_target_method_input",
+        lambda payload: payload["ood_channels"][1].update(
+            {"state": "unavailable", "reason_id": None}
+        ),
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    assert len(payload["ood_family_records"]) == 1
+    family = payload["ood_family_records"][0]
+    assert family["channel_count"] == 2
+    assert family["assessed_channel_count"] == 1
+    assert family["family_state"] == "ood"
+    assert family["applicability"] == "partially_applicable"
+    assert family["reason_codes"] == ["ood_source_family_partially_assessed"]
+
+
+def test_renderer_retains_more_than_five_spike_in_states(
+    tmp_path: Path,
+) -> None:
+    run = ToolRegistry.load_default().run(_method_request(tmp_path))
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    base = payload["spike_in_detection_records"][0]
+    base_rare = payload["rare_state_records"][0]
+    payload["rare_state_records"] = [
+        {
+            **base_rare,
+            "record_id": f"rare.extra-{index:02d}",
+            "state_id": f"state:curve-{index:02d}",
+            "display_name": f"Curve state {index:02d}",
+        }
+        for index in range(1, 7)
+    ]
+    payload["spike_in_detection_records"] = [
+        {
+            **base,
+            "record_id": f"spike.extra-{index:02d}",
+            "state_id": f"state:curve-{index:02d}",
+        }
+        for index in range(1, 7)
+    ]
+    profile = OffTargetControlVisualizationDataV1.model_validate(payload)
+
+    rendered = prepare_off_target_control_visualizations(
+        profile=profile,
+        output_dir=tmp_path / "rerender",
+        run_id=run.run_id,
+        tool_version="0.4.0",
+    )
+    svg = rendered.payloads[
+        "off_target_control_rare-state-detectability.svg"
+    ].decode()
+
+    for index in range(1, 7):
+        assert f"state:curve-{index:02d}" in svg
+
+
+def test_visualization_schema_rejects_partial_rare_fraction(
+    tmp_path: Path,
+) -> None:
+    request = _rewrite_method(
+        _method_request(tmp_path),
+        "off_target_evidence_bundle",
+        lambda payload: payload.update(
+            {
+                "composition_coverage_state": "partial",
+                "unknown_coverage_state": "partial",
+            }
+        ),
+    )
+    evidence_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "off_target_evidence_bundle"
+    )
+    request = _rewrite_method(
+        request,
+        "off_target_method_input",
+        lambda payload: payload.update({"evidence_bundle_sha256": evidence_sha}),
+    )
+    run = ToolRegistry.load_default().run(request)
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    rare = payload["rare_state_records"][0]
+    rare["count_fraction"] = rare["observed_count"] / rare["denominator_count"]
+
+    with pytest.raises(
+        ValueError,
+        match="incomplete composition coverage cannot expose rare-state fractions",
+    ):
+        OffTargetControlVisualizationDataV1.model_validate(payload)
+
+
+def test_visualization_schema_rejects_ood_summary_drift(
+    tmp_path: Path,
+) -> None:
+    run = ToolRegistry.load_default().run(_method_request(tmp_path))
+    visual = next(
+        item
+        for item in run.artifacts
+        if item.kind == "off_target_control_visualization_data"
+    )
+    payload = json.loads(visual.path.read_text(encoding="utf-8"))
+    payload["ood_disagreement"]["family_states"] = {
+        family_id: "supported"
+        for family_id in payload["ood_disagreement"]["family_states"]
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="OOD disagreement family states do not match rows",
+    ):
+        OffTargetControlVisualizationDataV1.model_validate(payload)

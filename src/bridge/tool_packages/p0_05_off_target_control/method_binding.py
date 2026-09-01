@@ -42,6 +42,8 @@ def method_binding_reasons(
 
     if not method_spec.active:
         reasons.append("off_target_method_spec_inactive")
+    if not biological_units.review_claim_is_present:
+        reasons.append("biological_unit_lineage_not_reviewed")
     if (
         product_case.biological_unit_manifest_ref is None
         or product_case.biological_unit_manifest_ref.ref != manifest_ref

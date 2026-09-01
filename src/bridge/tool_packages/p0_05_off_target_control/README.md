@@ -1,6 +1,6 @@
 # P0-05 Off-target Control
 
-This directory contains whole-product role accounting and transparent
+This directory contains declared-denominator product-role accounting and transparent
 off-target method execution.
 
 ## Interface at a glance
@@ -9,7 +9,9 @@ off-target method execution.
   method execution with P0-02 V3 and reviewed biological-unit lineage.
 - **Output:** `OffTargetControlProfile`; method mode adds an
   `OffTargetMethodBundle` with intervals, sensitivity, spike-in/design and OOD
-  coordination records.
+  coordination records. Both modes add typed visualization data, exact tables
+  and static vector/raster figures for product-role accounting, rare-state
+  detectability and supplied OOD channel states.
 - **Boundary:** “control” means composition accounting. It is not physical
   removal, a safety conclusion, a release decision or a domain score.
 

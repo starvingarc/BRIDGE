@@ -26,6 +26,7 @@ from bridge.tool_packages.p0_05_off_target_control.method_models import (
     SpikeInCurvePoint,
 )
 from bridge.tool_packages.p0_05_off_target_control.models import (
+    CoverageState,
     OffTargetAssessmentSpec,
     OffTargetEvidenceBundle,
     StateRoleMap,
@@ -50,7 +51,7 @@ METHOD_REFS = {
     ),
     OffTargetMethodId.RARE_SPIKE_IN: (
         "METHOD-BRIDGE-SAMPLE-PRESERVING-SPIKE-IN",
-        "BRIDGE empirical spike-in recovery curve",
+        "BRIDGE empirical spike-in detection hit-rate curve",
     ),
     OffTargetMethodId.RARE_BINOMIAL_PLANNER: (
         "METHOD-SINGLE-STATE-AT-LEAST-ONE-BINOMIAL-PLANNER",
@@ -139,6 +140,35 @@ def _unit_role_soft_mass(
             if item.state_id in role_states
         )
     )
+
+
+def _not_assessed_composition_intervals(
+    method_id: OffTargetMethodId,
+    evidence: OffTargetEvidenceBundle,
+    confidence_level: float,
+    n_groups: int,
+) -> list[ProportionInterval]:
+    numerator_kind = (
+        "hard_count"
+        if method_id is OffTargetMethodId.COMPOSITION_EXACT
+        else "soft_mass"
+    )
+    return [
+        ProportionInterval(
+            scope_id=f"product-role:{role.value}",
+            method_id=method_id,
+            numerator_kind=numerator_kind,
+            estimate=None,
+            lower=None,
+            upper=None,
+            confidence_level=confidence_level,
+            n_observations=evidence.denominator.n_observations,
+            n_independence_groups=n_groups,
+            assessment_state="not_assessed",
+            reason_codes=["composition_coverage_not_complete"],
+        )
+        for role in ProductRole
+    ]
 
 
 def _exact_composition_intervals(
@@ -377,7 +407,8 @@ def _spike_in_calibrations(
         eligible_points = [
             point
             for point in curve
-            if point.detection_lower
+            if point.independence_group_count >= 2
+            and point.detection_lower
             >= method_spec.minimum_spike_in_detection_probability
             and point.spike_fraction <= rule.max_validated_detection_limit_fraction
             and false_positive_fraction is not None
@@ -403,6 +434,8 @@ def _spike_in_calibrations(
                 reasons.append("spike_in_trials_missing")
             if trials and false_positive_fraction is None:
                 reasons.append("spike_in_background_missing")
+            if curve and max(item.independence_group_count for item in curve) < 2:
+                reasons.append("at_least_two_independence_groups_required")
             if curve and not reasons:
                 reasons.append("spike_in_acceptance_rule_not_met")
             records.append(
@@ -556,9 +589,48 @@ def execute_methods(
     ensemble: OODEnsembleRecord | None = None
     execution_reasons: dict[OffTargetMethodId, list[str]] = {}
 
+    composition_methods = {
+        OffTargetMethodId.COMPOSITION_EXACT,
+        OffTargetMethodId.HARD_LABEL_SENSITIVITY,
+        OffTargetMethodId.HIERARCHICAL_BOOTSTRAP,
+    }
+    complete_composition = (
+        evidence.composition_coverage_state is CoverageState.COMPLETE
+    )
     for method_id in method_spec.selected_method_ids:
         reasons: list[str] = []
-        if method_id is OffTargetMethodId.COMPOSITION_EXACT:
+        if (
+            method_id in composition_methods
+            or method_id is OffTargetMethodId.RARE_EXACT
+        ) and not complete_composition:
+            reasons = ["composition_coverage_not_complete"]
+            if method_id in {
+                OffTargetMethodId.COMPOSITION_EXACT,
+                OffTargetMethodId.HIERARCHICAL_BOOTSTRAP,
+            }:
+                composition_intervals.extend(
+                    _not_assessed_composition_intervals(
+                        method_id, evidence, method_spec.confidence_level, n_groups
+                    )
+                )
+            elif method_id is OffTargetMethodId.RARE_EXACT:
+                rare_intervals.extend(
+                    ProportionInterval(
+                        scope_id=rule.state_id,
+                        method_id=method_id,
+                        numerator_kind="hard_count",
+                        estimate=None,
+                        lower=None,
+                        upper=None,
+                        confidence_level=method_spec.confidence_level,
+                        n_observations=evidence.denominator.n_observations,
+                        n_independence_groups=n_groups,
+                        assessment_state="not_assessed",
+                        reason_codes=["composition_coverage_not_complete"],
+                    )
+                    for rule in assessment_spec.rare_state_rules
+                )
+        elif method_id is OffTargetMethodId.COMPOSITION_EXACT:
             composition_intervals.extend(
                 _exact_composition_intervals(
                     role_map,

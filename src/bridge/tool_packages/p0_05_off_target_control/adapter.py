@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import re
 from dataclasses import dataclass
 
 from bridge.tool_packages._configurable_contracts import (
@@ -45,6 +46,12 @@ from bridge.tool_packages.p0_05_off_target_control.models import (
     StateRoleMap,
     UnknownProfile,
     UnknownReasonRecord,
+)
+from bridge.tool_packages.p0_05_off_target_control.visualization import (
+    prepare_off_target_control_visualizations,
+)
+from bridge.tool_packages.p0_05_off_target_control.visualization_data import (
+    build_off_target_control_visualization_data,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -120,6 +127,9 @@ CELL_STATE_V3_CONTRACT = (
     "bridge://schemas/cell-state-evidence-profile/v0.3",
     "0.3.0",
     CellStateEvidenceProfileV3,
+)
+VISUAL_EVIDENCE_ID_PATTERN = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9][A-Za-z0-9_.-]*)*$"
 )
 
 
@@ -202,7 +212,11 @@ class OffTargetControlAdapter:
         )
         result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
         payloads = {"off_target_control_profile.json": result_bytes}
+        method_spec = None
+        method_input = None
+        method_bundle = None
         method_bytes: bytes | None = None
+        method_bundle_sha256: str | None = None
         if method_mode:
             biological_units = single_object(
                 request,
@@ -238,7 +252,40 @@ class OffTargetControlAdapter:
             method_bytes = canonical_json_bytes(
                 method_bundle.model_dump(mode="json"), indent=2
             )
+            method_bundle_sha256 = hashlib.sha256(method_bytes).hexdigest()
             payloads["off_target_method_bundle.json"] = method_bytes
+        try:
+            visualization_profile = build_off_target_control_visualization_data(
+                run_id=run_id,
+                tool_version=spec.version,
+                result=result,
+                composition_coverage_state=evidence_bundle.composition_coverage_state,
+                role_map=role_map,
+                cell_state_profile=cell_state_profile,
+                input_sha256_by_role={
+                    ref.role: ref.sha256 for ref in request.object_inputs
+                },
+                method_spec=method_spec,
+                method_input=method_input,
+                method_bundle=method_bundle,
+                method_bundle_sha256=method_bundle_sha256,
+            )
+        except (KeyError, ValueError):
+            return _failed_run(
+                request, spec, ["visualization_data_invalid"], input_hash=input_hash
+            )
+        try:
+            prepared_visualizations = prepare_off_target_control_visualizations(
+                profile=visualization_profile,
+                output_dir=request.output_dir,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+            return _failed_run(
+                request, spec, ["visualization_render_failed"], input_hash=input_hash
+            )
+        payloads.update(prepared_visualizations.payloads)
         try:
             published = publish_json_bundle(
                 request=request,
@@ -274,6 +321,7 @@ class OffTargetControlAdapter:
                     evidence_ids=evidence_ids,
                 )
             )
+        artifacts.extend(prepared_visualizations.artifacts)
         return ToolRunV2(
             run_id=run_id,
             request=request,
@@ -422,6 +470,13 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         reasons.append("product_case_assay_not_supported")
     if cell_state_profile.assay != product_case.assay:
         reasons.append("cell_state_assay_binding_mismatch")
+    if not cell_state_profile.evidence_ids:
+        reasons.append("cell_state_evidence_ids_required_for_visualization")
+    elif any(
+        VISUAL_EVIDENCE_ID_PATTERN.fullmatch(evidence_id) is None
+        for evidence_id in cell_state_profile.evidence_ids
+    ):
+        reasons.append("cell_state_evidence_ids_invalid_for_visualization")
     if (
         cell_state_profile.measurement_spec_id
         != product_case.measurement_spec_ref.object_id

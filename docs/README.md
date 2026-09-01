@@ -13,7 +13,9 @@ evidence you need.
 > `legacy_untyped` components; P0-03 provides two typed candidate figures for
 > product-role/regional-state composition and source-separated reference support;
 > P0-04 provides three typed candidate views for declared-window composition,
-> uncalibrated reference similarity and categorical sampling points. The current
+> uncalibrated reference similarity and categorical sampling points; P0-05
+> provides typed role accounting, rare-state detectability and supplied OOD
+> channel-state views. The current
 > P0-02 figure components remain `legacy_untyped`.
 > No scientific method, state, threshold or score is frozen, and a target
 > capability in the PRD or a task

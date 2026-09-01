@@ -1,0 +1,1633 @@
+{
+  "$defs": {
+    "AssessmentState": {
+      "enum": [
+        "available",
+        "not_assessed"
+      ],
+      "title": "AssessmentState",
+      "type": "string"
+    },
+    "CoverageState": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "CoverageState",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ExclusionState": {
+      "enum": [
+        "observed",
+        "cannot_exclude"
+      ],
+      "title": "ExclusionState",
+      "type": "string"
+    },
+    "OODChannelVisualizationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "channel_id": {
+          "minLength": 1,
+          "title": "Channel Id",
+          "type": "string"
+        },
+        "channel_state": {
+          "enum": [
+            "supported",
+            "unknown",
+            "ood",
+            "unavailable"
+          ],
+          "title": "Channel State",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.off-target-control.ood-source-agreement@0.1.0",
+          "default": "bridge.off-target-control.ood-source-agreement@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "method_ref": {
+          "minLength": 1,
+          "title": "Method Ref",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "reason_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Id"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "reference_ref": {
+          "minLength": 1,
+          "title": "Reference Ref",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "source_family_id": {
+          "minLength": 1,
+          "title": "Source Family Id",
+          "type": "string"
+        },
+        "upstream_result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Upstream Result Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "channel_id",
+        "source_family_id",
+        "channel_state",
+        "method_ref",
+        "reference_ref",
+        "upstream_result_sha256",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "OODChannelVisualizationRecord",
+      "type": "object"
+    },
+    "OODDecisionState": {
+      "enum": [
+        "supported",
+        "unknown",
+        "ood",
+        "not_assessed"
+      ],
+      "title": "OODDecisionState",
+      "type": "string"
+    },
+    "OODDisagreementRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "assessed_channel_count": {
+          "title": "Assessed Channel Count",
+          "type": "integer"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "disagreement": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Disagreement"
+        },
+        "distinct_source_family_count": {
+          "title": "Distinct Source Family Count",
+          "type": "integer"
+        },
+        "family_states": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Family States",
+          "type": "object"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "assessed_channel_count",
+        "distinct_source_family_count",
+        "family_states",
+        "disagreement",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "OODDisagreementRecord",
+      "type": "object"
+    },
+    "OODEnsembleRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "decision_state": {
+          "$ref": "#/$defs/OODDecisionState"
+        },
+        "distinct_source_family_count": {
+          "title": "Distinct Source Family Count",
+          "type": "integer"
+        },
+        "family_vote_counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Family Vote Counts",
+          "type": "object"
+        },
+        "matched_reason_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Matched Reason Id"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "decision_state",
+        "distinct_source_family_count",
+        "family_vote_counts",
+        "matched_reason_id",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "OODEnsembleRecord",
+      "type": "object"
+    },
+    "OODFamilyVisualizationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assessed_channel_count": {
+          "minimum": 0,
+          "title": "Assessed Channel Count",
+          "type": "integer"
+        },
+        "channel_count": {
+          "exclusiveMinimum": 0,
+          "title": "Channel Count",
+          "type": "integer"
+        },
+        "channel_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Channel Ids",
+          "type": "array"
+        },
+        "component_ref": {
+          "const": "bridge.off-target-control.ood-source-agreement@0.1.0",
+          "default": "bridge.off-target-control.ood-source-agreement@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "family_state": {
+          "enum": [
+            "supported",
+            "unknown",
+            "ood",
+            "conflict",
+            "unavailable"
+          ],
+          "title": "Family State",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "source_family_id": {
+          "minLength": 1,
+          "title": "Source Family Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "source_family_id",
+        "family_state",
+        "channel_count",
+        "assessed_channel_count",
+        "channel_ids",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "OODFamilyVisualizationRecord",
+      "type": "object"
+    },
+    "ProductAccountingRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assessment_state": {
+          "$ref": "#/$defs/AssessmentState"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductRole"
+            },
+            {
+              "const": "identity_unknown",
+              "type": "string"
+            }
+          ],
+          "title": "Category"
+        },
+        "component_ref": {
+          "const": "bridge.off-target-control.product-accounting@0.1.0",
+          "default": "bridge.off-target-control.product-accounting@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "confidence_level": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 1.0,
+              "exclusiveMinimum": 0.5,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence Level"
+        },
+        "count_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Fraction"
+        },
+        "count_interval_lower": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Interval Lower"
+        },
+        "count_interval_method_id": {
+          "anyOf": [
+            {
+              "const": "COMP-EXACT",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Interval Method Id"
+        },
+        "count_interval_semantics": {
+          "const": "selected_capture_cell_count_interval_excludes_annotation_uncertainty",
+          "title": "Count Interval Semantics",
+          "type": "string"
+        },
+        "count_interval_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Count Interval State",
+          "type": "string"
+        },
+        "count_interval_upper": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Interval Upper"
+        },
+        "coverage_state": {
+          "$ref": "#/$defs/CoverageState"
+        },
+        "denominator_count": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator Count",
+          "type": "integer"
+        },
+        "denominator_scope": {
+          "const": "declared_primary_denominator",
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "denominator_soft_mass": {
+          "exclusiveMinimum": 0.0,
+          "title": "Denominator Soft Mass",
+          "type": "number"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "exclusion_state": {
+          "$ref": "#/$defs/ExclusionState"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "n_independence_groups": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Independence Groups"
+        },
+        "observed_count": {
+          "minimum": 0,
+          "title": "Observed Count",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "soft_interval_lower": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Soft Interval Lower"
+        },
+        "soft_interval_method_id": {
+          "anyOf": [
+            {
+              "const": "COMP-HBOOT",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Soft Interval Method Id"
+        },
+        "soft_interval_semantics": {
+          "const": "independence_group_bootstrap_of_soft_assignment_mass",
+          "title": "Soft Interval Semantics",
+          "type": "string"
+        },
+        "soft_interval_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Soft Interval State",
+          "type": "string"
+        },
+        "soft_interval_upper": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Soft Interval Upper"
+        },
+        "soft_mass": {
+          "minimum": 0.0,
+          "title": "Soft Mass",
+          "type": "number"
+        },
+        "unit": {
+          "const": "cells",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "category",
+        "display_name",
+        "soft_mass",
+        "observed_count",
+        "denominator_soft_mass",
+        "denominator_count",
+        "denominator_scope",
+        "unit",
+        "coverage_state",
+        "assessment_state",
+        "exclusion_state",
+        "soft_interval_state",
+        "soft_interval_semantics",
+        "count_interval_state",
+        "count_interval_semantics",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "ProductAccountingRecord",
+      "type": "object"
+    },
+    "ProductRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved"
+      ],
+      "title": "ProductRole",
+      "type": "string"
+    },
+    "RareDetectionState": {
+      "enum": [
+        "detected",
+        "not_detected_above_lod",
+        "cannot_exclude",
+        "not_assessed"
+      ],
+      "title": "RareDetectionState",
+      "type": "string"
+    },
+    "RareStateDetectabilityRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "calibration_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration Ref"
+        },
+        "calibration_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration Sha256"
+        },
+        "component_ref": {
+          "const": "bridge.off-target-control.rare-state-detectability@0.1.0",
+          "default": "bridge.off-target-control.rare-state-detectability@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "count_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Fraction"
+        },
+        "count_interval_confidence_level": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 1.0,
+              "exclusiveMinimum": 0.5,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Interval Confidence Level"
+        },
+        "count_interval_lower": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Interval Lower"
+        },
+        "count_interval_n_independence_groups": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Interval N Independence Groups"
+        },
+        "count_interval_semantics": {
+          "const": "selected_capture_cell_count_interval_excludes_annotation_uncertainty",
+          "title": "Count Interval Semantics",
+          "type": "string"
+        },
+        "count_interval_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Count Interval State",
+          "type": "string"
+        },
+        "count_interval_upper": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Interval Upper"
+        },
+        "denominator_count": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator Count",
+          "type": "integer"
+        },
+        "denominator_scope": {
+          "const": "declared_primary_denominator",
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "detection_state": {
+          "$ref": "#/$defs/RareDetectionState"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "observed_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Count"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "soft_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Soft Fraction"
+        },
+        "spike_in_assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Spike In Assessment State",
+          "type": "string"
+        },
+        "spike_in_candidate_detection_limit_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spike In Candidate Detection Limit Fraction"
+        },
+        "spike_in_false_positive_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spike In False Positive Fraction"
+        },
+        "state_id": {
+          "minLength": 1,
+          "title": "State Id",
+          "type": "string"
+        },
+        "supplied_false_positive_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supplied False Positive Fraction"
+        },
+        "supplied_validated_detection_limit_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supplied Validated Detection Limit Fraction"
+        },
+        "supplied_zero_observation_upper_bound_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supplied Zero Observation Upper Bound Fraction"
+        },
+        "unit": {
+          "const": "cells",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "state_id",
+        "display_name",
+        "denominator_count",
+        "denominator_scope",
+        "unit",
+        "count_interval_state",
+        "count_interval_semantics",
+        "detection_state",
+        "spike_in_assessment_state",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "RareStateDetectabilityRecord",
+      "type": "object"
+    },
+    "SpikeInDetectionPointRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "const": "partially_applicable",
+          "default": "partially_applicable",
+          "title": "Applicability",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.off-target-control.rare-state-detectability@0.1.0",
+          "default": "bridge.off-target-control.rare-state-detectability@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "detected_trial_count": {
+          "minimum": 0,
+          "title": "Detected Trial Count",
+          "type": "integer"
+        },
+        "detection_hit_rate": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Detection Hit Rate",
+          "type": "number"
+        },
+        "detection_lower": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Detection Lower",
+          "type": "number"
+        },
+        "detection_upper": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Detection Upper",
+          "type": "number"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "const": "inferred",
+          "default": "inferred",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "independence_group_count": {
+          "exclusiveMinimum": 0,
+          "title": "Independence Group Count",
+          "type": "integer"
+        },
+        "missingness": {
+          "const": "available",
+          "default": "available",
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "spike_fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Spike Fraction",
+          "type": "number"
+        },
+        "state_id": {
+          "minLength": 1,
+          "title": "State Id",
+          "type": "string"
+        },
+        "trial_count": {
+          "exclusiveMinimum": 0,
+          "title": "Trial Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "record_id",
+        "state_id",
+        "spike_fraction",
+        "trial_count",
+        "detected_trial_count",
+        "independence_group_count",
+        "detection_hit_rate",
+        "detection_lower",
+        "detection_upper",
+        "evidence_ids",
+        "scientific_status"
+      ],
+      "title": "SpikeInDetectionPointRecord",
+      "type": "object"
+    },
+    "UnknownReasonVisualizationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.off-target-control.product-accounting@0.1.0",
+          "default": "bridge.off-target-control.product-accounting@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "coverage_state": {
+          "$ref": "#/$defs/CoverageState"
+        },
+        "denominator_count": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator Count",
+          "type": "integer"
+        },
+        "denominator_scope": {
+          "const": "declared_primary_denominator",
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "denominator_soft_mass": {
+          "exclusiveMinimum": 0.0,
+          "title": "Denominator Soft Mass",
+          "type": "number"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "observed_count": {
+          "minimum": 0,
+          "title": "Observed Count",
+          "type": "integer"
+        },
+        "parent_category": {
+          "const": "identity_unknown",
+          "default": "identity_unknown",
+          "title": "Parent Category",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "reason_id": {
+          "minLength": 1,
+          "title": "Reason Id",
+          "type": "string"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "soft_mass": {
+          "minimum": 0.0,
+          "title": "Soft Mass",
+          "type": "number"
+        },
+        "unit": {
+          "const": "cells",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "reason_id",
+        "display_name",
+        "soft_mass",
+        "observed_count",
+        "denominator_soft_mass",
+        "denominator_count",
+        "denominator_scope",
+        "unit",
+        "coverage_state",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "UnknownReasonVisualizationRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/off-target-control-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_mode": {
+      "enum": [
+        "legacy_aggregation",
+        "method_runtime"
+      ],
+      "title": "Analysis Mode",
+      "type": "string"
+    },
+    "assessment_spec_ref": {
+      "minLength": 1,
+      "title": "Assessment Spec Ref",
+      "type": "string"
+    },
+    "cell_state_profile_ref": {
+      "minLength": 1,
+      "title": "Cell State Profile Ref",
+      "type": "string"
+    },
+    "composition_coverage_state": {
+      "$ref": "#/$defs/CoverageState"
+    },
+    "denominator_count": {
+      "exclusiveMinimum": 0,
+      "title": "Denominator Count",
+      "type": "integer"
+    },
+    "denominator_id": {
+      "minLength": 1,
+      "title": "Denominator Id",
+      "type": "string"
+    },
+    "denominator_soft_mass": {
+      "exclusiveMinimum": 0.0,
+      "title": "Denominator Soft Mass",
+      "type": "number"
+    },
+    "denominator_unit": {
+      "const": "cells",
+      "title": "Denominator Unit",
+      "type": "string"
+    },
+    "evidence_bundle_ref": {
+      "minLength": 1,
+      "title": "Evidence Bundle Ref",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "input_sha256_by_role": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Input Sha256 By Role",
+      "type": "object"
+    },
+    "method_bundle_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Bundle Ref"
+    },
+    "method_bundle_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Bundle Sha256"
+    },
+    "method_input_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Input Ref"
+    },
+    "method_input_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Input Sha256"
+    },
+    "method_spec_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Spec Ref"
+    },
+    "method_spec_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Spec Sha256"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "ood_channel_records": {
+      "items": {
+        "$ref": "#/$defs/OODChannelVisualizationRecord"
+      },
+      "title": "Ood Channel Records",
+      "type": "array"
+    },
+    "ood_component_applicability": {
+      "enum": [
+        "applicable",
+        "partially_applicable",
+        "not_assessed"
+      ],
+      "title": "Ood Component Applicability",
+      "type": "string"
+    },
+    "ood_component_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Ood Component Reason Codes",
+      "type": "array"
+    },
+    "ood_component_state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "ood_coordination": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OODEnsembleRecord"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "ood_disagreement": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OODDisagreementRecord"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "ood_family_records": {
+      "items": {
+        "$ref": "#/$defs/OODFamilyVisualizationRecord"
+      },
+      "title": "Ood Family Records",
+      "type": "array"
+    },
+    "producer_run_ref": {
+      "minLength": 1,
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_id": {
+      "const": "P0-05",
+      "default": "P0-05",
+      "title": "Producer Tool Id",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "minLength": 1,
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "minLength": 1,
+      "title": "Product Case Ref",
+      "type": "string"
+    },
+    "product_component_applicability": {
+      "enum": [
+        "applicable",
+        "partially_applicable",
+        "not_assessed"
+      ],
+      "title": "Product Component Applicability",
+      "type": "string"
+    },
+    "product_component_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Product Component Reason Codes",
+      "type": "array"
+    },
+    "product_component_state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "product_definition_ref": {
+      "minLength": 1,
+      "title": "Product Definition Ref",
+      "type": "string"
+    },
+    "product_records": {
+      "items": {
+        "$ref": "#/$defs/ProductAccountingRecord"
+      },
+      "title": "Product Records",
+      "type": "array"
+    },
+    "profile_id": {
+      "pattern": "^off-target-visualization:[a-f0-9]{16}$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "rare_component_applicability": {
+      "enum": [
+        "applicable",
+        "partially_applicable",
+        "not_assessed"
+      ],
+      "title": "Rare Component Applicability",
+      "type": "string"
+    },
+    "rare_component_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Rare Component Reason Codes",
+      "type": "array"
+    },
+    "rare_component_state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "rare_state_records": {
+      "items": {
+        "$ref": "#/$defs/RareStateDetectabilityRecord"
+      },
+      "title": "Rare State Records",
+      "type": "array"
+    },
+    "role_map_review_state": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "frozen"
+      ],
+      "title": "Role Map Review State",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/off-target-control-visualization-data/v0.1",
+      "default": "bridge://schemas/off-target-control-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "spike_in_detection_records": {
+      "items": {
+        "$ref": "#/$defs/SpikeInDetectionPointRecord"
+      },
+      "title": "Spike In Detection Records",
+      "type": "array"
+    },
+    "state_role_map_ref": {
+      "minLength": 1,
+      "title": "State Role Map Ref",
+      "type": "string"
+    },
+    "unknown_coverage_state": {
+      "$ref": "#/$defs/CoverageState"
+    },
+    "unknown_reason_records": {
+      "items": {
+        "$ref": "#/$defs/UnknownReasonVisualizationRecord"
+      },
+      "title": "Unknown Reason Records",
+      "type": "array"
+    }
+  },
+  "required": [
+    "profile_id",
+    "producer_tool_version",
+    "producer_run_ref",
+    "product_case_ref",
+    "product_definition_ref",
+    "state_role_map_ref",
+    "assessment_spec_ref",
+    "cell_state_profile_ref",
+    "evidence_bundle_ref",
+    "input_sha256_by_role",
+    "analysis_mode",
+    "role_map_review_state",
+    "denominator_id",
+    "denominator_count",
+    "denominator_soft_mass",
+    "denominator_unit",
+    "composition_coverage_state",
+    "unknown_coverage_state",
+    "product_records",
+    "unknown_reason_records",
+    "rare_state_records",
+    "spike_in_detection_records",
+    "ood_channel_records",
+    "ood_family_records",
+    "product_component_state",
+    "product_component_applicability",
+    "product_component_reason_codes",
+    "rare_component_state",
+    "rare_component_applicability",
+    "rare_component_reason_codes",
+    "ood_component_state",
+    "ood_component_applicability",
+    "ood_component_reason_codes",
+    "evidence_ids"
+  ],
+  "title": "OffTargetControlVisualizationDataV1",
+  "type": "object"
+}
