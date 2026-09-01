@@ -44,5 +44,5 @@
   "random_seed": 0,
   "request_id": "example-p0-07-product-comparison-stability",
   "tool_id": "P0-07",
-  "tool_version": "0.3.0"
+  "tool_version": "0.4.0"
 }

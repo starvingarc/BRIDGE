@@ -16,6 +16,7 @@ from bridge.tool_packages.p0_07_product_comparison_stability.models import (
 )
 from bridge.toolkit.contracts import ExecutionState
 from tests.test_p0_07_product_comparison_stability import (
+    _build_visualization,
     _bundle,
     _payloads,
     _ref,
@@ -221,16 +222,14 @@ def _method_payloads() -> dict[str, object]:
 
 def _load_method_bundle(run: object) -> ComparisonMethodBundle:
     path = next(
-        item.path
-        for item in run.artifacts
-        if item.kind == "comparison_method_bundle"
+        item.path for item in run.artifacts if item.kind == "comparison_method_bundle"
     )
     return ComparisonMethodBundle.model_validate_json(path.read_text())
 
 
 def _refresh_manifest_checksum(payloads: dict[str, object]) -> None:
-    payloads["comparison_method_input"]["comparison_manifest_sha256"] = (
-        _payload_sha256(payloads["comparison_case_manifest"])
+    payloads["comparison_method_input"]["comparison_manifest_sha256"] = _payload_sha256(
+        payloads["comparison_case_manifest"]
     )
 
 
@@ -246,16 +245,14 @@ def test_real_comparison_methods_execute_and_are_deterministic(
 
     assert first.execution_state is ExecutionState.SUCCEEDED
     assert first.run_id == second.run_id
-    assert len(first.artifacts) == 2
+    assert len(first.artifacts) == 17
     bundle = _load_method_bundle(first)
     assert set(bundle.selected_method_ids) == set(ComparisonMethodId)
     assert all(
         item.execution_state is ComparisonMethodExecutionState.SUCCEEDED
         for item in bundle.executions
     )
-    estimate_names = {
-        name for record in bundle.records for name in record.estimates
-    }
+    estimate_names = {name for record in bundle.records for name in record.estimates}
     assert {
         "hedges_g",
         "jensen_shannon_distance",
@@ -265,7 +262,8 @@ def test_real_comparison_methods_execute_and_are_deterministic(
         "median_absolute_deviation_ratio",
     }.issubset(estimate_names)
     effect = next(
-        item for item in bundle.records
+        item
+        for item in bundle.records
         if item.method_id is ComparisonMethodId.SAMPLE_EFFECT
     )
     assert effect.estimate_units == {"hedges_g": "dimensionless"}
@@ -300,10 +298,7 @@ def test_method_runtime_rejects_sample_value_not_in_source_bundle(
     eligibility = registry.check_eligibility(request)
 
     assert not eligibility.eligible
-    assert (
-        "comparison_series_source_value_mismatch"
-        in eligibility.reason_codes
-    )
+    assert "comparison_series_source_value_mismatch" in eligibility.reason_codes
 
 
 def test_robust_dispersion_accepts_ratio_scale_with_zero_observation(
@@ -368,11 +363,9 @@ def test_methods_follow_reference_ood_gate_before_numeric_execution(
 
     assert run.result["comparison_eligibility"] == "reference_or_ood"
     assert all(item.assessment_state == "not_assessed" for item in bundle.records)
-    assert {
-        reason
-        for item in bundle.records
-        for reason in item.reason_codes
-    } == {"comparison_method_reference_or_ood"}
+    assert {reason for item in bundle.records for reason in item.reason_codes} == {
+        "comparison_method_reference_or_ood"
+    }
 
 
 def test_methods_propagate_alert_source_state(tmp_path: Path) -> None:
@@ -384,11 +377,9 @@ def test_methods_propagate_alert_source_state(tmp_path: Path) -> None:
     bundle = _load_method_bundle(registry.run(request))
 
     assert all(item.assessment_state == "not_assessed" for item in bundle.records)
-    assert {
-        reason
-        for item in bundle.records
-        for reason in item.reason_codes
-    } == {"comparison_method_source_alert"}
+    assert {reason for item in bundle.records for reason in item.reason_codes} == {
+        "comparison_method_source_alert"
+    }
 
 
 def test_methods_propagate_missing_source_state(tmp_path: Path) -> None:
@@ -432,17 +423,12 @@ def test_sample_series_must_cover_every_manifest_bundle(tmp_path: Path) -> None:
     eligibility = registry.check_eligibility(request)
 
     assert not eligibility.eligible
-    assert (
-        "comparison_series_source_bundle_set_mismatch"
-        in eligibility.reason_codes
-    )
+    assert "comparison_series_source_bundle_set_mismatch" in eligibility.reason_codes
 
 
 def test_sample_series_rejects_duplicate_source_bundle(tmp_path: Path) -> None:
     payloads = _method_payloads()
-    refs = payloads["comparison_method_input"]["series"][0][
-        "source_bundle_refs"
-    ]
+    refs = payloads["comparison_method_input"]["series"][0]["source_bundle_refs"]
     refs.append(refs[0])
     registry, request = _write_request(tmp_path, payloads)
 
@@ -464,9 +450,7 @@ def test_jensen_shannon_rejects_non_distance_log_base(
     eligibility = registry.check_eligibility(request)
 
     assert not eligibility.eligible
-    assert eligibility.reason_codes == [
-        "structured_input_schema_validation_failed"
-    ]
+    assert eligibility.reason_codes == ["structured_input_schema_validation_failed"]
 
 
 def test_jensen_shannon_nonfinite_result_is_typed_not_assessed(
@@ -509,9 +493,7 @@ def test_non_wasserstein_series_rejects_weights(tmp_path: Path) -> None:
 
 def test_robust_dispersion_requires_ratio_scale(tmp_path: Path) -> None:
     payloads = _method_payloads()
-    payloads["comparison_method_input"]["series"][0][
-        "measurement_scale"
-    ] = "non_ratio"
+    payloads["comparison_method_input"]["series"][0]["measurement_scale"] = "non_ratio"
     registry, request = _write_request(tmp_path, payloads)
 
     bundle = _load_method_bundle(registry.run(request))
@@ -523,3 +505,57 @@ def test_robust_dispersion_requires_ratio_scale(tmp_path: Path) -> None:
 
     assert record.assessment_state == "not_assessed"
     assert record.reason_codes == ["robust_dispersion_ratio_scale_required"]
+
+
+def test_method_visualization_keeps_task_specific_units_and_axes(
+    tmp_path: Path,
+) -> None:
+    _, profile = _build_visualization(tmp_path, _method_payloads())
+
+    assert profile.analysis_mode == "method_runtime"
+    assert len(profile.method_records) == 6
+    assert len({item.display_axis_id for item in profile.method_records}) == 6
+    assert all(item.scientific_status == "candidate" for item in profile.method_records)
+    effect = next(
+        item
+        for item in profile.method_records
+        if item.method_id is ComparisonMethodId.SAMPLE_EFFECT
+    )
+    assert effect.estimate_name == "hedges_g"
+    assert effect.estimate_unit == "dimensionless"
+    assert effect.raw_delta == pytest.approx(0.2)
+    assert effect.raw_delta_unit == "fraction"
+    wasserstein = next(
+        item
+        for item in profile.method_records
+        if item.method_id is ComparisonMethodId.WASSERSTEIN_1D
+    )
+    assert wasserstein.estimate_unit == "fraction"
+    assert profile.overall_score is None
+    assert profile.overall_rank is None
+    assert profile.domain_score is None
+
+
+def test_method_visualization_keeps_not_assessed_as_null(
+    tmp_path: Path,
+) -> None:
+    payloads = _method_payloads()
+    for key in ("bundle-baseline-1", "bundle-baseline-2"):
+        metric = payloads[key]["metrics"][0]
+        metric["raw_value"] = 0.0
+        metric["interval"] = [0.0, 0.0]
+    payloads["comparison_method_input"]["series"][0]["values"] = [0.0, 0.0]
+
+    _, profile = _build_visualization(tmp_path, payloads)
+
+    row = next(
+        item
+        for item in profile.method_records
+        if item.method_id is ComparisonMethodId.ROBUST_DISPERSION
+    )
+    assert row.method_assessment_state == "not_assessed"
+    assert row.estimate_name is None
+    assert row.estimate_value is None
+    assert row.estimate_unit is None
+    assert row.missingness == "unavailable"
+    assert row.reason_codes == ["coefficient_of_variation_zero_mean"]

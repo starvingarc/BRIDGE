@@ -100,6 +100,8 @@ SCHEMA_REFS = {
     "bridge://schemas/product-definition-card/v0.1": "product_definition_card.schema.json",
     "bridge://schemas/product-evidence-bundle/v0.1": "product_evidence_bundle.schema.json",
     "bridge://schemas/product-comparison-stability-profile/v0.1": "product_comparison_stability_profile.schema.json",
+    "bridge://schemas/product-comparison-visualization-data/v0.1": "product_comparison_visualization_data.schema.json",
+    "bridge://schemas/p0-07-visualization-artifact-set/v0.1": "p0_07_visualization_artifact_set.schema.json",
     "bridge://schemas/qc-readiness-profile/v0.1": "qc_readiness_profile.schema.json",
     "bridge://schemas/qc-visualization-data/v0.1": "qc_visualization_data.schema.json",
     "bridge://schemas/qc-readiness-profile/v0.2": "qc_readiness_profile_v2.schema.json",

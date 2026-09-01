@@ -1,0 +1,1360 @@
+{
+  "$defs": {
+    "ComparisonDesignRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "blocks_numeric_difference": {
+          "title": "Blocks Numeric Difference",
+          "type": "boolean"
+        },
+        "component_ref": {
+          "const": "bridge.product-comparison.comparability@0.1.0",
+          "default": "bridge.product-comparison.comparability@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "design_state": {
+          "enum": [
+            "matched",
+            "required_mismatch",
+            "contextual_mismatch",
+            "metadata_missing",
+            "completely_confounded",
+            "overlap_present",
+            "declared",
+            "not_recorded",
+            "inconsistent"
+          ],
+          "title": "Design State",
+          "type": "string"
+        },
+        "dimension_id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Dimension Id",
+          "type": "string"
+        },
+        "dimension_kind": {
+          "enum": [
+            "required_equal",
+            "contextual",
+            "confounder",
+            "independence"
+          ],
+          "title": "Dimension Kind",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "values_by_group": {
+          "items": {
+            "$ref": "#/$defs/GroupDesignValue"
+          },
+          "minItems": 1,
+          "title": "Values By Group",
+          "type": "array"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "assessment_state",
+        "dimension_kind",
+        "dimension_id",
+        "values_by_group",
+        "design_state",
+        "blocks_numeric_difference"
+      ],
+      "title": "ComparisonDesignRecord",
+      "type": "object"
+    },
+    "ComparisonGroupRole": {
+      "enum": [
+        "baseline",
+        "comparator",
+        "reference_ood"
+      ],
+      "title": "ComparisonGroupRole",
+      "type": "string"
+    },
+    "ComparisonMethodId": {
+      "enum": [
+        "CMP-EFFECT",
+        "CMP-JS",
+        "CMP-CORR",
+        "CMP-WASS-1D",
+        "STAB-CV"
+      ],
+      "title": "ComparisonMethodId",
+      "type": "string"
+    },
+    "ComparisonSeriesSemantics": {
+      "enum": [
+        "probability_mass",
+        "matched_features",
+        "ordered_values",
+        "sample_values"
+      ],
+      "title": "ComparisonSeriesSemantics",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "GroupDesignValue": {
+      "additionalProperties": false,
+      "properties": {
+        "group_id": {
+          "minLength": 1,
+          "title": "Group Id",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "group_id"
+      ],
+      "title": "GroupDesignValue",
+      "type": "object"
+    },
+    "MethodEvidenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analytical_role": {
+          "enum": [
+            "standardized_sample_effect",
+            "probability_mass_distance",
+            "matched_feature_correlation",
+            "ordered_distribution_distance",
+            "within_group_dispersion"
+          ],
+          "title": "Analytical Role",
+          "type": "string"
+        },
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.product-comparison.method-evidence@0.1.0",
+          "default": "bridge.product-comparison.method-evidence@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "display_axis_id": {
+          "minLength": 1,
+          "title": "Display Axis Id",
+          "type": "string"
+        },
+        "estimate_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimate Name"
+        },
+        "estimate_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimate Unit"
+        },
+        "estimate_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimate Value"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "group_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Group Ids",
+          "type": "array"
+        },
+        "method_assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Method Assessment State",
+          "type": "string"
+        },
+        "method_id": {
+          "$ref": "#/$defs/ComparisonMethodId"
+        },
+        "method_ref": {
+          "minLength": 1,
+          "title": "Method Ref",
+          "type": "string"
+        },
+        "metric_id": {
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "n_values": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "N Values",
+          "type": "array"
+        },
+        "raw_delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Delta"
+        },
+        "raw_delta_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Delta Unit"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "series_semantics": {
+          "$ref": "#/$defs/ComparisonSeriesSemantics"
+        },
+        "task_id": {
+          "minLength": 1,
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "assessment_state",
+        "task_id",
+        "method_id",
+        "method_ref",
+        "analytical_role",
+        "series_semantics",
+        "metric_id",
+        "group_ids",
+        "n_values",
+        "method_assessment_state",
+        "display_axis_id"
+      ],
+      "title": "MethodEvidenceRecord",
+      "type": "object"
+    },
+    "MetricDifferenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "baseline_analysis_unit_count": {
+          "minimum": 1,
+          "title": "Baseline Analysis Unit Count",
+          "type": "integer"
+        },
+        "baseline_assessed_count": {
+          "minimum": 0,
+          "title": "Baseline Assessed Count",
+          "type": "integer"
+        },
+        "baseline_group_id": {
+          "minLength": 1,
+          "title": "Baseline Group Id",
+          "type": "string"
+        },
+        "baseline_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Value"
+        },
+        "comparator_analysis_unit_count": {
+          "minimum": 1,
+          "title": "Comparator Analysis Unit Count",
+          "type": "integer"
+        },
+        "comparator_assessed_count": {
+          "minimum": 0,
+          "title": "Comparator Assessed Count",
+          "type": "integer"
+        },
+        "comparator_group_id": {
+          "minLength": 1,
+          "title": "Comparator Group Id",
+          "type": "string"
+        },
+        "comparator_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comparator Value"
+        },
+        "comparison_state": {
+          "enum": [
+            "shadow",
+            "missing",
+            "unknown",
+            "unavailable",
+            "alert",
+            "not_comparable"
+          ],
+          "title": "Comparison State",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.product-comparison.metric-differences@0.1.0",
+          "default": "bridge.product-comparison.metric-differences@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "denominator_kind": {
+          "minLength": 1,
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "increase",
+            "decrease",
+            "no_change",
+            "not_assessed"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "estimand": {
+          "const": "difference_in_group_means",
+          "default": "difference_in_group_means",
+          "title": "Estimand",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "measurement_spec_ref": {
+          "minLength": 1,
+          "title": "Measurement Spec Ref",
+          "type": "string"
+        },
+        "metric_id": {
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "preparation_record_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Preparation Record Ids",
+          "type": "array"
+        },
+        "raw_delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Delta"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "stability_record_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Stability Record Ids",
+          "type": "array"
+        },
+        "uncertainty_state": {
+          "const": "not_available",
+          "default": "not_available",
+          "title": "Uncertainty State",
+          "type": "string"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "assessment_state",
+        "metric_id",
+        "measurement_spec_ref",
+        "baseline_group_id",
+        "comparator_group_id",
+        "comparison_state",
+        "direction",
+        "unit",
+        "denominator_kind",
+        "baseline_analysis_unit_count",
+        "comparator_analysis_unit_count",
+        "baseline_assessed_count",
+        "comparator_assessed_count",
+        "preparation_record_ids",
+        "stability_record_ids"
+      ],
+      "title": "MetricDifferenceRecord",
+      "type": "object"
+    },
+    "MetricEvidenceState": {
+      "enum": [
+        "shadow",
+        "measured",
+        "inferred",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "MetricEvidenceState",
+      "type": "string"
+    },
+    "MetricStabilityVisualizationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_count": {
+          "minimum": 1,
+          "title": "Analysis Unit Count",
+          "type": "integer"
+        },
+        "analysis_unit_coverage_state": {
+          "enum": [
+            "multiple_analysis_units",
+            "single_analysis_unit",
+            "incomplete",
+            "unavailable"
+          ],
+          "title": "Analysis Unit Coverage State",
+          "type": "string"
+        },
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assessed_analysis_unit_count": {
+          "minimum": 0,
+          "title": "Assessed Analysis Unit Count",
+          "type": "integer"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.product-comparison.metric-differences@0.1.0",
+          "default": "bridge.product-comparison.metric-differences@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "declared_independence_group_count": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Declared Independence Group Count"
+        },
+        "denominator_kind": {
+          "minLength": 1,
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "group_id": {
+          "minLength": 1,
+          "title": "Group Id",
+          "type": "string"
+        },
+        "independence_state": {
+          "enum": [
+            "declared",
+            "not_recorded",
+            "inconsistent"
+          ],
+          "title": "Independence State",
+          "type": "string"
+        },
+        "metric_id": {
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "observed_max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Max"
+        },
+        "observed_min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Min"
+        },
+        "range_semantics": {
+          "const": "observed_min_max",
+          "default": "observed_min_max",
+          "title": "Range Semantics",
+          "type": "string"
+        },
+        "range_width": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Range Width"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "assessment_state",
+        "group_id",
+        "metric_id",
+        "analysis_unit_count",
+        "assessed_analysis_unit_count",
+        "independence_state",
+        "analysis_unit_coverage_state",
+        "unit",
+        "denominator_kind"
+      ],
+      "title": "MetricStabilityVisualizationRecord",
+      "type": "object"
+    },
+    "PreparationMetricRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "bundle_ref": {
+          "minLength": 1,
+          "title": "Bundle Ref",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.product-comparison.metric-differences@0.1.0",
+          "default": "bridge.product-comparison.metric-differences@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "declared_independence_group_count": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Declared Independence Group Count"
+        },
+        "denominator_kind": {
+          "minLength": 1,
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "denominator_value": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Value"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "group_id": {
+          "minLength": 1,
+          "title": "Group Id",
+          "type": "string"
+        },
+        "group_role": {
+          "$ref": "#/$defs/ComparisonGroupRole"
+        },
+        "independence_group_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Independence Group Refs",
+          "type": "array"
+        },
+        "independence_scope_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Independence Scope Ref"
+        },
+        "independence_state": {
+          "enum": [
+            "declared",
+            "not_recorded",
+            "inconsistent"
+          ],
+          "title": "Independence State",
+          "type": "string"
+        },
+        "interval_semantics": {
+          "const": "not_declared",
+          "default": "not_declared",
+          "title": "Interval Semantics",
+          "type": "string"
+        },
+        "measurement_spec_ref": {
+          "minLength": 1,
+          "title": "Measurement Spec Ref",
+          "type": "string"
+        },
+        "metric_id": {
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "product_case_ref": {
+          "minLength": 1,
+          "title": "Product Case Ref",
+          "type": "string"
+        },
+        "raw_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Value"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "render_interval": {
+          "const": false,
+          "default": false,
+          "title": "Render Interval",
+          "type": "boolean"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "source_interval": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Interval"
+        },
+        "source_unit_kind": {
+          "enum": [
+            "sample",
+            "preparation"
+          ],
+          "title": "Source Unit Kind",
+          "type": "string"
+        },
+        "sufficiency_state": {
+          "anyOf": [
+            {
+              "enum": [
+                "sufficient",
+                "limited",
+                "insufficient",
+                "not_assessed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sufficiency State"
+        },
+        "timepoint_basis": {
+          "enum": [
+            "in_vitro_day",
+            "declared_stage",
+            "not_applicable"
+          ],
+          "title": "Timepoint Basis",
+          "type": "string"
+        },
+        "timepoint_label": {
+          "minLength": 1,
+          "title": "Timepoint Label",
+          "type": "string"
+        },
+        "timepoint_order": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timepoint Order"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value_state": {
+          "$ref": "#/$defs/MetricEvidenceState"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "assessment_state",
+        "group_id",
+        "group_role",
+        "bundle_ref",
+        "product_case_ref",
+        "analysis_unit_ref",
+        "source_unit_kind",
+        "independence_state",
+        "timepoint_basis",
+        "timepoint_label",
+        "metric_id",
+        "measurement_spec_ref",
+        "value_state",
+        "unit",
+        "denominator_kind"
+      ],
+      "title": "PreparationMetricRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/product-comparison-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_mode": {
+      "enum": [
+        "legacy_comparison",
+        "method_runtime"
+      ],
+      "title": "Analysis Mode",
+      "type": "string"
+    },
+    "comparison_eligibility": {
+      "enum": [
+        "strictly_comparable",
+        "contextual_comparator",
+        "reference_or_ood",
+        "not_comparable",
+        "not_estimable"
+      ],
+      "title": "Comparison Eligibility",
+      "type": "string"
+    },
+    "comparison_mode": {
+      "const": "descriptive_only",
+      "title": "Comparison Mode",
+      "type": "string"
+    },
+    "comparison_ref": {
+      "minLength": 1,
+      "title": "Comparison Ref",
+      "type": "string"
+    },
+    "design_records": {
+      "items": {
+        "$ref": "#/$defs/ComparisonDesignRecord"
+      },
+      "minItems": 1,
+      "title": "Design Records",
+      "type": "array"
+    },
+    "difference_records": {
+      "items": {
+        "$ref": "#/$defs/MetricDifferenceRecord"
+      },
+      "minItems": 1,
+      "title": "Difference Records",
+      "type": "array"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "input_sha256_by_role": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Input Sha256 By Role",
+      "type": "object"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "method_bundle_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Bundle Ref"
+    },
+    "method_bundle_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Bundle Sha256"
+    },
+    "method_input_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Input Ref"
+    },
+    "method_input_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Input Sha256"
+    },
+    "method_records": {
+      "items": {
+        "$ref": "#/$defs/MethodEvidenceRecord"
+      },
+      "title": "Method Records",
+      "type": "array"
+    },
+    "method_spec_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Spec Ref"
+    },
+    "method_spec_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Spec Sha256"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "overall_rank": {
+      "default": null,
+      "title": "Overall Rank",
+      "type": "null"
+    },
+    "overall_score": {
+      "default": null,
+      "title": "Overall Score",
+      "type": "null"
+    },
+    "preparation_records": {
+      "items": {
+        "$ref": "#/$defs/PreparationMetricRecord"
+      },
+      "minItems": 2,
+      "title": "Preparation Records",
+      "type": "array"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:run-[a-f0-9]{16}$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_id": {
+      "const": "P0-07",
+      "default": "P0-07",
+      "title": "Producer Tool Id",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "minLength": 1,
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "profile_id": {
+      "pattern": "^product-comparison-visualization:[a-f0-9]{16}$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "profile_state": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "Profile State",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/product-comparison-visualization-data/v0.1",
+      "default": "bridge://schemas/product-comparison-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "spec_ref": {
+      "minLength": 1,
+      "title": "Spec Ref",
+      "type": "string"
+    },
+    "stability_records": {
+      "items": {
+        "$ref": "#/$defs/MetricStabilityVisualizationRecord"
+      },
+      "minItems": 2,
+      "title": "Stability Records",
+      "type": "array"
+    }
+  },
+  "required": [
+    "profile_id",
+    "producer_tool_version",
+    "producer_run_ref",
+    "comparison_ref",
+    "spec_ref",
+    "comparison_eligibility",
+    "comparison_mode",
+    "profile_state",
+    "analysis_mode",
+    "input_sha256_by_role",
+    "design_records",
+    "preparation_records",
+    "difference_records",
+    "stability_records",
+    "method_records",
+    "limitations"
+  ],
+  "title": "ProductComparisonVisualizationDataV1",
+  "type": "object"
+}

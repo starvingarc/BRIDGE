@@ -62,6 +62,9 @@ from bridge.tool_packages.p0_03_target_regional.visualization_data import (
 from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     PUBLIC_SCHEMA_MODELS as P0_07_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_07_product_comparison_stability.visualization_data import (
+    PUBLIC_VISUALIZATION_SCHEMA_MODELS as P0_07_VISUALIZATION_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS as P0_08_SCHEMA_MODELS,
 )
@@ -206,6 +209,7 @@ for schema_models in (
     P0_06_METHOD_SCHEMA_MODELS,
     P0_06_VISUALIZATION_SCHEMA_MODELS,
     P0_07_SCHEMA_MODELS,
+    P0_07_VISUALIZATION_SCHEMA_MODELS,
     P0_08_SCHEMA_MODELS,
     P0_09_SCHEMA_MODELS,
     P0_10_SCHEMA_MODELS,

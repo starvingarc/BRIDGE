@@ -5,23 +5,20 @@
 | Task ID | `TASK-COMPARISON` |
 | Task document version | `v0.1` |
 | Date | 2026-08-07 |
-| Package version | `P0-07 0.3.0` |
+| Package version | `P0-07 0.4.0` |
 | Runtime / scientific state | `implemented` / `candidate` |
 | Scope | 同阶段跨方案、真实时间序列及 batch/lot/preparation 稳定性 |
-| Primary unit | 独立 `sample/preparation` |
+| Primary unit | 已声明的 `sample/preparation`；仅完整显式绑定时报告 independence |
 | Current result | `bridge://schemas/product-comparison-stability-profile/v0.1` |
 | Detailed runtime contract | [P0-07 Tool Card](../../src/bridge/tool_packages/cards/P0-07.md) |
 
-> v0.3 engineering note: the executable package retains the v0.2 comparability
-> and descriptive-delta profile. An optional typed method mode now runs the five
-> registry methods that fit the core Python environment: Hedges g,
-> Jensen-Shannon distance, Spearman profile correlation, one-dimensional
-> Wasserstein distance and robust dispersion. Other registered methods remain
-> independent benchmark candidates. No p-value, interval, Pareto,
-> winner/equivalence conclusion or biological threshold is produced; missing
-> evidence is never converted to zero and all scores remain null. Method tasks
-> inherit the comparison and source-evidence gates: only strictly comparable or
-> contextual cases can emit numeric estimates.
+> v0.4 engineering note: the executable package retains the comparability,
+> descriptive-delta and selected-method runtime, and adds typed static views for
+> comparison eligibility, declared sample/preparation metrics and method-specific evidence.
+> Observed group ranges are descriptive minima and maxima, not confidence
+> intervals; raw deltas have no interval. Missing evidence is never converted to
+> zero, bundle counts do not establish independent replication, methods remain on
+> separate scales, and all scores and ranks remain null.
 
 ## 1. 任务目标与边界
 
@@ -84,24 +81,6 @@ Pareto 判断必须逐域使用冻结方向、区间和最小可分辨差异；�
 - 需要组成、状态或程序 driver 分析时，读取冻结的 cell-state output、soft composition 和 sample/state pseudobulk views。
 
 系统不得从文件名、目录名或 accession 自动推断 replicate、产品关系或比较组。
-
-### 3.2 当前可用于方法开发的数据
-
-| Asset ID | 体系/时间 | 规模 | 主要用途 | 当前限制 |
-| --- | --- | ---: | --- | --- |
-| `Q-GSE204796-v1` | mDA scRNA；D8/D14/D21/D28/D35 | 37,397 | 真实时间序列与阶段差异 | timepoint 必须按 sample/preparation 拆分 |
-| `Q-GSE227070-v1` | H9/4X LR-USC；D16/D28/D62；parent SuperSeries `GSE227071` | 48,196 | cell source、阶段和方案 shift | 本 scRNA query 不含 GBX2-KO；D62 与 D16/D28 不属于同一产品阶段 |
-| `Q-GSE76381-ES-v1` | hESC mDA；D0/D12/D17/D35 | 1,715 | 小型历史时间序列 sanity | 样本量低；D0 不是产品 |
-| `Q-JERBER-v1` | population-scale iPSC DA；D11/D30/D52 | >750,000 | donor、batch、timepoint 与扰动稳健性 | 需冻结 donor/batch/condition map 并按 source family 去重 |
-| `Q-BRAINSTEM-TOH-v1` | midbrain organoid；D20/D25/D30/D40/D50/D60 | 34,702；48 sequencing sublibraries（每个时间点 8 个） | 3D 时间点描述与 domain shift | biological sample/organoid/replicate map 冻结前只作 `descriptive_only`；48 sublibraries 不是 48 biological replicates；organoid 不与 2D product 直接排名 |
-| `Q-FIORENZANO-v1` | VM organoid；D15-D120 | 91,034 | 3D trajectory comparator | 只作 contextual comparator |
-| `Q-GSE200610-D16-v1` | RC17 VM；D16 | 8,166 | 单时间点临床相关 comparator | 不等于患者 GMP lot；默认描述性 |
-| `Q-SPHEREDIFF-v1` | 陈跃军组 3D mDAP；D28 | v1 对象 9,547 | Cell Stem Cell 2025 研究关联比较 | 上游受控 `HRA008865` 与分析对象尚未一一对应；当前只作历史 `analysis_ready` 对照 |
-| `Q-MACRODIFF-v1` | 陈跃军组内部 mDA；D14/D21/D28 | v1 对象 57,464；P0-01 原始计数 78,542 | 内部未发表方案与时间序列比较 | 六个 capture 不等于六个独立 preparation；replicate independence 未建立 |
-| `Q-LEGACY-MSKDA01-v1` | Studer-protocol D16 | v1 对象 9,046；P0-01 原始计数 11,087 | 已发表 MSK-DA01/Studer 方案背景比较 | Piao et al. 2021 支持方案背景，不定义该测序对象的论文数据身份 |
-| `Q-EMTAB14729-v1`（E-MTAB-14729） | Boost/Boost+；D16/D25/D40 | 26,303 | 最终 competitor test | sealed；六个 group 不是六个独立 lot，不参与方法选择或调参 |
-
-在完整 replicate map 冻结前，上述多数公开数据默认进入 `descriptive_only`。`Q-EMTAB14729-v1` 只在分析合同冻结后运行。
 
 ## 4. 分析流程
 
@@ -227,18 +206,17 @@ flowchart LR
 
 正式独立比较不依赖 GPU；scVI 等联合分析可按需使用 GPU。跨环境只交换版本化 h5ad/zarr、Parquet/TSV 和 JSON manifest，不交换 Python pickle 或未登记 RDS。
 
-## 9. Web 必备可视化
+## 9. 当前可视化合同
 
-- 域级效应量森林图：显示 raw delta、区间、方向、状态和 denominator。
-- 多产品画像/优势矩阵：逐域展示，不合并成总分。
-- 完整制剂组成及 composition-delta 图。
-- state/program pseudobulk effect heatmap 和 driver drill-down。
-- 真实时间序列：显示 preparation-level points、趋势和分析模式。
-- batch/lot 距离矩阵、variance-component 图和异常 preparation 下钻。
-- reference、annotation、preprocessing、assay 和方法敏感性矩阵。
-- 联合嵌入与 scIB 指标面板，始终显示 `shadow` 标记和 no-integration 对照。
+当前包发布三类 typed 静态视图：
 
-每张正式图绑定 Comparison ID、Evidence IDs、输入版本、单位、分母、区间和证据状态。`descriptive_only` 图表不显示推断显著性。
+- 比较资格与声明的混杂结构：先说明哪些组间差异可以解释，哪些只能并列描述。
+- **Declared analysis-unit values and descriptive group differences**：每个指标保留自己的单位和分母，显示逐个已声明 sample/preparation 输入值、算术组均值、observed range 及允许时的 raw delta。
+- 方法特异的描述性证据：effect、distance、similarity 和 dispersion 按分析角色及数值尺度分开呈现，不合并成总分或排名。
+
+observed range 是已声明分析单位数值的最小值和最大值，不是置信区间；当前 raw delta 没有区间。只有一个已声明分析单位、reference/OOD、合同不相容或不可估计时均显示明确降级状态。组成差异、程序差异、真实时间趋势、batch/lot 距离、variance component 和联合嵌入尚未由当前结果合同提供，不能由绘图层补算。
+
+每张正式图绑定 Comparison ID、Evidence IDs、输入版本、单位、分母和证据状态。`descriptive_only` 图表不显示推断显著性。
 
 ## 10. 拒答与降级规则
 
@@ -266,7 +244,6 @@ flowchart LR
 | Stability | 下采样、reference/preprocessing/annotation swap、组内重复性和区间覆盖 |
 | Joint shadow | batch removal、生物差异保留、overcorrection 和 no-integration 一致性 |
 | Versioning | 跨合同结果拒绝直接比较，并在共同冻结合同下重跑 |
-| Sealed test | `Q-EMTAB14729-v1` 只在方法冻结后运行，不用于选择工具、阈值或 margin |
 
 冻结前至少保存：Tool/Environment version、MeasurementSpec、设计矩阵、contrast、随机种子、输入 hash、Evidence IDs、benchmark fixture、预期输出和允许主张。
 

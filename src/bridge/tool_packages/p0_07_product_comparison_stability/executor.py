@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from collections import defaultdict
-from itertools import combinations
-
 from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     ComparisonCaseManifest,
     ComparisonField,
@@ -13,14 +10,13 @@ from bridge.tool_packages.p0_07_product_comparison_stability.models import (
     GroupMetricSummary,
     GroupStability,
     InputChecksumBinding,
-    MetricContrast,
     MetricContract,
+    MetricContrast,
     MetricEvidenceState,
     MetricStability,
     ProductComparisonStabilityProfile,
     ProductEvidenceBundle,
 )
-
 
 ABSENT_PRIORITY = (
     MetricEvidenceState.ALERT,
@@ -45,7 +41,9 @@ def evaluate_product_comparison(
         for group in manifest.groups
     }
     field_mismatches = _field_mismatches(spec, grouped)
-    missing_confounder_metadata, confounded = _confounding(spec, grouped)
+    missing_confounder_metadata, confounded = _confounding(
+        spec, manifest.groups, grouped
+    )
     reasons: set[str] = {"descriptive_only_no_inferential_claim"}
     reasons.update(f"required_field_mismatch_{field.value}" for field in field_mismatches[0])
     reasons.update(f"contextual_field_mismatch_{field.value}" for field in field_mismatches[1])
@@ -106,10 +104,10 @@ def evaluate_product_comparison(
     estimable = eligibility in {"strictly_comparable", "contextual_comparator"}
     if not estimable:
         profile_state = "not_assessed"
-    elif any(item.value_state != "shadow" for item in summaries):
-        profile_state = "partial"
-    elif eligibility == "contextual_comparator" or any(
-        reason.startswith("evidence_sufficiency_") for reason in reasons
+    elif (
+        any(item.value_state != "shadow" for item in summaries)
+        or eligibility == "contextual_comparator"
+        or any(reason.startswith("evidence_sufficiency_") for reason in reasons)
     ):
         profile_state = "partial"
     else:
@@ -180,22 +178,34 @@ def _field_value(bundle: ProductEvidenceBundle, field: ComparisonField) -> objec
 
 def _confounding(
     spec: ComparisonStabilitySpec,
+    groups: list[ComparisonGroup],
     grouped: dict[str, list[ProductEvidenceBundle]],
 ) -> tuple[set[ConfoundingFactor], set[ConfoundingFactor]]:
     missing: set[ConfoundingFactor] = set()
     confounded: set[ConfoundingFactor] = set()
+    baseline_id = next(
+        group.group_id for group in groups if group.role is ComparisonGroupRole.BASELINE
+    )
+    comparator_ids = [
+        group.group_id
+        for group in groups
+        if group.role is not ComparisonGroupRole.BASELINE
+    ]
     for factor in spec.confounding_factors:
-        levels = [
-            {
+        levels = {
+            group.group_id: {
                 ref.ref
-                for bundle in bundles
+                for bundle in grouped[group.group_id]
                 for ref in getattr(bundle, f"{factor.value}_refs")
             }
-            for bundles in grouped.values()
-        ]
-        if any(not group_levels for group_levels in levels):
+            for group in groups
+        }
+        if any(not values for values in levels.values()):
             missing.add(factor)
-        elif all(left.isdisjoint(right) for left, right in combinations(levels, 2)):
+        elif any(
+            levels[baseline_id].isdisjoint(levels[comparator_id])
+            for comparator_id in comparator_ids
+        ):
             confounded.add(factor)
     return missing, confounded
 
