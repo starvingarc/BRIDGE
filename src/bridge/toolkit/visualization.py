@@ -751,6 +751,43 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-05",
         data_schema_ref="bridge://schemas/off-target-control-visualization-data/v0.1",
     ),
+    _typed_component(
+        "bridge.proliferation-stress.program-evidence",
+        "0.1.0",
+        title="Stage- and cell-state-conditioned transcriptomic program evidence",
+        question=(
+            "Which declared transcriptomic programs have assessable evidence "
+            "within their stage and cell-state context, and which require review?"
+        ),
+        figure_family="stage_state_program_evidence_matrix",
+        tool_id="P0-06",
+        data_schema_ref="bridge://schemas/proliferation-stress-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.proliferation-stress.program-score-summary",
+        "0.1.0",
+        title="Program-score summaries across declared analysis units",
+        question=(
+            "How do method-specific program scores vary across the declared "
+            "whole-product and cell-state analysis units?"
+        ),
+        figure_family="method_separated_program_score_interval",
+        tool_id="P0-06",
+        data_schema_ref="bridge://schemas/proliferation-stress-visualization-data/v0.1",
+    ),
+    _typed_component(
+        "bridge.proliferation-stress.cell-cycle",
+        "0.1.0",
+        title="Cell-cycle phase composition across declared analysis units",
+        question=(
+            "How are G1, S and G2M assignments and S/G2M score evidence "
+            "distributed across the declared product and cell-state views?"
+        ),
+        figure_family="cell_cycle_phase_and_score_profile",
+        tool_id="P0-06",
+        data_schema_ref="bridge://schemas/proliferation-stress-visualization-data/v0.1",
+    ),
 )
 
 

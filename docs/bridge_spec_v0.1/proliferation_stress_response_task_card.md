@@ -3,16 +3,16 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.3-candidate` |
-| 日期 | 2026-08-27 |
+| 文档版本 | `0.4-candidate` |
+| 日期 | 2026-09-02 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | 两种 v0.3 模式共享 `ProductCase`、`ProductDefinitionCard`、外部 `DevelopmentWindowSpec`/`ProgramSpec`、`ProtocolIR` 和 `ProgramEvidenceBundle`；`method_runtime` 另需 P0-02 V3、BiologicalUnit 绑定、方法 spec/input 与一个 normalized H5AD |
-| 主要输出 | 两种模式均输出 `ProliferationStressResponseProfile`；`method_runtime` 另输出绑定 ProgramSpec checksum 的 `ProcessMethodBundle` |
+| 上游输入 | 两种 v0.4 模式共享 `ProductCase`、`ProductDefinitionCard`、外部 `DevelopmentWindowSpec`/`ProgramSpec`、`ProtocolIR` 和 `ProgramEvidenceBundle`；`method_runtime` 另需 P0-02 V3、BiologicalUnit 绑定、方法 spec/input 与一个 normalized H5AD |
+| 主要输出 | 两种模式均输出 `ProliferationStressResponseProfile`、typed visualization data、精确 TSV、SVG/PNG/PDF 和 visualization artifact set；`method_runtime` 另输出绑定 ProgramSpec checksum 的 `ProcessMethodBundle` |
 
-## 0. 当前 v0.3 可执行候选
+## 0. 当前 v0.4 可执行候选
 
-P0-06 `0.3.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
+P0-06 `0.4.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
 
 | 模式 | 输入 | 实际执行 | 输出 |
 | --- | --- | --- | --- |
@@ -90,7 +90,7 @@ P0-06 `0.3.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式
 ## 4. 分析流程
 ### 4.1 当前可执行基线
 
-P0-06 v0.3 提供两种兼容调用：
+P0-06 v0.4 提供两种兼容调用：
 
 - `legacy_aggregation` 保留七个结构化对象的预计算证据聚合；
 - `method_runtime` 读取一个 checksummed normalized H5AD，实际执行
@@ -202,16 +202,20 @@ P0 核心候选不依赖 GPU。不同环境只交换版本化 h5ad/Parquet/TSV�
 
 ## 9. Web 必备可视化
 
-- sample x program 热图，显示 stage/state-matched reference envelope、gene coverage 和 evidence state。
-- whole-product 与 state-specific 程序分布，可下钻到 sample、preparation 和细胞状态。
-- cycling fraction、S/G2M evidence 与细胞身份联动图。
-- residual pluripotency-like observed fraction、区间、LOD/UCB 和 spike-in 检出曲线。
-- ProtocolIR process timeline 与可归因/不可归因状态。
-- perturbation calibration、false-review-flag 和方法/reference/preprocessing sensitivity 图。
-- `TranscriptomicReviewFlag` 证据卡与 Evidence Graph 下钻。
-- CNV shadow heatmap 仅在输入和 reference 合格时展示，并持续显示“expression-derived”。
+当前 v0.4 只提供三组 package-owned typed candidate 图形：
 
-每张正式图绑定 Evidence ID、输入版本、单位、分母、区间、状态和缺失信息。界面不能用绿色“通过”表示未触发复核信号。
+- 按 stage、cell state 和 scope 排列的 program evidence 与 review-state
+  矩阵，显示 gene coverage、适用性、证据状态和缺失原因；
+- 按 method、program 和声明 analysis unit 分开的 score median/quantile
+  摘要，不合并不同 score unit；
+- 按声明 analysis unit 展示 G1/S/G2M phase composition，并与 S/G2M
+  score evidence 分开呈现。
+
+每张正式图绑定 Evidence ID、输入版本、单位、分母、区间、状态和缺失信息，
+并提供精确表格回退。当前没有数值 reference envelope、按顺序展开的
+ProtocolIR timeline、数值 LOD/UCB 或 spike-in recovery curve，也不生成 CNV
+图；这些缺口保持 `not_assessed`，不得由 renderer 推断。界面不能用绿色“通过”
+表示未触发复核信号，也不能把图解释为安全性、potency 或放行结论。
 
 ## 10. 拒答与降级规则
 

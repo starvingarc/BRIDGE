@@ -16,9 +16,15 @@ This directory contains the program-scoring and evidence-aggregation package.
   retain the existing conservative attribution rule.
 - **Output:** `ProliferationStressResponseProfile`; method mode additionally
   emits `ProcessMethodBundle` with Scanpy, decoupler and cell-cycle summaries
-  bound to the exact ProgramSpec SHA-256.
-- **Boundary:** a review flag is not cell fitness, safety, tumorigenicity, potency
-  or process-causality evidence, and the package emits no domain score.
+  bound to the exact ProgramSpec SHA-256. Both modes emit package-owned typed
+  visualization data, exact TSV fallbacks, deterministic SVG/PNG/PDF renders
+  and a visualization artifact set for stage/state-conditioned program evidence,
+  method-separated program-score summaries and cell-cycle evidence.
+- **Current visualization limits:** no numeric reference envelope, ordered
+  ProtocolIR timeline, numeric LOD/UCB or spike-in recovery curve, or CNV
+  visualization is produced; unavailable views remain `not_assessed`.
+- **Boundary:** a review flag is not cell fitness, safety, tumorigenicity,
+  potency or process-causality evidence, and the package emits no domain score.
 
 ## Documentation
 
@@ -26,9 +32,8 @@ This directory contains the program-scoring and evidence-aggregation package.
 - [Tool Card — authoritative runtime contract](../cards/P0-06.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/proliferation_stress_response_task_card.md)
 - [Request example](../../../../examples/requests/p0_06_proliferation_stress_response.json)
-- [Validation record](../../../../docs/validation/p0_06_proliferation_stress_response_20260825.md)
 - [Method-runtime request](../../../../examples/requests/p0_06_process_method_runtime.json)
-- [Real-method validation](../../../../docs/validation/p0_06_real_methods_20260827.md)
+- [Validation index](../../../../docs/validation/)
 
 Use `bridge-tool describe P0-06` for the installed version, schemas,
 environment and registered method IDs.
