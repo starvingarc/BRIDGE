@@ -18,7 +18,6 @@ from bridge.tool_packages._structured_runtime import (
     failed_v2_run,
     inputs_unchanged,
     load_structured_inputs,
-    read_regular_bytes,
     request_v2_from_v1,
     single_object,
 )
@@ -55,6 +54,12 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     ReviewFlagState,
     TranscriptomicReviewFlag,
 )
+from bridge.tool_packages.p0_06_proliferation_stress_response.visualization import (
+    prepare_proliferation_stress_visualizations,
+)
+from bridge.tool_packages.p0_06_proliferation_stress_response.visualization_data import (
+    build_proliferation_stress_visualization_data,
+)
 from bridge.toolkit.contracts import (
     ArtifactManifest,
     CellStateEvidenceProfileV2,
@@ -72,9 +77,7 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = (
-    "bridge://schemas/proliferation-stress-response-profile/v0.1"
-)
+RESULT_SCHEMA_REF = "bridge://schemas/proliferation-stress-response-profile/v0.1"
 CORE_AGGREGATION_METHOD_IDS = {
     "METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION",
     "METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION",
@@ -188,11 +191,12 @@ class ProliferationStressResponseAdapter:
         run_id = f"run-{input_hash[:16]}"
         result = _build_result(request, loaded, input_hash)
         result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
-        result_sha = hashlib.sha256(result_bytes).hexdigest()
         method_bundle: ProcessMethodBundle | None = None
         method_bytes: bytes | None = None
         method_sha: str | None = None
         asset_sha: str | None = None
+        method_spec: ProcessMethodSpec | None = None
+        method_input: ProcessMethodInput | None = None
         if mode == "method_runtime":
             asset = request.assets[0]
             try:
@@ -236,35 +240,61 @@ class ProliferationStressResponseAdapter:
                     random_seed=request.random_seed,
                 )
             except (ExpressionAssetError, ProcessMethodError) as exc:
-                return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+                return _failed_run(
+                    request, spec, [exc.reason_code], input_hash=input_hash
+                )
             method_bytes = canonical_json_bytes(
                 method_bundle.model_dump(mode="json"), indent=2
             )
             method_sha = hashlib.sha256(method_bytes).hexdigest()
-        manifest_bytes = canonical_json_bytes(
+        payloads = {"proliferation_stress_response_profile.json": result_bytes}
+        if method_bytes is not None:
+            payloads["process_method_bundle.json"] = method_bytes
+        try:
+            visualization_profile = build_proliferation_stress_visualization_data(
+                run_id=run_id,
+                tool_version=spec.version,
+                result=result,
+                method_spec=method_spec,
+                method_input=method_input,
+                method_bundle=method_bundle,
+                method_bundle_sha256=method_sha,
+            )
+        except (KeyError, TypeError, ValueError):
+            return _failed_run(
+                request, spec, ["visualization_data_invalid"], input_hash=input_hash
+            )
+        try:
+            prepared_visualizations = prepare_proliferation_stress_visualizations(
+                profile=visualization_profile,
+                output_dir=request.output_dir,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+            return _failed_run(
+                request, spec, ["visualization_render_failed"], input_hash=input_hash
+            )
+        payloads.update(prepared_visualizations.payloads)
+        payloads["artifact_manifest.json"] = canonical_json_bytes(
             _artifact_manifest_payload(
                 request=request,
                 spec=spec,
                 run_id=run_id,
                 input_hash=input_hash,
-                result_sha=result_sha,
-                method_result_sha=method_sha,
+                artifact_payloads=payloads,
             ),
             indent=2,
         )
-        payloads = {
-            "proliferation_stress_response_profile.json": result_bytes,
-            "artifact_manifest.json": manifest_bytes,
-        }
-        if method_bytes is not None:
-            payloads["process_method_bundle.json"] = method_bytes
         try:
             published = _publish_bundle(
                 request=request,
                 run_id=run_id,
                 payloads=payloads,
-                inputs_are_unchanged=lambda refs: inputs_unchanged(refs)
-                and _expression_asset_unchanged(request.assets, asset_sha),
+                inputs_are_unchanged=lambda refs: (
+                    inputs_unchanged(refs)
+                    and _expression_asset_unchanged(request.assets, asset_sha)
+                ),
             )
         except PublicationError as exc:
             return _failed_run(
@@ -282,15 +312,34 @@ class ProliferationStressResponseAdapter:
         evidence_ids = sorted(item.evidence_id for item in bundle.records)
         artifacts = [
             ArtifactManifest(
-                artifact_id=f"artifact:{run_id}:{path.stem}",
-                kind=path.stem,
-                path=path,
+                artifact_id=f"artifact:{run_id}:proliferation-stress-response",
+                kind="proliferation_stress_response_profile",
+                path=published["proliferation_stress_response_profile.json"],
                 media_type="application/json",
-                sha256=hashlib.sha256(read_regular_bytes(path)).hexdigest(),
+                sha256=hashlib.sha256(result_bytes).hexdigest(),
                 evidence_ids=evidence_ids,
-            )
-            for path in sorted(published.values(), key=lambda item: item.name)
+            ),
+            ArtifactManifest(
+                artifact_id=f"artifact:{run_id}:artifact-manifest",
+                kind="artifact_manifest",
+                path=published["artifact_manifest.json"],
+                media_type="application/json",
+                sha256=hashlib.sha256(payloads["artifact_manifest.json"]).hexdigest(),
+                evidence_ids=evidence_ids,
+            ),
         ]
+        if method_bytes is not None:
+            artifacts.append(
+                ArtifactManifest(
+                    artifact_id=f"artifact:{run_id}:process-methods",
+                    kind="process_method_bundle",
+                    path=published["process_method_bundle.json"],
+                    media_type="application/json",
+                    sha256=hashlib.sha256(method_bytes).hexdigest(),
+                    evidence_ids=evidence_ids,
+                )
+            )
+        artifacts.extend(prepared_visualizations.artifacts)
         method_reasons = (
             sorted(
                 {
@@ -348,9 +397,7 @@ def _envelope_reasons(
         reasons.append("p0_06_measurement_spec_forbidden")
     if request.parameters:
         reasons.append("p0_06_parameters_forbidden")
-    role_models = (
-        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
-    )
+    role_models = METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
     roles = [ref.role for ref in request.object_inputs]
     for role in role_models:
         if roles.count(role) != 1:
@@ -392,9 +439,7 @@ def _load_inputs(
     refs: list[StructuredInputRef],
     mode: str,
 ) -> tuple[LoadedInputs | None, list[str]]:
-    role_models = (
-        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
-    )
+    role_models = METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
     return load_structured_inputs(
         refs,
         model_for=lambda ref: role_models.get(ref.role, ("", "", None))[2],
@@ -466,8 +511,7 @@ def _binding_reasons(
         reasons.append("program_spec_method_binding_mismatch")
     if (
         cell_state.assay != product_case.assay
-        or cell_state.measurement_spec_id
-        != product_case.measurement_spec_ref.object_id
+        or cell_state.measurement_spec_id != product_case.measurement_spec_ref.object_id
         or cell_state.measurement_spec_version
         != product_case.measurement_spec_ref.object_version
     ):
@@ -527,12 +571,8 @@ def _binding_reasons(
             "biological_unit_manifest",
             BiologicalUnitManifest,
         )
-        if protocol.independent_replicate_count > len(
-            manifest.independence_group_refs
-        ):
-            reasons.append(
-                "protocol_independent_replicate_count_exceeds_manifest"
-            )
+        if protocol.independent_replicate_count > len(manifest.independence_group_refs):
+            reasons.append("protocol_independent_replicate_count_exceeds_manifest")
         try:
             asset_sha = expression_asset_sha256(asset.path)
         except ExpressionAssetError as exc:
@@ -616,8 +656,7 @@ def _process_attribution(
         reasons.append("process_batch_confounding_unresolved")
     rule = program_spec.attribution_rule
     if (
-        protocol.independent_replicate_count
-        < rule.minimum_independent_replicates
+        protocol.independent_replicate_count < rule.minimum_independent_replicates
         or protocol.comparable_group_count < rule.minimum_comparable_groups
     ):
         reasons.append("process_replication_insufficient")
@@ -728,8 +767,7 @@ def _build_result(
         profile_reasons.update(reason_codes)
         published_steps = (
             sorted(record.process_step_ids)
-            if record_process_state
-            is ProcessAttributionState.CONDITIONAL_ASSOCIATION
+            if record_process_state is ProcessAttributionState.CONDITIONAL_ASSOCIATION
             else []
         )
         results.append(
@@ -810,24 +848,8 @@ def _artifact_manifest_payload(
     spec: ToolPackageSpecV2,
     run_id: str,
     input_hash: str,
-    result_sha: str,
-    method_result_sha: str | None,
+    artifact_payloads: dict[str, bytes],
 ) -> dict[str, object]:
-    artifacts: list[dict[str, str]] = [
-        {
-            "filename": "proliferation_stress_response_profile.json",
-            "media_type": "application/json",
-            "sha256": result_sha,
-        }
-    ]
-    if method_result_sha is not None:
-        artifacts.append(
-            {
-                "filename": "process_method_bundle.json",
-                "media_type": "application/json",
-                "sha256": method_result_sha,
-            }
-        )
     return {
         "manifest_version": "0.1.0",
         "tool_id": spec.tool_id,
@@ -854,8 +876,31 @@ def _artifact_manifest_payload(
             }
             for asset in sorted(request.assets, key=lambda item: item.asset_id)
         ],
-        "artifacts": artifacts,
+        "artifacts": [
+            {
+                "filename": filename,
+                "media_type": _artifact_media_type(filename),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+            for filename, payload in sorted(artifact_payloads.items())
+        ],
     }
+
+
+def _artifact_media_type(filename: str) -> str:
+    suffix = filename.rsplit(".", maxsplit=1)[-1].lower()
+    media_types = {
+        "json": "application/json",
+        "pdf": "application/pdf",
+        "png": "image/png",
+        "svg": "image/svg+xml",
+        "tsv": "text/tab-separated-values",
+    }
+    try:
+        return media_types[suffix]
+    except KeyError as exc:
+        raise ValueError(f"unsupported artifact media type: {filename}") from exc
+
 
 def _input_sha(request: ToolRequestV2, role: str) -> str:
     return next(ref.sha256 for ref in request.object_inputs if ref.role == role)
@@ -875,9 +920,6 @@ def _expression_asset_unchanged(
         return False
 
 
-
-
-
 def _failed_run(
     request: ToolRequestV2,
     spec: ToolPackageSpecV2,
@@ -895,9 +937,5 @@ def _failed_run(
     )
 
 
-def _failed_v1_request(
-    request: ToolRequest, spec: ToolPackageSpecV2
-) -> ToolRunV2:
-    return _failed_run(
-        request_v2_from_v1(request), spec, ["tool_request_v2_required"]
-    )
+def _failed_v1_request(request: ToolRequest, spec: ToolPackageSpecV2) -> ToolRunV2:
+    return _failed_run(request_v2_from_v1(request), spec, ["tool_request_v2_required"])

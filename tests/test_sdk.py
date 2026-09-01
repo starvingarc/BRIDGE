@@ -45,6 +45,6 @@ def test_python_sdk_discovers_figure_components() -> None:
 def test_python_sdk_validates_figure_registry() -> None:
     result = validate_figure_registry()
 
-    assert result["component_count"] == 19
-    assert result["typed_candidate_count"] == 12
+    assert result["component_count"] == 22
+    assert result["typed_candidate_count"] == 15
     assert result["legacy_untyped_count"] == 7

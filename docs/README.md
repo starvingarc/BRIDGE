@@ -15,8 +15,11 @@ evidence you need.
 > P0-04 provides three typed candidate views for declared-window composition,
 > uncalibrated reference similarity and categorical sampling points; P0-05
 > provides typed role accounting, rare-state detectability and supplied OOD
-> channel-state views. The current
-> P0-02 figure components remain `legacy_untyped`.
+> channel-state views; P0-06 provides typed stage/state-conditioned program
+> evidence, method-separated program-score summaries and cell-cycle views. P0-06
+> does not currently provide a numeric reference envelope, ordered process
+> timeline, numeric LOD/UCB or spike-in recovery curve, or CNV visualization.
+> The current P0-02 figure components remain `legacy_untyped`.
 > No scientific method, state, threshold or score is frozen, and a target
 > capability in the PRD or a task
 > card is not current runtime behavior.

@@ -1,22 +1,27 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import hashlib
 import importlib
+from copy import deepcopy
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from jsonschema import Draft202012Validator
 import pytest
+from jsonschema import Draft202012Validator
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
+from bridge.tool_packages.p0_06_proliferation_stress_response.adapter import adapter
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
     PUBLIC_METHOD_SCHEMA_MODELS,
 )
-from bridge.tool_packages.p0_06_proliferation_stress_response.adapter import adapter
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     PUBLIC_SCHEMA_MODELS,
     ProliferationStressResponseProfile,
+)
+from bridge.tool_packages.p0_06_proliferation_stress_response.visualization_data import (
+    P006_COMPONENT_REFS,
+    P006VisualizationArtifactSet,
+    ProliferationStressVisualizationDataV1,
 )
 from bridge.toolkit.contracts import (
     ExecutionState,
@@ -27,7 +32,6 @@ from bridge.toolkit.contracts import (
     ToolRequestV2,
 )
 from bridge.toolkit.registry import ToolRegistry
-
 
 adapter_module = importlib.import_module(
     "bridge.tool_packages.p0_06_proliferation_stress_response.adapter"
@@ -367,9 +371,7 @@ def _request(
             },
             "program_spec_sha256": refs["program_spec"].sha256,
             "cell_state_profile_ref": cell_state["profile_id"],
-            "cell_state_profile_sha256": refs[
-                "cell_state_evidence_profile"
-            ].sha256,
+            "cell_state_profile_sha256": refs["cell_state_evidence_profile"].sha256,
             "protocol_context_ref": protocol["protocol_context_id"],
             "protocol_context_sha256": refs["protocol_ir"].sha256,
         }
@@ -383,7 +385,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-06",
         tool_id="P0-06",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path / output_name,
         object_inputs=list(refs.values()),
     )
@@ -420,7 +422,7 @@ def test_valid_bundle_is_descriptive_shadow_and_deterministic(
     assert result.domain_score is None
     assert result.score_state == "unavailable"
     assert len(result.source_bindings) == 7
-    assert len(first.artifacts) == 2
+    assert len(first.artifacts) == 16
     by_program = {item.program_id: item for item in result.review_flags}
     assert by_program["program:proliferation"].review_flag_state == (
         "not_detected_above_lod"
@@ -431,6 +433,35 @@ def test_valid_bundle_is_descriptive_shadow_and_deterministic(
     assert all(
         item.safety_interpretation == "not_evidence_of_safety"
         for item in result.review_flags
+    )
+    data_artifact = next(
+        item
+        for item in first.artifacts
+        if item.kind == "proliferation_stress_visualization_data"
+    )
+    visual_data = ProliferationStressVisualizationDataV1.model_validate_json(
+        data_artifact.path.read_text()
+    )
+    set_path = next(
+        item.path
+        for item in first.artifacts
+        if item.kind == "visualization_artifact_set"
+    )
+    artifact_set = P006VisualizationArtifactSet.model_validate_json(
+        set_path.read_text()
+    )
+    states = (
+        visual_data.program_evidence_component_state,
+        visual_data.program_score_component_state,
+        visual_data.cell_cycle_component_state,
+    )
+    assert states == ("available", "not_assessed", "not_assessed")
+    assert {item.component_ref for item in artifact_set.visualizations} == set(
+        P006_COMPONENT_REFS
+    )
+    assert all(
+        item.data_binding.sha256 == data_artifact.sha256
+        for item in artifact_set.visualizations
     )
 
 
@@ -455,9 +486,7 @@ def test_process_limits_force_cannot_attribute(
 ) -> None:
     payloads = _payloads()
     payloads["protocol_ir"][field] = value
-    run = ToolRegistry.load_default().run(
-        _request(tmp_path, payloads=payloads)
-    )
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
     result = ProliferationStressResponseProfile.model_validate(run.result)
 
     assert result.process_attribution_state == "cannot_attribute"
@@ -497,9 +526,7 @@ def test_coverage_and_lod_limit_resolution(
 ) -> None:
     payloads = _payloads()
     payloads["program_evidence_bundle"]["records"][0][field] = value
-    run = ToolRegistry.load_default().run(
-        _request(tmp_path, payloads=payloads)
-    )
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
     result = ProliferationStressResponseProfile.model_validate(run.result)
     first = next(
         item
@@ -518,21 +545,15 @@ def test_coverage_and_lod_limit_resolution(
 
 
 @pytest.mark.parametrize("change", ["window", "stage"])
-def test_stage_not_applicable_is_unavailable(
-    tmp_path: Path, change: str
-) -> None:
+def test_stage_not_applicable_is_unavailable(tmp_path: Path, change: str) -> None:
     payloads = _payloads()
     if change == "window":
         payloads["development_window_spec"]["review_state"] = "candidate"
         payloads["development_window_spec"]["reviewer_ref"] = None
         payloads["development_window_spec"]["confirmed_at"] = None
     else:
-        payloads["program_evidence_bundle"]["records"][0][
-            "stage_id"
-        ] = "stage:other"
-    run = ToolRegistry.load_default().run(
-        _request(tmp_path, payloads=payloads)
-    )
+        payloads["program_evidence_bundle"]["records"][0]["stage_id"] = "stage:other"
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
     result = ProliferationStressResponseProfile.model_validate(run.result)
     first = next(
         item
@@ -542,11 +563,14 @@ def test_stage_not_applicable_is_unavailable(
 
     assert first.applicability == "not_applicable"
     assert first.availability == "unavailable"
-    assert next(
-        item
-        for item in result.review_flags
-        if item.evidence_id == first.evidence_id
-    ).review_flag_state == "not_assessed"
+    assert (
+        next(
+            item
+            for item in result.review_flags
+            if item.evidence_id == first.evidence_id
+        ).review_flag_state
+        == "not_assessed"
+    )
 
 
 def test_program_stage_metric_and_review_vocabulary_is_external(
@@ -566,9 +590,7 @@ def test_program_stage_metric_and_review_vocabulary_is_external(
             "minimum_gene_coverage": 0.1,
             "allowed_lod_states": ["future-lod"],
             "resolvable_lod_states": ["future-lod"],
-            "review_outcomes": {
-                "future-state": "transcriptomic_review_flag"
-            },
+            "review_outcomes": {"future-state": "transcriptomic_review_flag"},
             "orthogonal_follow_up_refs": [],
             "provenance_refs": ["provenance:future-rule"],
         }
@@ -594,9 +616,7 @@ def test_program_stage_metric_and_review_vocabulary_is_external(
         }
     ]
 
-    run = ToolRegistry.load_default().run(
-        _request(tmp_path, payloads=payloads)
-    )
+    run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result["program_results"][0]["program_id"] == "future-program"
@@ -654,9 +674,7 @@ def test_cell_state_measurement_binding_drift_fails_closed(
     tmp_path: Path,
 ) -> None:
     payloads = _payloads()
-    payloads["cell_state_evidence_profile"][
-        "measurement_spec_version"
-    ] = "2.0.0"
+    payloads["cell_state_evidence_profile"]["measurement_spec_version"] = "2.0.0"
     request = _request(tmp_path, payloads=payloads)
 
     eligibility = ToolRegistry.load_default().check_eligibility(request)
@@ -702,6 +720,42 @@ def test_input_change_during_run_fails_without_publication(
     assert not (request.output_dir / run.run_id).exists()
 
 
+def test_visualization_data_failure_is_typed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = _request(tmp_path)
+    spec = ToolRegistry.load_default().describe("P0-06")
+
+    def fail(**_: object) -> None:
+        raise ValueError("invalid visualization data")
+
+    monkeypatch.setattr(
+        adapter_module, "build_proliferation_stress_visualization_data", fail
+    )
+    run = adapter.run(request, spec)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["visualization_data_invalid"]
+
+
+def test_visualization_render_failure_is_typed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = _request(tmp_path)
+    spec = ToolRegistry.load_default().describe("P0-06")
+
+    def fail(**_: object) -> None:
+        raise RuntimeError("render failed")
+
+    monkeypatch.setattr(
+        adapter_module, "prepare_proliferation_stress_visualizations", fail
+    )
+    run = adapter.run(request, spec)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["visualization_render_failed"]
+
+
 def test_existing_output_drift_fails_closed(tmp_path: Path) -> None:
     registry = ToolRegistry.load_default()
     request = _request(tmp_path)
@@ -736,7 +790,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-06",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path / "output",
     )
 

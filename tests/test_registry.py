@@ -29,7 +29,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-11").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
-    assert proliferation_stress_response.version == "0.3.0"
+    assert proliferation_stress_response.version == "0.4.0"
 
 
 
