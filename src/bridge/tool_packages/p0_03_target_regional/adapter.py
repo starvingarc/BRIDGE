@@ -10,6 +10,7 @@ from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitManifest,
     ProductCase,
     ProductDefinitionCard,
+    ProductRole,
     StateRoleMap,
     VersionedObjectRef,
     profile_lineage_reasons,
@@ -64,6 +65,12 @@ from bridge.toolkit.contracts import (
     ToolRequest,
     ToolRequestV2,
     ToolRunV2,
+)
+from bridge.tool_packages.p0_03_target_regional.visualization import (
+    prepare_target_regional_visualizations,
+)
+from bridge.tool_packages.p0_03_target_regional.visualization_data import (
+    build_target_regional_visualization_data,
 )
 
 RESULT_SCHEMA_REF = "bridge://schemas/target-regional-evidence-result/v0.2"
@@ -215,6 +222,7 @@ class TargetRegionalAdapter:
             TargetRegionalMethodSpec,
         )
         method_bundle = None
+        reference_state_support = ()
         method_artifact = None
         method_payload = None
         method_reasons: list[str] = []
@@ -238,7 +246,7 @@ class TargetRegionalAdapter:
                     input_hash=input_hash,
                 )
             try:
-                method_bundle = run_target_regional_methods(
+                method_execution = run_target_regional_methods(
                     run_id=run_id,
                     tool_version=spec.version,
                     asset=asset,
@@ -259,6 +267,8 @@ class TargetRegionalAdapter:
                 return _failed_run(
                     request, spec, [exc.reason_code], input_hash=input_hash
                 )
+            method_bundle = method_execution.bundle
+            reference_state_support = method_execution.reference_state_support
             method_payload = canonical_json_bytes(
                 method_bundle.model_dump(mode="json"), indent=2
             )
@@ -300,12 +310,39 @@ class TargetRegionalAdapter:
             method_artifact=method_artifact,
             method_reason_codes=method_reasons,
         )
+        try:
+            visualization_profile = build_target_regional_visualization_data(
+                run_id=run_id,
+                tool_version=spec.version,
+                result=evaluation.result,
+                cell_state_profile=cell_state_profile,
+                state_role_map=state_role_map,
+                assessment_spec=assessment_spec,
+                annotation_vocabulary=annotation_vocabulary,
+                reference_manifest=reference_manifest,
+                method_bundle=method_bundle,
+                reference_state_support=reference_state_support,
+            )
+            prepared_visualizations = prepare_target_regional_visualizations(
+                profile=visualization_profile,
+                output_dir=request.output_dir,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except (OSError, RuntimeError, ValueError):
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_render_failed"],
+                input_hash=input_hash,
+            )
         result_payload = canonical_json_bytes(
             evaluation.result.model_dump(mode="json"), indent=2
         )
         payloads = {
             "target_regional_evidence_result.json": result_payload,
             **evaluation.measurement_payloads,
+            **prepared_visualizations.payloads,
         }
         if method_payload is not None:
             payloads["target_regional_method_bundle.json"] = method_payload
@@ -335,6 +372,7 @@ class TargetRegionalAdapter:
                 evidence_ids=evaluation.result.evidence_refs,
             )
         ]
+        artifacts.extend(prepared_visualizations.artifacts)
         if method_payload is not None and method_artifact is not None:
             artifacts.append(
                 ArtifactManifest(
@@ -635,6 +673,24 @@ def _binding_reasons(
     }
     if configured_region_state_ids - role_map_state_ids:
         reasons.append("state_role_map_binding_mismatch")
+    role_by_state = {
+        item.state_id: item.product_role for item in state_role_map.assignments
+    }
+    target_related_roles = {ProductRole.TARGET, ProductRole.ACCEPTABLE_ADJACENT}
+    if (
+        set(assessment_spec.target_identity_numerator_product_roles)
+        - target_related_roles
+    ):
+        reasons.append("target_identity_role_not_target_related")
+    if set(assessment_spec.regional_target_numerator_state_ids) != set(
+        assessment_spec.whole_product_target_region_state_ids
+    ):
+        reasons.append("regional_numerator_scope_mismatch")
+    if any(
+        role_by_state.get(state_id) not in target_related_roles
+        for state_id in assessment_spec.regional_denominator_state_ids
+    ):
+        reasons.append("regional_denominator_role_mismatch")
     if any(
         item.view is not CellStateCompositionView.RECONCILIATION_STATE
         and (item.label_level, item.label) not in vocabulary_labels

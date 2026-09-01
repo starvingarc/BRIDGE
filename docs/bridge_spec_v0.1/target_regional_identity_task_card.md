@@ -3,16 +3,16 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-TARGET-IDENTITY-v0.1`；`TASK-REGIONAL-FIDELITY-v0.1` |
-| 文档版本 | `0.3 expression-method candidate update` |
-| 日期 | 2026-08-26 |
+| 文档版本 | `0.4 visualization candidate update` |
+| 日期 | 2026-09-01 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA progenitor |
 | 上游输入 | 11 个 checksummed 核心 JSON；表达模式另加 1 个 analysis-ready H5AD 与 1 个 `TargetRegionalMethodSpec` |
-| 主要输出 | `TargetRegionalEvidenceResult`、3 类 `MeasurementResultV2`；表达模式另加 `TargetRegionalMethodBundle` |
+| 主要输出 | `TargetRegionalEvidenceResult`、3 类 `MeasurementResultV2`、typed visualization data 与 artifact set；表达模式另加 `TargetRegionalMethodBundle` |
 
 ## 0. 当前可执行候选
 
-P0-03 v0.3.0 提供两个兼容入口：
+P0-03 v0.4.0 提供两个兼容入口：
 
 - **聚合模式**：读取 11 个 checksummed JSON，发布三个分母明确的
   `MeasurementResultV2` 与 `TargetRegionalEvidenceResult`。
@@ -43,6 +43,12 @@ NNLS 的 relative L2 residual 上限同样来自外部 applicability contract；
 
 空间投射尚未进入本版本。所有数值仍为 `shadow`，`domain_score=null`；真实
 方法可执行不等于 reference、program 或产品结论已经过生物学验证。
+
+v0.4.0 同时从同一 typed data object 生成两类正式图形：完整产品的角色及具名区域
+状态组成，以及按 target identity / regional fidelity、reference source 和 assay
+分开的表达支持矩阵。图、精确 TSV 与 JSON 绑定同一 hash；未评估、部分可用和
+草案审核状态不会被隐藏。相关性只表示 reference-conditioned expression support，
+不称为身份概率，也不生成胎儿组织坐标。
 
 ## 1. 任务目标
 
@@ -191,7 +197,7 @@ Web 可以突出展示 cell-level 投射图；正式可比较 raw metrics 先按
 
 ## 9. 运行环境
 
-P0-03 v0.3.0 的聚合与当前表达方法均在冻结的
+P0-03 v0.4.0 的聚合与当前表达方法均在冻结的
 `ENV-CELLSTATE-PY-v0.1` 中运行。AnnData 负责 H5AD I/O，NumPy/pandas/SciPy
 负责 pseudobulk、correlation、NNLS 和 bootstrap，decoupler 负责 ULM。
 
@@ -201,16 +207,26 @@ SpatialData、Squidpy、Tangram、SpaOTsc、CellTrek、CytoSPACE 和 cell2locati
 
 所有运行保留环境 ID、软件版本、随机种子、资源记录和输出 checksum。安装成功不等于方法通过科学验证。
 
-## 10. Web 必备可视化
+## 10. 当前可视化与后续下钻
 
-- 完整制剂 target/acceptable adjacent/unresolved 组成及区间。
-- target-related 区域组成与 product-wide regional-support 并列图。
-- 前脑、间脑、中脑亚区、MHB 和后脑的区域证据热图。
-- hEB58 两张切片上的 cell-level Spatial Reference Projection、概率和 uncertainty overlay。
-- shared-gene coverage、holdout fit、entropy/residual 及 section sensitivity。
-- 方法一致性、共享 evidence family、冲突和 missing evidence 下钻。
+P0-03 v0.4.0 当前生成：
 
-每张正式图绑定 Evidence ID、分母、单位、Card、reference、方法和环境版本；空间图必须显示“参考投射，不代表产品真实空间结构”。
+- **产品相关细胞组成与区域状态图**：同时显示完整产品中
+  target、acceptable adjacent、known off-target、unresolved、unknown、OOD 和
+  unavailable 的比例，以及具名 reference state 在完整产品中的比例；仅在区域
+  分母可用时另示 target-related observations 内部比例。
+- **细胞状态与中脑区域的 reference 支持图**：按 target identity 与 regional
+  fidelity 分面，并按 reference source、assay 和 developmental context 分列；
+  单元格显示 analysis-unit pseudobulk Spearman 中位数和可用单位数，未评估项
+  显式显示为 NA。
+
+产品组成图显示 StateRoleMap 审核状态；两图均提供 typed JSON、精确 TSV、
+SVG、PNG 和 PDF。观察数不作为生物学重复；缺少独立 product/preparation 时不画 composition
+置信区间。reference correlation 不解释为校准的身份概率、胎龄或组织空间位置。
+
+program activity、连续身份权重、NNLS residual、方法敏感性与真正的 spatial
+reference projection 仍保留为后续下钻；只有具备合格空间输入和适用性证据时才
+显示空间投射。空间图必须注明“参考投射，不代表产品具有真实组织空间结构”。
 
 ## 11. Benchmark 与冻结要求
 

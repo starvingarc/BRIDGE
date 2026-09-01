@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import csv
 import hashlib
+import importlib
 import json
 from copy import deepcopy
 from pathlib import Path
 
+import matplotlib
 import pytest
 from jsonschema import Draft202012Validator
 
@@ -17,7 +20,16 @@ from bridge.tool_packages.p0_03_target_regional.adapter import (
     adapter,
 )
 from bridge.tool_packages.p0_03_target_regional.models import PUBLIC_SCHEMA_MODELS
+from bridge.tool_packages.p0_03_target_regional.visualization import (
+    prepare_target_regional_visualizations,
+)
+from bridge.tool_packages.p0_03_target_regional.visualization_data import (
+    PUBLIC_VISUALIZATION_SCHEMA_MODELS,
+    ReferenceStateSupportRecord,
+    TargetRegionalVisualizationDataV1,
+)
 from bridge.toolkit.contracts import (
+    EvidenceState,
     ExecutionState,
     ImplementationState,
     MeasurementResultV2,
@@ -383,7 +395,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-03",
         tool_id="P0-03",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
@@ -426,7 +438,10 @@ def test_p0_03_declares_aggregation_and_optional_expression_contracts() -> None:
     assert "bridge://schemas/state-role-map/v0.1" not in PUBLIC_SCHEMA_MODELS
 
 
-@pytest.mark.parametrize("schema_ref,model", PUBLIC_SCHEMA_MODELS.items())
+@pytest.mark.parametrize(
+    "schema_ref,model",
+    {**PUBLIC_SCHEMA_MODELS, **PUBLIC_VISUALIZATION_SCHEMA_MODELS}.items(),
+)
 def test_public_models_emit_valid_draft_2020_12_schemas(
     schema_ref: str, model: type
 ) -> None:
@@ -448,7 +463,55 @@ def test_valid_run_publishes_only_three_normalized_ratio_types(
     assert channel["regional_fidelity_fraction"]["fraction"] == 0.75
     assert channel["whole_product_target_region_fraction"]["fraction"] == 0.6
     assert len(run.measurements) == 3
-    assert len(run.artifacts) == 4
+    assert len(run.artifacts) == 14
+    assert {item.kind for item in run.artifacts} >= {
+        "target_regional_visualization_data",
+        "visualization_artifact_set",
+        "visualization_render",
+        "visualization_table",
+    }
+    profile_path = next(
+        item.path
+        for item in run.artifacts
+        if item.kind == "target_regional_visualization_data"
+    )
+    profile = json.loads(profile_path.read_text())
+    assert profile["spatial_projection_state"] == "not_assessed"
+    assert profile["role_map_review_state"] == "draft"
+    assert profile["reference_records"] == []
+    assert profile["reference_support_applicability"] == "not_assessed"
+    assert profile["reference_support_reason_codes"] == [
+        "expression_method_bundle_not_supplied"
+    ]
+    role_records = [
+        record for record in profile["product_records"] if "category" in record
+    ]
+    state_records = [
+        record for record in profile["product_records"] if "state_id" in record
+    ]
+    assert sum(record["count"] for record in role_records) == 100
+    assert {record["product_denominator"] for record in role_records} == {100}
+    assert sum(record["count"] for record in state_records) == 100
+    artifact_set_path = next(
+        item.path for item in run.artifacts if item.kind == "visualization_artifact_set"
+    )
+    visualization_set = json.loads(artifact_set_path.read_text())
+    by_component = {
+        item["component_id"]: item for item in visualization_set["visualizations"]
+    }
+    assert (
+        by_component["bridge.target-regional.product-roles"]["data_binding"][
+            "records_path"
+        ]
+        == "product_records"
+    )
+    reference_visualization = by_component[
+        "bridge.target-regional.reference-fingerprint"
+    ]
+    assert reference_visualization["applicability"] == "not_assessed"
+    assert reference_visualization["missing_reason_codes"] == [
+        "expression_method_bundle_not_supplied"
+    ]
     assert {item.metric_name for item in run.measurements} == {
         "target_identity_fraction",
         "regional_fidelity_fraction",
@@ -457,6 +520,40 @@ def test_valid_run_publishes_only_three_normalized_ratio_types(
     assert set(run.result["input_sha256_by_role"]) == set(ROLE_MODELS)
     assert run.result["input_sha256_by_role"]["target_regional_method_spec"] is None
     assert run.result["method_artifact"] is None
+
+    role_table_path = next(
+        item.path
+        for item in run.artifacts
+        if item.path.name == "target_regional_product_roles.tsv"
+    )
+    role_rows = list(
+        csv.DictReader(role_table_path.read_text().splitlines(), delimiter="\t")
+    )
+    state_row = next(
+        row for row in role_rows if row["record_type"] == "reference_state"
+    )
+    assert state_row["is_target_related"] in {"True", "False"}
+    assert state_row["is_target_region"] in {"True", "False"}
+
+    reference_table_path = next(
+        item.path
+        for item in run.artifacts
+        if item.path.name == "target_regional_reference_fingerprint.tsv"
+    )
+    reference_rows = list(
+        csv.DictReader(reference_table_path.read_text().splitlines(), delimiter="\t")
+    )
+    assert reference_rows == [
+        {
+            **{field: "" for field in reference_rows[0]},
+            "record_type": "reference_assessment",
+            "display_name": "Reference support assessment",
+            "evidence_state": "unavailable",
+            "applicability": "not_assessed",
+            "reason_codes": "expression_method_bundle_not_supplied",
+        }
+    ]
+
     for artifact in run.artifacts:
         assert hashlib.sha256(artifact.path.read_bytes()).hexdigest() == artifact.sha256
 
@@ -709,6 +806,41 @@ def test_external_spec_changes_all_three_ratio_definitions(tmp_path: Path) -> No
     assert channel["whole_product_target_region_fraction"]["fraction"] == 0.2
 
 
+def test_target_identity_cannot_count_known_off_target_roles(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    request = _mutate(
+        request,
+        "target_regional_assessment_spec",
+        lambda payload: payload.update(
+            {"target_identity_numerator_product_roles": ["known_off_target"]}
+        ),
+    )
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+    assert not eligibility.eligible
+    assert "target_identity_role_not_target_related" in eligibility.reason_codes
+
+
+def test_regional_metrics_must_use_the_same_target_state_scope(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    request = _mutate(
+        request,
+        "target_regional_assessment_spec",
+        lambda payload: payload.update(
+            {
+                "regional_target_numerator_state_ids": ["state:alpha"],
+                "whole_product_target_region_state_ids": ["state:beta"],
+            }
+        ),
+    )
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+    assert not eligibility.eligible
+    assert "regional_numerator_scope_mismatch" in eligibility.reason_codes
+
+
 def test_missing_requested_source_returns_not_assessed(tmp_path: Path) -> None:
     payloads = _base_payloads()
     payloads["target_regional_assessment_spec"].update(
@@ -752,7 +884,7 @@ def test_v1_request_is_refused_with_a_typed_failure(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-03",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path,
     )
     eligibility = adapter.check_eligibility(request, spec)
@@ -762,9 +894,202 @@ def test_v1_request_is_refused_with_a_typed_failure(tmp_path: Path) -> None:
     assert run.reason_codes == ["tool_request_v2_required"]
 
 
+def test_sparse_reference_matrix_renders_without_inventing_cells(
+    tmp_path: Path,
+) -> None:
+    run = ToolRegistry.load_default().run(_request(tmp_path))
+    profile_path = next(
+        item.path
+        for item in run.artifacts
+        if item.kind == "target_regional_visualization_data"
+    )
+    profile = TargetRegionalVisualizationDataV1.model_validate_json(
+        profile_path.read_text()
+    )
+
+    def support(
+        record_id: str,
+        profile_id: str,
+        state_id: str,
+        value: float,
+    ) -> ReferenceStateSupportRecord:
+        return ReferenceStateSupportRecord(
+            record_id=record_id,
+            evidence_scope="target_identity",
+            profile_id=profile_id,
+            source_id=f"source:{profile_id}",
+            profile_assay="scRNA-seq",
+            anatomy="synthetic",
+            developmental_time="synthetic",
+            state_id=state_id,
+            display_name=state_id,
+            n_analysis_units=1,
+            n_available_analysis_units=1,
+            median_spearman_support=value,
+            minimum_spearman_support=value,
+            maximum_spearman_support=value,
+            shared_genes=100,
+            range_semantics="analysis_unit_range_not_confidence_interval",
+            evidence_ids=["evidence:synthetic-reference"],
+            evidence_state="inferred",
+            scientific_status="candidate",
+            missingness="available",
+            applicability="partially_applicable",
+        )
+
+    profile = profile.model_copy(
+        update={
+            "reference_support_state": EvidenceState.INFERRED,
+            "reference_support_applicability": "partially_applicable",
+            "reference_support_reason_codes": [],
+            "reference_records": [
+                support("reference.alpha", "profile-one", "state:alpha", 0.7),
+                support("reference.beta", "profile-two", "state:beta", 0.4),
+            ],
+        }
+    )
+    prepared = prepare_target_regional_visualizations(
+        profile=profile,
+        output_dir=tmp_path / "sparse-render",
+        run_id=run.run_id,
+        tool_version="0.4.0",
+    )
+    assert prepared.payloads["target_regional_reference-fingerprint.png"].startswith(
+        b"\x89PNG"
+    )
+    table = prepared.payloads["target_regional_reference_fingerprint.tsv"].decode()
+    assert table.count("\n") == 4
+    assert table.splitlines()[1].startswith("reference_assessment\t")
+
+
+def test_visualization_failure_returns_a_typed_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter_module = importlib.import_module(
+        "bridge.tool_packages.p0_03_target_regional.adapter"
+    )
+
+    def fail_render(**_kwargs):
+        raise RuntimeError("synthetic render failure")
+
+    monkeypatch.setattr(
+        adapter_module,
+        "prepare_target_regional_visualizations",
+        fail_render,
+    )
+    run = ToolRegistry.load_default().run(_request(tmp_path))
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["visualization_render_failed"]
+    assert not (tmp_path / "output").exists()
+
+
 def test_implementation_contains_no_fixture_state_ids() -> None:
     root = Path(__file__).parents[1] / "src/bridge/tool_packages/p0_03_target_regional"
     source = "\n".join(path.read_text() for path in root.glob("*.py"))
     assert "state:alpha" not in source
     assert "state:beta" not in source
     assert "state:gamma" not in source
+
+
+def test_large_visualization_uses_table_fallback_without_losing_results(
+    tmp_path: Path,
+) -> None:
+    run = ToolRegistry.load_default().run(_request(tmp_path))
+    profile_path = next(
+        item.path
+        for item in run.artifacts
+        if item.kind == "target_regional_visualization_data"
+    )
+    profile = TargetRegionalVisualizationDataV1.model_validate_json(
+        profile_path.read_text()
+    )
+    template = next(
+        record for record in profile.product_records if hasattr(record, "state_id")
+    )
+    oversized = [
+        template.model_copy(
+            update={
+                "record_id": f"state.channel.01.oversized-{index:03d}",
+                "state_id": f"state:oversized-{index:03d}",
+            }
+        )
+        for index in range(61)
+    ]
+    profile = profile.model_copy(update={"product_records": oversized})
+    prepared = prepare_target_regional_visualizations(
+        profile=profile,
+        output_dir=tmp_path / "oversized-render",
+        run_id=run.run_id,
+        tool_version="0.4.0",
+    )
+
+    assert prepared.payloads["target_regional_product-roles.png"].startswith(b"\x89PNG")
+    assert (
+        len(
+            prepared.payloads["target_regional_product_roles.tsv"].decode().splitlines()
+        )
+        == 62
+    )
+    artifact_set = json.loads(
+        prepared.payloads["target_regional_visualization_artifact_set.json"].decode()
+    )
+    role = next(
+        item
+        for item in artifact_set["visualizations"]
+        if item["component_id"] == "bridge.target-regional.product-roles"
+    )
+    assert role["applicability"] == "partially_applicable"
+    assert "static_render_requires_table_fallback" in role["missing_reason_codes"]
+
+
+def test_svg_render_is_isolated_from_process_global_matplotlib_state(
+    tmp_path: Path,
+) -> None:
+    run = ToolRegistry.load_default().run(_request(tmp_path))
+    profile_path = next(
+        item.path
+        for item in run.artifacts
+        if item.kind == "target_regional_visualization_data"
+    )
+    profile = TargetRegionalVisualizationDataV1.model_validate_json(
+        profile_path.read_text()
+    )
+    original_hashsalt = matplotlib.rcParams["svg.hashsalt"]
+    try:
+        matplotlib.rcParams["svg.hashsalt"] = "other-tool-first"
+        first = prepare_target_regional_visualizations(
+            profile=profile,
+            output_dir=tmp_path / "first-render",
+            run_id=run.run_id,
+            tool_version="0.4.0",
+        )
+        matplotlib.rcParams["svg.hashsalt"] = "other-tool-second"
+        second = prepare_target_regional_visualizations(
+            profile=profile,
+            output_dir=tmp_path / "second-render",
+            run_id=run.run_id,
+            tool_version="0.4.0",
+        )
+    finally:
+        matplotlib.rcParams["svg.hashsalt"] = original_hashsalt
+
+    assert (
+        first.payloads["target_regional_product-roles.svg"]
+        == second.payloads["target_regional_product-roles.svg"]
+    )
+    first_set = json.loads(
+        first.payloads["target_regional_visualization_artifact_set.json"]
+    )
+    second_set = json.loads(
+        second.payloads["target_regional_visualization_artifact_set.json"]
+    )
+    assert [
+        render["config_sha256"]
+        for item in first_set["visualizations"]
+        for render in item["renders"]
+    ] == [
+        render["config_sha256"]
+        for item in second_set["visualizations"]
+        for render in item["renders"]
+    ]

@@ -69,6 +69,25 @@ class _ReferenceRun:
     shared_genes: int
 
 
+@dataclass(frozen=True)
+class ReferenceStateSupportValue:
+    analysis_unit_ref: str
+    evidence_scope: str
+    profile_id: str
+    profile_assay: str
+    state_id: str
+    spearman_support: float | None
+    cosine_support: float | None
+    shared_genes: int
+    reason_codes: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TargetRegionalMethodExecution:
+    bundle: TargetRegionalMethodBundle
+    reference_state_support: tuple[ReferenceStateSupportValue, ...]
+
+
 def run_target_regional_methods(
     *,
     run_id: str,
@@ -84,7 +103,7 @@ def run_target_regional_methods(
     random_seed: int,
     expected_n_observations: int,
     expected_observation_ids_sha256: str,
-) -> TargetRegionalMethodBundle:
+) -> TargetRegionalMethodExecution:
     query = _load_query_pseudobulk(asset, method_spec, biological_unit_assignment)
     root = reference_manifest_path.parent
     if query.n_observations != expected_n_observations:
@@ -103,7 +122,7 @@ def run_target_regional_methods(
         evidence = _all_methods_not_assessed(
             method_spec, target_profiles, regional_profiles, semantics_reason
         )
-        return TargetRegionalMethodBundle(
+        bundle = TargetRegionalMethodBundle(
             object_version="0.1.0",
             bundle_id=f"target-regional-method-bundle:{run_id.removeprefix('run-')}",
             tool_id="P0-03",
@@ -130,6 +149,10 @@ def run_target_regional_methods(
             domain_score=None,
             score_state=ScoreState.UNAVAILABLE,
         )
+        return TargetRegionalMethodExecution(
+            bundle=bundle,
+            reference_state_support=(),
+        )
     profiles_by_id = {
         profile.profile_id: profile
         for profile in [*target_profiles, *regional_profiles]
@@ -147,7 +170,7 @@ def run_target_regional_methods(
     modality_profile_ids, modality_reason = _matched_modality_profile_ids(
         method_spec, regional_profiles
     )
-    target_support = (
+    target_support, target_state_support = (
         _reference_support(
             query,
             target_reference_runs,
@@ -155,14 +178,14 @@ def run_target_regional_methods(
             evidence_scope="target_identity",
         )
         if TargetRegionalMethodId.TARGET_PSEUDOBULK_CORRELATION in selected
-        else []
+        else ([], [])
     )
     regional_support_methods = {
         TargetRegionalMethodId.REGIONAL_PSEUDOBULK_CORRELATION,
         TargetRegionalMethodId.REGIONAL_CROSS_REFERENCE,
         TargetRegionalMethodId.REGIONAL_MODALITY_SENSITIVITY,
     }
-    regional_support = (
+    regional_support, regional_state_support = (
         _reference_support(
             query,
             regional_reference_runs,
@@ -170,7 +193,7 @@ def run_target_regional_methods(
             evidence_scope="regional_fidelity",
         )
         if selected & regional_support_methods
-        else []
+        else ([], [])
     )
     support = [*target_support, *regional_support]
     needs_nnls = bool(
@@ -269,7 +292,7 @@ def run_target_regional_methods(
         )
         else ScoreState.UNAVAILABLE
     )
-    return TargetRegionalMethodBundle(
+    bundle = TargetRegionalMethodBundle(
         object_version="0.1.0",
         bundle_id=f"target-regional-method-bundle:{run_id.removeprefix('run-')}",
         tool_id="P0-03",
@@ -295,6 +318,20 @@ def run_target_regional_methods(
         robustness=robustness,
         domain_score=None,
         score_state=score_state,
+    )
+    return TargetRegionalMethodExecution(
+        bundle=bundle,
+        reference_state_support=tuple(
+            sorted(
+                [*target_state_support, *regional_state_support],
+                key=lambda item: (
+                    item.evidence_scope,
+                    item.profile_id,
+                    item.analysis_unit_ref,
+                    item.state_id,
+                ),
+            )
+        ),
     )
 
 
@@ -576,10 +613,11 @@ def _reference_support(
     references: list[_ReferenceRun],
     minimum_shared_genes: int,
     evidence_scope: str,
-) -> list[ReferenceSupportRecord]:
+) -> tuple[list[ReferenceSupportRecord], list[ReferenceStateSupportValue]]:
     records: list[ReferenceSupportRecord] = []
+    state_records: list[ReferenceStateSupportValue] = []
     for reference in references:
-        _, summary, coverage = source_support(
+        long, summary, coverage = source_support(
             query.matrix,
             query.genes,
             reference.matrix,
@@ -588,6 +626,23 @@ def _reference_support(
             minimum_shared_genes=minimum_shared_genes,
             workers=1,
         )
+        if long.empty:
+            labels = sorted({str(row["label"]) for row in reference.metadata["rows"]})
+            state_records.extend(
+                ReferenceStateSupportValue(
+                    analysis_unit_ref=str(analysis_unit_ref),
+                    evidence_scope=evidence_scope,
+                    profile_id=reference.profile.profile_id,
+                    profile_assay=reference.profile.assay,
+                    state_id=state_id,
+                    spearman_support=None,
+                    cosine_support=None,
+                    shared_genes=int(coverage["shared_genes"]),
+                    reason_codes=("reference_gene_coverage_insufficient",),
+                )
+                for analysis_unit_ref in query.analysis_unit_refs
+                for state_id in labels
+            )
         if summary.empty:
             records.extend(
                 ReferenceSupportRecord(
@@ -601,6 +656,25 @@ def _reference_support(
                 for analysis_unit_ref in query.analysis_unit_refs
             )
             continue
+        for row in long.to_dict(orient="records"):
+            spearman = _bounded_float(row["spearman_support"], -1.0, 1.0)
+            cosine = _bounded_float(row["cosine_support"], -1.0, 1.0)
+            available = spearman is not None and cosine is not None
+            state_records.append(
+                ReferenceStateSupportValue(
+                    analysis_unit_ref=str(row["observation_id"]),
+                    evidence_scope=evidence_scope,
+                    profile_id=reference.profile.profile_id,
+                    profile_assay=reference.profile.assay,
+                    state_id=str(row["label"]),
+                    spearman_support=spearman,
+                    cosine_support=cosine,
+                    shared_genes=int(coverage["shared_genes"]),
+                    reason_codes=(
+                        () if available else ("reference_support_non_finite",)
+                    ),
+                )
+            )
         for row in summary.to_dict(orient="records"):
             records.append(
                 ReferenceSupportRecord(
@@ -621,7 +695,7 @@ def _reference_support(
                     evidence_state="shadow",
                 )
             )
-    return records
+    return records, state_records
 
 
 def _continuous_identity_weights(
@@ -668,16 +742,12 @@ def _continuous_identity_weights(
                     weight=float(weight),
                     residual_norm=relative_residual,
                     residual_metric="relative_l2_norm",
-                    applicability_state=(
-                        "shadow"
-                        if relative_residual <= maximum_residual
-                        else "unknown"
-                    ),
-                    reason_codes=(
-                        [] if relative_residual <= maximum_residual else [
-                            "nnls_residual_above_applicability_limit"
-                        ]
-                    ),
+                    applicability_state="shadow"
+                    if relative_residual <= maximum_residual
+                    else "unknown",
+                    reason_codes=[]
+                    if relative_residual <= maximum_residual
+                    else ["nnls_residual_above_applicability_limit"],
                 )
                 for label, weight in zip(unique_labels, fitted, strict=True)
             )
