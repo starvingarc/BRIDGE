@@ -339,6 +339,14 @@ class HierarchicalCellStateCompositionDataV1(FrozenModel):
                     refined_by_parent.setdefault(record.parent_state_id, set()).add(
                         record.state_id
                     )
+            for record in self.group_records:
+                if record.level != "L2":
+                    continue
+                expected_states = refined_by_parent.get(record.parent_state_id)
+                if expected_states is None:
+                    raise ValueError("group record references an unknown refined parent")
+                if record.state_id is not None and record.state_id not in expected_states:
+                    raise ValueError("group record references an unknown refined state")
             records_by_group = {
                 group_id: [
                     record

@@ -980,12 +980,16 @@ def write_hierarchical_composition_table(
 
 
 def _reference_matrix(profile: HierarchicalCellStateCompositionDataV1):
-    states = [
+    ordered_states = [
         record
         for record in sorted(profile.composition_records, key=lambda item: item.order)
         if record.record_kind == "state"
     ]
-    broad_count = sum(record.level == "L1" for record in states)
+    broad_states = [record for record in ordered_states if record.level == "L1"]
+    states = broad_states + [
+        record for record in ordered_states if record.level == "L2"
+    ]
+    broad_count = len(broad_states)
     if profile.groups:
         records = {
             (record.group_id, record.state_id): record
