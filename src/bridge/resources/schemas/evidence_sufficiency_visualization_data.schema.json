@@ -1,0 +1,656 @@
+{
+  "$defs": {
+    "DomainAxisRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "axis_id": {
+          "$ref": "#/$defs/EvidenceAxisId"
+        },
+        "component_ref": {
+          "const": "bridge.evidence-sufficiency.domain-axes@0.1.0",
+          "default": "bridge.evidence-sufficiency.domain-axes@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "profile_ref": {
+          "pattern": "^evidence-sufficiency-profile:[a-f0-9]{16}:[A-Za-z0-9._:-]+$",
+          "title": "Profile Ref",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "scope_basis": {
+          "enum": [
+            "bound_measurement_spec_input_requirements",
+            "declared_method_context_and_validation_records",
+            "declared_reference_and_prior_context",
+            "current_candidate_interpretation_rules"
+          ],
+          "title": "Scope Basis",
+          "type": "string"
+        },
+        "scoped_state_label": {
+          "minLength": 1,
+          "title": "Scoped State Label",
+          "type": "string"
+        },
+        "source_state": {
+          "minLength": 1,
+          "title": "Source State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "profile_ref",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "axis_id",
+        "source_state",
+        "scoped_state_label",
+        "scope_basis"
+      ],
+      "title": "DomainAxisRecord",
+      "type": "object"
+    },
+    "DomainVisualizationBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "domain_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/P0DomainId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "domain_label": {
+          "minLength": 1,
+          "title": "Domain Label",
+          "type": "string"
+        },
+        "evidence_family_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Family Ids",
+          "type": "array"
+        },
+        "measurement_result_reference_count": {
+          "minimum": 0,
+          "title": "Measurement Result Reference Count",
+          "type": "integer"
+        },
+        "measurement_spec_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measurement Spec Ref"
+        },
+        "profile_ref": {
+          "pattern": "^evidence-sufficiency-profile:[a-f0-9]{16}:[A-Za-z0-9._:-]+$",
+          "title": "Profile Ref",
+          "type": "string"
+        },
+        "source_evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Evidence Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "profile_ref",
+        "domain_label",
+        "measurement_result_reference_count",
+        "source_evidence_refs",
+        "evidence_family_ids"
+      ],
+      "title": "DomainVisualizationBinding",
+      "type": "object"
+    },
+    "EvidenceAxisId": {
+      "enum": [
+        "input_data",
+        "method_validation",
+        "reference_prior",
+        "interpretation"
+      ],
+      "title": "EvidenceAxisId",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "InterpretationRequirementRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "catalog_axis": {
+          "enum": [
+            "contract",
+            "data",
+            "model",
+            "prior",
+            "gate",
+            "score",
+            "provenance"
+          ],
+          "title": "Catalog Axis",
+          "type": "string"
+        },
+        "catalog_severity": {
+          "enum": [
+            "info",
+            "warning",
+            "limiting",
+            "blocking",
+            "missing"
+          ],
+          "title": "Catalog Severity",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.evidence-sufficiency.interpretation-requirements@0.1.0",
+          "default": "bridge.evidence-sufficiency.interpretation-requirements@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "profile_ref": {
+          "pattern": "^evidence-sufficiency-profile:[a-f0-9]{16}:[A-Za-z0-9._:-]+$",
+          "title": "Profile Ref",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "requirement_class": {
+          "$ref": "#/$defs/RequirementClass"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "profile_ref",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "reason_code",
+        "requirement_class",
+        "catalog_axis",
+        "catalog_severity"
+      ],
+      "title": "InterpretationRequirementRecord",
+      "type": "object"
+    },
+    "MeasurementStateRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.evidence-sufficiency.measurement-states@0.1.0",
+          "default": "bridge.evidence-sufficiency.measurement-states@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "count_semantics": {
+          "const": "domain_profile_measurement_result_references",
+          "default": "domain_profile_measurement_result_references",
+          "title": "Count Semantics",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "independent_evidence_count": {
+          "const": false,
+          "default": false,
+          "title": "Independent Evidence Count",
+          "type": "boolean"
+        },
+        "measurement_evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "profile_ref": {
+          "pattern": "^evidence-sufficiency-profile:[a-f0-9]{16}:[A-Za-z0-9._:-]+$",
+          "title": "Profile Ref",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "reference_count": {
+          "minimum": 0,
+          "title": "Reference Count",
+          "type": "integer"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "zero_semantics": {
+          "const": "no_bound_measurement_result_reference_in_this_domain_profile",
+          "default": "no_bound_measurement_result_reference_in_this_domain_profile",
+          "title": "Zero Semantics",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "profile_ref",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "measurement_evidence_state",
+        "reference_count"
+      ],
+      "title": "MeasurementStateRecord",
+      "type": "object"
+    },
+    "P0DomainId": {
+      "enum": [
+        "target_identity",
+        "regional_fidelity",
+        "developmental_compatibility",
+        "off_target_control",
+        "proliferation_stress_response"
+      ],
+      "title": "P0DomainId",
+      "type": "string"
+    },
+    "ReasonDisplayRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "enum": [
+            "contract",
+            "data",
+            "model",
+            "prior",
+            "gate",
+            "score",
+            "provenance"
+          ],
+          "title": "Axis",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "remediation": {
+          "minLength": 1,
+          "title": "Remediation",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "limiting",
+            "blocking",
+            "missing"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason_code",
+        "axis",
+        "severity",
+        "description",
+        "remediation"
+      ],
+      "title": "ReasonDisplayRecord",
+      "type": "object"
+    },
+    "RequirementClass": {
+      "enum": [
+        "missing",
+        "blocking",
+        "limiting",
+        "review_required"
+      ],
+      "title": "RequirementClass",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/evidence-sufficiency-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "axis_records": {
+      "items": {
+        "$ref": "#/$defs/DomainAxisRecord"
+      },
+      "maxItems": 20,
+      "minItems": 4,
+      "title": "Axis Records",
+      "type": "array"
+    },
+    "domain_bindings": {
+      "items": {
+        "$ref": "#/$defs/DomainVisualizationBinding"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "title": "Domain Bindings",
+      "type": "array"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_family_ids_are_not_independent_evidence": {
+      "const": true,
+      "default": true,
+      "title": "Evidence Family Ids Are Not Independent Evidence",
+      "type": "boolean"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "gate_rule_spec_ref": {
+      "const": "GATE-EVIDENCE-SUFFICIENCY-v0.2",
+      "title": "Gate Rule Spec Ref",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "measurement_reference_counts_are_not_independent_evidence": {
+      "const": true,
+      "default": true,
+      "title": "Measurement Reference Counts Are Not Independent Evidence",
+      "type": "boolean"
+    },
+    "measurement_state_records": {
+      "items": {
+        "$ref": "#/$defs/MeasurementStateRecord"
+      },
+      "maxItems": 40,
+      "minItems": 8,
+      "title": "Measurement State Records",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:run-[a-f0-9]{16}$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_id": {
+      "const": "P0-08",
+      "default": "P0-08",
+      "title": "Producer Tool Id",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "minLength": 1,
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "reason_catalog_id": {
+      "const": "BRIDGE-REASON-CODE-CATALOG-v0.2",
+      "title": "Reason Catalog Id",
+      "type": "string"
+    },
+    "reason_catalog_schema_ref": {
+      "const": "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.2",
+      "title": "Reason Catalog Schema Ref",
+      "type": "string"
+    },
+    "reason_catalog_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Reason Catalog Sha256",
+      "type": "string"
+    },
+    "reason_catalog_version": {
+      "const": "0.2.0",
+      "title": "Reason Catalog Version",
+      "type": "string"
+    },
+    "reason_display_records": {
+      "items": {
+        "$ref": "#/$defs/ReasonDisplayRecord"
+      },
+      "title": "Reason Display Records",
+      "type": "array"
+    },
+    "requirement_records": {
+      "items": {
+        "$ref": "#/$defs/InterpretationRequirementRecord"
+      },
+      "title": "Requirement Records",
+      "type": "array"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/evidence-sufficiency-visualization-data/v0.1",
+      "default": "bridge://schemas/evidence-sufficiency-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "source_evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Evidence Refs",
+      "type": "array"
+    },
+    "source_result_ref": {
+      "pattern": "^evidence-sufficiency-result:[a-f0-9]{16}$",
+      "title": "Source Result Ref",
+      "type": "string"
+    },
+    "source_result_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Result Sha256",
+      "type": "string"
+    },
+    "source_result_version": {
+      "const": "0.2.0",
+      "default": "0.2.0",
+      "title": "Source Result Version",
+      "type": "string"
+    },
+    "visualization_profile_id": {
+      "pattern": "^evidence-sufficiency-visualization:[a-f0-9]{16}$",
+      "title": "Visualization Profile Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "visualization_profile_id",
+    "producer_tool_version",
+    "producer_run_ref",
+    "source_result_ref",
+    "source_result_sha256",
+    "gate_rule_spec_ref",
+    "reason_catalog_id",
+    "reason_catalog_version",
+    "reason_catalog_schema_ref",
+    "reason_catalog_sha256",
+    "domain_bindings",
+    "axis_records",
+    "requirement_records",
+    "measurement_state_records",
+    "reason_display_records",
+    "source_evidence_refs",
+    "evidence_ids",
+    "limitations"
+  ],
+  "title": "EvidenceSufficiencyVisualizationDataV1",
+  "type": "object"
+}

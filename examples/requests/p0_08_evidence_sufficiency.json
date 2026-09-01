@@ -80,5 +80,5 @@
   "random_seed": 0,
   "request_id": "example-p0-08-evidence-sufficiency",
   "tool_id": "P0-08",
-  "tool_version": "0.3.0"
+  "tool_version": "0.4.0"
 }

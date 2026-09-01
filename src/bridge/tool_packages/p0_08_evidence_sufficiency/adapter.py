@@ -3,25 +3,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 from importlib.resources import files
-import os
 from pathlib import Path
 import re
-import shutil
 from typing import Any
 from urllib.parse import parse_qsl, urlsplit
-from uuid import uuid4
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
+    PublicationError,
     StructuredInputError,
+    canonical_json_bytes,
     failed_v2_run,
     inputs_unchanged as _inputs_unchanged,
     load_structured_inputs,
     objects_for_role as _objects_for_role,
+    publish_json_bundle,
     read_regular_bytes,
     single_object as _single_object,
     strict_json_loads as _loads_json,
-    write_json as _write_json,
 )
 from bridge.tool_packages.p0_08_evidence_sufficiency.executor import (
     REASON_CODES,
@@ -39,6 +38,13 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     ReasonCodeCatalogV2 as ReasonCodeCatalog,
     VersionedObjectPointer,
     published_ref,
+)
+from bridge.tool_packages.p0_08_evidence_sufficiency.visualization import (
+    PreparedEvidenceSufficiencyVisualizations,
+    prepare_evidence_sufficiency_visualizations,
+)
+from bridge.tool_packages.p0_08_evidence_sufficiency.visualization_data import (
+    build_evidence_sufficiency_visualization_data,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -212,51 +218,81 @@ class EvidenceSufficiencyAdapter:
             domain_inputs=domain_inputs,
             objects_by_input_id=loaded.objects_by_input_id,
         )
-        output_root = request.output_dir.resolve()
-        output_root.mkdir(parents=True, exist_ok=True)
-        staging_dir = output_root / f".{run_id}.staging-{uuid4().hex}"
-        staging_dir.mkdir(mode=0o700)
+        payloads, scientific_specs = _scientific_payloads(
+            result=result,
+            gate_rule=gate_rule,
+        )
         try:
-            artifact_specs = _write_scientific_payloads(
-                staging_dir=staging_dir,
+            reason_catalog = load_reason_catalog()
+            visualization_profile = build_evidence_sufficiency_visualization_data(
+                run_id=run_id,
+                tool_version=spec.version,
                 result=result,
-                gate_rule=gate_rule,
+                reason_catalog=reason_catalog,
+                reason_catalog_sha256=reason_catalog_sha256(),
             )
-            manifest = _manifest_payload(
+        except (KeyError, OSError, TypeError, ValueError):
+            return _failed_run(
+                request=request,
+                spec=spec,
+                input_hash=input_hash,
+                reason_codes=["visualization_data_invalid"],
+            )
+        try:
+            prepared_visualizations = prepare_evidence_sufficiency_visualizations(
+                profile=visualization_profile,
+                output_dir=request.output_dir,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+            return _failed_run(
+                request=request,
+                spec=spec,
+                input_hash=input_hash,
+                reason_codes=["visualization_render_failed"],
+            )
+        payloads.update(prepared_visualizations.payloads)
+        artifact_specs = [
+            *scientific_specs,
+            *(
+                _artifact_spec_from_manifest(artifact)
+                for artifact in prepared_visualizations.artifacts
+            ),
+        ]
+        payloads["artifact_manifest.json"] = canonical_json_bytes(
+            _manifest_payload(
                 request=request,
                 spec=spec,
                 run_id=run_id,
                 input_hash=input_hash,
                 objects_by_input_id=loaded.objects_by_input_id,
                 artifact_specs=artifact_specs,
+            ),
+            indent=2,
+        )
+        try:
+            published = publish_json_bundle(
+                request=request,
+                run_id=run_id,
+                payloads=payloads,
+                inputs_are_unchanged=_inputs_unchanged,
             )
-            _write_json(staging_dir / "artifact_manifest.json", manifest)
-            if not _inputs_unchanged(request.object_inputs):
-                return _cleanup_and_fail(
-                    staging_dir,
-                    request=request,
-                    spec=spec,
-                    input_hash=input_hash,
-                    reason_code="structured_input_modified_during_run",
-                )
-            final_dir = output_root / run_id
-            if final_dir.exists():
-                if not _bundles_match(staging_dir, final_dir):
-                    return _cleanup_and_fail(
-                        staging_dir,
-                        request=request,
-                        spec=spec,
-                        input_hash=input_hash,
-                        reason_code="existing_run_bundle_hash_mismatch",
-                    )
-                shutil.rmtree(staging_dir)
-            else:
-                os.replace(staging_dir, final_dir)
-        except Exception:
-            if staging_dir.exists():
-                shutil.rmtree(staging_dir)
-            raise
-        artifacts = _runtime_artifacts(final_dir, run_id, result)
+        except PublicationError as exc:
+            return _failed_run(
+                request=request,
+                spec=spec,
+                input_hash=input_hash,
+                reason_codes=[exc.reason_code],
+            )
+        artifacts = _runtime_artifacts(
+            published=published,
+            payloads=payloads,
+            run_id=run_id,
+            result=result,
+            scientific_specs=scientific_specs,
+            prepared_visualizations=prepared_visualizations,
+        )
         created_at = max(domain_input.created_at for domain_input in domain_inputs)
         return ToolRunV2(
             run_id=run_id,
@@ -328,6 +364,10 @@ def load_reason_catalog() -> ReasonCodeCatalog:
 
 def gate_rule_sha256() -> str:
     return hashlib.sha256(_resource_bytes("gate_rule_spec_v0.2.json")).hexdigest()
+
+
+def reason_catalog_sha256() -> str:
+    return hashlib.sha256(_resource_bytes("reason_code_catalog_v0.2.json")).hexdigest()
 
 
 def _resource_bytes(filename: str) -> bytes:
@@ -620,14 +660,22 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
                 ):
                     reasons.append("domain_input_product_definition_mismatch")
 
+    try:
+        resolved_output = request.output_dir.resolve()
+    except (OSError, RuntimeError):
+        return sorted(set([*reasons, "output_path_invalid"]))
+
     for ref in request.object_inputs:
         if (
             ref.role not in {"gate_rule_spec", "domain_gate_input"}
             and ref.input_id not in bound_ids
         ):
             reasons.append("unbound_structured_input")
-        resolved_input = ref.path.resolve()
-        resolved_output = request.output_dir.resolve()
+        try:
+            resolved_input = ref.path.resolve()
+        except (OSError, RuntimeError):
+            reasons.append("structured_input_not_regular_file")
+            continue
         if resolved_input == resolved_output or resolved_input.is_relative_to(resolved_output):
             reasons.append("output_dir_overlaps_structured_input")
     return sorted(set(reasons))
@@ -797,55 +845,82 @@ def _logical_id_reasons(
     return ["duplicate_logical_object_id"] if duplicate else []
 
 
-def _write_scientific_payloads(
+def _scientific_payloads(
     *,
-    staging_dir: Path,
     result: EvidenceSufficiencyRunResult,
     gate_rule: GateRuleSpec,
-) -> list[dict[str, Any]]:
-    payloads = {
-        "evidence_sufficiency_profiles.json": (
+) -> tuple[dict[str, bytes], list[dict[str, Any]]]:
+    evidence_ids = sorted(
+        {evidence for profile in result.profiles for evidence in profile.evidence_refs}
+    )
+    objects: list[tuple[str, str, object, list[str]]] = [
+        (
+            "evidence_sufficiency_profiles.json",
             "evidence_sufficiency_profiles",
             {
                 "projection_kind": "noncanonical_convenience_projection",
                 "canonical_result_ref": result.result_id,
                 "profiles": [profile.model_dump(mode="json") for profile in result.profiles],
             },
+            evidence_ids,
         ),
-        "case_evidence_readiness_summary.json": (
+        (
+            "case_evidence_readiness_summary.json",
             "case_evidence_readiness_summary",
             result.case_summary.model_dump(mode="json"),
+            evidence_ids,
         ),
-        "gate_trace.json": (
+        (
+            "gate_trace.json",
             "evidence_sufficiency_gate_trace",
             {
                 "gate_trace_id": f"gate-trace:{result.result_id.rsplit(':', 1)[1]}",
                 "gate_rule_spec_ref": gate_rule.gate_rule_spec_id,
                 "entries": [entry.model_dump(mode="json") for entry in result.gate_trace],
             },
+            evidence_ids,
         ),
-        "evidence_sufficiency_run_result.json": (
+        (
+            "evidence_sufficiency_run_result.json",
             "evidence_sufficiency_run_result",
             result.model_dump(mode="json"),
+            evidence_ids,
         ),
-    }
-    artifact_specs: list[dict[str, Any]] = []
-    evidence_ids = sorted(
-        {evidence for profile in result.profiles for evidence in profile.evidence_refs}
+    ]
+    objects.extend(
+        (
+            f"evidence_sufficiency_profile_{index:02d}.json",
+            "evidence_sufficiency_profile",
+            profile.model_dump(mode="json"),
+            sorted(profile.evidence_refs),
+        )
+        for index, profile in enumerate(result.profiles, start=1)
     )
-    for filename, (kind, payload) in payloads.items():
-        path = staging_dir / filename
-        _write_json(path, payload)
+    payloads: dict[str, bytes] = {}
+    artifact_specs: list[dict[str, Any]] = []
+    for filename, kind, value, object_evidence_ids in objects:
+        payload = canonical_json_bytes(value, indent=2)
+        payloads[filename] = payload
         artifact_specs.append(
             {
                 "filename": filename,
                 "kind": kind,
                 "media_type": "application/json",
-                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                "evidence_ids": evidence_ids,
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "evidence_ids": object_evidence_ids,
             }
         )
-    return artifact_specs
+    return payloads, artifact_specs
+
+
+def _artifact_spec_from_manifest(artifact: ArtifactManifest) -> dict[str, Any]:
+    return {
+        "filename": artifact.path.name,
+        "kind": artifact.kind,
+        "media_type": artifact.media_type,
+        "sha256": artifact.sha256,
+        "evidence_ids": artifact.evidence_ids,
+    }
 
 
 def _manifest_payload(
@@ -887,95 +962,47 @@ def _manifest_payload(
     }
 
 
-def _bundles_match(staging_dir: Path, final_dir: Path) -> bool:
-    if not final_dir.is_dir() or final_dir.is_symlink():
-        return False
-    expected_names = {
-        "evidence_sufficiency_profiles.json",
-        "case_evidence_readiness_summary.json",
-        "gate_trace.json",
-        "evidence_sufficiency_run_result.json",
-        "artifact_manifest.json",
-    }
-    if {path.name for path in staging_dir.iterdir()} != expected_names:
-        return False
-    if {path.name for path in final_dir.iterdir()} != expected_names:
-        return False
-    if (staging_dir / "artifact_manifest.json").read_bytes() != (
-        final_dir / "artifact_manifest.json"
-    ).read_bytes():
-        return False
-    try:
-        manifest = _loads_json((final_dir / "artifact_manifest.json").read_bytes())
-    except (OSError, UnicodeDecodeError, ValueError):
-        return False
-    if not isinstance(manifest, dict) or not isinstance(manifest.get("artifacts"), list):
-        return False
-    artifact_entries = manifest["artifacts"]
-    expected_artifacts = expected_names - {"artifact_manifest.json"}
-    if {
-        artifact.get("filename")
-        for artifact in artifact_entries
-        if isinstance(artifact, dict)
-    } != expected_artifacts or len(artifact_entries) != len(expected_artifacts):
-        return False
-    for artifact in artifact_entries:
-        if not isinstance(artifact, dict):
-            return False
-        path = final_dir / str(artifact.get("filename", ""))
-        if not path.is_file() or path.is_symlink():
-            return False
-        if hashlib.sha256(path.read_bytes()).hexdigest() != artifact.get("sha256"):
-            return False
-    return all(
-        (staging_dir / filename).read_bytes() == (final_dir / filename).read_bytes()
-        for filename in expected_names
-    )
-
-
 def _runtime_artifacts(
-    final_dir: Path,
+    *,
+    published: dict[str, Path],
+    payloads: dict[str, bytes],
     run_id: str,
     result: EvidenceSufficiencyRunResult,
+    scientific_specs: list[dict[str, Any]],
+    prepared_visualizations: PreparedEvidenceSufficiencyVisualizations,
 ) -> list[ArtifactManifest]:
     evidence_ids = sorted(
         {evidence for profile in result.profiles for evidence in profile.evidence_refs}
     )
-    specs = (
-        ("profiles", "evidence_sufficiency_profiles", "evidence_sufficiency_profiles.json"),
-        ("summary", "case_evidence_readiness_summary", "case_evidence_readiness_summary.json"),
-        ("trace", "evidence_sufficiency_gate_trace", "gate_trace.json"),
-        ("result", "evidence_sufficiency_run_result", "evidence_sufficiency_run_result.json"),
-        ("manifest", "manifest", "artifact_manifest.json"),
-    )
-    return [
+    artifacts = [
         ArtifactManifest(
-            artifact_id=f"artifact:{run_id}:{suffix}",
-            kind=kind,
-            path=(final_dir / filename).resolve(),
+            artifact_id=(
+                f"artifact:{run_id}:"
+                f"{Path(str(item['filename'])).stem.replace('_', '-')}"
+            ),
+            kind=str(item["kind"]),
+            path=published[str(item["filename"])].resolve(),
+            media_type=str(item["media_type"]),
+            sha256=str(item["sha256"]),
+            evidence_ids=list(item["evidence_ids"]),
+        )
+        for item in scientific_specs
+    ]
+    artifacts.append(
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:artifact-manifest",
+            kind="artifact_manifest",
+            path=published["artifact_manifest.json"].resolve(),
             media_type="application/json",
-            sha256=hashlib.sha256((final_dir / filename).read_bytes()).hexdigest(),
+            sha256=hashlib.sha256(payloads["artifact_manifest.json"]).hexdigest(),
             evidence_ids=evidence_ids,
         )
-        for suffix, kind, filename in specs
-    ]
-
-
-def _cleanup_and_fail(
-    staging_dir: Path,
-    *,
-    request: ToolRequestV2,
-    spec: ToolPackageSpecV2,
-    input_hash: str,
-    reason_code: str,
-) -> ToolRunV2:
-    shutil.rmtree(staging_dir)
-    return _failed_run(
-        request=request,
-        spec=spec,
-        input_hash=input_hash,
-        reason_codes=[reason_code],
     )
+    artifacts.extend(
+        artifact.model_copy(update={"path": published[artifact.path.name].resolve()})
+        for artifact in prepared_visualizations.artifacts
+    )
+    return artifacts
 
 
 def _failed_run(

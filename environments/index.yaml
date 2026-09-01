@@ -15,6 +15,11 @@ environment_specs:
     state: health_check_passed
     yaml_ref: environments/bridge-p0-evidence.yml
     runtime_class: cpu_only
+  ENV-EVIDENCE-v0.2:
+    conda_name: bridge-p0-evidence-v0.2
+    state: health_check_passed
+    yaml_ref: environments/bridge-p0-evidence-v0.2.yml
+    runtime_class: cpu_only
   ENV-CELLSTATE-PY-v0.1:
     conda_name: bridge-cellstate-py
     state: health_check_passed

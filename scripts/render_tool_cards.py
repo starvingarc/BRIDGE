@@ -83,10 +83,10 @@ DETAILS = {
     },
     "P0-08": {
         "input": "A `ToolRequestV2` with empty assets and parameters, one checksummed candidate GateRuleSpec v0.2 bound to ReasonCodeCatalog v0.2, one to five DomainGateInput v0.1 bindings, MeasurementSpecV2/QCReadinessProfileV2/MeasurementResultV2 objects, and their versioned validation, prior and sensitivity records.",
-        "output": "One canonical `EvidenceSufficiencyRunResultV2` (`bridge://schemas/evidence-sufficiency-run-result/v0.2`) with a path-free exact checksum/version/Schema binding for every structured input, versioned per-domain references, eight-state MeasurementResult counts, gate trace and case summary. Convenience profile/summary files are noncanonical projections, not independent structured contracts.",
+        "output": "One canonical `EvidenceSufficiencyRunResultV2`, one canonical public v0.2 profile JSON per domain as a P0-09-ready producer handoff, a noncanonical convenience wrapper, gate trace, case summary, typed visualization data, three complete TSV fallbacks, three SVG/PNG/PDF figure sets, an artifact set and a checksummed bundle manifest. The run result and manifest retain path-free source bindings; profiles retain their versioned domain references and `domain_score=null`. P0-09 acceptance of v0.2 remains a separate tool-package change.",
         "reject": "Wrong roles, Schema IDs, object versions, logical bindings, checksums, candidate gate bytes, unsafe references, changed inputs or drifted bundles fail with stable reason codes and no scientific result. A bound MeasurementResult whose MeasurementSpec version disagrees, or a populated QC MeasurementSpec version that disagrees, is ineligible. Missing, unknown or unavailable measurement states, or absent paired upstream ToolRun provenance, instead execute as `not_assessed`; negative and alert remain distinct and never become pass/fail.",
-        "visualization": "No visualization output. The canonical downstream object is `evidence_sufficiency_run_result.json`; profile, summary and gate-trace files are review conveniences only.",
-        "validation": "Synthetic fixtures exercise all 49 scientific reason codes, all eight evidence states, exact-source identity for every input role, version mismatch refusals, deterministic object-input ordering, TOCTOU checks and immutable publication. The executable example uses placeholders; focused tests exercise the same adapter reached by `bridge-tool validate --request` and `bridge-tool run --request`.",
+        "visualization": "Three static, table-backed figures show the four domain-scoped evidence axes, root interpretation requirements, and all eight MeasurementResult states. Counts remain domain-profile references rather than independent evidence; requirement records never invent source-to-reason edges. Oversized static views defer to the complete typed table without top-N truncation.",
+        "validation": "Interpretation remains conditional on the bound MeasurementSpec, declared method context, reference/prior context and current candidate gate rules. A favorable axis state is not a product-quality, safety, efficacy or release conclusion, and formal family-level proof remains unavailable for P0-09.",
         "details": "docs/bridge_spec_v0.1/evidence_sufficiency_task_card.md",
     },
     "P0-10": {
@@ -162,7 +162,12 @@ def render(spec: dict, detail: dict) -> str:
     if spec["implementation_state"] != "implemented":
         runtime = "Discoverable contract only; `run` returns `not_implemented` without scientific results."
     elif spec["tool_id"] == "P0-08":
-        runtime = "Executable candidate; reads versioned upstream evidence objects and emits no measurements or domain score."
+        runtime = (
+            "Executable candidate; reads versioned upstream evidence objects and emits no "
+            "measurements or domain score. Example commands: `bridge-tool validate --request "
+            "examples/requests/p0_08_evidence_sufficiency.json` and `bridge-tool run --request "
+            "examples/requests/p0_08_evidence_sufficiency.json`."
+        )
     else:
         runtime = "Executable candidate; it emits raw measurements and never emits a domain score."
     optional = "yes" if spec.get("optional") else "no"

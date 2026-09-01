@@ -4,6 +4,7 @@ import hashlib
 import importlib
 from importlib.resources import files
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -16,25 +17,39 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.adapter import (
     gate_rule_sha256,
     load_gate_rule,
     load_reason_catalog,
+    reason_catalog_sha256,
 )
 from bridge.tool_packages.p0_08_evidence_sufficiency.executor import REASON_CODES
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     PUBLIC_SCHEMA_MODELS,
     DomainGateInput,
     EvidenceSufficiencyProfile,
+    EvidenceSufficiencyProfileV2,
     EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
     GateRuleSpec,
     GateRuleSpecV2,
     ReasonCodeCatalog,
     ReasonCodeCatalogV2,
 )
+from bridge.tool_packages.p0_08_evidence_sufficiency.visualization_data import (
+    EVIDENCE_SUFFICIENCY_VISUALIZATION_DATA_SCHEMA_REF,
+    P008_COMPONENT_REFS,
+    P008_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF,
+    EvidenceSufficiencyVisualizationDataV1,
+    P008VisualizationArtifactSet,
+)
 from bridge.toolkit.api import run_tool, validate_request
-from bridge.toolkit.contracts import ExecutionState, ToolRequest, ToolRequestV2
+from bridge.toolkit.contracts import EvidenceState, ExecutionState, ToolRequest, ToolRequestV2
 from bridge.toolkit.registry import ToolRegistry
+from bridge.toolkit.schemas import load_schema
+from bridge.toolkit.visualization import FigureRegistry
 
 
 adapter_module = importlib.import_module(
     "bridge.tool_packages.p0_08_evidence_sufficiency.adapter"
+)
+visualization_module = importlib.import_module(
+    "bridge.tool_packages.p0_08_evidence_sufficiency.visualization"
 )
 
 
@@ -362,7 +377,7 @@ def _fixture_request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-08",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -692,6 +707,12 @@ def test_five_domains_are_gated_independently_and_counted_only(tmp_path: Path) -
     }
     assert result.case_summary.score_state_counts.unavailable == 5
     assert all(profile.domain_score is None for profile in result.profiles)
+    assert len(run.artifacts) == 19 + len(result.profiles) == 24
+    assert [
+        artifact.path.name
+        for artifact in run.artifacts
+        if artifact.kind == "evidence_sufficiency_profile"
+    ] == [f"evidence_sufficiency_profile_{index:02d}.json" for index in range(1, 6)]
 
 
 @pytest.mark.parametrize(
@@ -1886,7 +1907,7 @@ def test_v1_invocation_and_forbidden_expression_channel_fail_eligibility(
     v1 = ToolRequest(
         request_id="v1",
         tool_id="P0-08",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=(tmp_path / "out-v1").resolve(),
     )
     v1_eligibility = adapter.check_eligibility(v1, spec)  # type: ignore[arg-type]
@@ -2479,6 +2500,7 @@ def test_artifact_bundle_is_deterministic_reusable_and_path_free(tmp_path: Path)
         "case_evidence_readiness_summary.json",
         "gate_trace.json",
         "evidence_sufficiency_run_result.json",
+        "evidence_sufficiency_profile_01.json",
     }
     for name in scientific_names:
         assert (first_dir / name).read_bytes() == (second_dir / name).read_bytes()
@@ -2486,6 +2508,10 @@ def test_artifact_bundle_is_deterministic_reusable_and_path_free(tmp_path: Path)
         assert str(tmp_path) not in text
         assert "NaN" not in text and "Infinity" not in text
     manifest = json.loads((first_dir / "artifact_manifest.json").read_text())
+    assert len(manifest["artifacts"]) == 19
+    assert {item["filename"] for item in manifest["artifacts"]} == {
+        path.name for path in first_dir.iterdir() if path.name != "artifact_manifest.json"
+    }
     assert all(item["filename"] != "artifact_manifest.json" for item in manifest["artifacts"])
     for item in manifest["artifacts"]:
         artifact_path = first_dir / item["filename"]
@@ -2498,7 +2524,14 @@ def test_artifact_bundle_is_deterministic_reusable_and_path_free(tmp_path: Path)
     )
     assert profiles_projection["canonical_result_ref"] == first.result["result_id"]
     assert "schema_ref" not in profiles_projection
-    assert len(first.artifacts) == 5
+    profile_payload = json.loads(
+        (first_dir / "evidence_sufficiency_profile_01.json").read_text()
+    )
+    assert EvidenceSufficiencyProfileV2.model_validate(profile_payload).profile_id
+    assert len(first.artifacts) == 20
+    assert {path.name: path.read_bytes() for path in first_dir.iterdir()} == {
+        path.name: path.read_bytes() for path in second_dir.iterdir()
+    }
 
     repeated_request = _fixture_request(tmp_path, request_id="first", output_name="output-a")
     spec = ToolRegistry.load_default().describe("P0-08")
@@ -2884,3 +2917,231 @@ def test_domain_gate_input_rejects_duplicate_binding_ids() -> None:
     )
     with pytest.raises(ValueError, match="duplicates"):
         DomainGateInput.model_validate(payload)
+
+
+def test_v02_profile_and_visualization_schemas_are_public_and_exact(
+    tmp_path: Path,
+) -> None:
+    run = _run(
+        tmp_path,
+        validation=_validation(validation_state="candidate"),
+    )
+    output_dir = run.artifacts[0].path.parent
+    profile_payload = json.loads(
+        (output_dir / "evidence_sufficiency_profile_01.json").read_text()
+    )
+    visualization_payload = json.loads(
+        (output_dir / "evidence_sufficiency_visualization_data.json").read_text()
+    )
+    artifact_set_payload = json.loads(
+        (output_dir / "evidence_sufficiency_visualization_artifact_set.json").read_text()
+    )
+
+    assert PUBLIC_SCHEMA_MODELS[
+        "bridge://schemas/evidence-sufficiency-profile/v0.2"
+    ] is EvidenceSufficiencyProfileV2
+    Draft202012Validator(
+        load_schema("bridge://schemas/evidence-sufficiency-profile/v0.2")
+    ).validate(profile_payload)
+    Draft202012Validator(
+        load_schema(EVIDENCE_SUFFICIENCY_VISUALIZATION_DATA_SCHEMA_REF)
+    ).validate(visualization_payload)
+    Draft202012Validator(
+        load_schema(P008_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF)
+    ).validate(artifact_set_payload)
+    EvidenceSufficiencyProfileV2.model_validate(profile_payload)
+    profile = EvidenceSufficiencyVisualizationDataV1.model_validate(
+        visualization_payload
+    )
+    artifact_set = P008VisualizationArtifactSet.model_validate(
+        artifact_set_payload
+    )
+
+    assert profile.reason_catalog_sha256 == reason_catalog_sha256()
+    raw_catalog = (
+        files("bridge.tool_packages.p0_08_evidence_sufficiency.resources")
+        .joinpath("reason_code_catalog_v0.2.json")
+        .read_bytes()
+    )
+    assert profile.reason_catalog_sha256 == hashlib.sha256(raw_catalog).hexdigest()
+    assert len(profile.axis_records) == 4
+    assert [row.measurement_evidence_state for row in profile.measurement_state_records] == list(
+        EvidenceState
+    )
+    assert sum(row.reference_count for row in profile.measurement_state_records) == 1
+    assert all(row.independent_evidence_count is False for row in profile.measurement_state_records)
+    assert {row.reason_code for row in profile.requirement_records} == {
+        "method_validation_candidate"
+    }
+    assert profile.requirement_records[0].requirement_class.value == "limiting"
+    assert profile.requirement_records[0].catalog_severity == "limiting"
+    assert [item.component_ref for item in artifact_set.visualizations] == list(
+        P008_COMPONENT_REFS
+    )
+    assert len(FigureRegistry.load_default().list(tool_id="P0-08")) == 3
+
+
+def test_visualization_tables_are_complete_and_counts_are_not_evidence(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path, validation=_validation(validation_state="candidate"))
+    output_dir = run.artifacts[0].path.parent
+    profile = EvidenceSufficiencyVisualizationDataV1.model_validate_json(
+        (output_dir / "evidence_sufficiency_visualization_data.json").read_text()
+    )
+    serialized = profile.model_dump(mode="json")
+
+    assert "source_to_reason_edges" not in json.dumps(serialized)
+    assert profile.measurement_reference_counts_are_not_independent_evidence
+    assert profile.evidence_family_ids_are_not_independent_evidence
+    for name, expected_rows in (
+        ("evidence_sufficiency_domain_axes.tsv", len(profile.axis_records)),
+        (
+            "evidence_sufficiency_interpretation_requirements.tsv",
+            len(profile.requirement_records),
+        ),
+        (
+            "evidence_sufficiency_measurement_states.tsv",
+            len(profile.measurement_state_records),
+        ),
+    ):
+        assert len((output_dir / name).read_text().splitlines()) == expected_rows + 1
+
+    expanded = profile.model_copy(
+        update={"requirement_records": profile.requirement_records * 25}
+    )
+    assert visualization_module._static_render_reason(
+        expanded, P008_COMPONENT_REFS[1]
+    ) == "static_render_requires_table_fallback"
+    assert len(
+        visualization_module._table(expanded, P008_COMPONENT_REFS[1])
+        .decode()
+        .splitlines()
+    ) == 26
+
+
+def test_visualization_builder_and_renderer_fail_with_stable_codes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    def invalid_builder(**_: object) -> None:
+        raise ValueError("invalid visualization data")
+
+    request = _fixture_request(tmp_path / "builder", output_name="output")
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            adapter_module,
+            "build_evidence_sufficiency_visualization_data",
+            invalid_builder,
+        )
+        run = adapter.run(request, spec)
+    assert run.reason_codes == ["visualization_data_invalid"]
+    assert not request.output_dir.exists()
+
+    def invalid_renderer(**_: object) -> None:
+        raise RuntimeError("invalid visualization render")
+
+    request = _fixture_request(tmp_path / "renderer", output_name="output")
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            adapter_module,
+            "prepare_evidence_sufficiency_visualizations",
+            invalid_renderer,
+        )
+        run = adapter.run(request, spec)
+    assert run.reason_codes == ["visualization_render_failed"]
+    assert not request.output_dir.exists()
+
+
+def test_tampered_visualization_bundle_is_never_overwritten(tmp_path: Path) -> None:
+    request = _fixture_request(tmp_path, request_id="visual-tamper")
+    spec = ToolRegistry.load_default().describe("P0-08")
+    clean = adapter.run(request, spec)
+    render = next(
+        artifact for artifact in clean.artifacts if artifact.kind == "visualization_render"
+    )
+    render.path.write_bytes(b"tampered\n")
+
+    repeated = adapter.run(request, spec)
+
+    assert repeated.execution_state is ExecutionState.FAILED
+    assert repeated.reason_codes == ["existing_run_bundle_hash_mismatch"]
+    assert render.path.read_bytes() == b"tampered\n"
+
+
+def test_visualization_profile_rejects_drifted_catalog_and_bindings(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path, validation=_validation(validation_state="candidate"))
+    output_dir = run.artifacts[0].path.parent
+    original = json.loads(
+        (output_dir / "evidence_sufficiency_visualization_data.json").read_text()
+    )
+
+    mutations = []
+    changed = json.loads(json.dumps(original))
+    changed["reason_catalog_sha256"] = "0" * 64
+    mutations.append(changed)
+    changed = json.loads(json.dumps(original))
+    changed["reason_display_records"][0]["description"] = "drifted"
+    mutations.append(changed)
+    changed = json.loads(json.dumps(original))
+    changed["requirement_records"][0]["catalog_axis"] = "score"
+    mutations.append(changed)
+    changed = json.loads(json.dumps(original))
+    changed["source_evidence_refs"] = ["evidence:invented"]
+    mutations.append(changed)
+    changed = json.loads(json.dumps(original))
+    changed["axis_records"][0]["evidence_ids"] = ["evidence:invented"]
+    mutations.append(changed)
+
+    changed = json.loads(json.dumps(original))
+    changed["requirement_records"][0]["requirement_class"] = "blocking"
+    mutations.append(changed)
+    changed = json.loads(json.dumps(original))
+    changed["requirement_records"][0]["reason_codes"] = [
+        "prior_applicability_candidate"
+    ]
+    mutations.append(changed)
+    changed = json.loads(json.dumps(original))
+    changed["axis_records"][0]["source_state"] = "product_passes"
+    mutations.append(changed)
+    changed = json.loads(json.dumps(original))
+    changed["axis_records"][0]["scoped_state_label"] = "Product passes"
+    mutations.append(changed)
+    changed = json.loads(json.dumps(original))
+    changed["domain_bindings"][0]["domain_label"] = "Product passes"
+    mutations.append(changed)
+
+    for payload in mutations:
+        with pytest.raises(ValueError):
+            EvidenceSufficiencyVisualizationDataV1.model_validate(payload)
+
+
+@pytest.mark.parametrize("target", ["missing-target", "output"])
+def test_output_root_symlink_is_a_typed_failure(
+    tmp_path: Path, target: str
+) -> None:
+    request = _fixture_request(tmp_path, output_name="output")
+    request.output_dir.symlink_to(target, target_is_directory=True)
+
+    run = adapter.run(request, ToolRegistry.load_default().describe("P0-08"))
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["output_path_invalid"]
+
+
+def test_existing_run_directory_symlink_is_not_followed(tmp_path: Path) -> None:
+    request = _fixture_request(tmp_path, request_id="visual-symlink")
+    spec = ToolRegistry.load_default().describe("P0-08")
+    first = adapter.run(request, spec)
+    final = first.artifacts[0].path.parent
+    shutil.rmtree(final)
+    final.symlink_to(final.name, target_is_directory=True)
+
+    repeated = adapter.run(request, spec)
+
+    assert repeated.execution_state is ExecutionState.FAILED
+    assert repeated.reason_codes == ["existing_run_bundle_hash_mismatch"]
+    assert final.is_symlink()

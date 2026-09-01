@@ -1117,6 +1117,9 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/prior-applicability-record/v0.1": PriorApplicabilityRecord,
     "bridge://schemas/evidence-sensitivity-record/v0.1": EvidenceSensitivityRecord,
     "bridge://schemas/evidence-sufficiency-profile/v0.1": EvidenceSufficiencyProfile,
+    "bridge://schemas/evidence-sufficiency-profile/v0.2": (
+        EvidenceSufficiencyProfileV2
+    ),
     "bridge://schemas/case-evidence-readiness-summary/v0.1": CaseEvidenceReadinessSummary,
     "bridge://schemas/evidence-sufficiency-run-result/v0.1": EvidenceSufficiencyRunResult,
     "bridge://schemas/evidence-sufficiency-run-result/v0.2": (
