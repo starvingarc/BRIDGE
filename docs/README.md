@@ -11,8 +11,10 @@ evidence you need.
 > contract and figure registry are available. P0-01 provides four
 > `typed_candidate` figure components, alongside two compatibility
 > `legacy_untyped` components; P0-03 provides two typed candidate figures for
-> product-role/regional-state composition and source-separated reference support.
-> The current P0-02 figure components remain `legacy_untyped`.
+> product-role/regional-state composition and source-separated reference support;
+> P0-04 provides three typed candidate views for declared-window composition,
+> uncalibrated reference similarity and categorical sampling points. The current
+> P0-02 figure components remain `legacy_untyped`.
 > No scientific method, state, threshold or score is frozen, and a target
 > capability in the PRD or a task
 > card is not current runtime behavior.

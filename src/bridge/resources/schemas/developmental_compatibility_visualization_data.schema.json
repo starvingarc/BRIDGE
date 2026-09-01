@@ -1,0 +1,1113 @@
+{
+  "$defs": {
+    "CellStateResolutionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "resolution_state": {
+          "enum": [
+            "supported",
+            "unknown",
+            "ood",
+            "unresolved",
+            "unavailable"
+          ],
+          "title": "Resolution State",
+          "type": "string"
+        },
+        "unit": {
+          "const": "observations",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "resolution_state",
+        "display_name",
+        "count",
+        "denominator",
+        "fraction",
+        "unit",
+        "evidence_ids"
+      ],
+      "title": "CellStateResolutionRecord",
+      "type": "object"
+    },
+    "DevelopmentStageCompositionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "axis_group": {
+          "enum": [
+            "ordered_window_axis",
+            "off_axis"
+          ],
+          "title": "Axis Group",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.developmental-compatibility.window-composition@0.1.0",
+          "default": "bridge.developmental-compatibility.window-composition@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "denominator_kind": {
+          "enum": [
+            "whole_product",
+            "target_related"
+          ],
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "denominator_label": {
+          "minLength": 1,
+          "title": "Denominator Label",
+          "type": "string"
+        },
+        "denominator_scope": {
+          "enum": [
+            "evaluated_product",
+            "target_related_subset"
+          ],
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "interval_lower": {
+          "default": null,
+          "title": "Interval Lower",
+          "type": "null"
+        },
+        "interval_state": {
+          "const": "not_estimable",
+          "title": "Interval State",
+          "type": "string"
+        },
+        "interval_upper": {
+          "default": null,
+          "title": "Interval Upper",
+          "type": "null"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "stage_role": {
+          "$ref": "#/$defs/DevelopmentStageRole"
+        },
+        "unit": {
+          "const": "observations",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "denominator_kind",
+        "denominator_label",
+        "stage_role",
+        "axis_group",
+        "display_name",
+        "numerator",
+        "denominator",
+        "denominator_scope",
+        "unit",
+        "interval_state",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "DevelopmentStageCompositionRecord",
+      "type": "object"
+    },
+    "DevelopmentStageRole": {
+      "enum": [
+        "earlier",
+        "within_window",
+        "later",
+        "branch_shift",
+        "unresolved"
+      ],
+      "title": "DevelopmentStageRole",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "InputChecksumBindings": {
+      "additionalProperties": false,
+      "properties": {
+        "annotation_vocabulary": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Annotation Vocabulary"
+        },
+        "biological_unit_assignment": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Assignment"
+        },
+        "biological_unit_manifest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest"
+        },
+        "cell_state_evidence_profile": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cell State Evidence Profile",
+          "type": "string"
+        },
+        "development_method_spec": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Development Method Spec"
+        },
+        "development_state_map": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Development State Map",
+          "type": "string"
+        },
+        "development_timepoint_series": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Development Timepoint Series"
+        },
+        "development_window_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Development Window Spec",
+          "type": "string"
+        },
+        "measurement_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Measurement Spec",
+          "type": "string"
+        },
+        "product_case": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Case",
+          "type": "string"
+        },
+        "product_definition_card": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Definition Card",
+          "type": "string"
+        },
+        "qc_readiness_profile": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Qc Readiness Profile"
+        },
+        "reference_manifest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference Manifest"
+        }
+      },
+      "required": [
+        "product_case",
+        "product_definition_card",
+        "development_window_spec",
+        "development_state_map",
+        "measurement_spec",
+        "cell_state_evidence_profile"
+      ],
+      "title": "InputChecksumBindings",
+      "type": "object"
+    },
+    "ObservedSamplingPointRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "axis_group": {
+          "enum": [
+            "ordered_window_axis",
+            "off_axis"
+          ],
+          "title": "Axis Group",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.developmental-compatibility.observed-sampling-points@0.1.0",
+          "default": "bridge.developmental-compatibility.observed-sampling-points@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "denominator_kind": {
+          "enum": [
+            "whole_product",
+            "target_related"
+          ],
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "denominator_label": {
+          "minLength": 1,
+          "title": "Denominator Label",
+          "type": "string"
+        },
+        "denominator_scope": {
+          "enum": [
+            "declared_timepoint_all_observations",
+            "declared_timepoint_target_related_subset"
+          ],
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "independence_group_count": {
+          "minimum": 1,
+          "title": "Independence Group Count",
+          "type": "integer"
+        },
+        "interval_lower": {
+          "default": null,
+          "title": "Interval Lower",
+          "type": "null"
+        },
+        "interval_state": {
+          "const": "not_estimable",
+          "title": "Interval State",
+          "type": "string"
+        },
+        "interval_upper": {
+          "default": null,
+          "title": "Interval Upper",
+          "type": "null"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "stage_role": {
+          "$ref": "#/$defs/DevelopmentStageRole"
+        },
+        "time_basis": {
+          "enum": [
+            "in_vitro_day",
+            "declared_stage"
+          ],
+          "title": "Time Basis",
+          "type": "string"
+        },
+        "timepoint_id": {
+          "minLength": 1,
+          "title": "Timepoint Id",
+          "type": "string"
+        },
+        "timepoint_label": {
+          "minLength": 1,
+          "title": "Timepoint Label",
+          "type": "string"
+        },
+        "timepoint_order": {
+          "minimum": 0,
+          "title": "Timepoint Order",
+          "type": "integer"
+        },
+        "unit": {
+          "const": "observations",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "timepoint_id",
+        "timepoint_order",
+        "timepoint_label",
+        "time_basis",
+        "independence_group_count",
+        "denominator_kind",
+        "denominator_label",
+        "stage_role",
+        "axis_group",
+        "display_name",
+        "numerator",
+        "denominator",
+        "denominator_scope",
+        "unit",
+        "interval_state",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "ObservedSamplingPointRecord",
+      "type": "object"
+    },
+    "ReferenceStageSimilarityRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "anatomy": {
+          "minLength": 1,
+          "title": "Anatomy",
+          "type": "string"
+        },
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assay": {
+          "minLength": 1,
+          "title": "Assay",
+          "type": "string"
+        },
+        "component_ref": {
+          "const": "bridge.developmental-compatibility.reference-stage-summary@0.1.0",
+          "default": "bridge.developmental-compatibility.reference-stage-summary@0.1.0",
+          "title": "Component Ref",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "margin": {
+          "anyOf": [
+            {
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Margin"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "output_semantics": {
+          "const": "uncalibrated_similarity_not_age_or_probability",
+          "title": "Output Semantics",
+          "type": "string"
+        },
+        "profile_id": {
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "reference_scope": {
+          "minLength": 1,
+          "title": "Reference Scope",
+          "type": "string"
+        },
+        "runner_up_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runner Up Label"
+        },
+        "runner_up_ordinal_rank": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runner Up Ordinal Rank"
+        },
+        "runner_up_stage_role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DevelopmentStageRole"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "shared_genes": {
+          "minimum": 0,
+          "title": "Shared Genes",
+          "type": "integer"
+        },
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "top_cosine_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Cosine Support"
+        },
+        "top_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Label"
+        },
+        "top_ordinal_rank": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Ordinal Rank"
+        },
+        "top_spearman_support": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top Spearman Support"
+        },
+        "top_stage_role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DevelopmentStageRole"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "record_id",
+        "analysis_unit_ref",
+        "profile_id",
+        "source_id",
+        "assay",
+        "anatomy",
+        "reference_scope",
+        "shared_genes",
+        "output_semantics",
+        "evidence_ids",
+        "evidence_state",
+        "scientific_status",
+        "missingness",
+        "applicability"
+      ],
+      "title": "ReferenceStageSimilarityRecord",
+      "type": "object"
+    },
+    "RegisteredReferenceStageRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "ordinal_rank": {
+          "minimum": 0,
+          "title": "Ordinal Rank",
+          "type": "integer"
+        },
+        "profile_id": {
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9_.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "stage_role": {
+          "$ref": "#/$defs/DevelopmentStageRole"
+        }
+      },
+      "required": [
+        "record_id",
+        "profile_id",
+        "label",
+        "stage_role",
+        "ordinal_rank",
+        "evidence_ids"
+      ],
+      "title": "RegisteredReferenceStageRecord",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/developmental-compatibility-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_mode": {
+      "enum": [
+        "static_profile",
+        "descriptive_timecourse"
+      ],
+      "title": "Analysis Mode",
+      "type": "string"
+    },
+    "cell_state_profile_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "continuous_time_reason_code": {
+      "const": "numeric_time_axis_not_bound",
+      "title": "Continuous Time Reason Code",
+      "type": "string"
+    },
+    "continuous_time_state": {
+      "const": "not_assessed",
+      "title": "Continuous Time State",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/InputChecksumBindings"
+    },
+    "measurement_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "method_bundle_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "method_bundle_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Bundle Sha256"
+    },
+    "method_spec_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:run-[a-f0-9]{16}$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "minLength": 1,
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "profile_id": {
+      "pattern": "^developmental-compatibility-visualization-data:[a-f0-9]{16}$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "reference_manifest_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "reference_records": {
+      "items": {
+        "$ref": "#/$defs/ReferenceStageSimilarityRecord"
+      },
+      "title": "Reference Records",
+      "type": "array"
+    },
+    "reference_support_applicability": {
+      "enum": [
+        "applicable",
+        "partially_applicable",
+        "not_assessed"
+      ],
+      "title": "Reference Support Applicability",
+      "type": "string"
+    },
+    "reference_support_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reference Support Reason Codes",
+      "type": "array"
+    },
+    "reference_support_state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "registered_reference_stages": {
+      "items": {
+        "$ref": "#/$defs/RegisteredReferenceStageRecord"
+      },
+      "title": "Registered Reference Stages",
+      "type": "array"
+    },
+    "resolution_records": {
+      "items": {
+        "$ref": "#/$defs/CellStateResolutionRecord"
+      },
+      "title": "Resolution Records",
+      "type": "array"
+    },
+    "sampling_point_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sampling Point Reason Codes",
+      "type": "array"
+    },
+    "sampling_point_records": {
+      "items": {
+        "$ref": "#/$defs/ObservedSamplingPointRecord"
+      },
+      "title": "Sampling Point Records",
+      "type": "array"
+    },
+    "sampling_point_state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/developmental-compatibility-visualization-data/v0.1",
+      "default": "bridge://schemas/developmental-compatibility-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "stage_composition_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Stage Composition Reason Codes",
+      "type": "array"
+    },
+    "stage_composition_state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "stage_records": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentStageCompositionRecord"
+      },
+      "title": "Stage Records",
+      "type": "array"
+    },
+    "state_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "timepoint_series_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "window_review_state": {
+      "enum": [
+        "candidate",
+        "confirmed"
+      ],
+      "title": "Window Review State",
+      "type": "string"
+    },
+    "window_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    }
+  },
+  "required": [
+    "profile_id",
+    "producer_run_ref",
+    "producer_tool_version",
+    "product_case_ref",
+    "product_definition_ref",
+    "window_spec_ref",
+    "state_map_ref",
+    "measurement_spec_ref",
+    "cell_state_profile_ref",
+    "input_sha256_by_role",
+    "window_review_state",
+    "analysis_mode",
+    "continuous_time_state",
+    "continuous_time_reason_code",
+    "reference_support_state",
+    "reference_support_applicability",
+    "stage_composition_state",
+    "sampling_point_state",
+    "evidence_ids"
+  ],
+  "title": "DevelopmentalCompatibilityVisualizationDataV1",
+  "type": "object"
+}

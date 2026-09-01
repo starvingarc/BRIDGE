@@ -246,3 +246,31 @@ def test_development_python_environment_contract_is_pinned() -> None:
         "decoupler==2.1.4",
         "cryptography==46.0.3",
     } <= set(_pip_dependencies(spec))
+
+
+def test_development_visualization_environment_is_versioned() -> None:
+    index = _load_yaml("environments/index.yaml")["environment_specs"]
+    entry = index["ENV-DEVELOPMENT-PY-v0.2"]
+    spec = _load_yaml(entry["yaml_ref"])
+
+    assert entry["conda_name"] == spec["name"] == "bridge-development-py-v0.2"
+    assert entry["state"] == "health_check_passed"
+    assert spec["channels"] == ["conda-forge", "nodefaults"]
+    assert {
+        "python=3.12",
+        "numpy=2.2.6",
+        "pandas=2.3.3",
+        "scipy=1.16.3",
+        "pydantic=2.12.5",
+        "pyyaml=6.0.3",
+        "h5py=3.15.1",
+        "anndata=0.12.6",
+        "pyarrow=21.0.0",
+        "scikit-learn=1.7.2",
+        "jsonschema=4.25.1",
+    } <= _conda_dependencies(spec)
+    assert {
+        "decoupler==2.1.4",
+        "cryptography==46.0.3",
+        "matplotlib==3.11.1",
+    } <= set(_pip_dependencies(spec))

@@ -54,9 +54,6 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 - `METHOD-SOURCE-AWARE-ORDINAL-CLASSIFIER` — source-aware ordinal classifier ([catalog record](bridge://knowledge/methods/METHOD-SOURCE-AWARE-ORDINAL-CLASSIFIER))
 - `METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-221F0C` — sample-preserving hierarchical bootstrap ([catalog record](bridge://knowledge/methods/METHOD-SAMPLE-PRESERVING-HIERARCHICAL-BOOTSTRAP-221F0C))
 - `METHOD-BRIDGE-SAMPLE-PREPARATION-AGGREGATOR` — BRIDGE sample/preparation aggregator ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-SAMPLE-PREPARATION-AGGREGATOR))
-- `METHOD-BRIDGE-DESCRIPTIVE-TREND` — BRIDGE descriptive trend ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DESCRIPTIVE-TREND))
-- `METHOD-PSEUDOBULK-PROGRAM-ACTIVITY-SAMPLE-LEVEL-MODEL` — pseudobulk program activity + sample-level model ([catalog record](bridge://knowledge/methods/METHOD-PSEUDOBULK-PROGRAM-ACTIVITY-SAMPLE-LEVEL-MODEL))
-- `METHOD-STATSMODELS-SPLINE-BASIS` — statsmodels / spline basis ([catalog record](bridge://knowledge/methods/METHOD-STATSMODELS-SPLINE-BASIS))
 
 ## P0-05: Off-target Control
 

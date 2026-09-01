@@ -19,6 +19,7 @@
           "type": "string"
         },
         "timepoint_order": {
+          "description": "Categorical display order; not a numeric time value.",
           "minimum": 0,
           "title": "Timepoint Order",
           "type": "integer"

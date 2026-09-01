@@ -34,8 +34,9 @@ carry that exact graft ID. The reference panel must declare
 treated as technical samples only.
 
 The P0-04 [method-spec example](objects/p0_04_development_method_spec.json)
-shows how reference-stage roles, program cards, method selection and true
-timepoints stay outside executable code.
+shows how reference-stage roles, program cards and method selection stay
+outside executable code. Ordered sampling-point labels may be supplied
+separately; they are not treated as continuous experimental time.
 
 See the [Tool Package guide](../docs/tool-packages.md) for each tool's purpose,
 inputs, outputs, refusal behavior, Tool Card, scientific task card and validation

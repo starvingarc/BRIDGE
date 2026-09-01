@@ -84,12 +84,12 @@ scientific methods.
 
 | Item | Details |
 |---|---|
-| Purpose | Evaluate composition, reference-stage support, stage programs and declared true-time trends against an externally supplied developmental window. [Scientific task card](bridge_spec_v0.1/developmental_compatibility_task_card.md). |
-| Executable implementation | DevelopmentStateMap/soft-composition aggregation; sample-pseudobulk Spearman/cosine with per-unit cross-profile availability; externally gated uncalibrated cumulative ordinal logistic baseline; decoupler ULM; independence-group bootstrap; unadjusted descriptive statsmodels/Patsy spline. |
-| Software | AnnData, NumPy, Pandas, SciPy, scikit-learn, decoupler, statsmodels and Patsy in `ENV-DEVELOPMENT-PY-v0.1`. Conditional R, trajectory, velocity and OT catalog entries are not invoked by v0.3. |
-| Input → output | Eleven traceable case/P0-01/P0-02/reference objects, plus optional timepoints; expression mode adds one H5AD and `DevelopmentMethodSpec` → `DevelopmentalCompatibilityResult` and optional `DevelopmentMethodBundle`. [Tool Card](../src/bridge/tool_packages/cards/P0-04.md). |
+| Purpose | Evaluate externally configured developmental-window composition, source-separated reference-stage similarity and ordered sampling-point summaries. [Scientific task card](bridge_spec_v0.1/developmental_compatibility_task_card.md). |
+| Executable implementation | DevelopmentStateMap/soft-composition aggregation; sample-pseudobulk Spearman/cosine with per-unit cross-profile availability; externally gated uncalibrated cumulative ordinal logistic baseline; decoupler ULM; independence-group bootstrap. Sampling-point order is categorical and continuous-time aliases return `not_assessed`. |
+| Software | AnnData, NumPy, Pandas, SciPy, scikit-learn, decoupler and Matplotlib in `ENV-DEVELOPMENT-PY-v0.2`. Conditional R, trajectory, velocity and OT catalog entries are not invoked by v0.4. |
+| Input → output | Eleven traceable case/P0-01/P0-02/reference objects, plus optional sampling points; expression mode adds one H5AD and `DevelopmentMethodSpec` → result, optional method bundle, typed visualization data, exact TSV fallbacks and deterministic SVG/PNG/PDF figures. [Tool Card](../src/bridge/tool_packages/cards/P0-04.md). |
 | Call | `bridge-tool describe/input-contract/validate/run` with `tool_id=P0-04`; see the [request](../examples/requests/p0_04_developmental_compatibility.json) and [method spec](../examples/objects/p0_04_development_method_spec.json). |
-| Current evidence / status | Synthetic fixtures verify real package calls, deterministic artifacts, external stage-role control, ordinal held-out receipt gating, coverage/disagreement fail-closed behavior and descriptive-only time trends. The receipt itself is not scientifically validated. The package remains `candidate/shadow`, `domain_score=null`; reference similarity is not biological age or release evidence. [Validation](validation/p0_04_developmental_compatibility_v0.3.md). |
+| Current evidence / status | `candidate/shadow`, `domain_score=null`. Reference similarity is a forced ranking among supplied labels without calibrated rejection, not biological age or release evidence; ordered sampling points do not establish a trajectory. [Historical validation](validation/p0_04_developmental_compatibility_v0.3.md). |
 
 <a id="p0-05"></a>
 ## P0-05 Off-target Control

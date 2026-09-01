@@ -317,9 +317,9 @@ def _expression_request(
     )
 
 
-def test_expression_mode_executes_six_registered_methods(tmp_path: Path) -> None:
+def test_expression_mode_executes_methods_and_refuses_false_time_axis(tmp_path: Path) -> None:
     run = ToolRegistry.load_default().run(_expression_request(tmp_path))
-    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert run.execution_state is ExecutionState.PARTIAL
     assert run.result["reference_stage_support"]["assessment_state"] == "shadow"
     artifact = next(
         item for item in run.artifacts if item.kind == "development_method_bundle"
@@ -335,9 +335,15 @@ def test_expression_mode_executes_six_registered_methods(tmp_path: Path) -> None
         "TIME-PROGRAM",
         "TIME-GAM-PY",
     }
-    assert {item.execution_state.value for item in bundle.method_evidence} == {
-        "succeeded"
-    }
+    states = {item.method_id.value: item for item in bundle.method_evidence}
+    assert {states[method_id].execution_state.value for method_id in {
+        "DEV-PSEUDOBULK-CORR", "DEV-ORDINAL", "DEV-PROGRAM", "DEV-BOOTSTRAP"
+    }} == {"succeeded"}
+    for method_id in {"TIME-PROGRAM", "TIME-GAM-PY"}:
+        assert states[method_id].execution_state.value == "not_assessed"
+        assert states[method_id].reason_codes == [
+            "numeric_experimental_time_contract_unavailable"
+        ]
     assert len(bundle.analysis_unit_refs) == 8
     assert len(bundle.independence_group_refs) == 8
     assert bundle.reference_stage_support
@@ -351,16 +357,9 @@ def test_expression_mode_executes_six_registered_methods(tmp_path: Path) -> None
     } == {"ordinal-group-heldout-evidence:fully-synthetic"}
     assert bundle.program_activity
     assert bundle.bootstrap_intervals[0].interval_state == "available"
-    assert {
-        (item.metric_name, item.card_id) for item in bundle.time_trends
-    } == {
-        ("within_window_reference_support", None),
-        ("stage_program_activity", "program-card:development-window"),
-    }
-    assert {item.analysis_state for item in bundle.time_trends} == {
-        "unadjusted_descriptive"
-    }
+    assert bundle.time_trends == []
     assert "inferential_timecourse_unavailable" in run.reason_codes
+    assert "numeric_experimental_time_contract_unavailable" in run.reason_codes
     assert bundle.domain_score is None
     assert bundle.score_state.value == "shadow"
 
@@ -475,12 +474,11 @@ def test_low_reference_profile_coverage_makes_support_unavailable(
         run.result["reference_stage_support"]["assessment_state"]
         == "unavailable"
     )
+    bundle_artifact = next(
+        item for item in run.artifacts if item.kind == "development_method_bundle"
+    )
     bundle = DevelopmentMethodBundle.model_validate_json(
-        next(
-            item.path
-            for item in run.artifacts
-            if item.kind == "development_method_bundle"
-        ).read_text(encoding="utf-8")
+        bundle_artifact.path.read_text(encoding="utf-8")
     )
     assert bundle.reference_stage_support
     assert {
@@ -490,6 +488,17 @@ def test_low_reference_profile_coverage_makes_support_unavailable(
         "reference_stage_profile_coverage_incomplete" in item.reason_codes
         for item in bundle.reference_stage_support
     )
+    visualization_artifact = next(
+        item
+        for item in run.artifacts
+        if item.kind == "developmental_compatibility_visualization_data"
+    )
+    visualization = json.loads(
+        visualization_artifact.path.read_text(encoding="utf-8")
+    )
+    assert visualization["method_bundle_ref"]["object_id"] == bundle.bundle_id
+    assert visualization["method_bundle_sha256"] == bundle_artifact.sha256
+    assert visualization["reference_records"]
 
 
 def test_cross_source_assay_stage_disagreement_makes_support_unavailable(

@@ -68,6 +68,9 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
 from bridge.tool_packages.p0_04_developmental_compatibility.models import (
     PUBLIC_SCHEMA_MODELS as P0_04_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_04_developmental_compatibility.visualization_data import (
+    PUBLIC_VISUALIZATION_SCHEMA_MODELS as P0_04_VISUALIZATION_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_05_off_target_control.models import (
     PUBLIC_SCHEMA_MODELS as P0_05_SCHEMA_MODELS,
 )
@@ -190,6 +193,7 @@ for schema_models in (
     P0_03_SCHEMA_MODELS,
     P0_03_VISUALIZATION_SCHEMA_MODELS,
     P0_04_SCHEMA_MODELS,
+    P0_04_VISUALIZATION_SCHEMA_MODELS,
     P0_05_SCHEMA_MODELS,
     P0_06_SCHEMA_MODELS,
     P0_06_METHOD_SCHEMA_MODELS,

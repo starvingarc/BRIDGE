@@ -46,6 +46,12 @@ from bridge.tool_packages.p0_04_developmental_compatibility.models import (
     DevelopmentTimepointSeries,
     DevelopmentWindowSpec,
 )
+from bridge.tool_packages.p0_04_developmental_compatibility.visualization import (
+    prepare_developmental_compatibility_visualizations,
+)
+from bridge.tool_packages.p0_04_developmental_compatibility.visualization_data import (
+    build_developmental_compatibility_visualization_data,
+)
 from bridge.toolkit.contracts import (
     AnnotationVocabulary,
     ArtifactManifest,
@@ -211,13 +217,13 @@ class DevelopmentalCompatibilityAdapter:
         method_values = objects_for_role(
             request, loaded, "development_method_spec", DevelopmentMethodSpec
         )
+        method_spec = method_values[0] if method_values else None
         method_bundle = None
         method_payload = None
         method_binding = None
         method_reasons: list[str] = []
         reference_stage_support_available = False
-        if method_values:
-            method_spec = method_values[0]
+        if method_spec is not None:
             asset = request.assets[0]
             try:
                 asset_sha256 = sha256_path(asset.path)
@@ -316,10 +322,55 @@ class DevelopmentalCompatibilityAdapter:
             method_reason_codes=method_reasons,
             reference_stage_support_available=reference_stage_support_available,
         )
+        try:
+            visualization_profile = (
+                build_developmental_compatibility_visualization_data(
+                    run_id=run_id,
+                    tool_version=spec.version,
+                    result=result,
+                    window_spec=window_spec,
+                    timepoint_series=series,
+                    method_spec=method_spec,
+                    method_bundle=method_bundle,
+                    method_bundle_sha256=(
+                        None
+                        if method_binding is None
+                        else method_binding.sha256
+                    ),
+                    reference_manifest=reference_manifest,
+                    cell_state_profile=cell_state_profile,
+                )
+            )
+        except (KeyError, ValueError):
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_data_invalid"],
+                input_hash=input_hash,
+            )
+        try:
+            prepared_visualizations = (
+                prepare_developmental_compatibility_visualizations(
+                    profile=visualization_profile,
+                    output_dir=request.output_dir,
+                    run_id=run_id,
+                    tool_version=spec.version,
+                )
+            )
+        except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_render_failed"],
+                input_hash=input_hash,
+            )
         result_payload = canonical_json_bytes(
             result.model_dump(mode="json"), indent=2
         )
-        payloads = {"developmental_compatibility_result.json": result_payload}
+        payloads = {
+            "developmental_compatibility_result.json": result_payload,
+            **prepared_visualizations.payloads,
+        }
         if method_payload is not None:
             payloads["development_method_bundle.json"] = method_payload
         try:
@@ -345,6 +396,7 @@ class DevelopmentalCompatibilityAdapter:
                 evidence_ids=result.evidence_refs,
             )
         ]
+        artifacts.extend(prepared_visualizations.artifacts)
         if method_binding is not None:
             artifacts.append(
                 ArtifactManifest(
