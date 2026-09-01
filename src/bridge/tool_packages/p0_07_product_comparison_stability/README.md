@@ -28,7 +28,6 @@ selected comparison-method runtime.
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/product_comparison_stability_task_card.md)
 - [Legacy comparison request](../../../../examples/requests/p0_07_product_comparison_stability.json)
 - [Method-runtime request](../../../../examples/requests/p0_07_comparison_method_runtime.json)
-- [Validation index](../../../../docs/validation/)
 
 Use `bridge-tool describe P0-07` and `bridge-tool input-contract P0-07` for the
 installed version, input modes, schemas, environment and registered method IDs.

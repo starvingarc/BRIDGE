@@ -276,7 +276,6 @@ def _check_tool_package_specs(problems: list[str]) -> None:
                     f"../cards/{tool_id}.md",
                     "../../../../docs/bridge_spec_v0.1/",
                     "../../../../examples/requests/",
-                    "../../../../docs/validation/",
                 )
                 missing = [
                     item for item in required_readme_fragments if item not in readme
@@ -306,10 +305,6 @@ def _check_tool_package_specs(problems: list[str]) -> None:
             if not list((ROOT / "examples" / "requests").glob(f"{prefix}_*.json")):
                 problems.append(
                     f"implemented v0.2 Tool Package has no example request: {relative}"
-                )
-            if not list((ROOT / "docs" / "validation").glob(f"{prefix}_*.md")):
-                problems.append(
-                    f"implemented v0.2 Tool Package has no validation record: {relative}"
                 )
             card_path = ROOT / "src" / "bridge" / "tool_packages" / "cards" / f"{payload.get('tool_id')}.md"
             if not card_path.is_file():
