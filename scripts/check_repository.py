@@ -67,10 +67,8 @@ P001_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/qc_visualization_data.schema.json"),
 )
 P002_VISUALIZATION_FILES = (
-    Path("docs/validation/p0_02_cell_state_visualization_20260901.md"),
     Path("src/bridge/resources/schemas/cell_state_evidence_matrix_data.schema.json"),
     Path("src/bridge/tool_packages/p0_02_cell_state/visualization_data.py"),
-    Path("tests/test_cell_state_visualization.py"),
 )
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"

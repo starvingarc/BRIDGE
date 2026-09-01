@@ -9,7 +9,7 @@ threshold, score or product conclusion.
 | Package | Current package validation |
 |---|---|
 | P0-01 Input Audit & QC | [Server integration, 2026-08-10](p0_01_server_integration_20260810.md) |
-| P0-02 Cell-State Evidence | [Server integration, 2026-08-11](p0_02_server_integration_20260811.md) · [source-aware visualization, 2026-09-01](p0_02_cell_state_visualization_20260901.md) |
+| P0-02 Cell-State Evidence | [Server integration, 2026-08-11](p0_02_server_integration_20260811.md) |
 | P0-03 Target Identity & Regional Fidelity | [Aggregation validation, 2026-08-25](p0_03_target_regional_20260825.md) · [Expression-method validation, 2026-08-26](p0_03_expression_methods_20260826.md) |
 | P0-04 Developmental Compatibility | [Candidate validation, 2026-08-25](p0_04_developmental_compatibility_v0.2.md) |
 | P0-05 Off-target Control | [Candidate validation, 2026-08-25](p0_05_off_target_control_20260825.md) |

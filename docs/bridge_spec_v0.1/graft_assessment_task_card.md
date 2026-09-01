@@ -4,7 +4,7 @@
 | --- | --- |
 | Task ID | `TASK-GRAFT-ASSESSMENT-v0.1` |
 | 文档版本 | `0.3-candidate` |
-| 日期 | 2026-08-31 |
+| 日期 | 2026-08-27 |
 | 状态 | `candidate` |
 | 适用范围 | 可选的移植后 graft scRNA-seq/snRNA-seq 独立评估 |
 | 上游输入 | 空输入；或 checksummed 预计算 graft 三对象；或 GraftCase、H5AD asset manifest、外部分析 spec、reference panel 与 marker-program collection |
@@ -78,21 +78,15 @@ linkage。两种 provided 结果都保持 `candidate/shadow`、
 
 ## 3. 两级 Reference 合同
 
-Reference 必须先匹配用户提供的 graft assay：graft snRNA 使用 snRNA reference；
-graft scRNA 使用 scRNA reference。跨模态结果只能作为明确标记的 sensitivity，
-不能与同模态结果合并成一个支持票数。若用户没有提供移植后数据，本模块返回
-`not_provided`，也不会为移植前分析启用单核 reference。
-
-### 3.1 一级：GW14-25 snRNA broad/neurogenesis reference（graft snRNA）
+### 3.1 一级：GW14-25 snRNA broad/neurogenesis reference
 
 一级候选 reference 覆盖中孕期 broad/neurogenesis 状态，并保留 DA、相邻
 神经元谱系和 off-axis 状态。精确 profile 数量、内部派生对象 ID 与 crosswalk
 保留在私有 checksum-bound reference manifest 中，不写入公开任务卡。
 该 reference 用于 whole-graft broad composition、DA broad identity 和
-neuronal lineage context；只在用户提供 graft snRNA 时作为首要 reference。
-同一 source family 的派生视图不能重复计数。
+neuronal lineage context；同一 source family 的派生视图不能重复计数。
 
-### 3.2 二级：GW14-20 fine mDA reference（graft snRNA）
+### 3.2 二级：GW14-20 fine mDA reference
 
 二级候选 reference 提供 fine mDA 分组与 subtype。精确规模、barcode 映射、
 未映射条目和 broad-label 冲突数量仅保留在私有验证 manifest。
@@ -105,10 +99,6 @@ source/modality holdout 与开放集验证。在此之前，fine subtype mapping
 ### 3.3 成人 mDA sensitivity
 
 成人 mDA reference 仅用于检查 graft 结果是否对 adult reference 敏感，不作为主 reference，也不把 adult-like support 自动解释为功能成熟或产品更好。
-
-对于 graft scRNA，首要 reference 必须是同模态的发育 scRNA profile；GW14-25
-snRNA 只能作为跨模态 sensitivity。首版若尚无通过审核的 graft-scRNA reference
-panel，相应映射返回 `unavailable`，不能为了给出标签而静默改用单核 reference。
 
 一级、二级和成人派生视图均记录 `source_family` 与 `evidence_family_id`。同一父数据派生出的多个视图不能被当成多个独立支持证据。
 
@@ -194,8 +184,7 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 
 ### 6.4 mDA Maturation 与 Subtype
 
-- 对 graft snRNA，先使用 GW14-25 snRNA reference 输出 broad DA 与 neurogenesis state support，再在 DA 子集上调用通过验证的 fine mDA mapping。
-- 对 graft scRNA，先使用 assay-matched scRNA reference；若同模态 reference 不可用，则该结果保持 `unavailable`，snRNA 仅可单列为跨模态 sensitivity。
+- 先使用 GW14-25 snRNA reference 输出 broad DA 与 neurogenesis state support，再在 DA 子集上调用通过验证的 fine mDA mapping。
 - 保存完整 `reference_support_distribution`，不只输出单个标签。
 - aggregation-matched sample-profile correlation、marker/program evidence 与一个监督或映射通道构成互补证据；同一模型的多个输出不算独立证据。
 - dopamine synthesis/handling、axon、synapse、electrophysiology-related、mitochondrial/oxidative 和 maturation programs 分开记录 measured expression 与 inferred activity。

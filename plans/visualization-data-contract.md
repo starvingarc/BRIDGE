@@ -91,36 +91,3 @@ The implementation commit
 
 The exact wheel and server details are recorded in
 [`docs/validation/visualization_data_contract_20260828.md`](../docs/validation/visualization_data_contract_20260828.md).
-
-## Additive product-grouping requirement — 2026-08-31
-
-The completed shared contract above is unchanged. Package-owned follow-up
-artifacts must additionally distinguish four layers before rendering a
-product-to-reference view:
-
-1. the observed grouping produced after QC, normally an unsupervised cluster;
-2. an optional user-provided label grouping whose original values and provenance
-   remain unchanged; and
-3. P0-02 cell-identity/reference evidence, aggregated from the same cell-level
-   inference for either grouping; and
-4. optional P0-03 anatomical-space and P0-04 developmental-stage axes, each with
-   its own typed producer result, reference, method and scientific status.
-
-The same product may be rendered by cluster or by user label. A user-label ×
-cluster table exposes within-label heterogeneity through counts, row/column
-fractions and declared summary statistics; this grouping overlap is not a
-semantic `broader`/`narrower` crosswalk. P0-02 identity correspondence retains
-the method's native value semantics: calibrated probability, prediction set,
-mixture weight, similarity, distance or not assessed.
-
-Each optional axis records its producer tool, Schema, reference, method,
-`assessment_state`, `scientific_status` and reason. A missing typed producer
-result renders as `not_assessed`; it is never inferred from another axis.
-Renderers may not rename user labels, convert scores into probabilities, or
-collapse the axes into a hard identity, fetal age, tissue coordinate or total
-score.
-
-These additive grouping and composer fields are conceptual next-version
-requirements. The current P0-02 branch only defines a package-owned data Schema,
-semantic validator, table fallback and deterministic renderer; it does not change
-`ToolRun`, register a typed component or claim that the Web composer exists.

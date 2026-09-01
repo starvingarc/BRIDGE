@@ -16,17 +16,9 @@ This candidate is the prerequisite for later Target Identity, Regional Fidelity,
 Developmental Compatibility and Off-target Control analyses. It is not a released
 cell-state method.
 
-## Current reference routing and unresolved biology
+## Current evidence and unresolved biology
 
-- Chen vMB scRNA-seq provides 61,455 cells and is the primary pre-transplant
-  reference for ventral-midbrain identity and fine cell-state evidence.
-- The existing 2,011,383-cell whole-cell scRNA reference integrates the legacy
-  Chen snapshot with Braun 2023 and Zeng 2023. It provides broad brain-region and
-  off-axis context after lineage review; because it contains Chen cells, it is
-  not an independent vote in addition to the Chen reference.
-- The current GW7 spatial reference contains 385,361 retained segmented profiles
-  from two sections of one embryo. It supplies a separate anatomical evidence
-  view, but its initial label transfer depended on the Chen scRNA reference.
+- Chen vMB scRNA-seq provides 61,455 cells for broad L1 development work.
 - Chen RG/Nb scRNA-seq provides 11,366 cells for seven priority L2 development
   states.
 - Development OOD includes cortical organoid, neural crest, motor-neuron and
@@ -36,11 +28,7 @@ cell-state method.
   labels.
 - Fine RG/Nb support is incomplete. Unresolved Nb boundaries remain
   `provisional` or `unavailable` and cannot support formal regional claims.
-- The 87,467-nucleus GW14-25 reference is primarily reserved for an optional,
-  separate post-transplant graft snRNA assessment. It is not part of the default
-  pre-transplant cell-identity reference route. The 148,922-profile scRNA/snRNA
-  integrated object is a candidate developmental-path, direction and branch
-  reference for P0-04, but remains excluded from the P0-02 identity consensus.
+- snRNA-seq remains a cross-modality shadow analysis.
 
 No method, state, threshold or product role is frozen. Current observations do not
 support formal target-cell, regional-fidelity or off-target composition claims.
@@ -155,56 +143,6 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
   checks were data-free and do not promote a scientific method.
 - Historical local runs are diagnostic only and are not current formal evidence.
 - Runtime remains fail-closed without approved review, gate and release records.
-
-## Product-centred visualization workstream — 2026-08-31
-
-- The default user-facing result is a product-to-in-vivo correspondence composer:
-  one product and one observation grouping, with each evidence axis supplied by
-  its own typed, versioned producer result.
-- P0-02 produces only the cell-identity/reference-evidence axis. P0-03 may later
-  supply the anatomical-space axis and P0-04 the developmental-stage axis.
-  Each missing axis remains `not_assessed` with a producer-specific reason.
-- Studer-protocol D16 is the first review case because all 9,046 barcodes in its
-  historical analysis object trace to the registered 11,087-barcode raw-count
-  input. This establishes barcode lineage, not the biological identity or review
-  status of its stored labels, clusters or UMAP. The same display design has also
-  been exercised on MacroDiff and SphereDiff: all 57,464 retained MacroDiff
-  barcodes trace to six registered count-ready captures, whereas the 9,547-cell
-  SphereDiff object remains a historical analysis-ready control because its formal
-  count-ready source is unresolved. These are display-generalisation checks, not
-  input-QC reproduction or independent cell-identity validation.
-- The first review case demonstrates two grouping views. The cluster view preserves
-  clusters already stored in the historical analysis object and reports
-  group-level reference similarity without forcing one identity per cluster. The
-  label view preserves an `Idents`-derived provided grouping, cross-tabulates it
-  against stored clusters, and keeps the original strings. Manual-review and
-  user-submission provenance are pending; neither view is a calibrated
-  probability, prediction set or cell-level assignment.
-- Every displayed value retains its native semantics. Calibrated probabilities,
-  prediction sets, mixture weights, similarities and distances are labelled
-  separately; correlations and uncalibrated scores are not called probabilities.
-- The final-RDS age labels and historical relabelling provenance are not yet
-  reconciled. The developmental axis is therefore `not_assessed`; no stage
-  support calculation or stage graphic is allowed before reconciliation.
-- The current hEB58 panel is a candidate label-program lookup: product-group
-  pseudobulk is compared with the mean expression programs of 20 current spatial
-  work labels. The score is dependent on those labels and is not calibration,
-  cell-to-location projection, anatomical localization, independent validation or
-  a tissue coordinate. Product-to-space results require a validated P0-03 mapping
-  method.
-- CapybaraBrain is an isolated public-preprint method-comparison channel. Its
-  official repository must be pinned. Before any run, a complete parameter vector
-  must freeze `TOPK`, `alpha`, `min_weight`, hybrid/majority-vote settings,
-  lineage map, input transform and reference hashes because the paper, README and
-  code defaults conflict. Its 93-program output is a post-normalized NNLS
-  reconstruction coefficient, not a probability, posterior or similarity.
-  `discrete/hybrid/transitioning/unknown/unassigned/heterogeneous` are repository
-  enum labels, not six independently validated biological states; `transitioning`
-  reflects a curated lineage-map rule, not developmental direction. A missing
-  CellTypist model blocks only the final A9 refinement/agreement step, while a
-  missing integration embedding blocks only that display. Fetal atlas, HDNA and
-  PCA/kNN remain separate artifacts.
-- The source-by-state matrix is an evidence drill-down, not the first product view.
 
 ## P0-02 external-source preparation closeout — 2026-08-13
 

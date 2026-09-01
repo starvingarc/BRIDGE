@@ -125,20 +125,15 @@ BRIDGE 已整理的数据分为六类。各类数据的角色不同，不会因�
 
 | 数据家族 | Assay 与材料 | 发育时间与解剖范围 | 当前规模 | 主要用途 | 状态与限制 |
 | --- | --- | --- | ---: | --- | --- |
-| Chen vMB scRNA | scRNA-seq，whole cells | final RDS：GW7/8/9/12/16/20；人胚腹侧中脑 | 61,455 cells | 早期区域、祖细胞和目标/邻近程序 | `available`；final RDS 与历史 notebook 的胎龄重标注未解释一致，身份映射评估可继续，发育 benchmark 暂不运行 |
-| Chen vMB snRNA | snRNA-seq，nuclei | GW14/16/18/20/24/25；人胚腹侧中脑 | 87,467 nuclei | graft snRNA 身份支持；跨模态发育轨迹的一条分模态轨道 | `available`；与 scRNA 为不同胚胎，不进入移植前身份默认流程 |
-| Chen vMB combined | scRNA-seq + snRNA-seq 整合对象 | 12 个非配对胚胎、10 个登记孕周；腹侧中脑 | 148,922 profiles | state ontology，以及发育路径、方向和分支的候选 reference | 派生对象；胎龄映射闭合后仍须分模态验证，不合成一条无 assay 差异的 GW7-GW25 轨迹 |
+| Chen vMB scRNA | scRNA-seq，whole cells | GW7/8/9/12/16/20；人胚腹侧中脑 | 61,455 cells | 早期区域、祖细胞和目标/邻近程序 | `available`；需冻结样本表、ROI 和 annotation |
+| Chen vMB snRNA | snRNA-seq，nuclei | GW14/16/18/20/24/25；人胚腹侧中脑 | 87,467 nuclei | 中晚期神经元和 DA subtype coverage | `available`；与 scRNA 为不同胚胎 |
+| Chen vMB combined | scRNA-seq + snRNA-seq 整合对象 | 12 个非配对胚胎、10 个孕周；腹侧中脑 | 148,922 profiles | state ontology、reference mapping 和发育背景 | 派生对象；年龄与模态存在混杂 |
 | Chen RG/Nb states | 从 Chen sc/sn 派生的状态集 | 腹侧中脑；14 个区域 RG/Nb states | 15,095 profiles | mFP/mBIP/mBMP 目标和邻近状态 | 不作为独立 reference 计数 |
-| Chen neurogenesis states | 从 Chen sc/sn 派生的神经发生状态集 | 腹侧中脑发育 | 83,017 profiles | DA/GABA/Glut/RG/Nb 状态，以及发育路径和分支方向候选 | candidate；不是因果谱系真值 |
+| Chen neurogenesis states | 从 Chen sc/sn 派生的神经发生状态集 | 腹侧中脑发育 | 83,017 profiles | DA/GABA/Glut/RG/Nb 状态和发育程序 | candidate；不是因果谱系真值 |
 | Braun et al., 2023 (`EGAS00001004107`; HCA `cbd2911f-252b-4428-abde-69e270aefdfc`) | scRNA-seq；论文另含 spatial | PCW5-14；第一孕期全脑多区域 | 1,548,209 cells | 全脑区域和广谱离轴背景 | `available`；全脑 reference 不替代 vMB reference |
 | Zeng et al., 2023 (`GSE155121`) | scRNA-seq；PCW4 10x spatial | PCW3-12；全胚、全头和全脑 | 400,141 human cells | 早期胚胎、神经管、脑和非神经背景 | `available`；区域与年龄标签需冻结 |
 | La Manno et al., 2016 (`GSE76381`) | 人胎 VM scRNA-seq | PCW6-11；腹侧中脑 | 1,977 fetal cells | 独立经典 VM 发育 reference | `available`；旧平台且样本量较小 |
 | Birtele et al., 2022 (`GSE192405`) | 人胎 VM scRNA-seq 与原代培养 | 6-11 周 post-conception；腹侧中脑 | 13 个 GEO samples；processed CSV 可用 | 原代胎儿 VM maturation external-source 候选 | `converted_conditionally_approved`；raw reads 不公开；仅允许 source/stage-level holdout 与 provisional-group sensitivity，不允许 biological-replicate 或 donor-level inference |
-
-2026-08-31 final RDS 核对确认上述 scRNA 的 61,455 个 cells；当前 processed
-H5AD 只有 `counts` layer。历史 notebook 中的 GW6/9/12 → GW8/9/10、
-GW11 → GW12 重标注尚未由最终样本表和转换 manifest 解释一致，因此发育路径、
-真实时间耦合、产品软定位和 RNA velocity 均保持 `not_assessed`。
 
 旧 Step1 reference 由 Chen legacy scRNA、Braun 和 Zeng 构建，full object 为 2,011,383 profiles。其 350,000-cell train、100,000-cell technical holdout 和 523,478-profile regional RG 仅用于旧流程复现、软件回归和血缘审计，不视为新 BRIDGE 的独立生物学验证。
 
@@ -159,22 +154,17 @@ GW11 → GW12 重标注尚未由最终样本表和转换 manifest 解释一致�
 | Tiklová pre-graft RC17 (`GSE118412`) | RC17 hESC；2D VM 分化；VM/mDA progenitors | Smart-seq2/scRNA-seq；D16 | 404 hESC-derived cells | 与长期 graft 显式关联的历史 sanity check | `available`；样本量小且平台较旧；同源 fetal VM 256 cells 作为 reference，不计入产品分母 |
 | Studer/MSK-DA01 protocol-linked D16 | D16 分化样本；已发表 MSK-DA01/Studer floor-plate 方案作为 protocol context | scRNA-seq；D16 | `count_ready` 矩阵 11,087 个 cell-called barcodes；v1 下游对象 9,046 cells | 已发表方案背景比较 | `restricted_source`；Piao et al., Cell Stem Cell 2021 支持产品与方案背景，但不确定该测序对象的论文数据归属 |
 
-### 2.4 空间 reference QA 与染色候选验证
+### 2.4 空间转录组与染色验证
 
 | 数据家族 | 数据类型 | 时间与解剖范围 | 当前规模/状态 | BRIDGE 用途 | 关键限制 |
 | --- | --- | --- | --- | --- | --- |
-| Chen hEB58 | Visium HD segmented tissue profiles | GW7；人胚中脑，section 2/9 | 上游登记 411,161；basic-filter joint 408,539；去背景 final 385,361 profiles；18,085 probes | 当前工作标签的正 marker supporting-expression QA、candidate label-program lookup 和算法可行性 | 两张切片来自同一胚胎；final 20 个标签依赖本组单细胞标签迁移；anti-marker 与人工 confidence 未记录；不构成 calibration、空间定位或独立验证；方向和 ROI 待审核 |
+| Chen hEB58 | Visium HD segmented tissue profiles | GW7；人胚中脑，section 2/9 | 225,107 + 186,054 = 411,161 profiles；18,085 probes；`available` | marker 空间特异性、解剖锚定和算法可行性 | 两张切片来自同一胚胎；方向和 ROI 待冻结 |
 | Chen 冠状/矢状空间数据 | 人胚中脑空间转录组 | 单时间点；冠状和矢状切面 | `pending`；数据等待返回 | donor/section-aware anatomical reference | 返回后需登记 assay、donor、section、ROI 和 QC |
 | Chen 人胚中脑 marker 染色 | IF/IHC | 具体 GW/PCW、切面和 ROI 待样本表冻结 | 实验进行中 | 验证 mDA、底板、区域边界和非目标 marker | 样本、抗体批次和成像条件冻结前不进入量化 |
 | Braun 2023 spatial | 论文公开空间数据 | PCW5-14 第一孕期全脑 | 论文级可用；本地 spatial 版本待冻结 | 全脑解剖和区域 context | 不以论文图像代替可运行 snapshot |
 | Zeng 2023 PCW4 spatial | 10x spatial | PCW4；全胚/全头/早期脑 | 公开数据；待独立版本与 ROI 审计 | early anatomy context | 不与体外产品直接比较 |
 
-hEB58 三个计数阶段分别为 225,107 + 186,054 = 411,161（上游登记）、
-223,428 + 185,111 = 408,539（basic-filter joint H5AD）和
-209,932 + 175,429 = 385,361（去背景 final H5AD）。当前图形以 final
-segmented profiles 为分母；411,161 的源 manifest/hash 仍待补。
-
-当前 hEB58 只用于工作标签与图形 QA，以及 candidate label-program lookup。IF/IHC 只有在样本、抗体批次、成像条件和分析合同明确后，才可作为正交 marker 证据。单一胚胎的多张切片不视为多个生物学重复。
+空间和染色数据当前主要用于 reference 构建和正交验证。单一胚胎的多张切片不视为多个生物学重复。
 
 ### 2.5 OOD 与机制校准数据
 
@@ -679,13 +669,11 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 
 ### 6.6 Visualization Composer 与 Web 交互
 
-截至 2026-08-31，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
+截至 2026-08-28，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
 `VisualizationArtifact` v0.2 数据绑定合同与 figure registry v0.1；集成式 Web
-结果页和 Visualization Composer 仍未实现。P0-01 已有四个 typed QC 组件和两个
-兼容组件；当前 P0-02 工作线只增加 package-owned 的来源 × 状态数据合同、语义校验、
-表格回退和确定性 renderer，尚未进入 `ToolRun`、figure registry 或 Web。P0-02
-现有五个组成、reference、marker 和冲突组件仍为 `legacy_untyped`。其他证据域
-仍以结构化结果为主。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经存在。
+结果页和 Visualization Composer 仍未实现。当前 P0-01 只产生两类 QC 图，
+P0-02 只产生组成、reference 支持、marker 和冲突图，且这些现有组件仍登记为
+`legacy_untyped`；其他证据域仍以结构化结果为主。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经存在。
 
 #### 用户问题与默认阅读顺序
 
@@ -700,47 +688,7 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 7. 哪些解释有支持、存在冲突或仍缺证据；
 8. 下一步最值得补充什么测量或人工审核。
 
-首页使用六行“产品证据概览”：数据可用性、细胞组成与身份、目标谱系与区域支持、发育阶段相容性、非目标/未知/稀有状态，以及增殖与应激信号。每行显示文字状态、一个关键观察、分母、独立来源家族数、主要限制和证据下钻入口。不得使用综合总分、总体排名、雷达图或红绿灯式产品等级；尚未运行、缺失输入或技术上不可评估分别显示为 `not_assessed`、`missing` 或 `unavailable`，不得画成 0。
-
-#### 产品中心的默认主图
-
-用户上传一份分化细胞产品后，结果页首先显示“产品—体内对应关系画像”，而不是
-reference 审核表或证据矩阵。身份解释必须晚于 QC 和观测分组，不能为了画图而先把
-每个 cluster 压成一个确定的细胞身份。
-
-**观测分组与命名来源是主图的第一层：**
-
-- 用户没有提供细胞命名时，BRIDGE 使用 QC 后的无监督 `cluster_id` 作为默认展示单位；
-  图中先显示 Cluster 0、Cluster 1 等观测分组，再展示它们与体内 reference 的软对应。
-- 用户已经提供命名时，原始字符串作为 `user_provided_label` 原样保留；同时保留
-  `cluster_id`，用“用户命名 × cluster”交叉表显示同一命名内部是否仍有明显异质性。
-- BRIDGE 的 reference interpretation 是第二层，不覆盖用户命名。图中分别显示
-  分组交叉的计数、行列比例和异质性，以及另行建立的 reference/ontology 语义对应；
-  `broader`、`narrower` 等方向词只用于具有明确层级方向的语义 crosswalk，不由
-  cluster × 用户命名的重叠比例推断。用户可以在“按 cluster”和“按用户命名”之间切换。
-
-结果页以一个组合外壳围绕同一份产品和可选择的观测分组，容纳三条互相独立的参照问题：
-
-- **细胞类型**：每个 cluster 或用户命名与哪些 broad/fine reference states 相容，
-  包括 prediction set、unknown/OOD、方法分歧和必要的区间；
-- **发育时间**：每个分组在分模态、分来源 reference 中获得怎样的阶段支持分布；
-- **解剖空间**：每个分组与胎儿腹侧中脑空间 reference 的哪些区域或表达程序相符，
-  并同时显示 residual、reference distance 或不可评估原因。
-
-三条轴不是由 P0-02 一次性产生。P0-02 只提供观测分组及细胞身份/reference evidence；
-P0-03 可选地提供空间对应轴，P0-04 可选地提供发育阶段轴。每条轴必须独立记录
-`producer_tool_id`、结果 Schema、reference、方法、`assessment_state`、
-`scientific_status` 和原因。未产生的轴保留在组合外壳中并显示 `not_assessed`，
-不得由 P0-02 根据相关系数或现有标签补写。
-
-每个数值必须保留方法原生语义，例如 `calibrated_probability`、`prediction_set`、
-`mixture_weight`、`similarity`、`distance` 或 `not_assessed`。相关系数、距离和
-未校准模型分数不得改称“概率”；只有满足预注册校准和发布条件时才显示单一确定身份。
-三条轴共享产品与分组选项，但各自保留 reference、方法、分母、不确定性、OOD 和
-缺失状态，不能合成一个总分、单一细胞标签或确定的“体内年龄/坐标”。分化日不直接
-换算为胎龄，空间一致性也不表示体外细胞具有真实组织坐标。若胎龄元数据、空间适用性
-或外部校准尚未闭合，对应面板显示 `not_assessed` 及原因。来源 × 状态证据矩阵降为
-该主图的下钻解释，用于说明支持来自哪里以及哪些来源并不独立。
+首页使用六行“产品证据概览”：数据可用性、细胞组成与身份、目标谱系与区域支持、发育阶段相容性、非目标/未知/稀有状态，以及增殖与应激信号。每行显示文字状态、一个关键观察、分母、独立来源家族数、主要限制和证据下钻入口。不得使用综合总分、总体排名、雷达图或红绿灯式产品等级；缺失或技术上不可评估的证据显示为 `missing` 或 `unavailable`，不得画成 0。
 
 #### 核心图表体系
 
@@ -750,10 +698,10 @@ P0-03 可选地提供空间对应轴，P0-04 可选地提供发育阶段轴。�
 | 使用者关注点（非图题） | 默认主图 | 需要时展开 | 证据来源 | 当前不足 |
 |---|---|---|---|---|
 | 输入数据是否满足后续分析条件 | **数据质量与分析资格评估**：声明观测数 → 结构与矩阵语义有效 → 候选 QC 状态 → 下游视图可用性 | **各 capture 的质量指标分布**；**文库复杂度与线粒体转录本比例**；**质量标记组合及细胞数量**；不同 QC view 的结果敏感性 | Input Audit & QC（P0-01） | 目前只有汇总直方图和散点图，缺逐 capture、阈值、观测流向和敏感性 |
-| 产品里有什么？ | 先按无监督 cluster 或用户原始命名显示观测组成，再叠加 L1/L2/L3 reference prediction set、unknown/OOD、unresolved、区间与分母 | 用户命名 × cluster 交叉表；cluster/用户命名 × reference 软对应；可展开至来源和观测；UMAP 只作探索，不作为身份依据 | Cell-State Evidence（P0-02） | 当前组成图尚未显式区分观测分组、用户命名和 BRIDGE reference interpretation |
-| 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：移植前分别显示本组 scRNA、Chen + Braun + Zeng 整合 scRNA 及 Birtele/La Manno external-source evidence 的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布和 unknown 原因；hEB58 candidate label-program lookup / reference QA 单独下钻，不计作细胞状态来源支持；单核细胞身份 reference 只在独立 graft 视图出现 | Cell-State Evidence（P0-02） | 当前分支只有 package-owned 数据合同与 renderer 候选，尚未接入运行时；独立 held-out、OOD 和 prediction-set 评估尚未运行 |
+| 产品里有什么？ | L1/L2/L3 层级组成图，明确分开已支持、prediction set、unknown/OOD 和 unresolved，并显示区间与分母 | 可展开至每个状态、来源和观测；UMAP 只作探索，不作为身份依据 | Cell-State Evidence（P0-02） | 当前组成图缺 prediction set、区间和层级交互 |
+| 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：分别显示内部参考、Birtele、La Manno 等来源的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布、unknown 原因 | Cell-State Evidence（P0-02） | 当前 forced-label/OOD 问题尚未被直观展示 |
 | 目标细胞和区域身份符合预期吗？ | target / acceptable adjacent / off-target / unresolved 组成区间图 | 区域证据热图、reference correlation、program activity、连续身份权重、NNLS residual；空间投射仅在具备合格数据时出现 | Target Identity & Regional Fidelity（P0-03） | 已有结构化比例和方法结果，但没有正式图形产物 |
-| 发育阶段合适吗？ | 双分母发育阶段画像：完整产品和 target-related observations 分开显示 | 按 reference source/modality 分面的 stage-support ridge/heatmap；sc/sn 分模态发育路径与分支图；多个真实时间点时显示 sample-level 趋势 | Developmental Compatibility（P0-04） | 不能只给一个“发育年龄”；单时间点必须明确动态证据不可用 |
+| 发育阶段合适吗？ | 双分母发育阶段画像：完整产品和 target-related observations 分开显示 | 按 reference source/modality 分面的 stage-support ridge/heatmap；多个真实时间点时显示 sample-level 趋势 | Developmental Compatibility（P0-04） | 不能只给一个“发育年龄”；单时间点必须明确动态证据不可用 |
 | 有没有不想要或无法解释的细胞？ | 完整产品组成与 unknown 原因图 | rare-state 观测值、零观测上界、LOD、spike-in recovery curve；多来源 OOD 分歧 | Off-target Control（P0-05） | 结构化结果已有比例、区间和检出曲线字段，但尚未渲染 |
 | 是否存在增殖、细胞周期或应激信号？ | sample × program 证据热图，同时显示 reference envelope、gene coverage 和 evidence state | whole-product/state-specific 分布、S/G2M、方法一致性、ProtocolIR 时间线和 review flag | Proliferation & Stress Response（P0-06） | 必须写成“需要复核的转录信号”，不能画成安全性或 potency 结论 |
 | 多个批次或工艺有什么差别？ | 逐指标效应量森林图：raw delta、区间、分母和可比性 | composition delta、program heatmap、preparation-level points、batch/lot 距离和敏感性矩阵 | Product Comparison & Stability（P0-07） | 仅在满足可比合同时显示；单个 preparation 只能作描述性比较，不能排名 |
@@ -763,42 +711,6 @@ P0-03 可选地提供空间对应轴，P0-04 可选地提供发育阶段轴。�
 
 移植后视图始终与移植前产品证据分开，不得反向改变移植前结论。
 
-移植前细胞身份 reference 按两个互补 context 组织：本组腹侧中脑 scRNA 用于细粒度状态，
-Chen + Braun + Zeng 的整合 whole-cell scRNA 用于 broad brain-region 与 off-axis
-context。hEB58 另作依赖当前工作标签的 candidate label-program lookup / reference QA，
-不进入来源 × 状态支持矩阵。整合对象包含本组旧版细胞，hEB58 初始标签迁移也依赖
-本组 scRNA，因此 Web 必须显示这些依赖关系，不能把派生对象当作独立支持票。单核 reference 作为细胞身份参考主要用于用户另行提供的 graft
-snRNA，只出现在独立移植后结果中；sc/sn 整合对象另作为 P0-04 发育路径与分支
-方向的候选 reference，在发育视图中按模态分轨展示，不进入 P0-02 身份共识。
-
-#### 参考校准与方法问题分层
-
-P0-02 的来源 × 细胞状态证据矩阵之前，可先显示 hEB58 candidate
-label-program lookup 的 reference QA 图：两张 section 同比例并列，主图按当前
-谱系/解剖工作标签着色，下钻保留 20 个标签；两套 prediction 只显示各自
-`Uncertain` 比例及在已定义 uncertainty state 上可比较的差异。没有版本化
-crosswalk 时不声称直接标签分歧。当前只有正 marker supporting-expression panel，
-anti-marker 与人工 confidence 均为 `not_recorded`。该图的 385,361 个观测统一
-称 segmented profiles；两张 section 不作为两个生物学重复，也不构成发育时间序列。
-产品分组与当前标签平均表达程序的相似性只是依赖这些工作标签的候选 lookup，不构成
-calibration、cell-to-location projection、anatomical localization 或 independent
-validation。
-
-发育与空间方法按科学问题分层，不共享一个排行榜：
-
-| 科学问题 | 用户看到的结果 | 所属实现 |
-| --- | --- | --- |
-| scRNA/snRNA 表征校准 | 技术混合与状态、marker、胎龄顺序和路径保持的并列敏感性 | P0-04 后续 PR；不整合是合法候选 |
-| 静态表达拓扑 | scRNA 与 snRNA 分轨的节点、分支、root/terminal 和稳定性 | P0-04 后续 PR；不解释真实时间 |
-| 真实时间耦合 | 每种模态内按 donor/timepoint 的转移支持及 GW16/GW20 一致性 | P0-04 后续 PR；元数据闭合前不可用 |
-| 单时间点产品软定位 | 按 cluster 或用户命名分别显示 scRNA、snRNA reference 的阶段支持分布与参考外程度 | P0-04 后续 PR；胎龄元数据闭合前为 `not_assessed`，闭合后仍不把单个产品插入胎龄轴 |
-| 空间 reference 与图形 QA | segmentation、当前工作标签、正 marker support、reference uncertainty 与空间域敏感性 | 当前 P0-02 分支只生成服务器审核图和 candidate label-program lookup，不构成产品空间结果；P0-03 后续实测 |
-| 产品到空间 reference 投射 | 按 cluster 或用户命名显示方法原生输出：abundance、weight、mapping matrix、similarity 或 distance；residual、reject、entropy、OOD 与适用性只在对应方法原生定义并验证时出现 | P0-03 后续 PR；不表示产品具有真实组织坐标 |
-
-空间 segmentation、标签复核、spatial domain、scRNA → spatial mapping、
-section alignment 和 spatial trajectory 分任务报告；hEB58 当前 spatial
-trajectory 为 `deferred`，所有任务禁止合成总排名。
-
 #### 阅读、交互与证据状态
 
 大屏采用一张主科学图、紧凑导航/筛选区和证据检查器；手机竖屏一次只显示一张主图，筛选变成 chips 或 bottom sheet，证据详情变成可恢复的 bottom drawer。必要时可为密集矩阵或证据图提供手机横屏检查模式，但竖屏本身仍必须说清主要观察。
@@ -806,8 +718,6 @@ trajectory 为 `deferred`，所有任务禁止合成总排名。
 选择任一图形元素时必须能看到：
 
 - 精确值、numerator、denominator、单位和区间；
-- 当前观测分组、用户命名来源及 BRIDGE interpretation 三者的 provenance；
-- 每个数值的原生语义，明确区分 probability、weight、similarity 和 distance；
 - evidence state 与 scientific status；
 - 数据、reference、method、Card 和环境版本；
 - Evidence IDs 与来源家族依赖；
@@ -834,11 +744,9 @@ trajectory 为 `deferred`，所有任务禁止合成总排名。
 
 正式图必须由 typed、checksummed 的 visualization data artifact 生成。P0-01
 和 P0-02 当前 `ToolRun` 仍使用 byte-compatible 的 `VisualizationArtifact`
-v0.1。独立的 v0.2 合同已经实现下列追加字段，但尚未嵌入 `ToolRun`。figure
-registry 按组件迁移：本分支为 P0-02 来源 × 状态矩阵提供 package-owned JSON
-Schema、Python 语义校验、无损表格回退和确定性 renderer，但没有 producer、
-hash-bound `VisualizationArtifactV2` 或 `ToolRun` 集成，因此不登记为
-`typed_candidate`。P0-02 组件继续保持 `legacy_untyped`，直到各自满足同一条件：
+v0.1。独立的 v0.2 合同已经实现下列追加字段，但尚未嵌入 `ToolRun`；只有在
+各图族的后续 PR 提供 package-owned data Schema、表格回退和渲染验证后，figure
+registry 才能从 `legacy_untyped` 升为 `typed_candidate`：
 
 - component 和 component-version；
 - visualization-data Schema URI、object version 和 SHA-256；
@@ -852,10 +760,7 @@ hash-bound `VisualizationArtifactV2` 或 `ToolRun` 集成，因此不登记为
 - 每个 renderer 使用的 export profile、数据 hash 和配置 hash。
 
 Web/Agent 可通过 `bridge-tool figures list/show/validate` 或 Python interface
-查询已注册组件及其迁移状态；当前新的来源 × 状态合同不会出现在该列表中。公开
-JSON Schema 负责结构验证，package model 另执行 exact state × source grid、
-来源依赖 DAG、family 独立性、channel roll-up 等语义验证；受支持的消费入口必须
-同时通过两层校验。注册本身不提升图、方法、状态或结论的科学等级。
+查询组件及其迁移状态。注册本身不提升图、方法、状态或结论的科学等级。
 
 科学工具负责数值和科学状态；Visualization Composer 只负责视图变换和与 renderer 无关的 figure brief；Web 只负责布局、选择和导航，不得重算科学指标。静态 SVG/PDF/PNG 和交互 Web 必须消费同一份绑定数据并表达同一条观察和限制。在至少两个真实图族需要同一接口之前，不建立庞大的通用 chart grammar。
 
