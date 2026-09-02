@@ -63,6 +63,20 @@ without changing scientific semantics.
 
 Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.
 
+## Local Agent Runtime
+
+The package includes a framework-neutral local application core for immutable
+`ProductCase` and `AnalysisPlan` records, deterministic planning, append-only
+workflow events, SQLite recovery, content-addressed artifacts, and case-scoped
+Tool Package execution. The detailed boundary is documented in
+[Local Agent Runtime Architecture](local-agent-runtime.md).
+
+The optional `bridge-agent` entry point makes one synchronous, text-only model
+call using caller-asserted `public_safe` content. It has no Tool Registry handle,
+function-calling surface, plan-approval method, or authority to change scientific
+results. Credentials and configured provider URLs are not included in returned
+records or workflow events.
+
 ## Failure Boundary
 
 The Agent may explain a deterministic result but cannot edit numerical values, thresholds, evidence states, hashes or identifiers. Missing metadata triggers a targeted question; tool or data failure never becomes a biological product conclusion.

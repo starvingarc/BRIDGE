@@ -58,6 +58,23 @@ SHARED_VISUALIZATION_CONTRACT_FILES = (
     Path("src/bridge/resources/schemas/figure_registry.schema.json"),
     Path("src/bridge/resources/schemas/visualization_artifact_v2.schema.json"),
 )
+AGENT_RUNTIME_FILES = (
+    Path("docs/local-agent-runtime.md"),
+    Path("plans/agent-runtime-integration.md"),
+    Path("src/bridge/domain/__init__.py"),
+    Path("src/bridge/domain/models.py"),
+    Path("src/bridge/planner/__init__.py"),
+    Path("src/bridge/planner/service.py"),
+    Path("src/bridge/runners/__init__.py"),
+    Path("src/bridge/runners/llm.py"),
+    Path("src/bridge/runners/pipeline.py"),
+    Path("src/bridge/storage/__init__.py"),
+    Path("src/bridge/storage/artifacts.py"),
+    Path("src/bridge/workflow/__init__.py"),
+    Path("src/bridge/workflow/event_store.py"),
+    Path("src/bridge/workflow/events.py"),
+    Path("src/bridge/workflow/executor.py"),
+)
 P001_VISUALIZATION_FILES = (
     Path("plans/p0-01-input-qc-visualization.md"),
     Path("docs/validation/p0_01_input_qc_visualization_20260828.md"),
@@ -207,6 +224,10 @@ def _tracked_file_budget() -> int:
         (ROOT / relative).is_file()
         for relative in SHARED_VISUALIZATION_CONTRACT_FILES
     )
+    agent_runtime_files = sum(
+        (ROOT / relative).is_file()
+        for relative in AGENT_RUNTIME_FILES
+    )
     p001_visualization_files = sum(
         (ROOT / relative).is_file()
         for relative in P001_VISUALIZATION_FILES
@@ -259,6 +280,7 @@ def _tracked_file_budget() -> int:
         + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
         + shared_files
         + visualization_contract_files
+        + agent_runtime_files
         + p001_visualization_files
         + p002_visualization_files
         + p003_visualization_files

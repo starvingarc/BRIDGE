@@ -963,10 +963,14 @@ def test_missing_mitochondrial_gene_coverage_is_unavailable_not_zero(tmp_path: P
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result["cell_qc"]["gene_set_coverage"]["mitochondrial_genes"] == 0
-    assert run.result["data_views"]["eligible_cells_view"] == {
-        "state": "unavailable",
-        "reason": "required_qc_gene_set_unavailable",
-    }
+    assert run.result["data_views"]["eligible_cells_view"]["state"] == "candidate"
+    assert "required_gene_set_unavailable:mitochondrial_genes" not in run.result["missing_inputs"]
+    assert "required_gene_set_unavailable:mitochondrial_genes" in run.result["warnings"]
+    assert "candidate_rule_skipped:max_mitochondrial_fraction" in run.result["warnings"]
+    candidate_path = next(item.path for item in run.artifacts if item.kind == "derived_h5ad")
+    candidate = ad.read_h5ad(candidate_path)
+    assert "flag_high_mitochondrial_fraction" not in candidate.obs
+    assert "bridge_qc_candidate_eligible" in candidate.obs
     mitochondrial = next(
         measurement for measurement in run.measurements if measurement.metric_name == "mitochondrial_fraction_median"
     )

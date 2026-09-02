@@ -21,6 +21,7 @@ P0 遵循以下原则：
 - 所有 count-based 方法必须确认矩阵为未归一化、非负、整数型 UMI counts。
 - 基因集合指标必须绑定 `var_names` 或显式声明的 `var` 基因符号列；未覆盖目标基因集合时返回 `unavailable`，不得写成比例为零。
 - 单个 observation 的 total count 为零时，mitochondrial、ribosomal 与 top-gene fraction 均为未定义值；该 observation 不得进入候选 eligible view。
+- 输入中没有可识别的 mitochondrial gene symbol 时，mitochondrial fraction 保持 `unavailable`，不得补零；只跳过 `max_mitochondrial_fraction` 候选规则并记录 warning，其余相互独立的候选规则继续执行。
 - 三列 10x MTX 必须提供完整的 feature-type 值，且 QC 矩阵只保留精确标记为 `Gene Expression` 的行；ADT、guide 或其他 feature 不得混入基因 QC。既有两列 `genes.tsv/features.tsv` 仍按“全部为 Gene Expression”的显式兼容假设读取，并记录 `legacy_two_column_features_assumed_gene_expression`，不得静默升级证据。
 - `sample_id`、文件名或目录名不得被自动解释为 `capture_id`、library 或 biological replicate。
 

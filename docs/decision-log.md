@@ -76,3 +76,17 @@ present those records but cannot recompute or promote them.
 Current P0-01/P0-02 runs retain byte-compatible v0.1 artifacts. Their seven
 registered components remain `legacy_untyped` until component-specific PRs
 provide typed data, table/text fallbacks and renderer validation.
+
+## 2026-09-02: Use Event Sourcing For The Local Workflow Runtime
+
+The local single-worker runtime records workflow transitions as append-only
+`RunEvent` facts in SQLite and derives current run and step status through a
+deterministic projection. Tool execution uses a fixed case-scoped pipeline with
+eligibility, approved-plan, version and output-contract gates.
+
+This decision borrows the event-log and guarded tool-pipeline ideas documented by
+DeepSeek Harness, but BRIDGE does not depend on that developer-preview runtime and
+does not adopt its universal dynamic-plugin model. Python remains the science and
+runtime language. `MeasurementSpec`, reference, prior, Tool Package and scientific
+release contracts remain immutable, versioned inputs and cannot be patched by the
+Agent at runtime.
