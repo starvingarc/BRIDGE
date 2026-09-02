@@ -3,16 +3,16 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-DEVELOPMENT-v0.1` |
-| Task document version | `0.4` |
-| 日期 | 2026-09-01 |
-| Package version | `P0-04 0.4.0` |
+| Task document version | `0.5` |
+| 日期 | 2026-09-02 |
+| Package version | `P0-04 0.5.0` |
 | Runtime / scientific state | `implemented` / `candidate shadow` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
 | Current input | checksummed `ProductCase`、`ProductDefinitionCard`、`DevelopmentWindowSpec`、`DevelopmentStateMap`、`MeasurementSpecV2`、`CellStateEvidenceProfileV3`；可选 timepoint series、H5AD 与 `DevelopmentMethodSpec` |
-| Current result | `bridge://schemas/developmental-compatibility-result/v0.2` |
+| Current result | `bridge://schemas/developmental-compatibility-result/v0.3` |
 | Detailed runtime contract | [P0-04 Tool Card](../../src/bridge/tool_packages/cards/P0-04.md) |
 
-> Package v0.4 keeps stage roles and channel selection external, executes
+> Package v0.5 keeps stage roles and channel selection external, executes
 > transparent reference, program and uncertainty methods, and publishes typed
 > data plus three deterministic figures. Ordered sampling-point labels are
 > categorical: continuous-time analysis remains unavailable because the current
@@ -26,7 +26,7 @@ window composition and ordered sampling points remain separate evidence families
 
 ## 1. 任务目标与边界
 
-本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。v0.4 已封装可调用的透明基线方法，但不制定 0-100 分数。
+本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。v0.5 已封装可调用的透明基线方法，但不制定 0-100 分数。
 
 - 发育相容性是相对于 `ProductDefinitionCard` 的条件化证据，不寻找跨产品通用的最优阶段。
 - 人胎 reference 定义生物学状态轴；体外时间序列只用于过程校准和同条件比较。

@@ -1,0 +1,636 @@
+{
+  "$defs": {
+    "DevelopmentFractionProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "denominator_kind": {
+          "enum": [
+            "whole_product",
+            "target_related"
+          ],
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "denominator_view": {
+          "minLength": 1,
+          "title": "Denominator View",
+          "type": "string"
+        },
+        "role_fractions": {
+          "items": {
+            "$ref": "#/$defs/RoleFraction"
+          },
+          "maxItems": 5,
+          "minItems": 5,
+          "title": "Role Fractions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "denominator_kind",
+        "denominator_view",
+        "denominator",
+        "role_fractions"
+      ],
+      "title": "DevelopmentFractionProfile",
+      "type": "object"
+    },
+    "DevelopmentMeasurementArtifactBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "denominator_kind": {
+          "enum": [
+            "whole_product",
+            "target_related"
+          ],
+          "title": "Denominator Kind",
+          "type": "string"
+        },
+        "file_name": {
+          "pattern": "^[a-z0-9][a-z0-9_.-]*\\.json$",
+          "title": "File Name",
+          "type": "string"
+        },
+        "measurement_id": {
+          "minLength": 1,
+          "title": "Measurement Id",
+          "type": "string"
+        },
+        "metric_name": {
+          "$ref": "#/$defs/DevelopmentMeasurementMetricName"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "stage_role": {
+          "$ref": "#/$defs/DevelopmentStageRole"
+        },
+        "timepoint_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timepoint Id"
+        },
+        "timepoint_order": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timepoint Order"
+        }
+      },
+      "required": [
+        "measurement_id",
+        "metric_name",
+        "denominator_kind",
+        "stage_role",
+        "artifact_id",
+        "file_name",
+        "sha256"
+      ],
+      "title": "DevelopmentMeasurementArtifactBinding",
+      "type": "object"
+    },
+    "DevelopmentMeasurementMetricName": {
+      "enum": [
+        "whole_product_role_fraction",
+        "target_related_role_fraction",
+        "timepoint_whole_product_role_fraction",
+        "timepoint_target_related_role_fraction"
+      ],
+      "title": "DevelopmentMeasurementMetricName",
+      "type": "string"
+    },
+    "DevelopmentStageRole": {
+      "enum": [
+        "earlier",
+        "within_window",
+        "later",
+        "branch_shift",
+        "unresolved"
+      ],
+      "title": "DevelopmentStageRole",
+      "type": "string"
+    },
+    "DevelopmentTimepointProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "independence_group_count": {
+          "minimum": 1,
+          "title": "Independence Group Count",
+          "type": "integer"
+        },
+        "target_related_profile": {
+          "$ref": "#/$defs/DevelopmentFractionProfile"
+        },
+        "timepoint_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Timepoint Id",
+          "type": "string"
+        },
+        "timepoint_label": {
+          "minLength": 1,
+          "title": "Timepoint Label",
+          "type": "string"
+        },
+        "timepoint_order": {
+          "minimum": 0,
+          "title": "Timepoint Order",
+          "type": "integer"
+        },
+        "whole_product_profile": {
+          "$ref": "#/$defs/DevelopmentFractionProfile"
+        }
+      },
+      "required": [
+        "timepoint_id",
+        "timepoint_order",
+        "timepoint_label",
+        "independence_group_count",
+        "whole_product_profile",
+        "target_related_profile"
+      ],
+      "title": "DevelopmentTimepointProfile",
+      "type": "object"
+    },
+    "InputChecksumBindings": {
+      "additionalProperties": false,
+      "properties": {
+        "annotation_vocabulary": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Annotation Vocabulary"
+        },
+        "biological_unit_assignment": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Assignment"
+        },
+        "biological_unit_manifest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest"
+        },
+        "cell_state_evidence_profile": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cell State Evidence Profile",
+          "type": "string"
+        },
+        "development_method_spec": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Development Method Spec"
+        },
+        "development_state_map": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Development State Map",
+          "type": "string"
+        },
+        "development_timepoint_series": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Development Timepoint Series"
+        },
+        "development_window_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Development Window Spec",
+          "type": "string"
+        },
+        "measurement_spec": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Measurement Spec",
+          "type": "string"
+        },
+        "product_case": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Case",
+          "type": "string"
+        },
+        "product_definition_card": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Definition Card",
+          "type": "string"
+        },
+        "qc_readiness_profile": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Qc Readiness Profile"
+        },
+        "reference_manifest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference Manifest"
+        }
+      },
+      "required": [
+        "product_case",
+        "product_definition_card",
+        "development_window_spec",
+        "development_state_map",
+        "measurement_spec",
+        "cell_state_evidence_profile"
+      ],
+      "title": "InputChecksumBindings",
+      "type": "object"
+    },
+    "ReferenceStageSupport": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "enum": [
+            "shadow",
+            "unavailable"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "method_bundle_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "method_bundle_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method Bundle Sha256"
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Code"
+        },
+        "selected_method_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Method Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "assessment_state"
+      ],
+      "title": "ReferenceStageSupport",
+      "type": "object"
+    },
+    "RoleFraction": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "role": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "numerator",
+        "denominator"
+      ],
+      "title": "RoleFraction",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/developmental-compatibility-result/v0.3",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_mode": {
+      "enum": [
+        "static_profile",
+        "descriptive_timecourse"
+      ],
+      "title": "Analysis Mode",
+      "type": "string"
+    },
+    "cell_state_profile_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "evidence_state": {
+      "enum": [
+        "shadow",
+        "unavailable"
+      ],
+      "title": "Evidence State",
+      "type": "string"
+    },
+    "input_sha256_by_role": {
+      "$ref": "#/$defs/InputChecksumBindings"
+    },
+    "measurement_artifacts": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentMeasurementArtifactBinding"
+      },
+      "minItems": 10,
+      "title": "Measurement Artifacts",
+      "type": "array"
+    },
+    "measurement_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "object_version": {
+      "const": "0.3.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "reference_stage_support": {
+      "$ref": "#/$defs/ReferenceStageSupport"
+    },
+    "result_id": {
+      "pattern": "^developmental-compatibility-result:[A-Za-z0-9._:-]+$",
+      "title": "Result Id",
+      "type": "string"
+    },
+    "result_state": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "Result State",
+      "type": "string"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "state_map_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "target_related_profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DevelopmentFractionProfile"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "timecourse_profiles": {
+      "items": {
+        "$ref": "#/$defs/DevelopmentTimepointProfile"
+      },
+      "title": "Timecourse Profiles",
+      "type": "array"
+    },
+    "timepoint_series_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tool_id": {
+      "const": "P0-04",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "upstream_composition_state": {
+      "enum": [
+        "shadow",
+        "not_assessed",
+        "unavailable",
+        "unknown",
+        "missing"
+      ],
+      "title": "Upstream Composition State",
+      "type": "string"
+    },
+    "whole_product_profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DevelopmentFractionProfile"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "window_compatibility_state": {
+      "enum": [
+        "candidate",
+        "not_assessed"
+      ],
+      "title": "Window Compatibility State",
+      "type": "string"
+    },
+    "window_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    }
+  },
+  "required": [
+    "object_version",
+    "result_id",
+    "tool_id",
+    "tool_version",
+    "product_case_ref",
+    "product_definition_ref",
+    "window_spec_ref",
+    "state_map_ref",
+    "measurement_spec_ref",
+    "cell_state_profile_ref",
+    "input_sha256_by_role",
+    "upstream_composition_state",
+    "result_state",
+    "window_compatibility_state",
+    "analysis_mode",
+    "reference_stage_support",
+    "evidence_state",
+    "score_state",
+    "measurement_artifacts"
+  ],
+  "title": "DevelopmentalCompatibilityResultV3",
+  "type": "object"
+}

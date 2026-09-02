@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 
 from bridge.tool_packages.p0_04_developmental_compatibility.adapter import (
     REQUIRED_ROLES,
+    RESULT_SCHEMA_REF,
     ROLE_MODELS,
     adapter,
 )
@@ -26,6 +27,8 @@ from bridge.tool_packages.p0_04_developmental_compatibility.models import (
 from bridge.toolkit.contracts import (
     ExecutionState,
     EvidenceState,
+    MeasurementResultV2,
+    ScoreState,
     StructuredInputRef,
     ToolRequest,
     ToolRequestV2,
@@ -510,10 +513,14 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-04",
         tool_id="P0-04",
-        tool_version="0.4.0",
+        tool_version="0.5.0",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
+
+
+def _run(request: ToolRequestV2):
+    return ToolRegistry.load_default().run(request)
 
 
 def _mutate(request: ToolRequestV2, role: str, change) -> ToolRequestV2:
@@ -535,9 +542,9 @@ def _mutate(request: ToolRequestV2, role: str, change) -> ToolRequestV2:
 def test_registry_exposes_current_traceable_contract() -> None:
     registry = ToolRegistry.load_default()
     spec = registry.describe("P0-04")
-    assert spec.version == "0.4.0"
+    assert spec.version == "0.5.0"
     assert spec.implementation_state.value == "implemented"
-    assert spec.result_schema_ref.endswith("/v0.2")
+    assert RESULT_SCHEMA_REF.endswith("/v0.3")
     assert ROLE_SCHEMAS["cell_state_evidence_profile"].endswith("/v0.3")
     assert len(REQUIRED_ROLES) == 11
 
@@ -552,26 +559,45 @@ def test_public_models_emit_draft_2020_12_schemas(schema_ref: str, model) -> Non
 def test_valid_aggregation_reports_two_denominators_and_no_score(
     tmp_path: Path,
 ) -> None:
-    run = ToolRegistry.load_default().run(_request(tmp_path))
+    run = _run(_request(tmp_path))
     assert run.execution_state is ExecutionState.SUCCEEDED
-    assert run.result["object_version"] == "0.2.0"
+    assert run.result_schema_ref.endswith("/v0.3")
+    assert run.result["object_version"] == "0.3.0"
     assert run.result["result_state"] == "complete"
     assert run.result["whole_product_profile"]["denominator"] == 12
     assert run.result["target_related_profile"]["denominator"] == 11
     assert run.result["reference_stage_support"]["assessment_state"] == "unavailable"
     assert run.result["domain_score"] is None
     assert run.result["score_state"] == "unavailable"
-    assert len(run.artifacts) == 15
+    assert len(run.measurements) == 10
+    assert len(run.result["measurement_artifacts"]) == 10
+    assert len(run.artifacts) == 25
     assert {artifact.kind for artifact in run.artifacts} == {
         "developmental_compatibility_result",
         "developmental_compatibility_visualization_data",
+        "measurement_result_v2",
         "visualization_table",
         "visualization_render",
         "visualization_artifact_set",
     }
     assert sum(item.kind == "visualization_table" for item in run.artifacts) == 3
     assert sum(item.kind == "visualization_render" for item in run.artifacts) == 9
+    measurement_by_id = {
+        measurement.measurement_id: measurement
+        for measurement in run.measurements
+    }
+    for measurement in run.measurements:
+        assert measurement.domain_score is None
+        assert measurement.score_state is ScoreState.UNAVAILABLE
+        assert measurement.raw_value == measurement.numerator / measurement.denominator
+        assert measurement.interval is None
     for artifact in run.artifacts:
+        assert hashlib.sha256(artifact.path.read_bytes()).hexdigest() == artifact.sha256
+        if artifact.kind == "measurement_result_v2":
+            projected = MeasurementResultV2.model_validate_json(
+                artifact.path.read_text(encoding="utf-8")
+            )
+            assert projected == measurement_by_id[projected.measurement_id]
         if artifact.kind == "visualization_table":
             text = artifact.path.read_text(encoding="utf-8")
             assert list(csv.DictReader(StringIO(text), delimiter="\t"))
@@ -581,10 +607,9 @@ def test_valid_aggregation_reports_two_denominators_and_no_score(
 
 
 def test_same_inputs_reuse_deterministic_bundle(tmp_path: Path) -> None:
-    registry = ToolRegistry.load_default()
     request = _request(tmp_path)
-    first = registry.run(request)
-    second = registry.run(request)
+    first = _run(request)
+    second = _run(request)
     assert first.run_id == second.run_id
     assert first.result == second.result
     assert [item.sha256 for item in first.artifacts] == [item.sha256 for item in second.artifacts]
@@ -608,7 +633,7 @@ def test_unconfirmed_window_and_unavailable_upstream_are_typed(
     payloads["development_window_spec"].update(
         review_state="candidate", reviewer_ref=None, confirmed_at=None
     )
-    run = ToolRegistry.load_default().run(_request(tmp_path / "candidate", payloads))
+    run = _run(_request(tmp_path / "candidate", payloads))
     assert run.execution_state is ExecutionState.PARTIAL
     assert run.result["window_compatibility_state"] == "not_assessed"
     assert "development_window_not_confirmed" in run.reason_codes
@@ -621,21 +646,77 @@ def test_unconfirmed_window_and_unavailable_upstream_are_typed(
             composition={"state": "unavailable", "records": []}
         ),
     )
-    run = ToolRegistry.load_default().run(request)
+    run = _run(request)
     assert run.result["result_state"] == "not_assessed"
     assert run.result["whole_product_profile"] is None
     assert run.result["evidence_state"] == "unavailable"
+    assert len(run.measurements) == 10
+    assert all(item.raw_value is None for item in run.measurements)
+    assert all(item.numerator is None for item in run.measurements)
+    assert all(item.denominator is None for item in run.measurements)
+    assert all(
+        item.evidence_state is EvidenceState.UNAVAILABLE
+        for item in run.measurements
+    )
+
+
+@pytest.mark.parametrize(
+    ("composition_state", "evidence_state", "unknown_scope"),
+    [
+        ("missing", EvidenceState.MISSING, None),
+        ("unknown", EvidenceState.UNKNOWN, "measurement"),
+        ("unavailable", EvidenceState.UNAVAILABLE, None),
+    ],
+)
+def test_missing_unknown_and_unavailable_measurements_are_never_zero(
+    tmp_path: Path,
+    composition_state: str,
+    evidence_state: EvidenceState,
+    unknown_scope: str | None,
+) -> None:
+    request = _request(tmp_path)
+    request = _mutate(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update(
+            composition={"state": composition_state, "records": []}
+        ),
+    )
+    run = _run(request)
+    assert len(run.measurements) == 10
+    for measurement in run.measurements:
+        assert measurement.evidence_state is evidence_state
+        assert measurement.unknown_scope == unknown_scope
+        assert measurement.raw_value is None
+        assert measurement.numerator is None
+        assert measurement.denominator is None
+        assert measurement.interval is None
+        assert measurement.score_state is ScoreState.UNAVAILABLE
 
 
 def test_real_timepoints_remain_descriptive_without_method_spec(
     tmp_path: Path,
 ) -> None:
-    run = ToolRegistry.load_default().run(
-        _request(tmp_path, include_series=True)
-    )
+    run = _run(_request(tmp_path, include_series=True))
     assert run.result["analysis_mode"] == "descriptive_timecourse"
     assert len(run.result["timecourse_profiles"]) == 2
+    assert len(run.measurements) == 30
+    assert len(run.result["measurement_artifacts"]) == 30
     assert "inferential_timecourse_unavailable" in run.reason_codes
+
+
+def test_changed_existing_measurement_bundle_is_refused(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    first = _run(request)
+    metric_path = next(
+        item.path
+        for item in first.artifacts
+        if item.kind == "measurement_result_v2"
+    )
+    metric_path.write_text("{}", encoding="utf-8")
+    second = _run(request)
+    assert second.execution_state is ExecutionState.FAILED
+    assert second.reason_codes == ["existing_run_bundle_hash_mismatch"]
 
 
 def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
@@ -644,7 +725,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="legacy-request",
         tool_id="P0-04",
-        tool_version="0.4.0",
+        tool_version="0.5.0",
         output_dir=tmp_path.resolve(),
     )
     eligibility = adapter.check_eligibility(request, spec)
@@ -767,7 +848,7 @@ def test_visualization_preserves_cell_state_resolution_classes(tmp_path: Path) -
     request = _mutate(
         request, "cell_state_evidence_profile", set_resolution_classes
     )
-    run = ToolRegistry.load_default().run(request)
+    run = _run(request)
     data = _artifact_json(
         run, "developmental_compatibility_visualization_data"
     )
@@ -794,7 +875,7 @@ def test_zero_target_denominator_remains_missing_not_zero(tmp_path: Path) -> Non
             item.update(target_related=False) for item in payload["assignments"]
         ],
     )
-    run = ToolRegistry.load_default().run(request)
+    run = _run(request)
     data = _artifact_json(
         run, "developmental_compatibility_visualization_data"
     )
@@ -819,6 +900,27 @@ def test_zero_target_denominator_remains_missing_not_zero(tmp_path: Path) -> Non
         "target_related_denominator_zero" in item["reason_codes"]
         for item in target_records
     )
+    target_measurements = [
+        item
+        for item in run.result["measurement_artifacts"]
+        if item["denominator_kind"] == "target_related"
+        and item["timepoint_id"] is None
+    ]
+    assert len(target_measurements) == 5
+    assert all(
+        item["reason_codes"] == ["target_related_denominator_zero"]
+        for item in target_measurements
+    )
+    projected = {
+        item.measurement_id: item for item in run.measurements
+    }
+    for binding in target_measurements:
+        measurement = projected[binding["measurement_id"]]
+        assert measurement.evidence_state is EvidenceState.UNAVAILABLE
+        assert measurement.raw_value is None
+        assert measurement.numerator is None
+        assert measurement.denominator is None
+        assert measurement.score_state is ScoreState.UNAVAILABLE
 
 
 def test_one_sampling_point_is_not_presented_as_dynamic_change(
@@ -830,7 +932,7 @@ def test_one_sampling_point_is_not_presented_as_dynamic_change(
         "development_timepoint_series",
         lambda payload: payload.update(records=payload["records"][:1]),
     )
-    run = ToolRegistry.load_default().run(request)
+    run = _run(request)
     artifact_set = _artifact_json(run, "visualization_artifact_set")
     component = next(
         item
@@ -856,7 +958,7 @@ def test_supplied_but_unusable_series_is_not_reported_as_absent(
             composition={"state": "unavailable", "records": []}
         ),
     )
-    run = ToolRegistry.load_default().run(request)
+    run = _run(request)
     artifact_set = _artifact_json(run, "visualization_artifact_set")
     components = {
         item["component_id"]: item

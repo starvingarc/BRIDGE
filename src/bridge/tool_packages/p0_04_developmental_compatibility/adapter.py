@@ -73,7 +73,7 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/developmental-compatibility-result/v0.2"
+RESULT_SCHEMA_REF = "bridge://schemas/developmental-compatibility-result/v0.3"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "product_case": ("bridge://schemas/product-case/v0.1", ProductCase),
     "product_definition_card": (
@@ -292,7 +292,7 @@ class DevelopmentalCompatibilityAdapter:
                 for item in method_bundle.method_evidence
             )
 
-        result = evaluate_developmental_compatibility(
+        evaluation = evaluate_developmental_compatibility(
             run_id=run_id,
             tool_version=spec.version,
             product_case=product_case,
@@ -322,6 +322,7 @@ class DevelopmentalCompatibilityAdapter:
             method_reason_codes=method_reasons,
             reference_stage_support_available=reference_stage_support_available,
         )
+        result = evaluation.result
         try:
             visualization_profile = (
                 build_developmental_compatibility_visualization_data(
@@ -369,6 +370,7 @@ class DevelopmentalCompatibilityAdapter:
         )
         payloads = {
             "developmental_compatibility_result.json": result_payload,
+            **evaluation.measurement_payloads,
             **prepared_visualizations.payloads,
         }
         if method_payload is not None:
@@ -408,6 +410,21 @@ class DevelopmentalCompatibilityAdapter:
                     evidence_ids=result.evidence_refs,
                 )
             )
+        binding_by_file = {
+            item.file_name: item for item in result.measurement_artifacts
+        }
+        for filename in sorted(evaluation.measurement_payloads):
+            binding = binding_by_file[filename]
+            artifacts.append(
+                ArtifactManifest(
+                    artifact_id=binding.artifact_id,
+                    kind="measurement_result_v2",
+                    path=output_files[filename],
+                    media_type="application/json",
+                    sha256=binding.sha256,
+                    evidence_ids=result.evidence_refs,
+                )
+            )
         methods_complete = method_bundle is None or all(
             item.execution_state is MethodExecutionState.SUCCEEDED
             for item in method_bundle.method_evidence
@@ -426,7 +443,7 @@ class DevelopmentalCompatibilityAdapter:
             environment_spec_id=spec.environment_spec_id,
             input_hash=input_hash,
             created_at=product_case.created_at,
-            measurements=[],
+            measurements=evaluation.measurements,
             artifacts=artifacts,
             visualizations=[],
             result_schema_ref=RESULT_SCHEMA_REF,
