@@ -5,7 +5,14 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Literal, Self
 
-from pydantic import Field, StrictFloat, StrictInt, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    StrictFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from bridge.tool_packages._configurable_contracts import (
     ProductRole,
@@ -15,7 +22,7 @@ from bridge.tool_packages._configurable_contracts import (
 from bridge.tool_packages.p0_05_off_target_control.method_models import (
     PUBLIC_METHOD_SCHEMA_MODELS,
 )
-from bridge.toolkit.contracts import FrozenModel
+from bridge.toolkit.contracts import EvidenceState, FrozenModel
 
 OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
 VERSION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
@@ -57,6 +64,28 @@ class RareDetectionState(StrEnum):
     NOT_ASSESSED = "not_assessed"
 
 
+def role_projection_evidence_state(state: AssessmentState) -> EvidenceState:
+    return {
+        AssessmentState.AVAILABLE: EvidenceState.INFERRED,
+        AssessmentState.NOT_ASSESSED: EvidenceState.UNAVAILABLE,
+    }[state]
+
+
+def unknown_projection_evidence_state(state: CoverageState) -> EvidenceState:
+    return {
+        CoverageState.COMPLETE: EvidenceState.UNKNOWN,
+        CoverageState.PARTIAL: EvidenceState.UNKNOWN,
+        CoverageState.NOT_ASSESSED: EvidenceState.UNAVAILABLE,
+    }[state]
+
+
+def rare_projection_evidence_state(state: RareDetectionState) -> EvidenceState:
+    return {
+        RareDetectionState.DETECTED: EvidenceState.INFERRED,
+        RareDetectionState.NOT_DETECTED_ABOVE_LOD: EvidenceState.NEGATIVE,
+        RareDetectionState.CANNOT_EXCLUDE: EvidenceState.UNKNOWN,
+        RareDetectionState.NOT_ASSESSED: EvidenceState.UNAVAILABLE,
+    }[state]
 
 
 class RareStateRule(FrozenModel):
@@ -249,6 +278,21 @@ class RareStateRecord(FrozenModel):
     reason_codes: list[str]
 
 
+class OffTargetMeasurementArtifactBinding(FrozenModel):
+    measurement_id: str = Field(min_length=1)
+    metric_name: Literal[
+        "off_target_role_composition",
+        "off_target_identity_unknown",
+        "off_target_rare_state_detection",
+    ]
+    record_scope: Literal["role", "identity_unknown", "rare_state"]
+    record_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    evidence_state: EvidenceState
+    artifact_id: str = Field(min_length=1)
+    file_name: str = Field(pattern=r"^[a-z0-9][a-z0-9_.-]*\.json$")
+    sha256: str = Field(pattern=SHA256_PATTERN)
+
+
 class OffTargetControlProfile(FrozenModel):
     object_version: Literal["0.1.0"]
     profile_id: str = Field(pattern=r"^off-target-control:[A-Za-z0-9._:-]+$")
@@ -280,10 +324,151 @@ class OffTargetControlProfile(FrozenModel):
     _created_at_utc = field_validator("created_at")(_aware_utc)
 
 
+class OffTargetControlProfileV2(OffTargetControlProfile):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {
+                                "const": "not_requested"
+                            }
+                        },
+                        "required": ["measurement_projection_state"],
+                    },
+                    "then": {
+                        "required": [
+                            "measurement_artifacts",
+                        ],
+                        "properties": {
+                            "measurement_spec_ref": {"type": "null"},
+                            "measurement_spec_sha256": {"type": "null"},
+                            "measurement_artifacts": {"maxItems": 0},
+                        },
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {"const": "available"}
+                        },
+                        "required": ["measurement_projection_state"],
+                    },
+                    "then": {
+                        "required": [
+                            "measurement_spec_ref",
+                            "measurement_spec_sha256",
+                            "measurement_artifacts",
+                        ],
+                        "properties": {
+                            "measurement_spec_ref": {"not": {"type": "null"}},
+                            "measurement_spec_sha256": {
+                                "not": {"type": "null"}
+                            },
+                            "measurement_artifacts": {"minItems": 1},
+                        },
+                    },
+                },
+            ]
+        }
+    )
+
+    object_version: Literal["0.2.0"]
+    profile_version: Literal["0.2.0"]
+    measurement_projection_state: Literal["not_requested", "available"]
+    measurement_spec_ref: VersionedObjectRef | None = None
+    measurement_spec_sha256: str | None = Field(
+        default=None, pattern=SHA256_PATTERN
+    )
+    measurement_artifacts: list[OffTargetMeasurementArtifactBinding]
+
+    @model_validator(mode="after")
+    def measurement_projection_is_coherent(self) -> Self:
+        measurement_ids = [item.measurement_id for item in self.measurement_artifacts]
+        artifact_ids = [item.artifact_id for item in self.measurement_artifacts]
+        file_names = [item.file_name for item in self.measurement_artifacts]
+        binding_keys = [
+            (item.record_scope, item.record_id)
+            for item in self.measurement_artifacts
+        ]
+        for values, name in (
+            (measurement_ids, "measurement IDs"),
+            (artifact_ids, "measurement artifact IDs"),
+            (file_names, "measurement artifact file names"),
+            (binding_keys, "projected source records"),
+        ):
+            if len(values) != len(set(values)):
+                raise ValueError(f"{name} must be unique")
+        if self.measurement_projection_state == "not_requested":
+            if (
+                self.measurement_spec_ref is not None
+                or self.measurement_spec_sha256 is not None
+                or self.measurement_artifacts
+            ):
+                raise ValueError(
+                    "not-requested projection cannot bind a spec or measurements"
+                )
+            return self
+        if (
+            self.measurement_spec_ref is None
+            or self.measurement_spec_sha256 is None
+        ):
+            raise ValueError("available projection requires a measurement spec")
+        expected = {
+            *(("role", item.product_role.value) for item in self.role_composition),
+            ("identity_unknown", "identity-unknown"),
+            *(("rare_state", item.state_id) for item in self.rare_state_profile),
+        }
+        if set(binding_keys) != expected:
+            raise ValueError(
+                "available projection must bind every role, unknown and rare record"
+            )
+        expected_metric_by_scope = {
+            "role": "off_target_role_composition",
+            "identity_unknown": "off_target_identity_unknown",
+            "rare_state": "off_target_rare_state_detection",
+        }
+        if any(
+            item.metric_name != expected_metric_by_scope[item.record_scope]
+            for item in self.measurement_artifacts
+        ):
+            raise ValueError("measurement metric must match its source record scope")
+        expected_evidence_by_record = {
+            **{
+                ("role", item.product_role.value): role_projection_evidence_state(
+                    item.assessment_state
+                )
+                for item in self.role_composition
+            },
+            ("identity_unknown", "identity-unknown"): unknown_projection_evidence_state(
+                self.unknown_profile.coverage_state
+            ),
+            **{
+                ("rare_state", item.state_id): rare_projection_evidence_state(
+                    item.detection_state
+                )
+                for item in self.rare_state_profile
+            },
+        }
+        if any(
+            item.evidence_state
+            is not expected_evidence_by_record[
+                (item.record_scope, item.record_id)
+            ]
+            for item in self.measurement_artifacts
+        ):
+            raise ValueError(
+                "measurement evidence must match its source record state"
+            )
+        return self
+
+
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/state-role-map/v0.1": StateRoleMap,
     "bridge://schemas/off-target-assessment-spec/v0.1": OffTargetAssessmentSpec,
     "bridge://schemas/off-target-evidence-bundle/v0.1": OffTargetEvidenceBundle,
     "bridge://schemas/off-target-control-profile/v0.1": OffTargetControlProfile,
+    "bridge://schemas/off-target-control-profile/v0.2": OffTargetControlProfileV2,
     **PUBLIC_METHOD_SCHEMA_MODELS,
 }

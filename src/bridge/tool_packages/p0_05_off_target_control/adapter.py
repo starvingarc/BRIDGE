@@ -18,9 +18,15 @@ from bridge.tool_packages._structured_runtime import (
     directory_state,
     failed_v2_run,
     load_structured_inputs,
+    objects_for_role,
     publish_json_bundle,
     request_v2_from_v1,
     single_object,
+)
+from bridge.tool_packages.p0_05_off_target_control.executor import (
+    MEASUREMENT_PROJECTION_METRIC_NAMES,
+    profile_v2_without_projection,
+    project_off_target_measurements,
 )
 from bridge.tool_packages.p0_05_off_target_control.method_binding import (
     method_binding_reasons,
@@ -61,6 +67,7 @@ from bridge.toolkit.contracts import (
     ExecutionState,
     FrozenModel,
     ImplementationState,
+    MeasurementSpecV2,
     StructuredInputRef,
     ToolPackageSpecV2,
     ToolRequest,
@@ -68,8 +75,9 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/off-target-control-profile/v0.1"
-ROLE_CONTRACTS: dict[str, tuple[str, str, type[FrozenModel]]] = {
+RESULT_SCHEMA_REF_V2 = "bridge://schemas/off-target-control-profile/v0.2"
+MEASUREMENT_SPEC_ROLE = "measurement_spec"
+ROLE_CONTRACTS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
     "product_case": (
         "bridge://schemas/product-case/v0.1",
         "0.1.0",
@@ -100,6 +108,11 @@ ROLE_CONTRACTS: dict[str, tuple[str, str, type[FrozenModel]]] = {
         "0.1.0",
         OffTargetEvidenceBundle,
     ),
+    "measurement_spec": (
+        "bridge://schemas/measurement-spec/v0.2",
+        None,
+        MeasurementSpecV2,
+    ),
     "biological_unit_manifest": (
         "bridge://schemas/biological-unit-manifest/v0.1",
         "0.1.0",
@@ -123,6 +136,7 @@ METHOD_ROLES = frozenset(
         "off_target_method_input",
     }
 )
+BASE_ROLES = frozenset(set(ROLE_CONTRACTS) - METHOD_ROLES - {MEASUREMENT_SPEC_ROLE})
 CELL_STATE_V3_CONTRACT = (
     "bridge://schemas/cell-state-evidence-profile/v0.3",
     "0.3.0",
@@ -196,10 +210,14 @@ class OffTargetControlAdapter:
             "off_target_evidence_bundle",
             OffTargetEvidenceBundle,
         )
+        measurement_specs = objects_for_role(
+            request, loaded, MEASUREMENT_SPEC_ROLE, MeasurementSpecV2
+        )
+        measurement_spec = measurement_specs[0] if measurement_specs else None
 
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
-        result = _aggregate_profile(
+        base_result = _aggregate_profile(
             request=request,
             spec=spec,
             input_hash=input_hash,
@@ -210,8 +228,35 @@ class OffTargetControlAdapter:
             cell_state_profile=cell_state_profile,
             evidence_bundle=evidence_bundle,
         )
+        evidence_ids = sorted(set(cell_state_profile.evidence_ids))
+        projection = None
+        result = base_result
+        measurements = []
+        measurement_payloads: dict[str, bytes] = {}
+        if measurement_spec is not None:
+            measurement_ref = next(
+                ref
+                for ref in request.object_inputs
+                if ref.role == MEASUREMENT_SPEC_ROLE
+            )
+            projection = project_off_target_measurements(
+                run_id=run_id,
+                tool_version=spec.version,
+                profile=base_result,
+                measurement_spec=measurement_spec,
+                measurement_spec_sha256=measurement_ref.sha256,
+                evidence_refs=evidence_ids,
+            )
+            result = projection.profile
+            measurements = projection.measurements
+            measurement_payloads = projection.payloads
+        elif spec.result_schema_ref == RESULT_SCHEMA_REF_V2:
+            result = profile_v2_without_projection(base_result)
         result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
-        payloads = {"off_target_control_profile.json": result_bytes}
+        payloads = {
+            "off_target_control_profile.json": result_bytes,
+            **measurement_payloads,
+        }
         method_spec = None
         method_input = None
         method_bundle = None
@@ -299,7 +344,6 @@ class OffTargetControlAdapter:
                 [exc.reason_code],
                 input_hash=input_hash,
             )
-        evidence_ids = sorted(set(cell_state_profile.evidence_ids))
         artifacts = [
             ArtifactManifest(
                 artifact_id=f"artifact:{run_id}:off-target-control",
@@ -310,6 +354,18 @@ class OffTargetControlAdapter:
                 evidence_ids=evidence_ids,
             )
         ]
+        if projection is not None:
+            for binding in projection.profile.measurement_artifacts:
+                artifacts.append(
+                    ArtifactManifest(
+                        artifact_id=binding.artifact_id,
+                        kind="measurement_result_v2",
+                        path=published[binding.file_name],
+                        media_type="application/json",
+                        sha256=binding.sha256,
+                        evidence_ids=evidence_ids,
+                    )
+                )
         if method_bytes is not None:
             artifacts.append(
                 ArtifactManifest(
@@ -331,10 +387,10 @@ class OffTargetControlAdapter:
             environment_spec_id=spec.environment_spec_id,
             input_hash=input_hash,
             created_at=evidence_bundle.created_at,
-            measurements=[],
+            measurements=measurements,
             artifacts=artifacts,
             visualizations=[],
-            result_schema_ref=RESULT_SCHEMA_REF,
+            result_schema_ref=spec.result_schema_ref,
             result=result.model_dump(mode="json"),
             reason_codes=[],
             warnings=[],
@@ -369,8 +425,14 @@ def _envelope_reasons(request: ToolRequestV2, spec: ToolPackageSpecV2) -> list[s
     if request.parameters:
         reasons.append("p0_05_parameters_forbidden")
     roles = [ref.role for ref in request.object_inputs]
-    base_roles = set(ROLE_CONTRACTS) - METHOD_ROLES
-    for role in base_roles:
+    measurement_spec_count = roles.count(MEASUREMENT_SPEC_ROLE)
+    if measurement_spec_count > 1:
+        reasons.append("at_most_one_measurement_spec_allowed")
+    if (
+        measurement_spec_count == 1 and spec.result_schema_ref != RESULT_SCHEMA_REF_V2
+    ):
+        reasons.append("measurement_projection_requires_profile_v2")
+    for role in BASE_ROLES:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
     method_mode = _uses_method_runtime(request.object_inputs)
@@ -381,6 +443,10 @@ def _envelope_reasons(request: ToolRequestV2, spec: ToolPackageSpecV2) -> list[s
     if any(role not in ROLE_CONTRACTS for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
+        if ref.role == MEASUREMENT_SPEC_ROLE:
+            if ref.schema_ref != ROLE_CONTRACTS[MEASUREMENT_SPEC_ROLE][0]:
+                reasons.append("object_input_schema_mismatch")
+            continue
         contract = ROLE_CONTRACTS.get(ref.role)
         if contract is None:
             continue
@@ -414,7 +480,10 @@ def _load_inputs(
 
 
 def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> None:
-    if ref.role == "cell_state_evidence_profile":
+    if ref.role == MEASUREMENT_SPEC_ROLE:
+        expected = value.version
+        actual = ref.object_version
+    elif ref.role == "cell_state_evidence_profile":
         if isinstance(value, CellStateEvidenceProfileV3):
             expected = CELL_STATE_V3_CONTRACT[1]
         else:
@@ -455,6 +524,10 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         "off_target_evidence_bundle",
         OffTargetEvidenceBundle,
     )
+    measurement_specs = objects_for_role(
+        request, loaded, MEASUREMENT_SPEC_ROLE, MeasurementSpecV2
+    )
+    measurement_spec = measurement_specs[0] if measurement_specs else None
     input_refs = {ref.role: ref for ref in request.object_inputs}
     reasons: list[str] = []
 
@@ -484,6 +557,40 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         != product_case.measurement_spec_ref.object_version
     ):
         reasons.append("cell_state_measurement_spec_binding_mismatch")
+
+    if measurement_spec is not None:
+        if (
+            measurement_spec.measurement_spec_id
+            != product_case.measurement_spec_ref.object_id
+            or measurement_spec.version
+            != product_case.measurement_spec_ref.object_version
+        ):
+            reasons.append("measurement_spec_product_case_binding_mismatch")
+        if measurement_spec.assay != product_case.assay:
+            reasons.append("measurement_spec_assay_mismatch")
+        if (
+            measurement_spec.applicable_product_cards
+            and product_definition.product_definition_id
+            not in measurement_spec.applicable_product_cards
+            and product_definition.ref.ref
+            not in measurement_spec.applicable_product_cards
+        ):
+            reasons.append("measurement_spec_product_definition_not_applicable")
+        if "P0-05" not in measurement_spec.tool_refs:
+            reasons.append("measurement_spec_tool_not_authorized")
+        metric_names = measurement_spec.raw_metric_definition.get("metric_names")
+        if (
+            not isinstance(metric_names, list)
+            or not all(isinstance(item, str) for item in metric_names)
+            or len(metric_names) != len(set(metric_names))
+            or set(metric_names) != MEASUREMENT_PROJECTION_METRIC_NAMES
+        ):
+            reasons.append("measurement_spec_metric_names_mismatch")
+        if isinstance(cell_state_profile, CellStateEvidenceProfileV3) and (
+            cell_state_profile.measurement_spec_sha256
+            != input_refs[MEASUREMENT_SPEC_ROLE].sha256
+        ):
+            reasons.append("measurement_spec_checksum_mismatch")
 
     if not assessment_spec.active:
         reasons.append("off_target_assessment_spec_inactive")
@@ -823,7 +930,7 @@ def _failed_run(
         request,
         spec,
         reasons,
-        result_schema_ref=RESULT_SCHEMA_REF,
+        result_schema_ref=spec.result_schema_ref,
         fingerprint_input_key="structured_inputs",
         input_hash=input_hash,
     )

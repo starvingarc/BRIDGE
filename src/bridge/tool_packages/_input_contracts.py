@@ -472,6 +472,13 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                     1,
                 ),
+                _role(
+                    "measurement_spec",
+                    "bridge://schemas/measurement-spec/v0.2",
+                    None,
+                    0,
+                    1,
+                ),
             ),
             _mode(
                 "method_runtime",
@@ -505,6 +512,13 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     "bridge://schemas/off-target-evidence-bundle/v0.1",
                     V01,
                     1,
+                    1,
+                ),
+                _role(
+                    "measurement_spec",
+                    "bridge://schemas/measurement-spec/v0.2",
+                    None,
+                    0,
                     1,
                 ),
                 _role(

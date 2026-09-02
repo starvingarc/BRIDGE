@@ -6,9 +6,13 @@ import json
 from pathlib import Path
 from typing import Callable
 
+from jsonschema import Draft202012Validator
 import pytest
 
 from bridge.tool_packages.p0_05_off_target_control.adapter import adapter
+from bridge.tool_packages.p0_05_off_target_control.models import (
+    OffTargetControlProfileV2,
+)
 from bridge.tool_packages.p0_05_off_target_control.visualization_data import (
     OffTargetControlVisualizationDataV1,
     P005VisualizationArtifactSet,
@@ -16,7 +20,9 @@ from bridge.tool_packages.p0_05_off_target_control.visualization_data import (
 from bridge.toolkit.contracts import (
     ExecutionState,
     ImplementationState,
+    MeasurementResultV2,
     StructuredInputRef,
+    ToolPackageSpecV2,
     ToolRequest,
     ToolRequestV2,
 )
@@ -249,9 +255,88 @@ def _request(tmp_path: Path) -> ToolRequestV2:
     return ToolRequestV2(
         request_id="request-p0-05",
         tool_id="P0-05",
-        tool_version="0.4.0",
+        tool_version="0.5.0",
         output_dir=tmp_path / "output",
         object_inputs=refs,
+    )
+
+
+def _projection_spec() -> ToolPackageSpecV2:
+    return ToolRegistry.load_default().describe("P0-05")
+
+
+def _projection_request(request: ToolRequestV2) -> ToolRequestV2:
+    return request
+
+
+def _with_measurement_spec(request: ToolRequestV2) -> ToolRequestV2:
+    root = request.object_inputs[0].path.parent
+    payload = {
+        "measurement_spec_id": "measurement-spec:cell-state",
+        "version": "1",
+        "scientific_question": (
+            "How should declared off-target accounting records be projected?"
+        ),
+        "assay": "scRNA-seq",
+        "status": "candidate",
+        "applicable_product_cards": ["product-definition:demo@1"],
+        "input_contract": {
+            "source_result": "off-target-control-profile",
+            "projection": "record_preserving",
+        },
+        "analysis_unit": "preparation",
+        "analysis_unit_kind": "preparation",
+        "independence_group_kind": "sample",
+        "observation_unit_kind": "cell",
+        "applicable_contexts": ["in_vitro_product_assessment"],
+        "raw_metric_definition": {
+            "metric_names": [
+                "off_target_identity_unknown",
+                "off_target_rare_state_detection",
+                "off_target_role_composition",
+            ]
+        },
+        "numerator": None,
+        "denominator": None,
+        "direction": None,
+        "uncertainty_method": None,
+        "minimum_data": {},
+        "missing_behavior": "preserve_missing_unknown_and_unavailable_states",
+        "tool_refs": ["P0-05"],
+        "reference_refs": [],
+        "prior_refs": [],
+        "validation_ref": None,
+        "exclusion_rules": {},
+        "release_manifest_ref": None,
+    }
+    path = root / "measurement_spec.json"
+    digest = _write(path, payload)
+    ref = StructuredInputRef(
+        input_id="input-measurement-spec",
+        role="measurement_spec",
+        schema_ref="bridge://schemas/measurement-spec/v0.2",
+        object_version=payload["version"],
+        path=path,
+        sha256=digest,
+    )
+    return request.model_copy(
+        update={"object_inputs": [*request.object_inputs, ref]}
+    )
+
+
+def _projected_measurement(
+    run, record_scope: str, record_id: str
+) -> MeasurementResultV2:
+    binding = next(
+        item
+        for item in run.result["measurement_artifacts"]
+        if item["record_scope"] == record_scope and item["record_id"] == record_id
+    )
+    artifact = next(
+        item for item in run.artifacts if item.artifact_id == binding["artifact_id"]
+    )
+    return MeasurementResultV2.model_validate_json(
+        artifact.path.read_text(encoding="utf-8")
     )
 
 
@@ -281,9 +366,9 @@ def test_registry_exposes_executable_p0_05() -> None:
     spec = ToolRegistry.load_default().describe("P0-05")
 
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
-    assert spec.version == "0.4.0"
+    assert spec.version == "0.5.0"
     assert spec.result_schema_ref == (
-        "bridge://schemas/off-target-control-profile/v0.1"
+        "bridge://schemas/off-target-control-profile/v0.2"
     )
     assert spec.method_ids == [
         "METHOD-BRIDGE-ROLE-AWARE-SOFT-COMPOSITION",
@@ -295,6 +380,15 @@ def test_registry_exposes_executable_p0_05() -> None:
         "METHOD-BRIDGE-MODEL-AND-REFERENCE-DISAGREEMENT",
         "METHOD-BRIDGE-OOD-ENSEMBLE",
     ]
+    contract = ToolRegistry.load_default().describe_input("P0-05")
+    for mode in contract.object_input_modes:
+        role = next(item for item in mode.roles if item.role == "measurement_spec")
+        assert role.schema_refs == ["bridge://schemas/measurement-spec/v0.2"]
+        assert role.object_version_policy == "payload"
+        assert role.min_count == 0
+        assert role.max_count == 1
+
+
 
 
 def test_happy_run_aggregates_external_roles_and_publishes_checksum(
@@ -308,6 +402,10 @@ def test_happy_run_aggregates_external_roles_and_publishes_checksum(
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.measurements == []
+    assert run.result_schema_ref.endswith("off-target-control-profile/v0.2")
+    assert run.result["object_version"] == "0.2.0"
+    assert run.result["profile_version"] == "0.2.0"
+    assert run.result["measurement_projection_state"] == "not_requested"
     assert len(run.artifacts) == 15
     assert _role(run.result, "target")["fraction"] == pytest.approx(0.7)
     assert _role(run.result, "known_off_target")["fraction"] == pytest.approx(0.2)
@@ -356,6 +454,298 @@ def test_happy_run_aggregates_external_roles_and_publishes_checksum(
     assert load_schema(
         "bridge://schemas/p0-05-visualization-artifact-set/v0.1"
     )
+
+
+def test_v05_without_measurement_spec_uses_v2_not_requested_profile(
+    tmp_path: Path,
+) -> None:
+    request = _projection_request(_request(tmp_path))
+    run = adapter.run(request, _projection_spec())
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert run.result_schema_ref == _projection_spec().result_schema_ref
+    assert run.result["object_version"] == "0.2.0"
+    assert run.result["profile_version"] == "0.2.0"
+    assert run.result["measurement_projection_state"] == "not_requested"
+    assert run.result["measurement_spec_ref"] is None
+    assert run.result["measurement_spec_sha256"] is None
+    assert run.result["measurement_artifacts"] == []
+    assert run.measurements == []
+    assert not any(
+        item.kind == "measurement_result_v2" for item in run.artifacts
+    )
+    assert _role(run.result, "target")["fraction"] == pytest.approx(0.7)
+    assert run.result["unknown_profile"]["fraction"] == pytest.approx(0.1)
+    assert run.result["rare_state_profile"][0]["detection_state"] == "detected"
+
+
+def test_v2_json_schema_encodes_projection_state_coherence(tmp_path: Path) -> None:
+    base_request = _request(tmp_path)
+    not_requested = adapter.run(
+        _projection_request(base_request),
+        _projection_spec(),
+    ).result
+    available = adapter.run(
+        _projection_request(_with_measurement_spec(base_request)),
+        _projection_spec(),
+    ).result
+    schema = OffTargetControlProfileV2.model_json_schema()
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema)
+
+    assert not list(validator.iter_errors(not_requested))
+    assert not list(validator.iter_errors(available))
+
+    omitted_default_fields = json.loads(json.dumps(not_requested))
+    omitted_default_fields.pop("measurement_spec_ref")
+    omitted_default_fields.pop("measurement_spec_sha256")
+    parsed = OffTargetControlProfileV2.model_validate(omitted_default_fields)
+
+    assert parsed.measurement_spec_ref is None
+    assert parsed.measurement_spec_sha256 is None
+    assert not list(validator.iter_errors(omitted_default_fields))
+
+    invalid_not_requested = json.loads(json.dumps(not_requested))
+    invalid_not_requested.update(
+        {
+            "measurement_spec_ref": available["measurement_spec_ref"],
+            "measurement_spec_sha256": available["measurement_spec_sha256"],
+            "measurement_artifacts": available["measurement_artifacts"],
+        }
+    )
+    assert list(validator.iter_errors(invalid_not_requested))
+
+    invalid_available = json.loads(json.dumps(available))
+    invalid_available.update(
+        {
+            "measurement_spec_ref": None,
+            "measurement_spec_sha256": None,
+            "measurement_artifacts": [],
+        }
+    )
+    assert list(validator.iter_errors(invalid_available))
+
+
+def test_measurement_spec_opts_into_v02_checksummed_record_projection(
+    tmp_path: Path,
+) -> None:
+    request = _projection_request(_with_measurement_spec(_request(tmp_path)))
+
+    registry = ToolRegistry.load_default()
+    assert registry.check_eligibility(request).eligible
+    run = registry.run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert run.result_schema_ref == _projection_spec().result_schema_ref
+    assert run.result["measurement_projection_state"] == "available"
+    assert run.result["object_version"] == "0.2.0"
+    assert run.result["profile_version"] == "0.2.0"
+    assert run.result["measurement_spec_ref"] == {
+        "object_id": "measurement-spec:cell-state",
+        "object_version": "1",
+    }
+    assert len(run.measurements) == 6
+    assert len(run.result["measurement_artifacts"]) == 6
+    assert len(run.artifacts) == 21
+    measurement_artifacts = [
+        item for item in run.artifacts if item.kind == "measurement_result_v2"
+    ]
+    assert len(measurement_artifacts) == 6
+    for artifact in measurement_artifacts:
+        assert hashlib.sha256(artifact.path.read_bytes()).hexdigest() == artifact.sha256
+        measurement = MeasurementResultV2.model_validate_json(
+            artifact.path.read_text(encoding="utf-8")
+        )
+        assert measurement.domain_score is None
+        assert measurement.measurement_spec_id == "measurement-spec:cell-state"
+        assert measurement.measurement_spec_version == "1"
+        assert measurement.source_execution_state == "succeeded"
+
+    target = _projected_measurement(run, "role", "target")
+    assert target.evidence_state.value == "inferred"
+    assert target.raw_value == _role(run.result, "target")
+    assert target.score_state.value == "unavailable"
+    unresolved = _projected_measurement(run, "role", "role_unresolved")
+    assert unresolved.evidence_state.value == "inferred"
+    assert unresolved.raw_value["observed_count"] == 0
+    assert unresolved.raw_value["exclusion_state"] == "cannot_exclude"
+    unknown = _projected_measurement(run, "identity_unknown", "identity-unknown")
+    assert unknown.evidence_state.value == "unknown"
+    assert unknown.unknown_scope == "identity"
+    assert unknown.raw_value == run.result["unknown_profile"]
+    assert unknown.score_state.value == "unavailable"
+    rare = _projected_measurement(run, "rare_state", "state:b")
+    assert rare.evidence_state.value == "inferred"
+    assert rare.raw_value == run.result["rare_state_profile"][0]
+    assert rare.score_state.value == "unavailable"
+
+
+def test_v2_profile_rejects_scope_metric_binding_tamper(tmp_path: Path) -> None:
+    run = adapter.run(
+        _projection_request(_with_measurement_spec(_request(tmp_path))),
+        _projection_spec(),
+    )
+    payload = run.result
+    target = next(
+        item
+        for item in payload["measurement_artifacts"]
+        if item["record_scope"] == "role" and item["record_id"] == "target"
+    )
+    target["metric_name"] = "off_target_rare_state_detection"
+
+    with pytest.raises(
+        ValueError,
+        match="measurement metric must match its source record scope",
+    ):
+        OffTargetControlProfileV2.model_validate(payload)
+
+
+def test_v2_profile_rejects_source_evidence_state_binding_tamper(
+    tmp_path: Path,
+) -> None:
+    run = adapter.run(
+        _projection_request(_with_measurement_spec(_request(tmp_path))),
+        _projection_spec(),
+    )
+    payload = run.result
+    target = next(
+        item
+        for item in payload["measurement_artifacts"]
+        if item["record_scope"] == "role" and item["record_id"] == "target"
+    )
+    target["evidence_state"] = "negative"
+
+    with pytest.raises(
+        ValueError,
+        match="measurement evidence must match its source record state",
+    ):
+        OffTargetControlProfileV2.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        (
+            lambda payload: payload.update({"tool_refs": []}),
+            "measurement_spec_tool_not_authorized",
+        ),
+        (
+            lambda payload: payload["raw_metric_definition"].update(
+                {"metric_names": ["off_target_role_composition"]}
+            ),
+            "measurement_spec_metric_names_mismatch",
+        ),
+    ],
+)
+def test_measurement_spec_authorization_fails_closed(
+    tmp_path: Path,
+    change: Callable[[dict], None],
+    reason: str,
+) -> None:
+    request = _projection_request(_with_measurement_spec(_request(tmp_path)))
+    request = _rewrite(request, "measurement_spec", change)
+
+    eligibility = adapter.check_eligibility(request, _projection_spec())
+
+    assert not eligibility.eligible
+    assert reason in eligibility.reason_codes
+
+
+def test_projection_preserves_partial_unknown_and_withholds_unavailable_values(
+    tmp_path: Path,
+) -> None:
+    request = _rewrite(
+        _with_measurement_spec(_request(tmp_path)),
+        "off_target_evidence_bundle",
+        lambda payload: payload.update(
+            {
+                "composition_coverage_state": "partial",
+                "unknown_coverage_state": "partial",
+                "state_observations": [
+                    {"state_id": "state:a", "soft_mass": 7.0, "observed_count": 7},
+                    {"state_id": "state:b", "soft_mass": 0.0, "observed_count": 0},
+                ],
+            }
+        ),
+    )
+    request = _projection_request(request)
+
+    run = adapter.run(request, _projection_spec())
+
+    target = _projected_measurement(run, "role", "target")
+    assert target.evidence_state.value == "unavailable"
+    assert target.raw_value is None
+    assert target.score_state.value == "unavailable"
+    assert target.numerator is None
+    assert target.denominator is None
+    unknown = _projected_measurement(run, "identity_unknown", "identity-unknown")
+    assert unknown.evidence_state.value == "unknown"
+    assert unknown.unknown_scope == "identity"
+    assert unknown.raw_value == run.result["unknown_profile"]
+    rare = _projected_measurement(run, "rare_state", "state:b")
+    assert rare.evidence_state.value == "unknown"
+    assert rare.unknown_scope == "measurement"
+    assert rare.raw_value is None
+    assert rare.score_state.value == "unavailable"
+    assert run.result["rare_state_profile"][0]["observed_count"] == 0
+    assert run.result["rare_state_profile"][0]["detection_state"] == "cannot_exclude"
+
+
+def test_projection_maps_calibrated_zero_to_negative_without_absence_claim(
+    tmp_path: Path,
+) -> None:
+    def zero_rare_state(payload: dict) -> None:
+        payload["state_observations"] = [
+            {"state_id": "state:a", "soft_mass": 9.0, "observed_count": 9},
+            {"state_id": "state:b", "soft_mass": 0.0, "observed_count": 0},
+        ]
+
+    request = _rewrite(
+        _with_measurement_spec(_request(tmp_path)),
+        "off_target_evidence_bundle",
+        zero_rare_state,
+    )
+    request = _projection_request(request)
+
+    run = adapter.run(request, _projection_spec())
+    rare = _projected_measurement(run, "rare_state", "state:b")
+
+    assert rare.evidence_state.value == "negative"
+    assert rare.raw_value["detection_state"] == "not_detected_above_lod"
+    assert rare.raw_value["observed_count"] == 0
+    assert "zero_observation_does_not_establish_absence" in rare.raw_value[
+        "reason_codes"
+    ]
+
+
+def test_projection_maps_missing_rare_observation_to_unavailable(
+    tmp_path: Path,
+) -> None:
+    def remove_rare_row(payload: dict) -> None:
+        payload["composition_coverage_state"] = "partial"
+        payload["unknown_coverage_state"] = "not_assessed"
+        payload["state_observations"] = payload["state_observations"][:1]
+
+    request = _rewrite(
+        _with_measurement_spec(_request(tmp_path)),
+        "off_target_evidence_bundle",
+        remove_rare_row,
+    )
+    request = _projection_request(request)
+    run = adapter.run(request, _projection_spec())
+    rare = _projected_measurement(run, "rare_state", "state:b")
+
+    assert rare.evidence_state.value == "unavailable"
+    assert rare.raw_value is None
+    assert rare.numerator is None
+    assert rare.denominator is None
+    unknown = _projected_measurement(run, "identity_unknown", "identity-unknown")
+    assert unknown.evidence_state.value == "unavailable"
+    assert unknown.raw_value is None
+    assert run.result["rare_state_profile"][0]["observed_count"] is None
+    assert run.result["rare_state_profile"][0]["reason_codes"] == [
+        "rare_state_observation_missing"
+    ]
 
 
 def test_product_figure_discloses_soft_mass_denominator(

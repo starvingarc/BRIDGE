@@ -89,6 +89,7 @@ SCHEMA_REFS = {
     "bridge://schemas/measurement-spec/v0.2": "measurement_spec_v2.schema.json",
     "bridge://schemas/off-target-assessment-spec/v0.1": "off_target_assessment_spec.schema.json",
     "bridge://schemas/off-target-control-profile/v0.1": "off_target_control_profile.schema.json",
+    "bridge://schemas/off-target-control-profile/v0.2": "off_target_control_profile_v2.schema.json",
     "bridge://schemas/off-target-control-visualization-data/v0.1": "off_target_control_visualization_data.schema.json",
     "bridge://schemas/off-target-evidence-bundle/v0.1": "off_target_evidence_bundle.schema.json",
     "bridge://schemas/off-target-method-bundle/v0.1": "off_target_method_bundle.schema.json",
