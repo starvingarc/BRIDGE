@@ -3,7 +3,7 @@
 | 字段 | 内容 |
 |---|---|
 | Task ID | `TASK-EVIDENCE-COMPILER` |
-| Tool ID / version | `P0-09` / `0.2.0` |
+| Tool ID / version | `P0-09` / `0.3.0` |
 | Date | 2026-08-13 |
 | Analysis unit | `metric x claim target x biological context x MeasurementSpec` |
 | Runtime state | `implemented` |
@@ -23,7 +23,7 @@ P0-09 读取已经完成且版本化的产品证据，回答：哪些原子记�
 | role | 数量 | Schema | 含义 |
 |---|---:|---|---|
 | `compilation_bundle` | 1 | `evidence-compilation-bundle/v0.1` | Case/Comparison scope、候选项、缺失观察、对象目录和可选历史 |
-| `evidence_sufficiency_profile` | Case 1–5；Comparison 2–25 | `evidence-sufficiency-profile/v0.1` | P0-08 的产品、域、MeasurementSpec、sufficiency 和 provenance |
+| `evidence_sufficiency_profile` | Case 1–5；Comparison 2–25 | `evidence-sufficiency-profile/v0.1` 或 `v0.2` | P0-08 的产品、域、MeasurementSpec、sufficiency 和 provenance |
 | `evidence_family_registry` | 1 | `evidence-family-registry/v0.1` | family 类型、channel role、独立性范围和审核状态 |
 | `claim_registry` | 1 | `claim-registry/v0.1` | Claim、允许方向和 requirement template |
 | `reconciliation_spec_registry` | 1 | `reconciliation-spec-registry/v0.1` | required/optional channel、独立 family 数和冲突规则 |
@@ -61,8 +61,8 @@ product case x sample/preparation x domain x metric x claim x context x Measurem
 - `negative`、`missing`、`unknown`、`unavailable`、`alert` 不互换。
 - `shadow`、`exploratory`、not-applicable 和 inactive 记录保留审计可见性，但不进入 formal reconciliation。
 - 上游 ToolRun 为 `failed`、`skipped` 或 `not_implemented` 时拒绝编译；`partial` 中已经验证的单条记录可以进入。
-- shadow/exploratory candidate 必须匹配 P0-08 profile 的 ProductCase ID、MeasurementSpec ID、MeasurementResult refs 和 retained family IDs。
-- P0-08 v0.1 未提供 ProductCase/MeasurementSpec 的版本化 ref，不能证明完整 formal binding；所以当前所有 formal candidate/external ref 均以 `sufficiency_profile_version_binding_unavailable` 保守拒绝，不静默降级，也不伪造用户自报版本。
+- shadow/exploratory candidate 与 P0-08 v0.1 profile 对 ProductCase、MeasurementSpec、MeasurementResult 按裸 ID 匹配；与 v0.2 profile 对三者均按完整 `object_id` + `object_version` 匹配。
+- 两版 profile 都可用于 shadow/exploratory 编译。由于 `deduplicated_evidence_family_ids` 仍不含 family 版本，均不能证明完整 formal family binding；所有 formal candidate/external ref 继续以 `sufficiency_profile_version_binding_unavailable` 保守拒绝。
 
 三个公开 record 数组都严格要求 object 元素；非 object、extra field 或其他公开 Schema 失败在注册的 public registry 路径属于顶层失败。模块内部 direct-adapter seam 可将 object-shaped parse failure 保留到逐条 sanitized rejection，但不放宽导出的公开 Schema。Schema 合法但 provenance、版本/上下文绑定、source fact 或语义非法的 sibling candidate/missing/external item 才进入 `rejected_records.json`，其余合法项可发布 `partial` graph；被拒输出仅含稳定 ID/index/digest/reason，不回显原值。完全相同的同源 external declaration 按集合语义在身份计算前幂等去重；同一 Evidence ref 只要 content/source/Claim/profile/family/relation/lifecycle 等声明不同，就保留冲突证据并逐条 `duplicate_logical_key_conflict` 拒绝。候选的 numerator、denominator 与 interval 只接受有限 JSON number；numeric string 和 bool 不发生静默强转。顶层 bundle/registry/history/Schema/checksum 或 unsafe publication reference 错误则整次失败且不发布任何 artifact。publication guard 是路径、URI、环境变量、credential-like assignment/token、禁用结论 key 和 public-ref 形状的有界合同，不承诺通用 secret scanning。P0-08 合同内固定的 `domain_score=null` 仅作为上游 provenance 保存，不被 P0-09 填值或解释。
 
@@ -113,9 +113,11 @@ LadybugDB 在 v0.1 中为 `shadow/deferred` adapter 候选：不安装、不参�
 
 ## 8. 不可变 artifact bundle
 
-每次成功/partial 运行写入 `<output_dir>/<run_id>/`，共十个文件：三类规范 JSON、两个 Parquet、一个 graph manifest、Cytoscape elements、rejected list、typed run result 和 artifact manifest。Graph manifest 校验五个 authoritative facts；artifact manifest 校验前九个文件而不自哈希。三个 authoritative set ID 都由 `source_input_hash[:16]` 确定；graph ID 由 Case ProductCase 或 Comparison root 的完整版本化引用确定。查询入口与写后 roundtrip 都从已稳定读取的 bytes 解析 Parquet，不把合法路径中的 `key=value` basename 解释为 Hive partition；并重新推导 record tier/lifecycle、Evidence/Requirement/Reconciliation 身份及 Case 全部语义边。容器 checksum 自洽但事实投影不一致仍会拒绝。`satisfied` requirement 只能引用同 Claim/ProductCase 下最新 active、formal、applicable 且属于 reviewed matching-channel family 的 EvidenceRecord。
+每次成功/partial 运行写入 `<output_dir>/<run_id>/`，共 24 个文件：原有三类规范 JSON、两个 Parquet、一个 graph manifest、Cytoscape elements、rejected list 和 typed run result，加上一份 typed visualization data、三份完整 TSV、三图各 SVG/PNG/PDF、一个 visualization artifact set，以及覆盖其余 23 个文件的 artifact manifest。Graph manifest 继续只校验五个 authoritative graph facts；解释性图形不成为新的 EvidenceRecord。三个 authoritative set ID 都由 `source_input_hash[:16]` 确定；graph ID 由 Case ProductCase 或 Comparison root 的完整版本化引用确定。查询入口与写后 roundtrip 都从已稳定读取的 bytes 解析 Parquet，并重新推导 record tier/lifecycle、Evidence/Requirement/Reconciliation 身份及 Case 全部语义边。
 
-写入流程为新 staging 目录、写后校验、输入复核、原子 rename。output root/staging 的创建、权限和解析错误统一映射为 typed failed；不会跟随、覆盖或删除已经占用 output path 的文件/异常链接。artifact manifest 记录前九个文件的 checksum、media type 与可用 byte size；结构化输入以 role/Schema/version/media/semantic SHA 和确定性 occurrence 表示，base/source graph 身份另保留可复验 raw content-addressed SHA，raw SHA 同时仍在本次 ToolRun request。caller `input_id` 仅是 request-local binding：一致重命名所有 binding 不改变 input hash、run ID 或 bundle bytes，也不会进入 artifact manifest。相同语义的集合顺序变体（包括完全相同的 external ref 重复项）可复用 byte-identical run bundle；存在漂移时拒绝覆盖。输入侧 `manifest_input_id`/`record_set_input_id`/`requirement_set_input_id` 不进入公开 graph manifest。Comparison manifest 改用稳定 `external_evidence_bindings` 投影 source graph、Evidence hash/refs、Claim/family、versioned P0-08 profile 及状态语义；Evidence→profile `depends_on` 边显式绑定 profile，唯一 Evidence→source Case 边的 properties 同时保存完整 stable binding 的 canonical SHA-256，使 source Claim、evidence state、applicability、ToolRun state 等全部字段可由权威 Parquet 精确复验。该 digest 只是自包含 bundle 内的 manifest↔Parquet 一致性绑定，不是独立 trust anchor：`open` 不验证签名/authenticity，在缺少 source Case artifacts 时不能识别 manifest、Parquet 与 checksum 被协调重写。source scientific truth 只在编译时以 checksummed source Case manifest/record set 核验；后续 external provenance 查询在边界以 `source_case_graph_required` 停止。运行结果 `measurements=[]`、`visualizations=[]`。
+三图分别呈现当前可用的已协调结论、这些结论内按 dependency/scope 合并后的 EvidenceFamily 关系，以及当前 Requirement 与 compilation exclusion。没有证据且没有显式 Requirement 的 registry Claim 不生成图中行；缺行不代表零或 missing。family/record 数仅为审计计数，不代表独立证据；missing requirement 不显示为零；Claim 级 reason 不反向分配给单条 excluded evidence。静态图超过容量时保留完整 TSV，并返回完整表格回退，不做 top-N 截断。
+
+全部产物在同一 staging 中生成、校验并原子发布；任一文件漂移都会阻止既有 bundle 复用。typed 图形数据不符合包内合同时返回 `visualization_data_invalid`；图形渲染或 figure-registry 合同失败时返回 `visualization_render_failed`；两者都不发布 artifact。运行结果仍为 `measurements=[]`、`visualizations=[]`，三份 portable visualization contract 存在 package-owned artifact set 中，不修改共享 ToolRun 合同。
 
 ## 9. 方法与环境状态
 
@@ -126,10 +128,8 @@ LadybugDB 在 v0.1 中为 `shadow/deferred` adapter 候选：不安装、不参�
 | `METHOD-COLUMNAR-STORAGE` | PyArrow/Parquet 事实表 | 固定 Schema；版本内确定性 |
 | `METHOD-GRAPH-LIBRARY` | NetworkX 图约束和重建 | 不承担正式持久化 |
 
-四个方法均保持 `formal_eligible=false`。`ENV-EVIDENCE-v0.1` 已通过服务器工程健康检查；该环境状态不代表方法或真实案例得到科学确认。依赖和 wheel 打包由公共整合 PR 统一声明。
+四个方法均保持 `formal_eligible=false`。`ENV-EVIDENCE-v0.2` 显式声明 PyArrow、NetworkX 和 Matplotlib 等运行依赖；环境可调用不代表方法或具体案例得到科学确认。
 
-## 10. 验证要求与当前声明
+## 10. 当前科学边界
 
-模块测试覆盖：公开模型与 Draft 2020-12 Schema、严格 JSON/number/bool/int、checksum、model-aware 集合归一化与 external 精确重复幂等、确定性 run/record/graph/artifact identity、append-only evidence/requirement 修正、missing-versus-zero、boolean/numeric-string/nonfinite 拒绝、规范化 no-score key、四类 unsafe publication surface 与不回显、严格顶层 Schema 与 partial 边界、保守 formal profile gate、context/catalog role binding、family dependency/scope component 去重、Comparison source input 双射/完整 manifest preflight/source history/effective lifecycle/exact fact binding、公开 manifest 不泄漏 request input ID、图端点/revision cycle/node-edge self-hash、JSON→Parquet→NetworkX round trip、manifest filename/symlink/checksum/row-count/object-count/size、不可用 output path 受控失败、重复运行复用、七个只读查询严格参数及其精确 cap/注入 canary。
-
-当前 fixture 全部为合成数据，不代表真实产品、真实样本、临床结果或科学验证。P0-09 完成只表示候选编译与协调路径可执行；它不能证明任何 Claim 为真、任何域证据充分、任何 ScoreContract 已冻结、任何产品更优，或任何输出可公开/科学发布。
+P0-09 的 `implemented/candidate` 状态只表示合同内的证据编译、协调、查询和解释性图形路径可调用。它不能证明任何 Claim 为真、任何域证据充分、任何 ScoreContract 已冻结、任何产品更优，或任何输出已经获得科学发布资格。

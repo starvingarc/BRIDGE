@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import inspect
 import json
 import re
@@ -19,6 +20,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.adapter import (
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
     P0DomainId,
+    EvidenceSufficiencyProfileV2,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     PUBLIC_SCHEMA_MODELS,
@@ -39,7 +41,6 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     GraphArtifactRef,
     ReconciliationSpec,
     ReconciliationRecord,
-    EvidenceCandidate,
     ClaimRegistry,
     ReconciliationSpecRegistry,
 )
@@ -71,6 +72,19 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     GraphNodeRow,
     GraphNodeType,
     GraphRecordMode,
+)
+from bridge.tool_packages.p0_09_evidence_compiler.visualization import (
+    prepare_evidence_compiler_visualizations,
+    _short_ref,
+)
+from bridge.tool_packages.p0_09_evidence_compiler.visualization_data import (
+    PUBLIC_VISUALIZATION_SCHEMA_MODELS,
+    ClaimInterpretationRecord,
+    CompilationExclusionRecord,
+    EvidenceFamilyRelationRecord,
+    EvidenceRequirementRecord,
+    EvidenceCompilerVisualizationDataV1,
+    P009VisualizationArtifactSet,
 )
 from bridge.toolkit.contracts import EvidenceState
 from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
@@ -107,12 +121,12 @@ def _spec() -> ToolPackageSpecV2:
     return ToolPackageSpecV2(
         tool_id="P0-09",
         name="Evidence Compiler & Reconciler",
-        version="0.2.0",
+        version="0.3.0",
         summary="Compile atomic evidence and reconcile conflicts by versioned rules.",
         implementation_state=ImplementationState.IMPLEMENTED,
         scientific_status="candidate",
         optional=False,
-        environment_spec_id="ENV-EVIDENCE-v0.1",
+        environment_spec_id="ENV-EVIDENCE-v0.2",
         input_schema_ref="bridge://schemas/tool-request/v0.2",
         output_schema_ref="bridge://schemas/tool-run/v0.2",
         result_schema_ref=RESULT_SCHEMA_REF,
@@ -610,7 +624,11 @@ def _materialize_comparison_sources(
             requirements=[],
             reconciliation_records=[],
             profiles_by_input_id={
-                external["sufficiency_profile_input_id"]: EvidenceSufficiencyProfile.model_validate(profile)
+                external["sufficiency_profile_input_id"]: (
+                    EvidenceSufficiencyProfileV2
+                    if profile["profile_version"] == "0.2.0"
+                    else EvidenceSufficiencyProfile
+                ).model_validate(profile)
             },
             family_registry=EvidenceFamilyRegistry.model_validate(_family_registry()),
             claim_registry=ClaimRegistry.model_validate(_comparison_claim_registry()),
@@ -883,9 +901,13 @@ def _request(
         (
             input_id,
             "evidence_sufficiency_profile",
-            "bridge://schemas/evidence-sufficiency-profile/v0.1",
+            (
+                "bridge://schemas/evidence-sufficiency-profile/v0.2"
+                if payload["profile_version"] == "0.2.0"
+                else "bridge://schemas/evidence-sufficiency-profile/v0.1"
+            ),
             payload,
-            "0.1.0",
+            payload["profile_version"],
         )
         for input_id, payload in profile_objects
     ]
@@ -970,7 +992,7 @@ def _request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-09",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -1027,7 +1049,7 @@ def test_committed_synthetic_fixtures_validate_without_private_material() -> Non
     assert private_path.search(serialized) is None
 
 
-def test_case_compilation_publishes_ten_immutable_artifacts_without_formal_promotion(
+def test_case_compilation_publishes_complete_immutable_bundle_without_formal_promotion(
     tmp_path: Path,
 ) -> None:
     run = _run(tmp_path)
@@ -1035,7 +1057,7 @@ def test_case_compilation_publishes_ten_immutable_artifacts_without_formal_promo
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result_schema_ref == RESULT_SCHEMA_REF
     assert run.measurements == [] and run.visualizations == []
-    assert len(run.artifacts) == 10
+    assert len(run.artifacts) == 24
     result = EvidenceCompilerRunResult.model_validate(run.result)
     final = run.request.output_dir / run.run_id
     assert final.is_dir()
@@ -1752,7 +1774,7 @@ def test_v1_adapter_invocation_has_one_stable_v2_reason(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="p0-09-v1",
         tool_id="P0-09",
-        tool_version="0.2.0",
+        tool_version="0.3.0",
         output_dir=(tmp_path / "output").resolve(),
     )
     eligibility = adapter.check_eligibility(request, _spec())  # type: ignore[arg-type]
@@ -3639,3 +3661,830 @@ def test_query_rejects_forged_fact_identity_after_full_rehash(
     _write(manifest_path, manifest)
     with pytest.raises(ValueError, match="manifest_integrity_failed"):
         EvidenceGraphQueries.open(manifest_path)
+
+def _v2_profile(
+    payload: dict[str, Any],
+    *,
+    versions: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    payload = json.loads(json.dumps(payload))
+    ref_versions = {
+        "product_case_ref": "1.0.0",
+        "product_definition_ref": "1.0.0",
+        "measurement_spec_ref": "1.0.0",
+        "qc_profile_ref": "1.0.0",
+        "measurement_result_refs": "1.0.0",
+        **(versions or {}),
+    }
+    payload.update(
+        {
+            "profile_version": "0.2.0",
+            "gate_rule_spec_ref": "GATE-EVIDENCE-SUFFICIENCY-v0.2",
+            "gate_rule_version": "0.2.0",
+            **{
+                field: {
+                    "object_id": payload[field],
+                    "object_version": ref_versions[field],
+                }
+                for field in (
+                    "product_case_ref",
+                    "product_definition_ref",
+                    "measurement_spec_ref",
+                    "qc_profile_ref",
+                )
+            },
+            "measurement_result_refs": [
+                {
+                    "object_id": item,
+                    "object_version": ref_versions["measurement_result_refs"],
+                }
+                for item in payload["measurement_result_refs"]
+            ],
+            "measurement_evidence_state_counts": {
+                "measured": len(payload["measurement_result_refs"]),
+                "inferred": 0,
+                "prior_only": 0,
+                "negative": 0,
+                "missing": 0,
+                "unknown": 0,
+                "unavailable": 0,
+                "alert": 0,
+            },
+        }
+    )
+    return payload
+
+
+def _request_with_v2_profile(
+    tmp_path: Path,
+    *,
+    profile_versions: dict[str, str] | None = None,
+    **request_kwargs: Any,
+) -> ToolRequestV2:
+    request = _request(tmp_path, **request_kwargs)
+    profile_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "evidence_sufficiency_profile"
+    )
+    payload = json.loads(profile_ref.path.read_text())
+    payload = _v2_profile(payload, versions=profile_versions)
+    checksum = _write(profile_ref.path, payload)
+    updated_ref = profile_ref.model_copy(
+        update={
+            "schema_ref": "bridge://schemas/evidence-sufficiency-profile/v0.2",
+            "object_version": "0.2.0",
+            "sha256": checksum,
+        }
+    )
+    return request.model_copy(
+        update={
+            "object_inputs": [
+                updated_ref if item.input_id == profile_ref.input_id else item
+                for item in request.object_inputs
+            ]
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "schema_ref,model", PUBLIC_VISUALIZATION_SCHEMA_MODELS.items()
+)
+def test_visualization_models_export_valid_draft_2020_12_schema(
+    schema_ref: str, model: type[Any]
+) -> None:
+    schema = model.model_json_schema()
+    Draft202012Validator.check_schema(schema)
+    assert schema["additionalProperties"] is False
+    assert schema_ref.startswith("bridge://schemas/")
+
+
+def test_v2_sufficiency_profile_compiles_shadow_evidence_without_losing_versioned_context(
+    tmp_path: Path,
+) -> None:
+    request = _request_with_v2_profile(tmp_path)
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    final = run.request.output_dir / run.run_id
+    records = EvidenceRecordSet.model_validate_json(
+        (final / "evidence_records.json").read_bytes()
+    )
+    assert len(records.records) == 1
+    assert records.records[0].evidence_tier is EvidenceTier.SHADOW
+    assert records.records[0].sufficiency_profile_ref.object_version == "0.2.0"
+
+
+def test_v2_profile_keeps_formal_family_version_proof_conservatively_unavailable(
+    tmp_path: Path,
+) -> None:
+    request = _request_with_v2_profile(
+        tmp_path,
+        bundle=_bundle(candidates=[_candidate(tier="formal")]),
+    )
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    final = run.request.output_dir / run.run_id
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert len(rejected) == 1
+    assert "sufficiency_profile_version_binding_unavailable" in rejected[0][
+        "reason_codes"
+    ]
+    reconciliations = json.loads(
+        (final / "reconciliation_records.json").read_text()
+    )["records"]
+    assert reconciliations == []
+
+
+def test_visualization_bundle_has_exact_artifact_conservation_and_resolvable_bindings(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    manifest = json.loads((final / "artifact_manifest.json").read_text())
+    artifact_set = P009VisualizationArtifactSet.model_validate_json(
+        (final / "evidence_compiler_visualization_artifact_set.json").read_bytes()
+    )
+    data = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (final / "evidence_compiler_visualization_data.json").read_bytes()
+    )
+
+    assert len(run.artifacts) == 24
+    assert len(manifest["artifacts"]) == 23
+    assert {item["filename"] for item in manifest["artifacts"]} == {
+        path.name for path in final.iterdir() if path.name != "artifact_manifest.json"
+    }
+    artifact_ids = {item.artifact_id for item in run.artifacts}
+    bound_ids = {
+        artifact_set.data_profile_artifact_id,
+        *(
+            item.accessibility.table_artifact_id
+            for item in artifact_set.visualizations
+        ),
+        *(
+            render.artifact_id
+            for item in artifact_set.visualizations
+            for render in item.renders
+        ),
+    }
+    assert bound_ids <= artifact_ids
+    assert len(artifact_set.visualizations) == 3
+    assert data.requirements_exclusions_records == sorted(
+        [*data.requirement_records, *data.exclusion_records],
+        key=lambda item: item.record_id,
+    )
+    assert data.record_and_family_counts_are_not_independent_evidence is True
+    assert data.missing_requirements_are_not_zero_measurements is True
+    assert data.claim_level_reasons_are_not_item_attribution is True
+
+
+def test_visualization_payloads_are_byte_identical_on_exact_rerun(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    first = adapter.run(request, _spec())
+    final = first.request.output_dir / first.run_id
+    names = {
+        "evidence_compiler_visualization_data.json",
+        "evidence_compiler_visualization_artifact_set.json",
+        "evidence_compiler_claim_interpretation.tsv",
+        "evidence_compiler_family_relations.tsv",
+        "evidence_compiler_requirements_exclusions.tsv",
+        "evidence_compiler_claim_interpretation.svg",
+        "evidence_compiler_family_relations.png",
+        "evidence_compiler_requirements_exclusions.pdf",
+    }
+    before = {name: (final / name).read_bytes() for name in names}
+
+    second = adapter.run(request, _spec())
+
+    assert second.execution_state is ExecutionState.SUCCEEDED
+    assert second.run_id == first.run_id
+    assert before == {name: (final / name).read_bytes() for name in names}
+
+
+def test_visualization_tamper_prevents_existing_bundle_reuse(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    first = adapter.run(request, _spec())
+    final = first.request.output_dir / first.run_id
+    target = final / "evidence_compiler_claim_interpretation.svg"
+    target.write_bytes(target.read_bytes() + b"tampered")
+
+    second = adapter.run(request, _spec())
+
+    assert second.execution_state is ExecutionState.FAILED
+    assert second.reason_codes == ["existing_run_bundle_hash_mismatch"]
+    assert second.artifacts == []
+
+
+def test_visualization_builder_and_renderer_fail_with_stable_reason_codes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def invalid_builder(**_: Any) -> None:
+        raise ValueError("private implementation detail")
+
+    adapter_module = importlib.import_module(
+        "bridge.tool_packages.p0_09_evidence_compiler.adapter"
+    )
+    monkeypatch.setattr(
+        adapter_module,
+        "build_evidence_compiler_visualization_data",
+        invalid_builder,
+    )
+    invalid = adapter.run(_request(tmp_path / "builder"), _spec())
+    assert invalid.execution_state is ExecutionState.FAILED
+    assert invalid.reason_codes == ["visualization_data_invalid"]
+    assert invalid.artifacts == []
+
+    monkeypatch.undo()
+
+    def failed_renderer(**_: Any) -> None:
+        raise RuntimeError("private implementation detail")
+
+    monkeypatch.setattr(
+        adapter_module,
+        "prepare_evidence_compiler_visualizations",
+        failed_renderer,
+    )
+    failed = adapter.run(_request(tmp_path / "renderer"), _spec())
+    assert failed.execution_state is ExecutionState.FAILED
+    assert failed.reason_codes == ["visualization_render_failed"]
+    assert failed.artifacts == []
+
+
+def test_static_capacity_uses_complete_table_without_top_n_selection(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path / "source")
+    final = run.request.output_dir / run.run_id
+    profile = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (final / "evidence_compiler_visualization_data.json").read_bytes()
+    )
+    source = profile.claim_records[0]
+    claim_records = [
+        source.model_copy(
+            update={
+                "record_id": f"claim-interpretation:{index:016d}",
+                "claim_ref": f"claim:capacity-{index:02d}@1.0.0",
+                "evidence_ids": [f"reconciliation:capacity-{index:02d}"],
+            }
+        )
+        for index in range(21)
+    ]
+    expanded_payload = profile.model_dump(mode="json")
+    expanded_payload["claim_records"] = [
+        item.model_dump(mode="json") for item in claim_records
+    ]
+    with pytest.raises(ValueError, match="top-level evidence IDs"):
+        EvidenceCompilerVisualizationDataV1.model_validate(expanded_payload)
+    expanded_payload["evidence_ids"] = sorted(
+        {
+            evidence_id
+            for key in (
+                "claim_records",
+                "family_relation_records",
+                "requirement_records",
+                "exclusion_records",
+            )
+            for record in expanded_payload[key]
+            for evidence_id in record["evidence_ids"]
+        }
+    )
+    expanded = EvidenceCompilerVisualizationDataV1.model_validate(expanded_payload)
+
+    prepared = prepare_evidence_compiler_visualizations(
+        profile=expanded,
+        output_dir=tmp_path / "render",
+        run_id="run-capacity",
+        tool_version="0.3.0",
+    )
+
+    table = prepared.payloads["evidence_compiler_claim_interpretation.tsv"]
+    assert len(table.decode().splitlines()) == 22
+    svg = prepared.payloads["evidence_compiler_claim_interpretation.svg"]
+    assert b"complete-table fallback" in svg
+
+
+def test_static_capacity_falls_back_when_reason_text_cannot_fit(
+    tmp_path: Path,
+) -> None:
+    run = _run(tmp_path / "source")
+    final = run.request.output_dir / run.run_id
+    profile = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (final / "evidence_compiler_visualization_data.json").read_bytes()
+    )
+    payload = profile.model_dump(mode="json")
+    record_id = payload["requirement_records"][0]["record_id"]
+    reason_codes = [
+        f"registered_reason_with_extended_context_{index:02d}"
+        for index in range(10)
+    ]
+    payload["requirement_records"][0]["reason_codes"] = reason_codes
+    for record in payload["requirements_exclusions_records"]:
+        if record["record_id"] == record_id:
+            record["reason_codes"] = reason_codes
+    expanded = EvidenceCompilerVisualizationDataV1.model_validate(payload)
+
+    prepared = prepare_evidence_compiler_visualizations(
+        profile=expanded,
+        output_dir=tmp_path / "render",
+        run_id="run-reason-capacity",
+        tool_version="0.3.0",
+    )
+
+    table = prepared.payloads["evidence_compiler_requirements_exclusions.tsv"]
+    assert all(reason.encode() in table for reason in reason_codes)
+    svg = prepared.payloads["evidence_compiler_requirements_exclusions.svg"]
+    assert b"complete-table fallback" in svg
+
+
+@pytest.mark.parametrize(
+    ("profile_field", "reason_code"),
+    [
+        ("product_case_ref", "sufficiency_profile_case_mismatch"),
+        (
+            "measurement_spec_ref",
+            "sufficiency_profile_measurement_spec_mismatch",
+        ),
+        (
+            "measurement_result_refs",
+            "sufficiency_profile_measurement_result_mismatch",
+        ),
+    ],
+)
+def test_v2_profile_requires_exact_case_spec_and_result_versions(
+    tmp_path: Path, profile_field: str, reason_code: str
+) -> None:
+    request = _request_with_v2_profile(
+        tmp_path,
+        profile_versions={profile_field: "2.0.0"},
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    rejected = json.loads(
+        (
+            run.request.output_dir
+            / run.run_id
+            / "rejected_records.json"
+        ).read_text()
+    )["records"]
+    assert rejected[0]["reason_codes"] == [reason_code]
+
+
+def test_v2_profile_version_matching_applies_to_prior_history(
+    tmp_path: Path,
+) -> None:
+    first_request = _request_with_v2_profile(tmp_path / "first")
+    first = adapter.run(first_request, _spec())
+    first_dir = first.request.output_dir / first.run_id
+    manifest_path = first_dir / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    bundle = _bundle(
+        candidates=[],
+        prior_records=json.loads(
+            (first_dir / "evidence_records.json").read_text()
+        )["records"],
+        prior_requirements=json.loads(
+            (first_dir / "evidence_requirements.json").read_text()
+        )["requirements"],
+        base_graph_ref={
+            "graph_id": manifest["graph_id"],
+            "graph_version": manifest["graph_version"],
+            "manifest_sha256": hashlib.sha256(
+                manifest_path.read_bytes()
+            ).hexdigest(),
+        },
+    )
+    request = _request_with_v2_profile(
+        tmp_path / "append",
+        bundle=bundle,
+        base_manifest_path=manifest_path,
+        profile_versions={"measurement_result_refs": "2.0.0"},
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["prior_history_invalid"]
+    assert run.artifacts == []
+
+
+def test_v2_profile_version_matching_applies_to_comparison_sources(
+    tmp_path: Path,
+) -> None:
+    profiles = [
+        (
+            input_id,
+            _v2_profile(
+                payload,
+                versions=(
+                    {"measurement_spec_ref": "2.0.0"}
+                    if input_id == "profile-a"
+                    else None
+                ),
+            ),
+        )
+        for input_id, payload in _comparison_profiles()
+    ]
+
+    run = _run(
+        tmp_path,
+        bundle=_comparison_bundle(),
+        profiles=profiles,
+        claim_registry=_comparison_claim_registry(),
+    )
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    rejected = json.loads(
+        (
+            run.request.output_dir
+            / run.run_id
+            / "rejected_records.json"
+        ).read_text()
+    )["records"]
+    external_rejections = [
+        item
+        for item in rejected
+        if item["source_kind"] == "external_case_evidence_ref"
+    ]
+    assert len(external_rejections) == 1
+    assert external_rejections[0]["reason_codes"] == [
+        "external_evidence_claim_mapping_invalid"
+    ]
+
+
+def test_comparison_visualization_conserves_external_evidence_ids(
+    tmp_path: Path,
+) -> None:
+    bundle = _comparison_bundle()
+    run = _run(
+        tmp_path,
+        bundle=bundle,
+        profiles=_comparison_profiles(),
+        claim_registry=_comparison_claim_registry(),
+    )
+    data = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (
+            run.request.output_dir
+            / run.run_id
+            / "evidence_compiler_visualization_data.json"
+        ).read_bytes()
+    )
+    output_records = [
+        *data.claim_records,
+        *data.family_relation_records,
+        *data.requirement_records,
+        *data.exclusion_records,
+    ]
+    expected = sorted(
+        {
+            evidence_id
+            for record in output_records
+            for evidence_id in record.evidence_ids
+        }
+    )
+    manifest = json.loads(
+        (
+            run.request.output_dir
+            / run.run_id
+            / "comparison_evidence_graph_manifest.json"
+        ).read_text()
+    )
+    external_ids = {
+        item["evidence_ref"].rsplit("@", 1)[0]
+        for item in manifest["external_evidence_bindings"]
+    }
+
+    assert data.evidence_ids == expected
+    assert external_ids <= set(data.evidence_ids)
+    artifacts_by_name = {Path(item.path).name: item for item in run.artifacts}
+    for name in (
+        "comparison_evidence_graph_manifest.json",
+        "evidence_compiler_run_result.json",
+        "artifact_manifest.json",
+    ):
+        assert artifacts_by_name[name].evidence_ids == data.evidence_ids
+
+
+@pytest.mark.parametrize(
+    ("applicabilities", "expected"),
+    [
+        (["not_applicable"], "not_applicable"),
+        (["applicable", "not_applicable"], "partially_applicable"),
+    ],
+)
+def test_family_component_applicability_preserves_single_and_mixed_states(
+    tmp_path: Path, applicabilities: list[str], expected: str
+) -> None:
+    candidates = []
+    for index, applicability in enumerate(applicabilities):
+        candidate = _candidate(
+            candidate_id=f"evidence-candidate:applicability-{index}",
+            metric_id=f"applicability_metric_{index}",
+        )
+        candidate["applicability"] = applicability
+        candidates.append(candidate)
+
+    run = _run(tmp_path, bundle=_bundle(candidates=candidates))
+    data = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (
+            run.request.output_dir
+            / run.run_id
+            / "evidence_compiler_visualization_data.json"
+        ).read_bytes()
+    )
+
+    assert len(data.family_relation_records) == 1
+    assert data.family_relation_records[0].applicability == expected
+
+
+def test_multi_claim_visualization_is_stable_distinguishable_and_semantically_sorted(
+    tmp_path: Path,
+) -> None:
+    claims = _claim_registry()
+    second_claim = json.loads(json.dumps(claims["claims"][0]))
+    second_claim["claim_id"] = "claim:secondary"
+    claims["claims"].append(second_claim)
+    candidates = [_candidate()]
+    second_candidate = _candidate(
+        candidate_id="evidence-candidate:secondary",
+        metric_id="secondary_fraction",
+    )
+    second_candidate["claim_ref"] = {
+        "object_id": "claim:secondary",
+        "object_version": "1.0.0",
+    }
+    candidates.append(second_candidate)
+
+    first = _run(
+        tmp_path / "first",
+        bundle=_bundle(candidates=candidates),
+        claim_registry=claims,
+    )
+    permuted_claims = json.loads(json.dumps(claims))
+    permuted_claims["claims"].reverse()
+    second = _run(
+        tmp_path / "second",
+        bundle=_bundle(candidates=list(reversed(candidates))),
+        claim_registry=permuted_claims,
+    )
+    first_dir = first.request.output_dir / first.run_id
+    second_dir = second.request.output_dir / second.run_id
+    first_data = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (first_dir / "evidence_compiler_visualization_data.json").read_bytes()
+    )
+    second_data = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (second_dir / "evidence_compiler_visualization_data.json").read_bytes()
+    )
+    first_svg = (
+        first_dir / "evidence_compiler_claim_interpretation.svg"
+    ).read_bytes()
+    family_svg = (
+        first_dir / "evidence_compiler_family_relations.svg"
+    ).read_bytes()
+
+    assert first.execution_state is ExecutionState.SUCCEEDED
+    assert second.execution_state is ExecutionState.SUCCEEDED
+    assert first_data.claim_records == second_data.claim_records
+    assert [item.record_id for item in first_data.claim_records] == sorted(
+        item.record_id for item in first_data.claim_records
+    )
+    for svg in (first_svg, family_svg):
+        assert b"claim:secondary@1.0.0" in svg
+        assert b"claim:target-identity@1.0.0" in svg
+        assert svg.index(b"claim:secondary@1.0.0") < svg.index(
+            b"claim:target-identity@1.0.0"
+        )
+
+
+def test_requirement_visualization_preserves_declared_fields_and_semantic_order(
+    tmp_path: Path,
+) -> None:
+    run = _run(
+        tmp_path,
+        family_registry=_family_registry(second_family=True),
+        claim_registry=_claim_registry(orthogonal_required=True),
+        reconciliation_registry=_reconciliation_registry(
+            orthogonal_required=True
+        ),
+    )
+    final = run.request.output_dir / run.run_id
+    data = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (final / "evidence_compiler_visualization_data.json").read_bytes()
+    )
+    by_key = {item.requirement_key: item for item in data.requirement_records}
+
+    assert set(by_key) == {"orthogonal_channel", "transcriptomic_channel"}
+    assert by_key["transcriptomic_channel"].required_modality == "scRNA-seq"
+    assert by_key["transcriptomic_channel"].required_experiment is None
+    assert by_key["orthogonal_channel"].required_modality is None
+    assert by_key["orthogonal_channel"].required_experiment == "orthogonal assay"
+
+    table = (
+        final / "evidence_compiler_requirements_exclusions.tsv"
+    ).read_text().splitlines()
+    header = table[0].split("\t")
+    record_id_index = header.index("record_id")
+    table_ids = [row.split("\t")[record_id_index] for row in table[1:]]
+    assert table_ids == sorted(table_ids)
+
+    svg = (
+        final / "evidence_compiler_requirements_exclusions.svg"
+    ).read_bytes()
+    assert svg.index(b"orthogonal channel") < svg.index(
+        b"transcriptomic channel"
+    )
+    for record in data.requirement_records:
+        short_ref = _short_ref(record.requirement_ref)
+        assert short_ref.encode() in svg
+
+
+def test_visualization_record_contracts_reject_semantic_drift(tmp_path: Path) -> None:
+    run = _run(tmp_path)
+    final = run.request.output_dir / run.run_id
+    data = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (final / "evidence_compiler_visualization_data.json").read_bytes()
+    )
+
+    claim = data.claim_records[0].model_dump(mode="json")
+    with pytest.raises(ValueError, match="claim interpretation axes"):
+        ClaimInterpretationRecord.model_validate(
+            claim
+            | {
+                "eligibility": "insufficient_evidence",
+                "reconciliation_state": None,
+                "direction": None,
+                "evidence_state": "inferred",
+                "missingness": "none",
+                "applicability": "applicable",
+            }
+        )
+    with pytest.raises(ValueError, match="resolved reconciliation requires direction"):
+        ClaimInterpretationRecord.model_validate(
+            claim
+            | {
+                "eligibility": "eligible",
+                "reconciliation_state": "stable",
+                "direction": None,
+                "evidence_state": "inferred",
+                "missingness": "none",
+                "applicability": "applicable",
+            }
+        )
+
+    family = data.family_relation_records[0].model_dump(mode="json")
+    with pytest.raises(ValueError, match="raw record count"):
+        EvidenceFamilyRelationRecord.model_validate(
+            family | {"raw_record_count": family["raw_record_count"] + 1}
+        )
+    with pytest.raises(ValueError, match="conflicting family relations"):
+        EvidenceFamilyRelationRecord.model_validate(
+            family
+            | {
+                "relation": "conflict",
+                "evidence_state": "inferred",
+                "missingness": "none",
+            }
+        )
+    with pytest.raises(ValueError, match="evidence state and missingness"):
+        EvidenceFamilyRelationRecord.model_validate(
+            family | {"evidence_state": "unknown", "missingness": "none"}
+        )
+
+    requirement = data.requirement_records[0].model_dump(mode="json")
+    open_axes = requirement | {
+        "requirement_state": "open",
+        "satisfying_record_count": 0,
+        "evidence_state": "inferred",
+        "missingness": "none",
+        "applicability": "applicable",
+    }
+    with pytest.raises(ValueError, match="requirement state axes"):
+        EvidenceRequirementRecord.model_validate(open_axes)
+    with pytest.raises(ValueError, match="open requirement"):
+        EvidenceRequirementRecord.model_validate(
+            open_axes
+            | {
+                "satisfying_record_count": 1,
+                "evidence_state": "missing",
+                "missingness": "missing",
+                "applicability": "partially_applicable",
+            }
+        )
+    with pytest.raises(ValueError, match="satisfied requirement"):
+        EvidenceRequirementRecord.model_validate(
+            requirement
+            | {
+                "requirement_state": "satisfied",
+                "satisfying_record_count": 0,
+                "evidence_state": "inferred",
+                "missingness": "none",
+                "applicability": "applicable",
+            }
+        )
+
+    reconciliation_exclusion = {
+        "record_id": "reconciliation-exclusion:test",
+        "evidence_ids": ["reconciliation:test"],
+        "evidence_state": "unknown",
+        "missingness": "not_assessed",
+        "applicability": "partially_applicable",
+        "reason_codes": [],
+        "exclusion_kind": "reconciliation_exclusion",
+        "record_kind": "exclusion",
+        "claim_ref": "claim:test@1.0.0",
+        "excluded_record_count": 1,
+        "excluded_evidence_refs": ["evidence:test@1"],
+        "source_kind": None,
+        "source_id": None,
+        "reason_attribution_scope": "claim_level_not_per_evidence",
+    }
+    CompilationExclusionRecord.model_validate(reconciliation_exclusion)
+    with pytest.raises(ValueError, match="claim-level reasons"):
+        CompilationExclusionRecord.model_validate(
+            reconciliation_exclusion | {"excluded_record_count": 2}
+        )
+
+    input_rejection = {
+        "record_id": "input-rejection:test:000000",
+        "evidence_ids": ["graph:test"],
+        "evidence_state": "alert",
+        "missingness": "conflict",
+        "applicability": "not_assessed",
+        "reason_codes": ["individual_record_schema_invalid"],
+        "exclusion_kind": "input_rejection",
+        "record_kind": "exclusion",
+        "claim_ref": None,
+        "excluded_record_count": 1,
+        "excluded_evidence_refs": [],
+        "source_kind": "candidate_record",
+        "source_id": "evidence-candidate:test",
+        "reason_attribution_scope": "exact_rejected_input",
+    }
+    CompilationExclusionRecord.model_validate(input_rejection)
+    with pytest.raises(ValueError, match="exact sanitized source"):
+        CompilationExclusionRecord.model_validate(
+            input_rejection | {"excluded_record_count": 2}
+        )
+    with pytest.raises(ValueError, match="compilation exclusion axes"):
+        CompilationExclusionRecord.model_validate(
+            input_rejection
+            | {
+                "evidence_state": "unknown",
+                "missingness": "not_assessed",
+                "applicability": "partially_applicable",
+            }
+        )
+
+
+def test_long_reference_labels_remain_distinguishable_in_render(tmp_path: Path) -> None:
+    run = _run(tmp_path / "source")
+    final = run.request.output_dir / run.run_id
+    source = EvidenceCompilerVisualizationDataV1.model_validate_json(
+        (final / "evidence_compiler_visualization_data.json").read_bytes()
+    )
+    base = source.claim_records[0].model_dump(mode="json")
+    refs = [
+        "claim:shared-middle-alpha-xxxxxxxxxxxxxxxxxxxxxxxx-suffix@1.0.0",
+        "claim:shared-middle-bravo-yyyyyyyyyyyyyyyyyyyyyyyy-suffix@1.0.0",
+    ]
+    payload = source.model_dump(mode="json")
+    payload["claim_records"] = [
+        base
+        | {
+            "record_id": f"claim-interpretation:collision-{index}",
+            "claim_ref": ref,
+            "evidence_ids": [f"reconciliation:collision-{index}"],
+        }
+        for index, ref in enumerate(refs)
+    ]
+    payload["evidence_ids"] = sorted(
+        {
+            evidence_id
+            for key in (
+                "claim_records",
+                "family_relation_records",
+                "requirement_records",
+                "exclusion_records",
+            )
+            for record in payload[key]
+            for evidence_id in record["evidence_ids"]
+        }
+    )
+    profile = EvidenceCompilerVisualizationDataV1.model_validate(payload)
+    prepared = prepare_evidence_compiler_visualizations(
+        profile=profile,
+        output_dir=tmp_path / "render",
+        run_id="run-ref-collision",
+        tool_version="0.3.0",
+    )
+    labels = [_short_ref(ref) for ref in refs]
+    svg = prepared.payloads["evidence_compiler_claim_interpretation.svg"]
+
+    assert labels[0] != labels[1]
+    assert all(label.encode() in svg for label in labels)

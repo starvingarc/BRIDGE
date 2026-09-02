@@ -706,7 +706,7 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 | 有没有不想要或无法解释的细胞？ | 声明分母下的产品角色与 identity-unknown 账本 | rare-state 观测与分开命名的检测边界；spike-in 检出命中率；按声明来源族展示的 OOD channel 状态 | Off-target Control（P0-05） | 已有 typed 数据、精确表格及三组确定性静态图；后续 Web 只消费这些记录，不重算科学结果 |
 | 是否存在增殖、细胞周期或应激信号？ | 按阶段和细胞状态呈现的 program 证据与复核状态矩阵，同时显示 gene coverage、适用性和证据状态 | 按方法和声明分析单位分开的 program score 摘要；G1/S/G2M phase composition 与 S/G2M score evidence | Proliferation & Stress Response（P0-06） | 已有 typed 数据、精确表格及三组确定性静态图；当前无数值 reference envelope、ProtocolIR 时间线、数值 LOD/UCB 或 spike-in recovery curve，也无 CNV 图。只能表述为需要复核的转录信号，不能解释为安全性或 potency 结论 |
 | 多个批次或工艺有什么差别？ | 比较资格与混杂结构图：先显示哪些差异可以解释；再按指标展示 declared sample/preparation values、observed range、raw delta、单位和分母 | 各方法的 effect、distance、similarity 和 dispersion 分开显示；composition、program、batch/lot 距离及敏感性矩阵仅在上游提供相应记录时出现 | Product Comparison & Stability（P0-07） | 已有 typed 数据、精确表格及三组确定性静态图；observed range 不是置信区间，raw delta 暂无区间，单个 preparation 只能作描述性比较，不能排名 |
-| 为什么能得出这个判断？ | 领域 × Data Readiness / Model Robustness / Prior Applicability 三轴证据矩阵 | 选择结论后显示“来源 → Evidence → Claim → Requirement”证据链及尚缺证据 | Evidence Sufficiency / Compiler & Reconciler（P0-08/P0-09） | 已有结构化结果；现有图投影按 ID 截断，不适合结论下钻 |
+| 为什么能得出这个判断？ | 分析域的输入、方法、参考与解释条件矩阵；当前可用的已协调结论及其证据状态 | EvidenceFamily 支持/反对/冲突关系；尚缺证据、协调排除和输入拒绝分开下钻 | Evidence Sufficiency / Compiler & Reconciler（P0-08/P0-09） | 已有 typed 图形与完整表格回退；未产生行不代表零或缺失，计数仅用于审计，不作为独立证据或证据总分 |
 | 报告能否使用或分享？ | Claim 核对表：数值、单位、分母、区间、措辞和证据引用 | 被阻断的句子、修改建议、公开导出字段清单 | Claim Verifier / Public-safe Export（P0-10/P0-11） | 当前核对工具不检查图表；仍缺机器可读的图表核对回执 |
 | 有移植后数据吗？ | 独立的 graft 组成、reference support 和 program 图 | animal/graft/timepoint、fine subtype、method sensitivity | Optional Graft Assessment（P0-12） | 必须放在独立页，不能反向改变移植前产品结论 |
 

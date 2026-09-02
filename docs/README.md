@@ -18,7 +18,11 @@ evidence you need.
 > channel-state views; P0-06 provides typed stage/state-conditioned program
 > evidence, method-separated program-score summaries and cell-cycle views; P0-07
 > provides typed comparability, declared analysis-unit metric and method-specific
-> evidence views. P0-06 does not currently provide a numeric reference envelope,
+> evidence views; P0-08 provides domain-axis, root-interpretation-requirement and
+> MeasurementResult evidence-state views; P0-09 provides available-reconciliation,
+> dependency-aware family-relation and requirement/exclusion views. Their counts
+> are audit records, not an evidence score. P0-06 does not currently provide a
+> numeric reference envelope,
 > ordered process timeline, numeric LOD/UCB or spike-in recovery curve, or CNV
 > visualization. P0-07 remains descriptive: observed ranges are not confidence
 > intervals and raw deltas have no interval. The current P0-02 figure components
