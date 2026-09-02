@@ -114,6 +114,12 @@ P008_VISUALIZATION_FILES = (
     Path("src/bridge/tool_packages/p0_08_evidence_sufficiency/visualization.py"),
     Path("src/bridge/tool_packages/p0_08_evidence_sufficiency/visualization_data.py"),
 )
+P009_VISUALIZATION_FILES = (
+    Path("src/bridge/resources/schemas/evidence_compiler_visualization_data.schema.json"),
+    Path("src/bridge/resources/schemas/p0_09_visualization_artifact_set.schema.json"),
+    Path("src/bridge/tool_packages/p0_09_evidence_compiler/visualization.py"),
+    Path("src/bridge/tool_packages/p0_09_evidence_compiler/visualization_data.py"),
+)
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
 )
@@ -229,6 +235,10 @@ def _tracked_file_budget() -> int:
         (ROOT / relative).is_file()
         for relative in P008_VISUALIZATION_FILES
     )
+    p009_visualization_files = sum(
+        (ROOT / relative).is_file()
+        for relative in P009_VISUALIZATION_FILES
+    )
     return (
         TRACKED_FILE_BASELINE
         + p004_visualization_files
@@ -236,6 +246,7 @@ def _tracked_file_budget() -> int:
         + p006_visualization_files
         + p007_visualization_files
         + p008_visualization_files
+        + p009_visualization_files
         + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
         + shared_files
         + visualization_contract_files
@@ -243,7 +254,6 @@ def _tracked_file_budget() -> int:
         + p002_visualization_files
         + p003_visualization_files
     )
-
 
 def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> None:
     for relative_path in tracked_files:

@@ -14,7 +14,6 @@ threshold, score or product conclusion.
 | P0-04 Developmental Compatibility | [Candidate validation, 2026-08-25](p0_04_developmental_compatibility_v0.2.md) |
 | P0-05 Off-target Control | [Candidate validation, 2026-08-25](p0_05_off_target_control_20260825.md) |
 | P0-06 Proliferation & Stress Response | [Candidate validation, 2026-08-25](p0_06_proliferation_stress_response_20260825.md) |
-| P0-09 Evidence Compiler & Reconciler | [Candidate validation, 2026-08-13](p0_09_evidence_compiler_20260813.md) |
 | P0-10 Claim Verifier | [Candidate validation, 2026-08-14](p0_10_claim_verifier_20260814.md) · [method benchmark](p0_10_claim_verifier_benchmark_v0.1.md) |
 | P0-11 Public-safe Export | [Candidate validation, 2026-08-25](p0_11_public_safe_export_20260825.md) |
 | P0-12 Optional Graft Assessment | [Candidate validation, 2026-08-25](p0_12_graft_assessment_20260825.md) |

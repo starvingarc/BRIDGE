@@ -864,6 +864,43 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-08",
         data_schema_ref="bridge://schemas/evidence-sufficiency-visualization-data/v0.1",
     ),
+    _typed_component(
+        "bridge.evidence-compiler.claim-interpretation",
+        "0.1.0",
+        title="Interpretation state for each available reconciliation",
+        question=(
+            "What interpretation state, direction, evidence-record accounting and "
+            "open requirements are recorded for each available reconciliation?"
+        ),
+        figure_family="claim_reconciliation_ledger",
+        tool_id="P0-09",
+        data_schema_ref="bridge://schemas/evidence-compiler-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.evidence-compiler.family-relations",
+        "0.1.0",
+        title="Evidence-family relations within each available reconciliation",
+        question=(
+            "Which dependency-connected evidence families support, contradict or "
+            "conflict within each available reconciliation and channel?"
+        ),
+        figure_family="dependency_aware_evidence_family_matrix",
+        tool_id="P0-09",
+        data_schema_ref="bridge://schemas/evidence-compiler-visualization-data/v0.1",
+    ),
+    _typed_component(
+        "bridge.evidence-compiler.requirements-exclusions",
+        "0.1.0",
+        title="Current evidence requirements and compilation exclusions",
+        question=(
+            "Which evidence requirements remain open, and which records were "
+            "excluded or rejected under the current compilation rules?"
+        ),
+        figure_family="requirements_and_exclusions_ledger",
+        tool_id="P0-09",
+        data_schema_ref="bridge://schemas/evidence-compiler-visualization-data/v0.1",
+    ),
 )
 
 

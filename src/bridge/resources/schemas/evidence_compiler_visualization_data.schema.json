@@ -1,0 +1,763 @@
+{
+  "$defs": {
+    "ClaimInterpretationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "claim_ref": {
+          "title": "Claim Ref",
+          "type": "string"
+        },
+        "claim_type": {
+          "title": "Claim Type",
+          "type": "string"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceRelation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "domain_id": {
+          "title": "Domain Id",
+          "type": "string"
+        },
+        "eligibility": {
+          "$ref": "#/$defs/ReconciliationEligibility"
+        },
+        "eligible_channel_count": {
+          "minimum": 0,
+          "title": "Eligible Channel Count",
+          "type": "integer"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "excluded_record_count": {
+          "minimum": 0,
+          "title": "Excluded Record Count",
+          "type": "integer"
+        },
+        "included_record_count": {
+          "minimum": 0,
+          "title": "Included Record Count",
+          "type": "integer"
+        },
+        "independent_evidence_count": {
+          "const": false,
+          "default": false,
+          "title": "Independent Evidence Count",
+          "type": "boolean"
+        },
+        "missingness": {
+          "enum": [
+            "none",
+            "missing",
+            "conflict",
+            "not_assessed"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "open_requirement_count": {
+          "minimum": 0,
+          "title": "Open Requirement Count",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "reconciliation_state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReconciliationState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record_id": {
+          "minLength": 1,
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "total_channel_count": {
+          "minimum": 0,
+          "title": "Total Channel Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "claim_ref",
+        "claim_type",
+        "domain_id",
+        "eligibility",
+        "reconciliation_state",
+        "direction",
+        "included_record_count",
+        "excluded_record_count",
+        "open_requirement_count",
+        "eligible_channel_count",
+        "total_channel_count"
+      ],
+      "title": "ClaimInterpretationRecord",
+      "type": "object"
+    },
+    "CompilationExclusionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "claim_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Claim Ref"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "excluded_evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded Evidence Refs",
+          "type": "array"
+        },
+        "excluded_record_count": {
+          "minimum": 1,
+          "title": "Excluded Record Count",
+          "type": "integer"
+        },
+        "exclusion_kind": {
+          "enum": [
+            "reconciliation_exclusion",
+            "input_rejection"
+          ],
+          "title": "Exclusion Kind",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "none",
+            "missing",
+            "conflict",
+            "not_assessed"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_attribution_scope": {
+          "enum": [
+            "claim_level_not_per_evidence",
+            "exact_rejected_input"
+          ],
+          "title": "Reason Attribution Scope",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "minLength": 1,
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "exclusion",
+          "default": "exclusion",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_kind": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Kind"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "exclusion_kind",
+        "claim_ref",
+        "excluded_record_count",
+        "excluded_evidence_refs",
+        "reason_attribution_scope"
+      ],
+      "title": "CompilationExclusionRecord",
+      "type": "object"
+    },
+    "EvidenceFamilyRelationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "channel_role": {
+          "title": "Channel Role",
+          "type": "string"
+        },
+        "claim_ref": {
+          "title": "Claim Ref",
+          "type": "string"
+        },
+        "component_id": {
+          "title": "Component Id",
+          "type": "string"
+        },
+        "domain_id": {
+          "title": "Domain Id",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "family_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Family Refs",
+          "type": "array"
+        },
+        "independent_influence_candidate": {
+          "const": true,
+          "default": true,
+          "title": "Independent Influence Candidate",
+          "type": "boolean"
+        },
+        "missingness": {
+          "enum": [
+            "none",
+            "missing",
+            "conflict",
+            "not_assessed"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "participation": {
+          "enum": [
+            "included",
+            "excluded",
+            "mixed"
+          ],
+          "title": "Participation",
+          "type": "string"
+        },
+        "raw_record_count": {
+          "minimum": 1,
+          "title": "Raw Record Count",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_and_family_counts_are_not_independent_evidence": {
+          "const": true,
+          "default": true,
+          "title": "Record And Family Counts Are Not Independent Evidence",
+          "type": "boolean"
+        },
+        "record_id": {
+          "minLength": 1,
+          "title": "Record Id",
+          "type": "string"
+        },
+        "relation": {
+          "enum": [
+            "supports",
+            "contradicts",
+            "conflict"
+          ],
+          "title": "Relation",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "claim_ref",
+        "domain_id",
+        "channel_role",
+        "component_id",
+        "family_refs",
+        "evidence_refs",
+        "raw_record_count",
+        "relation",
+        "participation"
+      ],
+      "title": "EvidenceFamilyRelationRecord",
+      "type": "object"
+    },
+    "EvidenceRelation": {
+      "enum": [
+        "supports",
+        "contradicts"
+      ],
+      "title": "EvidenceRelation",
+      "type": "string"
+    },
+    "EvidenceRequirementRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "channel_role": {
+          "title": "Channel Role",
+          "type": "string"
+        },
+        "claim_ref": {
+          "title": "Claim Ref",
+          "type": "string"
+        },
+        "domain_id": {
+          "title": "Domain Id",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missing_is_not_zero": {
+          "const": true,
+          "default": true,
+          "title": "Missing Is Not Zero",
+          "type": "boolean"
+        },
+        "missingness": {
+          "enum": [
+            "none",
+            "missing",
+            "conflict",
+            "not_assessed"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "minLength": 1,
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "requirement",
+          "default": "requirement",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "required_experiment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Experiment"
+        },
+        "required_modality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Modality"
+        },
+        "requirement_key": {
+          "title": "Requirement Key",
+          "type": "string"
+        },
+        "requirement_ref": {
+          "title": "Requirement Ref",
+          "type": "string"
+        },
+        "requirement_state": {
+          "$ref": "#/$defs/EvidenceRequirementState"
+        },
+        "satisfying_record_count": {
+          "minimum": 0,
+          "title": "Satisfying Record Count",
+          "type": "integer"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "version_history_count": {
+          "minimum": 1,
+          "title": "Version History Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "requirement_ref",
+        "requirement_key",
+        "required_modality",
+        "required_experiment",
+        "claim_ref",
+        "domain_id",
+        "channel_role",
+        "requirement_state",
+        "satisfying_record_count",
+        "version_history_count"
+      ],
+      "title": "EvidenceRequirementRecord",
+      "type": "object"
+    },
+    "EvidenceRequirementState": {
+      "enum": [
+        "open",
+        "satisfied",
+        "not_applicable"
+      ],
+      "title": "EvidenceRequirementState",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ReconciliationEligibility": {
+      "enum": [
+        "eligible",
+        "insufficient_evidence",
+        "not_assessed"
+      ],
+      "title": "ReconciliationEligibility",
+      "type": "string"
+    },
+    "ReconciliationState": {
+      "enum": [
+        "stable",
+        "consensus_supported",
+        "integration_sensitive",
+        "unstable"
+      ],
+      "title": "ReconciliationState",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/evidence-compiler-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "claim_level_reasons_are_not_item_attribution": {
+      "const": true,
+      "default": true,
+      "title": "Claim Level Reasons Are Not Item Attribution",
+      "type": "boolean"
+    },
+    "claim_records": {
+      "items": {
+        "$ref": "#/$defs/ClaimInterpretationRecord"
+      },
+      "title": "Claim Records",
+      "type": "array"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "exclusion_records": {
+      "items": {
+        "$ref": "#/$defs/CompilationExclusionRecord"
+      },
+      "title": "Exclusion Records",
+      "type": "array"
+    },
+    "family_relation_records": {
+      "items": {
+        "$ref": "#/$defs/EvidenceFamilyRelationRecord"
+      },
+      "title": "Family Relation Records",
+      "type": "array"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_version": {
+      "minimum": 1,
+      "title": "Graph Version",
+      "type": "integer"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "missing_requirements_are_not_zero_measurements": {
+      "const": true,
+      "default": true,
+      "title": "Missing Requirements Are Not Zero Measurements",
+      "type": "boolean"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_id": {
+      "const": "P0-09",
+      "default": "P0-09",
+      "title": "Producer Tool Id",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "record_and_family_counts_are_not_independent_evidence": {
+      "const": true,
+      "default": true,
+      "title": "Record And Family Counts Are Not Independent Evidence",
+      "type": "boolean"
+    },
+    "requirement_records": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRequirementRecord"
+      },
+      "title": "Requirement Records",
+      "type": "array"
+    },
+    "requirements_exclusions_records": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "exclusion": "#/$defs/CompilationExclusionRecord",
+            "requirement": "#/$defs/EvidenceRequirementRecord"
+          },
+          "propertyName": "record_kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/EvidenceRequirementRecord"
+          },
+          {
+            "$ref": "#/$defs/CompilationExclusionRecord"
+          }
+        ]
+      },
+      "title": "Requirements Exclusions Records",
+      "type": "array"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/evidence-compiler-visualization-data/v0.1",
+      "default": "bridge://schemas/evidence-compiler-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "source_input_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Input Sha256",
+      "type": "string"
+    },
+    "visualization_data_id": {
+      "minLength": 1,
+      "title": "Visualization Data Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "visualization_data_id",
+    "producer_tool_version",
+    "producer_run_ref",
+    "graph_id",
+    "graph_version",
+    "source_input_sha256",
+    "claim_records",
+    "family_relation_records",
+    "requirement_records",
+    "exclusion_records",
+    "requirements_exclusions_records",
+    "evidence_ids",
+    "limitations"
+  ],
+  "title": "EvidenceCompilerVisualizationDataV1",
+  "type": "object"
+}

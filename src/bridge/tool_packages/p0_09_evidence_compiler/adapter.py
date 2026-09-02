@@ -21,7 +21,10 @@ from bridge.tool_packages._structured_runtime import (
     strict_json_loads as _loads_json,
     write_json as _write_json,
 )
-from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSufficiencyProfile
+from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
+    EvidenceSufficiencyProfile,
+    EvidenceSufficiencyProfileV2,
+)
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     CompilationInvariantError,
     canonical_input_hash,
@@ -62,6 +65,14 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     contains_unsafe_reference,
     is_prohibited_conclusion_key,
 )
+from bridge.tool_packages.p0_09_evidence_compiler.visualization import (
+    PreparedEvidenceCompilerVisualizations,
+    prepare_evidence_compiler_visualizations,
+)
+from bridge.tool_packages.p0_09_evidence_compiler.visualization_data import (
+    build_evidence_compiler_visualization_data,
+)
+
 from bridge.toolkit.contracts import (
     ArtifactManifest,
     EligibilityResult,
@@ -78,7 +89,10 @@ from bridge.toolkit.contracts import (
 RESULT_SCHEMA_REF = "bridge://schemas/evidence-compiler-run-result/v0.1"
 ROLE_SCHEMAS = {
     "compilation_bundle": {"bridge://schemas/evidence-compilation-bundle/v0.1"},
-    "evidence_sufficiency_profile": {"bridge://schemas/evidence-sufficiency-profile/v0.1"},
+    "evidence_sufficiency_profile": {
+        "bridge://schemas/evidence-sufficiency-profile/v0.1",
+        "bridge://schemas/evidence-sufficiency-profile/v0.2",
+    },
     "evidence_family_registry": {"bridge://schemas/evidence-family-registry/v0.1"},
     "claim_registry": {"bridge://schemas/claim-registry/v0.1"},
     "reconciliation_spec_registry": {"bridge://schemas/reconciliation-spec-registry/v0.1"},
@@ -104,17 +118,6 @@ ROLE_MODELS: dict[str, type[FrozenModel]] = {
     "base_evidence_record_set": EvidenceRecordSet,
     "base_evidence_requirement_set": EvidenceRequirementSet,
     "source_case_evidence_record_set": EvidenceRecordSet,
-}
-EXPECTED_ARTIFACTS = {
-    "evidence_records.json",
-    "evidence_requirements.json",
-    "reconciliation_records.json",
-    "graph_nodes.parquet",
-    "graph_edges.parquet",
-    "cytoscape_elements.json",
-    "rejected_records.json",
-    "evidence_compiler_run_result.json",
-    "artifact_manifest.json",
 }
 ARTIFACT_FILENAME = re.compile(r"^[a-z0-9_]+(?:\.[a-z0-9]+)+$")
 
@@ -220,6 +223,36 @@ class EvidenceCompilerAdapter:
                 reason = "graph_invariant_failed"
             return _failed_run(request, spec, [reason], input_hash=input_hash)
 
+        try:
+            visualization_profile = build_evidence_compiler_visualization_data(
+                compiled=compiled,
+                claim_registry=claim_registry,
+                family_registry=family_registry,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except (TypeError, ValueError):
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_data_invalid"],
+                input_hash=input_hash,
+            )
+        try:
+            prepared_visualizations = prepare_evidence_compiler_visualizations(
+                profile=visualization_profile,
+                output_dir=request.output_dir.resolve(),
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except Exception:
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_render_failed"],
+                input_hash=input_hash,
+            )
+
         output_root: Path | None = None
         staging: Path | None = None
         staging_created = False
@@ -237,6 +270,7 @@ class EvidenceCompilerAdapter:
                 compiled=compiled,
                 run_id=run_id,
                 objects_by_input_id=loaded.objects_by_input_id,
+                prepared_visualizations=prepared_visualizations,
             )
             if not _inputs_unchanged(request.object_inputs):
                 shutil.rmtree(staging)
@@ -291,7 +325,12 @@ class EvidenceCompilerAdapter:
             input_hash=input_hash,
             created_at=compiled.created_at,
             measurements=[],
-            artifacts=_runtime_artifacts(final, run_id, compiled.record_set.records),
+            artifacts=_runtime_artifacts(
+                final,
+                run_id,
+                visualization_profile.evidence_ids,
+                prepared_visualizations.artifacts,
+            ),
             visualizations=[],
             result_schema_ref=RESULT_SCHEMA_REF,
             result=result.model_dump(mode="json"),
@@ -346,6 +385,13 @@ def _load_structured_inputs(
 
 
 def _role_model(ref: StructuredInputRef) -> type[FrozenModel] | None:
+    if ref.role == "evidence_sufficiency_profile":
+        return (
+            EvidenceSufficiencyProfileV2
+            if ref.schema_ref
+            == "bridge://schemas/evidence-sufficiency-profile/v0.2"
+            else EvidenceSufficiencyProfile
+        )
     if ref.role in {"base_graph_manifest", "source_case_graph_manifest"}:
         if ref.schema_ref == "bridge://schemas/case-evidence-graph-manifest/v0.1":
             return CaseEvidenceGraphManifest
@@ -738,6 +784,7 @@ def _write_bundle(
     compiled: Any,
     run_id: str,
     objects_by_input_id: Mapping[str, FrozenModel],
+    prepared_visualizations: PreparedEvidenceCompilerVisualizations,
 ) -> EvidenceCompilerRunResult:
     _write_json(staging / "evidence_records.json", compiled.record_set.model_dump(mode="json"))
     _write_json(
@@ -925,6 +972,12 @@ def _write_bundle(
     _write_json(
         staging / "evidence_compiler_run_result.json", result.model_dump(mode="json")
     )
+    for filename, payload in sorted(prepared_visualizations.payloads.items()):
+        path = staging / filename
+        if not _safe_artifact_filename(filename) or path.exists():
+            raise ValueError("artifact_checksum_verification_failed")
+        path.write_bytes(payload)
+
     preceding = sorted(
         [
             "evidence_records.json",
@@ -935,15 +988,14 @@ def _write_bundle(
             manifest_name,
             "cytoscape_elements.json",
             "rejected_records.json",
+            *sorted(prepared_visualizations.payloads),
             "evidence_compiler_run_result.json",
         ]
     )
     artifact_specs = [
         {
             "filename": filename,
-            "media_type": (
-                "application/vnd.apache.parquet" if filename.endswith(".parquet") else "application/json"
-            ),
+            "media_type": _artifact_media_type(filename),
             "sha256": hashlib.sha256((staging / filename).read_bytes()).hexdigest(),
             "size_bytes": (staging / filename).stat().st_size,
         }
@@ -964,6 +1016,17 @@ def _write_bundle(
     _write_json(staging / "artifact_manifest.json", artifact_manifest)
     _verify_artifacts(staging, artifact_specs)
     return result
+
+
+def _artifact_media_type(filename: str) -> str:
+    return {
+        ".json": "application/json",
+        ".parquet": "application/vnd.apache.parquet",
+        ".tsv": "text/tab-separated-values",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".pdf": "application/pdf",
+    }.get(Path(filename).suffix, "application/octet-stream")
 
 
 def _artifact_ref(path: Path, media_type: str, row_count: int | None = None) -> GraphArtifactRef:
@@ -1036,24 +1099,29 @@ def _safe_artifact_filename(filename: str) -> bool:
 
 
 def _runtime_artifacts(
-    final: Path, run_id: str, records: list[Any]
+    final: Path,
+    run_id: str,
+    evidence_ids: list[str],
+    visualization_artifacts: tuple[ArtifactManifest, ...],
 ) -> list[ArtifactManifest]:
-    evidence_ids = sorted({record.evidence_id for record in records})
+    evidence_ids = sorted(set(evidence_ids))
+    visualizations_by_name = {
+        Path(item.path).name: item for item in visualization_artifacts
+    }
     items = []
     for path in sorted(final.iterdir(), key=lambda item: item.name):
         if not path.is_file():
             continue
+        if path.name in visualizations_by_name:
+            items.append(visualizations_by_name[path.name])
+            continue
         suffix = path.stem
-        kind = suffix
-        media_type = (
-            "application/vnd.apache.parquet" if path.suffix == ".parquet" else "application/json"
-        )
         items.append(
             ArtifactManifest(
                 artifact_id=f"artifact:{run_id}:{suffix}",
-                kind=kind,
+                kind=suffix,
                 path=path.resolve(),
-                media_type=media_type,
+                media_type=_artifact_media_type(path.name),
                 sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                 evidence_ids=evidence_ids,
             )
