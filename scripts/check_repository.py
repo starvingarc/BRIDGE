@@ -95,6 +95,10 @@ P005_VISUALIZATION_FILES = (
     Path("src/bridge/tool_packages/p0_05_off_target_control/visualization.py"),
     Path("src/bridge/tool_packages/p0_05_off_target_control/visualization_data.py"),
 )
+P005_MEASUREMENT_PROJECTION_FILES = (
+    Path("src/bridge/resources/schemas/off_target_control_profile_v2.schema.json"),
+    Path("src/bridge/tool_packages/p0_05_off_target_control/executor.py"),
+)
 P006_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/proliferation_stress_visualization_data.schema.json"),
     Path("src/bridge/resources/schemas/p0_06_visualization_artifact_set.schema.json"),
@@ -223,6 +227,10 @@ def _tracked_file_budget() -> int:
         (ROOT / relative).is_file()
         for relative in P005_VISUALIZATION_FILES
     )
+    p005_measurement_projection_files = sum(
+        (ROOT / relative).is_file()
+        for relative in P005_MEASUREMENT_PROJECTION_FILES
+    )
     p006_visualization_files = sum(
         (ROOT / relative).is_file()
         for relative in P006_VISUALIZATION_FILES
@@ -243,6 +251,7 @@ def _tracked_file_budget() -> int:
         TRACKED_FILE_BASELINE
         + p004_visualization_files
         + p005_visualization_files
+        + p005_measurement_projection_files
         + p006_visualization_files
         + p007_visualization_files
         + p008_visualization_files

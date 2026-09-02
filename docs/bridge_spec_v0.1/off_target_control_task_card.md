@@ -7,7 +7,7 @@
 | 日期 | 2026-08-25 |
 | 状态 | `candidate / executable shadow` |
 | 上游 | P0-02 V2/V3、预计算 evidence bundle 与可选方法运行对象 |
-| 输出 | `OffTargetControlProfile v0.1`；方法模式另含 `OffTargetMethodBundle v0.1`；两种模式均含 typed visualization data、精确 TSV 与静态图 |
+| 输出 | `OffTargetControlProfile v0.2`；可选 checksummed `MeasurementResultV2`；方法模式另含 `OffTargetMethodBundle v0.1`；两种模式均含 typed visualization data、精确 TSV 与静态图 |
 
 ## 1. 生物学问题与当前边界
 
@@ -57,6 +57,7 @@ GMP 放行或产品排序结论。
 | `biological_unit_manifest` | 方法 | reviewed analysis-unit 与 independence-group mapping |
 | `off_target_method_spec` | 方法 | 方法选择、置信度、bootstrap 次数、planning target、OOD channel→family→upstream hash/method/reference 绑定与规则 |
 | `off_target_method_input` | 方法 | unit-level soft/hard composition、spike-in trials、仅含 channel ID/state/reason 的 OOD observations |
+| `measurement_spec` | 两者可选 | MeasurementSpecV2；须绑定 ProductCase、assay、P0-05 和三类允许的投影 metric |
 
 `OffTargetEvidenceBundle` 是上游计算结果的最小交接面。它包含 soft mass 与
 observed count，但不携带角色判断。完整覆盖状态下，state 与 unknown 的 soft
@@ -87,6 +88,10 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 `ToolRunV2.result` 返回；方法模式原子增加
 `off_target_method_bundle.json`。
 
+P0-05 v0.5 始终返回 profile v0.2。未提供 MeasurementSpec 时明确记录
+`not_requested` 且不生成 normalized measurement；提供并通过校验时，每条现有
+role、unknown 和 rare-state 记录各生成一个 checksummed MeasurementResultV2。
+
 | 字段 | 含义 |
 |---|---|
 | upstream refs/hashes | ProductCase、Card、RoleMap、AssessmentSpec、P0-02 profile 与 evidence bundle 的精确绑定 |
@@ -97,6 +102,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 | `reason_codes` | coverage、零观测、缺观测和校准限制 |
 | `evidence_state` | 固定 `shadow` |
 | `score_state` / `domain_score` | 固定 `unavailable` / `null` |
+| measurement projection | 缺失或不可用保持 null，不补零；所有结果仍为 `score_state=unavailable` / `domain_score=null` |
 
 方法 bundle 另含：
 

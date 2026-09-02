@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from bridge.tool_packages.p0_05_off_target_control.adapter import adapter
 from bridge.tool_packages.p0_05_off_target_control.visualization import (
     prepare_off_target_control_visualizations,
 )
@@ -19,7 +20,14 @@ from bridge.tool_packages.p0_05_off_target_control.visualization_data import (
 from bridge.toolkit.contracts import ExecutionState, StructuredInputRef, ToolRequestV2
 from bridge.toolkit.registry import ToolRegistry
 from p0_biological_units import bind_reviewed_biological_units
-from test_p0_05_off_target_control import _encoded, _request, _write
+from test_p0_05_off_target_control import (
+    _encoded,
+    _projection_request,
+    _projection_spec,
+    _request,
+    _with_measurement_spec,
+    _write,
+)
 
 
 METHOD_ROLE_SCHEMAS = {
@@ -374,6 +382,49 @@ def _rewrite_method(request: ToolRequestV2, role: str, change) -> ToolRequestV2:
     return request.model_copy(update={"object_inputs": refs})
 
 
+def _method_request_with_measurement_spec(tmp_path: Path) -> ToolRequestV2:
+    request = _projection_request(
+        _with_measurement_spec(_method_request(tmp_path))
+    )
+    measurement_sha = next(
+        item.sha256 for item in request.object_inputs if item.role == "measurement_spec"
+    )
+    request = _rewrite_method(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update(
+            {"measurement_spec_sha256": measurement_sha}
+        ),
+    )
+    profile_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "cell_state_evidence_profile"
+    )
+    request = _rewrite_method(
+        request,
+        "off_target_evidence_bundle",
+        lambda payload: payload.update(
+            {"cell_state_profile_sha256": profile_sha}
+        ),
+    )
+    evidence_sha = next(
+        item.sha256
+        for item in request.object_inputs
+        if item.role == "off_target_evidence_bundle"
+    )
+    return _rewrite_method(
+        request,
+        "off_target_method_input",
+        lambda payload: payload.update(
+            {
+                "cell_state_profile_sha256": profile_sha,
+                "evidence_bundle_sha256": evidence_sha,
+            }
+        ),
+    )
+
+
 def test_method_mode_executes_eight_transparent_methods(tmp_path: Path) -> None:
     registry = ToolRegistry.load_default()
     request = _method_request(tmp_path)
@@ -459,6 +510,42 @@ def test_method_mode_executes_eight_transparent_methods(tmp_path: Path) -> None:
     assert product_figure.data_binding.interval_lower_field == "soft_interval_lower"
     assert product_figure.data_binding.interval_upper_field == "soft_interval_upper"
     assert first.run_id != different_seed.run_id
+
+
+def test_method_mode_can_opt_into_measurement_projection(tmp_path: Path) -> None:
+    request = _method_request_with_measurement_spec(tmp_path)
+
+    registry = ToolRegistry.load_default()
+    assert registry.check_eligibility(request).eligible
+    run = registry.run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert run.result["object_version"] == "0.2.0"
+    assert run.result_schema_ref == _projection_spec().result_schema_ref
+    assert run.result["measurement_projection_state"] == "available"
+    assert len(run.measurements) == 6
+    assert len(
+        [item for item in run.artifacts if item.kind == "measurement_result_v2"]
+    ) == 6
+    assert any(item.kind == "off_target_method_bundle" for item in run.artifacts)
+    assert len(run.artifacts) == 22
+
+
+def test_method_mode_rejects_measurement_spec_checksum_drift(
+    tmp_path: Path,
+) -> None:
+    request = _rewrite_method(
+        _method_request_with_measurement_spec(tmp_path),
+        "measurement_spec",
+        lambda payload: payload.update(
+            {"scientific_question": "A changed projection contract"}
+        ),
+    )
+
+    eligibility = adapter.check_eligibility(request, _projection_spec())
+
+    assert not eligibility.eligible
+    assert "measurement_spec_checksum_mismatch" in eligibility.reason_codes
 
 
 def test_method_mode_partial_coverage_withholds_intervals(tmp_path: Path) -> None:
@@ -763,7 +850,7 @@ def test_renderer_retains_more_than_five_spike_in_states(
         profile=profile,
         output_dir=tmp_path / "rerender",
         run_id=run.run_id,
-        tool_version="0.4.0",
+        tool_version="0.5.0",
     )
     svg = rendered.payloads[
         "off_target_control_rare-state-detectability.svg"
