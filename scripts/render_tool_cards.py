@@ -34,7 +34,7 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/input_audit_qc_task_card.md",
     },
     "P0-02": {
-        "input": "QC-qualified expression views, declared scRNA/snRNA modality, annotation vocabulary, reference candidates and provenance. The optional V3 handoff also consumes a deployment-catalogued P0-01 structured-output index with checksummed QC V2, biological-unit assignment and manifest artifacts.",
+        "input": "QC-qualified expression views with required `source_family_id` and `qc_profile_ref` asset metadata, a MeasurementSpec reference, declared scRNA/snRNA modality, annotation vocabulary, reference candidates and provenance. The optional V3 handoff resolves the deployment-catalogued P0-01 structured-output index named by `qc_profile_ref`, including checksummed QC V2, biological-unit assignment and manifest artifacts.",
         "output": "Backward-compatible Cell-State evidence plus an optional candidate-only V3 profile bound to the selected data view, MeasurementSpec, vocabulary, reference, QC bytes, typed biological-unit lineage, producer and environment. V3 emits explicit evidence states and denominators; it never emits assigned states or a domain score.",
         "reject": "Reference, vocabulary, MeasurementSpec, assay, data-view or checksum mismatch fails closed. Missing structured-index or typed-lineage inputs leave the legacy run successful but V3 unavailable; no lineage or positive composition is inferred.",
         "visualization": "Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.",

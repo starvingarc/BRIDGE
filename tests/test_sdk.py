@@ -24,6 +24,16 @@ def test_python_sdk_describes_tool_input_contract() -> None:
     assert contract.object_input_modes[0].roles[-1].min_count == 2
 
 
+def test_p0_02_input_contract_declares_runtime_qc_metadata() -> None:
+    contract = describe_tool_input("P0-02")
+
+    assert contract.asset_input is not None
+    assert contract.asset_input.required_metadata_keys == [
+        "source_family_id",
+        "qc_profile_ref",
+    ]
+
+
 def test_python_sdk_searches_packaged_knowledge() -> None:
     hits = search_knowledge("ambient RNA correction", module_id="P0-01", limit=5)
 

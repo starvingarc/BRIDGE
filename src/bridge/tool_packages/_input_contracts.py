@@ -224,7 +224,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
             assays=["scRNA-seq", "snRNA-seq"],
             input_levels=["analysis_ready", "count_ready"],
             matrix_semantics=["normalized_expression", "raw_counts"],
-            required_metadata_keys=["source_family_id"],
+            required_metadata_keys=["source_family_id", "qc_profile_ref"],
         ),
         measurement_spec_ref_policy="required",
         parameters_allowed=True,
