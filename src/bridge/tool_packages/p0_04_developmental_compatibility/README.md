@@ -19,10 +19,22 @@ disagreement are unavailable rather than pooled. Ordered sampling-point labels
 are categorical; continuous-time and inferential time-course evidence remain
 unavailable until a numeric time contract exists.
 
-Outputs include `DevelopmentalCompatibilityResult`, typed visualization data,
-three exact table fallbacks and deterministic SVG/PNG/PDF figures. Expression
-mode also emits `DevelopmentMethodBundle`. All results retain
-`domain_score=null`; method evidence is candidate/shadow.
+Outputs include the preserved `DevelopmentalCompatibilityResult` v0.2 model
+and a v0.3 result that binds one independent, checksummed
+`MeasurementResultV2` JSON artifact for every existing whole-product and
+target-related role fraction. When declared timepoints are present, their
+already-computed role fractions are projected in the same way. The projection
+copies raw fraction, numerator and positive denominator without adding a
+threshold, developmental judgement or interval. A zero denominator, missing
+profile or unavailable upstream state stays null/unavailable rather than
+becoming zero.
+
+`ToolRunV2.measurements` exposes the same projected objects for compatibility.
+The v0.3 result, typed visualization data, three exact table fallbacks and
+deterministic SVG/PNG/PDF figures are published atomically. Expression mode also
+emits `DevelopmentMethodBundle`. All result and measurement objects retain
+`domain_score=null` and `score_state=unavailable`; method evidence remains
+candidate/shadow.
 
 ## Documentation
 

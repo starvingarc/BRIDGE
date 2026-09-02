@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Literal, Self
+from enum import StrEnum
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, StrictInt, field_validator, model_validator
 
@@ -20,6 +21,9 @@ from bridge.tool_packages.p0_04_developmental_compatibility.roles import (
     DevelopmentStageRole,
 )
 from bridge.toolkit.contracts import FrozenModel
+
+
+ReasonCode = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
 
 
 def _unique(values: list[object], field: str) -> None:
@@ -200,6 +204,60 @@ class ReferenceStageSupport(FrozenModel):
         return self
 
 
+class DevelopmentMeasurementMetricName(StrEnum):
+    WHOLE_PRODUCT_ROLE_FRACTION = "whole_product_role_fraction"
+    TARGET_RELATED_ROLE_FRACTION = "target_related_role_fraction"
+    TIMEPOINT_WHOLE_PRODUCT_ROLE_FRACTION = (
+        "timepoint_whole_product_role_fraction"
+    )
+    TIMEPOINT_TARGET_RELATED_ROLE_FRACTION = (
+        "timepoint_target_related_role_fraction"
+    )
+
+
+class DevelopmentMeasurementArtifactBinding(FrozenModel):
+    measurement_id: str = Field(min_length=1)
+    metric_name: DevelopmentMeasurementMetricName
+    denominator_kind: Literal["whole_product", "target_related"]
+    stage_role: DevelopmentStageRole
+    timepoint_id: str | None = Field(default=None, pattern=OBJECT_ID_PATTERN)
+    timepoint_order: StrictInt | None = Field(default=None, ge=0)
+    artifact_id: str = Field(min_length=1)
+    file_name: str = Field(pattern=r"^[a-z0-9][a-z0-9_.-]*\.json$")
+    sha256: str = Field(pattern=SHA256_PATTERN)
+    reason_codes: list[ReasonCode] = Field(default_factory=list)
+
+    @field_validator("reason_codes")
+    @classmethod
+    def reasons_are_sorted_unique(cls, value: list[str]) -> list[str]:
+        if value != sorted(set(value)):
+            raise ValueError("measurement reasons must be unique and sorted")
+        return value
+
+    @model_validator(mode="after")
+    def metric_context_is_coherent(self) -> Self:
+        is_timepoint = self.timepoint_id is not None
+        if is_timepoint != (self.timepoint_order is not None):
+            raise ValueError("timepoint ID and order must be supplied together")
+        expected = {
+            (False, "whole_product"): (
+                DevelopmentMeasurementMetricName.WHOLE_PRODUCT_ROLE_FRACTION
+            ),
+            (False, "target_related"): (
+                DevelopmentMeasurementMetricName.TARGET_RELATED_ROLE_FRACTION
+            ),
+            (True, "whole_product"): (
+                DevelopmentMeasurementMetricName.TIMEPOINT_WHOLE_PRODUCT_ROLE_FRACTION
+            ),
+            (True, "target_related"): (
+                DevelopmentMeasurementMetricName.TIMEPOINT_TARGET_RELATED_ROLE_FRACTION
+            ),
+        }[(is_timepoint, self.denominator_kind)]
+        if self.metric_name is not expected:
+            raise ValueError("measurement metric and projection context disagree")
+        return self
+
+
 class InputChecksumBindings(FrozenModel):
     product_case: str = Field(pattern=SHA256_PATTERN)
     product_definition_card: str = Field(pattern=SHA256_PATTERN)
@@ -271,6 +329,68 @@ class DevelopmentalCompatibilityResult(FrozenModel):
         return self
 
 
+class DevelopmentalCompatibilityResultV3(DevelopmentalCompatibilityResult):
+    object_version: Literal["0.3.0"]
+    measurement_artifacts: list[DevelopmentMeasurementArtifactBinding] = Field(
+        min_length=10
+    )
+
+    @model_validator(mode="after")
+    def measurement_projection_is_complete(self) -> Self:
+        if self.measurement_artifacts != sorted(
+            self.measurement_artifacts, key=lambda item: item.file_name
+        ):
+            raise ValueError("measurement artifacts must be sorted by file name")
+        for field_name, values in (
+            (
+                "measurement IDs",
+                [item.measurement_id for item in self.measurement_artifacts],
+            ),
+            (
+                "measurement artifact IDs",
+                [item.artifact_id for item in self.measurement_artifacts],
+            ),
+            (
+                "measurement file names",
+                [item.file_name for item in self.measurement_artifacts],
+            ),
+        ):
+            _unique(values, field_name)
+
+        expected = {
+            (None, None, kind, role)
+            for kind in ("whole_product", "target_related")
+            for role in DevelopmentStageRole
+        }
+        expected.update(
+            {
+                (
+                    profile.timepoint_id,
+                    profile.timepoint_order,
+                    kind,
+                    role,
+                )
+                for profile in self.timecourse_profiles
+                for kind in ("whole_product", "target_related")
+                for role in DevelopmentStageRole
+            }
+        )
+        observed = {
+            (
+                item.timepoint_id,
+                item.timepoint_order,
+                item.denominator_kind,
+                item.stage_role,
+            )
+            for item in self.measurement_artifacts
+        }
+        if observed != expected or len(observed) != len(self.measurement_artifacts):
+            raise ValueError(
+                "measurement artifacts must bind every projected role fraction once"
+            )
+        return self
+
+
 from bridge.tool_packages.p0_04_developmental_compatibility.method_models import (
     DevelopmentMethodBundle,
     DevelopmentMethodSpec,
@@ -283,15 +403,23 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/development-timepoint-series/v0.1": DevelopmentTimepointSeries,
     "bridge://schemas/development-method-spec/v0.1": DevelopmentMethodSpec,
     "bridge://schemas/development-method-bundle/v0.1": DevelopmentMethodBundle,
-    "bridge://schemas/developmental-compatibility-result/v0.2": DevelopmentalCompatibilityResult,
+    "bridge://schemas/developmental-compatibility-result/v0.2": (
+        DevelopmentalCompatibilityResult
+    ),
+    "bridge://schemas/developmental-compatibility-result/v0.3": (
+        DevelopmentalCompatibilityResultV3
+    ),
 }
 
 
 __all__ = [
+    "DevelopmentMeasurementArtifactBinding",
+    "DevelopmentMeasurementMetricName",
     "DevelopmentStateMap",
     "DevelopmentTimepointSeries",
     "DevelopmentWindowSpec",
     "DevelopmentalCompatibilityResult",
+    "DevelopmentalCompatibilityResultV3",
     "ProductCase",
     "ProductDefinitionCard",
     "PUBLIC_SCHEMA_MODELS",
