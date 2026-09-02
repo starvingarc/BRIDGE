@@ -358,7 +358,7 @@ class ProliferationStressVisualizationDataV1(FrozenModel):
     producer_tool_version: str = Field(min_length=1)
     producer_run_ref: str = Field(pattern=r"^run:run-[a-f0-9]{16}$")
     source_profile_id: str = Field(min_length=1)
-    source_profile_version: Literal["0.1.0"]
+    source_profile_version: Literal["0.1.0", "0.2.0"]
     product_case_ref: VersionedObjectRef
     product_definition_ref: VersionedObjectRef
     development_window_ref: VersionedObjectRef
