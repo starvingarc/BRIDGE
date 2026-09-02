@@ -513,15 +513,14 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-04",
         tool_id="P0-04",
-        tool_version="0.4.0",
+        tool_version="0.5.0",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
 
 
 def _run(request: ToolRequestV2):
-    spec = ToolRegistry.load_default().describe("P0-04")
-    return adapter.run(request, spec)
+    return ToolRegistry.load_default().run(request)
 
 
 def _mutate(request: ToolRequestV2, role: str, change) -> ToolRequestV2:
@@ -543,7 +542,7 @@ def _mutate(request: ToolRequestV2, role: str, change) -> ToolRequestV2:
 def test_registry_exposes_current_traceable_contract() -> None:
     registry = ToolRegistry.load_default()
     spec = registry.describe("P0-04")
-    assert spec.version == "0.4.0"
+    assert spec.version == "0.5.0"
     assert spec.implementation_state.value == "implemented"
     assert RESULT_SCHEMA_REF.endswith("/v0.3")
     assert ROLE_SCHEMAS["cell_state_evidence_profile"].endswith("/v0.3")
@@ -726,7 +725,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="legacy-request",
         tool_id="P0-04",
-        tool_version="0.4.0",
+        tool_version="0.5.0",
         output_dir=tmp_path.resolve(),
     )
     eligibility = adapter.check_eligibility(request, spec)

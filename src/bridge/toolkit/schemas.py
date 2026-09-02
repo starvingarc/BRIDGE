@@ -35,6 +35,7 @@ SCHEMA_REFS = {
     "bridge://schemas/development-window-spec/v0.1": "development_window_spec.schema.json",
     "bridge://schemas/developmental-compatibility-result/v0.1": "developmental_compatibility_result.schema.json",
     "bridge://schemas/developmental-compatibility-result/v0.2": "developmental_compatibility_result_v2.schema.json",
+    "bridge://schemas/developmental-compatibility-result/v0.3": "developmental_compatibility_result_v3.schema.json",
     "bridge://schemas/eligibility-result/v0.1": "eligibility_result.schema.json",
     "bridge://schemas/evidence-compilation-bundle/v0.1": "evidence_compilation_bundle.schema.json",
     "bridge://schemas/evidence-compiler-run-result/v0.1": "evidence_compiler_run_result.schema.json",
