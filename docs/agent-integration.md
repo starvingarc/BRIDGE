@@ -63,6 +63,20 @@ without changing scientific semantics.
 
 Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.
 
+## Local Runtime Core
+
+The package includes a framework-neutral core for an immutable upload envelope,
+content-bound execution plans, typed approval receipts, guarded Tool Package
+execution, claim-fenced workflow events, private SQLite persistence and optional
+content-addressed artifacts. It does not include a model client, conversational
+loop, Web worker or fixed 12-tool pipeline.
+
+P0-01 requests can be derived directly from uploaded expression assets. All
+downstream Tool Package requests must be explicitly materialized against their
+published input contracts. The runtime records execution status separately from
+scientific readiness and accepts completion only from validated `ToolRun`
+receipts. See [Local Runtime Core](local-agent-runtime.md) for the exact boundary.
+
 ## Failure Boundary
 
 The Agent may explain a deterministic result but cannot edit numerical values, thresholds, evidence states, hashes or identifiers. Missing metadata triggers a targeted question; tool or data failure never becomes a biological product conclusion.

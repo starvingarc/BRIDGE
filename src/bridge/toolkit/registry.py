@@ -340,6 +340,37 @@ class ToolRegistry:
             return run_cell_state_evidence(request, spec)
         raise RuntimeError(f"No executor registered for implemented tool {request.tool_id}")
 
+    def validate_result(
+        self,
+        result: object,
+        request: ToolRequestModel,
+    ) -> ToolRunModel:
+        """Validate a result against the registry-selected contract."""
+
+        spec = self.describe(request.tool_id)
+        if isinstance(spec, ToolPackageSpecV2):
+            if not isinstance(request, ToolRequestV2):
+                raise TypeError("Tool Package requires ToolRequestV2")
+            return self._validate_adapter_result(
+                result,
+                request,
+                spec,
+                self._resolve_result_schema(spec),
+            )
+        if not isinstance(request, ToolRequest) or isinstance(request, ToolRequestV2):
+            raise TypeError("Tool Package requires ToolRequest")
+        if not isinstance(result, ToolRun) or isinstance(result, ToolRunV2):
+            raise TypeError("Tool Package returned an invalid ToolRun")
+        if result.request != request or result.request.tool_id != spec.tool_id:
+            raise ValueError("Tool Package returned a mismatched tool or request")
+        if result.tool_version != spec.version:
+            raise ValueError("Tool Package returned a mismatched tool version")
+        if result.implementation_state is not spec.implementation_state:
+            raise ValueError("Tool Package returned a mismatched implementation state")
+        if result.environment_spec_id != spec.environment_spec_id:
+            raise ValueError("Tool Package returned a mismatched environment spec")
+        return result
+
     def _run_v2(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
     ) -> ToolRunV2:

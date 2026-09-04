@@ -76,3 +76,20 @@ present those records but cannot recompute or promote them.
 Current P0-01/P0-02 runs retain byte-compatible v0.1 artifacts. Their seven
 registered components remain `legacy_untyped` until component-specific PRs
 provide typed data, table/text fallbacks and renderer validation.
+
+## 2026-09-04: Keep The Local Runtime Explicit And Content-Bound
+
+The local single-worker core records workflow transitions as append-only
+`RunEvent` facts and derives current state through a deterministic projection.
+Each executable step is bound to an exact request, checksum, Tool Package
+contract, output-directory identity and typed approval receipt. Attempt-specific
+claims fence stale workers, and completion is accepted only with a validated
+`ToolRun` receipt.
+
+The planner creates upload-QC requests and accepts explicitly materialized
+downstream requests. It does not encode a universal P0 dependency graph or
+construct missing scientific inputs. The upload envelope remains distinct from
+the scientific `ProductCase` contract. Workflow success describes execution
+only and does not change evidence state, scientific readiness or release status.
+Model-provider integration, distributed execution and authentication remain
+outside this core.
