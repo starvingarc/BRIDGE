@@ -901,6 +901,43 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-09",
         data_schema_ref="bridge://schemas/evidence-compiler-visualization-data/v0.1",
     ),
+    _typed_component(
+        "bridge.claim-verifier.claim-check-matrix",
+        "0.1.0",
+        title="Report and statement checks under the current rules",
+        question=(
+            "Which report eligibility preconditions and claim-level review "
+            "dimensions emitted findings under the current deterministic rules?"
+        ),
+        figure_family="report_and_claim_check_matrix",
+        tool_id="P0-10",
+        data_schema_ref="bridge://schemas/claim-verifier-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.claim-verifier.numeric-correspondence",
+        "0.1.0",
+        title="Correspondence of reported values to cited evidence",
+        question=(
+            "Do report values and units reproduce the cited canonical Evidence "
+            "values at their exact structured text spans?"
+        ),
+        figure_family="numeric_evidence_correspondence_ledger",
+        tool_id="P0-10",
+        data_schema_ref="bridge://schemas/claim-verifier-visualization-data/v0.1",
+    ),
+    _typed_component(
+        "bridge.claim-verifier.finding-context",
+        "0.1.0",
+        title="Recorded findings and their report context",
+        question=(
+            "Where in each structured claim did a deterministic finding arise, "
+            "and which rule and Evidence references are recorded with that finding context?"
+        ),
+        figure_family="claim_finding_context_ledger",
+        tool_id="P0-10",
+        data_schema_ref="bridge://schemas/claim-verifier-visualization-data/v0.1",
+    ),
 )
 
 

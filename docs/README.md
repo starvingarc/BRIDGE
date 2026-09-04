@@ -20,8 +20,11 @@ evidence you need.
 > provides typed comparability, declared analysis-unit metric and method-specific
 > evidence views; P0-08 provides domain-axis, root-interpretation-requirement and
 > MeasurementResult evidence-state views; P0-09 provides available-reconciliation,
-> dependency-aware family-relation and requirement/exclusion views. Their counts
-> are audit records, not an evidence score. P0-06 does not currently provide a
+> dependency-aware family-relation and requirement/exclusion views; P0-10
+> provides report/claim checks, exact value-to-evidence correspondence and
+> finding-context views. The registry contains 34 components: 27 typed candidates
+> and 7 legacy components. Their counts are audit records, not an evidence score.
+> P0-06 does not currently provide a
 > numeric reference envelope,
 > ordered process timeline, numeric LOD/UCB or spike-in recovery curve, or CNV
 > visualization. P0-07 remains descriptive: observed ranges are not confidence

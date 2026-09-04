@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import csv
 import hashlib
 import importlib
+from io import StringIO
 import json
 from pathlib import Path
 import shutil
@@ -19,16 +21,15 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
 )
 from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
 from bridge.tool_packages.p0_10_claim_verifier.adapter import adapter
-from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
-    benchmark_sha256,
-    decision_payload_sha256,
-    load_benchmark,
-    render_benchmark_markdown,
-)
 from bridge.tool_packages.p0_10_claim_verifier.models import (
+    EXTERNAL_BENCHMARK_ID,
+    EXTERNAL_BENCHMARK_SHA256,
     PUBLIC_SCHEMA_MODELS,
+    ClaimCheckRecord,
     ClaimPolicySpec,
     ClaimVerificationResult,
+    CheckOutcome,
+    CheckSeverity,
     ReportDraft,
     StatementRegistry,
     report_content_hash,
@@ -36,6 +37,14 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
 from bridge.tool_packages.p0_10_claim_verifier.verifier import (
     load_release_contract,
     release_contract_sha256,
+)
+from bridge.tool_packages.p0_10_claim_verifier.visualization_data import (
+    PUBLIC_VISUALIZATION_SCHEMA_MODELS,
+    ClaimVerifierVisualizationDataV1,
+    FindingState,
+    NumericCorrespondenceRecord,
+    P010VisualizationArtifactSet,
+    _check_category,
 )
 from bridge.toolkit.contracts import (
     ExecutionState,
@@ -47,17 +56,21 @@ from bridge.toolkit.contracts import (
 )
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.toolkit.registry import ToolRegistry
+from bridge.toolkit.schemas import load_schema
 
 
 adapter_module = importlib.import_module(
     "bridge.tool_packages.p0_10_claim_verifier.adapter"
 )
+visualization_module = importlib.import_module(
+    "bridge.tool_packages.p0_10_claim_verifier.visualization"
+)
 
 
 CREATED_AT = "2026-08-12T00:00:00Z"
 EVIDENCE_REF = "evidence:" + "a" * 24 + "@1"
-CLAIM_REF = "claim:server-validation-test-count@1.0.0"
-PRODUCT_CASE_REF = "product-case:public-validation@1.0.0"
+CLAIM_REF = "claim:synthetic-observation-count@1.0.0"
+PRODUCT_CASE_REF = "product-case:synthetic-observation@1.0.0"
 
 
 def _write(path: Path, payload: object) -> str:
@@ -73,42 +86,42 @@ def _evidence_record(**changes: Any) -> EvidenceRecord:
     payload = {
         "evidence_id": "evidence:" + "a" * 24,
         "evidence_version": 1,
-        "logical_key": "public-server-test-count",
+        "logical_key": "synthetic-observation-count",
         "content_hash": "b" * 64,
         "product_case_ref": {
-            "object_id": "product-case:public-validation",
+            "object_id": "product-case:synthetic-observation",
             "object_version": "1.0.0",
         },
         "sample_or_preparation_ref": {
-            "object_id": "report-source:server-validation",
+            "object_id": "report-source:synthetic-observation",
             "object_version": "1.0.0",
         },
         "domain_id": "target_identity",
         "measurement_result_ref": {
-            "object_id": "measurement-result:test-count",
+            "object_id": "measurement-result:observed-cell-count",
             "object_version": "1.0.0",
         },
         "measurement_spec_ref": {
-            "object_id": "measurement-spec:test-count",
+            "object_id": "measurement-spec:observed-cell-count",
             "object_version": "1.0.0",
         },
-        "metric_id": "installed-wheel-test-count",
-        "value": 192,
-        "unit": "tests",
-        "numerator": 192,
-        "denominator": 192,
+        "metric_id": "observed-cell-count",
+        "value": 42,
+        "unit": "cells",
+        "numerator": 42,
+        "denominator": 42,
         "interval": {
-            "lower": 192.0,
-            "upper": 192.0,
+            "lower": 42.0,
+            "upper": 42.0,
             "confidence_level": None,
             "method_ref": None,
         },
         "claim_ref": {
-            "object_id": "claim:server-validation-test-count",
+            "object_id": "claim:synthetic-observation-count",
             "object_version": "1.0.0",
         },
         "biological_context": {
-            "context_id": "context:engineering-validation",
+            "context_id": "context:synthetic-observation",
             "context_version": "1.0.0",
         },
         "relation": "supports",
@@ -117,22 +130,22 @@ def _evidence_record(**changes: Any) -> EvidenceRecord:
         "lifecycle_state": "active",
         "applicability": "applicable",
         "evidence_family_ref": {
-            "object_id": "evidence-family:engineering-validation",
+            "object_id": "evidence-family:synthetic-observation",
             "object_version": "1.0.0",
         },
         "sufficiency_profile_ref": {
-            "object_id": "evidence-sufficiency-profile:public-validation",
+            "object_id": "evidence-sufficiency-profile:synthetic-observation",
             "object_version": "1.0.0",
         },
         "tool_run_ref": {
-            "object_id": "tool-run:public-validation",
+            "object_id": "tool-run:synthetic-observation",
             "object_version": "1.0.0",
         },
         "tool_run_execution_state": "succeeded",
         "reference_refs": [],
         "prior_refs": [],
         "artifact_refs": [],
-        "provenance_refs": ["provenance:public-server-validation"],
+        "provenance_refs": ["provenance:synthetic-observation"],
         "revision_action": "create",
         "predecessor_ref": None,
         "created_at": CREATED_AT,
@@ -153,16 +166,23 @@ def _evidence_set(**record_changes: Any) -> EvidenceRecordSet:
     )
 
 
-def _graph_manifest(evidence_set: EvidenceRecordSet | None = None) -> dict[str, Any]:
+def _graph_manifest(
+    evidence_set: EvidenceRecordSet | None = None,
+    *,
+    backing_dir: Path | None = None,
+) -> dict[str, Any]:
     evidence_set = evidence_set or _evidence_set()
 
     def artifact(filename: str, *, parquet: bool = False) -> dict[str, Any]:
+        payload = b"PAR1synthetic-observation" if parquet else b"{}\n"
+        if backing_dir is not None:
+            (backing_dir / filename).write_bytes(payload)
         return {
             "filename": filename,
             "media_type": (
                 "application/vnd.apache.parquet" if parquet else "application/json"
             ),
-            "sha256": "e" * 64,
+            "sha256": hashlib.sha256(payload).hexdigest(),
             "row_count": 0 if parquet else None,
         }
 
@@ -184,7 +204,7 @@ def _graph_manifest(evidence_set: EvidenceRecordSet | None = None) -> dict[str, 
         "created_at": CREATED_AT,
         "graph_kind": "case",
         "product_case_ref": {
-            "object_id": "product-case:public-validation",
+            "object_id": "product-case:synthetic-observation",
             "object_version": "1.0.0",
         },
     }
@@ -219,10 +239,10 @@ def _value_binding(
     text: str,
     rendered: str,
     *,
-    binding_id: str = "test-count",
+    binding_id: str = "observed-cell-count",
     source_field: str = "value",
-    canonical: str = "192",
-    raw_unit: str | None = "tests",
+    canonical: str = "42",
+    raw_unit: str | None = "cells",
 ) -> dict[str, Any]:
     start = text.index(rendered)
     return {
@@ -237,7 +257,7 @@ def _value_binding(
 
 def _report_payload(
     *,
-    text: str = "installed-wheel-test-count: 192 tests.",
+    text: str = "observed-cell-count: 42 cells.",
     claim_type: str = "measurement_claim",
     reported_state: str | None = "measured",
     comparison_mode: str = "not_applicable",
@@ -250,12 +270,12 @@ def _report_payload(
     claim_evidence = [EVIDENCE_REF] if evidence_refs is None else evidence_refs
     binding = None
     if claim_evidence and include_binding:
-        rendered = "192 tests" if "192 tests" in text else "192"
+        rendered = "42 cells" if "42 cells" in text else "42"
         binding = _value_binding(text, rendered)
         binding.update(binding_changes or {})
     payload = {
         "object_version": "0.1.0",
-        "report_id": "report:public-server-validation",
+        "report_id": "report:synthetic-observation",
         "report_version": "0.1.0",
         "content_hash": "0" * 64,
         "audience": audience,
@@ -265,7 +285,7 @@ def _report_payload(
         "statement_registry_ref": "BRIDGE-STATEMENT-REGISTRY-v0.1@0.1.0",
         "claim_blocks": [
             {
-                "claim_id": "claim-block:test-count",
+                "claim_id": "claim-block:observed-cell-count",
                 "claim_version": "0.1.0",
                 "claim_ref": CLAIM_REF,
                 "product_case_ref": PRODUCT_CASE_REF,
@@ -309,7 +329,7 @@ def _request(
             "evidence",
             "evidence_graph_manifest",
             "bridge://schemas/case-evidence-graph-manifest/v0.1",
-            _graph_manifest(),
+            _graph_manifest(backing_dir=tmp_path),
             "1",
         ),
         (
@@ -344,7 +364,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-10",
         tool_id="P0-10",
-        tool_version="0.1.1",
+        tool_version="0.4.0",
         output_dir=tmp_path / "output",
         object_inputs=refs,
     )
@@ -396,68 +416,6 @@ def test_runtime_validates_each_raw_input_with_jsonschema(
     )
 
 
-def test_benchmark_is_task_grouped_complete_and_has_no_default_or_aggregate() -> None:
-    benchmark = load_benchmark()
-    spec = _spec()
-
-    approved_runtime = {
-        method.method_id
-        for method in benchmark.methods
-        if method.decision.state.value == "approved"
-        and method.recommendation.value in {"default_candidate", "sensitivity_candidate"}
-    }
-
-    assert benchmark.default_method_id is None
-    assert benchmark.aggregate_score is None
-    assert benchmark.aggregate_rank is None
-    assert benchmark.benchmark_state == "server_validated_candidate"
-    assert set(spec.method_ids) == approved_runtime
-    assert len(benchmark.methods) == 18
-    internal_case = next(
-        case
-        for case in benchmark.data_cases
-        if case.case_id == "INTERNAL-ANONYMIZED-REPORT-v0.1"
-    )
-    assert internal_case.claim_count == 3
-    assert all(
-        internal_case.case_id in method.data_case_ids
-        for method in benchmark.methods
-        if method.evaluation != "audit_only"
-    )
-    core = next(
-        method
-        for method in benchmark.methods
-        if method.method_id == "METHOD-INTERNAL-DETERMINISTIC-ENGINE-33C959"
-    )
-    assert core.task_metrics["internal_claim_count"] == 3
-    assert core.task_metrics["internal_repeat_match"] == 1.0
-    assert {
-        method.decision.benchmark_sha256 for method in benchmark.methods
-    } == {decision_payload_sha256(benchmark.model_dump(mode="json"))}
-    assert benchmark_sha256() == hashlib.sha256(
-        Path(
-            "src/bridge/tool_packages/p0_10_claim_verifier/resources/benchmark_v0.1.json"
-        ).read_bytes()
-    ).hexdigest()
-
-
-def test_benchmark_markdown_is_generated_from_json() -> None:
-    expected = render_benchmark_markdown()
-    actual = Path(
-        "docs/validation/p0_10_claim_verifier_benchmark_v0.1.md"
-    ).read_text(encoding="utf-8")
-
-    assert actual == expected
-    assert "Aggregate score/rank: `null` / `null`" in actual
-    assert "## Exact numeric and unit fidelity" in actual
-
-    card = Path("src/bridge/tool_packages/cards/P0-10.md").read_text(
-        encoding="utf-8"
-    )
-    assert benchmark_sha256() in card
-    assert f"`{load_benchmark().benchmark_state}`" in card
-
-
 def test_receipt_binds_authority_and_matches_the_published_bytes(
     tmp_path: Path,
 ) -> None:
@@ -473,15 +431,24 @@ def test_receipt_binds_authority_and_matches_the_published_bytes(
         ref for ref in request.object_inputs if ref.role == "evidence_graph_manifest"
     )
     assert run.result["evidence_graph_manifest_sha256"] == manifest_ref.sha256
-    assert run.result["benchmark_id"] == "P0-10-BENCHMARK-v0.1"
-    assert run.result["benchmark_sha256"] == benchmark_sha256()
+    assert run.result["benchmark_id"] == EXTERNAL_BENCHMARK_ID
+    assert run.result["benchmark_sha256"] == EXTERNAL_BENCHMARK_SHA256
     assert run.result["release_contract_id"] == load_release_contract().contract_id
     assert run.result["release_contract_sha256"] == release_contract_sha256()
     assert run.measurements == []
-    assert len(run.artifacts) == 1
-    artifact_bytes = run.artifacts[0].path.read_bytes()
+    assert len(run.artifacts) == 16
+    artifact_bytes = next(
+        artifact.path.read_bytes()
+        for artifact in run.artifacts
+        if artifact.kind == "claim_verification_result"
+    )
     assert artifact_bytes == canonical_json_bytes(run.result, indent=2)
-    assert hashlib.sha256(artifact_bytes).hexdigest() == run.artifacts[0].sha256
+    result_artifact = next(
+        artifact
+        for artifact in run.artifacts
+        if artifact.kind == "claim_verification_result"
+    )
+    assert hashlib.sha256(artifact_bytes).hexdigest() == result_artifact.sha256
 
 
 def test_p0_11_can_reject_a_mutated_report_draft_from_the_p0_10_receipt(
@@ -494,7 +461,7 @@ def test_p0_11_can_reject_a_mutated_report_draft_from_the_p0_10_receipt(
 
     assert receipt.matches_report_draft(report)
     for field, value in (
-        ("text", "This product is clinically safe."),
+        ("text", "This synthetic claim reports: 42 cells."),
         ("claim_ref", "claim:replacement@1.0.0"),
         ("reported_evidence_state", "negative"),
         ("value_bindings", []),
@@ -519,7 +486,7 @@ def test_identical_inputs_reuse_byte_identical_result(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "changes,reason",
     [
-        ({"canonical_numeric_string": "191"}, "canonical_numeric_mismatch"),
+        ({"canonical_numeric_string": "41"}, "canonical_numeric_mismatch"),
         ({"raw_unit": "samples"}, "unit_mismatch"),
         ({"text_span": (0, 3)}, "rendered_numeric_mismatch"),
     ],
@@ -538,11 +505,11 @@ def test_numeric_mutations_are_hard_blockers(
 
 
 def test_numeric_suffix_cannot_hide_an_extra_number(tmp_path: Path) -> None:
-    text = "installed-wheel-test-count: 192 tests999."
-    start = text.index("192")
+    text = "observed-cell-count: 42 cells999."
+    start = text.index("42")
     report = _report_payload(
         text=text,
-        binding_changes={"text_span": (start, start + len("192 tests999"))},
+        binding_changes={"text_span": (start, start + len("42 cells999"))},
     )
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
@@ -556,10 +523,10 @@ def test_numeric_suffix_cannot_hide_an_extra_number(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("token", "numeric", "canonical", "unit", "value"),
     [
-        ("192tests", "192", "192", "tests", 192),
-        ("192cells", "192", "192", "cells", 192),
+        ("42cells", "42", "42", "cells", 42),
+        ("42cell", "42", "42", "cells", 42),
         ("1e3cells", "1e3", "1000", "cells", 1000),
-        ("192_tests", "192", "192", "tests", 192),
+        ("42_cells", "42", "42", "cells", 42),
     ],
 )
 def test_noncanonical_numeric_text_cannot_bypass_complete_reconstruction(
@@ -571,7 +538,7 @@ def test_noncanonical_numeric_text_cannot_bypass_complete_reconstruction(
     unit: str,
     value: int,
 ) -> None:
-    text = f"installed-wheel-test-count: {token}."
+    text = f"observed-cell-count: {token}."
     _stub_graph(monkeypatch, _evidence_set(value=value, unit=unit))
     report = _report_payload(text=text, include_binding=False)
     report["claim_blocks"][0]["value_bindings"] = [
@@ -598,7 +565,7 @@ def test_scientific_identifiers_are_not_misread_as_numeric_claims(
     metric_id: str,
 ) -> None:
     _stub_graph(monkeypatch, _evidence_set(metric_id=metric_id))
-    report = _report_payload(text=f"{metric_id}: 192 tests.")
+    report = _report_payload(text=f"{metric_id}: 42 cells.")
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
@@ -612,10 +579,10 @@ def test_large_finite_integer_returns_a_typed_receipt(
 ) -> None:
     value = 10**30
     _stub_graph(monkeypatch, _evidence_set(value=value))
-    text = f"installed-wheel-test-count: {value} tests."
+    text = f"observed-cell-count: {value} cells."
     report = _report_payload(text=text, include_binding=False)
     report["claim_blocks"][0]["value_bindings"] = [
-        _value_binding(text, f"{value} tests", canonical=str(value))
+        _value_binding(text, f"{value} cells", canonical=str(value))
     ]
     report["content_hash"] = report_content_hash(report)
 
@@ -628,7 +595,7 @@ def test_large_finite_integer_returns_a_typed_receipt(
 def test_declared_renderer_cannot_author_extra_scientific_prose(tmp_path: Path) -> None:
     report = _report_payload(
         text=(
-            "installed-wheel-test-count: 192 tests. "
+            "observed-cell-count: 42 cells. "
             "The cells produce dopamine."
         )
     )
@@ -647,42 +614,42 @@ def test_denominator_and_interval_values_use_separate_exact_spans(
     _stub_graph(
         monkeypatch,
         _evidence_set(
-            denominator=200,
+            denominator=50,
             interval={
-                "lower": 180,
-                "upper": 198,
+                "lower": 40,
+                "upper": 44,
                 "confidence_level": None,
                 "method_ref": None,
             },
         ),
     )
     text = (
-        "The value was 192 tests, denominator 200 tests, "
-        "and interval 180 tests to 198 tests."
+        "The value was 42 cells, denominator 50 cells, "
+        "and interval 40 cells to 44 cells."
     )
     report = _report_payload(text=text)
     report["claim_blocks"][0]["value_bindings"] = [
-        _value_binding(text, "192 tests"),
+        _value_binding(text, "42 cells"),
         _value_binding(
             text,
-            "200 tests",
+            "50 cells",
             binding_id="denominator",
             source_field="denominator",
-            canonical="200",
+            canonical="50",
         ),
         _value_binding(
             text,
-            "180 tests",
+            "40 cells",
             binding_id="interval-lower",
             source_field="interval_lower",
-            canonical="180",
+            canonical="40",
         ),
         _value_binding(
             text,
-            "198 tests",
+            "44 cells",
             binding_id="interval-upper",
             source_field="interval_upper",
-            canonical="198",
+            canonical="44",
         ),
     ]
     report["content_hash"] = report_content_hash(report)
@@ -701,7 +668,7 @@ def test_denominator_and_interval_values_use_separate_exact_spans(
 
 def test_extra_numeric_prose_fails_complete_reconstruction(tmp_path: Path) -> None:
     report = _report_payload(
-        text="The first run passed 192 tests and the second passed 192 tests."
+        text="The first observation contains 42 cells and the second contains 42 cells."
     )
 
     run = adapter.run(_request(tmp_path, report=report), _spec())
@@ -794,7 +761,7 @@ def test_unapproved_renderer_metadata_requires_review(tmp_path: Path) -> None:
 
 def test_unbound_number_and_evidence_state_substitution_block_release(tmp_path: Path) -> None:
     report = _report_payload(
-        text="The installed-wheel suite passed 192 tests across 2 runs.",
+        text="The sample contains 42 cells across 2 preparations.",
         reported_state="negative",
     )
     run = adapter.run(_request(tmp_path, report=report), _spec())
@@ -863,8 +830,8 @@ def test_distinct_missing_statements_emit_distinct_check_ids(tmp_path: Path) -> 
 @pytest.mark.parametrize(
     ("text", "language"),
     [
-        ("该套件通过 192 项测试，因此证明安全性。", "zh"),
-        ("The suite passed 192 tests；这不能证明安全性。", "mixed"),
+        ("该样本含 42 个细胞，因此证明安全性。", "zh"),
+        ("The sample contains 42 cells；这不能证明安全性。", "mixed"),
     ],
 )
 def test_bilingual_prohibited_claims_are_hard_blockers(
@@ -887,9 +854,9 @@ def test_bilingual_prohibited_claims_are_hard_blockers(
 @pytest.mark.parametrize(
     "text",
     [
-        "- The installed-wheel suite passed 192 tests.",
-        "The *installed-wheel* suite passed 192 tests.",
-        "The suite passed 192 tests. <img src=x onerror=alert(1)>",
+        "- The sample contains 42 cells.",
+        "The *sample* contains 42 cells.",
+        "The sample contains 42 cells. <img src=x onerror=alert(1)>",
     ],
 )
 def test_report_claims_reject_free_markup(text: str) -> None:
@@ -900,7 +867,7 @@ def test_report_claims_reject_free_markup(text: str) -> None:
 def test_caller_numeric_transform_is_rejected_before_verification(
     tmp_path: Path,
 ) -> None:
-    report = _report_payload(text="installed-wheel-test-count: 19200 tests.")
+    report = _report_payload(text="observed-cell-count: 4200 cells.")
     binding = report["claim_blocks"][0]["value_bindings"][0]
     binding["format_spec"] = {
         "decimal_places": 0,
@@ -918,7 +885,7 @@ def test_caller_numeric_transform_is_rejected_before_verification(
 
 def test_claim_text_cannot_execute_nested_template_syntax(tmp_path: Path) -> None:
     report = _report_payload(
-        text="The {{ literal_template_text }} suite passed 192 tests."
+        text="The {{ literal_template_text }} sample contains 42 cells."
     )
     run = adapter.run(_request(tmp_path, report=report), _spec())
 
@@ -934,7 +901,7 @@ def test_report_cannot_self_declare_release_reviewer_authority(
     report = _report_payload()
     report["human_review_decisions"] = [
         {
-            "claim_id": "claim-block:test-count",
+            "claim_id": "claim-block:observed-cell-count",
             "rule_id": "rule:ambiguous-superiority",
             "decision": "approved",
             "reviewer_role": "claim_reviewer",
@@ -952,7 +919,7 @@ def test_report_cannot_self_declare_release_reviewer_authority(
 
 def test_descriptive_claim_cannot_use_inferential_language(tmp_path: Path) -> None:
     report = _report_payload(
-        text="The result was statistically significant at 192 tests.",
+        text="The result was statistically significant at 42 cells.",
         claim_type="descriptive_comparison",
         comparison_mode="descriptive_only",
     )
@@ -1040,7 +1007,7 @@ def test_caller_cannot_replace_the_approved_claim_policy(tmp_path: Path) -> None
     payload["text_rules"] = []
     policy = ClaimPolicySpec.model_validate(payload)
     report = _report_payload(
-        text="installed-wheel-test-count: 192 tests; this proves safety."
+        text="observed-cell-count: 42 cells; this proves safety."
     )
 
     run = adapter.run(_request(tmp_path, report=report, policy=policy), _spec())
@@ -1078,7 +1045,7 @@ def test_removed_review_metadata_fails_without_echoing_the_value(tmp_path: Path)
     report = _report_payload()
     report["human_review_decisions"] = [
         {
-            "claim_id": "claim-block:test-count",
+            "claim_id": "claim-block:observed-cell-count",
             "rule_id": "rule:ambiguous-superiority",
             "decision": "approved",
             "reviewer_role": "claim_reviewer",
@@ -1137,19 +1104,21 @@ def test_post_publication_replacement_is_a_typed_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    publish = adapter_module._publish_result
+    publish = adapter_module._publish_bundle
 
-    def replace_after_publish(**kwargs: Any) -> Path:
-        path = publish(**kwargs)
-        path.write_bytes(b'{"replacement":true}\n')
-        return path
+    def replace_after_publish(**kwargs: Any) -> dict[str, Path]:
+        paths = publish(**kwargs)
+        paths["claim_verification_result.json"].write_bytes(
+            b'{"replacement":true}\n'
+        )
+        return paths
 
-    monkeypatch.setattr(adapter_module, "_publish_result", replace_after_publish)
+    monkeypatch.setattr(adapter_module, "_publish_bundle", replace_after_publish)
 
     run = adapter.run(_request(tmp_path), _spec())
 
     assert run.execution_state is ExecutionState.FAILED
-    assert run.reason_codes == ["published_result_hash_mismatch"]
+    assert run.reason_codes == ["published_bundle_hash_mismatch"]
     assert run.result is None and run.artifacts == []
 
 
@@ -1203,7 +1172,7 @@ def test_receipt_model_and_public_schema_reject_impossible_combinations(
         _request(
             tmp_path / "blocked",
             report=_report_payload(
-                text="installed-wheel-test-count: 192 tests; this proves safety."
+                text="observed-cell-count: 42 cells; this proves safety."
             ),
         ),
         _spec(),
@@ -1276,3 +1245,828 @@ def test_registry_exposes_p0_10_as_v2_candidate() -> None:
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert spec.input_schema_ref == "bridge://schemas/tool-request/v0.2"
     assert spec.result_schema_ref == "bridge://schemas/claim-verification-result/v0.1"
+
+
+def _visualization_artifact_set(run) -> P010VisualizationArtifactSet:
+    artifact = next(
+        item for item in run.artifacts if item.kind == "visualization_artifact_set"
+    )
+    return P010VisualizationArtifactSet.model_validate_json(artifact.path.read_bytes())
+
+
+def _visualization_profile(run) -> ClaimVerifierVisualizationDataV1:
+    artifact = next(
+        item
+        for item in run.artifacts
+        if item.kind == "claim_verifier_visualization_data"
+    )
+    return ClaimVerifierVisualizationDataV1.model_validate_json(
+        artifact.path.read_bytes()
+    )
+
+
+@pytest.mark.parametrize(
+    "schema_ref,model",
+    {**PUBLIC_SCHEMA_MODELS, **PUBLIC_VISUALIZATION_SCHEMA_MODELS}.items(),
+)
+def test_public_schema_files_are_exact_draft_2020_12_exports(
+    schema_ref: str, model: type
+) -> None:
+    expected = model.model_json_schema()
+    expected["$id"] = schema_ref
+    actual = load_schema(schema_ref)
+
+    Draft202012Validator.check_schema(actual)
+    assert actual == expected
+    if schema_ref == "bridge://schemas/claim-verification-result/v0.1":
+        assert {"benchmark_id", "benchmark_sha256"} <= set(actual["required"])
+        assert "default" not in actual["properties"]["benchmark_id"]
+        assert "default" not in actual["properties"]["benchmark_sha256"]
+
+
+def test_unregistered_claim_check_rule_is_not_silently_categorized() -> None:
+    check = ClaimCheckRecord(
+        check_id="check:" + "1" * 16,
+        claim_id="claim-block:synthetic-observation",
+        rule_id="rule:new-unregistered-rule",
+        rule_version="0.1.0",
+        outcome=CheckOutcome.WARNING,
+        severity=CheckSeverity.WARNING,
+        reason_code="synthetic_reason",
+    )
+
+    with pytest.raises(ValueError, match="unregistered claim-check rule"):
+        _check_category(check)
+
+
+def test_every_current_verifier_rule_has_an_explicit_visualization_category() -> None:
+    static_rule_ids = {
+        "rule:case-scope",
+        "rule:claim-scope",
+        "rule:claim-type-policy",
+        "rule:comparison-contract",
+        "rule:comparison-mode",
+        "rule:descriptive-scope",
+        "rule:deterministic-authoring",
+        "rule:evidence-applicability",
+        "rule:evidence-binding",
+        "rule:evidence-lifecycle",
+        "rule:evidence-state",
+        "rule:evidence-state-policy",
+        "rule:evidence-tier",
+        "rule:numeric-fidelity",
+        "rule:statement-binding",
+        "rule:statement-text",
+        "rule:value-binding",
+    }
+    policy_rule_ids = {rule.rule_id for rule in _policy().text_rules}
+    for index, rule_id in enumerate(sorted(static_rule_ids | policy_rule_ids), start=1):
+        check = ClaimCheckRecord(
+            check_id=f"check:{index:016x}",
+            claim_id="claim-block:synthetic-observation",
+            rule_id=rule_id,
+            rule_version="0.1.0",
+            outcome=CheckOutcome.WARNING,
+            severity=CheckSeverity.WARNING,
+            reason_code="synthetic_reason",
+        )
+        _check_category(check)
+
+
+def test_renderer_uses_redundant_status_symbols_and_readable_finding_labels() -> None:
+    assert visualization_module._finding_symbol(FindingState.NO_FINDING, 0) == "—"
+    assert visualization_module._finding_symbol(FindingState.WARNING, 2) == "! 2"
+    assert visualization_module._finding_symbol(FindingState.REVIEW_REQUIRED, 1) == "? 1"
+    assert visualization_module._finding_symbol(FindingState.BLOCKED, 3) == "× 3"
+    assert (
+        visualization_module._human_label("canonical_numeric_mismatch")
+        == "Canonical numeric mismatch"
+    )
+
+
+def test_visualization_bundle_conserves_artifacts_and_typed_data_binding(
+    tmp_path: Path,
+) -> None:
+    run = adapter.run(_request(tmp_path), _spec())
+    final = run.request.output_dir / run.run_id
+    manifest = json.loads((final / "artifact_manifest.json").read_text())
+    artifact_set = _visualization_artifact_set(run)
+    data_artifact = next(
+        item
+        for item in run.artifacts
+        if item.kind == "claim_verifier_visualization_data"
+    )
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert len(run.artifacts) == 16
+    assert len(manifest["artifacts"]) == 15
+    assert len({item["filename"] for item in manifest["artifacts"]}) == 15
+    assert {item["filename"] for item in manifest["artifacts"]} == {
+        path.name
+        for path in final.iterdir()
+        if path.name != "artifact_manifest.json"
+    }
+    assert sum(item.kind == "visualization_table" for item in run.artifacts) == 3
+    assert sum(item.kind == "visualization_render" for item in run.artifacts) == 9
+    assert artifact_set.data_profile_artifact_id == data_artifact.artifact_id
+    assert artifact_set.data_profile_sha256 == data_artifact.sha256
+    assert len(artifact_set.visualizations) == 3
+    artifact_ids = {item.artifact_id for item in run.artifacts}
+    for visualization in artifact_set.visualizations:
+        assert visualization.data_binding.artifact_id == data_artifact.artifact_id
+        assert visualization.data_binding.sha256 == data_artifact.sha256
+        assert visualization.accessibility.data_sha256 == data_artifact.sha256
+        assert visualization.accessibility.table_artifact_id in artifact_ids
+        assert len(visualization.renders) == 3
+        assert {render.media_type for render in visualization.renders} == {
+            "image/svg+xml",
+            "image/png",
+            "application/pdf",
+        }
+        assert all(
+            render.artifact_id in artifact_ids
+            and render.data_sha256 == data_artifact.sha256
+            for render in visualization.renders
+        )
+
+    serialized_manifest = json.dumps(manifest, sort_keys=True)
+    assert all("input_id" not in item for item in manifest["structured_inputs"])
+    assert str(tmp_path) not in serialized_manifest
+    assert not any(
+        prefix in serialized_manifest
+        for prefix in ("/data", "/home/", "/Users/", "/private/")
+    )
+
+
+def test_exact_rerun_reuses_every_artifact_byte(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    first = adapter.run(request, _spec())
+    before = {
+        item.path.name: (item.sha256, item.path.read_bytes())
+        for item in first.artifacts
+    }
+
+    second = adapter.run(
+        request.model_copy(update={"request_id": "request-byte-rerun"}),
+        _spec(),
+    )
+    after = {
+        item.path.name: (item.sha256, item.path.read_bytes())
+        for item in second.artifacts
+    }
+
+    assert first.run_id == second.run_id
+    assert before == after
+
+
+@pytest.mark.parametrize(
+    ("attribute", "value"),
+    [
+        ("_FONT_RELATIVE_PATH", Path("fonts/missing-cjk-font.ttf")),
+        ("_FONT_SHA256", "0" * 64),
+        ("_FONT_FAMILY", "Synthetic Missing Family"),
+    ],
+)
+def test_font_contract_failures_publish_no_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    attribute: str,
+    value: object,
+) -> None:
+    monkeypatch.setattr(visualization_module, attribute, value)
+    request = _request(tmp_path)
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["visualization_font_unavailable"]
+    assert run.result is None and run.artifacts == []
+    assert not (request.output_dir / run.run_id).exists()
+
+
+def test_cjk_claim_context_is_rendered_with_the_declared_font(
+    tmp_path: Path,
+) -> None:
+    text = "样本含 42 cells；该表述需要人工复核。"
+    report = _report_payload(text=text)
+    report["language"] = "zh"
+    report["authoring_channel"] = "human_edit"
+    report["claim_blocks"][0]["language"] = "zh"
+    report["claim_blocks"][0]["authoring_channel"] = "human_edit"
+    report["content_hash"] = report_content_hash(report)
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+    profile_artifact = next(
+        item
+        for item in run.artifacts
+        if item.kind == "claim_verifier_visualization_data"
+    )
+    profile = ClaimVerifierVisualizationDataV1.model_validate_json(
+        profile_artifact.path.read_bytes()
+    )
+    renders = {
+        item.path.suffix: item.path.read_bytes()
+        for item in run.artifacts
+        if item.kind == "visualization_render"
+        and "finding-context" in item.path.name
+    }
+
+    assert any(row.claim_text == text for row in profile.finding_records)
+    assert renders[".png"].startswith(b"\x89PNG")
+    assert renders[".pdf"].startswith(b"%PDF")
+    assert b"<path" in renders[".svg"]
+
+
+def test_input_change_during_atomic_publication_leaves_no_run_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _request(tmp_path)
+    monkeypatch.setattr(adapter_module, "_inputs_unchanged", lambda _refs: False)
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_modified_during_run"]
+    assert run.result is None and run.artifacts == []
+    assert not (request.output_dir / run.run_id).exists()
+
+
+def test_oversized_matrix_uses_complete_table_without_top_n(
+    tmp_path: Path,
+) -> None:
+    report = _report_payload()
+    template = report["claim_blocks"][0]
+    report["claim_blocks"] = []
+    for index in range(25):
+        claim = deepcopy(template)
+        claim["claim_id"] = f"claim-block:synthetic-{index:03d}"
+        claim["value_bindings"][0]["binding_id"] = f"binding:count-{index:03d}"
+        report["claim_blocks"].append(claim)
+    report["content_hash"] = report_content_hash(report)
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+    profile_artifact = next(
+        item
+        for item in run.artifacts
+        if item.kind == "claim_verifier_visualization_data"
+    )
+    profile = ClaimVerifierVisualizationDataV1.model_validate_json(
+        profile_artifact.path.read_bytes()
+    )
+    artifact_set = _visualization_artifact_set(run)
+    matrix = next(
+        item
+        for item in artifact_set.visualizations
+        if item.component_id.endswith("claim-check-matrix")
+    )
+    table = next(
+        item
+        for item in run.artifacts
+        if item.artifact_id == matrix.accessibility.table_artifact_id
+    )
+    rows = list(csv.DictReader(StringIO(table.path.read_text()), delimiter="\t"))
+
+    assert profile.claim_count == 25
+    assert len(profile.check_matrix_records) == 26
+    assert len(rows) == 26
+    assert "static_render_requires_complete_table_fallback" in (
+        matrix.missing_reason_codes
+    )
+
+
+def test_long_finding_context_uses_complete_table_without_text_truncation(
+    tmp_path: Path,
+) -> None:
+    text = "observed-cell-count: 42 cells. " + "Detailed context " * 45
+    report = _report_payload(text=text)
+    report["authoring_channel"] = "human_edit"
+    report["claim_blocks"][0]["authoring_channel"] = "human_edit"
+    report["content_hash"] = report_content_hash(report)
+
+    run = adapter.run(_request(tmp_path, report=report), _spec())
+    artifact_set = _visualization_artifact_set(run)
+    finding = next(
+        item
+        for item in artifact_set.visualizations
+        if item.component_id.endswith("finding-context")
+    )
+    table = next(
+        item
+        for item in run.artifacts
+        if item.artifact_id == finding.accessibility.table_artifact_id
+    )
+    rows = list(csv.DictReader(StringIO(table.path.read_text()), delimiter="\t"))
+
+    assert rows
+    assert all(row["claim_text"] == text for row in rows)
+    assert "static_render_requires_complete_table_fallback" in (
+        finding.missing_reason_codes
+    )
+
+
+def test_result_schema_bytes_remain_v01_compatible() -> None:
+    schema_path = (
+        Path(adapter_module.__file__).resolve().parents[2]
+        / "resources/schemas/claim_verification_result.schema.json"
+    )
+
+    assert hashlib.sha256(schema_path.read_bytes()).hexdigest() == (
+        "41e160b47e1a5a23a41355ff52256a0bc2e63d4a60e66a5dbd4b66c1dece402d"
+    )
+
+
+def test_visualization_records_preserve_normal_and_mismatch_semantics(
+    tmp_path: Path,
+) -> None:
+    normal = adapter.run(_request(tmp_path / "normal"), _spec())
+    normal_profile = ClaimVerifierVisualizationDataV1.model_validate_json(
+        next(
+            item
+            for item in normal.artifacts
+            if item.kind == "claim_verifier_visualization_data"
+        ).path.read_bytes()
+    )
+    report_rows = [
+        row
+        for row in normal_profile.check_matrix_records
+        if row.record_kind == "report_check_matrix"
+    ]
+    claim_rows = [
+        row
+        for row in normal_profile.check_matrix_records
+        if row.record_kind == "claim_check_matrix"
+    ]
+
+    assert len(report_rows) == 1
+    assert len(report_rows[0].checks) == 4
+    assert len(claim_rows) == 1
+    assert len(claim_rows[0].categories) == 5
+    assert len(normal_profile.numeric_records) == 1
+    assert (
+        normal_profile.numeric_records[0].correspondence_state.value
+        == "exact_identity_under_current_rules"
+    )
+    assert normal_profile.finding_records == []
+
+    report = _report_payload(binding_changes={"canonical_numeric_string": "41"})
+    mismatch = adapter.run(
+        _request(tmp_path / "mismatch", report=report),
+        _spec(),
+    )
+    mismatch_profile = ClaimVerifierVisualizationDataV1.model_validate_json(
+        next(
+            item
+            for item in mismatch.artifacts
+            if item.kind == "claim_verifier_visualization_data"
+        ).path.read_bytes()
+    )
+    numeric = mismatch_profile.numeric_records[0]
+    finding_by_id = {
+        row.check_id: row for row in mismatch_profile.finding_records
+    }
+    start, end = report["claim_blocks"][0]["value_bindings"][0]["text_span"]
+
+    assert numeric.check_ids
+    assert set(numeric.check_ids) <= set(finding_by_id)
+    for check_id in numeric.check_ids:
+        finding = finding_by_id[check_id]
+        assert finding.record_kind == "span_finding_context"
+        assert (finding.span_start, finding.span_end) == (start, end)
+        assert finding.matched_text == report["claim_blocks"][0]["text"][start:end]
+
+
+def test_component_artifacts_use_only_records_path_evidence_lineage(
+    tmp_path: Path,
+) -> None:
+    reports = [_report_payload()]
+    boundary = _report_payload(
+        text="This verification does not establish safety.",
+        claim_type="policy_or_boundary_statement",
+        reported_state=None,
+        statement_refs=["statement:safety-boundary@0.1.0"],
+        evidence_refs=[],
+        audience="internal_research",
+    )
+    reports.append(boundary)
+
+    for index, report in enumerate(reports):
+        run = adapter.run(
+            _request(tmp_path / f"case-{index}", report=report),
+            _spec(),
+        )
+        profile = ClaimVerifierVisualizationDataV1.model_validate_json(
+            next(
+                item
+                for item in run.artifacts
+                if item.kind == "claim_verifier_visualization_data"
+            ).path.read_bytes()
+        )
+        artifact_set = _visualization_artifact_set(run)
+        artifacts = {item.artifact_id: item for item in run.artifacts}
+
+        for visualization in artifact_set.visualizations:
+            records = getattr(profile, visualization.data_binding.records_path)
+            expected = (
+                sorted(
+                    {
+                        evidence_id
+                        for record in records
+                        for evidence_id in record.evidence_ids
+                    }
+                )
+                if records
+                else [profile.source_result_ref]
+            )
+            assert visualization.evidence_ids == expected
+            linked_ids = {
+                visualization.accessibility.table_artifact_id,
+                *(render.artifact_id for render in visualization.renders),
+            }
+            assert all(artifacts[item].evidence_ids == expected for item in linked_ids)
+
+
+def test_backing_graph_change_during_publication_leaves_no_run_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _request(tmp_path)
+    publish = adapter_module._publish_bundle
+
+    def mutate_backing_artifact(**kwargs: Any):
+        (tmp_path / "evidence_records.json").write_bytes(b"{\"changed\":true}\n")
+        return publish(**kwargs)
+
+    monkeypatch.setattr(
+        adapter_module,
+        "_publish_bundle",
+        mutate_backing_artifact,
+    )
+
+    run = adapter.run(request, _spec())
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["structured_input_modified_during_run"]
+    assert run.result is None and run.artifacts == []
+    assert not (request.output_dir / run.run_id).exists()
+
+
+def test_typed_visualization_rejects_cross_record_identity_mutations(
+    tmp_path: Path,
+) -> None:
+    normal = _visualization_profile(
+        adapter.run(_request(tmp_path / "normal"), _spec())
+    ).model_dump(mode="json")
+    mismatch_report = _report_payload(
+        binding_changes={"canonical_numeric_string": "41"}
+    )
+    mismatch = _visualization_profile(
+        adapter.run(
+            _request(tmp_path / "mismatch", report=mismatch_report),
+            _spec(),
+        )
+    ).model_dump(mode="json")
+
+    ghost_claim = deepcopy(normal)
+    ghost_claim["numeric_records"][0]["claim_id"] = "claim-block:ghost"
+
+    wrong_span = deepcopy(mismatch)
+    wrong_span["numeric_records"][0]["span_end"] += 1
+    wrong_span["numeric_records"][0]["report_rendered_text"] += "."
+
+    duplicate_binding = deepcopy(normal)
+    duplicate_row = deepcopy(duplicate_binding["numeric_records"][0])
+    duplicate_row["record_id"] = "numeric.002"
+    duplicate_binding["numeric_records"].append(duplicate_row)
+    duplicate_binding["binding_count"] = 2
+
+    wrong_check = deepcopy(mismatch)
+    wrong_check["numeric_records"][0]["check_ids"] = ["check:" + "f" * 16]
+
+    wrong_report = deepcopy(normal)
+    wrong_report["check_matrix_records"][0]["report_draft_ref"] = (
+        "report:unbound@0.1.0"
+    )
+
+    for payload in (
+        ghost_claim,
+        wrong_span,
+        duplicate_binding,
+        wrong_check,
+        wrong_report,
+    ):
+        with pytest.raises(ValueError):
+            ClaimVerifierVisualizationDataV1.model_validate(payload)
+
+
+def test_typed_visualization_rejects_incoherent_state_axes(
+    tmp_path: Path,
+) -> None:
+    profile = _visualization_profile(
+        adapter.run(_request(tmp_path), _spec())
+    ).model_dump(mode="json")
+
+    no_finding_alert = deepcopy(profile)
+    no_finding_alert["check_matrix_records"][1]["evidence_state"] = "alert"
+    with pytest.raises(ValueError):
+        ClaimVerifierVisualizationDataV1.model_validate(no_finding_alert)
+
+    fake_unit_mismatch = deepcopy(profile["numeric_records"][0])
+    fake_unit_mismatch.update(
+        {
+            "correspondence_state": "unit_mismatch",
+            "display_state": "unit_mismatch",
+            "evidence_state": "alert",
+            "reason_codes": ["unit_mismatch"],
+            "check_ids": ["check:" + "e" * 16],
+        }
+    )
+    with pytest.raises(ValueError, match="different units"):
+        NumericCorrespondenceRecord.model_validate(fake_unit_mismatch)
+
+
+def test_numeric_unavailable_and_uncited_axes_preserve_missingness(
+    tmp_path: Path,
+) -> None:
+    exact = _visualization_profile(
+        adapter.run(_request(tmp_path), _spec())
+    ).numeric_records[0].model_dump(mode="json")
+
+    absent_record = deepcopy(exact)
+    absent_record.update(
+        {
+            "evidence_canonical_numeric_string": None,
+            "evidence_unit": None,
+            "correspondence_state": "source_numeric_unavailable",
+            "display_state": "source_numeric_unavailable",
+            "evidence_state": "unavailable",
+            "missingness": "unavailable",
+            "applicability": "not_assessed",
+            "reason_codes": ["source_evidence_record_unavailable"],
+            "check_ids": [],
+        }
+    )
+    NumericCorrespondenceRecord.model_validate(absent_record)
+
+    empty_source_field = deepcopy(absent_record)
+    empty_source_field.update(
+        {
+            "reason_codes": ["numeric_source_unavailable"],
+            "check_ids": ["check:" + "d" * 16],
+        }
+    )
+    NumericCorrespondenceRecord.model_validate(empty_source_field)
+
+    for evidence_value, missingness in (("42", "available"), (None, "unavailable")):
+        uncited = deepcopy(exact)
+        uncited.update(
+            {
+                "citation_state": "not_cited",
+                "evidence_canonical_numeric_string": evidence_value,
+                "correspondence_state": "source_not_cited_numeric_not_assessed",
+                "display_state": "source_not_cited_numeric_not_assessed",
+                "evidence_state": "alert",
+                "missingness": missingness,
+                "applicability": "not_assessed",
+                "reason_codes": ["binding_evidence_not_cited"],
+                "check_ids": ["check:" + "c" * 16],
+            }
+        )
+        NumericCorrespondenceRecord.model_validate(uncited)
+
+
+def test_visualization_artifact_set_rejects_incomplete_or_aliased_artifacts(
+    tmp_path: Path,
+) -> None:
+    artifact_set = _visualization_artifact_set(
+        adapter.run(_request(tmp_path), _spec())
+    ).model_dump(mode="json")
+
+    truncated = deepcopy(artifact_set)
+    truncated["visualizations"][0]["renders"].pop()
+
+    duplicate_table = deepcopy(artifact_set)
+    duplicate_table["visualizations"][1]["accessibility"]["table_artifact_id"] = (
+        duplicate_table["visualizations"][0]["accessibility"]["table_artifact_id"]
+    )
+
+    duplicate_render = deepcopy(artifact_set)
+    duplicate_render["visualizations"][1]["renders"][0]["artifact_id"] = (
+        duplicate_render["visualizations"][0]["renders"][0]["artifact_id"]
+    )
+
+    for payload in (truncated, duplicate_table, duplicate_render):
+        with pytest.raises(ValueError):
+            P010VisualizationArtifactSet.model_validate(payload)
+
+
+def test_typed_visualization_recomputes_categories_text_and_record_lineage(
+    tmp_path: Path,
+) -> None:
+    report = _report_payload(binding_changes={"canonical_numeric_string": "41"})
+    profile = _visualization_profile(
+        adapter.run(_request(tmp_path, report=report), _spec())
+    ).model_dump(mode="json")
+    claim = profile["check_matrix_records"][1]
+    finding = profile["finding_records"][0]
+
+    wrong_category = deepcopy(profile)
+    cells = {
+        cell["category"]: cell
+        for cell in wrong_category["check_matrix_records"][1]["categories"]
+    }
+    check_id = cells["numeric_and_unit"]["check_ids"][0]
+    cells["numeric_and_unit"].update(
+        {
+            "finding_state": "no_finding_under_current_rules",
+            "finding_count": 0,
+            "check_ids": [],
+        }
+    )
+    cells["wording_and_statements"].update(
+        {
+            "finding_state": "blocking_finding",
+            "finding_count": 1,
+            "check_ids": [check_id],
+        }
+    )
+
+    extra_binding = deepcopy(profile)
+    extra_ref = "evidence:" + "b" * 24 + "@1"
+    extra_id = extra_ref.split("@", 1)[0]
+    extra_claim = extra_binding["check_matrix_records"][1]
+    extra_claim["binding_source_refs"].append(extra_ref)
+    extra_claim["evidence_ids"] = sorted({*extra_claim["evidence_ids"], extra_id})
+    extra_binding["source_evidence_refs"].append(extra_ref)
+    extra_binding["source_evidence_refs"].sort()
+    extra_binding["evidence_ids"] = sorted({*extra_binding["evidence_ids"], extra_id})
+
+    wrong_type = deepcopy(profile)
+    wrong_type["finding_records"][0]["claim_type"] = "availability_claim"
+
+    wrong_text = deepcopy(profile)
+    wrong_text["finding_records"][0]["claim_text"] += " "
+
+    wrong_numeric_text = deepcopy(profile)
+    wrong_numeric_text["numeric_records"][0]["report_rendered_text"] = "41 cells"
+
+    wrong_lineage = deepcopy(profile)
+    ghost_id = "evidence:" + "e" * 24
+    wrong_lineage["finding_records"][0]["evidence_ids"] = sorted(
+        {*finding["evidence_ids"], ghost_id}
+    )
+    wrong_lineage["evidence_ids"] = sorted(
+        {*wrong_lineage["evidence_ids"], ghost_id}
+    )
+
+    assert claim["claim_text"] == report["claim_blocks"][0]["text"]
+    for payload in (
+        wrong_category,
+        extra_binding,
+        wrong_type,
+        wrong_text,
+        wrong_numeric_text,
+        wrong_lineage,
+    ):
+        with pytest.raises(ValueError):
+            ClaimVerifierVisualizationDataV1.model_validate(payload)
+
+
+def test_artifact_set_closes_global_ids_and_producer_identity(tmp_path: Path) -> None:
+    artifact_set = _visualization_artifact_set(
+        adapter.run(_request(tmp_path), _spec())
+    ).model_dump(mode="json")
+
+    data_as_table = deepcopy(artifact_set)
+    data_as_table["visualizations"][0]["accessibility"]["table_artifact_id"] = (
+        data_as_table["data_profile_artifact_id"]
+    )
+
+    producer_drift = deepcopy(artifact_set)
+    producer_drift["visualizations"][1]["producer_tool_version"] = "9.9.9"
+
+    digest_drift = deepcopy(artifact_set)
+    digest_drift["artifact_set_id"] = "p0-10-visualizations:" + "f" * 16
+
+    for payload in (data_as_table, producer_drift, digest_drift):
+        with pytest.raises(ValueError):
+            P010VisualizationArtifactSet.model_validate(payload)
+
+
+def test_visualization_profile_rejects_run_and_source_digest_drift(
+    tmp_path: Path,
+) -> None:
+    profile = _visualization_profile(
+        adapter.run(_request(tmp_path), _spec())
+    ).model_dump(mode="json")
+    other_digest = "f" * 16
+
+    profile_id_drift = deepcopy(profile)
+    profile_id_drift["visualization_profile_id"] = (
+        f"claim-verifier-visualization:{other_digest}"
+    )
+    producer_drift = deepcopy(profile)
+    producer_drift["producer_run_ref"] = f"run:run-{other_digest}"
+    source_drift = deepcopy(profile)
+    source_drift["source_result_ref"] = f"claim-verification:{other_digest}"
+
+    for payload in (profile_id_drift, producer_drift, source_drift):
+        with pytest.raises(ValueError, match="digests must agree"):
+            ClaimVerifierVisualizationDataV1.model_validate(payload)
+
+
+def test_artifact_set_rejects_component_naming_and_records_path_drift(
+    tmp_path: Path,
+) -> None:
+    artifact_set = _visualization_artifact_set(
+        adapter.run(_request(tmp_path), _spec())
+    ).model_dump(mode="json")
+    digest = artifact_set["artifact_set_id"].rsplit(":", 1)[1]
+
+    records_path_drift = deepcopy(artifact_set)
+    records_path_drift["visualizations"][0]["data_binding"]["records_path"] = (
+        "numeric_records"
+    )
+
+    table_swap = deepcopy(artifact_set)
+    first_table = table_swap["visualizations"][0]["accessibility"]
+    second_table = table_swap["visualizations"][1]["accessibility"]
+    first_table["table_artifact_id"], second_table["table_artifact_id"] = (
+        second_table["table_artifact_id"],
+        first_table["table_artifact_id"],
+    )
+
+    render_swap = deepcopy(artifact_set)
+    first_render = render_swap["visualizations"][0]["renders"][0]
+    second_render = render_swap["visualizations"][1]["renders"][0]
+    first_render["artifact_id"], second_render["artifact_id"] = (
+        second_render["artifact_id"],
+        first_render["artifact_id"],
+    )
+
+    visualization_id_drift = deepcopy(artifact_set)
+    visualization_id_drift["visualizations"][0]["visualization_id"] = (
+        f"visualization:run-{digest}:claim-check-matrix-drift"
+    )
+
+    for payload in (
+        records_path_drift,
+        table_swap,
+        render_swap,
+        visualization_id_drift,
+    ):
+        with pytest.raises(ValueError):
+            P010VisualizationArtifactSet.model_validate(payload)
+
+
+def test_empty_and_capacity_figures_do_not_repeat_status_or_limitation_text(
+    tmp_path: Path,
+) -> None:
+    normal = _visualization_profile(
+        adapter.run(_request(tmp_path / "normal"), _spec())
+    )
+    boundary_report = _report_payload(
+        text="This verification does not establish safety.",
+        claim_type="policy_or_boundary_statement",
+        reported_state=None,
+        statement_refs=["statement:safety-boundary@0.1.0"],
+        evidence_refs=[],
+        include_binding=False,
+        audience="internal_research",
+    )
+    boundary = _visualization_profile(
+        adapter.run(
+            _request(tmp_path / "boundary", report=boundary_report),
+            _spec(),
+        )
+    )
+    fallback_reason = "static_render_requires_complete_table_fallback"
+    cases = (
+        (
+            visualization_module._render_numeric_correspondence(boundary),
+            "No numeric ValueBinding is present in this structured report.",
+            "No numeric identity assessment was created",
+        ),
+        (
+            visualization_module._render_finding_context(normal),
+            "No finding records were emitted under the current deterministic rules.",
+            "This does not establish biological validity",
+        ),
+        (
+            visualization_module._fallback_figure(
+                visualization_module._COMPONENTS[0], fallback_reason
+            ),
+            "The complete typed table is retained without truncation.",
+            fallback_reason,
+        ),
+    )
+
+    for figure, message, limitation_fragment in cases:
+        texts = [
+            artist.get_text()
+            for artist in figure.findobj(match=visualization_module.Text)
+        ]
+        assert texts.count("Records are not drawn in this static view.") == 1
+        assert texts.count(message) == 1
+        assert sum(limitation_fragment in text for text in texts) == 1
+        visualization_module.plt.close(figure)

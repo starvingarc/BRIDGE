@@ -3,25 +3,23 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-CLAIM-VERIFIER` |
-| Version | `v0.1-candidate` |
-| Date | 2026-08-14 |
+| Version | `v0.4-candidate` |
+| Date | 2026-09-02 |
 | Verification unit | `report draft x claim block x policy snapshot` |
 | Primary output | `ClaimVerificationResult` receipt |
 | Current state | `candidate` |
 
-P0-10 `v0.1.1` implements the structured deterministic path only. Its four
+P0-10 `v0.4.0` implements the structured deterministic path. Its four
 checksummed inputs are `ReportDraft`, a P0-09 Case graph manifest,
 `ClaimPolicySpec` and
 `StatementRegistry`. The supplied policy and statement objects must equal the
 versions embedded in the packaged release contract. Free Markdown recovery,
 LLM judgment, web/media rendering,
-OCR and automatic export are not runtime inputs. The versioned method record is
-[benchmark record](../validation/p0_10_claim_verifier_benchmark_v0.1.md); candidate methods do not
-constitute a selected default.
+OCR and automatic export are not runtime inputs.
 
 ## 1. 任务目标与边界
 
-Claim Verifier 核验结构化报告内容是否忠实于 BRIDGE 已有证据、合同和发布规则。v0.1 检查数字、来源、状态语义、比较条件和禁止主张，并阻止不合格内容进入后续发布流程。
+Claim Verifier 核验结构化报告内容是否忠实于 BRIDGE 已有证据、合同和发布规则。当前版本检查数字、来源、状态语义、比较条件和禁止主张，并阻止不合格内容进入后续发布流程。
 
 本模块回答：
 
@@ -125,8 +123,8 @@ v0.1 不执行单位转换。未来只有注册转换表或审核后的 Pint uni
 | `ClaimCheckRecord` | 保存 rule ID/version、目标 block/span、结果、severity、reason code、Evidence IDs 和可选 Statement ref |
 | `ClaimVerificationResult` | 保存 ReportDraft ref/hash/受众、P0-09 graph ID/version/manifest hash、发布状态、唯一 checks、导出资格以及 benchmark/release-contract hash |
 
-独立签字回执、`SemanticReviewRecord` 和 visualization check references 是后续候选，
-未进入 v0.1 公开模型。ReportDraft 不能携带可改变发布状态的自我声明审核决定。
+独立签字回执和 `SemanticReviewRecord` 是后续候选，未进入当前公开结果模型。
+ReportDraft 不能携带可改变发布状态的自我声明审核决定。
 
 ## 4. Claim Taxonomy 与追溯规则
 
@@ -228,7 +226,7 @@ flowchart LR
 
 ## 7. 后续 LLM 候选与当前人工审核
 
-v0.1 不调用 LLM。下面的 LLM 输入输出合同仅作为后续 benchmark 候选；在中英双语 benchmark、模型卡和失败边界通过审核前，不进入正式核对流程。
+当前版本不调用 LLM。下面的 LLM 输入输出合同仅作为后续方法候选；在中英双语适用性、模型卡和失败边界通过审核前，不进入正式核对流程。
 
 LLM 只接收：
 
@@ -287,8 +285,11 @@ public_export_eligibility
 ```
 
 `blocker`、`review` 和 `warning` 数量由 `check_records` 推导，不作为第二份事实存储。
-工具结果和唯一 JSON artifact 都是这一份回执的相同 canonical bytes；artifact
-checksum 不从发布后的可变路径重新推导。
+工具结果与 `claim_verification_result.json` 使用同一份 canonical bytes；其余产物为
+一份 typed visualization data、三份完整 TSV、三张视图各自的 SVG/PNG/PDF、一个
+visualization artifact set，以及描述上述 15 项产物的 artifact manifest。静态图超过
+容量时保留完整表格，不进行 top-N 截断。图中“无 finding”只表示当前确定性规则未
+生成记录，不是批准状态。artifact checksum 不从发布后的可变路径重新推导。
 
 `public_export_eligibility` 为 `eligible`、`ineligible` 或 `not_assessed`，并与回执中的
 ReportDraft audience 和 release state 交叉约束。Public-safe Export 必须同时读取原始
@@ -298,9 +299,11 @@ ReportDraft 和本回执，核对 ref/hash 后从字段白名单生成新对象�
 
 ### 9.1 图表
 
-v0.1 不接收 `VisualizationArtifact`、caption、SVG/PNG、网页或报告快照，也不返回
-visualization checks。此类输入作为不支持的对象角色被拒绝；后续媒体模块必须使用
-机器可读 data payload，不能依赖 OCR 或像素反推数值。
+当前输入合同不接收 `VisualizationArtifact`、caption、SVG/PNG、网页或报告快照，
+也不核对其他图表内容；此类输入作为不支持的对象角色被拒绝。成功运行会从同一 typed
+data 生成报告/主张核对矩阵、报告值与引用证据对应图、以及 finding 与原文上下文图，
+并保留完整表格回退。这些本地审核图不是公开导出许可；后续媒体模块必须使用机器可读
+data payload，不能依赖 OCR 或像素反推数值。
 
 ### 9.2 比较
 
@@ -318,13 +321,13 @@ visualization checks。此类输入作为不支持的对象角色被拒绝；后
 
 | 工具/组件 | 作用 | P0 状态 | 环境 | 边界 |
 | --- | --- | --- | --- | --- |
-| `BRIDGE-CLAIM-VERIFIER-CORE-v0.1` | 确定性规则、状态聚合和核验记录 | `default_candidate` | `ENV-EVIDENCE-v0.1` | 正式候选；尚未选择 default |
-| `BRIDGE-REPORT-DRAFT-RENDERER-v0.1` | 单值 measurement 和注册边界声明的直接构造 | `default_candidate` | `ENV-EVIDENCE-v0.1` | 不接受调用方模板、缩放或舍入规则 |
-| Pydantic + JSON Schema | 对象、枚举和公开 Schema 合同 | `candidate` | `ENV-EVIDENCE-v0.1` | Schema 通过不代表科学主张正确 |
-| markdown-it-py | Markdown token、block 和 span 解析 | `deferred` | `ENV-EVIDENCE-v0.1` | 自由 Markdown 不进入 v0.1 |
+| `BRIDGE-CLAIM-VERIFIER-CORE-v0.1` | 确定性规则、状态聚合和核验记录 | `default_candidate` | `ENV-EVIDENCE-v0.3` | 正式候选；尚未选择 default |
+| `BRIDGE-REPORT-DRAFT-RENDERER-v0.1` | 单值 measurement 和注册边界声明的直接构造 | `default_candidate` | `ENV-EVIDENCE-v0.3` | 不接受调用方模板、缩放或舍入规则 |
+| Pydantic + JSON Schema | 对象、枚举和公开 Schema 合同 | `candidate` | `ENV-EVIDENCE-v0.3` | Schema 通过不代表科学主张正确 |
+| markdown-it-py | Markdown token、block 和 span 解析 | `deferred` | `ENV-EVIDENCE-v0.3` | 自由 Markdown 不进入 v0.1 |
 | Jinja2 | 模板引擎审计 | `deferred` | 不进入正式环境 | v0.1 的单一语句形状直接构造，无需模板引擎 |
 | Python `Decimal` | canonical numeric fidelity | `default_candidate` | standard library | 仅恒等呈现，不使用浮点容差、缩放或舍入合同 |
-| `regex` + 双语规则表 | 有超时边界的规则匹配和 span | `default_candidate` | `ENV-EVIDENCE-v0.1` | 复杂语义进入人工复核，不由命中自动通过 |
+| `regex` + 双语规则表 | 有超时边界的规则匹配和 span | `default_candidate` | `ENV-EVIDENCE-v0.3` | 复杂语义进入人工复核，不由命中自动通过 |
 | Pint | 注册单位解析和转换候选 | `deferred` | isolated candidate env | 等待审核 unit registry |
 | OPA/Rego | policy-as-code 对照 | `benchmark` | `claim_policy_opa` | 当前无 OPA binary；不作为 P0 必需服务 |
 | LLM semantic-review adapter | 隐含夸大和跨语言一致性 | `conditional` | `agent_runtime` | 只输出 flags，不能清除 blocker |
@@ -334,52 +337,10 @@ visualization checks。此类输入作为不支持的对象角色被拒绝；后
 
 ### 10.1 环境合同
 
-当前实现只使用 `ENV-EVIDENCE-v0.1`。Jinja2 已从正式依赖中删除；LLM、OPA、
+当前实现只使用 `ENV-EVIDENCE-v0.3`。Jinja2 已从正式依赖中删除；LLM、OPA、
 Playwright 和外部 factuality 方法只保留 benchmark 处置记录，若未来实测必须使用隔离环境。
 
-## 11. Validation 与冻结要求
-
-### 11.1 确定性 fixtures
-
-| 场景 | 预期结果 |
-| --- | --- |
-| 数字、分母、区间或单位被篡改 | `release_blocked`，指向准确 source field |
-| 请求方加入百分比、缩放或舍入规则 | typed input failure；v0.1 只允许恒等呈现 |
-| `SOX2`、`CD8`、`O2` 等科学标识符 | 不作为独立数字扫描；完整包内重建仍须逐字一致 |
-| 未绑定的案例特异性 claim | `release_blocked` |
-| 错误、跨案例、superseded 或 invalidated Evidence ID | `release_blocked` |
-| negative/missing/unknown/unavailable/alert 任意互换 | `release_blocked` |
-| shadow/exploratory 被写成正式证据 | `release_blocked` |
-| descriptive-only 使用显著性或推广语言 | `release_blocked` |
-| not-estimable 写成无差异 | `release_blocked` |
-| zero observation 写成确定不存在 | `release_blocked` 或语义 `review_required`，由冻结规则决定 |
-| graft 结果回填移植前评分或疗效 | `release_blocked` |
-| 禁止主张或最佳收获阶段 | `release_blocked` |
-| 不支持的图表或媒体对象进入 v0.1 | typed input failure；不静默忽略 |
-| ReportDraft 自行附加审核身份或决定 | typed input failure；等待未来独立审核回执 |
-| 核验后文本改变一个字符 | content hash 变化，旧核对回执失效 |
-| public candidate 含私有路径或 restricted 字段 | typed input failure；不执行自动脱敏 |
-
-### 11.2 语言 fixtures 与后续视觉范围
-
-- 为每类禁止主张建立中文、英文和中英混排正例、反例及固定边界 Statement。
-- 覆盖否定范围、双重否定、条件句、比较级、因果词、最佳/绝对词和缺失语义。
-- 同一 claim 的中英文版本在主语、限定范围、方向、状态和强度上保持一致。
-- 图表、desktop/mobile Web、SVG/PNG 和报告快照属于后续模块；v0.1 fixture 只确认
-  这些对象不会被静默接收。
-- 后续视觉核对不使用 OCR 作为数字 fidelity 的正式通道。
-
-### 11.3 冻结标准
-
-- 数字复制、ValueBinding 和正式 claim 来源映射 fixture 正确率为 100%。
-- 已登记禁止主张 fixture 的漏放行为 0。
-- 任一 hard blocker 不得被 LLM、请求方声明或 warning 降级绕过。
-- 相同输入、策略和工具版本重复运行的确定性结果逐字段一致。
-- LLM reviewer 达到预注册中英双语 benchmark 前不进入 v0.1 输出模型。
-- 至少一名湿实验用户和一名 Agent 实现者审核真实报告 fixture。
-- sealed competitor 对规则、词表、阈值和 benchmark fixture 的正式数据流为零。
-
-## 12. Legacy Migration 与 Public-safe Handoff
+## 11. Legacy Migration 与 Public-safe Handoff
 
 旧 `report.py` 可复用：JSON/CSV/Markdown 写出、artifact manifest、固定边界声明和图表/表格产物组织。其自由字符串拼接、旧 score matrix、integrated score 和旧报告语义不能直接进入新系统。
 
@@ -395,7 +356,7 @@ Public-safe Export 同时接收原始 `ReportDraft` 和
 report ref/hash、audience、P0-09 graph manifest hash 和 P0-10 artifact checksum，再从
 字段白名单生成新对象。它不能回写、清洗或覆盖原始报告；详细合同在下一张独立任务卡中整理。
 
-## 13. 主要官方来源
+## 12. 主要官方来源
 
 - Pydantic：https://docs.pydantic.dev/latest/
 - JSON Schema：https://json-schema.org/specification

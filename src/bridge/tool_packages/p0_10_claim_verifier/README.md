@@ -6,8 +6,8 @@ This directory contains the deterministic structured-claim verification package.
 
 - **Input:** exactly four checksummed objects: ReportDraft, P0-09 Case graph
   manifest, package-authoritative ClaimPolicySpec and StatementRegistry.
-- **Output:** one `ClaimVerificationResult` receipt binding the report, graph,
-  checks, audience, benchmark and public-export eligibility.
+- **Output:** one `ClaimVerificationResult` receipt plus three typed review
+  figures with complete TSV fallbacks and an artifact manifest.
 - **Boundary:** `verified` means evidence/policy correspondence, not biological
   truth, public-release authority, efficacy, safety, potency or GMP release.
 
@@ -17,9 +17,6 @@ This directory contains the deterministic structured-claim verification package.
 - [Tool Card — authoritative runtime contract](../cards/P0-10.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/claim_verifier_task_card.md)
 - [Request example](../../../../examples/requests/p0_10_claim_verifier.json)
-- [Validation record](../../../../docs/validation/p0_10_claim_verifier_20260814.md)
-- [Raw JSON Schema runtime validation](../../../../docs/validation/p0_10_jsonschema_runtime_20260827.md)
-- [Package-owned method benchmark](../../../../docs/validation/p0_10_claim_verifier_benchmark_v0.1.md)
 
 Use `bridge-tool describe P0-10` for the installed version, schemas, environment
 and registered method IDs.
