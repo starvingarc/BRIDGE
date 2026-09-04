@@ -6,37 +6,27 @@ This directory contains the program-scoring and evidence-aggregation package.
 
 - **Legacy aggregation:** seven checksummed JSON objects bind case, product,
   developmental window, ProgramSpec, P0-02 profile, ProtocolIR and precomputed
-  evidence.
-- **Method runtime:** eleven checksummed JSON objects and one checksummed
-  normalized H5AD bind P0-02 V3 states, biological units and runtime parameters.
-  Program genes, weights and phases live only in the checksummed ProgramSpec;
-  the method spec selects program IDs without duplicating that content.
-  Eligibility refuses a ProtocolIR independent-replicate count above the
-  distinct groups in the bound BiologicalUnitManifest; equal or lower counts
-  retain the existing conservative attribution rule.
-- **Output:** v0.5 always emits `ProliferationStressResponseProfile` v0.2;
-  without a MeasurementSpec its projection state is `not_requested` and its
-  bindings are empty. An optional compatible `MeasurementSpecV2` adds one
-  checksummed gate-facing measurement artifact for every program evidence record.
-  The binding preserves the exact source state and its projected shared state:
-  `not_applicable`, `unavailable`, and `not_assessed` become `unavailable`;
-  `cannot_resolve` becomes measurement-scoped `unknown`;
-  `not_detected_above_lod` becomes `negative`; and
-  `transcriptomic_review_flag` becomes `alert`. Method mode additionally
-  emits `ProcessMethodBundle` with Scanpy, decoupler and cell-cycle summaries
-  bound to the exact ProgramSpec SHA-256. Both modes emit package-owned typed
-  visualization data, exact TSV fallbacks, deterministic SVG/PNG/PDF renders
-  and a visualization artifact set for stage/state-conditioned program evidence,
-  method-separated program-score summaries and cell-cycle evidence.
+  evidence; an independent MeasurementSpec remains optional.
+- **Method runtime:** eleven checksummed JSON objects, including a required
+  P0-06 MeasurementSpec, bind P0-02 V3 states, biological units and the exact
+  selected DataView H5AD. It accepts normalized expression or integer raw
+  counts; raw counts receive deterministic in-memory 10,000 scaling and `log1p`.
+  Program genes, weights and phases remain in the checksummed ProgramSpec; the
+  method spec only selects program IDs and execution parameters. A caller-owned
+  `ProgramEvidenceBundle` is refused in this mode.
+- **Output:** tool v0.6 emits profile v0.3. Legacy projections preserve the
+  legacy evidence-state mapping. Method projections are created one-to-one from
+  actual program-score and cell-cycle summaries: available values are `inferred`;
+  `not_assessed` values remain numeric-null `unavailable`. Both use
+  `score_state=unavailable` and `domain_score=null`. Method mode also emits
+  `ProcessMethodBundle` v0.2 with exact matrix semantics and normalization
+  lineage. Both modes emit checksummed artifacts, typed visualization data and
+  deterministic TSV/SVG/PNG/PDF output.
 - **Current visualization limits:** no numeric reference envelope, ordered
-  ProtocolIR timeline, numeric LOD/UCB or spike-in recovery curve, or CNV
-  visualization is produced; unavailable views remain `not_assessed`.
-- **Projection boundary:** every source record remains intact in the profile.
-  Unknown and unavailable projections carry no numeric fields and are never
-  backfilled with zero; negative and alert projections preserve valid source
-  values. These shared states add no biological threshold or safety meaning.
-- **Boundary:** a review flag is not cell fitness, safety, tumorigenicity,
-  potency or process-causality evidence, and the package emits no domain score.
+  ProtocolIR timeline, numeric LOD/UCB, spike-in recovery curve or CNV
+  visualization; unavailable views remain `not_assessed`.
+- **Boundary:** P0-06 adds no biological threshold, state definition, score or
+  alert. A review flag is not fitness, safety, potency or process-causality evidence.
 
 ## Documentation
 

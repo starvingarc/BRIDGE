@@ -20,7 +20,7 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.method_models impo
     MethodExecutionRecord,
     MethodExecutionState,
     ObservationState,
-    ProcessMethodBundle,
+    ProcessMethodBundleV2,
     ProcessMethodId,
     ProcessMethodInput,
     ProcessMethodSpec,
@@ -128,15 +128,37 @@ def _load_expression(
         raise ProcessMethodError("gene_symbols_not_unique")
     adata.var_names = pd.Index(genes)
 
-    if method_spec.expression_layer is None:
+    if asset.matrix_location == "X":
         matrix = adata.X
     else:
-        if method_spec.expression_layer not in adata.layers:
+        layer = (asset.matrix_location or "").removeprefix("layers/")
+        if (
+            not (asset.matrix_location or "").startswith("layers/")
+            or not layer
+            or layer not in adata.layers
+        ):
             raise ProcessMethodError("expression_layer_missing")
-        matrix = adata.layers[method_spec.expression_layer]
+        matrix = adata.layers[layer]
     values = matrix.data if sparse.issparse(matrix) else np.asarray(matrix)
     if not np.isfinite(values).all():
         raise ProcessMethodError("expression_matrix_nonfinite")
+    if asset.matrix_semantics == "raw_counts":
+        if np.any(values < 0) or not np.equal(values, np.floor(values)).all():
+            raise ProcessMethodError("raw_count_matrix_invalid")
+        totals = np.asarray(matrix.sum(axis=1), dtype=float).reshape(-1)
+        if not np.isfinite(totals).all() or np.any(totals <= 0):
+            raise ProcessMethodError("raw_count_observation_total_invalid")
+        scale = 10000.0 / totals
+        if sparse.issparse(matrix):
+            normalized = matrix.multiply(scale[:, None]).tocsr(copy=True)
+            normalized.data = np.log1p(normalized.data)
+        else:
+            normalized = np.log1p(
+                np.asarray(matrix, dtype=float) * scale[:, None]
+            )
+        adata.X = normalized
+    else:
+        adata.X = matrix.copy()
 
     assignment_by_id = {
         item.observation_id: item for item in assignment.assignments
@@ -314,7 +336,7 @@ def _scanpy_program_scores(
                     random_state=random_seed,
                     copy=False,
                     use_raw=False,
-                    layer=method_spec.expression_layer,
+                    layer=None,
                 )
             except Exception as exc:
                 raise ProcessMethodError(
@@ -372,7 +394,7 @@ def _decoupler_program_scores(
                 data=data.adata,
                 net=pd.DataFrame(network_rows),
                 tmin=method_spec.decoupler_tmin,
-                layer=method_spec.expression_layer,
+                layer=None,
                 raw=False,
                 verbose=False,
             )
@@ -457,7 +479,7 @@ def _cell_cycle_summaries(
                 n_bins=method_spec.scanpy_n_bins,
                 random_state=random_seed,
                 use_raw=False,
-                layer=method_spec.expression_layer,
+                layer=None,
             )
         except Exception as exc:
             raise ProcessMethodError(
@@ -618,7 +640,7 @@ def run_process_methods(
     biological_unit_manifest_sha256: str,
     program_spec: ProgramSpec,
     random_seed: int,
-) -> ProcessMethodBundle:
+) -> ProcessMethodBundleV2:
     """Execute only the methods selected by the checksummed method contract."""
 
     data = _load_expression(
@@ -712,8 +734,8 @@ def run_process_methods(
         )
     )
     executions.sort(key=lambda item: item.method_id.value)
-    return ProcessMethodBundle(
-        object_version="0.1.0",
+    return ProcessMethodBundleV2(
+        object_version="0.2.0",
         bundle_id=f"process-method-bundle:{run_id.removeprefix('run-')}",
         tool_id="P0-06",
         tool_version=tool_version,
@@ -737,4 +759,14 @@ def run_process_methods(
         score_state="unavailable",
         domain_score=None,
         created_at=method_input.created_at,
+        input_matrix_location=asset.matrix_location or "",
+        input_matrix_semantics=asset.matrix_semantics,
+        normalization_method_ref=(
+            "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P"
+            if asset.matrix_semantics == "raw_counts"
+            else None
+        ),
+        normalization_target_sum=(
+            10000.0 if asset.matrix_semantics == "raw_counts" else None
+        ),
     )

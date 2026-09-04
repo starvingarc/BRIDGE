@@ -8,12 +8,16 @@ from pathlib import Path
 import anndata as ad
 import numpy as np
 import pytest
+from jsonschema import Draft202012Validator
 
 from bridge.tool_packages._configurable_contracts import BiologicalUnitManifest
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
     MethodExecutionState,
-    ProcessMethodBundle,
+    ProcessMethodBundleV2,
     ProcessMethodId,
+)
+from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
+    ProliferationStressResponseProfileV3,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.visualization_data import (
     CellCycleVisualizationRecord,
@@ -50,10 +54,7 @@ ROLE_CONTRACTS = {
         "0.3.0",
     ),
     "protocol_ir": ("bridge://schemas/protocol-ir/v0.1", "0.1.0"),
-    "program_evidence_bundle": (
-        "bridge://schemas/program-evidence-bundle/v0.1",
-        "0.1.0",
-    ),
+    "measurement_spec": ("bridge://schemas/measurement-spec/v0.2", "1.0.0"),
     "biological_unit_manifest": (
         "bridge://schemas/biological-unit-manifest/v0.1",
         "0.1.0",
@@ -134,7 +135,9 @@ def _write_ref(root: Path, role: str, payload: object) -> StructuredInputRef:
     )
 
 
-def _write_expression(path: Path) -> tuple[list[str], list[str], str]:
+def _write_expression(
+    path: Path, *, raw_counts: bool = False
+) -> tuple[list[str], list[str], str]:
     observations = [f"demo-cell-{index:03d}" for index in range(96)]
     proliferation = [f"PROLIF{index}" for index in range(8)]
     stress = [f"STRESS{index}" for index in range(8)]
@@ -148,15 +151,16 @@ def _write_expression(path: Path) -> tuple[list[str], list[str], str]:
         + [f"CONTROL{index}" for index in range(52)]
     )
     rng = np.random.default_rng(20260827)
-    matrix = np.log1p(rng.poisson(2.0, size=(len(observations), len(genes))))
+    counts = rng.poisson(2, size=(len(observations), len(genes)))
     for index in range(len(observations)):
         unit = index % 4
-        matrix[index, :8] += unit * 0.35
-        matrix[index, 8:16] += (3 - unit) * 0.25
+        counts[index, :8] += unit * 2
+        counts[index, 8:16] += (3 - unit) * 2
         if index % 3 == 0:
-            matrix[index, 16:22] += 1.5
+            counts[index, 16:22] += 3
         elif index % 3 == 1:
-            matrix[index, 22:28] += 1.5
+            counts[index, 22:28] += 3
+    matrix = counts if raw_counts else np.log1p(counts)
     adata = ad.AnnData(
         X=matrix.astype(np.float64),
         obs={"demo_group": [f"demo-{index % 4}" for index in range(96)]},
@@ -167,12 +171,14 @@ def _write_expression(path: Path) -> tuple[list[str], list[str], str]:
     return observations, genes, hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _method_request(tmp_path: Path) -> ToolRequestV2:
+def _method_request(tmp_path: Path, *, raw_counts: bool = False) -> ToolRequestV2:
     values = deepcopy(_payloads())
     object_root = tmp_path / "objects"
     object_root.mkdir()
     expression_path = tmp_path / "demo-process-expression.h5ad"
-    observations, genes, asset_sha = _write_expression(expression_path)
+    observations, genes, asset_sha = _write_expression(
+        expression_path, raw_counts=raw_counts
+    )
 
     view = {
         "view_id": "data-view:process-demo",
@@ -182,7 +188,9 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
         "parent_asset_id": "asset:process-demo-parent",
         "parent_asset_sha256": "f" * 64,
         "matrix_location": "X",
-        "matrix_semantics": "normalized_expression",
+        "matrix_semantics": (
+            "raw_counts" if raw_counts else "normalized_expression"
+        ),
         "n_observations": len(observations),
         "observation_ids_sha256": "0" * 64,
         "sample_or_preparation_ref": "preparation:demo@1.0.0",
@@ -346,36 +354,31 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
         object_root, "process_method_spec", method_spec
     )
 
-    bundle = values["program_evidence_bundle"]
-    bundle.update(
+    measurement_spec = values["measurement_spec"]
+    measurement_spec.update(
         {
-            "product_case_ref": {
-                "object_id": values["product_case"]["product_case_id"],
-                "object_version": values["product_case"]["case_version"],
-            },
-            "product_case_sha256": refs["product_case"].sha256,
-            "product_definition_ref": values["product_case"]["product_definition_ref"],
-            "product_definition_sha256": refs["product_definition_card"].sha256,
-            "development_window_ref": {
-                "object_id": values["development_window_spec"]["window_spec_id"],
-                "object_version": values["development_window_spec"][
-                    "window_spec_version"
+            "analysis_unit": "method summary by declared biological unit",
+            "independence_group_kind": "sample",
+            "raw_metric_definition": {
+                "metric_names": [
+                    "cell_cycle_cycling_fraction",
+                    "program_score_mean",
                 ],
+                "analysis_scopes": ["state_specific", "whole_product"],
+                "units": [
+                    "decoupler_ulm_t_value",
+                    "fraction",
+                    "scanpy_control_adjusted_expression",
+                ],
+                "source_method_ids": sorted(
+                    item.value for item in ProcessMethodId
+                ),
             },
-            "development_window_sha256": refs["development_window_spec"].sha256,
-            "program_spec_ref": {
-                "object_id": program_spec["program_spec_id"],
-                "object_version": program_spec["program_spec_version"],
-            },
-            "program_spec_sha256": refs["program_spec"].sha256,
-            "cell_state_profile_ref": cell_state["profile_id"],
-            "cell_state_profile_sha256": refs["cell_state_evidence_profile"].sha256,
-            "protocol_context_ref": values["protocol_ir"]["protocol_context_id"],
-            "protocol_context_sha256": refs["protocol_ir"].sha256,
+            "missing_behavior": "Emit unavailable without a numeric value.",
         }
     )
-    refs["program_evidence_bundle"] = _write_ref(
-        object_root, "program_evidence_bundle", bundle
+    refs["measurement_spec"] = _write_ref(
+        object_root, "measurement_spec", measurement_spec
     )
 
     assignments = values["biological_unit_assignment"]["assignments"]
@@ -408,17 +411,21 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
     return ToolRequestV2(
         request_id="request-p0-06-method-runtime",
         tool_id="P0-06",
-        tool_version="0.5.0",
+        tool_version="0.6.0",
         output_dir=tmp_path / "output",
         assets=[
             InputAsset(
                 asset_id=view["artifact_id"],
                 path=expression_path,
                 format="h5ad",
-                input_level=InputLevel.ANALYSIS_READY,
+                input_level=(
+                    InputLevel.COUNT_READY
+                    if raw_counts
+                    else InputLevel.ANALYSIS_READY
+                ),
                 checksum=asset_sha,
                 matrix_location="X",
-                matrix_semantics="normalized_expression",
+                matrix_semantics=view["matrix_semantics"],
                 assay="scRNA-seq",
             )
         ],
@@ -438,11 +445,21 @@ def test_real_method_runtime_executes_and_is_deterministic(tmp_path: Path) -> No
 
     assert first.execution_state is ExecutionState.SUCCEEDED
     assert first.run_id == second.run_id
-    assert len(first.artifacts) == 17
+    assert not any(
+        item.role == "program_evidence_bundle" for item in request.object_inputs
+    )
     path = next(
         item.path for item in first.artifacts if item.kind == "process_method_bundle"
     )
-    bundle = ProcessMethodBundle.model_validate_json(path.read_text())
+    bundle = ProcessMethodBundleV2.model_validate_json(path.read_text())
+    profile = ProliferationStressResponseProfileV3.model_validate(first.result)
+    invalid_profile = deepcopy(first.result)
+    invalid_profile["process_method_bundle_ref"] = None
+    invalid_profile["process_method_bundle_sha256"] = None
+    schema = ProliferationStressResponseProfileV3.model_json_schema()
+    assert list(
+        Draft202012Validator(schema).iter_errors(invalid_profile)
+    )
     assert {item.method_id for item in bundle.executions} == set(ProcessMethodId)
     assert all(
         item.execution_state is MethodExecutionState.SUCCEEDED
@@ -450,6 +467,58 @@ def test_real_method_runtime_executes_and_is_deterministic(tmp_path: Path) -> No
     )
     assert bundle.program_scores
     assert bundle.cell_cycle_summaries
+    assert bundle.object_version == "0.2.0"
+    assert bundle.input_matrix_semantics == "normalized_expression"
+    assert bundle.normalization_method_ref is None
+    assert profile.runtime_mode == "method_runtime"
+    assert profile.program_results == []
+    assert profile.review_flags == []
+    assert profile.process_method_bundle_sha256 == hashlib.sha256(
+        path.read_bytes()
+    ).hexdigest()
+    expected_measurements = (
+        len(bundle.program_scores) + len(bundle.cell_cycle_summaries)
+    )
+    assert len(first.measurements) == expected_measurements
+    assert len(profile.measurement_artifacts) == expected_measurements
+    assert all(item.evidence_state == "inferred" for item in first.measurements)
+    assert {
+        item.source_method_id
+        for item in profile.measurement_artifacts
+        if item.summary_kind == "cell_cycle"
+    } == {ProcessMethodId.CELL_CYCLE_AGGREGATION.value}
+    measurements_by_id = {
+        item.measurement_id: item for item in first.measurements
+    }
+    program_summaries = {
+        (
+            item.method_id.value,
+            item.program_id,
+            item.analysis_scope,
+            item.analysis_unit_ref,
+            item.cell_state_id,
+        ): item
+        for item in bundle.program_scores
+    }
+    for binding in profile.measurement_artifacts:
+        if binding.summary_kind != "program_score":
+            continue
+        summary = program_summaries[
+            (
+                binding.source_method_id,
+                binding.program_id,
+                binding.analysis_scope,
+                binding.analysis_unit_ref,
+                binding.cell_state_id,
+            )
+        ]
+        measurement = measurements_by_id[binding.measurement_id]
+        assert binding.n_observations == summary.n_observations
+        assert measurement.denominator == summary.n_observations
+        assert measurement.numerator is not None
+        assert measurement.numerator / measurement.denominator == pytest.approx(
+            summary.mean
+        )
     assert bundle.program_spec_sha256 == next(
         item.sha256 for item in request.object_inputs if item.role == "program_spec"
     )
@@ -551,6 +620,31 @@ def test_real_method_runtime_executes_and_is_deterministic(tmp_path: Path) -> No
     assert first_signature == second_signature
 
 
+def test_raw_counts_are_normalized_inside_the_package(tmp_path: Path) -> None:
+    registry = ToolRegistry.load_default()
+    request = _method_request(tmp_path, raw_counts=True)
+
+    eligibility = registry.check_eligibility(request)
+    assert eligibility.eligible, eligibility.reason_codes
+    run = registry.run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    bundle_path = next(
+        item.path for item in run.artifacts if item.kind == "process_method_bundle"
+    )
+    bundle = ProcessMethodBundleV2.model_validate_json(bundle_path.read_text())
+    assert bundle.input_matrix_semantics == "raw_counts"
+    assert bundle.analysis_matrix_semantics == "normalized_expression"
+    assert (
+        bundle.normalization_method_ref
+        == "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P"
+    )
+    assert bundle.normalization_target_sum == 10000.0
+    assert len(run.measurements) == (
+        len(bundle.program_scores) + len(bundle.cell_cycle_summaries)
+    )
+
+
 def test_method_runtime_rejects_replicate_count_above_manifest(
     tmp_path: Path,
 ) -> None:
@@ -570,22 +664,14 @@ def test_method_runtime_rejects_replicate_count_above_manifest(
     )
     program_spec = json.loads(program_ref.path.read_text())
     program_spec["attribution_rule"]["minimum_independent_replicates"] = 5
-    request, program_sha = _replace_json_input(request, "program_spec", program_spec)
+    request, _ = _replace_json_input(request, "program_spec", program_spec)
 
     protocol_ref = next(
         item for item in request.object_inputs if item.role == "protocol_ir"
     )
     protocol = json.loads(protocol_ref.path.read_text())
     protocol["independent_replicate_count"] = 5
-    request, protocol_sha = _replace_json_input(request, "protocol_ir", protocol)
-
-    bundle_ref = next(
-        item for item in request.object_inputs if item.role == "program_evidence_bundle"
-    )
-    bundle = json.loads(bundle_ref.path.read_text())
-    bundle["program_spec_sha256"] = program_sha
-    bundle["protocol_context_sha256"] = protocol_sha
-    request, _ = _replace_json_input(request, "program_evidence_bundle", bundle)
+    request, _ = _replace_json_input(request, "protocol_ir", protocol)
 
     eligibility = registry.check_eligibility(request)
 
@@ -621,14 +707,7 @@ def test_real_method_runtime_rejects_content_under_stale_program_digest(
         program_spec["program_rules"][0]["targets"][0]["weight"] = 2.0
     else:
         program_spec["program_rules"][2]["s_genes"][0] = "SPHASE-CHANGED"
-    request, program_sha = _replace_json_input(request, "program_spec", program_spec)
-
-    bundle_ref = next(
-        item for item in request.object_inputs if item.role == "program_evidence_bundle"
-    )
-    bundle = json.loads(bundle_ref.path.read_text())
-    bundle["program_spec_sha256"] = program_sha
-    request, _ = _replace_json_input(request, "program_evidence_bundle", bundle)
+    request, _ = _replace_json_input(request, "program_spec", program_spec)
 
     eligibility = registry.check_eligibility(request)
 

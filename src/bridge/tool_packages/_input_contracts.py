@@ -151,8 +151,11 @@ V03 = "0.3.0"
 def _p006_base_roles(
     cell_state_schema: str,
     cell_state_version: str,
+    *,
+    include_program_evidence: bool,
+    measurement_min_count: int,
 ) -> tuple[ObjectInputRoleContract, ...]:
-    return (
+    common = (
         _role("product_case", "bridge://schemas/product-case/v0.1", V01, 1, 1),
         _role(
             "product_definition_card",
@@ -189,6 +192,8 @@ def _p006_base_roles(
             1,
             1,
         ),
+    )
+    evidence = (
         _role(
             "program_evidence_bundle",
             "bridge://schemas/program-evidence-bundle/v0.1",
@@ -196,11 +201,15 @@ def _p006_base_roles(
             1,
             1,
         ),
+    )
+    return (
+        *common,
+        *(evidence if include_program_evidence else ()),
         _role(
             "measurement_spec",
             "bridge://schemas/measurement-spec/v0.2",
             None,
-            0,
+            measurement_min_count,
             1,
         ),
     )
@@ -572,6 +581,8 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 *_p006_base_roles(
                     "bridge://schemas/cell-state-evidence-profile/v0.2",
                     V02,
+                    include_program_evidence=True,
+                    measurement_min_count=0,
                 ),
             ),
             _mode(
@@ -579,6 +590,8 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 *_p006_base_roles(
                     "bridge://schemas/cell-state-evidence-profile/v0.3",
                     V03,
+                    include_program_evidence=False,
+                    measurement_min_count=1,
                 ),
                 _role(
                     "biological_unit_manifest",
@@ -613,8 +626,8 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     max_count=1,
                     formats=["h5ad"],
                     assays=["scRNA-seq", "snRNA-seq"],
-                    input_levels=["analysis_ready"],
-                    matrix_semantics=["normalized_expression"],
+                    input_levels=["analysis_ready", "count_ready"],
+                    matrix_semantics=["normalized_expression", "raw_counts"],
                 ),
             ),
         ],

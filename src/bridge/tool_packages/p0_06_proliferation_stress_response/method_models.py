@@ -309,8 +309,42 @@ class ProcessMethodBundle(FrozenModel):
     _created_at_utc = field_validator("created_at")(_aware_utc)
 
 
+class ProcessMethodBundleV2(ProcessMethodBundle):
+    object_version: Literal["0.2.0"]
+    input_matrix_location: str = Field(min_length=1)
+    input_matrix_semantics: Literal["raw_counts", "normalized_expression"]
+    analysis_matrix_semantics: Literal["normalized_expression"] = (
+        "normalized_expression"
+    )
+    normalization_method_ref: Literal[
+        "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P"
+    ] | None = None
+    normalization_target_sum: StrictFloat | None = Field(default=None, gt=0.0)
+
+    @model_validator(mode="after")
+    def normalization_lineage_is_coherent(self) -> Self:
+        normalized_in_package = self.input_matrix_semantics == "raw_counts"
+        if normalized_in_package != (
+            self.normalization_method_ref
+            == "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P"
+            and self.normalization_target_sum == 10000.0
+        ):
+            raise ValueError(
+                "raw counts require package-owned 1e4 normalize_total and log1p"
+            )
+        if not normalized_in_package and (
+            self.normalization_method_ref is not None
+            or self.normalization_target_sum is not None
+        ):
+            raise ValueError(
+                "pre-normalized input cannot claim package-owned normalization"
+            )
+        return self
+
+
 PUBLIC_METHOD_SCHEMA_MODELS = {
     "bridge://schemas/process-method-spec/v0.1": ProcessMethodSpec,
     "bridge://schemas/process-method-input/v0.1": ProcessMethodInput,
     "bridge://schemas/process-method-bundle/v0.1": ProcessMethodBundle,
+    "bridge://schemas/process-method-bundle/v0.2": ProcessMethodBundleV2,
 }

@@ -118,6 +118,17 @@ def method_binding_reasons(
         or asset.matrix_semantics != view.matrix_semantics
     ):
         reasons.add("expression_data_view_mismatch")
+    if view.matrix_location == "X":
+        expected_layer = None
+    elif view.matrix_location.startswith("layers/") and len(
+        view.matrix_location.removeprefix("layers/")
+    ) > 0:
+        expected_layer = view.matrix_location.removeprefix("layers/")
+    else:
+        expected_layer = None
+        reasons.add("expression_data_view_location_unsupported")
+    if method_spec.expression_layer != expected_layer:
+        reasons.add("process_method_expression_layer_mismatch")
 
     manifest_sha = input_sha256_by_role["biological_unit_manifest"]
     assignment_sha = input_sha256_by_role["biological_unit_assignment"]

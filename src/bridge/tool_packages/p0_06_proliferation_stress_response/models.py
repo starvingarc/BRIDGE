@@ -412,6 +412,32 @@ class ProgramMeasurementArtifactBinding(FrozenModel):
     sha256: Sha256
 
 
+class MethodMeasurementArtifactBinding(FrozenModel):
+    measurement_id: SafeId
+    summary_kind: Literal["program_score", "cell_cycle"]
+    source_method_id: SafeId
+    source_summary_sha256: Sha256
+    metric_name: Literal["program_score_mean", "cell_cycle_cycling_fraction"]
+    program_id: SafeId
+    analysis_scope: AnalysisScope
+    analysis_unit_ref: str = Field(min_length=1)
+    independence_group_ref: str = Field(min_length=1)
+    cell_state_id: SafeId | None = None
+    assessment_state: Literal["available", "not_assessed"]
+    n_observations: NonNegativeInt
+    artifact_id: SafeId
+    file_name: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*\.json$")
+    sha256: Sha256
+
+    @model_validator(mode="after")
+    def scope_is_coherent(self) -> Self:
+        if (self.analysis_scope is AnalysisScope.STATE_SPECIFIC) != (
+            self.cell_state_id is not None
+        ):
+            raise ValueError("state-specific measurement requires one state_id")
+        return self
+
+
 class ProliferationStressResponseProfile(FrozenModel):
     profile_id: SafeId
     profile_version: Literal["0.1.0"]
@@ -553,6 +579,280 @@ class ProliferationStressResponseProfileV2(ProliferationStressResponseProfile):
         return self
 
 
+class ProliferationStressResponseProfileV3(ProliferationStressResponseProfile):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {
+                                "const": "not_requested"
+                            }
+                        },
+                        "required": ["measurement_projection_state"],
+                    },
+                    "then": {
+                        "properties": {
+                            "measurement_spec_ref": {"type": "null"},
+                            "measurement_spec_sha256": {"type": "null"},
+                            "process_method_bundle_ref": {"type": "null"},
+                            "process_method_bundle_sha256": {"type": "null"},
+                            "measurement_artifacts": {"maxItems": 0},
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {
+                                "const": "available"
+                            }
+                        },
+                        "required": ["measurement_projection_state"],
+                    },
+                    "then": {
+                        "required": [
+                            "measurement_spec_ref",
+                            "measurement_spec_sha256",
+                        ],
+                        "properties": {
+                            "measurement_spec_ref": {"not": {"type": "null"}},
+                            "measurement_spec_sha256": {
+                                "not": {"type": "null"}
+                            },
+                            "measurement_artifacts": {"minItems": 1},
+                        },
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {
+                                "const": "not_assessed"
+                            }
+                        },
+                        "required": ["measurement_projection_state"],
+                    },
+                    "then": {
+                        "required": [
+                            "measurement_spec_ref",
+                            "measurement_spec_sha256",
+                            "process_method_bundle_ref",
+                            "process_method_bundle_sha256",
+                        ],
+                        "properties": {
+                            "measurement_spec_ref": {"not": {"type": "null"}},
+                            "measurement_spec_sha256": {
+                                "not": {"type": "null"}
+                            },
+                            "process_method_bundle_ref": {
+                                "not": {"type": "null"}
+                            },
+                            "process_method_bundle_sha256": {
+                                "not": {"type": "null"}
+                            },
+                            "measurement_artifacts": {"maxItems": 0},
+                        },
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "runtime_mode": {"const": "method_runtime"}
+                        },
+                        "required": ["runtime_mode"],
+                    },
+                    "then": {
+                        "required": [
+                            "measurement_spec_ref",
+                            "measurement_spec_sha256",
+                            "process_method_bundle_ref",
+                            "process_method_bundle_sha256",
+                        ],
+                        "properties": {
+                            "measurement_projection_state": {
+                                "enum": ["available", "not_assessed"]
+                            },
+                            "measurement_spec_ref": {"not": {"type": "null"}},
+                            "measurement_spec_sha256": {
+                                "not": {"type": "null"}
+                            },
+                            "process_method_bundle_ref": {
+                                "not": {"type": "null"}
+                            },
+                            "process_method_bundle_sha256": {
+                                "not": {"type": "null"}
+                            },
+                            "program_results": {"maxItems": 0},
+                            "review_flags": {"maxItems": 0},
+                        },
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "runtime_mode": {"const": "legacy_aggregation"}
+                        },
+                        "required": ["runtime_mode"],
+                    },
+                    "then": {
+                        "properties": {
+                            "measurement_projection_state": {
+                                "enum": ["not_requested", "available"]
+                            },
+                            "process_method_bundle_ref": {"type": "null"},
+                            "process_method_bundle_sha256": {"type": "null"},
+                        }
+                    },
+                },
+            ]
+        }
+    )
+
+    profile_version: Literal["0.3.0"]
+    runtime_mode: Literal["legacy_aggregation", "method_runtime"]
+    source_bindings: list[ProgramSourceBinding] = Field(min_length=7, max_length=10)
+    measurement_projection_state: Literal[
+        "not_requested", "available", "not_assessed"
+    ]
+    measurement_spec_ref: VersionedObjectRef | None = None
+    measurement_spec_sha256: Sha256 | None = None
+    process_method_bundle_ref: SafeId | None = None
+    process_method_bundle_sha256: Sha256 | None = None
+    measurement_artifacts: list[
+        ProgramMeasurementArtifactBinding | MethodMeasurementArtifactBinding
+    ]
+
+    @model_validator(mode="after")
+    def runtime_projection_is_coherent(self) -> Self:
+        roles = [item.role for item in self.source_bindings]
+        if len(roles) != len(set(roles)):
+            raise ValueError("source binding roles must be unique")
+        legacy_roles = {
+            "product_case",
+            "product_definition_card",
+            "development_window_spec",
+            "program_spec",
+            "cell_state_evidence_profile",
+            "protocol_ir",
+            "program_evidence_bundle",
+        }
+        method_roles = legacy_roles.difference({"program_evidence_bundle"}) | {
+            "biological_unit_manifest",
+            "biological_unit_assignment",
+            "process_method_spec",
+            "process_method_input",
+        }
+        expected_roles = (
+            legacy_roles if self.runtime_mode == "legacy_aggregation" else method_roles
+        )
+        if set(roles) != expected_roles:
+            raise ValueError("source bindings do not match runtime mode")
+
+        paired_spec = (
+            self.measurement_spec_ref is not None
+            and self.measurement_spec_sha256 is not None
+        )
+        if (self.measurement_spec_ref is None) != (
+            self.measurement_spec_sha256 is None
+        ):
+            raise ValueError("measurement spec reference and checksum must be paired")
+        paired_bundle = (
+            self.process_method_bundle_ref is not None
+            and self.process_method_bundle_sha256 is not None
+        )
+        if (self.process_method_bundle_ref is None) != (
+            self.process_method_bundle_sha256 is None
+        ):
+            raise ValueError("method bundle reference and checksum must be paired")
+
+        measurement_ids = [item.measurement_id for item in self.measurement_artifacts]
+        evidence_ids = [
+            item.evidence_id
+            for item in self.measurement_artifacts
+            if isinstance(item, ProgramMeasurementArtifactBinding)
+        ]
+        artifact_ids = [item.artifact_id for item in self.measurement_artifacts]
+        file_names = [item.file_name for item in self.measurement_artifacts]
+        for values, name in (
+            (measurement_ids, "measurement IDs"),
+            (evidence_ids, "projected evidence IDs"),
+            (artifact_ids, "measurement artifact IDs"),
+            (file_names, "measurement artifact file names"),
+        ):
+            if len(values) != len(set(values)):
+                raise ValueError(f"{name} must be unique")
+
+        if self.runtime_mode == "legacy_aggregation":
+            if paired_bundle:
+                raise ValueError("legacy aggregation cannot bind a method bundle")
+            if any(
+                isinstance(item, MethodMeasurementArtifactBinding)
+                for item in self.measurement_artifacts
+            ):
+                raise ValueError("legacy aggregation requires program measurements")
+            if self.measurement_projection_state == "not_assessed":
+                raise ValueError("legacy aggregation cannot use not_assessed projection")
+            if self.measurement_projection_state == "not_requested":
+                if paired_spec or self.measurement_artifacts:
+                    raise ValueError(
+                        "not-requested projection cannot bind a spec or measurements"
+                    )
+                return self
+            if not paired_spec or not self.measurement_artifacts:
+                raise ValueError("available projection requires spec and measurements")
+            if evidence_ids != [item.evidence_id for item in self.program_results]:
+                raise ValueError(
+                    "program measurements must bind every program result in order"
+                )
+            for summary, flag, binding in zip(
+                self.program_results,
+                self.review_flags,
+                self.measurement_artifacts,
+                strict=True,
+            ):
+                if not isinstance(binding, ProgramMeasurementArtifactBinding):
+                    raise ValueError(
+                        "legacy aggregation requires program measurements"
+                    )
+                if (
+                    flag.applicability is not summary.applicability
+                    or flag.availability is not summary.availability
+                ):
+                    raise ValueError(
+                        "program result and review flag states must align"
+                    )
+                expected_state = projected_program_evidence_state(
+                    applicability=summary.applicability,
+                    availability=summary.availability,
+                    review_flag_state=flag.review_flag_state,
+                )
+                if binding.source_evidence_state != summary.evidence_state:
+                    raise ValueError(
+                        "measurement binding source evidence state mismatch"
+                    )
+                if binding.projected_evidence_state is not expected_state:
+                    raise ValueError(
+                        "measurement binding projected evidence state mismatch"
+                    )
+            return self
+
+        if self.program_results or self.review_flags:
+            raise ValueError("method runtime cannot carry caller-supplied program evidence")
+        if not paired_bundle or not paired_spec:
+            raise ValueError("method runtime requires method bundle and measurement spec")
+        if any(
+            isinstance(item, ProgramMeasurementArtifactBinding)
+            for item in self.measurement_artifacts
+        ):
+            raise ValueError("method runtime requires method-derived measurements")
+        expected_state = "available" if self.measurement_artifacts else "not_assessed"
+        if self.measurement_projection_state != expected_state:
+            raise ValueError("method projection state does not match measurements")
+        return self
+
+
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/program-spec/v0.1": ProgramSpec,
     "bridge://schemas/protocol-ir/v0.1": ProtocolIR,
@@ -563,5 +863,8 @@ PUBLIC_SCHEMA_MODELS = {
     ),
     "bridge://schemas/proliferation-stress-response-profile/v0.2": (
         ProliferationStressResponseProfileV2
+    ),
+    "bridge://schemas/proliferation-stress-response-profile/v0.3": (
+        ProliferationStressResponseProfileV3
     ),
 }

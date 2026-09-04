@@ -31,9 +31,13 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.method_binding imp
     method_binding_reasons,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
+    CellCycleSummary,
+    MethodExecutionState,
     ProcessMethodBundle,
+    ProcessMethodId,
     ProcessMethodInput,
     ProcessMethodSpec,
+    ProgramScoreSummary,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_runtime import (
     ProcessMethodError,
@@ -47,11 +51,12 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     ProgramAvailabilityState,
     ProgramEvidenceBundle,
     ProgramEvidenceSummary,
+    MethodMeasurementArtifactBinding,
     ProgramMeasurementArtifactBinding,
     ProgramSourceBinding,
     ProgramSpec,
     ProliferationStressResponseProfile,
-    ProliferationStressResponseProfileV2,
+    ProliferationStressResponseProfileV3,
     ProtocolIR,
     ProtocolMetadataState,
     ReviewFlagState,
@@ -85,12 +90,12 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-PROFILE_V2_SCHEMA_REF = "bridge://schemas/proliferation-stress-response-profile/v0.2"
+PROFILE_V3_SCHEMA_REF = "bridge://schemas/proliferation-stress-response-profile/v0.3"
 CORE_AGGREGATION_METHOD_IDS = {
     "METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION",
     "METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION",
 }
-BASE_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
+COMMON_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
     "product_case": (
         "bridge://schemas/product-case/v0.1",
         "0.1.0",
@@ -121,6 +126,10 @@ BASE_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
         "0.1.0",
         ProtocolIR,
     ),
+}
+
+LEGACY_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
+    **COMMON_ROLE_MODELS,
     "program_evidence_bundle": (
         "bridge://schemas/program-evidence-bundle/v0.1",
         "0.1.0",
@@ -129,7 +138,7 @@ BASE_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
 }
 
 METHOD_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
-    **BASE_ROLE_MODELS,
+    **COMMON_ROLE_MODELS,
     "cell_state_evidence_profile": (
         "bridge://schemas/cell-state-evidence-profile/v0.3",
         "0.3.0",
@@ -156,6 +165,7 @@ METHOD_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
         ProcessMethodInput,
     ),
 }
+
 OPTIONAL_ROLE_MODELS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
     "measurement_spec": (
         "bridge://schemas/measurement-spec/v0.2",
@@ -163,7 +173,11 @@ OPTIONAL_ROLE_MODELS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
         MeasurementSpecV2,
     ),
 }
-ROLE_MODELS = {**METHOD_ROLE_MODELS, **OPTIONAL_ROLE_MODELS}
+# Public union used by repository contract-parity checks. Runtime loading still
+# selects the mode-specific maps above.
+ROLE_MODELS = {**LEGACY_ROLE_MODELS, **METHOD_ROLE_MODELS, **OPTIONAL_ROLE_MODELS}
+
+
 
 
 @dataclass(frozen=True)
@@ -204,7 +218,8 @@ class ProliferationStressResponseAdapter:
 
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
-        result = _build_result(request, loaded, input_hash)
+        result: ProliferationStressResponseProfileV3 | None = None
+        legacy_bundle: ProgramEvidenceBundle | None = None
         method_bundle: ProcessMethodBundle | None = None
         method_bytes: bytes | None = None
         method_sha: str | None = None
@@ -275,32 +290,50 @@ class ProliferationStressResponseAdapter:
         execution_state = (
             ExecutionState.PARTIAL if method_reasons else ExecutionState.SUCCEEDED
         )
-        bundle = single_object(
-            request,
-            loaded,
-            "program_evidence_bundle",
-            ProgramEvidenceBundle,
-        )
         measurements: list[MeasurementResultV2] = []
         measurement_payloads: dict[str, bytes] = {}
         measurement_specs = objects_for_role(
             request, loaded, "measurement_spec", MeasurementSpecV2
         )
-        if measurement_specs:
-            result, measurements, measurement_payloads = _project_measurements(
-                result=result,
-                bundle=bundle,
+        if mode == "method_runtime":
+            assert method_bundle is not None
+            assert method_sha is not None
+            assert method_spec is not None
+            assert method_input is not None
+            result, measurements, measurement_payloads = _project_method_measurements(
+                request=request,
+                loaded=loaded,
+                method_bundle=method_bundle,
+                method_bundle_sha256=method_sha,
+                method_spec=method_spec,
+                method_input=method_input,
                 measurement_spec=measurement_specs[0],
+                input_hash=input_hash,
                 run_id=run_id,
                 tool_version=spec.version,
-                source_execution_state=(
-                    "partial"
-                    if execution_state is ExecutionState.PARTIAL
-                    else "succeeded"
-                ),
             )
-        elif spec.result_schema_ref == PROFILE_V2_SCHEMA_REF:
-            result = _profile_v2_without_projection(result)
+        else:
+            legacy_bundle = single_object(
+                request,
+                loaded,
+                "program_evidence_bundle",
+                ProgramEvidenceBundle,
+            )
+            legacy_result = _build_legacy_result(request, loaded, input_hash)
+            if measurement_specs:
+                result, measurements, measurement_payloads = (
+                    _project_legacy_measurements(
+                        result=legacy_result,
+                        bundle=legacy_bundle,
+                        measurement_spec=measurement_specs[0],
+                        measurement_spec_sha256=_input_sha(request, "measurement_spec"),
+                        run_id=run_id,
+                        tool_version=spec.version,
+                    )
+                )
+            else:
+                result = _profile_v3_without_projection(legacy_result)
+        assert result is not None
         result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
         payloads = {
             "proliferation_stress_response_profile.json": result_bytes,
@@ -361,7 +394,13 @@ class ProliferationStressResponseAdapter:
                 [exc.reason_code],
                 input_hash=input_hash,
             )
-        evidence_ids = sorted(item.evidence_id for item in bundle.records)
+        if method_bundle is not None:
+            evidence_ids = [method_bundle.bundle_id]
+            created_at = method_bundle.created_at
+        else:
+            assert legacy_bundle is not None
+            evidence_ids = sorted(item.evidence_id for item in legacy_bundle.records)
+            created_at = legacy_bundle.created_at
         artifacts = [
             ArtifactManifest(
                 artifact_id=f"artifact:{run_id}:proliferation-stress-response",
@@ -391,18 +430,21 @@ class ProliferationStressResponseAdapter:
                     evidence_ids=evidence_ids,
                 )
             )
-        if isinstance(result, ProliferationStressResponseProfileV2):
-            artifacts.extend(
-                ArtifactManifest(
-                    artifact_id=binding.artifact_id,
-                    kind="measurement_result_v2",
-                    path=published[binding.file_name],
-                    media_type="application/json",
-                    sha256=binding.sha256,
-                    evidence_ids=[binding.evidence_id],
-                )
-                for binding in result.measurement_artifacts
+        artifacts.extend(
+            ArtifactManifest(
+                artifact_id=binding.artifact_id,
+                kind="measurement_result_v2",
+                path=published[binding.file_name],
+                media_type="application/json",
+                sha256=binding.sha256,
+                evidence_ids=(
+                    [binding.evidence_id]
+                    if isinstance(binding, ProgramMeasurementArtifactBinding)
+                    else evidence_ids
+                ),
             )
+            for binding in result.measurement_artifacts
+        )
         artifacts.extend(prepared_visualizations.artifacts)
         return ToolRunV2(
             run_id=run_id,
@@ -412,7 +454,7 @@ class ProliferationStressResponseAdapter:
             tool_version=spec.version,
             environment_spec_id=spec.environment_spec_id,
             input_hash=input_hash,
-            created_at=bundle.created_at,
+            created_at=created_at,
             measurements=measurements,
             artifacts=artifacts,
             visualizations=[],
@@ -427,7 +469,7 @@ adapter = ProliferationStressResponseAdapter()
 
 
 def _request_mode(request: ToolRequestV2) -> str:
-    method_only_roles = set(METHOD_ROLE_MODELS).difference(BASE_ROLE_MODELS)
+    method_only_roles = set(METHOD_ROLE_MODELS).difference(COMMON_ROLE_MODELS)
     if request.assets or any(
         ref.role in method_only_roles for ref in request.object_inputs
     ):
@@ -448,20 +490,21 @@ def _envelope_reasons(
     if request.parameters:
         reasons.append("p0_06_parameters_forbidden")
     required_role_models = (
-        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+        METHOD_ROLE_MODELS if mode == "method_runtime" else LEGACY_ROLE_MODELS
     )
     role_models = {**required_role_models, **OPTIONAL_ROLE_MODELS}
     roles = [ref.role for ref in request.object_inputs]
     for role in required_role_models:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
-    if roles.count("measurement_spec") > 1:
+    if mode == "method_runtime" and roles.count("measurement_spec") != 1:
+        reasons.append("exactly_one_measurement_spec_required")
+    elif roles.count("measurement_spec") > 1:
         reasons.append("at_most_one_measurement_spec_allowed")
-    if (
-        roles.count("measurement_spec") == 1
-        and spec.result_schema_ref != PROFILE_V2_SCHEMA_REF
-    ):
-        reasons.append("measurement_projection_requires_profile_v2")
+    if mode == "method_runtime" and "program_evidence_bundle" in roles:
+        reasons.append("program_evidence_bundle_forbidden_in_method_runtime")
+    if spec.result_schema_ref != PROFILE_V3_SCHEMA_REF:
+        reasons.append("p0_06_profile_v3_required")
     if any(role not in role_models for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
@@ -481,13 +524,18 @@ def _envelope_reasons(
         reasons.append("exactly_one_expression_asset_required")
     else:
         asset = request.assets[0]
-        if (
-            asset.input_level is not InputLevel.ANALYSIS_READY
-            or asset.format != "h5ad"
-            or asset.matrix_semantics != "normalized_expression"
-            or asset.checksum is None
+        normalized = (
+            asset.input_level is InputLevel.ANALYSIS_READY
+            and asset.matrix_semantics == "normalized_expression"
+        )
+        counts = (
+            asset.input_level is InputLevel.COUNT_READY
+            and asset.matrix_semantics == "raw_counts"
+        )
+        if asset.format != "h5ad" or asset.checksum is None or not (
+            normalized or counts
         ):
-            reasons.append("analysis_ready_normalized_h5ad_required")
+            reasons.append("normalized_or_count_ready_h5ad_required")
         else:
             try:
                 if expression_asset_sha256(asset.path) != asset.checksum:
@@ -504,7 +552,7 @@ def _load_inputs(
     mode: str,
 ) -> tuple[LoadedInputs | None, list[str]]:
     required_role_models = (
-        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+        METHOD_ROLE_MODELS if mode == "method_runtime" else LEGACY_ROLE_MODELS
     )
     role_models = {**required_role_models, **OPTIONAL_ROLE_MODELS}
     return load_structured_inputs(
@@ -561,12 +609,6 @@ def _binding_reasons(
         else CellStateEvidenceProfileV2,
     )
     protocol = single_object(request, loaded, "protocol_ir", ProtocolIR)
-    bundle = single_object(
-        request,
-        loaded,
-        "program_evidence_bundle",
-        ProgramEvidenceBundle,
-    )
     reasons: list[str] = []
     if (
         product_case.product_definition_ref != product_definition.ref
@@ -595,45 +637,19 @@ def _binding_reasons(
         reasons.append("cell_state_profile_binding_mismatch")
     if protocol.product_case_ref != product_case.ref:
         reasons.append("protocol_product_case_binding_mismatch")
-    if (
-        bundle.product_case_ref != product_case.ref
-        or bundle.product_definition_ref != product_definition.ref
-        or bundle.development_window_ref != window.ref
-        or bundle.program_spec_ref != program_spec.ref
-        or bundle.cell_state_profile_ref != cell_state.profile_id
-        or bundle.protocol_context_ref != protocol.protocol_context_id
-    ):
-        reasons.append("program_evidence_bundle_binding_mismatch")
-
-    refs = {ref.role: ref for ref in request.object_inputs}
-    expected_hashes = {
-        "product_case": bundle.product_case_sha256,
-        "product_definition_card": bundle.product_definition_sha256,
-        "development_window_spec": bundle.development_window_sha256,
-        "program_spec": bundle.program_spec_sha256,
-        "cell_state_evidence_profile": bundle.cell_state_profile_sha256,
-        "protocol_ir": bundle.protocol_context_sha256,
-    }
-    if any(refs[role].sha256 != sha for role, sha in expected_hashes.items()):
-        reasons.append("program_evidence_lineage_checksum_mismatch")
-
-    rules = {item.program_id: item for item in program_spec.program_rules}
-    declared_steps = set(protocol.declared_process_step_ids)
-    for record in bundle.records:
-        rule = rules.get(record.program_id)
-        if (
-            rule is None
-            or record.analysis_scope not in rule.allowed_analysis_scopes
-            or (
-                record.analysis_scope is AnalysisScope.STATE_SPECIFIC
-                and record.cell_state_id not in rule.allowed_state_ids
+    if mode == "legacy_aggregation":
+        reasons.extend(
+            _legacy_evidence_binding_reasons(
+                request=request,
+                loaded=loaded,
+                product_case=product_case,
+                product_definition=product_definition,
+                window=window,
+                program_spec=program_spec,
+                cell_state=cell_state,
+                protocol=protocol,
             )
-            or record.metric_id not in rule.allowed_metric_ids
-            or record.lod_state not in rule.allowed_lod_states
-            or record.evidence_state not in rule.review_outcomes
-            or not set(record.process_step_ids).issubset(declared_steps)
-        ):
-            reasons.append("program_evidence_contract_mismatch")
+        )
     if mode == "method_runtime":
         asset = request.assets[0]
         manifest = single_object(
@@ -685,12 +701,25 @@ def _binding_reasons(
         request, loaded, "measurement_spec", MeasurementSpecV2
     )
     if measurement_specs:
+        manifest = (
+            single_object(request, loaded, "biological_unit_manifest", BiologicalUnitManifest)
+            if mode == "method_runtime"
+            else None
+        )
+        method_spec = (
+            single_object(request, loaded, "process_method_spec", ProcessMethodSpec)
+            if mode == "method_runtime"
+            else None
+        )
         reasons.extend(
             _measurement_spec_reasons(
                 measurement_spec=measurement_specs[0],
                 product_case=product_case,
                 product_definition=product_definition,
                 program_spec=program_spec,
+                mode=mode,
+                manifest=manifest,
+                method_spec=method_spec,
             )
         )
     return reasons
@@ -702,9 +731,12 @@ def _measurement_spec_reasons(
     product_case: ProductCase,
     product_definition: ProductDefinitionCard,
     program_spec: ProgramSpec,
+    mode: str,
+    manifest: BiologicalUnitManifest | None,
+    method_spec: ProcessMethodSpec | None,
 ) -> list[str]:
     reasons: list[str] = []
-    if "P0-06" not in measurement_spec.tool_refs:
+    if set(measurement_spec.tool_refs) != {"P0-06"}:
         reasons.append("measurement_spec_tool_binding_mismatch")
     if measurement_spec.assay != product_case.assay:
         reasons.append("measurement_spec_assay_mismatch")
@@ -715,21 +747,63 @@ def _measurement_spec_reasons(
         and product_definition.ref.ref not in measurement_spec.applicable_product_cards
     ):
         reasons.append("measurement_spec_product_definition_not_applicable")
-    expected_metric_ids = {
-        metric_id
-        for rule in program_spec.program_rules
-        for metric_id in rule.allowed_metric_ids
-    }
-    expected_analysis_scopes = {
-        scope.value
-        for rule in program_spec.program_rules
-        for scope in rule.allowed_analysis_scopes
-    }
     raw = measurement_spec.raw_metric_definition
-    if _explicit_string_set(raw.get("metric_ids")) != expected_metric_ids:
-        reasons.append("measurement_spec_metric_ids_mismatch")
-    if _explicit_string_set(raw.get("analysis_scopes")) != expected_analysis_scopes:
+    if mode == "legacy_aggregation":
+        expected_metric_ids = {
+            metric_id
+            for rule in program_spec.program_rules
+            for metric_id in rule.allowed_metric_ids
+        }
+        expected_analysis_scopes = {
+            scope.value
+            for rule in program_spec.program_rules
+            for scope in rule.allowed_analysis_scopes
+        }
+        if _explicit_string_set(raw.get("metric_ids")) != expected_metric_ids:
+            reasons.append("measurement_spec_metric_ids_mismatch")
+        if (
+            _explicit_string_set(raw.get("analysis_scopes"))
+            != expected_analysis_scopes
+        ):
+            reasons.append("measurement_spec_analysis_scopes_mismatch")
+        return reasons
+
+    if manifest is None or method_spec is None:
+        return [*reasons, "method_measurement_context_missing"]
+    if (
+        measurement_spec.analysis_unit_kind is not manifest.analysis_unit_kind
+        or measurement_spec.independence_group_kind
+        != manifest.independence_group_kind
+        or measurement_spec.observation_unit_kind
+        != ("cell" if product_case.assay == "scRNA-seq" else "nucleus")
+    ):
+        reasons.append("measurement_spec_biological_unit_mismatch")
+    selected = set(method_spec.selected_method_ids)
+    expected_metrics: set[str] = set()
+    expected_units: set[str] = set()
+    if selected.intersection(
+        {ProcessMethodId.SCANPY_SCORE_GENES, ProcessMethodId.DECOUPLER_ULM}
+    ):
+        expected_metrics.add("program_score_mean")
+    if ProcessMethodId.SCANPY_SCORE_GENES in selected:
+        expected_units.add("scanpy_control_adjusted_expression")
+    if ProcessMethodId.DECOUPLER_ULM in selected:
+        expected_units.add("decoupler_ulm_t_value")
+    if ProcessMethodId.SCANPY_CELL_CYCLE in selected:
+        expected_metrics.add("cell_cycle_cycling_fraction")
+        expected_units.add("fraction")
+    if _explicit_string_set(raw.get("metric_names")) != expected_metrics:
+        reasons.append("measurement_spec_metric_names_mismatch")
+    if _explicit_string_set(raw.get("analysis_scopes")) != {
+        item.value for item in method_spec.selected_analysis_scopes
+    }:
         reasons.append("measurement_spec_analysis_scopes_mismatch")
+    if _explicit_string_set(raw.get("units")) != expected_units:
+        reasons.append("measurement_spec_units_mismatch")
+    if _explicit_string_set(raw.get("source_method_ids")) != {
+        item.value for item in method_spec.selected_method_ids
+    }:
+        reasons.append("measurement_spec_method_ids_mismatch")
     return reasons
 
 
@@ -799,7 +873,7 @@ def _process_attribution(
     )
 
 
-def _build_result(
+def _build_legacy_result(
     request: ToolRequestV2,
     loaded: LoadedInputs,
     input_hash: str,
@@ -942,7 +1016,7 @@ def _build_result(
         )
 
     refs = sorted(
-        (ref for ref in request.object_inputs if ref.role in BASE_ROLE_MODELS),
+        (ref for ref in request.object_inputs if ref.role in LEGACY_ROLE_MODELS),
         key=lambda item: item.role,
     )
     bindings = [
@@ -973,31 +1047,35 @@ def _build_result(
     )
 
 
-def _profile_v2_without_projection(
+def _profile_v3_without_projection(
     result: ProliferationStressResponseProfile,
-) -> ProliferationStressResponseProfileV2:
+) -> ProliferationStressResponseProfileV3:
     profile_payload = result.model_dump(mode="python")
     profile_payload.update(
         {
-            "profile_version": "0.2.0",
+            "profile_version": "0.3.0",
+            "runtime_mode": "legacy_aggregation",
             "measurement_projection_state": "not_requested",
             "measurement_spec_ref": None,
+            "measurement_spec_sha256": None,
+            "process_method_bundle_ref": None,
+            "process_method_bundle_sha256": None,
             "measurement_artifacts": [],
         }
     )
-    return ProliferationStressResponseProfileV2.model_validate(profile_payload)
+    return ProliferationStressResponseProfileV3.model_validate(profile_payload)
 
 
-def _project_measurements(
+def _project_legacy_measurements(
     *,
     result: ProliferationStressResponseProfile,
     bundle: ProgramEvidenceBundle,
     measurement_spec: MeasurementSpecV2,
+    measurement_spec_sha256: str,
     run_id: str,
     tool_version: str,
-    source_execution_state: str,
 ) -> tuple[
-    ProliferationStressResponseProfileV2,
+    ProliferationStressResponseProfileV3,
     list[MeasurementResultV2],
     dict[str, bytes],
 ]:
@@ -1036,7 +1114,7 @@ def _project_measurements(
             interval_confidence_level=None,
             interval_method_ref=None,
             source_run_ref=f"tool-run:{run_id}@{tool_version}",
-            source_execution_state=source_execution_state,
+            source_execution_state="succeeded",
             unknown_scope=(
                 "measurement" if projected_state is EvidenceState.UNKNOWN else None
             ),
@@ -1064,17 +1142,248 @@ def _project_measurements(
     profile_payload = result.model_dump(mode="python")
     profile_payload.update(
         {
-            "profile_version": "0.2.0",
+            "profile_version": "0.3.0",
+            "runtime_mode": "legacy_aggregation",
             "measurement_projection_state": "available",
             "measurement_spec_ref": {
                 "object_id": measurement_spec.measurement_spec_id,
                 "object_version": measurement_spec.version,
             },
+            "measurement_spec_sha256": measurement_spec_sha256,
+            "process_method_bundle_ref": None,
+            "process_method_bundle_sha256": None,
             "measurement_artifacts": bindings,
         }
     )
     return (
-        ProliferationStressResponseProfileV2.model_validate(profile_payload),
+        ProliferationStressResponseProfileV3.model_validate(profile_payload),
+        measurements,
+        payloads,
+    )
+
+
+def _method_execution_state(
+    method_bundle: ProcessMethodBundle,
+    method_id: ProcessMethodId,
+) -> str:
+    state = next(
+        item.execution_state
+        for item in method_bundle.executions
+        if item.method_id is method_id
+    )
+    return "succeeded" if state is MethodExecutionState.SUCCEEDED else "partial"
+
+
+def _method_measurement(
+    *,
+    summary: ProgramScoreSummary | CellCycleSummary,
+    method_id: ProcessMethodId,
+    program_id: str,
+    measurement_spec: MeasurementSpecV2,
+    method_bundle: ProcessMethodBundle,
+    method_input: ProcessMethodInput,
+    run_id: str,
+    tool_version: str,
+) -> tuple[MeasurementResultV2, MethodMeasurementArtifactBinding, str, bytes]:
+    summary_kind = (
+        "program_score" if isinstance(summary, ProgramScoreSummary) else "cell_cycle"
+    )
+    metric_name = (
+        "program_score_mean"
+        if isinstance(summary, ProgramScoreSummary)
+        else "cell_cycle_cycling_fraction"
+    )
+    summary_bytes = canonical_json_bytes(summary.model_dump(mode="json"))
+    summary_sha = hashlib.sha256(summary_bytes).hexdigest()
+    token = summary_sha[:16]
+    available = summary.assessment_state == "available"
+    if isinstance(summary, ProgramScoreSummary):
+        raw_value = summary.mean if available else None
+        unit = summary.score_unit if available else None
+        numerator = (
+            summary.mean * summary.n_observations
+            if available
+            else None
+        )
+        denominator = summary.n_observations if available else None
+    else:
+        raw_value = summary.cycling_fraction if available else None
+        unit = "fraction" if available else None
+        numerator = (
+            summary.phase_counts["S"] + summary.phase_counts["G2M"]
+            if available
+            else None
+        )
+        denominator = summary.n_observations if available else None
+    measurement = MeasurementResultV2(
+        measurement_id=f"measurement:{run_id.removeprefix('run-')}:method:{token}",
+        measurement_spec_id=measurement_spec.measurement_spec_id,
+        measurement_spec_version=measurement_spec.version,
+        metric_name=metric_name,
+        raw_value=raw_value,
+        unit=unit,
+        numerator=numerator,
+        denominator=denominator,
+        interval=None,
+        interval_confidence_level=None,
+        interval_method_ref=None,
+        source_run_ref=f"tool-run:{run_id}@{tool_version}",
+        source_execution_state=_method_execution_state(method_bundle, method_id),
+        unknown_scope=None,
+        domain_score=None,
+        score_state=ScoreState.UNAVAILABLE,
+        evidence_state=(
+            EvidenceState.INFERRED if available else EvidenceState.UNAVAILABLE
+        ),
+        provenance_refs=[
+            method_bundle.bundle_id,
+            method_input.data_view_ref,
+        ],
+    )
+    payload = canonical_json_bytes(measurement.model_dump(mode="json"), indent=2)
+    file_name = f"method_measurement.{summary_kind}.{token}.json"
+    binding = MethodMeasurementArtifactBinding(
+        measurement_id=measurement.measurement_id,
+        summary_kind=summary_kind,
+        source_method_id=method_id.value,
+        source_summary_sha256=summary_sha,
+        metric_name=metric_name,
+        program_id=program_id,
+        analysis_scope=summary.analysis_scope,
+        analysis_unit_ref=summary.analysis_unit_ref,
+        independence_group_ref=summary.independence_group_ref,
+        cell_state_id=summary.cell_state_id,
+        assessment_state=summary.assessment_state,
+        n_observations=summary.n_observations,
+        artifact_id=f"artifact:{run_id}:method-measurement:{token}",
+        file_name=file_name,
+        sha256=hashlib.sha256(payload).hexdigest(),
+    )
+    return measurement, binding, file_name, payload
+
+
+def _project_method_measurements(
+    *,
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    method_bundle: ProcessMethodBundle,
+    method_bundle_sha256: str,
+    method_spec: ProcessMethodSpec,
+    method_input: ProcessMethodInput,
+    measurement_spec: MeasurementSpecV2,
+    input_hash: str,
+    run_id: str,
+    tool_version: str,
+) -> tuple[
+    ProliferationStressResponseProfileV3,
+    list[MeasurementResultV2],
+    dict[str, bytes],
+]:
+    product_case = single_object(request, loaded, "product_case", ProductCase)
+    product_definition = single_object(
+        request, loaded, "product_definition_card", ProductDefinitionCard
+    )
+    window = single_object(
+        request, loaded, "development_window_spec", DevelopmentWindowSpec
+    )
+    program_spec = single_object(request, loaded, "program_spec", ProgramSpec)
+    cell_state = single_object(
+        request, loaded, "cell_state_evidence_profile", CellStateEvidenceProfileV3
+    )
+    protocol = single_object(request, loaded, "protocol_ir", ProtocolIR)
+    process_state, process_reasons = _process_attribution(protocol, program_spec)
+    measurements: list[MeasurementResultV2] = []
+    bindings: list[MethodMeasurementArtifactBinding] = []
+    payloads: dict[str, bytes] = {}
+    for summary in method_bundle.program_scores:
+        item = _method_measurement(
+            summary=summary,
+            method_id=summary.method_id,
+            program_id=summary.program_id,
+            measurement_spec=measurement_spec,
+            method_bundle=method_bundle,
+            method_input=method_input,
+            run_id=run_id,
+            tool_version=tool_version,
+        )
+        measurement, binding, file_name, payload = item
+        measurements.append(measurement)
+        bindings.append(binding)
+        payloads[file_name] = payload
+    if method_bundle.cell_cycle_summaries:
+        assert method_spec.cell_cycle is not None
+        cycle_method_id = (
+            ProcessMethodId.CELL_CYCLE_AGGREGATION
+            if ProcessMethodId.CELL_CYCLE_AGGREGATION
+            in method_bundle.selected_method_ids
+            else ProcessMethodId.SCANPY_CELL_CYCLE
+        )
+        for summary in method_bundle.cell_cycle_summaries:
+            item = _method_measurement(
+                summary=summary,
+                method_id=cycle_method_id,
+                program_id=method_spec.cell_cycle.program_id,
+                measurement_spec=measurement_spec,
+                method_bundle=method_bundle,
+                method_input=method_input,
+                run_id=run_id,
+                tool_version=tool_version,
+            )
+            measurement, binding, file_name, payload = item
+            measurements.append(measurement)
+            bindings.append(binding)
+            payloads[file_name] = payload
+    source_bindings = [
+        ProgramSourceBinding(
+            input_id=ref.input_id,
+            role=ref.role,
+            schema_ref=ref.schema_ref,
+            object_version=ref.object_version,
+            source_sha256=ref.sha256,
+        )
+        for ref in sorted(
+            (
+                ref
+                for ref in request.object_inputs
+                if ref.role in METHOD_ROLE_MODELS
+            ),
+            key=lambda item: item.role,
+        )
+    ]
+    method_reasons = {
+        reason
+        for execution in method_bundle.executions
+        for reason in execution.reason_codes
+    }
+    return (
+        ProliferationStressResponseProfileV3(
+            profile_id=f"proliferation-stress-profile:{input_hash[:24]}",
+            profile_version="0.3.0",
+            runtime_mode="method_runtime",
+            product_case_ref=product_case.ref,
+            product_definition_ref=product_definition.ref,
+            development_window_ref=window.ref,
+            program_spec_ref=program_spec.ref,
+            cell_state_profile_ref=cell_state.profile_id,
+            protocol_context_ref=protocol.protocol_context_id,
+            source_bindings=source_bindings,
+            process_attribution_state=process_state,
+            program_results=[],
+            review_flags=[],
+            reason_codes=sorted(set(process_reasons) | method_reasons),
+            created_at=method_bundle.created_at,
+            measurement_projection_state=(
+                "available" if bindings else "not_assessed"
+            ),
+            measurement_spec_ref={
+                "object_id": measurement_spec.measurement_spec_id,
+                "object_version": measurement_spec.version,
+            },
+            measurement_spec_sha256=_input_sha(request, "measurement_spec"),
+            process_method_bundle_ref=method_bundle.bundle_id,
+            process_method_bundle_sha256=method_bundle_sha256,
+            measurement_artifacts=bindings,
+        ),
         measurements,
         payloads,
     )
@@ -1177,3 +1486,63 @@ def _failed_run(
 
 def _failed_v1_request(request: ToolRequest, spec: ToolPackageSpecV2) -> ToolRunV2:
     return _failed_run(request_v2_from_v1(request), spec, ["tool_request_v2_required"])
+
+
+def _legacy_evidence_binding_reasons(
+    *,
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    product_case: ProductCase,
+    product_definition: ProductDefinitionCard,
+    window: DevelopmentWindowSpec,
+    program_spec: ProgramSpec,
+    cell_state: CellStateEvidenceProfileV2,
+    protocol: ProtocolIR,
+) -> list[str]:
+    bundle = single_object(
+        request,
+        loaded,
+        "program_evidence_bundle",
+        ProgramEvidenceBundle,
+    )
+    reasons: list[str] = []
+    if (
+        bundle.product_case_ref != product_case.ref
+        or bundle.product_definition_ref != product_definition.ref
+        or bundle.development_window_ref != window.ref
+        or bundle.program_spec_ref != program_spec.ref
+        or bundle.cell_state_profile_ref != cell_state.profile_id
+        or bundle.protocol_context_ref != protocol.protocol_context_id
+    ):
+        reasons.append("program_evidence_bundle_binding_mismatch")
+
+    refs = {ref.role: ref for ref in request.object_inputs}
+    expected_hashes = {
+        "product_case": bundle.product_case_sha256,
+        "product_definition_card": bundle.product_definition_sha256,
+        "development_window_spec": bundle.development_window_sha256,
+        "program_spec": bundle.program_spec_sha256,
+        "cell_state_evidence_profile": bundle.cell_state_profile_sha256,
+        "protocol_ir": bundle.protocol_context_sha256,
+    }
+    if any(refs[role].sha256 != sha for role, sha in expected_hashes.items()):
+        reasons.append("program_evidence_lineage_checksum_mismatch")
+
+    rules = {item.program_id: item for item in program_spec.program_rules}
+    declared_steps = set(protocol.declared_process_step_ids)
+    for record in bundle.records:
+        rule = rules.get(record.program_id)
+        if (
+            rule is None
+            or record.analysis_scope not in rule.allowed_analysis_scopes
+            or (
+                record.analysis_scope is AnalysisScope.STATE_SPECIFIC
+                and record.cell_state_id not in rule.allowed_state_ids
+            )
+            or record.metric_id not in rule.allowed_metric_ids
+            or record.lod_state not in rule.allowed_lod_states
+            or record.evidence_state not in rule.review_outcomes
+            or not set(record.process_step_ids).issubset(declared_steps)
+        ):
+            reasons.append("program_evidence_contract_mismatch")
+    return reasons
