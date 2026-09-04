@@ -4,6 +4,7 @@ import hashlib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Any
 
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
@@ -43,6 +44,14 @@ from bridge.tool_packages.p0_12_graft_assessment.models import (
     GraftRoleSummary,
     GraftSourceBinding,
     PreparationGraftLinkage,
+)
+from bridge.tool_packages.p0_12_graft_assessment.visualization import (
+    PreparedGraftAssessmentVisualizations,
+    prepare_graft_assessment_visualizations,
+)
+from bridge.tool_packages.p0_12_graft_assessment.visualization_data import (
+    GraftAssessmentVisualizationDataV1,
+    build_graft_assessment_visualization_data,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -140,9 +149,11 @@ class GraftAssessmentAdapter:
                 )
             result_filename = "graft_expression_analysis_result.json"
             evidence_ids: list[str] = []
-            inputs_are_unchanged = lambda refs: (
-                inputs_unchanged(refs) and expression_asset_unchanged(asset)
-            )
+
+            def inputs_are_unchanged(refs: list[StructuredInputRef]) -> bool:
+                return inputs_unchanged(refs) and expression_asset_unchanged(
+                    asset
+                )
         else:
             result = _build_result(request, loaded, input_hash)
             result_filename = "graft_assessment_result.json"
@@ -165,23 +176,68 @@ class GraftAssessmentAdapter:
             result.model_dump(mode="json"), indent=2
         )
         result_sha = hashlib.sha256(result_bytes).hexdigest()
-        manifest = _artifact_manifest_payload(
-            request=request,
-            spec=spec,
-            run_id=run_id,
-            input_hash=input_hash,
-            result_filename=result_filename,
-            result_sha=result_sha,
+        try:
+            profile = build_graft_assessment_visualization_data(
+                result=result,
+                result_sha=result_sha,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except (TypeError, ValueError):
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_data_invalid"],
+                input_hash=input_hash,
+            )
+        try:
+            prepared = prepare_graft_assessment_visualizations(
+                profile=profile,
+                output_dir=request.output_dir,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_render_failed"],
+                input_hash=input_hash,
+            )
+
+        core_spec = {
+            "filename": result_filename,
+            "kind": result_filename.removesuffix(".json"),
+            "media_type": "application/json",
+            "sha256": result_sha,
+            "evidence_ids": evidence_ids,
+        }
+        artifact_specs = [
+            core_spec,
+            *(
+                _artifact_spec_from_manifest(artifact)
+                for artifact in prepared.artifacts
+            ),
+        ]
+        payloads = {
+            result_filename: result_bytes,
+            **prepared.payloads,
+        }
+        payloads["artifact_manifest.json"] = canonical_json_bytes(
+            _artifact_manifest_payload(
+                request=request,
+                spec=spec,
+                run_id=run_id,
+                input_hash=input_hash,
+                artifact_specs=artifact_specs,
+            ),
+            indent=2,
         )
-        manifest_bytes = canonical_json_bytes(manifest, indent=2)
         try:
             published = _publish_bundle(
                 request=request,
                 run_id=run_id,
-                payloads={
-                    result_filename: result_bytes,
-                    "artifact_manifest.json": manifest_bytes,
-                },
+                payloads=payloads,
                 inputs_are_unchanged=inputs_are_unchanged,
             )
         except PublicationError as exc:
@@ -191,17 +247,31 @@ class GraftAssessmentAdapter:
                 [exc.reason_code],
                 input_hash=input_hash,
             )
-        artifacts = [
-            ArtifactManifest(
-                artifact_id=f"artifact:{run_id}:{path.stem}",
-                kind=path.stem,
-                path=path,
-                media_type="application/json",
-                sha256=hashlib.sha256(read_regular_bytes(path)).hexdigest(),
-                evidence_ids=evidence_ids,
+        try:
+            published_matches = (
+                set(published) == set(payloads)
+                and all(
+                    read_regular_bytes(published[name]) == payload
+                    for name, payload in payloads.items()
+                )
             )
-            for path in sorted(published.values(), key=lambda item: item.name)
-        ]
+        except (OSError, RuntimeError):
+            published_matches = False
+        if not published_matches:
+            return _failed_run(
+                request,
+                spec,
+                ["published_bundle_hash_mismatch"],
+                input_hash=input_hash,
+            )
+        artifacts = _runtime_artifacts(
+            published=published,
+            payloads=payloads,
+            run_id=run_id,
+            profile=profile,
+            core_spec=core_spec,
+            prepared=prepared,
+        )
         return ToolRunV2(
             run_id=run_id,
             request=request,
@@ -483,14 +553,25 @@ def _build_result(
     )
 
 
+def _artifact_spec_from_manifest(
+    artifact: ArtifactManifest,
+) -> dict[str, Any]:
+    return {
+        "filename": artifact.path.name,
+        "kind": artifact.kind,
+        "media_type": artifact.media_type,
+        "sha256": artifact.sha256,
+        "evidence_ids": artifact.evidence_ids,
+    }
+
+
 def _artifact_manifest_payload(
     *,
     request: ToolRequestV2,
     spec: ToolPackageSpecV2,
     run_id: str,
     input_hash: str,
-    result_filename: str,
-    result_sha: str,
+    artifact_specs: list[dict[str, Any]],
 ) -> dict[str, object]:
     return {
         "manifest_version": "0.1.0",
@@ -507,16 +588,59 @@ def _artifact_manifest_payload(
                 "sha256": ref.sha256,
                 "media_type": ref.media_type,
             }
-            for ref in sorted(request.object_inputs, key=lambda item: item.role)
+            for ref in sorted(
+                request.object_inputs,
+                key=lambda item: (item.role, item.input_id),
+            )
         ],
-        "artifacts": [
-            {
-                "filename": result_filename,
-                "media_type": "application/json",
-                "sha256": result_sha,
-            }
-        ],
+        "artifacts": artifact_specs,
     }
+
+
+def _runtime_artifacts(
+    *,
+    published: dict[str, Any],
+    payloads: dict[str, bytes],
+    run_id: str,
+    profile: GraftAssessmentVisualizationDataV1,
+    core_spec: dict[str, Any],
+    prepared: PreparedGraftAssessmentVisualizations,
+) -> list[ArtifactManifest]:
+    result_artifact = ArtifactManifest(
+        artifact_id=(
+            f"artifact:{run_id}:"
+            f"{str(core_spec['filename']).removesuffix('.json')}"
+        ),
+        kind=str(core_spec["kind"]),
+        path=published[str(core_spec["filename"])].resolve(),
+        media_type=str(core_spec["media_type"]),
+        sha256=str(core_spec["sha256"]),
+        evidence_ids=list(core_spec["evidence_ids"]),
+    )
+    artifacts = [
+        result_artifact,
+        *(
+            artifact.model_copy(
+                update={
+                    "path": published[artifact.path.name].resolve()
+                }
+            )
+            for artifact in prepared.artifacts
+        ),
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:artifact-manifest",
+            kind="artifact_manifest",
+            path=published["artifact_manifest.json"].resolve(),
+            media_type="application/json",
+            sha256=hashlib.sha256(
+                payloads["artifact_manifest.json"]
+            ).hexdigest(),
+            evidence_ids=profile.evidence_ids,
+        ),
+    ]
+    return artifacts
+
+
 def _failed_run(
     request: ToolRequestV2,
     spec: ToolPackageSpecV2,

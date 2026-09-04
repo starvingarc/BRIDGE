@@ -1,0 +1,755 @@
+{
+  "$defs": {
+    "CandidateEvidenceAnchor": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor_id": {
+          "pattern": "^candidate-evidence:p0-12:[a-f0-9]{64}$",
+          "title": "Anchor Id",
+          "type": "string"
+        },
+        "anchor_kind": {
+          "const": "candidate_result_lineage",
+          "default": "candidate_result_lineage",
+          "title": "Anchor Kind",
+          "type": "string"
+        },
+        "formal_evidence": {
+          "const": false,
+          "default": false,
+          "title": "Formal Evidence",
+          "type": "boolean"
+        },
+        "source_result_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Result Ref",
+          "type": "string"
+        },
+        "source_result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Result Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "anchor_id",
+        "source_result_ref",
+        "source_result_sha256"
+      ],
+      "title": "CandidateEvidenceAnchor",
+      "type": "object"
+    },
+    "CompositionRowKind": {
+      "enum": [
+        "state_probability_mass",
+        "unassigned_probability_mass",
+        "component_unavailable"
+      ],
+      "title": "CompositionRowKind",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "GraftCompositionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "denominator_rows": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Rows"
+        },
+        "denominator_scope": {
+          "anyOf": [
+            {
+              "const": "all_uploaded_rows",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Scope"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "mean_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Fraction"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "probability_mass_equivalent": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Probability Mass Equivalent"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "graft_composition",
+          "default": "graft_composition",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "row_kind": {
+          "$ref": "#/$defs/CompositionRowKind"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State Id"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "const": "fraction",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "reason_codes",
+        "row_kind",
+        "label"
+      ],
+      "title": "GraftCompositionRecord",
+      "type": "object"
+    },
+    "GraftMolecularEvidenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "display_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Value"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "gene_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gene Count"
+        },
+        "gene_coverage": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gene Coverage"
+        },
+        "mean_log1p_cp10k": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Log1P Cp10K"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "panel": {
+          "$ref": "#/$defs/MolecularPanel"
+        },
+        "profile_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Id"
+        },
+        "program_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Program Id"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "graft_molecular_evidence",
+          "default": "graft_molecular_evidence",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "row_kind": {
+          "$ref": "#/$defs/MolecularRowKind"
+        },
+        "sample_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Id"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "shared_gene_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shared Gene Count"
+        },
+        "spearman_rho": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": -1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spearman Rho"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "enum": [
+                "spearman_rho",
+                "mean_log1p_cp10k"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "reason_codes",
+        "row_kind",
+        "panel"
+      ],
+      "title": "GraftMolecularEvidenceRecord",
+      "type": "object"
+    },
+    "GraftVisualizationMode": {
+      "enum": [
+        "not_provided",
+        "precomputed",
+        "expression_analysis"
+      ],
+      "title": "GraftVisualizationMode",
+      "type": "string"
+    },
+    "MolecularPanel": {
+      "enum": [
+        "reference_similarity",
+        "registered_gene_program_expression"
+      ],
+      "title": "MolecularPanel",
+      "type": "string"
+    },
+    "MolecularRowKind": {
+      "enum": [
+        "reference_similarity",
+        "registered_gene_program_expression",
+        "component_unavailable"
+      ],
+      "title": "MolecularRowKind",
+      "type": "string"
+    },
+    "ScopeValueKind": {
+      "enum": [
+        "identifier",
+        "count",
+        "declared_metadata",
+        "analysis_semantics",
+        "availability",
+        "scope_boundary"
+      ],
+      "title": "ScopeValueKind",
+      "type": "string"
+    },
+    "SpecimenScopeRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "display_value": {
+          "minLength": 1,
+          "title": "Display Value",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "field_id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Field Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "specimen_scope",
+          "default": "specimen_scope",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "value_kind": {
+          "$ref": "#/$defs/ScopeValueKind"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "reason_codes",
+        "field_id",
+        "label",
+        "display_value",
+        "value_kind"
+      ],
+      "title": "SpecimenScopeRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/graft-assessment-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "candidate_evidence_anchor": {
+      "$ref": "#/$defs/CandidateEvidenceAnchor"
+    },
+    "composition_is_pooled_probability_mass": {
+      "const": true,
+      "default": true,
+      "title": "Composition Is Pooled Probability Mass",
+      "type": "boolean"
+    },
+    "composition_records": {
+      "items": {
+        "$ref": "#/$defs/GraftCompositionRecord"
+      },
+      "minItems": 1,
+      "title": "Composition Records",
+      "type": "array"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "formal_evidence_count": {
+      "minimum": 0,
+      "title": "Formal Evidence Count",
+      "type": "integer"
+    },
+    "formal_evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Formal Evidence Ids",
+      "type": "array"
+    },
+    "marker_source_family_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Marker Source Family Id"
+    },
+    "mode": {
+      "$ref": "#/$defs/GraftVisualizationMode"
+    },
+    "molecular_records": {
+      "items": {
+        "$ref": "#/$defs/GraftMolecularEvidenceRecord"
+      },
+      "minItems": 2,
+      "title": "Molecular Records",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "pretransplant_evidence_effect": {
+      "const": "none",
+      "default": "none",
+      "title": "Pretransplant Evidence Effect",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:run-[a-f0-9]{16}$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_id": {
+      "const": "P0-12",
+      "default": "P0-12",
+      "title": "Producer Tool Id",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "minLength": 1,
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "reference_source_family_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reference Source Family Id"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/graft-assessment-visualization-data/v0.1",
+      "default": "bridge://schemas/graft-assessment-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "scope_records": {
+      "items": {
+        "$ref": "#/$defs/SpecimenScopeRecord"
+      },
+      "minItems": 1,
+      "title": "Scope Records",
+      "type": "array"
+    },
+    "source_created_at": {
+      "format": "date-time",
+      "title": "Source Created At",
+      "type": "string"
+    },
+    "source_result_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Result Ref",
+      "type": "string"
+    },
+    "source_result_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Result Sha256",
+      "type": "string"
+    },
+    "technical_sample_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Technical Sample Count"
+    },
+    "technical_samples_are_not_biological_replicates": {
+      "const": true,
+      "default": true,
+      "title": "Technical Samples Are Not Biological Replicates",
+      "type": "boolean"
+    },
+    "unassigned_is_not_an_unknown_state": {
+      "const": true,
+      "default": true,
+      "title": "Unassigned Is Not An Unknown State",
+      "type": "boolean"
+    },
+    "uploaded_profile_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uploaded Profile Count"
+    },
+    "visualization_profile_id": {
+      "pattern": "^graft-assessment-visualization:[a-f0-9]{16}$",
+      "title": "Visualization Profile Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "visualization_profile_id",
+    "producer_tool_version",
+    "producer_run_ref",
+    "source_result_ref",
+    "source_result_sha256",
+    "source_created_at",
+    "mode",
+    "candidate_evidence_anchor",
+    "evidence_ids",
+    "formal_evidence_ids",
+    "formal_evidence_count",
+    "scope_records",
+    "composition_records",
+    "molecular_records"
+  ],
+  "title": "GraftAssessmentVisualizationDataV1",
+  "type": "object"
+}

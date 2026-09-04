@@ -3,16 +3,16 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-GRAFT-ASSESSMENT-v0.1` |
-| 文档版本 | `0.3-candidate` |
-| 日期 | 2026-08-27 |
+| 文档版本 | `0.4-candidate` |
+| 日期 | 2026-09-04 |
 | 状态 | `candidate` |
 | 适用范围 | 可选的移植后 graft scRNA-seq/snRNA-seq 独立评估 |
 | 上游输入 | 空输入；或 checksummed 预计算 graft 三对象；或 GraftCase、H5AD asset manifest、外部分析 spec、reference panel 与 marker-program collection |
-| 主要输出 | `GraftAssessmentResult` 或 `GraftExpressionAnalysisResult` 与 checksummed JSON artifacts |
+| 主要输出 | 结构化评估结果、typed 图形数据、完整表格及 SVG/PNG/PDF |
 
 ## 0. 当前可执行候选
 
-P0-12 `0.3.0` 通过同一个 `ToolRequestV2 validate/run` 接口提供三条路径：
+P0-12 `0.4.0` 通过同一个 `ToolRequestV2 validate/run` 接口提供三条路径：
 
 - `object_inputs=[]` 返回 `state=not_provided`；
 - 三个 checksummed JSON 对象继续支持预计算 graft evidence 的确定性汇总；
@@ -83,7 +83,7 @@ linkage。两种 provided 结果都保持 `candidate/shadow`、
 一级候选 reference 覆盖中孕期 broad/neurogenesis 状态，并保留 DA、相邻
 神经元谱系和 off-axis 状态。精确 profile 数量、内部派生对象 ID 与 crosswalk
 保留在私有 checksum-bound reference manifest 中，不写入公开任务卡。
-该 reference 用于 whole-graft broad composition、DA broad identity 和
+该 reference 用于上传 graft-derived profile 的 broad composition、DA broad identity 和
 neuronal lineage context；同一 source family 的派生视图不能重复计数。
 
 ### 3.2 二级：GW14-20 fine mDA reference
@@ -119,7 +119,7 @@ missing_fields / user_confirmations
 ```
 
 - `animal_id`、`graft_id` 或 timepoint 缺失时，Agent 只能运行不依赖该字段的模块。
-- 当前 v0.3.0 expression mode 依赖上述三项，因此任何一项缺失均 typed
+- 当前 v0.4.0 expression mode 依赖上述三项，因此任何一项缺失均 typed
   refusal；precomputed compatibility mode 仍按自己的缺失状态规则工作。
 - `originating_preparation_id` 缺失时仍可生成独立 `GraftAssessment`，但 linkage 状态必须为 `provided_unlinked`。
 - 系统不得从文件名、目录、cluster 名或论文惯例推断 graft 关系。
@@ -127,7 +127,7 @@ missing_fields / user_confirmations
 
 ## 5. 分析流程
 
-以下流程是科学目标，不代表 v0.3.0 已实现全部节点。当前可执行边界以上文
+以下流程是科学目标，不代表 v0.4.0 已实现全部节点。当前可执行边界以上文
 “当前可执行候选”和 Tool Card 为准。
 
 ```mermaid
@@ -136,7 +136,7 @@ flowchart LR
     A -->|是| C["GraftCase 与 metadata 审计"]
     C --> D["graft-specific QC 与 species evidence"]
     D --> E["GW14-25 broad/neurogenesis mapping"]
-    E --> F["Whole-graft soft composition"]
+    E --> F["Uploaded-profile soft composition"]
     E --> G{"DA subset 与 fine reference 是否合格"}
     G -->|否| H["fine subtype unavailable/shadow"]
     G -->|是| I["GW14-20 fine mDA support"]
@@ -152,7 +152,7 @@ flowchart LR
 
 ### 6.1 GraftCase、Species 与 QC
 
-- 当前 v0.3.0 expression mode 的 GraftCase validator 还要求一个明确
+- 当前 v0.4.0 expression mode 的 GraftCase validator 还要求一个明确
   `animal/graft/timepoint`，并逐行验证 H5AD `graft_id` 与 case 完全一致；不从
   sample、文件名或路径推断生物学单位。
 - H5AD 路径复用 P0-01 表达对象 validator 检查非空矩阵、唯一 cell/gene ID、
@@ -174,9 +174,9 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 
 方法必须分别在 broad composition、neurogenesis state 和 fine mDA subtype 三个标签层级上评测。历史 Seurat transfer、MetaNeighbor、correlation heatmap 和人工 marker 结果登记为 `historical_candidate`，不能直接进入正式 Evidence Graph。
 
-### 6.3 Whole-graft Composition
+### 6.3 Uploaded-profile Composition
 
-- 当前 v0.3.0 对外部逐行 state probabilities 求和，以全部上传行为唯一分母；不声称这些行已经过 graft QC 或 species 筛选。
+- 当前 v0.4.0 对外部逐行 state probabilities 求和，以全部上传行为唯一分母；不声称这些行已经过 graft QC 或 species 筛选。
 - 输出 `cell_equivalent`、`mean_fraction`、`denominator_cells` 与 `composition_denominator=all_uploaded_rows`。
 - 当前不做 sample weighting、bootstrap、置信区间或组成差异推断。
 - 未来若引入冻结的 `eligible_cells_view` 和独立 animal/graft 单位，再单独评测 inferential composition 方法。
@@ -211,7 +211,7 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 
 ## 7. 输出合同
 
-当前 v0.3.0 的精确公开字段以 Tool Card 与 JSON Schema 为准；下列字段是待
+当前 v0.4.0 的精确公开字段以 Tool Card 与 JSON Schema 为准；下列字段是待
 冻结的完整科学输出目标，不表示当前 runtime 已生成。
 
 ### 7.1 `GraftAssessment`
@@ -256,24 +256,32 @@ Cell-State 模块在 graft 场景下仍是方法评测与证据整合框架，�
 | 某状态零观测 | `not_detected_above_lod` 或 `cannot_exclude`，不能写“确定不存在” |
 | sealed competitor | 不参与方法选择、参数、reference、prior 或阈值 |
 
-## 9. Web 可视化
+## 9. 结果图形
 
-- GraftCase、metadata completeness、species/QC 与分析资格摘要。
-- 以完整 human graft 为分母的组成图，并可下钻 broad family、internal state、unknown 和 LOD。
-- DA subset 的 fine subtype support、prediction set 与方法分歧图。
-- 按 source/modality 分面的 fetal reference support 热图或 ridge plot。
-- maturation program heatmap/dot plot，区分 measured expression 与 inferred activity。
-- animal/graft/timepoint 组成与状态差异；混杂设计必须显示 `descriptive_only`。
-- reference、method、preprocessing、QC 和 assay sensitivity 图。
-- preparation-graft Evidence Graph；lineage/projection 图只在对应数据真实存在时显示。
+当前 v0.4.0 生成三组 typed 图形及完整 TSV 回退：
 
-每张正式图绑定 Evidence ID、输入版本、分母、单位、assay、reference、方法、区间和 missing/unknown 状态。
+1. **移植后样本与当前可解释范围**：展示声明的 animal、graft、timepoint、
+   technical sample、上传 profile 数、assay、矩阵语义和未重新评估的 QC 状态。
+2. **上传的移植物来源 profile 中的细胞状态组成**：以全部上传行为分母，展示
+   外部逐行状态概率的质量及未分配质量；`cell_equivalent` 是软概率质量等效值，
+   不是实际细胞计数。
+3. **参考表达谱相似性与登记基因程序表达**：分别展示 technical sample ×
+   reference profile 的 Spearman 相关，以及 program 的平均 `log1p_cp10k` 表达和
+   gene coverage；两组数值使用独立色标。
+
+`not_provided` 和 precomputed mode 对无法形成的数值图使用显式 unavailable
+状态，不补零，也不把 role 计数解释为细胞组成或表达值。每张图绑定候选结果
+血缘、输入版本、数值语义、分母和 missing/unavailable 状态；该候选血缘不进入
+正式 Evidence 计数。technical sample 不是生物学重复，reference correlation
+不是身份概率，program mean 不代表成熟度、功能或疗效。
+fine subtype、方法敏感性、species/QC 复核、lineage/projection 和
+preparation-graft 关联图仍需对应的显式版本化输入，当前保持未实现。
 
 ## 10. 运行环境
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-P0-CORE-v0.1` | 当前 v0.3.0：AnnData/Scanpy、结构/计数校验、描述性组成、aggregation-matched sample-profile correlation 与 program mean | `health_check_passed` |
+| `ENV-P0-CORE-v0.1` | 当前 v0.4.0：AnnData/Scanpy、结构/计数校验、描述性组成、aggregation-matched sample-profile correlation 与 program mean | `health_check_passed` |
 | `ENV-GRAFT-PY-v0.1` | 未来 reference mapping、replicate-aware 统计与可视化 | `proposed` |
 | `ENV-GRAFT-CELLTYPIST-v0.1` | CellTypist custom classifier | `proposed_benchmark` |
 | `ENV-GRAFT-BIOC-v0.1` | SingleR、scmap、MetaNeighbor、Seurat、speckle/propeller、muscat 等 | `proposed_isolated` |

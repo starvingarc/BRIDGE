@@ -71,6 +71,8 @@ SCHEMA_REFS = {
     "bridge://schemas/process-method-bundle/v0.1": "process_method_bundle.schema.json",
     "bridge://schemas/graft-assessment-result/v0.1": "graft_assessment_result.schema.json",
     "bridge://schemas/graft-assessment-run-result/v0.1": "graft_assessment_run_result.schema.json",
+    "bridge://schemas/graft-assessment-visualization-data/v0.1": "graft_assessment_visualization_data.schema.json",
+    "bridge://schemas/p0-12-visualization-artifact-set/v0.1": "p0_12_visualization_artifact_set.schema.json",
     "bridge://schemas/comparison-method-spec/v0.1": "comparison_method_spec.schema.json",
     "bridge://schemas/comparison-method-input/v0.1": "comparison_method_input.schema.json",
     "bridge://schemas/comparison-method-bundle/v0.1": "comparison_method_bundle.schema.json",
