@@ -202,7 +202,7 @@
             }
           ],
           "default": null,
-          "description": "Versioned pointer declared inside DomainGateInput; P0-08 does not consume or validate ProductCase object content."
+          "description": "Versioned pointer declared inside DomainGateInput and, when present, validated against the checksummed ProductCase supplied to P0-08."
         },
         "product_definition_ref": {
           "anyOf": [

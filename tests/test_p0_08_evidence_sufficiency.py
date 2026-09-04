@@ -627,6 +627,27 @@ def test_module_models_round_trip_through_draft_2020_12(
     assert schema_ref.startswith("bridge://schemas/")
 
 
+def test_public_schemas_describe_the_checksummed_product_case_binding() -> None:
+    expected = (
+        "Versioned pointer declared inside DomainGateInput and, when present, "
+        "validated against the checksummed ProductCase supplied to P0-08."
+    )
+    profile_schema = load_schema(
+        "bridge://schemas/evidence-sufficiency-profile/v0.2"
+    )
+    result_schema = load_schema(RESULT_SCHEMA_REF)
+
+    assert (
+        profile_schema["properties"]["product_case_ref"]["description"]
+        == expected
+    )
+    assert (
+        result_schema["$defs"]["EvidenceSufficiencyProfileV2"]["properties"]
+        ["product_case_ref"]["description"]
+        == expected
+    )
+
+
 def test_sufficient_raw_evidence_never_enables_a_domain_score(tmp_path: Path) -> None:
     run = _run(tmp_path)
 
@@ -767,6 +788,53 @@ def test_v2_result_rejects_profile_product_case_summary_mismatch(
 
     with pytest.raises(
         ValueError, match="case summary product case must match profiles"
+    ):
+        EvidenceSufficiencyRunResult.model_validate(payload)
+
+
+def test_v2_result_rejects_null_case_profile_in_case_bound_multi_domain_result(
+    tmp_path: Path,
+) -> None:
+    case_bound_sparse_domain = _domain(
+        domain_gate_input_id="domain-gate-input:case-001:off-target-control",
+        domain_id="off_target_control",
+        product_definition=None,
+        measurement_spec_input_id=None,
+        qc_profile_input_id=None,
+        measurement_result_input_ids=[],
+        validation_record_input_ids=[],
+        prior_record_input_ids=[],
+        sensitivity_record_input_ids=[],
+        method_requirement="not_assessed",
+        prior_requirement="not_assessed",
+        required_sensitivity_kinds=[],
+        task_validation_state="not_assessed",
+    )
+    run = _run(
+        tmp_path,
+        extras=[
+            (
+                "off-target-domain",
+                "domain_gate_input",
+                "bridge://schemas/domain-gate-input/v0.1",
+                case_bound_sparse_domain,
+                "0.1.0",
+            )
+        ],
+    )
+    result = EvidenceSufficiencyRunResult.model_validate(run.result)
+    payload = result.model_dump(mode="json")
+    sparse_profile = next(
+        profile
+        for profile in payload["profiles"]
+        if profile["domain_id"] == "off_target_control"
+    )
+    assert sparse_profile["evidence_sufficiency_state"] == "not_assessed"
+    sparse_profile["product_case_ref"] = None
+
+    with pytest.raises(
+        ValueError,
+        match="profile ProductCase refs must match the case summary",
     ):
         EvidenceSufficiencyRunResult.model_validate(payload)
 

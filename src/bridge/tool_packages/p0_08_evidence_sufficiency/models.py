@@ -925,8 +925,8 @@ class EvidenceSufficiencyProfileV2(EvidenceSufficiencyProfile):
     product_case_ref: VersionedObjectRef | None = Field(
         default=None,
         description=(
-            "Versioned pointer declared inside DomainGateInput; P0-08 does not "
-            "consume or validate ProductCase object content."
+            "Versioned pointer declared inside DomainGateInput and, when present, "
+            "validated against the checksummed ProductCase supplied to P0-08."
         ),
     )
     product_definition_ref: VersionedObjectRef | None = Field(
@@ -1057,8 +1057,7 @@ class EvidenceSufficiencyRunResultV2(EvidenceSufficiencyRunResult):
         ):
             raise ValueError("result must bind its exact ProductCase source object")
         if any(
-            profile.product_case_ref is not None
-            and profile.product_case_ref != summary_case_ref
+            profile.product_case_ref != summary_case_ref
             for profile in self.profiles
         ):
             raise ValueError("profile ProductCase refs must match the case summary")
