@@ -14,7 +14,15 @@ This directory contains the program-scoring and evidence-aggregation package.
   Eligibility refuses a ProtocolIR independent-replicate count above the
   distinct groups in the bound BiologicalUnitManifest; equal or lower counts
   retain the existing conservative attribution rule.
-- **Output:** `ProliferationStressResponseProfile`; method mode additionally
+- **Output:** v0.5 always emits `ProliferationStressResponseProfile` v0.2;
+  without a MeasurementSpec its projection state is `not_requested` and its
+  bindings are empty. An optional compatible `MeasurementSpecV2` adds one
+  checksummed gate-facing measurement artifact for every program evidence record.
+  The binding preserves the exact source state and its projected shared state:
+  `not_applicable`, `unavailable`, and `not_assessed` become `unavailable`;
+  `cannot_resolve` becomes measurement-scoped `unknown`;
+  `not_detected_above_lod` becomes `negative`; and
+  `transcriptomic_review_flag` becomes `alert`. Method mode additionally
   emits `ProcessMethodBundle` with Scanpy, decoupler and cell-cycle summaries
   bound to the exact ProgramSpec SHA-256. Both modes emit package-owned typed
   visualization data, exact TSV fallbacks, deterministic SVG/PNG/PDF renders
@@ -23,6 +31,10 @@ This directory contains the program-scoring and evidence-aggregation package.
 - **Current visualization limits:** no numeric reference envelope, ordered
   ProtocolIR timeline, numeric LOD/UCB or spike-in recovery curve, or CNV
   visualization is produced; unavailable views remain `not_assessed`.
+- **Projection boundary:** every source record remains intact in the profile.
+  Unknown and unavailable projections carry no numeric fields and are never
+  backfilled with zero; negative and alert projections preserve valid source
+  values. These shared states add no biological threshold or safety meaning.
 - **Boundary:** a review flag is not cell fitness, safety, tumorigenicity,
   potency or process-causality evidence, and the package emits no domain score.
 

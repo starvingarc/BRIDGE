@@ -7,10 +7,17 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, StrictFloat, StrictInt, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    StrictFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from bridge.tool_packages._configurable_contracts import VersionedObjectRef
-from bridge.toolkit.contracts import FrozenModel
+from bridge.toolkit.contracts import EvidenceState, FrozenModel
 
 
 SafeId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
@@ -68,6 +75,32 @@ class ProgramAvailabilityState(StrEnum):
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
     CANNOT_RESOLVE = "cannot_resolve"
+
+
+def projected_program_evidence_state(
+    *,
+    applicability: ProgramApplicabilityState,
+    availability: ProgramAvailabilityState,
+    review_flag_state: ReviewFlagState,
+) -> EvidenceState:
+    """Map one source program record to its gate-facing evidence state."""
+
+    if (
+        applicability is ProgramApplicabilityState.NOT_APPLICABLE
+        or availability is ProgramAvailabilityState.UNAVAILABLE
+        or review_flag_state is ReviewFlagState.NOT_ASSESSED
+    ):
+        return EvidenceState.UNAVAILABLE
+    if (
+        availability is ProgramAvailabilityState.CANNOT_RESOLVE
+        or review_flag_state is ReviewFlagState.CANNOT_RESOLVE
+    ):
+        return EvidenceState.UNKNOWN
+    if review_flag_state is ReviewFlagState.NOT_DETECTED_ABOVE_LOD:
+        return EvidenceState.NEGATIVE
+    if review_flag_state is ReviewFlagState.TRANSCRIPTOMIC_REVIEW_FLAG:
+        return EvidenceState.ALERT
+    raise ValueError("program evidence state cannot be projected")
 
 
 class ProcessAttributionState(StrEnum):
@@ -369,6 +402,16 @@ class TranscriptomicReviewFlag(FrozenModel):
     )
 
 
+class ProgramMeasurementArtifactBinding(FrozenModel):
+    measurement_id: SafeId
+    evidence_id: SafeId
+    source_evidence_state: SafeId
+    projected_evidence_state: EvidenceState
+    artifact_id: SafeId
+    file_name: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*\.json$")
+    sha256: Sha256
+
+
 class ProliferationStressResponseProfile(FrozenModel):
     profile_id: SafeId
     profile_version: Literal["0.1.0"]
@@ -408,6 +451,108 @@ class ProliferationStressResponseProfile(FrozenModel):
         return self
 
 
+class ProliferationStressResponseProfileV2(ProliferationStressResponseProfile):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {
+                                "const": "not_requested"
+                            }
+                        },
+                        "required": ["measurement_projection_state"],
+                    },
+                    "then": {
+                        "required": ["measurement_artifacts"],
+                        "properties": {
+                            "measurement_spec_ref": {"type": "null"},
+                            "measurement_artifacts": {"maxItems": 0},
+                        },
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {"const": "available"}
+                        },
+                        "required": ["measurement_projection_state"],
+                    },
+                    "then": {
+                        "required": [
+                            "measurement_spec_ref",
+                            "measurement_artifacts",
+                        ],
+                        "properties": {
+                            "measurement_spec_ref": {"not": {"type": "null"}},
+                            "measurement_artifacts": {"minItems": 1},
+                        },
+                    },
+                },
+            ]
+        }
+    )
+
+    profile_version: Literal["0.2.0"]
+    measurement_projection_state: Literal["not_requested", "available"]
+    measurement_spec_ref: VersionedObjectRef | None = None
+    measurement_artifacts: list[ProgramMeasurementArtifactBinding]
+
+    @model_validator(mode="after")
+    def measurement_projection_is_coherent(self) -> Self:
+        measurement_ids = [item.measurement_id for item in self.measurement_artifacts]
+        evidence_ids = [item.evidence_id for item in self.measurement_artifacts]
+        artifact_ids = [item.artifact_id for item in self.measurement_artifacts]
+        file_names = [item.file_name for item in self.measurement_artifacts]
+        for values, name in (
+            (measurement_ids, "measurement IDs"),
+            (evidence_ids, "projected evidence IDs"),
+            (artifact_ids, "measurement artifact IDs"),
+            (file_names, "measurement artifact file names"),
+        ):
+            if len(values) != len(set(values)):
+                raise ValueError(f"{name} must be unique")
+        program_evidence_ids = [item.evidence_id for item in self.program_results]
+        if self.measurement_projection_state == "not_requested":
+            if self.measurement_spec_ref is not None or self.measurement_artifacts:
+                raise ValueError(
+                    "not-requested projection cannot bind a spec or measurements"
+                )
+            return self
+        if self.measurement_spec_ref is None:
+            raise ValueError("available projection requires a measurement spec")
+        if not self.measurement_artifacts:
+            raise ValueError("available projection requires measurement artifacts")
+        if evidence_ids != program_evidence_ids:
+            raise ValueError(
+                "measurement artifacts must bind every program result in order"
+            )
+        for summary, flag, binding in zip(
+            self.program_results,
+            self.review_flags,
+            self.measurement_artifacts,
+            strict=True,
+        ):
+            if (
+                flag.applicability is not summary.applicability
+                or flag.availability is not summary.availability
+            ):
+                raise ValueError("program result and review flag states must align")
+            expected_state = projected_program_evidence_state(
+                applicability=summary.applicability,
+                availability=summary.availability,
+                review_flag_state=flag.review_flag_state,
+            )
+            if binding.source_evidence_state != summary.evidence_state:
+                raise ValueError("measurement binding source evidence state mismatch")
+            if binding.projected_evidence_state is not expected_state:
+                raise ValueError(
+                    "measurement binding projected evidence state mismatch"
+                )
+        return self
+
+
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/program-spec/v0.1": ProgramSpec,
     "bridge://schemas/protocol-ir/v0.1": ProtocolIR,
@@ -415,5 +560,8 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/transcriptomic-review-flag/v0.1": TranscriptomicReviewFlag,
     "bridge://schemas/proliferation-stress-response-profile/v0.1": (
         ProliferationStressResponseProfile
+    ),
+    "bridge://schemas/proliferation-stress-response-profile/v0.2": (
+        ProliferationStressResponseProfileV2
     ),
 }

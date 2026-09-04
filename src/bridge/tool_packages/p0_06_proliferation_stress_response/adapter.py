@@ -18,6 +18,7 @@ from bridge.tool_packages._structured_runtime import (
     failed_v2_run,
     inputs_unchanged,
     load_structured_inputs,
+    objects_for_role,
     request_v2_from_v1,
     single_object,
 )
@@ -46,13 +47,16 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     ProgramAvailabilityState,
     ProgramEvidenceBundle,
     ProgramEvidenceSummary,
+    ProgramMeasurementArtifactBinding,
     ProgramSourceBinding,
     ProgramSpec,
     ProliferationStressResponseProfile,
+    ProliferationStressResponseProfileV2,
     ProtocolIR,
     ProtocolMetadataState,
     ReviewFlagState,
     TranscriptomicReviewFlag,
+    projected_program_evidence_state,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.visualization import (
     prepare_proliferation_stress_visualizations,
@@ -65,11 +69,15 @@ from bridge.toolkit.contracts import (
     CellStateEvidenceProfileV2,
     CellStateEvidenceProfileV3,
     EligibilityResult,
+    EvidenceState,
     ExecutionState,
     FrozenModel,
     ImplementationState,
     InputAsset,
     InputLevel,
+    MeasurementResultV2,
+    MeasurementSpecV2,
+    ScoreState,
     StructuredInputRef,
     ToolPackageSpecV2,
     ToolRequest,
@@ -77,7 +85,7 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/proliferation-stress-response-profile/v0.1"
+PROFILE_V2_SCHEMA_REF = "bridge://schemas/proliferation-stress-response-profile/v0.2"
 CORE_AGGREGATION_METHOD_IDS = {
     "METHOD-BRIDGE-SAMPLE-STATE-AGGREGATION",
     "METHOD-DESIGN-AUDIT-AND-SENSITIVITY-STRATIFICATION",
@@ -148,7 +156,14 @@ METHOD_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
         ProcessMethodInput,
     ),
 }
-ROLE_MODELS = METHOD_ROLE_MODELS
+OPTIONAL_ROLE_MODELS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
+    "measurement_spec": (
+        "bridge://schemas/measurement-spec/v0.2",
+        None,
+        MeasurementSpecV2,
+    ),
+}
+ROLE_MODELS = {**METHOD_ROLE_MODELS, **OPTIONAL_ROLE_MODELS}
 
 
 @dataclass(frozen=True)
@@ -190,7 +205,6 @@ class ProliferationStressResponseAdapter:
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
         result = _build_result(request, loaded, input_hash)
-        result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
         method_bundle: ProcessMethodBundle | None = None
         method_bytes: bytes | None = None
         method_sha: str | None = None
@@ -247,7 +261,51 @@ class ProliferationStressResponseAdapter:
                 method_bundle.model_dump(mode="json"), indent=2
             )
             method_sha = hashlib.sha256(method_bytes).hexdigest()
-        payloads = {"proliferation_stress_response_profile.json": result_bytes}
+        method_reasons = (
+            sorted(
+                {
+                    reason
+                    for execution in method_bundle.executions
+                    for reason in execution.reason_codes
+                }
+            )
+            if method_bundle is not None
+            else []
+        )
+        execution_state = (
+            ExecutionState.PARTIAL if method_reasons else ExecutionState.SUCCEEDED
+        )
+        bundle = single_object(
+            request,
+            loaded,
+            "program_evidence_bundle",
+            ProgramEvidenceBundle,
+        )
+        measurements: list[MeasurementResultV2] = []
+        measurement_payloads: dict[str, bytes] = {}
+        measurement_specs = objects_for_role(
+            request, loaded, "measurement_spec", MeasurementSpecV2
+        )
+        if measurement_specs:
+            result, measurements, measurement_payloads = _project_measurements(
+                result=result,
+                bundle=bundle,
+                measurement_spec=measurement_specs[0],
+                run_id=run_id,
+                tool_version=spec.version,
+                source_execution_state=(
+                    "partial"
+                    if execution_state is ExecutionState.PARTIAL
+                    else "succeeded"
+                ),
+            )
+        elif spec.result_schema_ref == PROFILE_V2_SCHEMA_REF:
+            result = _profile_v2_without_projection(result)
+        result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
+        payloads = {
+            "proliferation_stress_response_profile.json": result_bytes,
+            **measurement_payloads,
+        }
         if method_bytes is not None:
             payloads["process_method_bundle.json"] = method_bytes
         try:
@@ -303,12 +361,6 @@ class ProliferationStressResponseAdapter:
                 [exc.reason_code],
                 input_hash=input_hash,
             )
-        bundle = single_object(
-            request,
-            loaded,
-            "program_evidence_bundle",
-            ProgramEvidenceBundle,
-        )
         evidence_ids = sorted(item.evidence_id for item in bundle.records)
         artifacts = [
             ArtifactManifest(
@@ -339,21 +391,19 @@ class ProliferationStressResponseAdapter:
                     evidence_ids=evidence_ids,
                 )
             )
-        artifacts.extend(prepared_visualizations.artifacts)
-        method_reasons = (
-            sorted(
-                {
-                    reason
-                    for execution in method_bundle.executions
-                    for reason in execution.reason_codes
-                }
+        if isinstance(result, ProliferationStressResponseProfileV2):
+            artifacts.extend(
+                ArtifactManifest(
+                    artifact_id=binding.artifact_id,
+                    kind="measurement_result_v2",
+                    path=published[binding.file_name],
+                    media_type="application/json",
+                    sha256=binding.sha256,
+                    evidence_ids=[binding.evidence_id],
+                )
+                for binding in result.measurement_artifacts
             )
-            if method_bundle is not None
-            else []
-        )
-        execution_state = (
-            ExecutionState.PARTIAL if method_reasons else ExecutionState.SUCCEEDED
-        )
+        artifacts.extend(prepared_visualizations.artifacts)
         return ToolRunV2(
             run_id=run_id,
             request=request,
@@ -363,10 +413,10 @@ class ProliferationStressResponseAdapter:
             environment_spec_id=spec.environment_spec_id,
             input_hash=input_hash,
             created_at=bundle.created_at,
-            measurements=[],
+            measurements=measurements,
             artifacts=artifacts,
             visualizations=[],
-            result_schema_ref=RESULT_SCHEMA_REF,
+            result_schema_ref=spec.result_schema_ref,
             result=result.model_dump(mode="json"),
             reason_codes=[],
             warnings=method_reasons,
@@ -397,18 +447,32 @@ def _envelope_reasons(
         reasons.append("p0_06_measurement_spec_forbidden")
     if request.parameters:
         reasons.append("p0_06_parameters_forbidden")
-    role_models = METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+    required_role_models = (
+        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+    )
+    role_models = {**required_role_models, **OPTIONAL_ROLE_MODELS}
     roles = [ref.role for ref in request.object_inputs]
-    for role in role_models:
+    for role in required_role_models:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
+    if roles.count("measurement_spec") > 1:
+        reasons.append("at_most_one_measurement_spec_allowed")
+    if (
+        roles.count("measurement_spec") == 1
+        and spec.result_schema_ref != PROFILE_V2_SCHEMA_REF
+    ):
+        reasons.append("measurement_projection_requires_profile_v2")
     if any(role not in role_models for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
         contract = role_models.get(ref.role)
         if contract is not None and ref.schema_ref != contract[0]:
             reasons.append("object_input_schema_mismatch")
-        if contract is not None and ref.object_version != contract[1]:
+        if (
+            contract is not None
+            and contract[1] is not None
+            and ref.object_version != contract[1]
+        ):
             reasons.append("object_input_version_mismatch")
     if mode == "legacy_aggregation":
         if request.assets:
@@ -439,10 +503,13 @@ def _load_inputs(
     refs: list[StructuredInputRef],
     mode: str,
 ) -> tuple[LoadedInputs | None, list[str]]:
-    role_models = METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+    required_role_models = (
+        METHOD_ROLE_MODELS if mode == "method_runtime" else BASE_ROLE_MODELS
+    )
+    role_models = {**required_role_models, **OPTIONAL_ROLE_MODELS}
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: role_models.get(ref.role, ("", "", None))[2],
+        model_for=lambda ref: role_models.get(ref.role, ("", None, None))[2],
         validate_model=lambda ref, value: _validate_object_version(
             ref, value, role_models
         ),
@@ -452,9 +519,13 @@ def _load_inputs(
 def _validate_object_version(
     ref: StructuredInputRef,
     value: FrozenModel,
-    role_models: dict[str, tuple[str, str, type[FrozenModel]]],
+    role_models: dict[str, tuple[str, str | None, type[FrozenModel]]],
 ) -> None:
-    expected = role_models[ref.role][1]
+    expected = (
+        value.version
+        if isinstance(value, MeasurementSpecV2)
+        else role_models[ref.role][1]
+    )
     if expected != ref.object_version:
         from bridge.tool_packages._structured_runtime import StructuredInputError
 
@@ -610,7 +681,67 @@ def _binding_reasons(
                     tool_spec=spec,
                 )
             )
+    measurement_specs = objects_for_role(
+        request, loaded, "measurement_spec", MeasurementSpecV2
+    )
+    if measurement_specs:
+        reasons.extend(
+            _measurement_spec_reasons(
+                measurement_spec=measurement_specs[0],
+                product_case=product_case,
+                product_definition=product_definition,
+                program_spec=program_spec,
+            )
+        )
     return reasons
+
+
+def _measurement_spec_reasons(
+    *,
+    measurement_spec: MeasurementSpecV2,
+    product_case: ProductCase,
+    product_definition: ProductDefinitionCard,
+    program_spec: ProgramSpec,
+) -> list[str]:
+    reasons: list[str] = []
+    if "P0-06" not in measurement_spec.tool_refs:
+        reasons.append("measurement_spec_tool_binding_mismatch")
+    if measurement_spec.assay != product_case.assay:
+        reasons.append("measurement_spec_assay_mismatch")
+    if (
+        measurement_spec.applicable_product_cards
+        and product_definition.product_definition_id
+        not in measurement_spec.applicable_product_cards
+        and product_definition.ref.ref not in measurement_spec.applicable_product_cards
+    ):
+        reasons.append("measurement_spec_product_definition_not_applicable")
+    expected_metric_ids = {
+        metric_id
+        for rule in program_spec.program_rules
+        for metric_id in rule.allowed_metric_ids
+    }
+    expected_analysis_scopes = {
+        scope.value
+        for rule in program_spec.program_rules
+        for scope in rule.allowed_analysis_scopes
+    }
+    raw = measurement_spec.raw_metric_definition
+    if _explicit_string_set(raw.get("metric_ids")) != expected_metric_ids:
+        reasons.append("measurement_spec_metric_ids_mismatch")
+    if _explicit_string_set(raw.get("analysis_scopes")) != expected_analysis_scopes:
+        reasons.append("measurement_spec_analysis_scopes_mismatch")
+    return reasons
+
+
+def _explicit_string_set(value: object) -> set[str] | None:
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(not isinstance(item, str) or not item for item in value)
+        or len(value) != len(set(value))
+    ):
+        return None
+    return set(value)
 
 
 def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
@@ -842,6 +973,113 @@ def _build_result(
     )
 
 
+def _profile_v2_without_projection(
+    result: ProliferationStressResponseProfile,
+) -> ProliferationStressResponseProfileV2:
+    profile_payload = result.model_dump(mode="python")
+    profile_payload.update(
+        {
+            "profile_version": "0.2.0",
+            "measurement_projection_state": "not_requested",
+            "measurement_spec_ref": None,
+            "measurement_artifacts": [],
+        }
+    )
+    return ProliferationStressResponseProfileV2.model_validate(profile_payload)
+
+
+def _project_measurements(
+    *,
+    result: ProliferationStressResponseProfile,
+    bundle: ProgramEvidenceBundle,
+    measurement_spec: MeasurementSpecV2,
+    run_id: str,
+    tool_version: str,
+    source_execution_state: str,
+) -> tuple[
+    ProliferationStressResponseProfileV2,
+    list[MeasurementResultV2],
+    dict[str, bytes],
+]:
+    records_by_evidence_id = {item.evidence_id: item for item in bundle.records}
+    measurements: list[MeasurementResultV2] = []
+    payloads: dict[str, bytes] = {}
+    bindings: list[ProgramMeasurementArtifactBinding] = []
+    for summary, flag in zip(
+        result.program_results,
+        result.review_flags,
+        strict=True,
+    ):
+        projected_state = projected_program_evidence_state(
+            applicability=summary.applicability,
+            availability=summary.availability,
+            review_flag_state=flag.review_flag_state,
+        )
+        carries_values = projected_state in {
+            EvidenceState.NEGATIVE,
+            EvidenceState.ALERT,
+        }
+        record = records_by_evidence_id[summary.evidence_id]
+        token = hashlib.sha256(summary.evidence_id.encode("utf-8")).hexdigest()[:16]
+        measurement = MeasurementResultV2(
+            measurement_id=(
+                f"measurement:{run_id.removeprefix('run-')}:program:{token}"
+            ),
+            measurement_spec_id=measurement_spec.measurement_spec_id,
+            measurement_spec_version=measurement_spec.version,
+            metric_name=summary.metric_id,
+            raw_value=summary.value if carries_values else None,
+            unit=summary.unit if carries_values else None,
+            numerator=summary.numerator if carries_values else None,
+            denominator=summary.denominator if carries_values else None,
+            interval=None,
+            interval_confidence_level=None,
+            interval_method_ref=None,
+            source_run_ref=f"tool-run:{run_id}@{tool_version}",
+            source_execution_state=source_execution_state,
+            unknown_scope=(
+                "measurement" if projected_state is EvidenceState.UNKNOWN else None
+            ),
+            domain_score=None,
+            score_state=ScoreState.UNAVAILABLE,
+            evidence_state=projected_state,
+            provenance_refs=sorted({record.source_run_ref, *record.provenance_refs}),
+        )
+        payload = canonical_json_bytes(measurement.model_dump(mode="json"), indent=2)
+        file_name = f"program_measurement.{token}.json"
+        artifact_id = f"artifact:{run_id}:program-measurement:{token}"
+        measurements.append(measurement)
+        payloads[file_name] = payload
+        bindings.append(
+            ProgramMeasurementArtifactBinding(
+                measurement_id=measurement.measurement_id,
+                evidence_id=summary.evidence_id,
+                source_evidence_state=summary.evidence_state,
+                projected_evidence_state=projected_state,
+                artifact_id=artifact_id,
+                file_name=file_name,
+                sha256=hashlib.sha256(payload).hexdigest(),
+            )
+        )
+    profile_payload = result.model_dump(mode="python")
+    profile_payload.update(
+        {
+            "profile_version": "0.2.0",
+            "measurement_projection_state": "available",
+            "measurement_spec_ref": {
+                "object_id": measurement_spec.measurement_spec_id,
+                "object_version": measurement_spec.version,
+            },
+            "measurement_artifacts": bindings,
+        }
+    )
+    return (
+        ProliferationStressResponseProfileV2.model_validate(profile_payload),
+        measurements,
+        payloads,
+    )
+
+
 def _artifact_manifest_payload(
     *,
     request: ToolRequestV2,
@@ -931,7 +1169,7 @@ def _failed_run(
         request,
         spec,
         reasons,
-        result_schema_ref=RESULT_SCHEMA_REF,
+        result_schema_ref=spec.result_schema_ref,
         fingerprint_input_key="object_inputs",
         input_hash=input_hash,
     )

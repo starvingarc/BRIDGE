@@ -3,16 +3,16 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.4-candidate` |
+| 文档版本 | `0.5-candidate` |
 | 日期 | 2026-09-02 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | 两种 v0.4 模式共享 `ProductCase`、`ProductDefinitionCard`、外部 `DevelopmentWindowSpec`/`ProgramSpec`、`ProtocolIR` 和 `ProgramEvidenceBundle`；`method_runtime` 另需 P0-02 V3、BiologicalUnit 绑定、方法 spec/input 与一个 normalized H5AD |
-| 主要输出 | 两种模式均输出 `ProliferationStressResponseProfile`、typed visualization data、精确 TSV、SVG/PNG/PDF 和 visualization artifact set；`method_runtime` 另输出绑定 ProgramSpec checksum 的 `ProcessMethodBundle` |
+| 上游输入 | 两种 v0.5 模式共享 `ProductCase`、`ProductDefinitionCard`、外部 `DevelopmentWindowSpec`/`ProgramSpec`、`ProtocolIR` 和 `ProgramEvidenceBundle`，并可选接收一个 `MeasurementSpecV2`；`method_runtime` 另需 P0-02 V3、BiologicalUnit 绑定、方法 spec/input 与一个 normalized H5AD |
+| 主要输出 | 两种模式均输出 v0.2 `ProliferationStressResponseProfile`、typed visualization data、精确 TSV、SVG/PNG/PDF 和 visualization artifact set；提供 MeasurementSpec 时另输出每条现有 ProgramEvidence 一一对应的 checksummed `MeasurementResultV2`；`method_runtime` 另输出绑定 ProgramSpec checksum 的 `ProcessMethodBundle` |
 
-## 0. 当前 v0.4 可执行候选
+## 0. 当前 v0.5 可执行候选
 
-P0-06 `0.4.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
+P0-06 `0.5.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
 
 | 模式 | 输入 | 实际执行 | 输出 |
 | --- | --- | --- | --- |
@@ -90,7 +90,7 @@ P0-06 `0.4.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式
 ## 4. 分析流程
 ### 4.1 当前可执行基线
 
-P0-06 v0.4 提供两种兼容调用：
+P0-06 v0.5 提供两种兼容调用：
 
 - `legacy_aggregation` 保留七个结构化对象的预计算证据聚合；
 - `method_runtime` 读取一个 checksummed normalized H5AD，实际执行
@@ -202,7 +202,7 @@ P0 核心候选不依赖 GPU。不同环境只交换版本化 h5ad/Parquet/TSV�
 
 ## 9. Web 必备可视化
 
-当前 v0.4 只提供三组 package-owned typed candidate 图形：
+当前 v0.5 提供三组 package-owned typed candidate 图形：
 
 - 按 stage、cell state 和 scope 排列的 program evidence 与 review-state
   矩阵，显示 gene coverage、适用性、证据状态和缺失原因；
