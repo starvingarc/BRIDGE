@@ -52,9 +52,10 @@ def apply_candidate_rules(metrics: pd.DataFrame, rules: dict) -> pd.DataFrame:
     flags["flag_zero_total_counts"] = metrics["total_counts"] <= 0
     flags["flag_low_detected_genes"] = metrics["detected_genes"] < int(rules["min_detected_genes"])
     flags["flag_high_detected_genes"] = metrics["detected_genes"] > int(rules["max_detected_genes"])
-    flags["flag_high_mitochondrial_fraction"] = (
-        metrics["mitochondrial_fraction"] > float(rules["max_mitochondrial_fraction"])
-    )
+    if "max_mitochondrial_fraction" in rules:
+        flags["flag_high_mitochondrial_fraction"] = (
+            metrics["mitochondrial_fraction"] > float(rules["max_mitochondrial_fraction"])
+        )
     flags["bridge_qc_candidate_eligible"] = ~flags.any(axis=1)
     return flags
 
