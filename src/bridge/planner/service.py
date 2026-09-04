@@ -83,7 +83,8 @@ class PlanBuilder:
             raise ValueError("analysis_plan_dependency_source_unknown")
 
         declared_assets = {
-            (asset.asset_id, asset.checksum) for asset in case.assets
+            asset.asset_id: _canonical_json(asset.to_toolkit_asset())
+            for asset in case.assets
         }
         steps: list[PlanStep] = []
         step_by_request: dict[str, str] = {}
@@ -95,7 +96,7 @@ class PlanBuilder:
             for asset in original.assets:
                 if asset.checksum is None:
                     raise ValueError("analysis_plan_asset_checksum_missing")
-                if (asset.asset_id, asset.checksum) not in declared_assets:
+                if declared_assets.get(asset.asset_id) != _canonical_json(asset):
                     raise ValueError("analysis_plan_asset_not_in_input_bundle")
 
             dependency_ids = tuple(dependencies.get(original.request_id, ()))

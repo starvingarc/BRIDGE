@@ -55,6 +55,7 @@ class FakeRegistry:
         self.spec = _spec()
         self.execution_state = execution_state
         self.reason_codes = reason_codes or []
+        self.run_calls = 0
 
     def describe(self, tool_id: str):
         return self.spec
@@ -63,6 +64,7 @@ class FakeRegistry:
         return EligibilityResult(tool_id=request.tool_id, eligible=True)
 
     def run(self, request):
+        self.run_calls += 1
         return ToolRun(
             run_id=f"tool-{request.request_id}",
             request=request,
@@ -188,10 +190,27 @@ def test_recovery_invalidates_an_old_worker_claim(tmp_path: Path) -> None:
     assert new_claim is not None
     assert new_claim.claim_id != old_claim.claim_id
 
+    registry = FakeRegistry()
     with pytest.raises(ValueError, match="workflow_claim_fence_mismatch"):
-        executor.execute_claim(old_claim, _pipeline(plan))
-    executor.execute_claim(new_claim, _pipeline(plan))
+        executor.execute_claim(old_claim, _pipeline(plan, registry))
+    assert registry.run_calls == 0
+    executor.execute_claim(new_claim, _pipeline(plan, registry))
+    assert registry.run_calls == 1
     assert executor.get_status(run_id).status == "succeeded"
+
+
+def test_forged_claim_contract_never_runs_tool(tmp_path: Path) -> None:
+    plan = _plan(tmp_path)
+    executor = LocalWorkflowExecutor()
+    run_id = executor.submit(plan)
+    claim = executor.claim_step(run_id)
+    assert claim is not None
+
+    forged = claim.model_copy(update={"approved_request_sha256": "0" * 64})
+    registry = FakeRegistry()
+    with pytest.raises(ValueError, match="workflow_claim_contract_mismatch"):
+        executor.execute_claim(forged, _pipeline(plan, registry))
+    assert registry.run_calls == 0
 
 
 def test_failed_tool_run_is_not_recorded_as_success(tmp_path: Path) -> None:
@@ -216,6 +235,32 @@ def test_failed_tool_run_is_not_recorded_as_success(tmp_path: Path) -> None:
     snapshot = executor.get_status(run_id)
     assert snapshot.status == "failed"
     assert snapshot.steps[0].reason_codes == ["deterministic_failure"]
+
+
+def test_partial_tool_run_stays_partial_and_blocks_dependents(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path, two_steps=True)
+    registry = FakeRegistry(
+        execution_state=ExecutionState.PARTIAL,
+        reason_codes=["individual_records_rejected"],
+    )
+    executor = LocalWorkflowExecutor()
+    run_id = executor.submit(plan)
+    claim = executor.claim_step(run_id)
+    assert claim is not None
+
+    result = executor.execute_claim(claim, _pipeline(plan, registry))
+
+    snapshot = executor.get_status(run_id)
+    assert result.execution_state == "partial"
+    assert snapshot.status == "partial"
+    assert [step.status for step in snapshot.steps] == ["partial", "skipped"]
+    assert snapshot.steps[0].reason_codes == ["individual_records_rejected"]
+    assert snapshot.steps[1].reason_codes == ["upstream_step_partial"]
+    receipt = snapshot.steps[0].outcome_receipt
+    assert receipt is not None
+    assert receipt.execution_state == "partial"
 
 
 def test_retry_exhaustion_skips_only_explicit_descendants(tmp_path: Path) -> None:
@@ -288,6 +333,14 @@ def test_sqlite_store_rejects_nonprivate_parent(tmp_path: Path) -> None:
     root.chmod(0o755)
     with pytest.raises(ValueError, match="private_directory_permissions_invalid"):
         SQLiteRunEventStore(root / "runs.sqlite")
+
+
+def test_sqlite_store_rejects_shared_writable_ancestor(tmp_path: Path) -> None:
+    shared = tmp_path / "shared"
+    shared.mkdir(mode=0o777)
+    shared.chmod(0o777)
+    with pytest.raises(ValueError, match="private_path_ancestor_permissions_invalid"):
+        SQLiteRunEventStore(shared / "events" / "runs.sqlite")
 
 
 def test_sqlite_store_rejects_symlinked_parent(tmp_path: Path) -> None:

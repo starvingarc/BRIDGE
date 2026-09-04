@@ -34,6 +34,7 @@ def open_private_directory(path: Path, *, create: bool) -> tuple[Path, int]:
     except OSError as error:
         raise PrivatePathError("private_path_anchor_invalid") from error
     try:
+        _require_safe_ancestor_directory(descriptor)
         for component in canonical.parts[1:]:
             if create:
                 try:
@@ -45,6 +46,11 @@ def open_private_directory(path: Path, *, create: bool) -> tuple[Path, int]:
             except OSError as error:
                 if error.errno in {errno.ELOOP, errno.ENOTDIR}:
                     raise PrivatePathError("private_path_not_directory") from error
+                raise
+            try:
+                _require_safe_ancestor_directory(next_descriptor)
+            except Exception:
+                os.close(next_descriptor)
                 raise
             os.close(descriptor)
             descriptor = next_descriptor
@@ -116,9 +122,17 @@ def tighten_private_file(path: Path) -> None:
         os.close(descriptor)
 
 
-def _require_private_owner_directory(descriptor: int) -> None:
+def _require_safe_ancestor_directory(descriptor: int) -> None:
     info = os.fstat(descriptor)
     if not stat.S_ISDIR(info.st_mode):
         raise PrivatePathError("private_path_not_directory")
+    mode = stat.S_IMODE(info.st_mode)
+    if mode & 0o022 and not mode & stat.S_ISVTX:
+        raise PrivatePathError("private_path_ancestor_permissions_invalid")
+
+
+def _require_private_owner_directory(descriptor: int) -> None:
+    _require_safe_ancestor_directory(descriptor)
+    info = os.fstat(descriptor)
     if info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) & 0o077:
         raise PrivatePathError("private_directory_permissions_invalid")

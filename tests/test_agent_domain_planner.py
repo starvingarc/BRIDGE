@@ -220,6 +220,30 @@ def test_request_asset_must_belong_to_bundle(tmp_path: Path) -> None:
         )
 
 
+def test_request_asset_must_match_complete_bundle_contract(tmp_path: Path) -> None:
+    asset = _asset(tmp_path)
+    bundle = CaseInputBundle(
+        bundle_id="bundle",
+        version="0.1",
+        assets=[asset],
+    )
+    changed = asset.model_copy(update={"assay": "snRNA-seq"})
+    request = ToolRequest(
+        request_id="changed-qc",
+        tool_id="P0-01",
+        output_dir=(tmp_path / "placeholder").resolve(),
+        assets=[changed],
+    )
+    with pytest.raises(ValueError, match="asset_not_in_input_bundle"):
+        PlanBuilder(FakeRegistry()).build(
+            bundle,
+            output_root=tmp_path / "private-output",
+            knowledge_snapshot_ref="knowledge:test",
+            requests=[request],
+            include_input_qc=False,
+        )
+
+
 def test_approval_receipt_binds_complete_plan(tmp_path: Path) -> None:
     draft = PlanBuilder(FakeRegistry()).build(
         _bundle(tmp_path),
@@ -275,6 +299,18 @@ def test_planner_rejects_non_private_existing_output_root(tmp_path: Path) -> Non
         PlanBuilder(FakeRegistry()).build(
             _bundle(tmp_path),
             output_root=root,
+            knowledge_snapshot_ref="knowledge:test",
+        )
+
+
+def test_planner_rejects_shared_writable_ancestor(tmp_path: Path) -> None:
+    shared = tmp_path / "shared"
+    shared.mkdir(mode=0o777)
+    shared.chmod(0o777)
+    with pytest.raises(ValueError, match="private_path_ancestor_permissions_invalid"):
+        PlanBuilder(FakeRegistry()).build(
+            _bundle(tmp_path),
+            output_root=shared / "private-output",
             knowledge_snapshot_ref="knowledge:test",
         )
 

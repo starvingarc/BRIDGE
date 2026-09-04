@@ -25,6 +25,7 @@ class StepStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     SUCCEEDED = "succeeded"
+    PARTIAL = "partial"
     FAILED = "failed"
     CANCELLED = "cancelled"
     SKIPPED = "skipped"
@@ -66,6 +67,7 @@ class RunEventType(StrEnum):
     RUN_SUBMITTED = "run_submitted"
     STEP_CLAIMED = "step_claimed"
     STEP_SUCCEEDED = "step_succeeded"
+    STEP_PARTIAL = "step_partial"
     STEP_FAILED = "step_failed"
     RUN_RECOVERED = "run_recovered"
     RUN_CANCELLED = "run_cancelled"
@@ -129,6 +131,7 @@ _PAYLOAD_MODELS = {
     RunEventType.RUN_SUBMITTED: RunSubmittedPayload,
     RunEventType.STEP_CLAIMED: StepEventPayload,
     RunEventType.STEP_SUCCEEDED: StepEventPayload,
+    RunEventType.STEP_PARTIAL: StepEventPayload,
     RunEventType.STEP_FAILED: StepEventPayload,
     RunEventType.RUN_RECOVERED: RunRecoveredPayload,
     RunEventType.RUN_CANCELLED: EmptyPayload,
@@ -177,6 +180,9 @@ class RunEvent(FrozenModel):
                 raise ValueError("workflow_success_requires_outcome_receipt")
             if payload.retry_exhausted or payload.blocked_steps:
                 raise ValueError("workflow_success_payload_invalid")
+        elif self.event_type is RunEventType.STEP_PARTIAL:
+            if receipt is None or payload.retry_exhausted:
+                raise ValueError("workflow_partial_requires_outcome_receipt")
         elif self.event_type is RunEventType.STEP_FAILED:
             if not payload.reason_codes:
                 raise ValueError("workflow_failure_requires_reason_codes")
@@ -347,6 +353,18 @@ def _apply_event(projection: RunProjection, event: RunEvent) -> None:
             step.status = StepStatus.SUCCEEDED
             step.outcome_receipt = payload.outcome_receipt
             step.reason_codes = ()
+        elif event.event_type is RunEventType.STEP_PARTIAL:
+            step.status = StepStatus.PARTIAL
+            step.outcome_receipt = payload.outcome_receipt
+            step.reason_codes = payload.reason_codes
+            expected = blocked_descendant_ids(projection, step.step_id)
+            actual = tuple(item.step_id for item in payload.blocked_steps)
+            if actual != expected:
+                raise ValueError("workflow_blocked_descendants_invalid")
+            for blocked in payload.blocked_steps:
+                child = _step(projection, blocked.step_id)
+                child.status = StepStatus.SKIPPED
+                child.reason_codes = blocked.reason_codes
         elif event.event_type is RunEventType.STEP_FAILED:
             step.status = StepStatus.FAILED
             step.outcome_receipt = payload.outcome_receipt
@@ -438,6 +456,8 @@ def _refresh_status(projection: RunProjection) -> None:
         projection.status = (
             RunStatus.PARTIAL if StepStatus.PENDING in states else RunStatus.FAILED
         )
+    elif StepStatus.PARTIAL in states:
+        projection.status = RunStatus.PARTIAL
     elif StepStatus.PENDING in states:
         projection.status = RunStatus.PENDING
     elif StepStatus.SUCCEEDED in states and StepStatus.SKIPPED in states:

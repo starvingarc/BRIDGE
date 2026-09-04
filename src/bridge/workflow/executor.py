@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from threading import RLock
 from uuid import uuid4
 
 from pydantic import Field
@@ -60,6 +61,7 @@ class LocalWorkflowExecutor:
             raise ValueError("max_attempts must be between one and ten")
         self._max_attempts = max_attempts
         self._event_store = event_store or InMemoryRunEventStore()
+        self._operation_lock = RLock()
 
     def submit(self, plan: AnalysisPlan) -> str:
         if plan.status is not PlanStatus.APPROVED or plan.approval_receipt is None:
@@ -77,6 +79,10 @@ class LocalWorkflowExecutor:
         return run_id
 
     def claim_step(self, run_id: str) -> StepClaim | None:
+        with self._operation_lock:
+            return self._claim_step(run_id)
+
+    def _claim_step(self, run_id: str) -> StepClaim | None:
         run = self._projection(run_id)
         for plan_step in run.plan.steps:
             state = run.steps[plan_step.step_id]
@@ -115,6 +121,16 @@ class LocalWorkflowExecutor:
         claim: StepClaim,
         pipeline: ToolExecutionPipeline,
     ) -> ToolRunModel:
+        with self._operation_lock:
+            return self._execute_claim(claim, pipeline)
+
+    def _execute_claim(
+        self,
+        claim: StepClaim,
+        pipeline: ToolExecutionPipeline,
+    ) -> ToolRunModel:
+        run = self._projection(claim.workflow_run_id)
+        self._validate_claim(run, claim)
         try:
             outcome = pipeline.execute_step(claim.step)
         except ToolExecutionDenied as error:
@@ -154,23 +170,32 @@ class LocalWorkflowExecutor:
             execution_state=outcome.execution_state.value,
             artifact_ids=tuple(item.artifact_id for item in outcome.artifacts),
         )
-        successful = outcome.execution_state in {
-            ExecutionState.SUCCEEDED,
-            ExecutionState.PARTIAL,
-        }
+        event_type = (
+            RunEventType.STEP_SUCCEEDED
+            if outcome.execution_state is ExecutionState.SUCCEEDED
+            else (
+                RunEventType.STEP_PARTIAL
+                if outcome.execution_state is ExecutionState.PARTIAL
+                else RunEventType.STEP_FAILED
+            )
+        )
         reasons = tuple(outcome.reason_codes)
-        if not successful and not reasons:
+        if event_type is RunEventType.STEP_FAILED and not reasons:
             reasons = ("tool_run_not_successful",)
         self._append_completion(
             run,
             state.attempts,
             claim,
-            succeeded=successful,
+            event_type=event_type,
             reason_codes=reasons,
             outcome_receipt=receipt,
         )
 
     def fail_step(self, claim: StepClaim, *, reason_codes: list[str]) -> None:
+        with self._operation_lock:
+            self._fail_step(claim, reason_codes=reason_codes)
+
+    def _fail_step(self, claim: StepClaim, *, reason_codes: list[str]) -> None:
         if not reason_codes:
             raise ValueError("workflow_failure_requires_reason_codes")
         run = self._projection(claim.workflow_run_id)
@@ -179,12 +204,16 @@ class LocalWorkflowExecutor:
             run,
             state.attempts,
             claim,
-            succeeded=False,
+            event_type=RunEventType.STEP_FAILED,
             reason_codes=tuple(reason_codes),
             outcome_receipt=None,
         )
 
     def cancel(self, run_id: str) -> None:
+        with self._operation_lock:
+            self._cancel(run_id)
+
+    def _cancel(self, run_id: str) -> None:
         run = self._projection(run_id)
         if not any(
             step.status in {StepStatus.PENDING, StepStatus.RUNNING}
@@ -199,6 +228,10 @@ class LocalWorkflowExecutor:
         )
 
     def resume(self, run_id: str) -> None:
+        with self._operation_lock:
+            self._resume(run_id)
+
+    def _resume(self, run_id: str) -> None:
         run = self._projection(run_id)
         if run.status not in {RunStatus.RUNNING, RunStatus.FAILED, RunStatus.PARTIAL}:
             raise ValueError("workflow_run_not_resumable")
@@ -232,29 +265,33 @@ class LocalWorkflowExecutor:
         attempt: int,
         claim: StepClaim,
         *,
-        succeeded: bool,
+        event_type: RunEventType,
         reason_codes: tuple[str, ...],
         outcome_receipt: StepOutcomeReceipt | None,
     ) -> None:
-        retry_exhausted = not succeeded and attempt >= run.max_attempts
+        retry_exhausted = (
+            event_type is RunEventType.STEP_FAILED
+            and attempt >= run.max_attempts
+        )
+        blocked_reason = (
+            "upstream_step_partial"
+            if event_type is RunEventType.STEP_PARTIAL
+            else "upstream_step_retry_exhausted" if retry_exhausted else None
+        )
         blocked_steps = (
             [
                 {
                     "step_id": step_id,
-                    "reason_codes": ["upstream_step_retry_exhausted"],
+                    "reason_codes": [blocked_reason],
                 }
                 for step_id in blocked_descendant_ids(run, claim.step_id)
             ]
-            if retry_exhausted
+            if blocked_reason is not None
             else []
         )
         self._event_store.append(
             claim.workflow_run_id,
-            (
-                RunEventType.STEP_SUCCEEDED
-                if succeeded
-                else RunEventType.STEP_FAILED
-            ),
+            event_type,
             {
                 "step_id": claim.step_id,
                 "claim_id": claim.claim_id,
@@ -273,6 +310,8 @@ class LocalWorkflowExecutor:
 
     @staticmethod
     def _validate_claim(run: RunProjection, claim: StepClaim):
+        if claim.workflow_run_id != run.run_id:
+            raise ValueError("workflow_claim_run_mismatch")
         try:
             state = run.steps[claim.step_id]
         except KeyError as exc:
@@ -283,8 +322,13 @@ class LocalWorkflowExecutor:
             or state.attempts != claim.attempt
         ):
             raise ValueError("workflow_claim_fence_mismatch")
-        if claim.workflow_run_id != run.run_id:
-            raise ValueError("workflow_claim_run_mismatch")
+        plan_step = LocalWorkflowExecutor._plan_step(run, claim.step_id)
+        if (
+            claim.step_id != claim.step.step_id
+            or claim.step != plan_step
+            or claim.approved_request_sha256 != plan_step.approved_request_sha256
+        ):
+            raise ValueError("workflow_claim_contract_mismatch")
         return state
 
     @staticmethod
