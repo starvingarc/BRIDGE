@@ -938,6 +938,66 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-10",
         data_schema_ref="bridge://schemas/claim-verifier-visualization-data/v0.1",
     ),
+    _typed_component(
+        "bridge.public-safe-export.report-field-projection",
+        "0.1.0",
+        title="Claim-content field projection under the current policy",
+        question=(
+            "Which of the six policy-controlled claim-content fields are retained, "
+            "omitted "
+            "by policy or without a source value for each claim?"
+        ),
+        figure_family="public_report_field_projection_matrix",
+        tool_id="P0-11",
+        data_schema_ref=(
+            "bridge://schemas/public-safe-export-visualization-data/v0.1"
+        ),
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.public-safe-export.local-export-state",
+        "0.1.0",
+        title="Candidate hash and local-file state",
+        question=(
+            "Which deterministic local-export steps are recorded, was a matching "
+            "candidate hash supplied, and what remains "
+            "outside this tool?"
+        ),
+        figure_family="local_export_state_ledger",
+        tool_id="P0-11",
+        data_schema_ref=(
+            "bridge://schemas/public-safe-export-visualization-data/v0.1"
+        ),
+    ),
+    _typed_component(
+        "bridge.public-safe-export.artifact-status",
+        "0.1.0",
+        title="Candidate artifact status under registered checks",
+        question=(
+            "Which candidate artifact was blocked by which registered finding, "
+            "and which artifacts had no registered rule block?"
+        ),
+        figure_family="public_artifact_status_ledger",
+        tool_id="P0-11",
+        data_schema_ref=(
+            "bridge://schemas/public-safe-export-visualization-data/v0.1"
+        ),
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.public-safe-export.registered-checks",
+        "0.1.0",
+        title="Registered checks by candidate artifact",
+        question=(
+            "For every candidate artifact and registered check, was there no "
+            "registered block, a blocking finding, or no applicable check?"
+        ),
+        figure_family="public_artifact_registered_check_matrix",
+        tool_id="P0-11",
+        data_schema_ref=(
+            "bridge://schemas/public-safe-export-visualization-data/v0.1"
+        ),
+    ),
 )
 
 

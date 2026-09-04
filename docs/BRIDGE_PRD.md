@@ -672,11 +672,10 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 截至 2026-09-02，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
 `VisualizationArtifact` v0.2 数据绑定合同与 figure registry v0.1；集成式 Web
 结果页和 Visualization Composer 仍未实现。输入质量、产品目标与区域支持、发育
-阶段、非目标组成、增殖与应激信号、产品比较、证据解释和结构化报告核对已有 typed
-静态图形；细胞状态图仍为 `legacy_untyped`。figure registry 当前登记 34 个组件，
-其中 27 个为 `typed_candidate`，7 个为 `legacy_untyped`。以下内容是后续实现必须
-遵守的设计合同，不表示对应页面
-已经存在。
+阶段、非目标组成、增殖与应激信号、产品比较、证据解释、结构化报告核对和公开
+候选审阅已有 typed 静态图形；细胞状态图仍为 `legacy_untyped`。figure registry
+当前登记 38 个组件，其中 31 个为 `typed_candidate`，7 个为
+`legacy_untyped`。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经存在。
 
 #### 用户问题与默认阅读顺序
 
@@ -709,7 +708,7 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 | 是否存在增殖、细胞周期或应激信号？ | 按阶段和细胞状态呈现的 program 证据与复核状态矩阵，同时显示 gene coverage、适用性和证据状态 | 按方法和声明分析单位分开的 program score 摘要；G1/S/G2M phase composition 与 S/G2M score evidence | Proliferation & Stress Response（P0-06） | 已有 typed 数据、精确表格及三组确定性静态图；当前无数值 reference envelope、ProtocolIR 时间线、数值 LOD/UCB 或 spike-in recovery curve，也无 CNV 图。只能表述为需要复核的转录信号，不能解释为安全性或 potency 结论 |
 | 多个批次或工艺有什么差别？ | 比较资格与混杂结构图：先显示哪些差异可以解释；再按指标展示 declared sample/preparation values、observed range、raw delta、单位和分母 | 各方法的 effect、distance、similarity 和 dispersion 分开显示；composition、program、batch/lot 距离及敏感性矩阵仅在上游提供相应记录时出现 | Product Comparison & Stability（P0-07） | 已有 typed 数据、精确表格及三组确定性静态图；observed range 不是置信区间，raw delta 暂无区间，单个 preparation 只能作描述性比较，不能排名 |
 | 为什么能得出这个判断？ | 分析域的输入、方法、参考与解释条件矩阵；当前可用的已协调结论及其证据状态 | EvidenceFamily 支持/反对/冲突关系；尚缺证据、协调排除和输入拒绝分开下钻 | Evidence Sufficiency / Compiler & Reconciler（P0-08/P0-09） | 已有 typed 图形与完整表格回退；未产生行不代表零或缺失，计数仅用于审计，不作为独立证据或证据总分 |
-| 报告能否使用或分享？ | 当前规则下的报告与结构化主张核对矩阵；报告值与引用证据对应图 | 确定性 finding 与报告原文上下文；公开导出字段清单 | Claim Verifier / Public-safe Export（P0-10/P0-11） | P0-10 已有 typed 数据、完整表格及三组确定性静态图；这些图不检查其他图表内容，也不构成公开导出许可，P0-11 的导出视图仍待独立实现 |
+| 报告能否使用或分享？ | 当前规则下的报告与结构化主张核对矩阵；报告值与引用证据对应图 | claim-content 字段投影、candidate digest 与本地文件状态、候选 artifact 状态及 artifact × 已登记检查矩阵 | Claim Verifier / Public-safe Export（P0-10/P0-11） | P0-10 有三组 typed 核对图；P0-11 有四组 typed 本地审阅图。哈希相符不验证审核者，未被已登记规则阻断也不是全面去标识化或发布许可 |
 | 有移植后数据吗？ | 独立的 graft 组成、reference support 和 program 图 | animal/graft/timepoint、fine subtype、method sensitivity | Optional Graft Assessment（P0-12） | 必须放在独立页，不能反向改变移植前产品结论 |
 
 移植后视图始终与移植前产品证据分开，不得反向改变移植前结论。
@@ -836,7 +835,7 @@ Claim Verifier 检查：
 - 是否包含疗效、安全性、potency、GMP 放行或其他禁止主张。
 - public-safe 输出是否包含私有路径、内部编号或受限 metadata。
 
-核验失败时返回 `release_blocked`。内部报告草稿可以自动生成；正式发布或 public-safe 导出需要用户确认。
+核验失败时返回 `release_blocked`。内部报告草稿可以自动生成；正式发布仍需系统外的受控授权。P0-11 只生成或核查本地候选，并记录调用方提供的 candidate digest 是否相符；它不验证授权者身份，也不执行发布。
 
 `ProductCase`、`AnalysisPlan`、`MeasurementSpec`、`ScoreContract`、`MeasurementResult`、`ProductEvidenceObject`、`CaseEvidenceGraph`、`ComparisonEvidenceGraph`、`ComparisonRecord`、`VisualizationArtifact`、`RecommendationCard` 和 `ClaimVerificationResult` 均采用追加式版本管理；当前对外字段以 [公开 JSON Schema](../src/bridge/resources/schemas/) 为准，尚未实现的对象保持候选设计。
 

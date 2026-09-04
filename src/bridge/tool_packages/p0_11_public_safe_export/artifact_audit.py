@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import csv
 import hashlib
+from html import unescape as html_unescape
 import io
+import ipaddress
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 import shutil
@@ -10,7 +12,8 @@ import stat
 import subprocess
 import tempfile
 from typing import Any
-from urllib.parse import urlsplit
+import unicodedata
+from urllib.parse import unquote, urlsplit
 
 from defusedxml import ElementTree
 from defusedxml.common import DefusedXmlException
@@ -47,6 +50,12 @@ from bridge.tool_packages.p0_11_public_safe_export.artifact_models import (
     PublicArtifactFormat,
     PublicArtifactManifest,
     is_public_dns_name,
+)
+from bridge.tool_packages.p0_11_public_safe_export.visualization import (
+    prepare_public_safe_export_visualizations,
+)
+from bridge.tool_packages.p0_11_public_safe_export.visualization_data import (
+    build_artifact_audit_visualization_data,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -95,8 +104,16 @@ EXPECTED_MEDIA_TYPES = {
 LEAK_PATTERNS = (
     regex.compile(
         r"(?<![A-Za-z0-9_+./:<-])/(?!/)(?:[A-Za-z0-9._-]+/)*"
-        r"[A-Za-z0-9._-]+|[A-Za-z]:\\Users\\",
+        r"[A-Za-z0-9._-]+|[A-Za-z]:\\(?:[^\\\s]+\\)*[^\\\s]+",
         regex.I,
+    ),
+    regex.compile(r"\\\\[A-Za-z0-9._-]+\\(?:[^\\\s]+\\)*[^\\\s]+", regex.I),
+    regex.compile(
+        r"(?<![0-9.])(?:10(?:\.[0-9]{1,3}){3}|"
+        r"127(?:\.[0-9]{1,3}){3}|"
+        r"169\.254(?:\.[0-9]{1,3}){2}|"
+        r"192\.168(?:\.[0-9]{1,3}){2}|"
+        r"172\.(?:1[6-9]|2[0-9]|3[01])(?:\.[0-9]{1,3}){2})(?![0-9.])"
     ),
     regex.compile(
         r"\b(?:source|server|compute)\s+host(?:name)?\s*"
@@ -292,10 +309,88 @@ def run(request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         indent=2,
     )
     try:
+        profile = build_artifact_audit_visualization_data(
+            run_id=run_id,
+            tool_version=spec.version,
+            result=result,
+            source_result_sha256=hashlib.sha256(result_bytes).hexdigest(),
+        )
+    except (KeyError, TypeError, ValueError):
+        return _failed_run(
+            request,
+            spec,
+            ["visualization_data_invalid"],
+            input_hash=input_hash,
+        )
+    try:
+        prepared = prepare_public_safe_export_visualizations(
+            profile=profile,
+            output_dir=request.output_dir,
+            run_id=run_id,
+            tool_version=spec.version,
+        )
+    except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+        return _failed_run(
+            request,
+            spec,
+            ["visualization_render_failed"],
+            input_hash=input_hash,
+        )
+    result_spec = {
+        "filename": "public_artifact_audit_result.json",
+        "kind": "public_artifact_audit_result",
+        "media_type": "application/json",
+        "sha256": hashlib.sha256(result_bytes).hexdigest(),
+        "evidence_ids": profile.evidence_ids,
+    }
+    payloads = {
+        "public_artifact_audit_result.json": result_bytes,
+        **prepared.payloads,
+    }
+    artifact_specs = [
+        result_spec,
+        *[
+            {
+                "filename": item.path.name,
+                "kind": item.kind,
+                "media_type": item.media_type,
+                "sha256": item.sha256,
+                "evidence_ids": item.evidence_ids,
+            }
+            for item in prepared.artifacts
+        ],
+    ]
+    payloads["artifact_manifest.json"] = canonical_json_bytes(
+        {
+            "scope": "internal_run_provenance",
+            "run_id": run_id,
+            "tool_id": spec.tool_id,
+            "tool_version": spec.version,
+            "environment_spec_id": spec.environment_spec_id,
+            "result_schema_ref": RESULT_SCHEMA_REF,
+            "input_hash": input_hash,
+            "structured_inputs": [
+                {
+                    "role": ref.role,
+                    "schema_ref": ref.schema_ref,
+                    "object_version": ref.object_version,
+                    "sha256": ref.sha256,
+                    "media_type": ref.media_type,
+                }
+                for ref in sorted(
+                    request.object_inputs,
+                    key=lambda item: (item.role, item.input_id),
+                )
+            ],
+            "artifacts": artifact_specs,
+        },
+        indent=2,
+    )
+    try:
         published = publish_json_bundle(
             request=request,
             run_id=run_id,
-            payloads={"public_artifact_audit_result.json": result_bytes},
+            payloads=payloads,
             inputs_are_unchanged=lambda refs: (
                 inputs_unchanged(refs)
                 and _artifact_files_unchanged(manifest)
@@ -308,18 +403,30 @@ def run(request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
             [exc.reason_code],
             input_hash=input_hash,
         )
-    output = published["public_artifact_audit_result.json"]
-    artifact = ArtifactManifest(
-        artifact_id=f"artifact:{run_id}:public-artifact-audit-result",
-        kind="public_artifact_audit_result",
-        path=output,
-        media_type="application/json",
-        sha256=hashlib.sha256(read_regular_bytes(output)).hexdigest(),
-        evidence_ids=sorted(
-            item.source_artifact_ref.split("@", 1)[0]
-            for item in manifest.artifacts
+    artifacts = [
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:public-artifact-audit-result",
+            kind="public_artifact_audit_result",
+            path=published["public_artifact_audit_result.json"].resolve(),
+            media_type="application/json",
+            sha256=result_spec["sha256"],
+            evidence_ids=profile.evidence_ids,
         ),
-    )
+        *[
+            item.model_copy(update={"path": published[item.path.name].resolve()})
+            for item in prepared.artifacts
+        ],
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:artifact-manifest",
+            kind="artifact_manifest",
+            path=published["artifact_manifest.json"].resolve(),
+            media_type="application/json",
+            sha256=hashlib.sha256(
+                payloads["artifact_manifest.json"]
+            ).hexdigest(),
+            evidence_ids=profile.evidence_ids,
+        ),
+    ]
     return ToolRunV2(
         run_id=run_id,
         request=request,
@@ -330,7 +437,7 @@ def run(request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         input_hash=input_hash,
         created_at=manifest.created_at,
         measurements=[],
-        artifacts=[artifact],
+        artifacts=artifacts,
         visualizations=[],
         result_schema_ref=RESULT_SCHEMA_REF,
         result=result.model_dump(mode="json"),
@@ -405,6 +512,15 @@ def _binding_reasons(
         PublicArtifactManifest,
     )
     reasons: set[str] = set()
+    public_metadata = [
+        policy.ref,
+        manifest.ref,
+        manifest.policy_ref,
+        *[item.artifact_id for item in manifest.artifacts],
+        *[item.source_artifact_ref for item in manifest.artifacts],
+    ]
+    if any(contains_registered_leak(value) for value in public_metadata):
+        return ["public_artifact_metadata_leak_detected"]
     if not policy.active:
         reasons.add("public_artifact_policy_inactive")
     if manifest.policy_ref != policy.ref:
@@ -535,9 +651,10 @@ def _audit_artifact(
         *_manifest_ref_syntax_reasons(item.source_artifact_ref),
         *_common_text_reasons(raw),
     ]
-    checks.append(
-        _check("METHOD-CUSTOM-DETERMINISTIC-RULES", common_reasons)
-    )
+    if item.format is PublicArtifactFormat.JSON:
+        common_reasons.extend(_decoded_json_leak_reasons(raw))
+    checks.append(_check("METHOD-CUSTOM-DETERMINISTIC-RULES", common_reasons))
+
     if item.format is PublicArtifactFormat.JSON:
         checks.extend(_audit_json(item, raw, policy))
     elif item.format is PublicArtifactFormat.MARKDOWN:
@@ -619,7 +736,7 @@ def _common_text_reasons(raw: bytes) -> list[str]:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
         return ["public_artifact_utf8_invalid"]
-    reasons = _leak_reasons(text)
+    reasons = _semantic_leak_reasons(text)
     if any(
         ord(char) < 32 and char not in "\n\r\t"
         for char in text
@@ -628,11 +745,97 @@ def _common_text_reasons(raw: bytes) -> list[str]:
     return sorted(set(reasons))
 
 
-def _leak_reasons(text: str) -> list[str]:
+def _semantic_leak_reasons(text: str) -> list[str]:
+    current = _canonical_semantic_text(text)
+    values = {text, current}
+    stabilized = False
+    try:
+        for _ in range(3):
+            decoded = _canonical_semantic_text(
+                unquote(html_unescape(current), errors="strict")
+            )
+            values.add(decoded)
+            if decoded == current:
+                stabilized = True
+                break
+            current = decoded
+        if not stabilized:
+            next_value = _canonical_semantic_text(
+                unquote(html_unescape(current), errors="strict")
+            )
+            if next_value != current:
+                return ["public_artifact_leak_pattern_detected"]
+        semantic_values = set(values)
+        for value in values:
+            parsed = urlsplit(value)
+            semantic_values.update(
+                item
+                for item in (
+                    parsed.query,
+                    parsed.fragment,
+                    parsed.username,
+                    parsed.password,
+                )
+                if item
+            )
+            if parsed.path:
+                semantic_values.add(parsed.path.lstrip("/"))
+                if parsed.path.startswith("//") or _local_url_path(
+                    parsed.path
+                ):
+                    return ["public_artifact_leak_pattern_detected"]
+    except (UnicodeDecodeError, ValueError):
+        return ["public_artifact_leak_pattern_detected"]
     return (
         ["public_artifact_leak_pattern_detected"]
-        if any(pattern.search(text) for pattern in LEAK_PATTERNS)
+        if (
+            any(_private_ip_present(value) for value in semantic_values)
+            or any(
+            pattern.search(value)
+            for value in semantic_values
+            for pattern in LEAK_PATTERNS
+            )
+        )
         else []
+    )
+
+
+def _local_url_path(path: str) -> bool:
+    return bool(
+        regex.match(
+            r"^/+(?:Users|bin|data[0-9]*|dev|etc|gpfs|home|lib|lustre|mnt|opt|"
+            r"proc|root|run|scratch|srv|sys|tmp|usr|var|Volumes|work)(?:/|$)",
+            path,
+            regex.I,
+        )
+    )
+
+
+def _private_ip_present(text: str) -> bool:
+    for candidate in regex.findall(
+        r"(?<![A-Fa-f0-9:.])(?:[A-Fa-f0-9:.]{2,})(?![A-Fa-f0-9:.])",
+        text,
+    ):
+        candidate = candidate.strip("[](),;.!?")
+        try:
+            address = ipaddress.ip_address(candidate)
+        except ValueError:
+            continue
+        if address.is_private or address.is_loopback or address.is_link_local:
+            return True
+    return False
+
+
+def _canonical_semantic_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFKC", text)
+    return "".join(
+        character for character in normalized if unicodedata.category(character) != "Cf"
+    )
+
+
+def contains_registered_leak(value: Any) -> bool:
+    return any(
+        _semantic_leak_reasons(text) for text in _semantic_strings(value)
     )
 
 
@@ -658,6 +861,34 @@ def _audit_json(
     return [_check("METHOD-JSONSCHEMA-HASHLIB", reasons)]
 
 
+def _semantic_strings(value: Any):
+    if isinstance(value, FrozenModel):
+        value = value.model_dump(mode="json", exclude_none=True)
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield str(key)
+            yield from _semantic_strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _semantic_strings(item)
+    elif isinstance(value, str):
+        yield value
+
+
+def _decoded_json_leak_reasons(raw: bytes) -> list[str]:
+    try:
+        payload = strict_json_loads(raw)
+    except (UnicodeDecodeError, ValueError):
+        return []
+    return sorted(
+        {
+            reason
+            for text in _semantic_strings(payload)
+            for reason in _semantic_leak_reasons(text)
+        }
+    )
+
+
 def _audit_markdown(
     raw: bytes,
     policy: PublicArtifactAuditPolicy,
@@ -669,14 +900,27 @@ def _audit_markdown(
             raw.decode("utf-8")
         )
         for token in _markdown_tokens(tokens):
+            parser_reasons.extend(_semantic_leak_reasons(token.content))
+            for name, value in (token.attrs or {}).items():
+                parser_reasons.extend(_semantic_leak_reasons(str(name)))
+                parser_reasons.extend(_semantic_leak_reasons(str(value)))
+            if token.type == "inline" and token.children:
+                parser_reasons.extend(
+                    _semantic_leak_reasons(_markdown_visible_text(token.children))
+                )
             if token.type in {"html_block", "html_inline"}:
                 parser_reasons.append("public_artifact_markdown_html_forbidden")
-            if token.type in {"link_open", "image"}:
-                target = token.attrGet(
-                    "href" if token.type == "link_open" else "src"
-                )
-                if target and not _url_allowed(target, policy):
-                    url_reasons.append("public_artifact_url_not_allowed")
+            if token.type == "link_open":
+                target = token.attrGet("href")
+                if target:
+                    parser_reasons.extend(_semantic_leak_reasons(target))
+                    if not _url_allowed(target, policy):
+                        url_reasons.append("public_artifact_url_not_allowed")
+            elif token.type == "image":
+                target = token.attrGet("src")
+                if target:
+                    parser_reasons.extend(_semantic_leak_reasons(target))
+                url_reasons.append("public_artifact_url_not_allowed")
             if token.type == "text":
                 for match in BARE_MARKDOWN_URL.finditer(token.content):
                     target = match.group(0).rstrip(".,:;!?")
@@ -697,6 +941,19 @@ def _markdown_tokens(tokens: list[Any]):
         yield token
         if token.children:
             yield from _markdown_tokens(token.children)
+
+
+def _markdown_visible_text(tokens: list[Any]) -> str:
+    return "".join(
+        (
+            " "
+            if token.type in {"softbreak", "hardbreak"}
+            else token.content
+            if token.type in {"text", "code_inline", "image"}
+            else ""
+        )
+        for token in tokens
+    )
 
 
 def _url_allowed(
@@ -732,6 +989,9 @@ def _audit_csv(
         text = raw.decode("utf-8")
         rows = list(csv.reader(io.StringIO(text), strict=True))
         columns = rows[0] if rows else []
+        parser_reasons.extend(
+            reason for value in columns for reason in _semantic_leak_reasons(value)
+        )
         expected = policy.csv_column_allowlists[item.artifact_id]
         if len(columns) != len(set(columns)) or sorted(columns) != expected:
             parser_reasons.append("public_artifact_csv_columns_not_allowed")
@@ -739,9 +999,10 @@ def _audit_csv(
             parser_reasons.append("public_artifact_csv_row_width_invalid")
         for row in rows[1:]:
             for value in row:
+                parser_reasons.extend(_semantic_leak_reasons(value))
                 if (
-                    FORMULA_PREFIX.search(value)
-                    and not NUMERIC_CELL.fullmatch(value)
+                    FORMULA_PREFIX.search(_canonical_semantic_text(value))
+                    and not NUMERIC_CELL.fullmatch(_canonical_semantic_text(value))
                 ):
                     rule_reasons.append("public_artifact_csv_formula_injection")
     except (UnicodeDecodeError, csv.Error, KeyError, ValueError):
@@ -753,9 +1014,23 @@ def _audit_svg(
     raw: bytes,
     policy: PublicArtifactAuditPolicy,
 ) -> list[PublicArtifactCheck]:
+    del policy  # External URLs are never allowed in SVG.
     svg_reasons: list[str] = []
-    url_reasons: list[str] = []
     try:
+        text = raw.decode("utf-8")
+        visible_xml = regex.sub(
+            r"\A\s*<\?xml\s+[^?]*\?>",
+            "",
+            text,
+            count=1,
+            flags=regex.I,
+        )
+        if (
+            "<?" in visible_xml
+            or "<!--" in visible_xml
+            or regex.search(r"<!DOCTYPE\b", visible_xml, flags=regex.I)
+        ):
+            svg_reasons.append("public_artifact_svg_hidden_content")
         root = ElementTree.fromstring(raw)
         elements = list(root.iter())
         element_ids = [
@@ -769,11 +1044,19 @@ def _audit_svg(
         if _local_name(root.tag) != "svg":
             svg_reasons.append("public_artifact_svg_root_invalid")
         for element in elements:
+            for text in (element.text, element.tail):
+                if text:
+                    svg_reasons.extend(_semantic_leak_reasons(text))
             tag = _local_name(element.tag)
+            if tag in {"text", "title", "desc"}:
+                svg_reasons.extend(_semantic_leak_reasons("".join(element.itertext())))
             if tag not in ALLOWED_SVG_ELEMENTS:
                 svg_reasons.append("public_artifact_svg_element_forbidden")
             for raw_name, value in element.attrib.items():
+                svg_reasons.extend(_semantic_leak_reasons(value))
                 name = _local_name(raw_name)
+                if "\\" in value or "/*" in value or "*/" in value:
+                    svg_reasons.append("public_artifact_svg_url_invalid")
                 if name.startswith("on") or name not in (
                     ALLOWED_SVG_ATTRIBUTES | {"href"}
                 ):
@@ -794,25 +1077,21 @@ def _audit_svg(
                             "public_artifact_svg_local_reference_missing"
                         )
                 if name == "href" and value:
-                    if value.startswith("#"):
-                        if value[1:] not in known_ids:
-                            svg_reasons.append(
-                                "public_artifact_svg_local_reference_missing"
-                            )
-                    elif not _url_allowed(value, policy):
-                        url_reasons.append(
-                            "public_artifact_url_not_allowed"
+                    if not value.startswith("#"):
+                        svg_reasons.append(
+                            "public_artifact_svg_external_resource_forbidden"
+                        )
+                    elif value[1:] not in known_ids:
+                        svg_reasons.append(
+                            "public_artifact_svg_local_reference_missing"
                         )
                 if (name, value.strip().lower()) in HIDDEN_VALUES:
                     svg_reasons.append(
                         "public_artifact_svg_hidden_content"
                     )
-    except (DefusedXmlException, ParseError, ValueError):
+    except (DefusedXmlException, ParseError, UnicodeDecodeError, ValueError):
         svg_reasons.append("public_artifact_svg_invalid")
-    return [
-        _check("METHOD-CUSTOM-SVG-INSPECTOR", svg_reasons),
-        _check("METHOD-URL-PARSER-ALLOWLIST", url_reasons),
-    ]
+    return [_check("METHOD-CUSTOM-SVG-INSPECTOR", svg_reasons)]
 
 
 def _local_name(name: str) -> str:

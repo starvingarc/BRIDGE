@@ -1,0 +1,758 @@
+{
+  "$defs": {
+    "ArtifactAuditVisualizationDataV1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_count": {
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Artifact Count",
+          "type": "integer"
+        },
+        "artifact_records": {
+          "items": {
+            "$ref": "#/$defs/ArtifactStatusRecord"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Artifact Records",
+          "type": "array"
+        },
+        "audit_counts_are_not_risk_scores": {
+          "const": true,
+          "default": true,
+          "title": "Audit Counts Are Not Risk Scores",
+          "type": "boolean"
+        },
+        "check_records": {
+          "items": {
+            "$ref": "#/$defs/RegisteredCheckRecord"
+          },
+          "minItems": 1,
+          "title": "Check Records",
+          "type": "array"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "mode": {
+          "const": "artifact_audit",
+          "default": "artifact_audit",
+          "title": "Mode",
+          "type": "string"
+        },
+        "no_network_upload_performed": {
+          "const": true,
+          "default": true,
+          "title": "No Network Upload Performed",
+          "type": "boolean"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "overall_display_state": {
+          "$ref": "#/$defs/ArtifactDisplayState"
+        },
+        "producer_run_ref": {
+          "pattern": "^run:run-[a-f0-9]{16}$",
+          "title": "Producer Run Ref",
+          "type": "string"
+        },
+        "producer_tool_id": {
+          "const": "P0-11",
+          "default": "P0-11",
+          "title": "Producer Tool Id",
+          "type": "string"
+        },
+        "producer_tool_version": {
+          "minLength": 1,
+          "title": "Producer Tool Version",
+          "type": "string"
+        },
+        "registered_method_count": {
+          "minimum": 1,
+          "title": "Registered Method Count",
+          "type": "integer"
+        },
+        "schema_ref": {
+          "const": "bridge://schemas/public-safe-export-visualization-data/v0.1",
+          "default": "bridge://schemas/public-safe-export-visualization-data/v0.1",
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "source_result_ref": {
+          "pattern": "^public-artifact-audit:[a-f0-9]{16}$",
+          "title": "Source Result Ref",
+          "type": "string"
+        },
+        "source_result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Result Sha256",
+          "type": "string"
+        },
+        "visualization_artifacts_are_not_publication_approval": {
+          "const": true,
+          "default": true,
+          "title": "Visualization Artifacts Are Not Publication Approval",
+          "type": "boolean"
+        },
+        "visualization_profile_id": {
+          "pattern": "^public-safe-export-visualization:[a-f0-9]{16}$",
+          "title": "Visualization Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "visualization_profile_id",
+        "producer_tool_version",
+        "producer_run_ref",
+        "source_result_sha256",
+        "evidence_ids",
+        "limitations",
+        "source_result_ref",
+        "overall_display_state",
+        "artifact_count",
+        "registered_method_count",
+        "artifact_records",
+        "check_records"
+      ],
+      "title": "ArtifactAuditVisualizationDataV1",
+      "type": "object"
+    },
+    "ArtifactDisplayState": {
+      "enum": [
+        "no_registered_rule_blocked",
+        "blocked_by_registered_rule"
+      ],
+      "title": "ArtifactDisplayState",
+      "type": "string"
+    },
+    "ArtifactStatusRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_applicable"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "artifact_display_id": {
+          "pattern": "^Artifact [0-9]{2}$",
+          "title": "Artifact Display Id",
+          "type": "string"
+        },
+        "audit_state": {
+          "$ref": "#/$defs/ArtifactDisplayState"
+        },
+        "blocked_check_count": {
+          "minimum": 0,
+          "title": "Blocked Check Count",
+          "type": "integer"
+        },
+        "byte_count": {
+          "minimum": 1,
+          "title": "Byte Count",
+          "type": "integer"
+        },
+        "check_count": {
+          "minimum": 1,
+          "title": "Check Count",
+          "type": "integer"
+        },
+        "declared_format": {
+          "$ref": "#/$defs/PublicArtifactFormat"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "const": "available",
+          "default": "available",
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "artifact_status",
+          "default": "artifact_status",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "applicability",
+        "display_state",
+        "reason_codes",
+        "artifact_display_id",
+        "declared_format",
+        "byte_count",
+        "check_count",
+        "blocked_check_count",
+        "audit_state"
+      ],
+      "title": "ArtifactStatusRecord",
+      "type": "object"
+    },
+    "CandidateHashDisplayState": {
+      "enum": [
+        "awaiting_matching_candidate_hash",
+        "matching_candidate_hash_supplied"
+      ],
+      "title": "CandidateHashDisplayState",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "FieldProjectionState": {
+      "enum": [
+        "included",
+        "omitted_by_policy",
+        "not_applicable_in_source"
+      ],
+      "title": "FieldProjectionState",
+      "type": "string"
+    },
+    "LocalExportStateRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_applicable"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "const": "available",
+          "default": "available",
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "local_export_state",
+          "default": "local_export_state",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/LocalExportStepState"
+        },
+        "step": {
+          "$ref": "#/$defs/LocalExportStep"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "applicability",
+        "display_state",
+        "reason_codes",
+        "step",
+        "state"
+      ],
+      "title": "LocalExportStateRecord",
+      "type": "object"
+    },
+    "LocalExportStep": {
+      "enum": [
+        "allowlist_projection",
+        "registered_leak_rules",
+        "candidate_hash_match",
+        "local_candidate_files",
+        "network_upload"
+      ],
+      "title": "LocalExportStep",
+      "type": "string"
+    },
+    "LocalExportStepState": {
+      "enum": [
+        "completed",
+        "no_registered_rule_blocked",
+        "awaiting_matching_candidate_hash",
+        "matching_candidate_hash_supplied",
+        "written_locally",
+        "not_performed_by_tool"
+      ],
+      "title": "LocalExportStepState",
+      "type": "string"
+    },
+    "PublicArtifactFormat": {
+      "enum": [
+        "json",
+        "markdown",
+        "csv",
+        "svg"
+      ],
+      "title": "PublicArtifactFormat",
+      "type": "string"
+    },
+    "PublicClaimField": {
+      "enum": [
+        "claim_type",
+        "text",
+        "language",
+        "statement_refs",
+        "reported_evidence_state",
+        "comparison_mode"
+      ],
+      "title": "PublicClaimField",
+      "type": "string"
+    },
+    "RegisteredCheckDisplayState": {
+      "enum": [
+        "no_registered_rule_blocked",
+        "blocked_by_registered_rule",
+        "not_applicable"
+      ],
+      "title": "RegisteredCheckDisplayState",
+      "type": "string"
+    },
+    "RegisteredCheckRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_applicable"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "artifact_display_id": {
+          "pattern": "^Artifact [0-9]{2}$",
+          "title": "Artifact Display Id",
+          "type": "string"
+        },
+        "check_name": {
+          "minLength": 1,
+          "title": "Check Name",
+          "type": "string"
+        },
+        "check_state": {
+          "$ref": "#/$defs/RegisteredCheckDisplayState"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "method_id": {
+          "pattern": "^METHOD-[A-Z0-9-]+$",
+          "title": "Method Id",
+          "type": "string"
+        },
+        "missingness": {
+          "const": "available",
+          "default": "available",
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "registered_check",
+          "default": "registered_check",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "applicability",
+        "display_state",
+        "reason_codes",
+        "artifact_display_id",
+        "method_id",
+        "check_name",
+        "check_state"
+      ],
+      "title": "RegisteredCheckRecord",
+      "type": "object"
+    },
+    "ReportExportVisualizationDataV1": {
+      "additionalProperties": false,
+      "properties": {
+        "audit_counts_are_not_risk_scores": {
+          "const": true,
+          "default": true,
+          "title": "Audit Counts Are Not Risk Scores",
+          "type": "boolean"
+        },
+        "candidate_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Candidate Hash",
+          "type": "string"
+        },
+        "candidate_hash_state": {
+          "$ref": "#/$defs/CandidateHashDisplayState"
+        },
+        "claim_count": {
+          "maximum": 999999,
+          "minimum": 1,
+          "title": "Claim Count",
+          "type": "integer"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "field_records": {
+          "items": {
+            "$ref": "#/$defs/ReportFieldProjectionRecord"
+          },
+          "minItems": 6,
+          "title": "Field Records",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "mode": {
+          "const": "report_export",
+          "default": "report_export",
+          "title": "Mode",
+          "type": "string"
+        },
+        "no_network_upload_performed": {
+          "const": true,
+          "default": true,
+          "title": "No Network Upload Performed",
+          "type": "boolean"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "producer_run_ref": {
+          "pattern": "^run:run-[a-f0-9]{16}$",
+          "title": "Producer Run Ref",
+          "type": "string"
+        },
+        "producer_tool_id": {
+          "const": "P0-11",
+          "default": "P0-11",
+          "title": "Producer Tool Id",
+          "type": "string"
+        },
+        "producer_tool_version": {
+          "minLength": 1,
+          "title": "Producer Tool Version",
+          "type": "string"
+        },
+        "schema_ref": {
+          "const": "bridge://schemas/public-safe-export-visualization-data/v0.1",
+          "default": "bridge://schemas/public-safe-export-visualization-data/v0.1",
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "source_result_ref": {
+          "pattern": "^public-export:[a-f0-9]{16}$",
+          "title": "Source Result Ref",
+          "type": "string"
+        },
+        "source_result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Result Sha256",
+          "type": "string"
+        },
+        "state_records": {
+          "items": {
+            "$ref": "#/$defs/LocalExportStateRecord"
+          },
+          "maxItems": 5,
+          "minItems": 5,
+          "title": "State Records",
+          "type": "array"
+        },
+        "target_channel": {
+          "const": "public_json",
+          "default": "public_json",
+          "title": "Target Channel",
+          "type": "string"
+        },
+        "visualization_artifacts_are_not_publication_approval": {
+          "const": true,
+          "default": true,
+          "title": "Visualization Artifacts Are Not Publication Approval",
+          "type": "boolean"
+        },
+        "visualization_profile_id": {
+          "pattern": "^public-safe-export-visualization:[a-f0-9]{16}$",
+          "title": "Visualization Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "visualization_profile_id",
+        "producer_tool_version",
+        "producer_run_ref",
+        "source_result_sha256",
+        "evidence_ids",
+        "limitations",
+        "source_result_ref",
+        "candidate_hash_state",
+        "candidate_hash",
+        "claim_count",
+        "field_records",
+        "state_records"
+      ],
+      "title": "ReportExportVisualizationDataV1",
+      "type": "object"
+    },
+    "ReportFieldProjectionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_applicable"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "claim_display_id": {
+          "pattern": "^Claim [0-9]{2,6}$",
+          "title": "Claim Display Id",
+          "type": "string"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "field": {
+          "$ref": "#/$defs/PublicClaimField"
+        },
+        "missingness": {
+          "const": "available",
+          "default": "available",
+          "title": "Missingness",
+          "type": "string"
+        },
+        "projection_state": {
+          "$ref": "#/$defs/FieldProjectionState"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "report_field_projection",
+          "default": "report_field_projection",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "applicability",
+        "display_state",
+        "reason_codes",
+        "claim_display_id",
+        "field",
+        "projection_state"
+      ],
+      "title": "ReportFieldProjectionRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/public-safe-export-visualization-data/v0.1",
+  "discriminator": {
+    "mapping": {
+      "artifact_audit": "#/$defs/ArtifactAuditVisualizationDataV1",
+      "report_export": "#/$defs/ReportExportVisualizationDataV1"
+    },
+    "propertyName": "mode"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ReportExportVisualizationDataV1"
+    },
+    {
+      "$ref": "#/$defs/ArtifactAuditVisualizationDataV1"
+    }
+  ],
+  "title": "PublicSafeExportVisualizationDataV1"
+}

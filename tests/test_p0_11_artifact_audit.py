@@ -11,7 +11,7 @@ from bridge.tool_packages.p0_11_public_safe_export.artifact_audit import (
     _audit_artifact,
     _audit_markdown,
     _audit_svg,
-    _leak_reasons,
+    _semantic_leak_reasons,
     _manifest_ref_syntax_reasons,
     _url_allowed,
 )
@@ -110,13 +110,18 @@ def _write_artifacts(root: Path, bad_format: str | None) -> list[PublicArtifactF
     ]
 
 
-def _request(root: Path, *, bad_format: str | None = None) -> ToolRequestV2:
+def _request(
+    root: Path,
+    *,
+    bad_format: str | None = None,
+    policy_id: str = "public-artifact-policy:demo",
+) -> ToolRequestV2:
     root.mkdir()
     inputs = root / "inputs"
     inputs.mkdir()
     policy = PublicArtifactAuditPolicy(
         object_version="0.1.0",
-        policy_id="public-artifact-policy:demo",
+        policy_id=policy_id,
         policy_version="1.0.0",
         active=True,
         allowed_formats=list(FORMATS),
@@ -168,7 +173,7 @@ def _request(root: Path, *, bad_format: str | None = None) -> ToolRequestV2:
     return ToolRequestV2(
         request_id=f"request-{root.name}",
         tool_id="P0-11",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=root / "output",
         object_inputs=refs,
     )
@@ -204,8 +209,9 @@ def test_artifact_audit_executes_all_registered_first_version_tools(
     assert result.domain_score is None
     assert result.score_state == "unavailable"
     assert str(tmp_path) not in json.dumps(first.result, sort_keys=True)
-    assert len(first.artifacts) == 1
-    assert _sha256(first.artifacts[0].path) == first.artifacts[0].sha256
+    assert len(first.artifacts) == 12
+    for artifact in first.artifacts:
+        assert _sha256(artifact.path) == artifact.sha256
 
 
 @pytest.mark.parametrize(
@@ -351,7 +357,9 @@ def test_manifest_ref_check_is_syntax_only_not_provenance_authority() -> None:
     ],
 )
 def test_leak_scan_blocks_sensitive_canary_classes(text: str) -> None:
-    assert _leak_reasons(text) == ["public_artifact_leak_pattern_detected"]
+    assert _semantic_leak_reasons(text) == [
+        "public_artifact_leak_pattern_detected"
+    ]
 
 
 @pytest.mark.parametrize(

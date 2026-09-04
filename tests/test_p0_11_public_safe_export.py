@@ -49,6 +49,7 @@ def _report(
     *,
     text: str = "The public demonstration result is available.",
     statement_refs: list[str] | None = None,
+    claim_count: int = 1,
 ) -> ReportDraft:
     payload: dict[str, Any] = {
         "object_version": "0.1.0",
@@ -62,9 +63,9 @@ def _report(
         "statement_registry_ref": "BRIDGE-STATEMENT-REGISTRY-v0.1@0.1.0",
         "claim_blocks": [
             {
-                "claim_id": "claim-block:internal-demo",
+                "claim_id": f"claim-block:internal-demo-{index:03d}",
                 "claim_version": "1.0.0",
-                "claim_ref": "claim:internal-demo@1.0.0",
+                "claim_ref": f"claim:internal-demo-{index:03d}@1.0.0",
                 "product_case_ref": PRODUCT_CASE_REF,
                 "claim_type": "policy_or_boundary_statement",
                 "text": text,
@@ -76,6 +77,7 @@ def _report(
                 "comparison_mode": "not_applicable",
                 "authoring_channel": "deterministic_renderer",
             }
+            for index in range(1, claim_count + 1)
         ],
         "renderer_id": "BRIDGE-REPORT-DRAFT-RENDERER-v0.1",
         "renderer_version": "0.1.0",
@@ -116,10 +118,12 @@ def _policy(
     active: bool = True,
     aliases: dict[str, str] | None = None,
     allowed_statements: list[str] | None = None,
+    allowlisted_fields: list[str] | None = None,
+    policy_id: str = "public-export-policy:json-demo",
 ) -> PublicExportPolicySpec:
     return PublicExportPolicySpec(
         object_version="0.1.0",
-        policy_id="public-export-policy:json-demo",
+        policy_id=policy_id,
         policy_version="1.0.0",
         active=active,
         report_audience="public_candidate",
@@ -129,7 +133,7 @@ def _policy(
             "language",
             "statement_refs",
             "text",
-        ],
+        ] if allowlisted_fields is None else allowlisted_fields,
         public_case_aliases=aliases or {PRODUCT_CASE_REF: "Demo case"},
         allowed_statement_refs=allowed_statements or [],
     )
@@ -146,16 +150,21 @@ def _tool_request(
     confirmation_hash: str | None = None,
     receipt_report_hash: str | None = None,
     request_policy_ref: str | None = None,
+    allowlisted_fields: list[str] | None = None,
+    policy_id: str = "public-export-policy:json-demo",
+    claim_count: int = 1,
 ) -> ToolRequestV2:
     root.mkdir()
     inputs = root / "inputs"
     inputs.mkdir()
-    report = _report(text=text, statement_refs=statement_refs)
+    report = _report(text=text, statement_refs=statement_refs, claim_count=claim_count)
     receipt = _receipt(report, report_hash=receipt_report_hash)
     policy = _policy(
         active=active,
         aliases=aliases,
         allowed_statements=allowed_statements,
+        allowlisted_fields=allowlisted_fields,
+        policy_id=policy_id,
     )
     export_request = PublicExportRequest(
         object_version="0.1.0",
@@ -206,7 +215,7 @@ def _tool_request(
     return ToolRequestV2(
         request_id=f"request-{root.name}",
         tool_id="P0-11",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=root / "output",
         object_inputs=refs,
     )
@@ -244,7 +253,8 @@ def test_candidate_run_rebuilds_three_checksummed_public_json_artifacts(
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.measurements == []
     assert run.visualizations == []
-    assert len(run.artifacts) == 3
+    assert len(run.artifacts) == 14
+    assert PublicExportResult.model_validate(run.result).artifact_count == 3
     result = PublicExportResult.model_validate(run.result)
     assert result.export_state == "ready_for_confirmation"
     assert result.domain_score is None
@@ -375,7 +385,7 @@ def test_checksum_mismatch_and_v1_request_are_typed_refusals(
         ToolRequest(
             request_id="request-v1",
             tool_id="P0-11",
-            tool_version="0.3.0",
+            tool_version="0.4.0",
             output_dir=tmp_path / "v1-output",
         )
     )

@@ -126,6 +126,8 @@ SCHEMA_REFS = {
     "bridge://schemas/public-artifact-audit-policy/v0.1": "public_artifact_audit_policy.schema.json",
     "bridge://schemas/public-artifact-manifest/v0.1": "public_artifact_manifest.schema.json",
     "bridge://schemas/public-artifact-audit-result/v0.1": "public_artifact_audit_result.schema.json",
+    "bridge://schemas/public-safe-export-visualization-data/v0.1": "public_safe_export_visualization_data.schema.json",
+    "bridge://schemas/p0-11-visualization-artifact-set/v0.1": "p0_11_visualization_artifact_set.schema.json",
     "bridge://schemas/public-safe-export-run-result/v0.1": "public_safe_export_run_result.schema.json",
     "bridge://schemas/public-safe-report/v0.1": "public_safe_report.schema.json",
     "bridge://schemas/report-draft/v0.1": "report_draft.schema.json",
