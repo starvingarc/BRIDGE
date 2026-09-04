@@ -50,6 +50,10 @@ ROLE_SCHEMAS = {
         "bridge://schemas/off-target-evidence-bundle/v0.1",
         "0.1.0",
     ),
+    "biological_unit_manifest": (
+        "bridge://schemas/biological-unit-manifest/v0.1",
+        "0.1.0",
+    ),
 }
 
 
@@ -158,6 +162,60 @@ def _request(tmp_path: Path) -> ToolRequestV2:
         "evidence_ids": ["evidence:demo"],
     }
 
+    manifest = {
+        "object_version": "0.1.0",
+        "manifest_id": "biological-unit-manifest:demo",
+        "manifest_version": "1",
+        "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+        "generator_tool_id": "BRIDGE-BIOLOGICAL-UNIT-REVIEW",
+        "generator_tool_version": "1",
+        "data_view_ref": "data-view:demo",
+        "selected_artifact_sha256": "a" * 64,
+        "observation_ids_sha256": "b" * 64,
+        "n_observations": 10,
+        "assignment_schema_ref": "bridge://schemas/biological-unit-assignment/v0.1",
+        "assignment_artifact_sha256": "c" * 64,
+        "assignment_row_count": 10,
+        "unit_identity_namespace_ref": {
+            "object_id": "biological-unit-namespace:demo",
+            "object_version": "1",
+        },
+        "analysis_unit_kind": "preparation",
+        "independence_group_kind": "sample",
+        "independence_scope_ref": {
+            "object_id": "independence-scope:demo",
+            "object_version": "1",
+        },
+        "lineage_state": "reviewed",
+        "review_gate_ref": {
+            "object_id": "biological-unit-review:demo",
+            "object_version": "1",
+        },
+        "review_gate_sha256": "d" * 64,
+        "unit_bindings": [
+            {
+                "analysis_unit_ref": {
+                    "object_id": "preparation:demo",
+                    "object_version": "1",
+                },
+                "analysis_unit_kind": "preparation",
+                "independence_group_ref": {
+                    "object_id": "sample:demo",
+                    "object_version": "1",
+                },
+                "independence_group_kind": "sample",
+                "capture_ref": None,
+                "preparation_ref": {
+                    "object_id": "preparation:demo",
+                    "object_version": "1",
+                },
+                "sample_ref": {
+                    "object_id": "sample:demo",
+                    "object_version": "1",
+                },
+            }
+        ],
+    }
     paths = {
         role: root / f"{role}.json"
         for role in ROLE_SCHEMAS
@@ -165,6 +223,20 @@ def _request(tmp_path: Path) -> ToolRequestV2:
     role_map_sha = _write(paths["state_role_map"], role_map)
     definition_sha = _write(
         paths["product_definition_card"], product_definition
+    )
+    manifest_sha = _write(paths["biological_unit_manifest"], manifest)
+    product_case.update(
+        {
+            "biological_unit_manifest_ref": {
+                "object_id": manifest["manifest_id"],
+                "object_version": manifest["manifest_version"],
+            },
+            "biological_unit_manifest_sha256": manifest_sha,
+            "independence_scope_ref": manifest["independence_scope_ref"],
+            "independence_group_refs": [
+                manifest["unit_bindings"][0]["independence_group_ref"]
+            ],
+        }
     )
     case_sha = _write(paths["product_case"], product_case)
     profile_sha = _write(
@@ -255,7 +327,7 @@ def _request(tmp_path: Path) -> ToolRequestV2:
     return ToolRequestV2(
         request_id="request-p0-05",
         tool_id="P0-05",
-        tool_version="0.5.0",
+        tool_version="0.5.1",
         output_dir=tmp_path / "output",
         object_inputs=refs,
     )
@@ -366,7 +438,7 @@ def test_registry_exposes_executable_p0_05() -> None:
     spec = ToolRegistry.load_default().describe("P0-05")
 
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
-    assert spec.version == "0.5.0"
+    assert spec.version == "0.5.1"
     assert spec.result_schema_ref == (
         "bridge://schemas/off-target-control-profile/v0.2"
     )
@@ -649,6 +721,54 @@ def test_measurement_spec_authorization_fails_closed(
 
     assert not eligibility.eligible
     assert reason in eligibility.reason_codes
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("analysis_unit_kind", "capture"),
+        ("independence_group_kind", "donor"),
+        ("observation_unit_kind", "nucleus"),
+    ],
+)
+def test_aggregation_projection_rejects_biological_unit_mismatch(
+    tmp_path: Path,
+    field: str,
+    value: str,
+) -> None:
+    request = _rewrite(
+        _with_measurement_spec(_request(tmp_path)),
+        "measurement_spec",
+        lambda payload: payload.update({field: value}),
+    )
+
+    eligibility = adapter.check_eligibility(request, _projection_spec())
+
+    assert not eligibility.eligible
+    assert "measurement_spec_biological_unit_mismatch" in eligibility.reason_codes
+
+
+def test_aggregation_projection_requires_reviewed_biological_units(
+    tmp_path: Path,
+) -> None:
+    request = _with_measurement_spec(_request(tmp_path))
+    request = request.model_copy(
+        update={
+            "object_inputs": [
+                item
+                for item in request.object_inputs
+                if item.role != "biological_unit_manifest"
+            ]
+        }
+    )
+
+    eligibility = adapter.check_eligibility(request, _projection_spec())
+
+    assert not eligibility.eligible
+    assert (
+        "measurement_projection_requires_biological_unit_manifest"
+        in eligibility.reason_codes
+    )
 
 
 def test_projection_preserves_partial_unknown_and_withholds_unavailable_values(

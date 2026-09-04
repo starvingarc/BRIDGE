@@ -531,21 +531,48 @@ def test_method_mode_can_opt_into_measurement_projection(tmp_path: Path) -> None
     assert len(run.artifacts) == 22
 
 
-def test_method_mode_rejects_measurement_spec_checksum_drift(
+def test_method_mode_accepts_independent_module_measurement_spec(
     tmp_path: Path,
 ) -> None:
     request = _rewrite_method(
         _method_request_with_measurement_spec(tmp_path),
         "measurement_spec",
         lambda payload: payload.update(
-            {"scientific_question": "A changed projection contract"}
+            {
+                "measurement_spec_id": "measurement-spec:p0-05-domain",
+                "scientific_question": "A changed projection contract",
+            }
         ),
     )
 
     eligibility = adapter.check_eligibility(request, _projection_spec())
 
+    assert eligibility.eligible, eligibility.reason_codes
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("analysis_unit_kind", "capture"),
+        ("independence_group_kind", "donor"),
+        ("observation_unit_kind", "nucleus"),
+    ],
+)
+def test_method_projection_rejects_biological_unit_mismatch(
+    tmp_path: Path,
+    field: str,
+    value: str,
+) -> None:
+    request = _rewrite_method(
+        _method_request_with_measurement_spec(tmp_path),
+        "measurement_spec",
+        lambda payload: payload.update({field: value}),
+    )
+
+    eligibility = adapter.check_eligibility(request, _projection_spec())
+
     assert not eligibility.eligible
-    assert "measurement_spec_checksum_mismatch" in eligibility.reason_codes
+    assert "measurement_spec_biological_unit_mismatch" in eligibility.reason_codes
 
 
 def test_method_mode_partial_coverage_withholds_intervals(tmp_path: Path) -> None:
@@ -850,7 +877,7 @@ def test_renderer_retains_more_than_five_spike_in_states(
         profile=profile,
         output_dir=tmp_path / "rerender",
         run_id=run.run_id,
-        tool_version="0.5.0",
+        tool_version="0.5.1",
     )
     svg = rendered.payloads[
         "off_target_control_rare-state-detectability.svg"

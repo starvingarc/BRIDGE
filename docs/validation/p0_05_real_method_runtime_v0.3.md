@@ -90,6 +90,21 @@ wheel build, 12-tool discovery and clean-install checks.
 - Legacy six-object requests remained callable and continued to emit one
   `OffTargetControlProfile` artifact.
 
+## Measurement projection contract closure — tool v0.5.1
+
+A later compatibility closure kept both execution modes and the v0.2 result schema,
+but separated the P0-05 domain MeasurementSpec from the P0-02 source spec carried
+by ProductCase. Any run requesting normalized measurement projection now also
+requires one checksummed reviewed BiologicalUnitManifest. Eligibility verifies the
+analysis unit, independence group, assay-specific cell/nucleus observation unit,
+ProductCase manifest binding and denominator count before projection. Missing or
+mismatched unit evidence fails closed.
+
+The focused server run covered legacy aggregation and method execution, including
+unit-mismatch and missing-manifest adversaries: `55 passed`. This is engineering
+contract evidence only and does not validate the supplied StateRoleMap, thresholds,
+OOD evidence or biological interpretation.
+
 ## Remaining scientific work
 
 Formal evidence still requires product-specific StateRoleMap review, real
