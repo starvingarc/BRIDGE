@@ -81,7 +81,7 @@ def _base_payloads() -> dict[str, dict]:
             "product_definition_ref": product_ref,
             "source_unit_kind": "sample",
             "sample_or_preparation_ref": _ref("sample:demo"),
-            "measurement_spec_ref": _ref("measurement-spec:development"),
+            "measurement_spec_ref": _ref("measurement-spec:cell-state-source"),
             "assay": "scRNA-seq",
             "provenance_refs": [_ref("source:fully-synthetic")],
             "created_at": "2026-08-25T00:00:00Z",
@@ -219,7 +219,7 @@ def _base_payloads() -> dict[str, dict]:
             "vocabulary_sha256": "0" * 64,
             "marker_program_file": "marker_programs.json",
             "marker_program_sha256": "d" * 64,
-            "measurement_spec_ids": ["measurement-spec:development"],
+            "measurement_spec_ids": ["measurement-spec:cell-state-source"],
             "profiles": [],
             "prohibited_source_families": [],
         },
@@ -386,12 +386,12 @@ def _prepare(
     vocabulary = payloads["annotation_vocabulary"]
     reference = payloads["reference_manifest"]
     reference["vocabulary_sha256"] = _sha(vocabulary)
-    measurement = payloads["measurement_spec"]
+    source_measurement_ref = payloads["product_case"]["measurement_spec_ref"]
     payloads["cell_state_evidence_profile"] = {
         "profile_id": "cell-state-profile:run-demo",
         "assay": "scRNA-seq",
-        "measurement_spec_id": measurement["measurement_spec_id"],
-        "measurement_spec_status": measurement["status"],
+        "measurement_spec_id": source_measurement_ref["object_id"],
+        "measurement_spec_status": "candidate",
         "annotation_vocabulary_ref": vocabulary["vocabulary_id"],
         "reference_snapshot_ref": reference["snapshot_id"],
         "n_observations": n_observations,
@@ -424,8 +424,8 @@ def _prepare(
         "evidence_ids": ["evidence:cell-state-demo"],
         "score_state": "shadow",
         "domain_score": None,
-        "measurement_spec_version": measurement["version"],
-        "measurement_spec_sha256": _sha(measurement),
+        "measurement_spec_version": source_measurement_ref["object_version"],
+        "measurement_spec_sha256": "e" * 64,
         "annotation_vocabulary_version": vocabulary["version"],
         "annotation_vocabulary_sha256": _sha(vocabulary),
         "reference_manifest_version": reference["version"],
@@ -513,7 +513,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-04",
         tool_id="P0-04",
-        tool_version="0.5.0",
+        tool_version="0.5.1",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
@@ -542,7 +542,7 @@ def _mutate(request: ToolRequestV2, role: str, change) -> ToolRequestV2:
 def test_registry_exposes_current_traceable_contract() -> None:
     registry = ToolRegistry.load_default()
     spec = registry.describe("P0-04")
-    assert spec.version == "0.5.0"
+    assert spec.version == "0.5.1"
     assert spec.implementation_state.value == "implemented"
     assert RESULT_SCHEMA_REF.endswith("/v0.3")
     assert ROLE_SCHEMAS["cell_state_evidence_profile"].endswith("/v0.3")
@@ -624,6 +624,126 @@ def test_required_lineage_and_checksum_fail_closed(tmp_path: Path) -> None:
     eligibility = registry.check_eligibility(invalid)
     assert not eligibility.eligible
     assert "structured_input_checksum_mismatch" in eligibility.reason_codes
+
+
+def test_module_measurement_spec_is_distinct_from_upstream_cell_state_spec(
+    tmp_path: Path,
+) -> None:
+    request = _mutate(
+        _request(tmp_path),
+        "measurement_spec",
+        lambda payload: payload.update(
+            {
+                "measurement_spec_id": "measurement-spec:p0-04-domain",
+                "scientific_question": "Developmental compatibility projection",
+            }
+        ),
+    )
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert result.eligible, result.reason_codes
+
+
+def test_generic_conditional_qc_gate_allows_developmental_evaluation(
+    tmp_path: Path,
+) -> None:
+    request = _mutate(
+        _request(tmp_path),
+        "qc_readiness_profile",
+        lambda payload: payload.update(
+            {"module_eligibility": {"downstream_scientific_modules": "conditional"}}
+        ),
+    )
+    qc_sha = next(
+        ref.sha256 for ref in request.object_inputs if ref.role == "qc_readiness_profile"
+    )
+    request = _mutate(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update({"upstream_qc_profile_sha256": qc_sha}),
+    )
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert result.eligible, result.reason_codes
+
+
+@pytest.mark.parametrize(
+    "case,expected",
+    [
+        ("assay", "measurement_spec_assay_mismatch"),
+        ("tool", "measurement_spec_tool_not_authorized"),
+        ("analysis_unit", "measurement_spec_biological_unit_mismatch"),
+        ("independence_group", "measurement_spec_biological_unit_mismatch"),
+    ],
+)
+def test_module_measurement_spec_contract_fails_closed(
+    tmp_path: Path, case: str, expected: str
+) -> None:
+    def change(payload: dict) -> None:
+        if case == "assay":
+            payload["assay"] = "snRNA-seq"
+        elif case == "tool":
+            payload["tool_refs"] = []
+        elif case == "analysis_unit":
+            payload["analysis_unit_kind"] = "sample"
+        else:
+            payload["independence_group_kind"] = "sample"
+
+    request = _mutate(_request(tmp_path), "measurement_spec", change)
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not result.eligible
+    assert expected in result.reason_codes
+
+
+def test_cell_state_source_spec_must_belong_to_reference_manifest(
+    tmp_path: Path,
+) -> None:
+    request = _mutate(
+        _request(tmp_path),
+        "reference_manifest",
+        lambda payload: payload.update({"measurement_spec_ids": ["measurement-spec:other"]}),
+    )
+    manifest_sha = next(
+        ref.sha256 for ref in request.object_inputs if ref.role == "reference_manifest"
+    )
+    request = _mutate(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update({"reference_manifest_sha256": manifest_sha}),
+    )
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not result.eligible
+    assert "cell_state_measurement_spec_reference_mismatch" in result.reason_codes
+
+
+def test_explicit_conditional_qc_gate_allows_developmental_evaluation(
+    tmp_path: Path,
+) -> None:
+    request = _mutate(
+        _request(tmp_path),
+        "qc_readiness_profile",
+        lambda payload: payload.update(
+            {"module_eligibility": {"P0-04": "conditional"}}
+        ),
+    )
+    qc_sha = next(
+        ref.sha256 for ref in request.object_inputs if ref.role == "qc_readiness_profile"
+    )
+    request = _mutate(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update({"upstream_qc_profile_sha256": qc_sha}),
+    )
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert result.eligible, result.reason_codes
 
 
 def test_unconfirmed_window_and_unavailable_upstream_are_typed(
@@ -725,7 +845,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="legacy-request",
         tool_id="P0-04",
-        tool_version="0.5.0",
+        tool_version="0.5.1",
         output_dir=tmp_path.resolve(),
     )
     eligibility = adapter.check_eligibility(request, spec)

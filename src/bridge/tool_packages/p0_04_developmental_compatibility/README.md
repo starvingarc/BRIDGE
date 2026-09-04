@@ -11,6 +11,10 @@ target-related `earlier`, `within_window`, `later`, `branch_shift` and
 executes selected reference, ordinal, program and bootstrap methods from a
 versioned `DevelopmentMethodSpec`.
 
+The ProductCase and P0-02 profile keep their cell-state source MeasurementSpec.
+P0-04 receives a separate domain MeasurementSpec that owns developmental metric
+projection, assay, tool authorization and biological-unit semantics.
+
 The ordinal method is an uncalibrated baseline and runs only when the same
 checksummed method spec supplies a reviewed, passed source-group-held-out
 evidence receipt bound to every selected profile and at least two sources.

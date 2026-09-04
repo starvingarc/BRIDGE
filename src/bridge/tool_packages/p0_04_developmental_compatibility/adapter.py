@@ -12,6 +12,7 @@ from bridge.tool_packages._configurable_contracts import (
     ProductDefinitionCard,
     VersionedObjectRef,
     profile_lineage_reasons,
+    qc_allows_module,
 )
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
@@ -64,7 +65,6 @@ from bridge.toolkit.contracts import (
     ImplementationState,
     MeasurementSpecV2,
     QCReadinessProfileV2,
-    ReadinessState,
     ReferenceManifest,
     StructuredInputRef,
     ToolPackageSpecV2,
@@ -578,7 +578,7 @@ def _binding_reasons(
     reasons = profile_lineage_reasons(
         product_case=product_case,
         cell_state_profile=profile,
-        measurement_spec=measurement_spec,
+        measurement_spec=None,
         qc_profile=qc_profile,
         biological_unit_manifest=biological_unit_manifest,
         biological_unit_assignment_artifact=biological_unit_assignment,
@@ -601,6 +601,15 @@ def _binding_reasons(
         reasons.append("window_assay_not_supported")
     if measurement_spec.assay != product_case.assay:
         reasons.append("measurement_spec_assay_mismatch")
+    if "P0-04" not in measurement_spec.tool_refs:
+        reasons.append("measurement_spec_tool_not_authorized")
+    if (
+        measurement_spec.analysis_unit_kind
+        != biological_unit_manifest.analysis_unit_kind
+        or measurement_spec.independence_group_kind
+        != biological_unit_manifest.independence_group_kind
+    ):
+        reasons.append("measurement_spec_biological_unit_mismatch")
     if (
         measurement_spec.applicable_product_cards
         and product_definition.product_definition_id
@@ -612,15 +621,7 @@ def _binding_reasons(
         reasons.append("cell_state_assay_binding_mismatch")
     if qc_profile.assay != product_case.assay:
         reasons.append("qc_profile_assay_mismatch")
-    if (
-        qc_profile.readiness_state
-        in {
-            ReadinessState.BLOCKED,
-            ReadinessState.NOT_ASSESSED,
-            ReadinessState.NOT_APPLICABLE,
-        }
-        or qc_profile.module_eligibility.get("P0-04") != "eligible"
-    ):
+    if not qc_allows_module(qc_profile, "P0-04"):
         reasons.append("qc_not_ready_for_developmental_compatibility")
     if profile.composition.state not in COMPOSITION_STATES:
         reasons.append("cell_state_composition_state_invalid")
@@ -646,8 +647,8 @@ def _binding_reasons(
         != input_sha256_by_role["reference_manifest"]
     ):
         reasons.append("reference_manifest_checksum_mismatch")
-    if measurement_spec.measurement_spec_id not in reference_manifest.measurement_spec_ids:
-        reasons.append("reference_manifest_measurement_spec_mismatch")
+    if profile.measurement_spec_id not in reference_manifest.measurement_spec_ids:
+        reasons.append("cell_state_measurement_spec_reference_mismatch")
     if measurement_spec.reference_refs and not {
         reference_manifest.snapshot_id,
         f"{reference_manifest.snapshot_id}@{reference_manifest.version}",

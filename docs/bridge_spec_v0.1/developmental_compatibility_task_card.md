@@ -5,7 +5,10 @@
 | Task ID | `TASK-DEVELOPMENT-v0.1` |
 | Task document version | `0.5` |
 | 日期 | 2026-09-02 |
-| Package version | `P0-04 0.5.0` |
+| Package version | `P0-04 0.5.1` |
+
+ProductCase 与 P0-02 profile 保留 cell-state source MeasurementSpec；P0-04
+使用独立的域 MeasurementSpec 来声明发育指标、assay、工具授权和生物学单位。
 | Runtime / scientific state | `implemented` / `candidate shadow` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
 | Current input | checksummed `ProductCase`、`ProductDefinitionCard`、`DevelopmentWindowSpec`、`DevelopmentStateMap`、`MeasurementSpecV2`、`CellStateEvidenceProfileV3`；可选 timepoint series、H5AD 与 `DevelopmentMethodSpec` |
