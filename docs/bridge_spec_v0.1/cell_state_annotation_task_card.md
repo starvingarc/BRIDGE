@@ -9,7 +9,7 @@
 | 适用范围 | 移植前 scRNA-seq / snRNA-seq；PD hPSC-mDA 为首个实例 |
 | Annotation snapshot | `BRIDGE-PD-vMB-ANNOTATION-v0.1-draft` |
 | 主要输出 | `CellStateEvidenceProfile` |
-| 当前实现 | P0-02 v0.5.2 可执行 shadow baseline；新增可追溯的层级对应图和静态状态定义证据登记矩阵 |
+| 当前实现 | P0-02 v0.5.2 可执行 shadow baseline；含可追溯层级对应图、静态状态定义证据矩阵及 raw-count 重复基因规范化审计 |
 
 ## 1. 任务目标
 

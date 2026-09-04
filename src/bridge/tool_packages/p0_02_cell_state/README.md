@@ -6,7 +6,9 @@ package. Its output remains shadow without a signed release manifest.
 ## Interface at a glance
 
 - **Input:** QC-qualified expression views, modality, annotation vocabulary,
-  reference candidates and provenance; an optional typed P0-01 handoff.
+  reference candidates and provenance; an optional typed P0-01 handoff. Raw-count
+  columns that resolve to the same non-missing gene symbol are summed before
+  normalization; duplicate symbols in normalized inputs remain invalid.
 - **Output:** source-aware reference and marker/program evidence plus an optional
   V3 profile with explicit denominators, uncertainty and lineage bindings.
 - **Boundary:** it does not release an assigned state or domain score. Pseudobulk

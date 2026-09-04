@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy import sparse
 
 from bridge.tool_packages.p0_01_input_qc.io import (
     InputAuditError,
@@ -148,12 +149,26 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         adata = read_expression_asset(asset)
         validate_expression_object(adata, require_counts=asset.matrix_semantics == "raw_counts")
         genes = _declared_gene_names(adata, asset.metadata)
+        query_matrix = adata.X
+        preprocessing_warnings: list[str] = []
+        if len(set(genes)) != len(genes):
+            if asset.matrix_semantics != "raw_counts":
+                raise InputAuditError(
+                    "gene_ids_not_unique_after_normalization",
+                    str(asset.metadata.get("gene_symbol_column") or "var_names"),
+                )
+            query_matrix, genes, collapsed_count = _collapse_duplicate_gene_counts(
+                query_matrix, genes
+            )
+            preprocessing_warnings.append(
+                f"duplicate_gene_symbols_collapsed:{collapsed_count}"
+            )
     except (InputAuditError, ReferenceError) as exc:
         return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
     except Exception as exc:
         return _failed_run(request, spec, input_hash, "cell_state_input_read_failed", str(exc))
 
-    query = normalize_query(adata.X, asset.matrix_semantics or "")
+    query = normalize_query(query_matrix, asset.matrix_semantics or "")
     observation_ids = adata.obs_names.astype(str).to_numpy()
     selected_data_view = None
     if (
@@ -183,7 +198,11 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     source_summaries: list[pd.DataFrame] = []
     primary_source_ids: list[str] = []
     coverage_records: list[dict[str, Any]] = []
-    warnings = ["open_set_calibration_not_frozen", "marker_programs_are_shadow_candidates"]
+    warnings = [
+        "open_set_calibration_not_frozen",
+        "marker_programs_are_shadow_candidates",
+        *preprocessing_warnings,
+    ]
     query_source_family = canonicalize_source_family_id(str(asset.metadata["source_family_id"]))
     held_out_sources = sorted(
         profile.source_id
@@ -340,7 +359,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         annotation_vocabulary_ref=vocabulary.vocabulary_id,
         reference_snapshot_ref=manifest.snapshot_id,
         n_observations=int(adata.n_obs),
-        n_genes=int(adata.n_vars),
+        n_genes=int(len(genes)),
         denominator="all observations in the declared post-QC input view",
         label_levels={
             "L1": {"state": "shadow", "n_observations": int(adata.n_obs)},
@@ -1127,10 +1146,33 @@ def _declared_gene_names(adata, metadata: dict[str, Any]) -> np.ndarray:
     if column is not None and column not in adata.var:
         raise InputAuditError("gene_symbol_column_not_found", str(column))
     values = adata.var_names if column is None else adata.var[column]
+    if bool(np.asarray(pd.isna(values), dtype=bool).any()):
+        raise InputAuditError("empty_gene_id_after_normalization", column or "var_names")
     genes = np.asarray([str(value).strip().upper() for value in values])
-    if len(set(genes)) != len(genes):
-        raise InputAuditError("gene_ids_not_unique_after_normalization", column or "var_names")
+    if any(not gene for gene in genes):
+        raise InputAuditError("empty_gene_id_after_normalization", column or "var_names")
     return genes
+
+
+def _collapse_duplicate_gene_counts(
+    matrix: Any,
+    genes: np.ndarray,
+) -> tuple[Any, np.ndarray, int]:
+    """Sum raw-count columns that resolve to the same normalized gene symbol."""
+
+    unique_genes, inverse = np.unique(genes, return_inverse=True)
+    collapsed_count = int(len(genes) - len(unique_genes))
+    if collapsed_count == 0:
+        return matrix, genes, 0
+    source_to_target = sparse.csr_matrix(
+        (
+            np.ones(len(genes), dtype=np.int64),
+            (np.arange(len(genes)), inverse),
+        ),
+        shape=(len(genes), len(unique_genes)),
+    )
+    source = matrix if sparse.issparse(matrix) else sparse.csr_matrix(matrix)
+    return (source @ source_to_target).tocsr(), unique_genes, collapsed_count
 
 
 def _run_id(

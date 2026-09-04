@@ -472,6 +472,91 @@ def test_source_aware_run_emits_shadow_support_and_preserves_input(tmp_path: Pat
     )
 
 
+def test_raw_counts_with_duplicate_gene_symbols_are_collapsed_without_mutating_input(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _build_snapshot(tmp_path, monkeypatch)
+    base = np.vstack(
+        [
+            _expression(label, replicate=index % 2)
+            for index, label in enumerate(
+                ["Neuron_DA", "Neuron_DA", "Astrocyte", "Astrocyte"]
+            )
+        ]
+    )
+    matrix = np.column_stack([base, base[:, GENES.index("G000")]])
+    symbols = [*GENES, "G000"]
+    query = tmp_path / "query-duplicate-symbols.h5ad"
+    ad.AnnData(
+        sparse.csr_matrix(matrix),
+        obs=pd.DataFrame(index=[f"query-{index}" for index in range(4)]),
+        var=pd.DataFrame(
+            {"gene_symbol": symbols},
+            index=[f"gene-id-{index}" for index in range(len(symbols))],
+        ),
+    ).write_h5ad(query)
+    _configure_qc_catalog(tmp_path, monkeypatch, query)
+    before = _sha256(query)
+    request = _request(tmp_path, query)
+    request = request.model_copy(
+        update={
+            "assets": [
+                request.assets[0].model_copy(
+                    update={
+                        "metadata": {
+                            **request.assets[0].metadata,
+                            "gene_symbol_column": "gene_symbol",
+                        }
+                    }
+                )
+            ]
+        }
+    )
+
+    run = ToolRegistry.load_default().run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert run.result["n_genes"] == len(GENES)
+    assert "duplicate_gene_symbols_collapsed:1" in run.warnings
+    assert _sha256(query) == before
+
+
+@pytest.mark.parametrize("as_sparse", [False, True])
+def test_duplicate_gene_count_collapse_sums_columns_and_preserves_total(
+    as_sparse: bool,
+) -> None:
+    source = np.asarray([[1, 2, 3], [4, 5, 6]], dtype=np.int64)
+    matrix = sparse.csr_matrix(source) if as_sparse else source
+
+    collapsed, genes, removed = cell_state_executor._collapse_duplicate_gene_counts(
+        matrix, np.asarray(["A", "B", "A"])
+    )
+
+    assert sparse.isspmatrix_csr(collapsed)
+    assert genes.tolist() == ["A", "B"]
+    assert removed == 1
+    np.testing.assert_array_equal(collapsed.toarray(), [[4, 2], [10, 5]])
+    assert int(collapsed.sum()) == int(source.sum())
+
+
+@pytest.mark.parametrize("missing", [None, pd.NA, np.nan])
+def test_declared_gene_symbols_reject_missing_values(missing: object) -> None:
+    data = ad.AnnData(
+        np.ones((1, 2)),
+        var=pd.DataFrame(
+            {"gene_symbol": ["GENE1", missing]},
+            index=["feature-1", "feature-2"],
+        ),
+    )
+
+    with pytest.raises(cell_state_executor.InputAuditError) as error:
+        cell_state_executor._declared_gene_names(
+            data, {"gene_symbol_column": "gene_symbol"}
+        )
+
+    assert error.value.reason_code == "empty_gene_id_after_normalization"
+
+
 def test_reference_build_normalizes_neuron_chat_alias(tmp_path: Path, monkeypatch) -> None:
     snapshot = _build_snapshot(tmp_path, monkeypatch, alias=True)
 
