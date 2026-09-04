@@ -32,6 +32,10 @@ DECIMAL_STRING_PATTERN = (
 PLAIN_UNIT_PATTERN = r"^[^0-9\s\r\n](?:[^0-9\r\n]*[^0-9\s\r\n])?$"
 MAX_DECIMAL_DIGITS = 128
 MAX_DECIMAL_ADJUSTED_EXPONENT = 128
+EXTERNAL_BENCHMARK_ID = "P0-10-BENCHMARK-v0.1"
+EXTERNAL_BENCHMARK_SHA256 = (
+    "908da7e8c8141e5f44e230315134d53fb63dbc6856b37e06a3b227fe2af51baa"
+)
 FREE_MARKUP = re.compile(
     r"(?:^|\s)(?:#{1,6}|[-+*>]|\d+[.)])\s"
     r"|\[[^]\n]+\]\([^\n)]+\)"
@@ -106,19 +110,6 @@ class CheckOutcome(StrEnum):
     BLOCKED = "blocked"
     REVIEW_REQUIRED = "review_required"
     WARNING = "warning"
-
-
-class SelectionRecommendation(StrEnum):
-    DEFAULT_CANDIDATE = "default_candidate"
-    SENSITIVITY_CANDIDATE = "sensitivity_candidate"
-    BENCHMARK_ONLY = "benchmark_only"
-    DEFERRED = "deferred"
-
-
-class DecisionState(StrEnum):
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    PENDING = "pending"
 
 
 class ValueBinding(FrozenModel):
@@ -202,6 +193,12 @@ class ClaimBlock(FrozenModel):
         if any(left[1] > right[0] for left, right in zip(spans, spans[1:])):
             raise ValueError("value binding text spans must not overlap")
         return value
+
+    @model_validator(mode="after")
+    def binding_spans_are_within_claim_text(self) -> Self:
+        if any(binding.text_span[1] > len(self.text) for binding in self.value_bindings):
+            raise ValueError("value binding text spans must be within claim text")
+        return self
 
 
 class ReportDraft(FrozenModel):
@@ -541,10 +538,8 @@ class ClaimVerificationResult(FrozenModel):
     object_version: Literal["0.1.0"]
     verification_id: str = Field(pattern=r"^claim-verification:[a-f0-9]{16}$")
     verifier_version: Literal["0.1.0"]
-    benchmark_id: Literal["P0-10-BENCHMARK-v0.1"]
-    benchmark_sha256: Literal[
-        "908da7e8c8141e5f44e230315134d53fb63dbc6856b37e06a3b227fe2af51baa"
-    ]
+    benchmark_id: Literal[EXTERNAL_BENCHMARK_ID]
+    benchmark_sha256: Literal[EXTERNAL_BENCHMARK_SHA256]
     release_contract_id: Literal["P0-10-RELEASE-CONTRACT-v0.1"]
     release_contract_sha256: Literal[
         "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8"
@@ -621,106 +616,9 @@ class ClaimVerificationResult(FrozenModel):
         )
 
 
-class BenchmarkDataCase(FrozenModel):
-    case_id: str
-    data_class: Literal["public_record", "internal_anonymized", "synthetic_control"]
-    public_accession_or_ref: str | None
-    sample_count: StrictInt | None
-    independent_replicate_count: StrictInt | None
-    claim_count: StrictInt
-    cell_count: StrictInt | None
-    gene_count: StrictInt | None
-    assay: str | None
-    split: str
-    scope: str
-    not_applicable_reason: str | None = None
-
-
-class ResourceMeasurement(FrozenModel):
-    wall_clock_seconds_median: float | None
-    wall_clock_seconds_range: tuple[float, float] | None
-    cpu_seconds_median: float | None
-    peak_ram_mb: float | None
-    peak_vram_mb: float | None
-    threads: StrictInt | None
-    output_bytes: StrictInt | None
-    cache_state: str
-    repetitions: StrictInt
-
-
-class MethodSelectionDecision(FrozenModel):
-    state: DecisionState
-    reason: str
-    reviewer: str | None
-    benchmark_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
-
-
-class ClaimVerifierMethodBenchmark(FrozenModel):
-    analysis_task: str
-    method_id: str
-    method_name: str
-    version: str
-    source: str
-    license: str
-    environment_spec_id: str
-    role: str
-    data_case_ids: list[str]
-    evaluation: Literal["measured", "smoke", "audit_only", "not_run"]
-    task_metrics: dict[str, float | int | str | None]
-    uncertainty_or_interval: str | None
-    positive_controls: list[str]
-    negative_controls: list[str] = Field(default_factory=list)
-    missing_input_behavior: str
-    ood_or_abstention_behavior: str
-    failure_behavior: str
-    random_seeds: list[StrictInt]
-    downsampling: dict[str, str]
-    reference_sensitivity: str
-    preprocessing_sensitivity: str
-    denominator_sensitivity: str
-    resources: ResourceMeasurement
-    recommendation: SelectionRecommendation
-    decision: MethodSelectionDecision
-
-
-class ClaimVerifierBenchmark(FrozenModel):
-    benchmark_id: Literal["P0-10-BENCHMARK-v0.1"]
-    benchmark_version: Literal["0.1.0"]
-    tool_id: Literal["P0-10"]
-    benchmark_state: Literal[
-        "awaiting_server_validation",
-        "server_validated_public_candidate",
-        "server_validated_candidate",
-    ]
-    default_method_id: None = None
-    aggregate_score: None = None
-    aggregate_rank: None = None
-    data_cases: list[BenchmarkDataCase]
-    methods: list[ClaimVerifierMethodBenchmark]
-
-    @model_validator(mode="after")
-    def inventory_is_unique_and_resolved(self) -> Self:
-        case_ids = [item.case_id for item in self.data_cases]
-        if len(case_ids) != len(set(case_ids)):
-            raise ValueError("benchmark data cases must be unique")
-        method_keys = [(item.analysis_task, item.method_id) for item in self.methods]
-        if len(method_keys) != len(set(method_keys)):
-            raise ValueError("benchmark methods must be unique within each task")
-        unknown = {
-            case_id
-            for method in self.methods
-            for case_id in method.data_case_ids
-            if case_id not in set(case_ids)
-        }
-        if unknown:
-            raise ValueError(f"benchmark methods reference unknown data cases: {unknown}")
-        return self
-
-
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/report-draft/v0.1": ReportDraft,
     "bridge://schemas/claim-policy-spec/v0.1": ClaimPolicySpec,
     "bridge://schemas/statement-registry/v0.1": StatementRegistry,
     "bridge://schemas/claim-verification-result/v0.1": ClaimVerificationResult,
-    "bridge://schemas/claim-verifier-benchmark/v0.1": ClaimVerifierBenchmark,
 }

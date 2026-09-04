@@ -44,5 +44,5 @@
   "random_seed": 0,
   "request_id": "example-p0-10-documentation-only",
   "tool_id": "P0-10",
-  "tool_version": "0.1.1"
+  "tool_version": "0.4.0"
 }

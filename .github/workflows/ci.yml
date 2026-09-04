@@ -32,6 +32,18 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
+      - name: Install exact visualization font
+        env:
+          FONT_SHA256: 990c807e79c25662a5a9ecf7f971baeb2bf2eab9a559e5ecf15cdfdb8561d21f
+          FONT_URL: https://raw.githubusercontent.com/notofonts/noto-cjk/Sans2.004/Sans/Variable/TTF/NotoSansCJKsc-VF.ttf
+        run: |
+          FONT_DIR="$(python -c 'import sys; print(sys.prefix)')/fonts"
+          FONT_PATH="$FONT_DIR/NotoSansCJKsc-VF.ttf"
+          mkdir -p "$FONT_DIR"
+          curl --fail --location --retry 3 --silent --show-error \
+            "$FONT_URL" --output "$FONT_PATH"
+          echo "$FONT_SHA256  $FONT_PATH" | sha256sum --check --strict
+
       - name: Install package and test dependencies
         run: |
           python -m pip install --upgrade pip

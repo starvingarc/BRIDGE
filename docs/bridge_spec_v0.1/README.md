@@ -31,7 +31,7 @@
 | [P0-12 Graft Assessment](graft_assessment_task_card.md) | 独立后验 graft 证据边界 |
 | [公开 JSON Schema](../../src/bridge/resources/schemas/) | Agent、证据、比较、可视化和运行对象合同 |
 | [Tool Package Cards](../../src/bridge/tool_packages/cards/) | 当前可调用工具、输入输出和实现状态 |
-| [Catalog-backed Methods](../../knowledge/active-methods.md) | 当前 P0 包从全局 knowledge snapshot 选择的方法；P0-10 使用独立版本化 benchmark |
+| [Catalog-backed Methods](../../knowledge/active-methods.md) | 当前 P0 包从全局 knowledge snapshot 选择的方法 |
 | [Conda 环境合同](../../environments/README.md) | 当前运行能力所需的最小环境与待建环境 |
 
 ## 状态词

@@ -1,1 +1,1 @@
-"""Packaged P0-10 benchmark records and public fixtures."""
+"""Package-authoritative P0-10 release-contract resources."""
