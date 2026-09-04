@@ -155,8 +155,8 @@ def test_cli_figures_validate_reports_migration_state(capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert exit_code == 0
     assert payload["valid"] is True
-    assert payload["component_count"] == 31
-    assert payload["typed_candidate_count"] == 24
+    assert payload["component_count"] == 34
+    assert payload["typed_candidate_count"] == 27
     assert payload["legacy_untyped_count"] == 7
 
 

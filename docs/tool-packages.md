@@ -157,11 +157,11 @@ scientific methods.
 | Item | Details |
 |---|---|
 | Purpose | Verify that a structured report preserves cited values, units, states, scope and package-approved wording. [Scientific task card](bridge_spec_v0.1/claim_verifier_task_card.md). |
-| Executable implementation | Independent Draft 2020-12 validation of the four raw JSON inputs, deterministic claim verification, exact numeric comparison, controlled rendering, packaged rules and typed release-state aggregation over P0-09 queries. |
-| Software | [regex](https://github.com/mrabarnett/mrab-regex) for bounded Unicode matching, Python [Decimal](https://docs.python.org/3/library/decimal.html), Pydantic/jsonschema and the P0-09 query layer. |
-| Input → output | ReportDraft, P0-09 Case graph manifest, packaged ClaimPolicySpec and StatementRegistry → one `ClaimVerificationResult`. [Tool Card](../src/bridge/tool_packages/cards/P0-10.md). |
+| Executable implementation | Independent Draft 2020-12 validation of four structured inputs, deterministic claim verification, exact numeric comparison, typed local-review views and release-state aggregation over the P0-09 graph. |
+| Software | [regex](https://github.com/mrabarnett/mrab-regex) for bounded Unicode matching, Python [Decimal](https://docs.python.org/3/library/decimal.html), Pydantic/jsonschema, Matplotlib with a checksummed Noto Sans CJK font and the P0-09 query layer. |
+| Input → output | ReportDraft, P0-09 Case graph manifest, package-authoritative ClaimPolicySpec and StatementRegistry → one `ClaimVerificationResult`, three typed review views with complete TSV fallbacks and an artifact manifest. [Tool Card](../src/bridge/tool_packages/cards/P0-10.md). |
 | Call | Shared CLI/SDK with `tool_id=P0-10`; start from the [request example](../examples/requests/p0_10_claim_verifier.json). |
-| Current evidence / status | Adversarial fixtures and a package benchmark verify value/wording correspondence, authority binding and fail-closed behavior. `verified` is not biological truth or release permission. [Validation](validation/p0_10_claim_verifier_20260814.md) · [JSON Schema runtime](validation/p0_10_jsonschema_runtime_20260827.md) · [Benchmark](validation/p0_10_claim_verifier_benchmark_v0.1.md). |
+| Current evidence / status | Implemented candidate. `verified` is bounded to deterministic correspondence under the current cited evidence, policy and statement registry; it is not biological truth, public-export clearance or release permission. |
 
 <a id="p0-11"></a>
 ## P0-11 Public-safe Export

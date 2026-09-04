@@ -101,6 +101,9 @@ from bridge.tool_packages.p0_09_evidence_compiler.visualization_data import (
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     PUBLIC_SCHEMA_MODELS as P0_10_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_10_claim_verifier.visualization_data import (
+    PUBLIC_VISUALIZATION_SCHEMA_MODELS as P0_10_VISUALIZATION_SCHEMA_MODELS,
+)
 from bridge.tool_packages.p0_12_graft_assessment.run_models import (
     PUBLIC_SCHEMA_MODELS as P0_12_SCHEMA_MODELS,
 )
@@ -221,6 +224,7 @@ for schema_models in (
     P0_09_SCHEMA_MODELS,
     P0_09_VISUALIZATION_SCHEMA_MODELS,
     P0_10_SCHEMA_MODELS,
+    P0_10_VISUALIZATION_SCHEMA_MODELS,
     P0_11_SCHEMA_MODELS,
     P0_12_SCHEMA_MODELS,
 ):

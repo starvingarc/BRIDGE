@@ -25,6 +25,7 @@ CATALOG_BACKED_MODULE_IDS = (
     "P0-07",
     "P0-08",
     "P0-09",
+    "P0-10",
     "P0-11",
     "P0-12",
 )
@@ -329,8 +330,6 @@ def _active_methods_markdown(repo: Path, methods: list[dict]) -> str:
         "# Catalog-backed BRIDGE Methods",
         "",
         f"This generated shortlist mirrors methods selected from the global knowledge catalog by {active_modules}. The packaged snapshot remains the canonical retrieval artifact.",
-        "",
-        "P0-10 uses a package-owned, versioned benchmark rather than duplicating its internal verification methods here. See `docs/validation/p0_10_claim_verifier_benchmark_v0.1.md`.",
     ]
     for module_id in CATALOG_BACKED_MODULE_IDS:
         spec_path = (

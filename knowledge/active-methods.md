@@ -1,8 +1,6 @@
 # Catalog-backed BRIDGE Methods
 
-This generated shortlist mirrors methods selected from the global knowledge catalog by P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09, P0-11, P0-12. The packaged snapshot remains the canonical retrieval artifact.
-
-P0-10 uses a package-owned, versioned benchmark rather than duplicating its internal verification methods here. See `docs/validation/p0_10_claim_verifier_benchmark_v0.1.md`.
+This generated shortlist mirrors methods selected from the global knowledge catalog by P0-01, P0-02, P0-03, P0-04, P0-05, P0-06, P0-07, P0-08, P0-09, P0-10, P0-11, P0-12. The packaged snapshot remains the canonical retrieval artifact.
 
 ## P0-01: Input Audit & QC
 
@@ -97,6 +95,17 @@ P0-10 uses a package-owned, versioned benchmark rather than duplicating its inte
 - `METHOD-INTERNAL-READ-ONLY-API` — internal read-only API ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-READ-ONLY-API))
 - `METHOD-COLUMNAR-STORAGE` — columnar storage ([catalog record](bridge://knowledge/methods/METHOD-COLUMNAR-STORAGE))
 - `METHOD-GRAPH-LIBRARY` — graph library ([catalog record](bridge://knowledge/methods/METHOD-GRAPH-LIBRARY))
+
+## P0-10: Claim Verifier
+
+- `METHOD-INTERNAL-DETERMINISTIC-ENGINE-33C959` — internal deterministic engine ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-DETERMINISTIC-ENGINE-33C959))
+- `METHOD-INTERNAL-NUMERIC-ENGINE` — internal numeric engine ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-NUMERIC-ENGINE))
+- `METHOD-INTERNAL-RENDERER` — internal renderer ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-RENDERER))
+- `METHOD-INTERNAL-RULESET` — internal ruleset ([catalog record](bridge://knowledge/methods/METHOD-INTERNAL-RULESET))
+- `METHOD-SCHEMA-LIBRARY` — schema library ([catalog record](bridge://knowledge/methods/METHOD-SCHEMA-LIBRARY))
+- `METHOD-SCHEMA-VALIDATOR` — schema validator ([catalog record](bridge://knowledge/methods/METHOD-SCHEMA-VALIDATOR))
+- `METHOD-STANDARD-LIBRARY` — standard library ([catalog record](bridge://knowledge/methods/METHOD-STANDARD-LIBRARY))
+- `METHOD-UNICODE-REGEX-ENGINE` — Unicode regex engine ([catalog record](bridge://knowledge/methods/METHOD-UNICODE-REGEX-ENGINE))
 
 ## P0-11: Public-safe Export
 

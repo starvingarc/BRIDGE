@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -14,13 +15,12 @@ from bridge.tool_packages._structured_runtime import (
     canonical_json_bytes,
     directory_state,
     failed_v2_run,
+    inputs_unchanged as _inputs_unchanged,
     load_structured_inputs,
-    read_regular_bytes,
+    publish_json_bundle as _publish_bundle,
+    read_regular_bytes as _read_regular_bytes,
     request_v2_from_v1,
     single_object,
-)
-from bridge.tool_packages._structured_runtime import (
-    publish_json_result as _publish_result,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CaseEvidenceGraphManifest,
@@ -28,11 +28,9 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     contains_unsafe_reference,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
-from bridge.tool_packages.p0_10_claim_verifier.benchmark import (
-    benchmark_sha256,
-    load_benchmark,
-)
 from bridge.tool_packages.p0_10_claim_verifier.models import (
+    EXTERNAL_BENCHMARK_ID,
+    EXTERNAL_BENCHMARK_SHA256,
     ClaimPolicySpec,
     ClaimVerifierReleaseContract,
     ReportDraft,
@@ -42,6 +40,15 @@ from bridge.tool_packages.p0_10_claim_verifier.verifier import (
     load_release_contract,
     release_contract_sha256,
     verify_report,
+)
+from bridge.tool_packages.p0_10_claim_verifier.visualization import (
+    PreparedClaimVerifierVisualizations,
+    VisualizationFontUnavailable,
+    prepare_claim_verifier_visualizations,
+)
+from bridge.tool_packages.p0_10_claim_verifier.visualization_data import (
+    ClaimVerifierVisualizationDataV1,
+    build_claim_verifier_visualization_data,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -75,13 +82,12 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
 }
 
 
-
-
 @dataclass(frozen=True)
 class VerifiedEvidenceGraph:
     manifest: CaseEvidenceGraphManifest
     manifest_sha256: str
     evidence_set: EvidenceRecordSet
+    backing_artifacts: tuple[tuple[Path, str], ...]
 
 
 @dataclass(frozen=True)
@@ -99,10 +105,6 @@ class ClaimVerifierAdapter:
         reasons = _envelope_reasons(request, spec)
         release_contract, contract_reasons = _release_contract()
         reasons.extend(contract_reasons)
-        try:
-            load_benchmark()
-        except (OSError, ValueError):
-            reasons.append("benchmark_record_invalid")
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
         if loaded is not None and release_contract is not None and not reasons:
@@ -138,10 +140,8 @@ class ClaimVerifierAdapter:
         statements = single_object(
             request, loaded, "statement_registry", StatementRegistry
         )
-        benchmark = load_benchmark()
-        benchmark_hash = benchmark_sha256()
         contract_hash = release_contract_sha256()
-        input_hash = _input_hash(request, spec, benchmark_hash, contract_hash)
+        input_hash = _input_hash(request, spec, contract_hash)
         run_id = f"run-{input_hash[:16]}"
         result = verify_report(
             report=report,
@@ -150,21 +150,86 @@ class ClaimVerifierAdapter:
             statements=statements,
             release_contract=release_contract,
             release_contract_hash=contract_hash,
-            benchmark_id=benchmark.benchmark_id,
-            benchmark_sha256=benchmark_hash,
             run_id=run_id,
             evidence_graph_id=evidence_graph.manifest.graph_id,
             evidence_graph_version=evidence_graph.manifest.graph_version,
             evidence_graph_manifest_sha256=evidence_graph.manifest_sha256,
         )
         result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
-        result_hash = hashlib.sha256(result_bytes).hexdigest()
         try:
-            output_file = _publish_result(
+            visualization_profile = build_claim_verifier_visualization_data(
+                run_id=run_id,
+                tool_version=spec.version,
+                report=report,
+                evidence_set=evidence_graph.evidence_set,
+                result=result,
+            )
+        except (KeyError, TypeError, ValueError):
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_data_invalid"],
+                input_hash=input_hash,
+            )
+        try:
+            prepared_visualizations = prepare_claim_verifier_visualizations(
+                profile=visualization_profile,
+                output_dir=request.output_dir,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except VisualizationFontUnavailable:
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_font_unavailable"],
+                input_hash=input_hash,
+            )
+        except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+            return _failed_run(
+                request,
+                spec,
+                ["visualization_render_failed"],
+                input_hash=input_hash,
+            )
+
+        result_spec = {
+            "filename": "claim_verification_result.json",
+            "kind": "claim_verification_result",
+            "media_type": "application/json",
+            "sha256": hashlib.sha256(result_bytes).hexdigest(),
+            "evidence_ids": visualization_profile.evidence_ids,
+        }
+        payloads = {
+            "claim_verification_result.json": result_bytes,
+            **prepared_visualizations.payloads,
+        }
+        artifact_specs = [
+            result_spec,
+            *(
+                _artifact_spec_from_manifest(artifact)
+                for artifact in prepared_visualizations.artifacts
+            ),
+        ]
+        payloads["artifact_manifest.json"] = canonical_json_bytes(
+            _manifest_payload(
+                request=request,
+                spec=spec,
+                run_id=run_id,
+                input_hash=input_hash,
+                artifact_specs=artifact_specs,
+            ),
+            indent=2,
+        )
+        try:
+            published = _publish_bundle(
                 request=request,
                 run_id=run_id,
-                filename="claim_verification_result.json",
-                payload=result_bytes,
+                payloads=payloads,
+                inputs_are_unchanged=lambda refs: (
+                    _inputs_unchanged(refs)
+                    and _backing_artifacts_unchanged(evidence_graph.backing_artifacts)
+                ),
             )
         except PublicationError as exc:
             return _failed_run(
@@ -174,30 +239,19 @@ class ClaimVerifierAdapter:
                 input_hash=input_hash,
             )
         try:
-            published_matches = read_regular_bytes(output_file) == result_bytes
+            published_matches = set(published) == set(payloads) and all(
+                _read_regular_bytes(published[name]) == payload
+                for name, payload in payloads.items()
+            )
         except (OSError, RuntimeError):
             published_matches = False
         if not published_matches:
             return _failed_run(
                 request,
                 spec,
-                ["published_result_hash_mismatch"],
+                ["published_bundle_hash_mismatch"],
                 input_hash=input_hash,
             )
-        artifact = ArtifactManifest(
-            artifact_id=f"artifact:{run_id}:result",
-            kind="claim_verification_result",
-            path=output_file,
-            media_type="application/json",
-            sha256=result_hash,
-            evidence_ids=sorted(
-                {
-                    ref.split("@", 1)[0]
-                    for claim in report.claim_blocks
-                    for ref in claim.evidence_refs
-                }
-            ),
-        )
         return ToolRunV2(
             run_id=run_id,
             request=request,
@@ -208,7 +262,14 @@ class ClaimVerifierAdapter:
             input_hash=input_hash,
             created_at=report.created_at,
             measurements=[],
-            artifacts=[artifact],
+            artifacts=_runtime_artifacts(
+                published=published,
+                payloads=payloads,
+                run_id=run_id,
+                profile=visualization_profile,
+                result_spec=result_spec,
+                prepared_visualizations=prepared_visualizations,
+            ),
             visualizations=[],
             result_schema_ref=RESULT_SCHEMA_REF,
             result=result.model_dump(mode="json"),
@@ -333,6 +394,18 @@ def _verified_evidence_graph(
         ref for ref in request.object_inputs if ref.role == "evidence_graph_manifest"
     )
     graph = EvidenceGraphQueries.open(manifest_ref.path)
+    backing_artifacts = tuple(
+        (manifest_ref.path.parent / artifact.filename, artifact.sha256)
+        for artifact in (
+            manifest.evidence_records,
+            manifest.evidence_requirements,
+            manifest.reconciliation_records,
+            manifest.graph_nodes,
+            manifest.graph_edges,
+        )
+    )
+    if not _backing_artifacts_unchanged(backing_artifacts):
+        raise ValueError("manifest_integrity_failed")
     evidence_set = graph.evidence_record_set
     if (
         evidence_set.graph_id != manifest.graph_id
@@ -343,20 +416,33 @@ def _verified_evidence_graph(
         manifest=manifest,
         manifest_sha256=manifest_ref.sha256,
         evidence_set=evidence_set,
+        backing_artifacts=backing_artifacts,
     )
+
+
+def _backing_artifacts_unchanged(
+    artifacts: tuple[tuple[Path, str], ...],
+) -> bool:
+    try:
+        return all(
+            hashlib.sha256(_read_regular_bytes(path)).hexdigest() == expected
+            for path, expected in artifacts
+        )
+    except (OSError, RuntimeError):
+        return False
 
 
 def _input_hash(
     request: ToolRequestV2,
     spec: ToolPackageSpecV2,
-    benchmark_hash: str,
     release_contract_hash: str,
 ) -> str:
     payload = {
         "tool_id": spec.tool_id,
         "tool_version": spec.version,
         "environment_spec_id": spec.environment_spec_id,
-        "benchmark_sha256": benchmark_hash,
+        "external_benchmark_id": EXTERNAL_BENCHMARK_ID,
+        "external_benchmark_sha256": EXTERNAL_BENCHMARK_SHA256,
         "release_contract_sha256": release_contract_hash,
         "structured_inputs": [
             {
@@ -372,6 +458,84 @@ def _input_hash(
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
 
 
+def _artifact_spec_from_manifest(artifact: ArtifactManifest) -> dict[str, Any]:
+    return {
+        "filename": artifact.path.name,
+        "kind": artifact.kind,
+        "media_type": artifact.media_type,
+        "sha256": artifact.sha256,
+        "evidence_ids": artifact.evidence_ids,
+    }
+
+
+def _manifest_payload(
+    *,
+    request: ToolRequestV2,
+    spec: ToolPackageSpecV2,
+    run_id: str,
+    input_hash: str,
+    artifact_specs: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "run_id": run_id,
+        "tool_id": spec.tool_id,
+        "tool_version": spec.version,
+        "environment_spec_id": spec.environment_spec_id,
+        "result_schema_ref": RESULT_SCHEMA_REF,
+        "input_hash": input_hash,
+        "structured_inputs": [
+            {
+                "role": ref.role,
+                "schema_ref": ref.schema_ref,
+                "object_version": ref.object_version,
+                "sha256": ref.sha256,
+                "media_type": ref.media_type,
+            }
+            for ref in sorted(
+                request.object_inputs,
+                key=lambda item: (item.role, item.input_id),
+            )
+        ],
+        "artifacts": artifact_specs,
+    }
+
+
+def _runtime_artifacts(
+    *,
+    published: dict[str, Any],
+    payloads: dict[str, bytes],
+    run_id: str,
+    profile: ClaimVerifierVisualizationDataV1,
+    result_spec: dict[str, Any],
+    prepared_visualizations: PreparedClaimVerifierVisualizations,
+) -> list[ArtifactManifest]:
+    artifacts = [
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:result",
+            kind=str(result_spec["kind"]),
+            path=published[str(result_spec["filename"])].resolve(),
+            media_type=str(result_spec["media_type"]),
+            sha256=str(result_spec["sha256"]),
+            evidence_ids=profile.evidence_ids,
+        ),
+        *(
+            artifact.model_copy(
+                update={"path": published[artifact.path.name].resolve()}
+            )
+            for artifact in prepared_visualizations.artifacts
+        ),
+    ]
+    artifacts.append(
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:artifact-manifest",
+            kind="artifact_manifest",
+            path=published["artifact_manifest.json"].resolve(),
+            media_type="application/json",
+            sha256=hashlib.sha256(payloads["artifact_manifest.json"]).hexdigest(),
+            evidence_ids=profile.evidence_ids,
+        )
+    )
+    return artifacts
 
 
 def _failed_run(

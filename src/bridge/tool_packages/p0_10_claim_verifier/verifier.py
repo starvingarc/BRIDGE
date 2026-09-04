@@ -24,6 +24,8 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimPolicySpec,
     ClaimTypePolicy,
     ClaimType,
+    EXTERNAL_BENCHMARK_ID,
+    EXTERNAL_BENCHMARK_SHA256,
     ClaimVerificationResult,
     ClaimVerifierReleaseContract,
     ComparisonMode,
@@ -72,8 +74,6 @@ def verify_report(
     statements: StatementRegistry,
     release_contract: ClaimVerifierReleaseContract,
     release_contract_hash: str,
-    benchmark_id: str,
-    benchmark_sha256: str,
     run_id: str,
     evidence_graph_id: str,
     evidence_graph_version: int,
@@ -133,8 +133,8 @@ def verify_report(
         object_version="0.1.0",
         verification_id=verification_id,
         verifier_version=VERIFIER_VERSION,
-        benchmark_id=benchmark_id,
-        benchmark_sha256=benchmark_sha256,
+        benchmark_id=EXTERNAL_BENCHMARK_ID,
+        benchmark_sha256=EXTERNAL_BENCHMARK_SHA256,
         release_contract_id=release_contract.contract_id,
         release_contract_sha256=release_contract_hash,
         report_draft_ref=report.ref,
@@ -399,7 +399,15 @@ def _check_value_bindings(
     for binding in claim.value_bindings:
         record = evidence.get(binding.source_evidence_ref)
         if binding.source_evidence_ref not in claim.evidence_refs:
-            checks.append(_block(claim, "rule:value-binding", "binding_evidence_not_cited"))
+            checks.append(
+                _block(
+                    claim,
+                    "rule:value-binding",
+                    "binding_evidence_not_cited",
+                    text_span=binding.text_span,
+                    evidence_refs=[binding.source_evidence_ref],
+                )
+            )
             continue
         if record is None:
             continue
@@ -412,6 +420,7 @@ def _check_value_bindings(
                     claim,
                     "rule:numeric-fidelity",
                     reason,
+                    text_span=binding.text_span,
                     evidence_refs=[binding.source_evidence_ref],
                 )
             )

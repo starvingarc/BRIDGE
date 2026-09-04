@@ -1,0 +1,1141 @@
+{
+  "$defs": {
+    "CitationState": {
+      "enum": [
+        "cited",
+        "not_cited"
+      ],
+      "title": "CitationState",
+      "type": "string"
+    },
+    "ClaimCategoryCell": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/ClaimCheckCategory"
+        },
+        "check_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Check Ids",
+          "type": "array"
+        },
+        "finding_count": {
+          "minimum": 0,
+          "title": "Finding Count",
+          "type": "integer"
+        },
+        "finding_state": {
+          "$ref": "#/$defs/FindingState"
+        }
+      },
+      "required": [
+        "category",
+        "finding_state",
+        "finding_count",
+        "check_ids"
+      ],
+      "title": "ClaimCategoryCell",
+      "type": "object"
+    },
+    "ClaimCheckCategory": {
+      "enum": [
+        "claim_structure_and_authoring",
+        "evidence_binding_and_state",
+        "numeric_and_unit",
+        "comparison_scope",
+        "wording_and_statements"
+      ],
+      "title": "ClaimCheckCategory",
+      "type": "string"
+    },
+    "ClaimCheckMatrixRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "binding_source_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Binding Source Refs",
+          "type": "array"
+        },
+        "categories": {
+          "items": {
+            "$ref": "#/$defs/ClaimCategoryCell"
+          },
+          "maxItems": 5,
+          "minItems": 5,
+          "title": "Categories",
+          "type": "array"
+        },
+        "check_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Check Ids",
+          "type": "array"
+        },
+        "cited_evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Cited Evidence Refs",
+          "type": "array"
+        },
+        "claim_id": {
+          "minLength": 1,
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "claim_order": {
+          "minimum": 1,
+          "title": "Claim Order",
+          "type": "integer"
+        },
+        "claim_ref": {
+          "minLength": 1,
+          "title": "Claim Ref",
+          "type": "string"
+        },
+        "claim_text": {
+          "minLength": 1,
+          "title": "Claim Text",
+          "type": "string"
+        },
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "finding_count": {
+          "minimum": 0,
+          "title": "Finding Count",
+          "type": "integer"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "claim_check_matrix",
+          "default": "claim_check_matrix",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "display_state",
+        "claim_order",
+        "claim_id",
+        "claim_ref",
+        "claim_type",
+        "claim_text",
+        "cited_evidence_refs",
+        "binding_source_refs",
+        "categories",
+        "check_ids",
+        "finding_count"
+      ],
+      "title": "ClaimCheckMatrixRecord",
+      "type": "object"
+    },
+    "ClaimFindingContextRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "binding_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Binding Id"
+        },
+        "check_id": {
+          "minLength": 1,
+          "title": "Check Id",
+          "type": "string"
+        },
+        "claim_id": {
+          "minLength": 1,
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "claim_order": {
+          "minimum": 1,
+          "title": "Claim Order",
+          "type": "integer"
+        },
+        "claim_ref": {
+          "minLength": 1,
+          "title": "Claim Ref",
+          "type": "string"
+        },
+        "claim_text": {
+          "minLength": 1,
+          "title": "Claim Text",
+          "type": "string"
+        },
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "no_span_reason": {
+          "const": "check_has_no_exact_text_span",
+          "default": "check_has_no_exact_text_span",
+          "title": "No Span Reason",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "blocked",
+            "review_required",
+            "warning"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "reason_code": {
+          "minLength": 1,
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "claim_finding_context",
+          "default": "claim_finding_context",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "rule_id": {
+          "minLength": 1,
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "rule_version": {
+          "minLength": 1,
+          "title": "Rule Version",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "hard_blocker",
+            "review",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "source_evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Evidence Refs",
+          "type": "array"
+        },
+        "statement_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statement Ref"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "display_state",
+        "claim_order",
+        "claim_id",
+        "claim_ref",
+        "claim_type",
+        "claim_text",
+        "check_id",
+        "rule_id",
+        "rule_version",
+        "outcome",
+        "severity",
+        "reason_code",
+        "source_evidence_refs"
+      ],
+      "title": "ClaimFindingContextRecord",
+      "type": "object"
+    },
+    "ClaimType": {
+      "enum": [
+        "measurement_claim",
+        "domain_interpretation",
+        "descriptive_comparison",
+        "inferential_comparison",
+        "availability_claim",
+        "alert_claim",
+        "prior_or_literature_claim",
+        "method_claim",
+        "recommendation_hypothesis",
+        "graft_retrospective_claim",
+        "policy_or_boundary_statement",
+        "visualization_caption"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "FindingState": {
+      "enum": [
+        "no_finding_under_current_rules",
+        "warning_finding",
+        "review_required_finding",
+        "blocking_finding"
+      ],
+      "title": "FindingState",
+      "type": "string"
+    },
+    "NumericCorrespondenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "binding_id": {
+          "minLength": 1,
+          "title": "Binding Id",
+          "type": "string"
+        },
+        "check_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Check Ids",
+          "type": "array"
+        },
+        "citation_state": {
+          "$ref": "#/$defs/CitationState"
+        },
+        "claim_id": {
+          "minLength": 1,
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "claim_order": {
+          "minimum": 1,
+          "title": "Claim Order",
+          "type": "integer"
+        },
+        "claim_ref": {
+          "minLength": 1,
+          "title": "Claim Ref",
+          "type": "string"
+        },
+        "correspondence_state": {
+          "$ref": "#/$defs/NumericCorrespondenceState"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_canonical_numeric_string": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Evidence Canonical Numeric String"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "evidence_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Evidence Unit"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "numeric_correspondence",
+          "default": "numeric_correspondence",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "report_canonical_numeric_string": {
+          "minLength": 1,
+          "title": "Report Canonical Numeric String",
+          "type": "string"
+        },
+        "report_rendered_text": {
+          "title": "Report Rendered Text",
+          "type": "string"
+        },
+        "report_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Report Unit"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "source_evidence_ref": {
+          "pattern": "^evidence:[a-f0-9]{24}@[1-9][0-9]*$",
+          "title": "Source Evidence Ref",
+          "type": "string"
+        },
+        "source_field": {
+          "enum": [
+            "value",
+            "numerator",
+            "denominator",
+            "interval_lower",
+            "interval_upper"
+          ],
+          "title": "Source Field",
+          "type": "string"
+        },
+        "span_end": {
+          "exclusiveMinimum": 0,
+          "title": "Span End",
+          "type": "integer"
+        },
+        "span_start": {
+          "minimum": 0,
+          "title": "Span Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "display_state",
+        "claim_order",
+        "claim_id",
+        "claim_ref",
+        "binding_id",
+        "source_evidence_ref",
+        "source_field",
+        "citation_state",
+        "span_start",
+        "span_end",
+        "report_rendered_text",
+        "report_canonical_numeric_string",
+        "report_unit",
+        "evidence_canonical_numeric_string",
+        "evidence_unit",
+        "correspondence_state",
+        "check_ids",
+        "reason_codes"
+      ],
+      "title": "NumericCorrespondenceRecord",
+      "type": "object"
+    },
+    "NumericCorrespondenceState": {
+      "enum": [
+        "exact_identity_under_current_rules",
+        "source_not_cited_numeric_not_assessed",
+        "source_numeric_unavailable",
+        "canonical_numeric_mismatch",
+        "unit_mismatch",
+        "rendered_numeric_mismatch",
+        "numeric_source_not_scalar"
+      ],
+      "title": "NumericCorrespondenceState",
+      "type": "string"
+    },
+    "ReportAudience": {
+      "enum": [
+        "internal_research",
+        "public_candidate"
+      ],
+      "title": "ReportAudience",
+      "type": "string"
+    },
+    "ReportCheckCell": {
+      "additionalProperties": false,
+      "properties": {
+        "dimension": {
+          "$ref": "#/$defs/ReportCheckDimension"
+        },
+        "finding_count": {
+          "const": 0,
+          "default": 0,
+          "title": "Finding Count",
+          "type": "integer"
+        },
+        "finding_state": {
+          "const": "no_finding_under_current_rules",
+          "default": "no_finding_under_current_rules",
+          "title": "Finding State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dimension"
+      ],
+      "title": "ReportCheckCell",
+      "type": "object"
+    },
+    "ReportCheckDimension": {
+      "enum": [
+        "report_schema_and_hash",
+        "evidence_graph_integrity",
+        "policy_authority",
+        "statement_registry_authority"
+      ],
+      "title": "ReportCheckDimension",
+      "type": "string"
+    },
+    "ReportCheckMatrixRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "assessment_scope": {
+          "const": "successful_run_eligibility_preconditions",
+          "default": "successful_run_eligibility_preconditions",
+          "title": "Assessment Scope",
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/ReportCheckCell"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Checks",
+          "type": "array"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "report_check_matrix",
+          "default": "report_check_matrix",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "report_content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Report Content Hash",
+          "type": "string"
+        },
+        "report_draft_ref": {
+          "minLength": 1,
+          "title": "Report Draft Ref",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "display_state",
+        "report_draft_ref",
+        "report_content_hash",
+        "checks"
+      ],
+      "title": "ReportCheckMatrixRecord",
+      "type": "object"
+    },
+    "ReportLanguage": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed"
+      ],
+      "title": "ReportLanguage",
+      "type": "string"
+    },
+    "SpanFindingContextRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "binding_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Binding Id"
+        },
+        "check_id": {
+          "minLength": 1,
+          "title": "Check Id",
+          "type": "string"
+        },
+        "claim_id": {
+          "minLength": 1,
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "claim_order": {
+          "minimum": 1,
+          "title": "Claim Order",
+          "type": "integer"
+        },
+        "claim_ref": {
+          "minLength": 1,
+          "title": "Claim Ref",
+          "type": "string"
+        },
+        "claim_text": {
+          "minLength": 1,
+          "title": "Claim Text",
+          "type": "string"
+        },
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "display_state": {
+          "minLength": 1,
+          "title": "Display State",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "matched_text": {
+          "minLength": 1,
+          "title": "Matched Text",
+          "type": "string"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "blocked",
+            "review_required",
+            "warning"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "reason_code": {
+          "minLength": 1,
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "record_id": {
+          "pattern": "^[a-z][a-z0-9.-]+$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_kind": {
+          "const": "span_finding_context",
+          "default": "span_finding_context",
+          "title": "Record Kind",
+          "type": "string"
+        },
+        "rule_id": {
+          "minLength": 1,
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "rule_version": {
+          "minLength": 1,
+          "title": "Rule Version",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "hard_blocker",
+            "review",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "source_evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Evidence Refs",
+          "type": "array"
+        },
+        "span_end": {
+          "exclusiveMinimum": 0,
+          "title": "Span End",
+          "type": "integer"
+        },
+        "span_start": {
+          "minimum": 0,
+          "title": "Span Start",
+          "type": "integer"
+        },
+        "statement_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statement Ref"
+        }
+      },
+      "required": [
+        "record_id",
+        "evidence_ids",
+        "evidence_state",
+        "missingness",
+        "applicability",
+        "display_state",
+        "claim_order",
+        "claim_id",
+        "claim_ref",
+        "claim_type",
+        "claim_text",
+        "check_id",
+        "rule_id",
+        "rule_version",
+        "outcome",
+        "severity",
+        "reason_code",
+        "source_evidence_refs",
+        "span_start",
+        "span_end",
+        "matched_text"
+      ],
+      "title": "SpanFindingContextRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/claim-verifier-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "binding_count": {
+      "minimum": 0,
+      "title": "Binding Count",
+      "type": "integer"
+    },
+    "check_counts_are_audit_counts_not_evidence_amount": {
+      "const": true,
+      "default": true,
+      "title": "Check Counts Are Audit Counts Not Evidence Amount",
+      "type": "boolean"
+    },
+    "check_matrix_records": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "claim_check_matrix": "#/$defs/ClaimCheckMatrixRecord",
+            "report_check_matrix": "#/$defs/ReportCheckMatrixRecord"
+          },
+          "propertyName": "record_kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ReportCheckMatrixRecord"
+          },
+          {
+            "$ref": "#/$defs/ClaimCheckMatrixRecord"
+          }
+        ]
+      },
+      "minItems": 2,
+      "title": "Check Matrix Records",
+      "type": "array"
+    },
+    "claim_count": {
+      "minimum": 1,
+      "title": "Claim Count",
+      "type": "integer"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "finding_count": {
+      "minimum": 0,
+      "title": "Finding Count",
+      "type": "integer"
+    },
+    "finding_records": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "claim_finding_context": "#/$defs/ClaimFindingContextRecord",
+            "span_finding_context": "#/$defs/SpanFindingContextRecord"
+          },
+          "propertyName": "record_kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/SpanFindingContextRecord"
+          },
+          {
+            "$ref": "#/$defs/ClaimFindingContextRecord"
+          }
+        ]
+      },
+      "title": "Finding Records",
+      "type": "array"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "no_finding_is_limited_to_current_deterministic_rules": {
+      "const": true,
+      "default": true,
+      "title": "No Finding Is Limited To Current Deterministic Rules",
+      "type": "boolean"
+    },
+    "numeric_records": {
+      "items": {
+        "$ref": "#/$defs/NumericCorrespondenceRecord"
+      },
+      "title": "Numeric Records",
+      "type": "array"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:run-[a-f0-9]{16}$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "producer_tool_id": {
+      "const": "P0-10",
+      "default": "P0-10",
+      "title": "Producer Tool Id",
+      "type": "string"
+    },
+    "producer_tool_version": {
+      "minLength": 1,
+      "title": "Producer Tool Version",
+      "type": "string"
+    },
+    "report_audience": {
+      "$ref": "#/$defs/ReportAudience"
+    },
+    "report_content_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Report Content Hash",
+      "type": "string"
+    },
+    "report_draft_ref": {
+      "minLength": 1,
+      "title": "Report Draft Ref",
+      "type": "string"
+    },
+    "report_language": {
+      "$ref": "#/$defs/ReportLanguage"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/claim-verifier-visualization-data/v0.1",
+      "default": "bridge://schemas/claim-verifier-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "source_evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Evidence Refs",
+      "type": "array"
+    },
+    "source_result_ref": {
+      "pattern": "^claim-verification:[a-f0-9]{16}$",
+      "title": "Source Result Ref",
+      "type": "string"
+    },
+    "source_result_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Result Sha256",
+      "type": "string"
+    },
+    "source_result_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Source Result Version",
+      "type": "string"
+    },
+    "visualization_artifacts_are_not_public_export_clearance": {
+      "const": true,
+      "default": true,
+      "title": "Visualization Artifacts Are Not Public Export Clearance",
+      "type": "boolean"
+    },
+    "visualization_profile_id": {
+      "pattern": "^claim-verifier-visualization:[a-f0-9]{16}$",
+      "title": "Visualization Profile Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "visualization_profile_id",
+    "producer_tool_version",
+    "producer_run_ref",
+    "source_result_ref",
+    "source_result_sha256",
+    "report_draft_ref",
+    "report_content_hash",
+    "report_audience",
+    "report_language",
+    "claim_count",
+    "binding_count",
+    "finding_count",
+    "check_matrix_records",
+    "numeric_records",
+    "finding_records",
+    "source_evidence_refs",
+    "evidence_ids",
+    "limitations"
+  ],
+  "title": "ClaimVerifierVisualizationDataV1",
+  "type": "object"
+}

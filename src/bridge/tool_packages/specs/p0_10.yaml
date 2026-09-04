@@ -1,11 +1,11 @@
 tool_id: P0-10
 name: Claim Verifier
-version: 0.1.1
+version: 0.4.0
 summary: Verify that structured report claims, values and wording match approved evidence and policy.
 implementation_state: implemented
 scientific_status: candidate
 optional: false
-environment_spec_id: ENV-EVIDENCE-v0.1
+environment_spec_id: ENV-EVIDENCE-v0.3
 input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
 result_schema_ref: bridge://schemas/claim-verification-result/v0.1
