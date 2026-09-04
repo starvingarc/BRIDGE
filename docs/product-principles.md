@@ -37,8 +37,9 @@ The approved [visualization system](BRIDGE_PRD.md#66-visualization-composer-与-
 experience around researcher questions: data readiness, product composition,
 identity support, target/regional and developmental fit, off-target/unknown and
 process signals, comparison, and evidence gaps.
-The figure registry contains 41 components: 34 typed candidates and 7 legacy
-components. P0-11 contributes four typed local-review components for
+The figure registry contains 43 components: 36 typed candidates and 7 legacy
+components. P0-02 contributes typed whole-product reference-correspondence and a
+static state-definition evidence registry. P0-11 contributes four typed local-review components for
 claim-content projection, candidate-digest state, candidate artifact status and
 registered checks. P0-12 contributes three typed views for declared specimen
 scope, uploaded-profile composition and reference/program evidence. Discovery

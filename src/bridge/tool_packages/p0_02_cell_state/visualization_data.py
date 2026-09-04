@@ -6,12 +6,58 @@ from typing import Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
+from bridge.tool_packages.p0_02_cell_state.hierarchical_composition import (
+    ProductGroupingProvenance,
+)
 from bridge.toolkit.contracts import EvidenceState, FrozenModel
+from bridge.toolkit.visualization import VisualizationArtifactV2
 
 
 CELL_STATE_EVIDENCE_MATRIX_SCHEMA_REF = (
     "bridge://schemas/cell-state-evidence-matrix-data/v0.1"
 )
+CELL_STATE_EVIDENCE_MATRIX_V2_SCHEMA_REF = (
+    "bridge://schemas/cell-state-evidence-matrix-data/v0.2"
+)
+HIERARCHICAL_CELL_STATE_VISUALIZATION_SCHEMA_REF = (
+    "bridge://schemas/hierarchical-cell-state-visualization-data/v0.1"
+)
+P002_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF = (
+    "bridge://schemas/p0-02-visualization-artifact-set/v0.1"
+)
+HIERARCHICAL_COMPOSITION_COMPONENT_REF = (
+    "bridge.cell_state.hierarchical-composition@0.1.0"
+)
+SOURCE_STATE_EVIDENCE_COMPONENT_REF = "bridge.cell_state.source-state-evidence@0.1.0"
+P002_COMPONENT_BINDINGS = (
+    (
+        HIERARCHICAL_COMPOSITION_COMPONENT_REF,
+        "hierarchical-composition",
+        HIERARCHICAL_CELL_STATE_VISUALIZATION_SCHEMA_REF,
+        "records",
+        "hierarchical-visualization",
+    ),
+    (
+        SOURCE_STATE_EVIDENCE_COMPONENT_REF,
+        "source-state-evidence",
+        CELL_STATE_EVIDENCE_MATRIX_V2_SCHEMA_REF,
+        "records",
+        "source-state-evidence",
+    ),
+)
+P002_COMPONENT_REFS = tuple(item[0] for item in P002_COMPONENT_BINDINGS)
+
+_SHA256 = r"^[0-9a-f]{64}$"
+
+
+def _artifact_id(digest: str, suffix: str) -> str:
+    return f"artifact:run-{digest}:{suffix}"
+
+
+def _visualization_id(digest: str, slug: str) -> str:
+    return f"visualization:run-{digest}:{slug}"
+
+
 class MatrixAssessmentState(StrEnum):
     SOURCE_ANCHORED = "source_anchored"
     SUPPORT = "support"
@@ -98,15 +144,25 @@ class CellStateEvidenceSource(FrozenModel):
     def source_relationship_is_coherent(self) -> Self:
         if self.source_id in self.dependency_source_ids:
             raise ValueError("a source cannot depend on itself")
-        if self.relationship in {
-            SourceRelationship.PRIMARY,
-            SourceRelationship.INDEPENDENT_EXTERNAL,
-        } and self.dependency_source_ids:
-            raise ValueError("primary and independent sources cannot declare dependencies")
-        if self.relationship in {
-            SourceRelationship.DERIVED_CONTAINS_PRIMARY,
-            SourceRelationship.DEPENDENT_LABEL_TRANSFER,
-        } and not self.dependency_source_ids:
+        if (
+            self.relationship
+            in {
+                SourceRelationship.PRIMARY,
+                SourceRelationship.INDEPENDENT_EXTERNAL,
+            }
+            and self.dependency_source_ids
+        ):
+            raise ValueError(
+                "primary and independent sources cannot declare dependencies"
+            )
+        if (
+            self.relationship
+            in {
+                SourceRelationship.DERIVED_CONTAINS_PRIMARY,
+                SourceRelationship.DEPENDENT_LABEL_TRANSFER,
+            }
+            and not self.dependency_source_ids
+        ):
             raise ValueError("derived and dependent sources require a dependency")
         return self
 
@@ -176,16 +232,23 @@ class CellStateEvidenceChannelRecord(FrozenModel):
 
     @model_validator(mode="after")
     def channel_state_is_coherent(self) -> Self:
-        if self.evidence_state not in _ASSESSMENT_EVIDENCE_STATES[
-            self.assessment_state
-        ]:
+        if (
+            self.evidence_state
+            not in _ASSESSMENT_EVIDENCE_STATES[self.assessment_state]
+        ):
             raise ValueError("assessment and evidence states are inconsistent")
-        if self.assessment_state in {
-            MatrixAssessmentState.OPPOSITION,
-            MatrixAssessmentState.CONFLICT,
-            MatrixAssessmentState.NOT_ASSESSED,
-        } and not self.reason_codes:
-            raise ValueError("opposition, conflict and not-assessed channels require reasons")
+        if (
+            self.assessment_state
+            in {
+                MatrixAssessmentState.OPPOSITION,
+                MatrixAssessmentState.CONFLICT,
+                MatrixAssessmentState.NOT_ASSESSED,
+            }
+            and not self.reason_codes
+        ):
+            raise ValueError(
+                "opposition, conflict and not-assessed channels require reasons"
+            )
         return self
 
 
@@ -211,9 +274,10 @@ class CellStateEvidenceMatrixRecord(FrozenModel):
 
     @model_validator(mode="after")
     def record_state_is_coherent(self) -> Self:
-        if self.evidence_state not in _ASSESSMENT_EVIDENCE_STATES[
-            self.assessment_state
-        ]:
+        if (
+            self.evidence_state
+            not in _ASSESSMENT_EVIDENCE_STATES[self.assessment_state]
+        ):
             raise ValueError("assessment and evidence states are inconsistent")
         if self.evidence_role is EvidenceRole.PRIMARY_ANNOTATION:
             if self.assessment_state not in {
@@ -233,11 +297,15 @@ class CellStateEvidenceMatrixRecord(FrozenModel):
             and self.evidence_role is not EvidenceRole.LITERATURE_PRIOR
         ):
             raise ValueError("prior-only evidence requires the literature-prior role")
-        if self.assessment_state in {
-            MatrixAssessmentState.OPPOSITION,
-            MatrixAssessmentState.CONFLICT,
-            MatrixAssessmentState.NOT_ASSESSED,
-        } and not self.reason_codes:
+        if (
+            self.assessment_state
+            in {
+                MatrixAssessmentState.OPPOSITION,
+                MatrixAssessmentState.CONFLICT,
+                MatrixAssessmentState.NOT_ASSESSED,
+            }
+            and not self.reason_codes
+        ):
             raise ValueError(
                 "opposition, conflict and not-assessed records require reasons"
             )
@@ -248,12 +316,8 @@ class CellStateEvidenceMatrixRecord(FrozenModel):
             channel.evidence_state is EvidenceState.PRIOR_ONLY
             for channel in self.channels
         )
-        if channel_has_prior != (
-            self.evidence_role is EvidenceRole.LITERATURE_PRIOR
-        ):
-            raise ValueError(
-                "prior-only channels require the literature-prior role"
-            )
+        if channel_has_prior != (self.evidence_role is EvidenceRole.LITERATURE_PRIOR):
+            raise ValueError("prior-only channels require the literature-prior role")
         metric_ids = [
             statistic.metric_id
             for channel in self.channels
@@ -267,7 +331,8 @@ class CellStateEvidenceMatrixRecord(FrozenModel):
             or {
                 MatrixAssessmentState.SUPPORT,
                 MatrixAssessmentState.OPPOSITION,
-            } <= channel_states
+            }
+            <= channel_states
         ):
             expected_assessment = MatrixAssessmentState.CONFLICT
         elif (
@@ -283,9 +348,7 @@ class CellStateEvidenceMatrixRecord(FrozenModel):
             if len(assessed) > 1:
                 raise ValueError("channel roll-up is ambiguous")
             expected_assessment = (
-                next(iter(assessed))
-                if assessed
-                else MatrixAssessmentState.NOT_ASSESSED
+                next(iter(assessed)) if assessed else MatrixAssessmentState.NOT_ASSESSED
             )
         if self.assessment_state is not expected_assessment:
             raise ValueError("record assessment must equal the channel roll-up")
@@ -295,10 +358,14 @@ class CellStateEvidenceMatrixRecord(FrozenModel):
             if channel.assessment_state is self.assessment_state
         ]
         if self.assessment_state is MatrixAssessmentState.CONFLICT:
-            if not matching and not {
-                MatrixAssessmentState.SUPPORT,
-                MatrixAssessmentState.OPPOSITION,
-            } <= channel_states:
+            if (
+                not matching
+                and not {
+                    MatrixAssessmentState.SUPPORT,
+                    MatrixAssessmentState.OPPOSITION,
+                }
+                <= channel_states
+            ):
                 raise ValueError(
                     "conflict requires a conflict channel or support and opposition channels"
                 )
@@ -313,7 +380,9 @@ class CellStateEvidenceMatrixRecord(FrozenModel):
 
 class CellStateEvidenceMatrixData(FrozenModel):
     object_version: Literal["0.1.0"] = "0.1.0"
-    schema_ref: Literal["bridge://schemas/cell-state-evidence-matrix-data/v0.1"] = CELL_STATE_EVIDENCE_MATRIX_SCHEMA_REF
+    schema_ref: Literal["bridge://schemas/cell-state-evidence-matrix-data/v0.1"] = (
+        CELL_STATE_EVIDENCE_MATRIX_SCHEMA_REF
+    )
     profile_id: str = Field(pattern=r"^cell-state-evidence-matrix:[A-Za-z0-9._-]+$")
     producer_run_ref: str = Field(pattern=r"^run:[A-Za-z0-9._:-]+$")
     primary_source_id: str
@@ -425,15 +494,15 @@ class CellStateEvidenceMatrixData(FrozenModel):
             )
 
         expected = {
-            (state_id, source_id)
-            for state_id in state_ids
-            for source_id in source_ids
+            (state_id, source_id) for state_id in state_ids for source_id in source_ids
         }
         observed = {(record.state_id, record.source_id) for record in self.records}
         if len(observed) != len(self.records):
             raise ValueError("matrix state-source records must be unique")
         if observed != expected:
-            raise ValueError("matrix must contain exactly one record per state and source")
+            raise ValueError(
+                "matrix must contain exactly one record per state and source"
+            )
         for record in self.records:
             source = source_by_id[record.source_id]
             state = state_by_id[record.state_id]
@@ -454,8 +523,7 @@ class CellStateEvidenceMatrixData(FrozenModel):
                     is not MatrixAssessmentState.SOURCE_ANCHORED
                 ) or (
                     state.primary_n_observations == 0
-                    and record.assessment_state
-                    is MatrixAssessmentState.SOURCE_ANCHORED
+                    and record.assessment_state is MatrixAssessmentState.SOURCE_ANCHORED
                 ):
                     raise ValueError(
                         "primary observation counts and anchored states must agree"
@@ -483,16 +551,14 @@ class CellStateEvidenceMatrixData(FrozenModel):
                 )
             if (
                 record.evidence_role is EvidenceRole.EXTERNAL_HOLDOUT
-                and source.relationship
-                is not SourceRelationship.INDEPENDENT_EXTERNAL
+                and source.relationship is not SourceRelationship.INDEPENDENT_EXTERNAL
             ):
                 raise ValueError(
                     "external holdout evidence requires an independent source"
                 )
             if (
                 source.availability is SourceAvailability.HOLDOUT_NOT_RUN
-                and record.assessment_state
-                is not MatrixAssessmentState.NOT_ASSESSED
+                and record.assessment_state is not MatrixAssessmentState.NOT_ASSESSED
             ):
                 raise ValueError("unrun holdout sources cannot report an assessment")
             if (
@@ -508,6 +574,484 @@ class CellStateEvidenceMatrixData(FrozenModel):
         return self
 
 
+class CellStateEvidenceMatrixRecordV2(CellStateEvidenceMatrixRecord):
+    record_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+    scientific_status: Literal["candidate"] = "candidate"
+    applicability: Literal["applicable", "not_assessed"]
+    missingness: Literal["available", "missing", "unavailable"]
+
+    @model_validator(mode="after")
+    def presentation_axes_are_coherent(self) -> Self:
+        assessed = self.assessment_state is not MatrixAssessmentState.NOT_ASSESSED
+        if assessed != (self.applicability == "applicable"):
+            raise ValueError("assessment and applicability must agree")
+        expected_missingness = {
+            EvidenceState.MISSING: "missing",
+            EvidenceState.UNAVAILABLE: "unavailable",
+        }.get(self.evidence_state, "available")
+        if self.missingness != expected_missingness:
+            raise ValueError("evidence state and missingness must agree")
+        return self
+
+
+class CellStateEvidenceMatrixDataV2(CellStateEvidenceMatrixData):
+    object_version: Literal["0.2.0"] = "0.2.0"
+    schema_ref: Literal["bridge://schemas/cell-state-evidence-matrix-data/v0.2"] = (
+        CELL_STATE_EVIDENCE_MATRIX_V2_SCHEMA_REF
+    )
+    records: list[CellStateEvidenceMatrixRecordV2] = Field(min_length=2)
+    matrix_scope: Literal["draft_state_definition_registry"] = (
+        "draft_state_definition_registry"
+    )
+    query_dependent: Literal[False] = False
+    runtime_reference_selection_represented: Literal[False] = False
+    primary_source_semantics: Literal["current_state_label_count_source"] = (
+        "current_state_label_count_source"
+    )
+    source_registry_ref: str = Field(min_length=1)
+    source_registry_sha256: str = Field(pattern=_SHA256)
+
+    @model_validator(mode="after")
+    def presentation_record_ids_are_unique(self) -> Self:
+        record_ids = [record.record_id for record in self.records]
+        if len(record_ids) != len(set(record_ids)):
+            raise ValueError("matrix record IDs must be unique")
+        digest = self.profile_id.rsplit(":", 1)[1]
+        if self.producer_run_ref != f"run:run-{digest}":
+            raise ValueError("matrix profile and producer run must share a digest")
+        return self
+
+
+class HierarchicalCellStateVisualizationRecord(FrozenModel):
+    record_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+    row_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+    row_display_name: str = Field(min_length=1)
+    row_order: int = Field(ge=0)
+    row_count: int = Field(gt=0)
+    row_whole_product_fraction: float = Field(gt=0, le=1)
+    column_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+    column_display_name: str = Field(min_length=1)
+    column_order: int = Field(ge=0)
+    column_kind: Literal[
+        "group_share",
+        "state",
+        "subtype_unresolved",
+        "subtype_unavailable",
+        "source_conflict",
+        "unavailable",
+        "open_set_not_assessed",
+    ]
+    state_id: str | None = Field(default=None, pattern=r"^L[12]:[A-Za-z0-9_]+$")
+    reference_level: Literal["L1", "L2", "status"]
+    parent_state_id: str | None = Field(
+        default=None,
+        pattern=r"^L1:[A-Za-z0-9_]+$",
+    )
+    parent_denominator: int | None = Field(default=None, ge=0)
+    parent_denominator_scope: str | None = None
+    parent_fraction: float | None = Field(default=None, ge=0, le=1)
+    count: int | None = Field(default=None, ge=0)
+    denominator: int = Field(gt=0)
+    denominator_scope: str = Field(min_length=1)
+    fraction: float | None = Field(default=None, ge=0, le=1)
+    evidence_state: EvidenceState
+    scientific_status: Literal["candidate"] = "candidate"
+    applicability: Literal["applicable", "not_assessed"]
+    missingness: Literal["available", "unavailable"]
+    evidence_ids: list[str] = Field(min_length=1)
+    reason_codes: list[str] = Field(default_factory=list)
+
+    @field_validator("evidence_ids", "reason_codes")
+    @classmethod
+    def presentation_lists_are_unique(cls, values: list[str]) -> list[str]:
+        if values != sorted(set(values)):
+            raise ValueError("presentation references must be sorted and unique")
+        return values
+
+    @model_validator(mode="after")
+    def quantities_are_coherent(self) -> Self:
+        if self.row_count > self.denominator:
+            raise ValueError("presentation row count cannot exceed its denominator")
+        if self.missingness == "unavailable":
+            if self.count is not None or self.fraction is not None:
+                raise ValueError("unavailable presentation records cannot encode zero")
+            if self.applicability != "not_assessed" or not self.reason_codes:
+                raise ValueError("unavailable presentation records require a reason")
+        else:
+            if self.count is None or self.fraction is None:
+                raise ValueError("available presentation records require quantities")
+            if not math.isclose(
+                self.fraction,
+                self.count / self.denominator,
+                abs_tol=1e-12,
+            ):
+                raise ValueError("presentation fraction does not match its row")
+            if self.applicability != "applicable":
+                raise ValueError("available presentation records must be applicable")
+        if (self.column_kind == "state") != (self.state_id is not None):
+            raise ValueError("only state columns may declare a state ID")
+        if self.column_kind in {"subtype_unresolved", "subtype_unavailable"} and (
+            self.reference_level != "L2"
+        ):
+            raise ValueError("subtype status columns require refined-state semantics")
+        parent_values = (
+            self.parent_denominator,
+            self.parent_denominator_scope,
+            self.parent_fraction,
+        )
+        if self.reference_level == "L2":
+            if self.parent_denominator is None or self.parent_denominator_scope is None:
+                raise ValueError(
+                    "refined records require their broad-state denominator"
+                )
+            if self.count is None:
+                raise ValueError("refined records must retain quantitative mass")
+            if self.parent_denominator == 0:
+                if self.count != 0 or self.parent_fraction is not None:
+                    raise ValueError(
+                        "empty refined parents require zero count and no fraction"
+                    )
+            elif self.parent_fraction is None or not math.isclose(
+                self.parent_fraction,
+                self.count / self.parent_denominator,
+                abs_tol=1e-12,
+            ):
+                raise ValueError("refined parent fraction does not match its count")
+        elif any(value is not None for value in parent_values):
+            raise ValueError("only refined records may carry parent denominators")
+        if self.reference_level == "L2" and self.parent_state_id is None:
+            raise ValueError("refined state columns require a parent state")
+        if self.reference_level != "L2" and self.parent_state_id is not None:
+            raise ValueError("only refined state columns may declare a parent")
+        return self
+
+
+class HierarchicalCellStateVisualizationDataV1(FrozenModel):
+    object_version: Literal["0.1.0"] = "0.1.0"
+    schema_ref: Literal[
+        "bridge://schemas/hierarchical-cell-state-visualization-data/v0.1"
+    ] = HIERARCHICAL_CELL_STATE_VISUALIZATION_SCHEMA_REF
+    profile_id: str = Field(
+        pattern=r"^hierarchical-cell-state-visualization:[A-Za-z0-9._-]+$"
+    )
+    producer_run_ref: str = Field(pattern=r"^run:[A-Za-z0-9._:-]+$")
+    source_profile_ref: str = Field(
+        pattern=r"^hierarchical-cell-state-composition:[A-Za-z0-9._-]+$"
+    )
+    source_profile_sha256: str = Field(pattern=_SHA256)
+    scientific_status: Literal["candidate"] = "candidate"
+    observation_unit: Literal["cells", "nuclei", "observations"]
+    whole_product_denominator: int = Field(gt=0)
+    denominator_scope: str = Field(min_length=1)
+    grouping: ProductGroupingProvenance
+    records: list[HierarchicalCellStateVisualizationRecord] = Field(min_length=1)
+    evidence_ids: list[str] = Field(min_length=1)
+    limitations: list[str] = Field(min_length=1)
+    alt_text: str = Field(min_length=40, max_length=240)
+    long_description: str = Field(min_length=80)
+
+    @model_validator(mode="after")
+    def presentation_grid_is_complete(self) -> Self:
+        digest = self.profile_id.rsplit(":", 1)[1]
+        if self.producer_run_ref != f"run:run-{digest}":
+            raise ValueError("hierarchy profile and producer run must share a digest")
+        if self.source_profile_ref != (
+            f"hierarchical-cell-state-composition:run-{digest}"
+        ):
+            raise ValueError("hierarchy source profile must share the producer digest")
+        record_ids = [record.record_id for record in self.records]
+        if len(record_ids) != len(set(record_ids)):
+            raise ValueError("hierarchical presentation record IDs must be unique")
+        rows = {}
+        columns = {}
+        for record in self.records:
+            row_metadata = (
+                record.row_order,
+                record.row_display_name,
+                record.row_count,
+                record.row_whole_product_fraction,
+            )
+            column_metadata = (
+                record.column_order,
+                record.column_display_name,
+                record.column_kind,
+                record.state_id,
+                record.reference_level,
+                record.parent_state_id,
+            )
+            if record.row_id in rows and rows[record.row_id] != row_metadata:
+                raise ValueError("presentation row metadata must be consistent")
+            if (
+                record.column_id in columns
+                and columns[record.column_id] != column_metadata
+            ):
+                raise ValueError("presentation column metadata must be consistent")
+            rows[record.row_id] = row_metadata
+            columns[record.column_id] = column_metadata
+        if len(rows) * len(columns) != len(self.records):
+            raise ValueError("hierarchical presentation must be a complete grid")
+        if {(record.row_id, record.column_id) for record in self.records} != {
+            (row_id, column_id) for row_id in rows for column_id in columns
+        }:
+            raise ValueError("hierarchical presentation grid has missing cells")
+        group_share_columns = [
+            column_id
+            for column_id, value in columns.items()
+            if value[2] == "group_share"
+        ]
+        if len(group_share_columns) != 1:
+            raise ValueError(
+                "hierarchical presentation requires one product-share column"
+            )
+        open_set_columns = [
+            column_id
+            for column_id, value in columns.items()
+            if value[2] == "open_set_not_assessed"
+        ]
+        if len(open_set_columns) != 1:
+            raise ValueError("hierarchical presentation requires one open-set status")
+        for row_id, (_, _, row_count, row_fraction) in rows.items():
+            share = next(
+                record
+                for record in self.records
+                if record.row_id == row_id
+                and record.column_id == group_share_columns[0]
+            )
+            if (
+                share.count != row_count
+                or share.denominator != self.whole_product_denominator
+                or share.denominator_scope != self.denominator_scope
+                or share.fraction is None
+                or not math.isclose(share.fraction, row_fraction, abs_tol=1e-12)
+            ):
+                raise ValueError(
+                    "product-share record must bind the whole-product denominator"
+                )
+        row_orders = sorted(value[0] for value in rows.values())
+        column_orders = sorted(value[0] for value in columns.values())
+        for _, _, row_count, row_fraction in rows.values():
+            if row_count > self.whole_product_denominator or not math.isclose(
+                row_fraction,
+                row_count / self.whole_product_denominator,
+                abs_tol=1e-12,
+            ):
+                raise ValueError("presentation row share must use the whole product")
+        if len(rows) == 1:
+            only_row = next(iter(rows.values()))
+            if only_row[2] != self.whole_product_denominator:
+                raise ValueError("single-row presentation must cover the whole product")
+        elif sum(value[2] for value in rows.values()) != self.whole_product_denominator:
+            raise ValueError("product-group rows must conserve the whole product")
+        if row_orders != list(range(len(rows))) or column_orders != list(
+            range(len(columns))
+        ):
+            raise ValueError("presentation row and column order must be contiguous")
+        l1_columns = {
+            column_id for column_id, value in columns.items() if value[4] == "L1"
+        }
+        for row_id in rows:
+            root = [
+                record
+                for record in self.records
+                if record.row_id == row_id
+                and (
+                    record.column_id in l1_columns
+                    or record.column_kind in {"source_conflict", "unavailable"}
+                )
+            ]
+            available_total = sum(record.fraction or 0.0 for record in root)
+            if not math.isclose(available_total, 1.0, abs_tol=1e-12):
+                raise ValueError("broad-state presentation rows must be conserved")
+
+        broad_column_by_state = {
+            value[3]: column_id
+            for column_id, value in columns.items()
+            if value[4] == "L1" and value[3] is not None
+        }
+        refined_by_parent: dict[str, list[tuple[str, tuple]]] = {}
+        for column_id, value in columns.items():
+            if value[4] == "L2" and value[5] is not None:
+                refined_by_parent.setdefault(value[5], []).append((column_id, value))
+        for parent_state_id, refined_columns in refined_by_parent.items():
+            parent_column_id = broad_column_by_state.get(parent_state_id)
+            if parent_column_id is None:
+                raise ValueError("refined presentation parent is missing")
+            status_kinds = sorted(
+                value[2] for _, value in refined_columns if value[2] != "state"
+            )
+            if status_kinds != ["subtype_unavailable", "subtype_unresolved"]:
+                raise ValueError(
+                    "each refined partition requires unresolved and unavailable rows"
+                )
+            for row_id in rows:
+                parent = next(
+                    record
+                    for record in self.records
+                    if record.row_id == row_id and record.column_id == parent_column_id
+                )
+                refined = [
+                    next(
+                        record
+                        for record in self.records
+                        if record.row_id == row_id and record.column_id == column_id
+                    )
+                    for column_id, _ in refined_columns
+                ]
+                parent_scopes = {item.parent_denominator_scope for item in refined}
+                if any(item.parent_denominator != parent.count for item in refined):
+                    raise ValueError(
+                        "refined records must bind the displayed broad-parent count"
+                    )
+                if len(parent_scopes) != 1:
+                    raise ValueError(
+                        "refined records must share one broad-parent denominator scope"
+                    )
+                if parent.count is None or any(item.count is None for item in refined):
+                    raise ValueError(
+                        "refined presentation partitions must be quantitative"
+                    )
+                if sum(item.count or 0 for item in refined) != parent.count:
+                    raise ValueError(
+                        "refined presentation must conserve its broad parent"
+                    )
+        if self.evidence_ids != sorted(set(self.evidence_ids)):
+            raise ValueError("profile evidence IDs must be sorted and unique")
+        return self
+
+
+class VisualizationArtifactHash(FrozenModel):
+    artifact_id: str = Field(min_length=1)
+    content_sha256: str = Field(pattern=_SHA256)
+
+
+class P002VisualizationArtifactSet(FrozenModel):
+    object_version: Literal["0.1.0"] = "0.1.0"
+    schema_ref: Literal[P002_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF] = (
+        P002_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF
+    )
+    artifact_set_id: str = Field(pattern=r"^p0-02-visualizations:[a-f0-9]{16}$")
+    hierarchical_data_artifact_id: str = Field(min_length=1)
+    hierarchical_data_sha256: str = Field(pattern=_SHA256)
+    source_matrix_data_artifact_id: str = Field(min_length=1)
+    source_matrix_data_sha256: str = Field(pattern=_SHA256)
+    visualizations: list[VisualizationArtifactV2] = Field(min_length=2, max_length=2)
+    artifact_hashes: list[VisualizationArtifactHash] = Field(
+        min_length=10, max_length=10
+    )
+
+    @model_validator(mode="after")
+    def component_set_is_complete(self) -> Self:
+        if [item.component_ref for item in self.visualizations] != list(
+            P002_COMPONENT_REFS
+        ):
+            raise ValueError("P0-02 artifact set requires the two fixed components")
+
+        expected_data = (
+            (self.hierarchical_data_artifact_id, self.hierarchical_data_sha256),
+            (self.source_matrix_data_artifact_id, self.source_matrix_data_sha256),
+        )
+        if any(
+            item.data_binding.artifact_id != artifact_id
+            or item.data_binding.sha256 != sha256
+            for item, (artifact_id, sha256) in zip(
+                self.visualizations, expected_data, strict=True
+            )
+        ):
+            raise ValueError("visualizations must bind their declared data artifacts")
+
+        expected_media = ["image/svg+xml", "image/png", "application/pdf"]
+        if any(
+            [render.media_type for render in item.renders] != expected_media
+            for item in self.visualizations
+        ):
+            raise ValueError("each visualization requires ordered SVG, PNG and PDF")
+
+        digest = self.artifact_set_id.rsplit(":", 1)[1]
+        if self.hierarchical_data_artifact_id != _artifact_id(
+            digest, "hierarchical-visualization-data"
+        ) or self.source_matrix_data_artifact_id != _artifact_id(
+            digest, "source-state-evidence-data"
+        ):
+            raise ValueError("data artifact IDs must bind the artifact-set run")
+
+        if len({item.visualization_id for item in self.visualizations}) != 2:
+            raise ValueError("visualization IDs must be unique")
+        table_ids = [
+            item.accessibility.table_artifact_id for item in self.visualizations
+        ]
+        if len(set(table_ids)) != 2:
+            raise ValueError("visualization table artifact IDs must be unique")
+
+        for item, (
+            component_ref,
+            slug,
+            schema_ref,
+            records_path,
+            artifact_slug,
+        ) in zip(self.visualizations, P002_COMPONENT_BINDINGS, strict=True):
+            if (
+                item.component_ref != component_ref
+                or item.visualization_id != _visualization_id(digest, slug)
+                or item.data_binding.schema_ref != schema_ref
+                or item.data_binding.records_path != records_path
+                or item.accessibility.table_artifact_id
+                != _artifact_id(digest, f"{artifact_slug}-table")
+            ):
+                raise ValueError("visualization identity does not match its component")
+            expected_render_ids = [
+                _artifact_id(digest, f"{artifact_slug}-{extension}")
+                for extension in ("svg", "png", "pdf")
+            ]
+            if [render.artifact_id for render in item.renders] != expected_render_ids:
+                raise ValueError("render artifact IDs must match format and component")
+
+        producer_contracts = {
+            (
+                item.producer_tool_id,
+                item.producer_tool_version,
+                item.producer_run_ref,
+            )
+            for item in self.visualizations
+        }
+        if producer_contracts != {
+            ("P0-02", self.visualizations[0].producer_tool_version, f"run:run-{digest}")
+        }:
+            raise ValueError("visualizations must share the artifact-set producer run")
+
+        all_ids = {
+            self.hierarchical_data_artifact_id,
+            self.source_matrix_data_artifact_id,
+            *table_ids,
+            *(
+                render.artifact_id
+                for item in self.visualizations
+                for render in item.renders
+            ),
+        }
+        if len(all_ids) != 10:
+            raise ValueError("data, table and render artifact IDs must be disjoint")
+        artifact_hashes = {
+            item.artifact_id: item.content_sha256 for item in self.artifact_hashes
+        }
+        if len(artifact_hashes) != len(self.artifact_hashes):
+            raise ValueError("artifact content bindings must be unique")
+        if set(artifact_hashes) != all_ids:
+            raise ValueError("artifact content bindings must cover the exact bundle")
+        if (
+            artifact_hashes[self.hierarchical_data_artifact_id]
+            != self.hierarchical_data_sha256
+            or artifact_hashes[self.source_matrix_data_artifact_id]
+            != self.source_matrix_data_sha256
+        ):
+            raise ValueError("data artifact content hashes must match their bindings")
+        return self
+
+
 PUBLIC_SCHEMA_MODELS = {
     CELL_STATE_EVIDENCE_MATRIX_SCHEMA_REF: CellStateEvidenceMatrixData,
+    CELL_STATE_EVIDENCE_MATRIX_V2_SCHEMA_REF: CellStateEvidenceMatrixDataV2,
+    HIERARCHICAL_CELL_STATE_VISUALIZATION_SCHEMA_REF: (
+        HierarchicalCellStateVisualizationDataV1
+    ),
+    P002_VISUALIZATION_ARTIFACT_SET_SCHEMA_REF: P002VisualizationArtifactSet,
 }

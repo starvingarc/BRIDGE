@@ -653,6 +653,33 @@ _DEFAULT_COMPONENTS = (
         tool_id="P0-02",
     ),
     _typed_component(
+        "bridge.cell_state.hierarchical-composition",
+        "0.1.0",
+        title="Reference correspondence to broad cell classes and regional subtypes",
+        question=(
+            "How do submitted product observations correspond to broad cell "
+            "classes and, where supported, regional subtypes?"
+        ),
+        figure_family="hierarchical_reference_correspondence",
+        tool_id="P0-02",
+        data_schema_ref=(
+            "bridge://schemas/hierarchical-cell-state-visualization-data/v0.1"
+        ),
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.cell_state.source-state-evidence",
+        "0.1.0",
+        title="Draft cell-state definition evidence registry",
+        question=(
+            "Which registered definition sources contain each current label, have "
+            "an explicit state mapping, or remain unassessed?"
+        ),
+        figure_family="source_state_evidence_matrix",
+        tool_id="P0-02",
+        data_schema_ref="bridge://schemas/cell-state-evidence-matrix-data/v0.2",
+    ),
+    _typed_component(
         "bridge.target-regional.product-roles",
         "0.1.0",
         title="Product composition relative to the declared regional identity",

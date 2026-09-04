@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +42,7 @@ from bridge.tool_packages.p0_02_cell_state.reference import (
     validate_runtime_reference,
 )
 from bridge.tool_packages.p0_02_cell_state.qc import (
+    ValidatedUpstreamQC,
     UpstreamQCError,
     validate_selected_data_view,
     validate_upstream_qc_bundle,
@@ -52,6 +55,9 @@ from bridge.tool_packages.p0_02_cell_state.visualization import (
     render_marker_evidence,
     render_reference_support,
     write_hierarchical_composition_table,
+)
+from bridge.tool_packages.p0_02_cell_state.visualization_runtime import (
+    prepare_cell_state_visualizations,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -66,6 +72,13 @@ from bridge.toolkit.contracts import (
     ToolRun,
     VisualizationArtifact,
 )
+
+
+class _RunOutputError(RuntimeError):
+    def __init__(self, reason_code: str, detail: str | None = None) -> None:
+        super().__init__(detail or reason_code)
+        self.reason_code = reason_code
+        self.detail = detail
 
 
 def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
@@ -163,9 +176,8 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         input_hash,
         sha256_path(snapshot_root / "reference_manifest.json"),
         measurement_spec_sha256,
+        _upstream_qc_binding(upstream_qc),
     )
-    run_dir = request.output_dir / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
 
     support_frames: list[pd.DataFrame] = []
     source_summaries: list[pd.DataFrame] = []
@@ -435,65 +447,34 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     except UpstreamQCError as exc:
         return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
 
-    artifacts, visualizations = _write_outputs(
-        run_dir,
-        run_id,
-        profile,
-        hierarchical_composition,
-        evidence,
-        support_frame,
-        marker,
-        composition_frame,
-        evidence_ids,
-        hierarchy_evidence_ids,
-    )
-    if profile_v3 is not None:
-        profile_v3_path = run_dir / "cell_state_evidence_profile_v3.json"
-        _write_json(profile_v3_path, profile_v3.model_dump(mode="json"))
-        artifacts.append(
-            _artifact(
-                f"artifact:{run_id}:profile-v3",
-                "cell_state_profile_v3",
-                profile_v3_path,
-                evidence_ids,
-            )
-        )
-    manifest_path = run_dir / "artifact_manifest.json"
-    manifest_artifacts = []
-    for item in artifacts:
-        record = item.model_dump(mode="json")
-        record["size_bytes"] = item.path.stat().st_size
-        manifest_artifacts.append(record)
-    _write_json(
-        manifest_path,
-        {
-            "run_id": run_id,
-            "tool_id": spec.tool_id,
-            "tool_version": spec.version,
-            "environment_spec_id": spec.environment_spec_id,
-            "input_hash": input_hash,
-            "reference_snapshot_id": manifest.snapshot_id,
-            "reference_manifest_hash": reference_manifest_hash,
-            "measurement_spec_ref": request.measurement_spec_ref,
-            "measurement_spec_sha256": measurement_spec_sha256,
-            "artifacts": manifest_artifacts,
-            "visualizations": [item.model_dump(mode="json") for item in visualizations],
-        },
-    )
-    artifacts.append(
-        _artifact(
-            f"artifact:{run_id}:manifest",
-            "manifest",
-            manifest_path,
-            evidence_ids,
-        )
-    )
-    if sha256_path(asset.path) != input_hash:
-        return _failed_run(request, spec, input_hash, "input_asset_modified_during_run")
     try:
-        validate_upstream_qc_unchanged(upstream_qc)
-    except UpstreamQCError as exc:
-        return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
+        artifacts, visualizations = _publish_outputs(
+            request=request,
+            spec=spec,
+            run_id=run_id,
+            profile=profile,
+            profile_v3=profile_v3,
+            hierarchical_composition=hierarchical_composition,
+            evidence=evidence,
+            support=support_frame,
+            marker=marker,
+            composition=composition_frame,
+            evidence_ids=evidence_ids,
+            hierarchy_evidence_ids=hierarchy_evidence_ids,
+            upstream_qc=upstream_qc,
+            input_hash=input_hash,
+            reference_snapshot_id=manifest.snapshot_id,
+            reference_manifest_hash=reference_manifest_hash,
+            measurement_spec_sha256=measurement_spec_sha256,
+        )
+    except _RunOutputError as exc:
+        return _failed_run(
+            request,
+            spec,
+            input_hash,
+            exc.reason_code,
+            exc.detail,
+        )
     run_warnings = list(profile.warnings)
     if profile_v3 is None:
         run_warnings.append(
@@ -721,6 +702,205 @@ def _run_sensitivity(
             }
         )
     return {"state": "shadow" if records else "not_assessed", "records": records}, support_frames
+
+
+def _publish_outputs(
+    *,
+    request: ToolRequest,
+    spec: ToolPackageSpec,
+    run_id: str,
+    profile: CellStateEvidenceProfile,
+    profile_v3: CellStateEvidenceProfileV3 | None,
+    hierarchical_composition: HierarchicalCellStateCompositionDataV1,
+    evidence: pd.DataFrame,
+    support: pd.DataFrame,
+    marker: pd.DataFrame,
+    composition: pd.DataFrame,
+    evidence_ids: list[str],
+    hierarchy_evidence_ids: list[str],
+    upstream_qc: Any,
+    input_hash: str,
+    reference_snapshot_id: str,
+    reference_manifest_hash: str,
+    measurement_spec_sha256: str,
+) -> tuple[list[ArtifactManifest], list[VisualizationArtifact]]:
+    output_dir = request.output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    final_run_dir = output_dir / run_id
+
+    staging_dir = Path(tempfile.mkdtemp(prefix=f".{run_id}-", dir=output_dir)).resolve()
+    published = False
+    try:
+        artifacts, visualizations = _write_outputs(
+            staging_dir,
+            run_id,
+            profile,
+            hierarchical_composition,
+            evidence,
+            support,
+            marker,
+            composition,
+            evidence_ids,
+            hierarchy_evidence_ids,
+        )
+        try:
+            prepared = prepare_cell_state_visualizations(
+                hierarchical_composition,
+                staging_dir,
+                run_id,
+                spec.version,
+            )
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise _RunOutputError(
+                "cell_state_visualization_generation_failed",
+                str(exc),
+            ) from exc
+        artifacts.extend(prepared.artifacts)
+
+        if profile_v3 is not None:
+            profile_v3_path = staging_dir / "cell_state_evidence_profile_v3.json"
+            _write_json(profile_v3_path, profile_v3.model_dump(mode="json"))
+            artifacts.append(
+                _artifact(
+                    f"artifact:{run_id}:profile-v3",
+                    "cell_state_profile_v3",
+                    profile_v3_path,
+                    evidence_ids,
+                )
+            )
+
+        final_artifacts = [
+            _relocate_artifact(artifact, staging_dir, final_run_dir)
+            for artifact in artifacts
+        ]
+        manifest_artifacts = []
+        for staged, final in zip(artifacts, final_artifacts, strict=True):
+            if sha256_path(staged.path) != staged.sha256:
+                raise ValueError("artifact changed before publication")
+            record = final.model_dump(mode="json")
+            record["size_bytes"] = staged.path.stat().st_size
+            manifest_artifacts.append(record)
+
+        manifest_path = staging_dir / "artifact_manifest.json"
+        _write_json(
+            manifest_path,
+            {
+                "run_id": run_id,
+                "tool_id": spec.tool_id,
+                "tool_version": spec.version,
+                "environment_spec_id": spec.environment_spec_id,
+                "input_hash": input_hash,
+                "reference_snapshot_id": reference_snapshot_id,
+                "reference_manifest_hash": reference_manifest_hash,
+                "measurement_spec_ref": request.measurement_spec_ref,
+                "measurement_spec_sha256": measurement_spec_sha256,
+                "artifacts": manifest_artifacts,
+                "visualizations": [
+                    item.model_dump(mode="json") for item in visualizations
+                ],
+            },
+        )
+        staged_manifest = _artifact(
+            f"artifact:{run_id}:manifest",
+            "manifest",
+            manifest_path,
+            evidence_ids,
+        )
+        final_manifest = _relocate_artifact(
+            staged_manifest,
+            staging_dir,
+            final_run_dir,
+        )
+
+        if sha256_path(request.assets[0].path) != input_hash:
+            raise _RunOutputError("input_asset_modified_during_run")
+        validate_upstream_qc_unchanged(upstream_qc)
+        staged_publication = [*artifacts, staged_manifest]
+        final_publication = [*final_artifacts, final_manifest]
+        if final_run_dir.exists():
+            _validate_existing_publication(
+                final_run_dir,
+                staging_dir,
+                staged_publication,
+            )
+            return final_publication, visualizations
+
+        try:
+            staging_dir.rename(final_run_dir)
+        except OSError:
+            if not final_run_dir.exists():
+                raise
+            _validate_existing_publication(
+                final_run_dir,
+                staging_dir,
+                staged_publication,
+            )
+            return final_publication, visualizations
+        published = True
+        return final_publication, visualizations
+    except _RunOutputError:
+        raise
+    except UpstreamQCError as exc:
+        raise _RunOutputError(exc.reason_code, str(exc)) from exc
+    except Exception as exc:
+        raise _RunOutputError(
+            "cell_state_output_generation_failed",
+            str(exc),
+        ) from exc
+    finally:
+        if not published:
+            shutil.rmtree(staging_dir, ignore_errors=True)
+
+
+def _relocate_artifact(
+    artifact: ArtifactManifest,
+    staging_dir: Path,
+    final_run_dir: Path,
+) -> ArtifactManifest:
+    relative_path = artifact.path.relative_to(staging_dir)
+    return artifact.model_copy(
+        update={"path": (final_run_dir / relative_path).resolve()}
+    )
+
+
+def _validate_existing_publication(
+    final_run_dir: Path,
+    staging_dir: Path,
+    staged_artifacts: list[ArtifactManifest],
+) -> None:
+    expected = {
+        artifact.path.relative_to(staging_dir): artifact
+        for artifact in staged_artifacts
+    }
+    if final_run_dir.is_symlink():
+        raise _RunOutputError(
+            "run_output_conflict",
+            "existing publication contains a symbolic link",
+        )
+    entries = list(final_run_dir.rglob("*"))
+    if any(path.is_symlink() for path in entries):
+        raise _RunOutputError(
+            "run_output_conflict",
+            "existing publication contains a symbolic link",
+        )
+    actual_files = {
+        path.relative_to(final_run_dir) for path in entries if path.is_file()
+    }
+    if actual_files != set(expected):
+        raise _RunOutputError(
+            "run_output_conflict",
+            "existing publication has missing or extra files",
+        )
+    for relative_path, artifact in expected.items():
+        existing_path = final_run_dir / relative_path
+        if (
+            existing_path.stat().st_size != artifact.path.stat().st_size
+            or sha256_path(existing_path) != artifact.sha256
+        ):
+            raise _RunOutputError(
+                "run_output_conflict",
+                f"existing artifact differs: {relative_path}",
+            )
 
 
 def _write_outputs(
@@ -959,6 +1139,7 @@ def _run_id(
     input_hash: str,
     reference_hash: str,
     measurement_spec_sha256: str,
+    upstream_qc_binding: dict[str, Any],
 ) -> str:
     payload = json.dumps(
         {
@@ -967,12 +1148,31 @@ def _run_id(
             "input_hash": input_hash,
             "reference_hash": reference_hash,
             "measurement_spec_sha256": measurement_spec_sha256,
+            "upstream_qc": upstream_qc_binding,
         },
         sort_keys=True,
         separators=(",", ":"),
         default=str,
     )
     return f"run-{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
+
+
+def _upstream_qc_binding(validated: ValidatedUpstreamQC) -> dict[str, Any]:
+    lineage = validated.typed_lineage
+    return {
+        "profile_sha256": validated.profile_sha256,
+        "profile_v2_sha256": validated.profile_v2_sha256,
+        "typed_lineage": (
+            None
+            if lineage is None
+            else {
+                "index_sha256": lineage.index_sha256,
+                "assignment_sha256": lineage.assignment_sha256,
+                "manifest_sha256": lineage.manifest_sha256,
+            }
+        ),
+        "v3_unavailable_reason": validated.v3_unavailable_reason,
+    }
 
 
 def _semantic_sha256(payload: dict[str, Any]) -> str:

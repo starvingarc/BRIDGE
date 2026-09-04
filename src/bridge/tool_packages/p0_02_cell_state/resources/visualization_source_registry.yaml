@@ -1,0 +1,134 @@
+registry_id: P0-02-VISUALIZATION-SOURCES-v0.1-draft
+version: 0.1.0
+status: draft
+input_bindings:
+  biological_review:
+    resource_name: biological_review_draft.yaml
+    object_ref: BIOREVIEW-PD-vMB-v1.0-draft
+    object_version: 0.1.0
+    sha256: 92bae70d1fd94e427412feb149f3b9fa3ada3824b267d4a7fcb443e0f74b0995
+  marker_programs:
+    resource_name: marker_programs.yaml
+    object_ref: BRIDGE-PD-vMB-MARKERS-v0.1-draft
+    object_version: 0.1.0
+    sha256: 241df5ddb0dbcce65e4a0bb8b029a5a87867f182946531a37b3c9781df5de2eb
+  external_source_lineage:
+    resource_name: external_source_lineage.yaml
+    object_ref: P0-02-EXTERNAL-SOURCE-LINEAGE-v1
+    object_version: "1.0"
+    sha256: 8180e7e2d107612ec599c161adac806ffbe22bd38b495bcef2cd2e397d6112b9
+  birtele_sample_manifest:
+    resource_name: birtele_gse192405_samples.yaml
+    object_ref: GSE192405
+    object_version: "1.1"
+    sha256: 542c787716a3fe1de3c5a39dea9c5d96df42643419359c4e95318df87a294f20
+primary_source_id: REF-CHEN-VMB-SC-v1
+sources:
+  - source_id: REF-CHEN-VMB-SC-v1
+    source_alias_ids: [CHEN-vMB-scRNA]
+    lineage_asset_id: CHEN-vMB-scRNA
+    source_family_id: CHEN-vMB
+    display_name: Chen ventral-midbrain scRNA reference
+    short_name: Chen vMB scRNA
+    assay: scRNA-seq
+    scope: Primary pre-transplant state annotation
+    relationship: primary
+    availability: available
+    observation_unit: cells
+    n_observations: 61455
+    dependency_source_ids: []
+    default_record_policy: primary_review_counts
+    evidence_keys: [biological_review]
+    limitation: This source defines the current labels and is not independent validation.
+  - source_id: REF-CHEN-VMB-COMBINED-v1
+    source_alias_ids: []
+    lineage_asset_id: REF-CHEN-VMB-COMBINED-v1
+    source_family_id: CHEN-vMB
+    display_name: Chen combined ventral-midbrain scRNA and snRNA reference
+    short_name: Combined vMB
+    assay: scRNA-seq and snRNA-seq
+    scope: Cross-modality developmental context
+    relationship: derived_contains_primary
+    availability: review_pending
+    observation_unit: profiles
+    n_observations: 148922
+    dependency_source_ids: [REF-CHEN-VMB-SC-v1]
+    default_record_policy: unassessed_derived_context
+    evidence_keys: [external_source_lineage]
+    limitation: This source includes the primary Chen cells and is not independent validation.
+  - source_id: REF-SPATIAL-HEB58-ANNOT-v0.1-draft
+    source_alias_ids: []
+    lineage_asset_id: null
+    source_family_id: CHEN-hEB58
+    display_name: hEB58 spatial annotation reference
+    short_name: hEB58 spatial
+    assay: Visium HD
+    scope: Spatial marker and anatomical concordance
+    relationship: dependent_label_transfer
+    availability: review_pending
+    observation_unit: segmented profiles
+    n_observations: 385361
+    dependency_source_ids:
+      - REF-CHEN-VMB-SC-v1
+      - REF-CHEN-VMB-COMBINED-v1
+    default_record_policy: unassessed_spatial_concordance
+    evidence_keys: [source_registry]
+    limitation: The two sections are from one embryo; exact prediction-model bindings remain under review.
+  - source_id: LAMANNO-2016
+    source_alias_ids: [REF-LAMANNO-2016-v1]
+    lineage_asset_id: LAMANNO-2016
+    source_family_id: GSE76381
+    display_name: La Manno 2016 fetal ventral-midbrain scRNA
+    short_name: La Manno 2016
+    assay: scRNA-seq
+    scope: Independent of the current Chen label-count source; runtime role is not represented
+    relationship: independent_external
+    availability: review_pending
+    observation_unit: cells
+    n_observations: 1977
+    dependency_source_ids: []
+    default_record_policy: independent_source_mapping_unavailable
+    evidence_keys: [external_source_lineage]
+    limitation: No explicit BRIDGE-state mapping is recorded in this registry view; eligible runtime use is outside this static figure.
+  - source_id: BIRTELE-GSE192405-PROCESSED-v1
+    source_alias_ids: [REF-BIRTELE-2022-v1]
+    lineage_asset_id: BIRTELE-GSE192405-PROCESSED-v1
+    source_family_id: GSE192405
+    display_name: Birtele 2022 GSE192405 processed matrices
+    short_name: Birtele 2022
+    assay: scRNA-seq
+    scope: External holdout candidate with four primary-tissue and nine cultured-tissue matrices
+    relationship: independent_external
+    availability: holdout_not_run
+    observation_unit: cells in processed matrices
+    n_observations: 77804
+    dependency_source_ids: []
+    default_record_policy: external_holdout_unrun
+    evidence_keys: [external_source_lineage, birtele_sample_manifest]
+    limitation: Public metadata do not support biological-replicate or donor inference; held-out state assessment is not run.
+state_order:
+  - L1:Astrocyte
+  - L1:Glioblast
+  - L1:Radial_Glia
+  - L1:Neuroblast
+  - L1:OPC
+  - L1:Oligo
+  - L1:Neuron_DA
+  - L1:Neuron_GABA
+  - L1:Neuron_Glut
+  - L1:Neuron_Glut_GABA
+  - L1:Neuron_OMTN
+  - L1:Neuron_ChAT
+  - L1:Neuron_Sero
+  - L1:Endothelial_Cell
+  - L1:Pericyte
+  - L1:Smooth_Muscle
+  - L1:Fibroblast
+  - L1:Immune_Cell
+  - L2:RG_mFP
+  - L2:RG_mBMP
+  - L2:RG_mBIP
+  - L2:Nb_mFP
+  - L2:Nb_mBMP
+  - L2:Nb_mBIP
+  - L2:Nb_mAP
