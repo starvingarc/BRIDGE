@@ -87,7 +87,7 @@ def _base_payloads() -> dict[str, dict]:
                 "object_version": "1.0.0",
             },
             "measurement_spec_ref": {
-                "object_id": "measurement-spec:target-regional-demo",
+                "object_id": "measurement-spec:cell-state-source",
                 "object_version": "1.0.0",
             },
             "assay": "scRNA-seq",
@@ -253,7 +253,7 @@ def _base_payloads() -> dict[str, dict]:
             "vocabulary_sha256": "0" * 64,
             "marker_program_file": "marker_programs.json",
             "marker_program_sha256": "d" * 64,
-            "measurement_spec_ids": ["measurement-spec:target-regional-demo"],
+            "measurement_spec_ids": ["measurement-spec:cell-state-source"],
             "profiles": [],
             "prohibited_source_families": [],
         },
@@ -315,12 +315,12 @@ def _prepare(payloads: dict[str, dict]) -> None:
     vocabulary = payloads["annotation_vocabulary"]
     reference = payloads["reference_manifest"]
     reference["vocabulary_sha256"] = _sha(vocabulary)
-    measurement = payloads["measurement_spec"]
+    source_measurement_ref = payloads["product_case"]["measurement_spec_ref"]
     payloads["cell_state_evidence_profile"] = {
         "profile_id": "cell-state-profile:run-demo",
         "assay": "scRNA-seq",
-        "measurement_spec_id": measurement["measurement_spec_id"],
-        "measurement_spec_status": measurement["status"],
+        "measurement_spec_id": source_measurement_ref["object_id"],
+        "measurement_spec_status": "candidate",
         "annotation_vocabulary_ref": vocabulary["vocabulary_id"],
         "reference_snapshot_ref": reference["snapshot_id"],
         "n_observations": 100,
@@ -348,8 +348,8 @@ def _prepare(payloads: dict[str, dict]) -> None:
         "evidence_ids": ["evidence:cell-state-demo"],
         "score_state": "shadow",
         "domain_score": None,
-        "measurement_spec_version": measurement["version"],
-        "measurement_spec_sha256": _sha(measurement),
+        "measurement_spec_version": source_measurement_ref["object_version"],
+        "measurement_spec_sha256": "e" * 64,
         "annotation_vocabulary_version": vocabulary["version"],
         "annotation_vocabulary_sha256": _sha(vocabulary),
         "reference_manifest_version": reference["version"],
@@ -395,7 +395,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-03",
         tool_id="P0-03",
-        tool_version="0.4.0",
+        tool_version="0.4.1",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
@@ -573,7 +573,6 @@ def test_identical_inputs_reuse_the_same_bundle(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "role,expected",
     [
-        ("measurement_spec", "measurement_spec_checksum_mismatch"),
         ("annotation_vocabulary", "annotation_vocabulary_checksum_mismatch"),
         ("reference_manifest", "reference_manifest_checksum_mismatch"),
         ("qc_readiness_profile", "cell_state_qc_profile_checksum_mismatch"),
@@ -603,6 +602,136 @@ def test_upstream_object_checksum_bindings_fail_closed(
     result = ToolRegistry.load_default().check_eligibility(request)
     assert not result.eligible
     assert expected in result.reason_codes
+
+
+def test_module_measurement_spec_is_distinct_from_upstream_cell_state_spec(
+    tmp_path: Path,
+) -> None:
+    request = _mutate(
+        _request(tmp_path),
+        "measurement_spec",
+        lambda payload: payload.update(
+            {
+                "measurement_spec_id": "measurement-spec:p0-03-domain",
+                "scientific_question": "Target and regional evidence projection",
+            }
+        ),
+    )
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert result.eligible, result.reason_codes
+
+
+def test_generic_conditional_qc_gate_allows_module_specific_evaluation(
+    tmp_path: Path,
+) -> None:
+    request = _mutate(
+        _request(tmp_path),
+        "qc_readiness_profile",
+        lambda payload: payload.update(
+            {"module_eligibility": {"downstream_scientific_modules": "conditional"}}
+        ),
+    )
+    qc_sha = next(
+        ref.sha256 for ref in request.object_inputs if ref.role == "qc_readiness_profile"
+    )
+    request = _mutate(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update({"upstream_qc_profile_sha256": qc_sha}),
+    )
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert result.eligible, result.reason_codes
+
+
+@pytest.mark.parametrize(
+    "case,expected",
+    [
+        ("assay", "measurement_spec_assay_mismatch"),
+        ("tool", "measurement_spec_tool_not_authorized"),
+        ("analysis_unit", "measurement_spec_biological_unit_mismatch"),
+        ("independence_group", "measurement_spec_biological_unit_mismatch"),
+    ],
+)
+def test_module_measurement_spec_contract_fails_closed(
+    tmp_path: Path, case: str, expected: str
+) -> None:
+    def change(payload: dict) -> None:
+        if case == "assay":
+            payload["assay"] = "snRNA-seq"
+        elif case == "tool":
+            payload["tool_refs"] = []
+        elif case == "analysis_unit":
+            payload["analysis_unit_kind"] = "sample"
+        else:
+            payload["independence_group_kind"] = "donor"
+
+    request = _mutate(_request(tmp_path), "measurement_spec", change)
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not result.eligible
+    assert expected in result.reason_codes
+
+
+def test_cell_state_source_spec_must_belong_to_reference_manifest(
+    tmp_path: Path,
+) -> None:
+    request = _mutate(
+        _request(tmp_path),
+        "reference_manifest",
+        lambda payload: payload.update({"measurement_spec_ids": ["measurement-spec:other"]}),
+    )
+    manifest_sha = next(
+        ref.sha256 for ref in request.object_inputs if ref.role == "reference_manifest"
+    )
+    request = _mutate(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update({"reference_manifest_sha256": manifest_sha}),
+    )
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not result.eligible
+    assert "cell_state_measurement_spec_reference_mismatch" in result.reason_codes
+
+
+@pytest.mark.parametrize(
+    "explicit,expected_eligible", [("conditional", True), ("ineligible", False)]
+)
+def test_explicit_qc_gate_precedes_generic_gate(
+    tmp_path: Path, explicit: str, expected_eligible: bool
+) -> None:
+    request = _mutate(
+        _request(tmp_path),
+        "qc_readiness_profile",
+        lambda payload: payload.update(
+            {
+                "module_eligibility": {
+                    "downstream_scientific_modules": "eligible",
+                    "P0-03": explicit,
+                }
+            }
+        ),
+    )
+    qc_sha = next(
+        ref.sha256 for ref in request.object_inputs if ref.role == "qc_readiness_profile"
+    )
+    request = _mutate(
+        request,
+        "cell_state_evidence_profile",
+        lambda payload: payload.update({"upstream_qc_profile_sha256": qc_sha}),
+    )
+
+    result = ToolRegistry.load_default().check_eligibility(request)
+
+    assert result.eligible is expected_eligible
+    if not expected_eligible:
+        assert "qc_not_ready_for_target_regional_evidence" in result.reason_codes
 
 
 def test_assessment_spec_binds_exact_shared_state_role_map_bytes(
@@ -884,7 +1013,7 @@ def test_v1_request_is_refused_with_a_typed_failure(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-03",
-        tool_version="0.4.0",
+        tool_version="0.4.1",
         output_dir=tmp_path,
     )
     eligibility = adapter.check_eligibility(request, spec)
@@ -952,7 +1081,7 @@ def test_sparse_reference_matrix_renders_without_inventing_cells(
         profile=profile,
         output_dir=tmp_path / "sparse-render",
         run_id=run.run_id,
-        tool_version="0.4.0",
+        tool_version="0.4.1",
     )
     assert prepared.payloads["target_regional_reference-fingerprint.png"].startswith(
         b"\x89PNG"
@@ -1021,7 +1150,7 @@ def test_large_visualization_uses_table_fallback_without_losing_results(
         profile=profile,
         output_dir=tmp_path / "oversized-render",
         run_id=run.run_id,
-        tool_version="0.4.0",
+        tool_version="0.4.1",
     )
 
     assert prepared.payloads["target_regional_product-roles.png"].startswith(b"\x89PNG")
@@ -1062,14 +1191,14 @@ def test_svg_render_is_isolated_from_process_global_matplotlib_state(
             profile=profile,
             output_dir=tmp_path / "first-render",
             run_id=run.run_id,
-            tool_version="0.4.0",
+            tool_version="0.4.1",
         )
         matplotlib.rcParams["svg.hashsalt"] = "other-tool-second"
         second = prepare_target_regional_visualizations(
             profile=profile,
             output_dir=tmp_path / "second-render",
             run_id=run.run_id,
-            tool_version="0.4.0",
+            tool_version="0.4.1",
         )
     finally:
         matplotlib.rcParams["svg.hashsalt"] = original_hashsalt

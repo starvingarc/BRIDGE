@@ -12,7 +12,11 @@
 
 ## 0. 当前可执行候选
 
-P0-03 v0.4.0 提供两个兼容入口：
+P0-03 v0.4.1 提供两个兼容入口：
+
+ProductCase 与 P0-02 profile 继续绑定 cell-state source MeasurementSpec；
+P0-03 的 `measurement_spec` 是独立的域测量合同，负责本模块的 assay、工具授权、
+分析单位与输出指标，两者不得被误当成同一份对象。
 
 - **聚合模式**：读取 11 个 checksummed JSON，发布三个分母明确的
   `MeasurementResultV2` 与 `TargetRegionalEvidenceResult`。
@@ -44,7 +48,7 @@ NNLS 的 relative L2 residual 上限同样来自外部 applicability contract；
 空间投射尚未进入本版本。所有数值仍为 `shadow`，`domain_score=null`；真实
 方法可执行不等于 reference、program 或产品结论已经过生物学验证。
 
-v0.4.0 同时从同一 typed data object 生成两类正式图形：完整产品的角色及具名区域
+v0.4.1 同时从同一 typed data object 生成两类正式图形：完整产品的角色及具名区域
 状态组成，以及按 target identity / regional fidelity、reference source 和 assay
 分开的表达支持矩阵。图、精确 TSV 与 JSON 绑定同一 hash；未评估、部分可用和
 草案审核状态不会被隐藏。相关性只表示 reference-conditioned expression support，
@@ -197,7 +201,7 @@ Web 可以突出展示 cell-level 投射图；正式可比较 raw metrics 先按
 
 ## 9. 运行环境
 
-P0-03 v0.4.0 的聚合与当前表达方法均在冻结的
+P0-03 v0.4.1 的聚合与当前表达方法均在冻结的
 `ENV-CELLSTATE-PY-v0.1` 中运行。AnnData 负责 H5AD I/O，NumPy/pandas/SciPy
 负责 pseudobulk、correlation、NNLS 和 bootstrap，decoupler 负责 ULM。
 
@@ -209,7 +213,7 @@ SpatialData、Squidpy、Tangram、SpaOTsc、CellTrek、CytoSPACE 和 cell2locati
 
 ## 10. 当前可视化与后续下钻
 
-P0-03 v0.4.0 当前生成：
+P0-03 v0.4.1 当前生成：
 
 - **产品相关细胞组成与区域状态图**：同时显示完整产品中
   target、acceptable adjacent、known off-target、unresolved、unknown、OOD 和

@@ -13,6 +13,9 @@ This directory contains the target and regional evidence package.
 - **Configuration:** target/regional references, expression semantics, matched
   modality groups, NNLS residual applicability, program cards, gene-coverage
   minima and biological roles are versioned inputs.
+- **Contract separation:** the ProductCase and P0-02 profile retain their
+  cell-state source MeasurementSpec; P0-03 receives its own MeasurementSpec for
+  target/regional metrics, assay, units and tool authorization.
 - **Boundary:** transcriptomic regional support is not spatial localization;
   `domain_score` remains null.
 
