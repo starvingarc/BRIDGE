@@ -23,9 +23,11 @@ evidence you need.
 > dependency-aware family-relation and requirement/exclusion views; P0-10
 > provides report/claim checks, exact value-to-evidence correspondence and
 > finding-context views; P0-11 provides claim-content projection, candidate-digest
-> state, artifact status and registered-check views. The registry contains 38
-> components: 31 typed candidates and 7 legacy components. Their counts are audit
-> records, not an evidence score.
+> state, artifact status and registered-check views; P0-12 provides declared
+> post-transplant specimen scope, uploaded-profile composition and separately
+> scaled reference-correlation/program-expression views. The registry contains
+> 41 components: 34 typed candidates and 7 legacy components. Their counts are
+> audit records, not an evidence score.
 > P0-06 does not currently provide a
 > numeric reference envelope,
 > ordered process timeline, numeric LOD/UCB or spike-in recovery curve, or CNV

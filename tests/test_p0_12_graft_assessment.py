@@ -212,7 +212,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-12",
         tool_id="P0-12",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path / output_name,
         object_inputs=refs,
     )
@@ -233,7 +233,7 @@ def test_no_graft_is_successful_not_provided_and_deterministic(tmp_path: Path) -
     request = ToolRequestV2(
         request_id="request-no-graft",
         tool_id="P0-12",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path / "output",
         object_inputs=[],
     )
@@ -254,7 +254,16 @@ def test_no_graft_is_successful_not_provided_and_deterministic(tmp_path: Path) -
     assert result.pretransplant_evidence_effect == "none"
     assert result.domain_score is None
     assert result.score_state == "unavailable"
-    assert len(first.artifacts) == 2
+    assert len(first.artifacts) == 16
+    assert first.visualizations == []
+    manifest = json.loads(
+        next(
+            item.path
+            for item in first.artifacts
+            if item.kind == "artifact_manifest"
+        ).read_text()
+    )
+    assert len(manifest["artifacts"]) == 15
 
 
 def test_three_objects_produce_bound_descriptive_shadow_candidate(
@@ -284,6 +293,8 @@ def test_three_objects_produce_bound_descriptive_shadow_candidate(
     assert result.preparation_linkage is not None
     assert result.pretransplant_evidence_effect == "none"
     assert result.domain_score is None
+    assert len(first.artifacts) == 16
+    assert first.visualizations == []
 
 
 def test_missing_metadata_confounding_linkage_and_role_remain_descriptive(
@@ -455,6 +466,64 @@ def test_input_change_during_run_fails_without_publication(
     assert not (request.output_dir / run.run_id).exists()
 
 
+@pytest.mark.parametrize(
+    ("target", "reason_code"),
+    [
+        (
+            "build_graft_assessment_visualization_data",
+            "visualization_data_invalid",
+        ),
+        (
+            "prepare_graft_assessment_visualizations",
+            "visualization_render_failed",
+        ),
+    ],
+)
+def test_visualization_failures_are_typed_without_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    target: str,
+    reason_code: str,
+) -> None:
+    request = ToolRequestV2(
+        request_id="request-no-graft-failure",
+        tool_id="P0-12",
+        tool_version="0.4.0",
+        output_dir=tmp_path / target,
+        object_inputs=[],
+    )
+    spec = ToolRegistry.load_default().describe("P0-12")
+
+    def fail(*_args, **_kwargs):
+        raise ValueError("controlled failure")
+
+    monkeypatch.setattr(adapter_module, target, fail)
+    run = adapter.run(request, spec)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == [reason_code]
+    assert not request.output_dir.exists()
+
+
+def test_published_bundle_mismatch_is_typed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = ToolRequestV2(
+        request_id="request-no-graft-publish-mismatch",
+        tool_id="P0-12",
+        tool_version="0.4.0",
+        output_dir=tmp_path / "publish-mismatch",
+        object_inputs=[],
+    )
+    spec = ToolRegistry.load_default().describe("P0-12")
+    monkeypatch.setattr(adapter_module, "_publish_bundle", lambda **_kwargs: {})
+
+    run = adapter.run(request, spec)
+
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["published_bundle_hash_mismatch"]
+
+
 def test_existing_bundle_drift_fails_closed(tmp_path: Path) -> None:
     registry = ToolRegistry.load_default()
     request = _request(tmp_path)
@@ -494,7 +563,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-12",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=tmp_path / "output",
     )
 

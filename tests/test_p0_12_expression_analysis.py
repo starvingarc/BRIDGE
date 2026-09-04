@@ -318,7 +318,7 @@ def _request(
         ToolRequestV2(
             request_id="request-p0-12-expression",
             tool_id="P0-12",
-            tool_version="0.3.0",
+            tool_version="0.4.0",
             output_dir=tmp_path / "output",
             object_inputs=refs,
         ),
@@ -375,10 +375,54 @@ def test_expression_analysis_runs_real_h5ad_chain_deterministically(
     )
     assert result.domain_score is None
     assert str(h5ad_path) not in json.dumps(first.result)
+    assert len(first.artifacts) == 16
+    assert first.visualizations == []
     assert {item.kind for item in first.artifacts} == {
         "artifact_manifest",
         "graft_expression_analysis_result",
+        "graft_assessment_visualization_data",
+        "visualization_artifact_set",
+        "visualization_render",
+        "visualization_table",
     }
+    manifest = json.loads(
+        next(
+            item.path
+            for item in first.artifacts
+            if item.kind == "artifact_manifest"
+        ).read_text()
+    )
+    assert len(manifest["artifacts"]) == 15
+    final_dir = (request.output_dir / first.run_id).resolve()
+    actual_files = {path.name for path in final_dir.iterdir() if path.is_file()}
+    manifest_by_name = {
+        item["filename"]: item for item in manifest["artifacts"]
+    }
+    runtime_by_name = {item.path.name: item for item in first.artifacts}
+
+    assert set(manifest_by_name) == actual_files - {"artifact_manifest.json"}
+    assert set(runtime_by_name) == actual_files
+    assert len({item.artifact_id for item in first.artifacts}) == len(
+        first.artifacts
+    )
+    assert len({item.path for item in first.artifacts}) == len(first.artifacts)
+    for filename, entry in manifest_by_name.items():
+        payload = (final_dir / filename).read_bytes()
+        runtime = runtime_by_name[filename]
+        assert entry == {
+            "filename": filename,
+            "kind": runtime.kind,
+            "media_type": runtime.media_type,
+            "sha256": runtime.sha256,
+            "evidence_ids": runtime.evidence_ids,
+        }
+        assert runtime.path == (final_dir / filename).resolve()
+        assert runtime.sha256 == hashlib.sha256(payload).hexdigest()
+    manifest_runtime = runtime_by_name["artifact_manifest.json"]
+    assert manifest_runtime.path == (final_dir / "artifact_manifest.json")
+    assert manifest_runtime.sha256 == hashlib.sha256(
+        (final_dir / "artifact_manifest.json").read_bytes()
+    ).hexdigest()
 
 
 @pytest.mark.parametrize(

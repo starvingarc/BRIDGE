@@ -998,6 +998,44 @@ _DEFAULT_COMPONENTS = (
             "bridge://schemas/public-safe-export-visualization-data/v0.1"
         ),
     ),
+    _typed_component(
+        "bridge.graft-assessment.specimen-scope",
+        "0.1.0",
+        title="Post-transplant specimen and interpretable scope",
+        question=(
+            "Which declared specimen units, input dimensions and analytical "
+            "limitations define the interpretable scope?"
+        ),
+        figure_family="post_transplant_specimen_scope_ledger",
+        tool_id="P0-12",
+        data_schema_ref="bridge://schemas/graft-assessment-visualization-data/v0.1",
+    ),
+    _typed_component(
+        "bridge.graft-assessment.uploaded-profile-composition",
+        "0.1.0",
+        title="Cell-state composition among uploaded graft-derived profiles",
+        question=(
+            "How is supplied state-probability mass distributed among uploaded "
+            "graft-derived profiles and the unassigned remainder?"
+        ),
+        figure_family="uploaded_profile_composition_dot_plot",
+        tool_id="P0-12",
+        data_schema_ref="bridge://schemas/graft-assessment-visualization-data/v0.1",
+        default_role=FigureRole.MAIN,
+    ),
+    _typed_component(
+        "bridge.graft-assessment.reference-and-program-expression",
+        "0.1.0",
+        title="Reference similarity and registered gene-program expression",
+        question=(
+            "How do technical-sample expression profiles correlate with registered "
+            "references, and what mean expression and coverage are observed for "
+            "registered gene programs?"
+        ),
+        figure_family="reference_correlation_and_program_expression_matrix",
+        tool_id="P0-12",
+        data_schema_ref="bridge://schemas/graft-assessment-visualization-data/v0.1",
+    ),
 )
 
 

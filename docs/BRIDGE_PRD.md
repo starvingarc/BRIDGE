@@ -669,12 +669,13 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 
 ### 6.6 Visualization Composer 与 Web 交互
 
-截至 2026-09-02，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
+截至 2026-09-04，BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
 `VisualizationArtifact` v0.2 数据绑定合同与 figure registry v0.1；集成式 Web
 结果页和 Visualization Composer 仍未实现。输入质量、产品目标与区域支持、发育
 阶段、非目标组成、增殖与应激信号、产品比较、证据解释、结构化报告核对和公开
-候选审阅已有 typed 静态图形；细胞状态图仍为 `legacy_untyped`。figure registry
-当前登记 38 个组件，其中 31 个为 `typed_candidate`，7 个为
+候选审阅已有 typed 静态图形；移植后样本也已有范围、上传 profile 组成及
+reference/program 两类数值分开的 typed 静态图形；细胞状态图仍为
+`legacy_untyped`。figure registry 当前登记 41 个组件，其中 34 个为 `typed_candidate`，7 个为
 `legacy_untyped`。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经存在。
 
 #### 用户问题与默认阅读顺序
@@ -709,7 +710,7 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 | 多个批次或工艺有什么差别？ | 比较资格与混杂结构图：先显示哪些差异可以解释；再按指标展示 declared sample/preparation values、observed range、raw delta、单位和分母 | 各方法的 effect、distance、similarity 和 dispersion 分开显示；composition、program、batch/lot 距离及敏感性矩阵仅在上游提供相应记录时出现 | Product Comparison & Stability（P0-07） | 已有 typed 数据、精确表格及三组确定性静态图；observed range 不是置信区间，raw delta 暂无区间，单个 preparation 只能作描述性比较，不能排名 |
 | 为什么能得出这个判断？ | 分析域的输入、方法、参考与解释条件矩阵；当前可用的已协调结论及其证据状态 | EvidenceFamily 支持/反对/冲突关系；尚缺证据、协调排除和输入拒绝分开下钻 | Evidence Sufficiency / Compiler & Reconciler（P0-08/P0-09） | 已有 typed 图形与完整表格回退；未产生行不代表零或缺失，计数仅用于审计，不作为独立证据或证据总分 |
 | 报告能否使用或分享？ | 当前规则下的报告与结构化主张核对矩阵；报告值与引用证据对应图 | claim-content 字段投影、candidate digest 与本地文件状态、候选 artifact 状态及 artifact × 已登记检查矩阵 | Claim Verifier / Public-safe Export（P0-10/P0-11） | P0-10 有三组 typed 核对图；P0-11 有四组 typed 本地审阅图。哈希相符不验证审核者，未被已登记规则阻断也不是全面去标识化或发布许可 |
-| 有移植后数据吗？ | 独立的 graft 组成、reference support 和 program 图 | animal/graft/timepoint、fine subtype、method sensitivity | Optional Graft Assessment（P0-12） | 必须放在独立页，不能反向改变移植前产品结论 |
+| 有移植后数据吗？ | 移植后样本范围与当前可解释内容；上传的移植物来源转录组细胞状态组成 | 逐技术样本的参考表达谱 Spearman 相关，以及登记基因程序的平均表达与基因覆盖 | Optional Graft Assessment（P0-12） | 已有三组 typed 图与完整表格；组成分母为全部上传行，技术样本不是生物学重复，相关性不是身份概率，程序均值不代表成熟度或功能，结果不能反向改变移植前产品结论 |
 
 移植后视图始终与移植前产品证据分开，不得反向改变移植前结论。
 

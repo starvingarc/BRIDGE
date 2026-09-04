@@ -470,14 +470,15 @@ def test_figure_registry_discovers_legacy_and_typed_qc_components() -> None:
         "valid": True,
         "registry_id": "bridge.figure-registry",
         "object_version": "0.1.0",
-        "component_count": 38,
-        "typed_candidate_count": 31,
+        "component_count": 41,
+        "typed_candidate_count": 34,
         "legacy_untyped_count": 7,
-        "producer_tool_ids": ["P0-01", "P0-02", "P0-03", "P0-04", "P0-05", "P0-06", "P0-07", "P0-08", "P0-09", "P0-10", "P0-11"],
+        "producer_tool_ids": ["P0-01", "P0-02", "P0-03", "P0-04", "P0-05", "P0-06", "P0-07", "P0-08", "P0-09", "P0-10", "P0-11", "P0-12"],
     }
     assert len(registry.list(tool_id="P0-01")) == 6
     assert len(registry.list(tool_id="P0-07")) == 3
     assert len(registry.list(tool_id="P0-09")) == 3
+    assert len(registry.list(tool_id="P0-12")) == 3
     assert (
         registry.get("bridge.qc.overview.v0.1").component_ref
         == "bridge.qc.overview@0.1.0"
@@ -579,9 +580,9 @@ def test_figure_registry_returns_defensive_copies() -> None:
     registry.list()[0].producer_tool_ids.clear()
     registry.snapshot.components.clear()
 
-    assert registry.validation_summary()["component_count"] == 38
+    assert registry.validation_summary()["component_count"] == 41
     assert len(registry.list(tool_id="P0-01")) == 6
-    assert FigureRegistry.load_default().validation_summary()["component_count"] == 38
+    assert FigureRegistry.load_default().validation_summary()["component_count"] == 41
 
 
 def test_typed_figure_validation_enforces_interactions_and_fallbacks() -> None:

@@ -16,6 +16,11 @@ product profile.
 - **Profile semantics:** raw counts produce `sample_pseudobulk`; declared
   log-normalized values produce `sample_mean_log_expression`. The reference must
   declare the same aggregation and `log1p_cp10k` value semantics.
+- **Figures:** every successful mode publishes typed specimen-scope,
+  uploaded-profile composition and reference/program-evidence views with complete
+  TSV fallbacks and SVG/PNG/PDF renders. Missing values remain explicit
+  unavailable states; technical samples are not biological replicates.
+
 - **Boundary:** every provided result remains `candidate/shadow`;
   `domain_score=null` and graft evidence never backfills pre-transplant
   domains.
@@ -27,8 +32,6 @@ product profile.
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/graft_assessment_task_card.md)
 - [No-graft request](../../../../examples/requests/p0_12_graft_assessment.json)
 - [Expression-analysis request](../../../../examples/requests/p0_12_expression_analysis.json)
-- [Expression-analysis validation](../../../../docs/validation/p0_12_expression_analysis_20260827.md)
-- [Precomputed-mode validation](../../../../docs/validation/p0_12_graft_assessment_20260825.md)
 
 Use `bridge-tool describe P0-12` and `bridge-tool input-contract P0-12` for
 the installed version, schemas, environment, methods and exact input roles.

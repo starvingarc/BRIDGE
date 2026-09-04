@@ -37,10 +37,12 @@ The approved [visualization system](BRIDGE_PRD.md#66-visualization-composer-与-
 experience around researcher questions: data readiness, product composition,
 identity support, target/regional and developmental fit, off-target/unknown and
 process signals, comparison, and evidence gaps.
-The figure registry contains 38 components: 31 typed candidates and 7 legacy
+The figure registry contains 41 components: 34 typed candidates and 7 legacy
 components. P0-11 contributes four typed local-review components for
 claim-content projection, candidate-digest state, candidate artifact status and
-registered checks. Discovery records current capability and does not promote
+registered checks. P0-12 contributes three typed views for declared specimen
+scope, uploaded-profile composition and reference/program evidence. Discovery
+records current capability and does not promote
 scientific or publication status.
 
 The product overview uses domain rows with explicit status, denominator,
@@ -48,8 +50,10 @@ limitations and evidence links. It does not use a total score, radar chart,
 overall rank or pass/fail traffic light. Interactive and static figures must use
 the same checksummed data and preserve missingness, uncertainty, provenance and
 candidate/shadow status. P0-11 local-review figures are not publication approval;
-its internal ToolRun and provenance manifest are not public downloads. This is
-an approved design contract; the integrated Web runtime is not yet implemented.
+its internal ToolRun and provenance manifest are not public downloads. P0-12
+technical samples remain nested within the declared graft, and its visual values
+do not establish tissue-wide composition, maturity or function. This is an approved
+design contract; the integrated Web runtime is not yet implemented.
 
 ## Current Non-claims
 
