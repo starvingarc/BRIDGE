@@ -4233,6 +4233,85 @@ def test_case_initial_v2_missing_only_creates_requirement_without_zero_record(
     assert all("value" not in item for item in requirements)
 
 
+def test_case_initial_v2_accepts_claim_contract_missing_observation(
+    tmp_path: Path,
+) -> None:
+    missing = _missing_observation()
+    bundle = _bundle(candidates=[], missing=[missing])
+    request = _request(
+        tmp_path,
+        bundle=bundle,
+        request_id="case-v2-claim-contract-missing",
+        output_name="case-v2-claim-contract-missing-output",
+        family_registry=_family_registry(second_family=True),
+        claim_registry=_claim_registry(orthogonal_required=True),
+        reconciliation_registry=_reconciliation_registry(
+            orthogonal_required=True
+        ),
+        sufficiency_runs=[("sufficiency-run", _v2_run(_profile()))],
+    )
+
+    run = _run_request(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    final = run.request.output_dir / run.run_id
+    requirements = json.loads(
+        (final / "evidence_requirements.json").read_text()
+    )["requirements"]
+    orthogonal = next(
+        item
+        for item in requirements
+        if item["requirement_key"] == "orthogonal_channel"
+    )
+    assert orthogonal["source_contract_ref"] == missing["source_contract_ref"]
+    assert json.loads((final / "evidence_records.json").read_text())["records"] == []
+
+
+def test_case_initial_v2_invalid_missing_contract_is_partial_and_keeps_candidate(
+    tmp_path: Path,
+) -> None:
+    missing = _missing_observation()
+    missing["source_contract_ref"] = {
+        "object_id": "measurement-spec:not-registered",
+        "object_version": "1.0.0",
+    }
+    bundle = _bundle(missing=[missing])
+    bundle["candidate_records"][0]["sufficiency_profile_input_id"] = (
+        "sufficiency-run"
+    )
+    request = _request(
+        tmp_path,
+        bundle=bundle,
+        request_id="case-v2-invalid-missing-contract",
+        output_name="case-v2-invalid-missing-contract-output",
+        family_registry=_family_registry(second_family=True),
+        claim_registry=_claim_registry(orthogonal_required=True),
+        reconciliation_registry=_reconciliation_registry(
+            orthogonal_required=True
+        ),
+        sufficiency_runs=[("sufficiency-run", _v2_run(_profile()))],
+    )
+
+    run = _run_request(request)
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    assert run.reason_codes == ["individual_records_rejected"]
+    final = run.request.output_dir / run.run_id
+    records = json.loads((final / "evidence_records.json").read_text())["records"]
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert len(records) == 1
+    assert rejected == [
+        {
+            "source_kind": "missing_observation",
+            "source_id": missing["observation_id"],
+            "source_index": 0,
+            "reason_codes": ["declared_object_ref_not_found"],
+            "claim_ref": "claim:target-identity@1.0.0",
+            "logical_key_digest": None,
+        }
+    ]
+
+
 def test_comparison_v2_duplicate_run_identity_fails_closed(
     tmp_path: Path,
 ) -> None:

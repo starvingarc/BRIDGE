@@ -746,9 +746,6 @@ def _resolve_sufficiency_inputs(
             case_choices,
             product_case_ref=bundle.product_case_ref,
             domain_id=claim.domain_id,
-            measurement_spec_ref=_object_ref_key(
-                observation.source_contract_ref
-            ),
         )
         bound_profile_keys.add(profile_key)
 
@@ -846,7 +843,6 @@ def _select_embedded_profile(
     *,
     product_case_ref: Any,
     domain_id: Any = None,
-    measurement_spec_ref: tuple[str, str] | None = None,
     profile_ref: tuple[str, str] | None = None,
     allow_single_profile_fallback: bool = False,
 ) -> tuple[str, EvidenceSufficiencyProfileV2]:
@@ -863,13 +859,6 @@ def _select_embedded_profile(
             for item in matches
             if (item[1].profile_id, item[1].profile_version) == profile_ref
         ]
-    if measurement_spec_ref is not None:
-        matches = [
-            item
-            for item in matches
-            if _object_ref_key(item[1].measurement_spec_ref)
-            == measurement_spec_ref
-        ]
     if domain_id is not None:
         domain_value = getattr(domain_id, "value", domain_id)
         matches = [
@@ -883,7 +872,6 @@ def _select_embedded_profile(
     if (
         allow_single_profile_fallback
         and profile_ref is None
-        and measurement_spec_ref is None
         and len(case_choices) == 1
     ):
         return case_choices[0]
