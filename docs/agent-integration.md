@@ -63,19 +63,19 @@ without changing scientific semantics.
 
 Reference snapshots are built and validated by the BRIDGE science team through `bridge-reference`. Agent deployments may resolve and consume a frozen snapshot, but cannot build, edit or substitute one. Candidate snapshots require an explicit science-only runtime flag and are rejected by default.
 
-## Local Agent Runtime
+## Local Runtime Core
 
-The package includes a framework-neutral local application core for immutable
-`ProductCase` and `AnalysisPlan` records, deterministic planning, append-only
-workflow events, SQLite recovery, content-addressed artifacts, and case-scoped
-Tool Package execution. The detailed boundary is documented in
-[Local Agent Runtime Architecture](local-agent-runtime.md).
+The package includes a framework-neutral core for an immutable upload envelope,
+content-bound execution plans, typed approval receipts, guarded Tool Package
+execution, claim-fenced workflow events, private SQLite persistence and optional
+content-addressed artifacts. It does not include a model client, conversational
+loop, Web worker or fixed 12-tool pipeline.
 
-The optional `bridge-agent` entry point makes one synchronous, text-only model
-call using caller-asserted `public_safe` content. It has no Tool Registry handle,
-function-calling surface, plan-approval method, or authority to change scientific
-results. Credentials and configured provider URLs are not included in returned
-records or workflow events.
+P0-01 requests can be derived directly from uploaded expression assets. All
+downstream Tool Package requests must be explicitly materialized against their
+published input contracts. The runtime records execution status separately from
+scientific readiness and accepts completion only from validated `ToolRun`
+receipts. See [Local Runtime Core](local-agent-runtime.md) for the exact boundary.
 
 ## Failure Boundary
 

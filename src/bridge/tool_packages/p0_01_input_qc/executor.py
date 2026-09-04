@@ -267,18 +267,19 @@ def _build_staged_run(
         )
         data_views["all_cells_view"]["artifact_id"] = f"artifact:{run_id}:qc-metrics"
 
-        candidate_rules = dict(measurement_spec.exclusion_rules) if measurement_spec is not None else None
+        missing_required_gene_sets: list[str] = []
         if measurement_spec is not None and "max_mitochondrial_fraction" in measurement_spec.exclusion_rules:
             if gene_set_coverage["mitochondrial_genes"] == 0:
-                warnings.extend(
-                    [
-                        "required_gene_set_unavailable:mitochondrial_genes",
-                        "candidate_rule_skipped:max_mitochondrial_fraction",
-                    ]
-                )
-                candidate_rules.pop("max_mitochondrial_fraction")
-        if candidate_rules is not None:
-            flags = apply_candidate_rules(metrics, candidate_rules)
+                missing_required_gene_sets.append("mitochondrial_genes")
+        if missing_required_gene_sets:
+            missing_inputs.extend(f"required_gene_set_unavailable:{item}" for item in missing_required_gene_sets)
+            warnings.append("candidate_eligibility_not_computed_due_to_gene_coverage")
+            data_views["eligible_cells_view"] = {
+                "state": "unavailable",
+                "reason": "required_qc_gene_set_unavailable",
+            }
+        elif measurement_spec is not None:
+            flags = apply_candidate_rules(metrics, measurement_spec.exclusion_rules)
             for column in flags.columns:
                 adata.obs[column] = flags[column].to_numpy()
             for column in metrics.columns:

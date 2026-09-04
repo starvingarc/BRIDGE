@@ -1,21 +1,25 @@
-"""Immutable application-domain contracts for BRIDGE cases and plans."""
+"""Immutable local-runtime contracts."""
 
 from bridge.domain.models import (
     AnalysisPlan,
-    CaseStatus,
+    CaseInputAsset,
+    CaseInputBundle,
+    OutputDirectoryBinding,
+    PlanApprovalReceipt,
     PlanStatus,
     PlanStep,
-    ProductCase,
-    SampleRecord,
     StepDisposition,
+    approve_plan,
 )
 
 __all__ = [
     "AnalysisPlan",
-    "CaseStatus",
+    "CaseInputAsset",
+    "CaseInputBundle",
+    "OutputDirectoryBinding",
+    "PlanApprovalReceipt",
     "PlanStatus",
     "PlanStep",
-    "ProductCase",
-    "SampleRecord",
     "StepDisposition",
+    "approve_plan",
 ]

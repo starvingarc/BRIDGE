@@ -1,171 +1,85 @@
-# Local Agent Runtime Architecture
+# Local Runtime Core
 
-## Purpose And Boundary
+BRIDGE includes a small, framework-neutral runtime core for executing approved
+Tool Package requests. It is infrastructure for the future Agent, not a complete
+conversational Agent or Web service.
 
-The BRIDGE local runtime turns a researcher-confirmed `ProductCase` and approved
-`AnalysisPlan` into recoverable, auditable executions of registered high-level
-Tool Packages. It coordinates work; it does not own scientific numbers, thresholds,
-labels, evidence states or release decisions.
+## Contracts
 
-The architecture borrows two ideas from DeepSeek Harness: an append-only event log
-as the durable source of runtime truth, and a guarded tool-execution pipeline. It
-does not embed DeepSeek Harness, Cordis or a universal plugin system. BRIDGE keeps a
-small Python application core and freezes the scientific contracts that determine
-formal interpretation.
-
-## System Shape
-
-```text
-User / Web / Agent
-        |
-        v
-ProductCase -> deterministic PlanBuilder -> approved AnalysisPlan
-                                              |
-                                              v
-                                  LocalWorkflowExecutor
-                                              |
-                         append RunEvent -> SQLite RunEventStore
-                                              |
-                                      status projection
-                                              |
-                                              v
-                              ToolExecutionPipeline
-                     eligibility -> plan/version gate -> run
-                                  -> output validation
-                                              |
-                              ToolRun + LocalArtifactStore
-                                              |
-                         future Evidence/Report pipeline
-```
-
-The conversational Agent loop and the scientific workflow are separate state
-machines. The current DeepInfer loop can clarify a case, explain a deterministic
-reason code or suggest a plan, but it has no tool/function-call binding and no plan
-approval method. Once a human-approved plan exists, the scientific DAG is executed
-from the frozen plan; model output cannot add a tool, change a version or overwrite
-a result.
-
-## Durable Workflow Events
-
-The SQLite event store appends ordered events per run:
-
-| Event | Meaning |
+| Contract | Purpose |
 |---|---|
-| `run_submitted` | Stores the immutable approved plan snapshot and retry policy. |
-| `step_claimed` | One worker owns a ready step attempt. |
-| `step_succeeded` | The attempt completed successfully. |
-| `step_failed` | The attempt failed with explicit reason codes. |
-| `run_resumed` | Retry-eligible failed steps return to pending. |
-| `run_recovered` | Atomically recovers interrupted work after worker ownership transfer. |
-| `run_cancelled` | Pending or running work is cancelled. |
+| `CaseInputBundle` | Immutable envelope for user-uploaded local assets and checksums |
+| `AnalysisPlan` | Ordered batch of exact Tool Package requests |
+| `PlanApprovalReceipt` | Content-bound record that an external authority approved one plan |
+| `ToolExecutionScope` | Runtime allowlist derived from the approved plan |
+| `StepClaim` | Attempt-specific ownership token for one workflow step |
+| `StepOutcomeReceipt` | Digest and artifact references for one validated `ToolRun` |
 
-`RunStatus`, `StepStatus`, attempt counts and reason codes are projections, not
-independently mutable rows. Appends use an expected sequence number so competing
-workers cannot both commit the same transition. SQLite is the P0 durability target;
-the executor remains single-worker even though event appends reject stale writers.
-Persisted events carry an explicit schema version and event-specific payload
-validation. Failed attempts require reason codes; retry exhaustion deterministically
-marks dependent work as skipped while independent work remains claimable. Terminal
-failed, succeeded, skipped or cancelled runs cannot be rewritten by cancellation.
-Explicit recovery assumes the previous single worker is dead, uses the persisted
-retry limit, and resolves all interrupted steps in one sequence-guarded event.
-Schema-zero histories are normalized in memory without rewriting the append-only
-rows; incompatible or unknown histories fail with a coordinate-bearing compatibility
-error.
+`CaseInputBundle` is a transport envelope. It does not replace or redefine the
+scientific `ProductCase` contract consumed by Tool Packages.
 
-## Case-Scoped Tool Pipeline
+## Planning
 
-Each execution receives a scope derived from the approved plan. The scope pins the
-exact case identity/version and case-contract digest, plan ID, immutable per-step request JSON,
-Tool Package generation and version, implementation/environment/schema bindings,
-MeasurementSpec, reference and prior references, and network/resource permissions.
-Authorizations are keyed by step rather than Tool ID, so an asset-scoped plan may
-contain multiple P0-01 steps without silently collapsing them.
+`PlanBuilder` creates one P0-01 request per uploaded asset by default. Every
+downstream request must already be materialized by the caller and may declare
+explicit dependencies on earlier requests. The planner does not infer a fixed
+12-tool chain, invent scientific objects, or turn missing inputs into values.
 
-The P0 pipeline is fixed:
+Each executable step pins:
 
-```text
-ToolRequest
-  -> exact approved step/request envelope gate
-  -> registered generation/version/environment/schema gate
-  -> deterministic eligibility check
-  -> registered Tool Package execution
-  -> generation-aware ToolRun, result-Schema and provenance validation
-  -> immutable returned outcome
-```
+- the canonical request JSON and SHA-256;
+- Tool Package version, input/output schemas, environment, implementation state,
+  scientific status and result schema when applicable;
+- the approved output directory and its filesystem identity.
 
-Denial and ineligibility return explicit reason codes and do not invoke science
-code. A scaffold remains `not_implemented`; missing evidence remains distinct from
-a negative biological observation. Artifact hashing and evidence compilation remain
-separate deterministic stages.
+An ineligible request is represented as a skipped step with reason codes. It is
+not silently rewritten into an executable request.
 
-Planning expands P0-01 into deterministic per-asset steps. P0-08 and P0-09 are not
-made reachable by assuming that unrelated scaffold tools produce their contracts;
-they require explicit, checksummed structured-input bindings. Missing bindings are
-recorded as a skip reason in the plan.
-Structured P0-08/P0-09 inputs must bind the same exact ProductCase identity and
-version as the approved scope. Case identities are hashed before use in local output
-paths, so opaque IDs cannot alter directory structure.
+## Approval and execution
 
-## Conversational Model Boundary
+`approve_plan` attaches a typed receipt to the exact plan digest. The caller is
+responsible for authenticating the approver and authorizing the action before
+creating that receipt.
 
-`DeepInferClient` is the single concrete model integration. It reads
-`DEEPINFER_BASE_URL`, uses optional bearer credentials from
-`DEEPINFER_API_KEY`, and pins `deepseek-v4-flash-0731`. `LocalAgentLoop` sends
-only an explicitly `public_safe` `AgentTurnRequest` and validates the model's JSON
-response as a text-only `AgentDecision`. The whole turn is rejected before a model
-call if the explicit classification or context contract is invalid.
+`ToolExecutionPipeline` accepts only requests present in the approved plan. It
+rechecks the request digest, Tool Package bindings, normal eligibility,
+checksummed inputs, output-directory identity and result schema before accepting
+a run. Tool failures remain tool failures; they do not become biological
+conclusions.
 
-Successful calls return provider/model identity, usage, latency and canonical
-request/response hashes. They do not expose the credential, base URL or a raw
-provider response envelope. Model calls are not RunEvents: scientific workflow
-history continues to contain only approved-plan and deterministic execution facts.
-The caller may separately persist an AgentTurn under an appropriate conversation
-retention policy.
+## Workflow persistence
 
-This boundary does not perform automatic DLP. Callers must not include raw data,
-private sample identifiers, filesystem paths, private manifests or internal logs in
-the turn. The client is synchronous and deliberately has no retry, streaming,
-function calling, background-worker or conversation-store abstraction.
+`LocalWorkflowExecutor` coordinates one local worker through append-only events.
+A step must be claimed before execution. Claim identifiers and attempt numbers
+fence stale workers after recovery, and successful completion requires a
+validated `ToolRun` receipt rather than a caller-supplied boolean.
 
-## Capability Seams
+`SQLiteRunEventStore` is an optional local event store. Its directory and
+database files must be private to the current user, and incompatible event
+schemas fail closed. The in-memory store is available for ephemeral use.
 
-Only capabilities with a current or committed second implementation receive an
-interface boundary:
+Workflow status describes execution only. A succeeded run does not imply
+biological readiness, formal scientific release, efficacy, safety, potency or
+GMP suitability; scientific readiness remains `not_assessed` and
+`domain_score` remains `null`.
 
-- workflow event storage: in-memory for unit tests and SQLite for the local runtime;
-- artifact storage: current local content-addressed implementation;
-- Tool Package dispatch: current `ToolRegistry`;
-- conversational model: one concrete DeepInfer client and one local text loop.
+## Artifacts
 
-An HTTP server, subprocess isolation and remote storage are future work and are not
-predeclared as empty plugin interfaces.
+`LocalArtifactStore` can store byte artifacts by content digest and return
+immutable references. It is deliberately separate from Tool Package execution:
+the runtime does not copy arbitrary result paths into the store or expose files
+through a network service.
 
-## Local Artifact Integrity
+## Current boundary
 
-Derived bytes are stored by SHA-256 under a configured local root. Reads and
-deduplication revalidate the digest, reject non-regular objects, and fail closed on
-symlinked root components, staging, shard or object paths so neither reads nor writes
-can escape the configured root. Root creation walks from the filesystem anchor with
-directory descriptors instead of resolving caller-controlled ancestors. Verified
-reads use an immediately unlinked snapshot created inside the anchored staging
-directory and never copy plaintext to the system temporary directory. The store
-never rewrites a corrupt same-digest target as if deduplication had succeeded.
-
-## Implementation Status
-
-| Component | Status |
+| Included | Not included |
 |---|---|
-| Immutable ProductCase and AnalysisPlan contracts | Implemented and tested |
-| Deterministic PlanBuilder | Implemented and tested |
-| In-memory RunEventStore | Implemented test adapter |
-| Content-addressed LocalArtifactStore | Implemented and tested |
-| RunEvent projection | Implemented and tested |
-| SQLite RunEventStore | Implemented and recovery-tested |
-| Case-scoped ToolExecutionPipeline | Implemented and tested |
-| DeepInfer one-turn conversational Agent | Implemented and contract-tested |
-| Background worker, FastAPI, persistent conversation, Evidence and reporting | Not implemented |
+| Immutable upload envelope and approved execution plan | Conversation or model-provider integration |
+| Explicit-request planning and normal Tool Registry gates | Dynamic scientific dependency inference |
+| Claim-fenced, event-sourced local workflow | Distributed workers, queues or Web APIs |
+| Private SQLite persistence and optional local CAS | Authentication, authorization UI or public download service |
 
-No runtime infrastructure change promotes a scientific method, produces a domain
-score, or authorizes clinical efficacy, safety, potency, GMP release or absolute
-product-ranking claims.
+Agent orchestration remains responsible for constructing valid scientific input
+objects, resolving deployment-owned resources, asking users for missing
+metadata, and presenting deterministic Tool Package results without changing
+their evidence state.

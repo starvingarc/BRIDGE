@@ -5,9 +5,15 @@ import json
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from bridge.domain.models import AnalysisPlan, PlanStep, ProductCase, StepDisposition
+from bridge.domain.models import (
+    AnalysisPlan,
+    CaseInputBundle,
+    OutputDirectoryBinding,
+    PlanStep,
+    StepDisposition,
+)
+from bridge.storage.private_paths import ensure_private_directory
 from bridge.toolkit.contracts import (
-    StructuredInputRef,
     ToolPackageSpecV2,
     ToolRequest,
     ToolRequestV2,
@@ -15,23 +21,7 @@ from bridge.toolkit.contracts import (
 from bridge.toolkit.registry import ToolRegistry
 
 
-# These are execution prerequisites, not a claim that every scientific package
-# produces the next package's structured contract. P0-08/P0-09 therefore only
-# become executable when their required immutable object inputs are supplied.
-_DEPENDENCIES = {
-    "P0-01": [],
-    "P0-02": ["P0-01"],
-    "P0-03": ["P0-02"],
-    "P0-04": ["P0-03"],
-    "P0-05": ["P0-04"],
-    "P0-06": ["P0-05"],
-    "P0-07": ["P0-06"],
-    "P0-08": [],
-    "P0-09": [],
-    "P0-10": ["P0-09"],
-    "P0-11": ["P0-10"],
-    "P0-12": ["P0-01"],
-}
+ToolRequestModel = ToolRequest | ToolRequestV2
 
 
 def _canonical_json(value: object) -> str:
@@ -41,158 +31,162 @@ def _canonical_json(value: object) -> str:
 
 
 class PlanBuilder:
+    """Build an execution batch from already materialized tool requests.
+
+    The builder adds upload QC requests and accepts explicit downstream requests.
+    It does not infer scientific dependencies or manufacture missing objects.
+    """
+
     def __init__(self, registry: ToolRegistry | None = None) -> None:
         self._registry = registry or ToolRegistry.load_default()
 
     def build(
         self,
-        case: ProductCase,
+        case: CaseInputBundle,
         *,
         output_root: Path,
         knowledge_snapshot_ref: str,
-        measurement_spec_refs: Mapping[str, str] | None = None,
-        structured_input_bindings: Mapping[
-            str, Sequence[StructuredInputRef]
-        ] | None = None,
+        requests: Sequence[ToolRequestModel] = (),
+        dependencies: Mapping[str, Sequence[str]] | None = None,
+        include_input_qc: bool = True,
     ) -> AnalysisPlan:
-        if case.status.value != "confirmed":
-            raise ValueError("case_not_confirmed")
-        output_root = output_root.resolve()
-        measurement_spec_refs = measurement_spec_refs or {}
-        structured_input_bindings = structured_input_bindings or {}
-        case_identity_json = _canonical_json(
-            {"case_id": case.case_id, "case_version": case.version}
+        output_root, _, _ = ensure_private_directory(output_root)
+        bundle_identity = _canonical_json(
+            {"bundle_id": case.bundle_id, "version": case.version}
         )
-        case_key = "case-" + hashlib.sha256(case_identity_json.encode()).hexdigest()
-        case_output_root = (output_root / case_key).resolve()
-        if not case_output_root.is_relative_to(output_root):
-            raise ValueError("case_output_root_not_confined")
+        bundle_key = "bundle-" + hashlib.sha256(bundle_identity.encode()).hexdigest()
+        bundle_root, _, _ = ensure_private_directory(output_root / bundle_key)
+
+        selected: list[ToolRequestModel] = []
+        if include_input_qc:
+            spec = self._registry.describe("P0-01")
+            for index, asset in enumerate(case.assets, start=1):
+                selected.append(
+                    ToolRequest(
+                        request_id=f"plan-{bundle_key}-p0-01-{index:03d}",
+                        tool_id="P0-01",
+                        tool_version=spec.version,
+                        output_dir=bundle_root,
+                        assets=[asset.to_toolkit_asset()],
+                    )
+                )
+        selected.extend(requests)
+        if not selected:
+            raise ValueError("analysis_plan_requires_selected_request")
+
+        request_ids = [request.request_id for request in selected]
+        if len(request_ids) != len(set(request_ids)):
+            raise ValueError("analysis_plan_request_ids_must_be_unique")
+        dependencies = dependencies or {}
+        unknown_dependency_sources = sorted(set(dependencies) - set(request_ids))
+        if unknown_dependency_sources:
+            raise ValueError("analysis_plan_dependency_source_unknown")
+
+        declared_assets = {
+            (asset.asset_id, asset.checksum) for asset in case.assets
+        }
         steps: list[PlanStep] = []
-        steps_by_tool: dict[str, list[PlanStep]] = {}
+        step_by_request: dict[str, str] = {}
+        disposition_by_request: dict[str, StepDisposition] = {}
+        for index, original in enumerate(selected, start=1):
+            spec = self._registry.describe(original.tool_id)
+            if original.tool_version not in {None, spec.version}:
+                raise ValueError("analysis_plan_tool_version_mismatch")
+            for asset in original.assets:
+                if asset.checksum is None:
+                    raise ValueError("analysis_plan_asset_checksum_missing")
+                if (asset.asset_id, asset.checksum) not in declared_assets:
+                    raise ValueError("analysis_plan_asset_not_in_input_bundle")
 
-        for spec in self._registry.list():
-            dependency_steps = [
-                step
-                for dependency_tool in _DEPENDENCIES[spec.tool_id]
-                for step in steps_by_tool[dependency_tool]
-            ]
-            units = list(case.assets) if spec.tool_id == "P0-01" else [None]
-            tool_steps: list[PlanStep] = []
-            for unit_index, asset in enumerate(units, start=1):
-                # Asset identifiers are provenance values, not path segments.
-                suffix = (
-                    f"-asset-{unit_index:03d}"
-                    if asset is not None and len(units) > 1
-                    else ""
+            dependency_ids = tuple(dependencies.get(original.request_id, ()))
+            if len(dependency_ids) != len(set(dependency_ids)):
+                raise ValueError("analysis_plan_dependencies_must_be_unique")
+            unknown = [item for item in dependency_ids if item not in step_by_request]
+            if unknown:
+                raise ValueError("analysis_plan_dependencies_must_precede_request")
+
+            step_id = f"step-{index:03d}-{original.tool_id.lower()}"
+            step_dir, device, inode = ensure_private_directory(
+                bundle_root / f"{index:03d}-{original.tool_id.lower()}"
+            )
+            payload = original.model_dump(mode="python")
+            payload["tool_version"] = spec.version
+            payload["output_dir"] = step_dir
+            request_type = ToolRequestV2 if isinstance(spec, ToolPackageSpecV2) else ToolRequest
+            request = request_type.model_validate(payload)
+
+            blocked = any(
+                disposition_by_request[item] is StepDisposition.SKIP
+                for item in dependency_ids
+            )
+            if blocked:
+                disposition = StepDisposition.SKIP
+                reasons = ("explicit_dependency_not_executable",)
+                request_json = None
+            else:
+                eligibility = self._registry.check_eligibility(request)
+                disposition = (
+                    StepDisposition.EXECUTE
+                    if eligibility.eligible
+                    else StepDisposition.SKIP
                 )
-                step_id = f"step-{spec.tool_id.lower()}{suffix}"
-                dependencies = tuple(step.step_id for step in dependency_steps)
-                blocked = any(
-                    step.disposition is StepDisposition.SKIP
-                    for step in dependency_steps
+                reasons = tuple(eligibility.reason_codes)
+                request_json = (
+                    _canonical_json(request)
+                    if disposition is StepDisposition.EXECUTE
+                    else None
                 )
-                measurement_spec_ref = measurement_spec_refs.get(spec.tool_id)
-                object_inputs = tuple(structured_input_bindings.get(spec.tool_id, ()))
 
-                request: ToolRequest | ToolRequestV2 | None = None
-                if blocked:
-                    disposition = StepDisposition.SKIP
-                    reasons = ("upstream_step_not_executable",)
-                elif isinstance(spec, ToolPackageSpecV2) and not object_inputs:
-                    disposition = StepDisposition.SKIP
-                    reasons = ("structured_inputs_not_selected",)
-                elif (
-                    not isinstance(spec, ToolPackageSpecV2)
-                    and spec.tool_id != "P0-01"
-                    and measurement_spec_ref is None
-                ):
-                    disposition = StepDisposition.SKIP
-                    reasons = ("measurement_spec_not_selected",)
-                else:
-                    request_id = f"plan-{case_key}-{spec.tool_id.lower()}{suffix}"
-                    output_dir = (
-                        case_output_root / f"{spec.tool_id.lower()}{suffix}"
-                    ).resolve()
-                    if not output_dir.is_relative_to(output_root):
-                        raise ValueError("tool_output_dir_not_confined")
-                    if isinstance(spec, ToolPackageSpecV2):
-                        request = ToolRequestV2(
-                            request_id=request_id,
-                            tool_id=spec.tool_id,
-                            tool_version=spec.version,
-                            output_dir=output_dir,
-                            object_inputs=object_inputs,
-                            measurement_spec_ref=measurement_spec_ref,
-                        )
-                    else:
-                        request = ToolRequest(
-                            request_id=request_id,
-                            tool_id=spec.tool_id,
-                            tool_version=spec.version,
-                            output_dir=output_dir,
-                            assets=(
-                                [asset.to_toolkit_asset()]
-                                if asset is not None
-                                else [item.to_toolkit_asset() for item in case.assets]
-                            ),
-                            measurement_spec_ref=measurement_spec_ref,
-                        )
-                    eligibility = self._registry.check_case_eligibility(
-                        request,
-                        case_id=case.case_id,
-                        case_version=case.version,
-                    )
-                    disposition = (
-                        StepDisposition.EXECUTE
-                        if eligibility.eligible
-                        else StepDisposition.SKIP
-                    )
-                    reasons = tuple(eligibility.reason_codes)
-
-                step = PlanStep(
+            steps.append(
+                PlanStep(
                     step_id=step_id,
                     tool_id=spec.tool_id,
                     tool_version=spec.version,
                     disposition=disposition,
-                    depends_on=dependencies,
-                    measurement_spec_ref=measurement_spec_ref,
-                    reference_refs=(case.reference_policy_ref,),
-                    prior_refs=(case.prior_snapshot_ref,),
+                    depends_on=tuple(step_by_request[item] for item in dependency_ids),
                     reason_codes=reasons,
-                    approved_request_json=(
-                        _canonical_json(request)
-                        if disposition is StepDisposition.EXECUTE and request is not None
+                    approved_request_json=request_json,
+                    approved_request_sha256=(
+                        hashlib.sha256(request_json.encode()).hexdigest()
+                        if request_json is not None
+                        else None
+                    ),
+                    output_directory=(
+                        OutputDirectoryBinding(
+                            path=step_dir,
+                            device=device,
+                            inode=inode,
+                        )
+                        if request_json is not None
                         else None
                     ),
                     environment_spec_id=spec.environment_spec_id,
                     input_schema_ref=spec.input_schema_ref,
                     output_schema_ref=spec.output_schema_ref,
                     implementation_state=spec.implementation_state.value,
+                    scientific_status=spec.scientific_status,
                     result_schema_ref=(
                         spec.result_schema_ref
                         if isinstance(spec, ToolPackageSpecV2)
                         else None
                     ),
                 )
-                steps.append(step)
-                tool_steps.append(step)
-            steps_by_tool[spec.tool_id] = tool_steps
+            )
+            step_by_request[original.request_id] = step_id
+            disposition_by_request[original.request_id] = disposition
 
-        case_json = _canonical_json(case)
-        case_digest = hashlib.sha256(case_json.encode()).hexdigest()
-        identity_payload = {
-            "case_contract_sha256": case_digest,
+        bundle_sha256 = hashlib.sha256(_canonical_json(case).encode()).hexdigest()
+        identity = {
+            "input_bundle_sha256": bundle_sha256,
             "knowledge_snapshot_ref": knowledge_snapshot_ref,
             "steps": [step.model_dump(mode="json") for step in steps],
         }
-        digest = hashlib.sha256(_canonical_json(identity_payload).encode()).hexdigest()[:16]
+        plan_digest = hashlib.sha256(_canonical_json(identity).encode()).hexdigest()[:16]
         return AnalysisPlan(
-            plan_id=f"plan-{digest}",
-            version="0.2",
-            case_ref=f"{case.case_id}@{case.version}",
-            case_id=case.case_id,
-            case_version=case.version,
-            case_contract_sha256=case_digest,
+            plan_id=f"plan-{plan_digest}",
+            version="0.3",
+            input_bundle_ref=f"{case.bundle_id}@{case.version}",
+            input_bundle_sha256=bundle_sha256,
             status="draft",
             knowledge_snapshot_ref=knowledge_snapshot_ref,
             steps=steps,

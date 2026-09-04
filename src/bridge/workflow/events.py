@@ -30,18 +30,35 @@ class StepStatus(StrEnum):
     SKIPPED = "skipped"
 
 
+class StepOutcomeReceipt(FrozenModel):
+    workflow_run_id: str = Field(min_length=1)
+    step_id: str = Field(min_length=1)
+    claim_id: str = Field(min_length=1)
+    attempt: int = Field(ge=1)
+    approved_request_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    tool_run_id: str = Field(min_length=1)
+    tool_run_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    execution_state: str = Field(min_length=1)
+    artifact_ids: tuple[str, ...] = ()
+
+
 class StepSnapshot(FrozenModel):
     step_id: str
     tool_id: str
+    scientific_status: str
     status: StepStatus
     attempts: int = Field(ge=0)
     reason_codes: list[str] = Field(default_factory=list)
+    outcome_receipt: StepOutcomeReceipt | None = None
 
 
 class RunSnapshot(FrozenModel):
     run_id: str
     plan_id: str
     status: RunStatus
+    status_scope: Literal["execution_only"] = "execution_only"
+    scientific_readiness: Literal["not_assessed"] = "not_assessed"
+    domain_score: None = None
     steps: list[StepSnapshot]
 
 
@@ -50,7 +67,6 @@ class RunEventType(StrEnum):
     STEP_CLAIMED = "step_claimed"
     STEP_SUCCEEDED = "step_succeeded"
     STEP_FAILED = "step_failed"
-    RUN_RESUMED = "run_resumed"
     RUN_RECOVERED = "run_recovered"
     RUN_CANCELLED = "run_cancelled"
 
@@ -60,44 +76,22 @@ NonEmptyString = Annotated[str, Field(min_length=1)]
 
 class RunSubmittedPayload(FrozenModel):
     plan: AnalysisPlan
-    max_attempts: int = Field(default=2, ge=1)
+    max_attempts: int = Field(default=2, ge=1, le=10)
 
 
 class BlockedStepPayload(FrozenModel):
     step_id: NonEmptyString
     reason_codes: tuple[NonEmptyString, ...] = Field(min_length=1)
 
-    @model_validator(mode="after")
-    def reason_codes_are_unique(self) -> "BlockedStepPayload":
-        if len(set(self.reason_codes)) != len(self.reason_codes):
-            raise ValueError("workflow_reason_codes_must_be_unique")
-        return self
-
 
 class StepEventPayload(FrozenModel):
     step_id: NonEmptyString
+    claim_id: NonEmptyString
+    attempt: int = Field(ge=1)
     reason_codes: tuple[NonEmptyString, ...] = ()
+    outcome_receipt: StepOutcomeReceipt | None = None
     retry_exhausted: bool = False
     blocked_steps: tuple[BlockedStepPayload, ...] = ()
-
-    @model_validator(mode="after")
-    def reason_codes_are_unique(self) -> "StepEventPayload":
-        if len(set(self.reason_codes)) != len(self.reason_codes):
-            raise ValueError("workflow_reason_codes_must_be_unique")
-        blocked_ids = [blocked.step_id for blocked in self.blocked_steps]
-        if len(set(blocked_ids)) != len(blocked_ids):
-            raise ValueError("workflow_blocked_step_ids_must_be_unique")
-        return self
-
-
-class RunResumedPayload(FrozenModel):
-    step_ids: tuple[NonEmptyString, ...] = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def step_ids_are_unique(self) -> "RunResumedPayload":
-        if len(set(self.step_ids)) != len(self.step_ids):
-            raise ValueError("workflow_resume_step_ids_must_be_unique")
-        return self
 
 
 class RecoveredStepPayload(FrozenModel):
@@ -107,8 +101,6 @@ class RecoveredStepPayload(FrozenModel):
 
     @model_validator(mode="after")
     def validate_outcome(self) -> "RecoveredStepPayload":
-        if len(set(self.reason_codes)) != len(self.reason_codes):
-            raise ValueError("workflow_reason_codes_must_be_unique")
         if self.outcome == "failed" and not self.reason_codes:
             raise ValueError("workflow_recovery_failure_requires_reason_codes")
         if self.outcome == "retry" and self.reason_codes:
@@ -120,18 +112,6 @@ class RunRecoveredPayload(FrozenModel):
     recovered_steps: tuple[RecoveredStepPayload, ...] = Field(min_length=1)
     blocked_steps: tuple[BlockedStepPayload, ...] = ()
 
-    @model_validator(mode="after")
-    def step_ids_are_unique(self) -> "RunRecoveredPayload":
-        recovered_ids = [step.step_id for step in self.recovered_steps]
-        blocked_ids = [step.step_id for step in self.blocked_steps]
-        if len(set(recovered_ids)) != len(recovered_ids):
-            raise ValueError("workflow_recovery_step_ids_must_be_unique")
-        if len(set(blocked_ids)) != len(blocked_ids):
-            raise ValueError("workflow_blocked_step_ids_must_be_unique")
-        if set(recovered_ids) & set(blocked_ids):
-            raise ValueError("workflow_recovery_steps_cannot_be_blocked")
-        return self
-
 
 class EmptyPayload(FrozenModel):
     pass
@@ -140,7 +120,6 @@ class EmptyPayload(FrozenModel):
 RunEventPayload = (
     RunSubmittedPayload
     | StepEventPayload
-    | RunResumedPayload
     | RunRecoveredPayload
     | EmptyPayload
 )
@@ -151,14 +130,13 @@ _PAYLOAD_MODELS = {
     RunEventType.STEP_CLAIMED: StepEventPayload,
     RunEventType.STEP_SUCCEEDED: StepEventPayload,
     RunEventType.STEP_FAILED: StepEventPayload,
-    RunEventType.RUN_RESUMED: RunResumedPayload,
     RunEventType.RUN_RECOVERED: RunRecoveredPayload,
     RunEventType.RUN_CANCELLED: EmptyPayload,
 }
 
 
 class RunEvent(FrozenModel):
-    schema_version: Literal["0", "1"] = "1"
+    schema_version: Literal["1"] = "1"
     event_id: str
     run_id: str
     sequence: int = Field(ge=1)
@@ -173,23 +151,37 @@ class RunEvent(FrozenModel):
             return value
         candidate = dict(value)
         event_type = RunEventType(candidate.get("event_type"))
-        payload_model = _PAYLOAD_MODELS[event_type]
-        candidate["payload"] = payload_model.model_validate(candidate.get("payload", {}))
+        candidate["payload"] = _PAYLOAD_MODELS[event_type].model_validate(
+            candidate.get("payload", {})
+        )
         return candidate
 
     @model_validator(mode="after")
-    def validate_event_specific_reasons(self) -> "RunEvent":
+    def validate_step_event(self) -> "RunEvent":
         if not isinstance(self.payload, StepEventPayload):
             return self
-        if self.event_type is RunEventType.STEP_FAILED:
-            if not self.payload.reason_codes:
+        payload = self.payload
+        receipt = payload.outcome_receipt
+        if receipt is not None and (
+            receipt.workflow_run_id != self.run_id
+            or receipt.step_id != payload.step_id
+            or receipt.claim_id != payload.claim_id
+            or receipt.attempt != payload.attempt
+        ):
+            raise ValueError("workflow_outcome_receipt_binding_mismatch")
+        if self.event_type is RunEventType.STEP_CLAIMED:
+            if payload.reason_codes or receipt or payload.retry_exhausted or payload.blocked_steps:
+                raise ValueError("workflow_claim_payload_invalid")
+        elif self.event_type is RunEventType.STEP_SUCCEEDED:
+            if receipt is None or payload.reason_codes:
+                raise ValueError("workflow_success_requires_outcome_receipt")
+            if payload.retry_exhausted or payload.blocked_steps:
+                raise ValueError("workflow_success_payload_invalid")
+        elif self.event_type is RunEventType.STEP_FAILED:
+            if not payload.reason_codes:
                 raise ValueError("workflow_failure_requires_reason_codes")
-            if self.payload.blocked_steps and not self.payload.retry_exhausted:
+            if payload.blocked_steps and not payload.retry_exhausted:
                 raise ValueError("workflow_retry_exhaustion_payload_invalid")
-        elif self.event_type is RunEventType.STEP_CLAIMED and self.payload.reason_codes:
-            raise ValueError("workflow_claim_cannot_have_reason_codes")
-        elif self.payload.retry_exhausted or self.payload.blocked_steps:
-            raise ValueError("workflow_non_failure_cannot_block_steps")
         return self
 
 
@@ -197,10 +189,13 @@ class RunEvent(FrozenModel):
 class StepProjection:
     step_id: str
     tool_id: str
+    scientific_status: str
     depends_on: tuple[str, ...]
     status: StepStatus
     attempts: int = 0
+    active_claim_id: str | None = None
     reason_codes: tuple[str, ...] = ()
+    outcome_receipt: StepOutcomeReceipt | None = None
 
 
 @dataclass
@@ -221,9 +216,11 @@ class RunProjection:
                 StepSnapshot(
                     step_id=step.step_id,
                     tool_id=step.tool_id,
+                    scientific_status=step.scientific_status,
                     status=step.status,
                     attempts=step.attempts,
                     reason_codes=list(step.reason_codes),
+                    outcome_receipt=step.outcome_receipt,
                 )
                 for step in self.steps.values()
             ],
@@ -248,6 +245,7 @@ def project_run(events: Iterable[RunEvent]) -> RunProjection:
         step.step_id: StepProjection(
             step_id=step.step_id,
             tool_id=step.tool_id,
+            scientific_status=step.scientific_status or "unknown",
             depends_on=tuple(step.depends_on),
             status=(
                 StepStatus.PENDING
@@ -280,67 +278,49 @@ def _apply_event(projection: RunProjection, event: RunEvent) -> None:
     if event.event_type is RunEventType.RUN_SUBMITTED:
         raise ValueError("workflow_run_submitted_twice")
     if event.event_type is RunEventType.RUN_CANCELLED:
-        if projection.status in {
-            RunStatus.SUCCEEDED,
-            RunStatus.FAILED,
-            RunStatus.CANCELLED,
-            RunStatus.SKIPPED,
-        }:
+        if not any(
+            step.status in {StepStatus.PENDING, StepStatus.RUNNING}
+            for step in projection.steps.values()
+        ):
             raise ValueError("workflow_terminal_run_cannot_be_cancelled")
         for step in projection.steps.values():
             if step.status in {StepStatus.PENDING, StepStatus.RUNNING}:
                 step.status = StepStatus.CANCELLED
+                step.active_claim_id = None
         projection.status = RunStatus.CANCELLED
-        return
-    if event.event_type is RunEventType.RUN_RESUMED:
-        if not isinstance(event.payload, RunResumedPayload):
-            raise ValueError("workflow_resume_payload_invalid")
-        expected_step_ids = tuple(
-            step.step_id
-            for step in projection.steps.values()
-            if step.status in {StepStatus.FAILED, StepStatus.RUNNING}
-            and step.attempts < projection.max_attempts
-        )
-        if event.payload.step_ids != expected_step_ids:
-            raise ValueError("workflow_resume_steps_invalid")
-        for step_id in event.payload.step_ids:
-            step = _step(projection, step_id)
-            step.status = StepStatus.PENDING
-            step.reason_codes = ()
-        _refresh_status(projection)
         return
     if event.event_type is RunEventType.RUN_RECOVERED:
         if not isinstance(event.payload, RunRecoveredPayload):
             raise ValueError("workflow_recovery_payload_invalid")
-        expected_recovered = recovery_step_payloads(projection)
-        if event.payload.recovered_steps != expected_recovered:
+        expected = recovery_step_payloads(projection)
+        if event.payload.recovered_steps != expected:
             raise ValueError("workflow_recovered_steps_invalid")
-        exhausted_ids = {
-            recovered.step_id
-            for recovered in expected_recovered
-            if recovered.outcome == "failed"
+        exhausted = {
+            item.step_id for item in expected if item.outcome == "failed"
         }
-        expected_blocked = recovery_blocked_step_payloads(projection, exhausted_ids)
+        expected_blocked = recovery_blocked_step_payloads(projection, exhausted)
         if event.payload.blocked_steps != expected_blocked:
             raise ValueError("workflow_recovery_blocked_steps_invalid")
-        for recovered in event.payload.recovered_steps:
+        for recovered in expected:
             step = _step(projection, recovered.step_id)
             step.status = (
                 StepStatus.PENDING
                 if recovered.outcome == "retry"
                 else StepStatus.FAILED
             )
+            step.active_claim_id = None
             step.reason_codes = recovered.reason_codes
-        for blocked_payload in event.payload.blocked_steps:
-            blocked = _step(projection, blocked_payload.step_id)
-            blocked.status = StepStatus.SKIPPED
-            blocked.reason_codes = blocked_payload.reason_codes
+        for blocked in expected_blocked:
+            step = _step(projection, blocked.step_id)
+            step.status = StepStatus.SKIPPED
+            step.reason_codes = blocked.reason_codes
         _refresh_status(projection)
         return
 
     if not isinstance(event.payload, StepEventPayload):
         raise ValueError("workflow_step_payload_invalid")
-    step = _step(projection, event.payload.step_id)
+    payload = event.payload
+    step = _step(projection, payload.step_id)
     if event.event_type is RunEventType.STEP_CLAIMED:
         if step.status is not StepStatus.PENDING:
             raise ValueError("workflow_step_not_pending")
@@ -349,27 +329,37 @@ def _apply_event(projection: RunProjection, event: RunEvent) -> None:
             for dependency in step.depends_on
         ):
             raise ValueError("workflow_step_dependencies_not_succeeded")
+        if payload.attempt != step.attempts + 1:
+            raise ValueError("workflow_claim_attempt_invalid")
         step.status = StepStatus.RUNNING
-        step.attempts += 1
-    elif event.event_type is RunEventType.STEP_SUCCEEDED:
+        step.attempts = payload.attempt
+        step.active_claim_id = payload.claim_id
+    else:
         if step.status is not StepStatus.RUNNING:
             raise ValueError("workflow_step_not_running")
-        step.status = StepStatus.SUCCEEDED
-        step.reason_codes = event.payload.reason_codes
-    elif event.event_type is RunEventType.STEP_FAILED:
-        if step.status is not StepStatus.RUNNING:
-            raise ValueError("workflow_step_not_running")
-        step.status = StepStatus.FAILED
-        step.reason_codes = event.payload.reason_codes
-        if event.payload.retry_exhausted:
-            expected = blocked_descendant_ids(projection, step.step_id)
-            actual = tuple(blocked.step_id for blocked in event.payload.blocked_steps)
-            if actual != expected:
-                raise ValueError("workflow_blocked_descendants_invalid")
-            for blocked_payload in event.payload.blocked_steps:
-                blocked = projection.steps[blocked_payload.step_id]
-                blocked.status = StepStatus.SKIPPED
-                blocked.reason_codes = blocked_payload.reason_codes
+        if (
+            step.active_claim_id != payload.claim_id
+            or step.attempts != payload.attempt
+        ):
+            raise ValueError("workflow_claim_fence_mismatch")
+        step.active_claim_id = None
+        if event.event_type is RunEventType.STEP_SUCCEEDED:
+            step.status = StepStatus.SUCCEEDED
+            step.outcome_receipt = payload.outcome_receipt
+            step.reason_codes = ()
+        elif event.event_type is RunEventType.STEP_FAILED:
+            step.status = StepStatus.FAILED
+            step.outcome_receipt = payload.outcome_receipt
+            step.reason_codes = payload.reason_codes
+            if payload.retry_exhausted:
+                expected = blocked_descendant_ids(projection, step.step_id)
+                actual = tuple(item.step_id for item in payload.blocked_steps)
+                if actual != expected:
+                    raise ValueError("workflow_blocked_descendants_invalid")
+                for blocked in payload.blocked_steps:
+                    child = _step(projection, blocked.step_id)
+                    child.status = StepStatus.SKIPPED
+                    child.reason_codes = blocked.reason_codes
     _refresh_status(projection)
 
 
@@ -400,7 +390,6 @@ def blocked_descendant_ids(
 def recovery_step_payloads(
     projection: RunProjection,
 ) -> tuple[RecoveredStepPayload, ...]:
-    """Describe one deterministic recovery of every interrupted/retryable step."""
     recovered: list[RecoveredStepPayload] = []
     for step in projection.steps.values():
         if step.status is StepStatus.RUNNING:
@@ -414,10 +403,7 @@ def recovery_step_payloads(
                     else (),
                 )
             )
-        elif (
-            step.status is StepStatus.FAILED
-            and step.attempts < projection.max_attempts
-        ):
+        elif step.status is StepStatus.FAILED and step.attempts < projection.max_attempts:
             recovered.append(
                 RecoveredStepPayload(step_id=step.step_id, outcome="retry")
             )
@@ -454,6 +440,8 @@ def _refresh_status(projection: RunProjection) -> None:
         )
     elif StepStatus.PENDING in states:
         projection.status = RunStatus.PENDING
+    elif StepStatus.SUCCEEDED in states and StepStatus.SKIPPED in states:
+        projection.status = RunStatus.PARTIAL
     elif StepStatus.SUCCEEDED in states:
         projection.status = RunStatus.SUCCEEDED
     else:

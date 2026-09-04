@@ -60,20 +60,23 @@ SHARED_VISUALIZATION_CONTRACT_FILES = (
 )
 AGENT_RUNTIME_FILES = (
     Path("docs/local-agent-runtime.md"),
-    Path("plans/agent-runtime-integration.md"),
     Path("src/bridge/domain/__init__.py"),
     Path("src/bridge/domain/models.py"),
     Path("src/bridge/planner/__init__.py"),
     Path("src/bridge/planner/service.py"),
     Path("src/bridge/runners/__init__.py"),
-    Path("src/bridge/runners/llm.py"),
     Path("src/bridge/runners/pipeline.py"),
     Path("src/bridge/storage/__init__.py"),
     Path("src/bridge/storage/artifacts.py"),
+    Path("src/bridge/storage/private_paths.py"),
     Path("src/bridge/workflow/__init__.py"),
     Path("src/bridge/workflow/event_store.py"),
     Path("src/bridge/workflow/events.py"),
     Path("src/bridge/workflow/executor.py"),
+    Path("tests/test_agent_domain_planner.py"),
+    Path("tests/test_local_artifact_store.py"),
+    Path("tests/test_tool_execution_pipeline.py"),
+    Path("tests/test_workflow_runtime.py"),
 )
 P001_VISUALIZATION_FILES = (
     Path("plans/p0-01-input-qc-visualization.md"),

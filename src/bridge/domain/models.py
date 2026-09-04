@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
+import hashlib
+import json
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping
@@ -8,11 +11,6 @@ from typing import Any, Mapping
 from pydantic import Field, field_serializer, field_validator, model_validator
 
 from bridge.toolkit.contracts import FrozenModel, InputAsset, InputLevel
-
-
-class CaseStatus(StrEnum):
-    DRAFT = "draft"
-    CONFIRMED = "confirmed"
 
 
 class PlanStatus(StrEnum):
@@ -23,6 +21,12 @@ class PlanStatus(StrEnum):
 class StepDisposition(StrEnum):
     EXECUTE = "execute"
     SKIP = "skip"
+
+
+def _canonical_json(value: object) -> str:
+    if hasattr(value, "model_dump"):
+        value = value.model_dump(mode="json")
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
 def _freeze_json(value: Any) -> Any:
@@ -46,13 +50,13 @@ def _thaw_json(value: Any) -> Any:
 
 
 class CaseInputAsset(FrozenModel):
-    """Defensive, deeply immutable snapshot of an input asset in a confirmed case."""
+    """A content-bound local input asset."""
 
     asset_id: str = Field(min_length=1)
     path: Path
     format: str = Field(min_length=1)
     input_level: InputLevel
-    checksum: str | None = None
+    checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
     matrix_location: str | None = None
     matrix_semantics: str | None = None
     assay: str | None = None
@@ -61,7 +65,6 @@ class CaseInputAsset(FrozenModel):
     @field_validator(
         "asset_id",
         "format",
-        "checksum",
         "matrix_location",
         "matrix_semantics",
         "assay",
@@ -109,77 +112,18 @@ class CaseInputAsset(FrozenModel):
         return InputAsset.model_validate(self.model_dump(mode="python"))
 
 
-class SampleRecord(FrozenModel):
-    sample_id: str = Field(min_length=1)
-    preparation_id: str = Field(min_length=1)
-    asset_ids: tuple[str, ...] = Field(min_length=1)
-    data_role: str = Field(min_length=1)
-    sampling_context: str = Field(min_length=1)
-    donor_or_cell_line_id: str | None = None
-    lot_id: str | None = None
-    batch_id: str | None = None
-    timepoint: str | None = None
-    biological_replicate_id: str | None = None
-    technical_replicate_id: str | None = None
+class CaseInputBundle(FrozenModel):
+    """Local upload envelope; it is not the scientific ProductCase contract."""
 
-    @field_validator(
-        "sample_id",
-        "preparation_id",
-        "data_role",
-        "sampling_context",
-        "donor_or_cell_line_id",
-        "lot_id",
-        "batch_id",
-        "timepoint",
-        "biological_replicate_id",
-        "technical_replicate_id",
-    )
-    @classmethod
-    def strings_are_not_blank(cls, value: str | None) -> str | None:
-        if value is not None and not value.strip():
-            raise ValueError("sample identifiers and provenance must be nonblank")
-        return value
-
-    @model_validator(mode="after")
-    def asset_ids_are_unique(self) -> "SampleRecord":
-        if any(not asset_id.strip() for asset_id in self.asset_ids):
-            raise ValueError("sample asset ids must be nonblank")
-        if len(self.asset_ids) != len(set(self.asset_ids)):
-            raise ValueError("sample asset ids must be unique")
-        return self
-
-
-class ProductCase(FrozenModel):
-    case_id: str = Field(min_length=1)
+    bundle_id: str = Field(min_length=1)
     version: str = Field(min_length=1)
-    status: CaseStatus
-    product_type: str = Field(min_length=1)
-    target_cell_type: str = Field(min_length=1)
-    differentiation_stage: str = Field(min_length=1)
-    intended_use: str = Field(min_length=1)
-    assay: str = Field(min_length=1)
-    product_definition_card_ref: str = Field(min_length=1)
-    reference_policy_ref: str = Field(min_length=1)
-    prior_snapshot_ref: str = Field(min_length=1)
     assets: tuple[CaseInputAsset, ...] = Field(min_length=1)
-    samples: tuple[SampleRecord, ...] = Field(min_length=1)
 
-    @field_validator(
-        "case_id",
-        "version",
-        "product_type",
-        "target_cell_type",
-        "differentiation_stage",
-        "intended_use",
-        "assay",
-        "product_definition_card_ref",
-        "reference_policy_ref",
-        "prior_snapshot_ref",
-    )
+    @field_validator("bundle_id", "version")
     @classmethod
-    def required_strings_are_not_blank(cls, value: str) -> str:
+    def identifiers_are_not_blank(cls, value: str) -> str:
         if not value.strip():
-            raise ValueError("case identifiers and provenance must be nonblank")
+            raise ValueError("input bundle identifiers must be nonblank")
         return value
 
     @field_validator("assets", mode="before")
@@ -193,26 +137,24 @@ class ProductCase(FrozenModel):
         return value
 
     @model_validator(mode="after")
-    def validate_case_graph(self) -> "ProductCase":
+    def asset_ids_are_unique(self) -> "CaseInputBundle":
         asset_ids = [asset.asset_id for asset in self.assets]
         if len(asset_ids) != len(set(asset_ids)):
-            raise ValueError("case asset ids must be unique")
-        sample_ids = [sample.sample_id for sample in self.samples]
-        if len(sample_ids) != len(set(sample_ids)):
-            raise ValueError("case sample ids must be unique")
-        unknown_assets = sorted(
-            {
-                asset_id
-                for sample in self.samples
-                for asset_id in sample.asset_ids
-                if asset_id not in set(asset_ids)
-            }
-        )
-        if unknown_assets:
-            raise ValueError(f"samples reference unknown assets: {unknown_assets}")
-        if any(not asset_id.strip() for asset_id in asset_ids):
-            raise ValueError("case asset ids must be nonblank")
+            raise ValueError("input bundle asset ids must be unique")
         return self
+
+
+class OutputDirectoryBinding(FrozenModel):
+    path: Path
+    device: int = Field(ge=0)
+    inode: int = Field(ge=0)
+
+    @field_validator("path")
+    @classmethod
+    def path_is_absolute(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError("output directory path must be absolute")
+        return value
 
 
 class PlanStep(FrozenModel):
@@ -221,26 +163,28 @@ class PlanStep(FrozenModel):
     tool_version: str = Field(min_length=1)
     disposition: StepDisposition
     depends_on: tuple[str, ...] = Field(default_factory=tuple)
-    measurement_spec_ref: str | None = None
-    reference_refs: tuple[str, ...] = Field(default_factory=tuple)
-    prior_refs: tuple[str, ...] = Field(default_factory=tuple)
     reason_codes: tuple[str, ...] = Field(default_factory=tuple)
     approved_request_json: str | None = None
+    approved_request_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    output_directory: OutputDirectoryBinding | None = None
     environment_spec_id: str | None = None
     input_schema_ref: str | None = None
     output_schema_ref: str | None = None
     implementation_state: str | None = None
+    scientific_status: str | None = None
     result_schema_ref: str | None = None
 
     @field_validator(
         "step_id",
         "tool_version",
-        "measurement_spec_ref",
         "approved_request_json",
         "environment_spec_id",
         "input_schema_ref",
         "output_schema_ref",
         "implementation_state",
+        "scientific_status",
         "result_schema_ref",
     )
     @classmethod
@@ -250,62 +194,98 @@ class PlanStep(FrozenModel):
         return value
 
     @model_validator(mode="after")
-    def skipped_step_has_reason(self) -> "PlanStep":
-        if self.disposition is StepDisposition.SKIP and not self.reason_codes:
-            raise ValueError("skipped plan step requires a reason code")
+    def validate_execution_contract(self) -> "PlanStep":
         if len(self.depends_on) != len(set(self.depends_on)):
             raise ValueError("plan step dependencies must be unique")
         if self.step_id in self.depends_on:
             raise ValueError("plan step cannot depend on itself")
-        for label, values in (
-            ("dependency", self.depends_on),
-            ("reference", self.reference_refs),
-            ("prior", self.prior_refs),
-            ("reason code", self.reason_codes),
-        ):
-            if any(not value.strip() for value in values):
-                raise ValueError(f"plan step {label} values must be nonblank")
-        if self.disposition is StepDisposition.SKIP and self.approved_request_json is not None:
-            raise ValueError("skipped plan step cannot carry an approved request")
+        if any(not value.strip() for value in (*self.depends_on, *self.reason_codes)):
+            raise ValueError("plan step references and reason codes must be nonblank")
+        if self.disposition is StepDisposition.SKIP:
+            if not self.reason_codes:
+                raise ValueError("skipped plan step requires a reason code")
+            if any(
+                value is not None
+                for value in (
+                    self.approved_request_json,
+                    self.approved_request_sha256,
+                    self.output_directory,
+                )
+            ):
+                raise ValueError("skipped plan step cannot carry an execution request")
+            return self
+        required = (
+            self.approved_request_json,
+            self.approved_request_sha256,
+            self.output_directory,
+            self.environment_spec_id,
+            self.input_schema_ref,
+            self.output_schema_ref,
+            self.implementation_state,
+            self.scientific_status,
+        )
+        if any(value is None for value in required):
+            raise ValueError("executable plan step requires a complete execution contract")
+        assert self.approved_request_json is not None
+        expected = hashlib.sha256(self.approved_request_json.encode()).hexdigest()
+        if self.approved_request_sha256 != expected:
+            raise ValueError("approved request digest mismatch")
         return self
+
+
+class PlanApprovalReceipt(FrozenModel):
+    plan_id: str = Field(min_length=1)
+    plan_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    approver_id: str = Field(min_length=1)
+    authority_ref: str = Field(min_length=1)
+    approved_at: datetime
+
+    @field_validator("plan_id", "approver_id", "authority_ref")
+    @classmethod
+    def values_are_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("approval receipt values must be nonblank")
+        return value
+
+    @field_validator("approved_at")
+    @classmethod
+    def approved_at_is_timezone_aware(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("approval timestamp must be timezone-aware")
+        return value
 
 
 class AnalysisPlan(FrozenModel):
     plan_id: str = Field(min_length=1)
     version: str = Field(min_length=1)
-    case_ref: str = Field(min_length=1)
-    case_id: str | None = None
-    case_version: str | None = None
-    case_contract_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    input_bundle_ref: str = Field(min_length=1)
+    input_bundle_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     status: PlanStatus
     knowledge_snapshot_ref: str = Field(min_length=1)
     steps: tuple[PlanStep, ...] = Field(min_length=1)
-    network_required: bool = False
-    high_resource_required: bool = False
+    approval_receipt: PlanApprovalReceipt | None = None
 
     @field_validator(
         "plan_id",
         "version",
-        "case_ref",
-        "case_id",
-        "case_version",
+        "input_bundle_ref",
         "knowledge_snapshot_ref",
     )
     @classmethod
-    def required_strings_are_not_blank(cls, value: str | None) -> str | None:
-        if value is not None and not value.strip():
+    def required_strings_are_not_blank(cls, value: str) -> str:
+        if not value.strip():
             raise ValueError("plan identifiers and provenance must be nonblank")
         return value
 
+    def approval_sha256(self) -> str:
+        payload = self.model_dump(
+            mode="json",
+            exclude={"status", "approval_receipt"},
+        )
+        return hashlib.sha256(_canonical_json(payload).encode()).hexdigest()
+
     @model_validator(mode="after")
-    def validate_step_graph(self) -> "AnalysisPlan":
-        if (self.case_id is None) != (self.case_version is None):
-            raise ValueError("analysis plan case identity must include ID and version")
-        if (
-            self.case_id is not None
-            and self.case_ref != f"{self.case_id}@{self.case_version}"
-        ):
-            raise ValueError("analysis plan case reference does not match case identity")
+    def validate_plan(self) -> "AnalysisPlan":
         step_ids = [step.step_id for step in self.steps]
         if len(step_ids) != len(set(step_ids)):
             raise ValueError("analysis plan step ids must be unique")
@@ -328,4 +308,37 @@ class AnalysisPlan(FrozenModel):
                 )
             known.add(step.step_id)
             dispositions[step.step_id] = step.disposition
+        if self.status is PlanStatus.DRAFT:
+            if self.approval_receipt is not None:
+                raise ValueError("draft plan cannot carry an approval receipt")
+        else:
+            receipt = self.approval_receipt
+            if receipt is None:
+                raise ValueError("approved plan requires an approval receipt")
+            if receipt.plan_id != self.plan_id:
+                raise ValueError("approval receipt plan mismatch")
+            if receipt.plan_sha256 != self.approval_sha256():
+                raise ValueError("approval receipt digest mismatch")
         return self
+
+
+def approve_plan(
+    plan: AnalysisPlan,
+    *,
+    approver_id: str,
+    authority_ref: str,
+    approved_at: datetime,
+) -> AnalysisPlan:
+    if plan.status is not PlanStatus.DRAFT:
+        raise ValueError("analysis_plan_not_draft")
+    receipt = PlanApprovalReceipt(
+        plan_id=plan.plan_id,
+        plan_sha256=plan.approval_sha256(),
+        approver_id=approver_id,
+        authority_ref=authority_ref,
+        approved_at=approved_at,
+    )
+    payload = plan.model_dump(mode="json")
+    payload["status"] = PlanStatus.APPROVED
+    payload["approval_receipt"] = receipt.model_dump(mode="json")
+    return AnalysisPlan.model_validate(payload)

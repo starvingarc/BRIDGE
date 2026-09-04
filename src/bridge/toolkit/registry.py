@@ -184,101 +184,6 @@ class ToolRegistry:
             reason_codes=["executor_not_registered"],
         )
 
-    def check_case_eligibility(
-        self,
-        request: ToolRequestModel,
-        *,
-        case_id: str,
-        case_version: str,
-    ) -> EligibilityResult:
-        """Check normal eligibility plus the adapter's typed ProductCase binding."""
-
-        spec = self.describe(request.tool_id)
-        contract_reason = self._request_contract_reason(request, spec)
-        if contract_reason is not None:
-            return EligibilityResult(
-                tool_id=request.tool_id,
-                eligible=False,
-                reason_codes=[contract_reason],
-            )
-        if not isinstance(spec, ToolPackageSpecV2):
-            return self.check_eligibility(request)
-        if request.tool_version is not None and request.tool_version != spec.version:
-            return EligibilityResult(
-                tool_id=request.tool_id,
-                eligible=False,
-                reason_codes=["tool_version_mismatch"],
-            )
-        if spec.implementation_state is not ImplementationState.IMPLEMENTED:
-            return self.check_eligibility(request)
-        self._resolve_result_schema(spec)
-        adapter = self._resolve_adapter(spec)
-        case_checker = getattr(adapter, "check_case_eligibility", None)
-        if case_checker is None:
-            return EligibilityResult(
-                tool_id=request.tool_id,
-                eligible=False,
-                reason_codes=["approved_product_case_binding_unsupported"],
-            )
-        snapshots = tuple((ref.path, ref.sha256) for ref in request.object_inputs)
-        try:
-            eligibility = case_checker(
-                request,
-                spec,
-                case_id=case_id,
-                case_version=case_version,
-            )
-        except Exception:
-            if not self._structured_inputs_unchanged(snapshots):
-                return EligibilityResult(
-                    tool_id=request.tool_id,
-                    eligible=False,
-                    reason_codes=["input_asset_modified_during_run"],
-                )
-            raise
-        if not self._structured_inputs_unchanged(snapshots):
-            return EligibilityResult(
-                tool_id=request.tool_id,
-                eligible=False,
-                reason_codes=["input_asset_modified_during_run"],
-            )
-        if not isinstance(eligibility, EligibilityResult):
-            raise TypeError(
-                "Tool Package adapter returned an invalid eligibility result"
-            )
-        if eligibility.tool_id != request.tool_id:
-            raise ValueError("Tool Package adapter eligibility tool binding mismatch")
-        return eligibility
-
-    def validate_result(
-        self,
-        result: object,
-        request: ToolRequestModel,
-    ) -> ToolRunModel:
-        """Apply the registry-selected generation and result Schema contract."""
-
-        spec = self.describe(request.tool_id)
-        if isinstance(spec, ToolPackageSpecV2):
-            if not isinstance(request, ToolRequestV2):
-                raise TypeError("Tool Package requires ToolRequestV2")
-            result_schema = ToolRegistry._resolve_result_schema(spec)
-            return ToolRegistry._validate_adapter_result(
-                result, request, spec, result_schema
-            )
-        if not isinstance(request, ToolRequest) or isinstance(request, ToolRequestV2):
-            raise TypeError("Tool Package requires ToolRequest")
-        if not isinstance(result, ToolRun) or isinstance(result, ToolRunV2):
-            raise TypeError("Tool Package returned an invalid ToolRun")
-        if result.request != request or result.request.tool_id != spec.tool_id:
-            raise ValueError("Tool Package returned a mismatched tool or request")
-        if result.tool_version != spec.version:
-            raise ValueError("Tool Package returned a mismatched tool version")
-        if result.implementation_state is not spec.implementation_state:
-            raise ValueError("Tool Package returned a mismatched implementation state")
-        if result.environment_spec_id != spec.environment_spec_id:
-            raise ValueError("Tool Package returned a mismatched environment spec")
-        return result
-
     @staticmethod
     def _check_input_qc_eligibility(request: ToolRequest) -> EligibilityResult:
         if len(request.assets) != 1:
@@ -435,6 +340,37 @@ class ToolRegistry:
             return run_cell_state_evidence(request, spec)
         raise RuntimeError(f"No executor registered for implemented tool {request.tool_id}")
 
+    def validate_result(
+        self,
+        result: object,
+        request: ToolRequestModel,
+    ) -> ToolRunModel:
+        """Validate a result against the registry-selected contract."""
+
+        spec = self.describe(request.tool_id)
+        if isinstance(spec, ToolPackageSpecV2):
+            if not isinstance(request, ToolRequestV2):
+                raise TypeError("Tool Package requires ToolRequestV2")
+            return self._validate_adapter_result(
+                result,
+                request,
+                spec,
+                self._resolve_result_schema(spec),
+            )
+        if not isinstance(request, ToolRequest) or isinstance(request, ToolRequestV2):
+            raise TypeError("Tool Package requires ToolRequest")
+        if not isinstance(result, ToolRun) or isinstance(result, ToolRunV2):
+            raise TypeError("Tool Package returned an invalid ToolRun")
+        if result.request != request or result.request.tool_id != spec.tool_id:
+            raise ValueError("Tool Package returned a mismatched tool or request")
+        if result.tool_version != spec.version:
+            raise ValueError("Tool Package returned a mismatched tool version")
+        if result.implementation_state is not spec.implementation_state:
+            raise ValueError("Tool Package returned a mismatched implementation state")
+        if result.environment_spec_id != spec.environment_spec_id:
+            raise ValueError("Tool Package returned a mismatched environment spec")
+        return result
+
     def _run_v2(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
     ) -> ToolRunV2:
@@ -447,7 +383,7 @@ class ToolRegistry:
                 input_eligibility.reason_codes,
             )
 
-        self._resolve_result_schema(spec)
+        result_schema = self._resolve_result_schema(spec)
         adapter = self._resolve_adapter(spec)
         eligibility = self._call_adapter_eligibility(
             adapter, request, spec, snapshots
@@ -479,7 +415,7 @@ class ToolRegistry:
                 ExecutionState.FAILED,
                 ["input_asset_modified_during_run"],
             )
-        return self.validate_result(result, request)
+        return self._validate_adapter_result(result, request, spec, result_schema)
 
     @staticmethod
     def _request_contract_reason(

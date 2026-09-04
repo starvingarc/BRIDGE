@@ -7,18 +7,26 @@ from bridge.workflow.event_store import (
     RunEventStore,
     SQLiteRunEventStore,
 )
-from bridge.workflow.events import RunSnapshot, RunStatus, StepSnapshot, StepStatus
-from bridge.workflow.executor import LocalWorkflowExecutor
+from bridge.workflow.events import (
+    RunSnapshot,
+    RunStatus,
+    StepOutcomeReceipt,
+    StepSnapshot,
+    StepStatus,
+)
+from bridge.workflow.executor import LocalWorkflowExecutor, StepClaim
 
 __all__ = [
-    "LocalWorkflowExecutor",
     "EventCompatibilityError",
     "EventSequenceConflict",
     "InMemoryRunEventStore",
-    "RunSnapshot",
+    "LocalWorkflowExecutor",
     "RunEventStore",
+    "RunSnapshot",
     "RunStatus",
     "SQLiteRunEventStore",
+    "StepClaim",
+    "StepOutcomeReceipt",
     "StepSnapshot",
     "StepStatus",
 ]
