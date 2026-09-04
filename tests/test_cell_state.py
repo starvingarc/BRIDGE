@@ -643,7 +643,7 @@ def test_missing_qc_v2_keeps_v01_run_and_reports_handoff_unavailable(
     assert run.result["measurement_spec_id"] == "CELLSTATE-scRNA-shadow-v0.1"
 
 
-def test_v3_sidecar_does_not_change_legacy_result_or_artifact_bytes(
+def test_v3_sidecar_creates_a_new_immutable_publication(
     tmp_path: Path, monkeypatch
 ) -> None:
     _build_snapshot(tmp_path, monkeypatch)
@@ -652,21 +652,20 @@ def test_v3_sidecar_does_not_change_legacy_result_or_artifact_bytes(
     request = _request(tmp_path, query)
 
     legacy_only = ToolRegistry.load_default().run(request)
-    legacy_hashes = {
-        (item.kind, item.path.name): item.sha256
-        for item in legacy_only.artifacts
-        if item.kind != "manifest"
-    }
+    legacy_snapshot = {item.path: _sha256(item.path) for item in legacy_only.artifacts}
     _configure_qc_catalog(tmp_path, monkeypatch, query, include_v2=True)
     with_v3 = ToolRegistry.load_default().run(request)
-    with_v3_legacy_hashes = {
-        (item.kind, item.path.name): item.sha256
-        for item in with_v3.artifacts
-        if item.kind not in {"cell_state_profile_v3", "manifest"}
-    }
 
-    assert legacy_only.result == with_v3.result
-    assert legacy_hashes == with_v3_legacy_hashes
+    assert legacy_only.execution_state is ExecutionState.SUCCEEDED
+    assert with_v3.execution_state is ExecutionState.SUCCEEDED
+    assert legacy_only.run_id != with_v3.run_id
+    assert {path: _sha256(path) for path in legacy_snapshot} == legacy_snapshot
+    assert {item.path.parent for item in legacy_only.artifacts}.isdisjoint(
+        {item.path.parent for item in with_v3.artifacts}
+    )
+    assert "cell_state_profile_v3" not in {
+        item.kind for item in legacy_only.artifacts
+    }
     assert {item.kind for item in with_v3.artifacts} - {
         item.kind for item in legacy_only.artifacts
     } == {"cell_state_profile_v3"}

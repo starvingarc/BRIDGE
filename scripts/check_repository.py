@@ -89,10 +89,15 @@ P001_VISUALIZATION_FILES = (
 P002_VISUALIZATION_FILES = (
     Path("environments/bridge-p0-core-v0.2.yml"),
     Path("src/bridge/resources/schemas/cell_state_evidence_matrix_data.schema.json"),
+    Path("src/bridge/resources/schemas/cell_state_evidence_matrix_data_v2.schema.json"),
+    Path("src/bridge/resources/schemas/hierarchical_cell_state_visualization_data.schema.json"),
     Path("src/bridge/resources/schemas/hierarchical_cell_state_composition_data.schema.json"),
+    Path("src/bridge/resources/schemas/p0_02_visualization_artifact_set.schema.json"),
     Path("src/bridge/tool_packages/p0_02_cell_state/grouping.py"),
     Path("src/bridge/tool_packages/p0_02_cell_state/hierarchical_composition.py"),
+    Path("src/bridge/tool_packages/p0_02_cell_state/resources/visualization_source_registry.yaml"),
     Path("src/bridge/tool_packages/p0_02_cell_state/visualization_data.py"),
+    Path("src/bridge/tool_packages/p0_02_cell_state/visualization_runtime.py"),
 )
 P003_VISUALIZATION_FILES = (
     Path("plans/p0-03-target-regional-visualization.md"),

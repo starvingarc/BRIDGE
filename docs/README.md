@@ -26,14 +26,15 @@ evidence you need.
 > state, artifact status and registered-check views; P0-12 provides declared
 > post-transplant specimen scope, uploaded-profile composition and separately
 > scaled reference-correlation/program-expression views. The registry contains
-> 41 components: 34 typed candidates and 7 legacy components. Their counts are
+> 43 components: 36 typed candidates and 7 legacy components. Their counts are
 > audit records, not an evidence score.
 > P0-06 does not currently provide a
 > numeric reference envelope,
 > ordered process timeline, numeric LOD/UCB or spike-in recovery curve, or CNV
 > visualization. P0-07 remains descriptive: observed ranges are not confidence
-> intervals and raw deltas have no interval. The current P0-02 figure components
-> remain `legacy_untyped`.
+> intervals and raw deltas have no interval. P0-02 provides typed whole-product
+> reference-correspondence and static state-definition registry views while
+> retaining five compatibility components as `legacy_untyped`.
 > No scientific method, state, threshold or score is frozen, and a target
 > capability in the PRD or a task
 > card is not current runtime behavior.

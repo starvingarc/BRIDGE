@@ -35,9 +35,9 @@ DETAILS = {
     },
     "P0-02": {
         "input": "QC-qualified expression views with required `source_family_id` and `qc_profile_ref` asset metadata, a MeasurementSpec reference, declared scRNA/snRNA modality, annotation vocabulary, reference candidates and provenance. The optional V3 handoff resolves the deployment-catalogued P0-01 structured-output index named by `qc_profile_ref`, including checksummed QC V2, biological-unit assignment and manifest artifacts.",
-        "output": "Backward-compatible Cell-State evidence plus an optional candidate-only V3 profile bound to the selected data view, MeasurementSpec, vocabulary, reference, QC bytes, typed biological-unit lineage, producer and environment. V3 emits explicit evidence states and denominators; it never emits assigned states or a domain score.",
+        "output": "Backward-compatible Cell-State evidence plus an optional candidate-only V3 profile, a typed whole-product reference-correspondence figure, and a static state-definition evidence registry. Every typed figure binds its complete table, static renders, exact data hash and evidence references; no output assigns a domain score.",
         "reject": "Reference, vocabulary, MeasurementSpec, assay, data-view or checksum mismatch fails closed. Missing structured-index or typed-lineage inputs leave the legacy run successful but V3 unavailable; no lineage or positive composition is inferred.",
-        "visualization": "Prediction-set composition, reference support, method agreement, uncertainty, OOD, and label-provenance views.",
+        "visualization": "Whole-product and submitted-group reference correspondence is shown with explicit denominators. A separate static registry distinguishes current label occurrence, dependent context, unrecorded source mappings and unrun external assessment; it does not represent query-specific product support.",
         "validation": "Real P0-01-to-P0-02 typed handoff, checksum and replacement adversaries, selected-view/observation lineage, legacy compatibility, source/lab/modality holdouts, calibration and OOD behavior.",
         "details": "docs/bridge_spec_v0.1/cell_state_annotation_task_card.md",
     },

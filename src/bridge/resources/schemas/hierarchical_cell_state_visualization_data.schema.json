@@ -1,0 +1,450 @@
+{
+  "$defs": {
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "HierarchicalCellStateVisualizationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "column_display_name": {
+          "minLength": 1,
+          "title": "Column Display Name",
+          "type": "string"
+        },
+        "column_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Column Id",
+          "type": "string"
+        },
+        "column_kind": {
+          "enum": [
+            "group_share",
+            "state",
+            "subtype_unresolved",
+            "subtype_unavailable",
+            "source_conflict",
+            "unavailable",
+            "open_set_not_assessed"
+          ],
+          "title": "Column Kind",
+          "type": "string"
+        },
+        "column_order": {
+          "minimum": 0,
+          "title": "Column Order",
+          "type": "integer"
+        },
+        "count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "denominator_scope": {
+          "minLength": 1,
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "missingness": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Missingness",
+          "type": "string"
+        },
+        "parent_denominator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Denominator"
+        },
+        "parent_denominator_scope": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Denominator Scope"
+        },
+        "parent_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Fraction"
+        },
+        "parent_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^L1:[A-Za-z0-9_]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent State Id"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "reference_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "status"
+          ],
+          "title": "Reference Level",
+          "type": "string"
+        },
+        "row_count": {
+          "exclusiveMinimum": 0,
+          "title": "Row Count",
+          "type": "integer"
+        },
+        "row_display_name": {
+          "minLength": 1,
+          "title": "Row Display Name",
+          "type": "string"
+        },
+        "row_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Row Id",
+          "type": "string"
+        },
+        "row_order": {
+          "minimum": 0,
+          "title": "Row Order",
+          "type": "integer"
+        },
+        "row_whole_product_fraction": {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Row Whole Product Fraction",
+          "type": "number"
+        },
+        "scientific_status": {
+          "const": "candidate",
+          "default": "candidate",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "state_id": {
+          "anyOf": [
+            {
+              "pattern": "^L[12]:[A-Za-z0-9_]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State Id"
+        }
+      },
+      "required": [
+        "record_id",
+        "row_id",
+        "row_display_name",
+        "row_order",
+        "row_count",
+        "row_whole_product_fraction",
+        "column_id",
+        "column_display_name",
+        "column_order",
+        "column_kind",
+        "reference_level",
+        "denominator",
+        "denominator_scope",
+        "evidence_state",
+        "applicability",
+        "missingness",
+        "evidence_ids"
+      ],
+      "title": "HierarchicalCellStateVisualizationRecord",
+      "type": "object"
+    },
+    "ProductGroupingProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "grouping_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grouping Hash"
+        },
+        "grouping_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grouping Key"
+        },
+        "method": {
+          "additionalProperties": true,
+          "title": "Method",
+          "type": "object"
+        },
+        "n_groups": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Groups"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "source": {
+          "enum": [
+            "user_label",
+            "exploratory_leiden",
+            "whole_product"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "user_provided",
+            "generated",
+            "not_generated"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "source",
+        "method"
+      ],
+      "title": "ProductGroupingProvenance",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/hierarchical-cell-state-visualization-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "alt_text": {
+      "maxLength": 240,
+      "minLength": 40,
+      "title": "Alt Text",
+      "type": "string"
+    },
+    "denominator_scope": {
+      "minLength": 1,
+      "title": "Denominator Scope",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "grouping": {
+      "$ref": "#/$defs/ProductGroupingProvenance"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "long_description": {
+      "minLength": 80,
+      "title": "Long Description",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observation_unit": {
+      "enum": [
+        "cells",
+        "nuclei",
+        "observations"
+      ],
+      "title": "Observation Unit",
+      "type": "string"
+    },
+    "producer_run_ref": {
+      "pattern": "^run:[A-Za-z0-9._:-]+$",
+      "title": "Producer Run Ref",
+      "type": "string"
+    },
+    "profile_id": {
+      "pattern": "^hierarchical-cell-state-visualization:[A-Za-z0-9._-]+$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/HierarchicalCellStateVisualizationRecord"
+      },
+      "minItems": 1,
+      "title": "Records",
+      "type": "array"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/hierarchical-cell-state-visualization-data/v0.1",
+      "default": "bridge://schemas/hierarchical-cell-state-visualization-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "scientific_status": {
+      "const": "candidate",
+      "default": "candidate",
+      "title": "Scientific Status",
+      "type": "string"
+    },
+    "source_profile_ref": {
+      "pattern": "^hierarchical-cell-state-composition:[A-Za-z0-9._-]+$",
+      "title": "Source Profile Ref",
+      "type": "string"
+    },
+    "source_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Profile Sha256",
+      "type": "string"
+    },
+    "whole_product_denominator": {
+      "exclusiveMinimum": 0,
+      "title": "Whole Product Denominator",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "profile_id",
+    "producer_run_ref",
+    "source_profile_ref",
+    "source_profile_sha256",
+    "observation_unit",
+    "whole_product_denominator",
+    "denominator_scope",
+    "grouping",
+    "records",
+    "evidence_ids",
+    "limitations",
+    "alt_text",
+    "long_description"
+  ],
+  "title": "HierarchicalCellStateVisualizationDataV1",
+  "type": "object"
+}
