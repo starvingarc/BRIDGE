@@ -136,6 +136,9 @@ METHOD_ROLES = frozenset(
         "off_target_method_input",
     }
 )
+METHOD_TRIGGER_ROLES = frozenset(
+    {"off_target_method_spec", "off_target_method_input"}
+)
 BASE_ROLES = frozenset(set(ROLE_CONTRACTS) - METHOD_ROLES - {MEASUREMENT_SPEC_ROLE})
 CELL_STATE_V3_CONTRACT = (
     "bridge://schemas/cell-state-evidence-profile/v0.3",
@@ -401,7 +404,7 @@ adapter = OffTargetControlAdapter()
 
 
 def _uses_method_runtime(refs: list[StructuredInputRef]) -> bool:
-    return any(ref.role in METHOD_ROLES for ref in refs)
+    return any(ref.role in METHOD_TRIGGER_ROLES for ref in refs)
 
 
 def _cell_state_contract(method_mode: bool):
@@ -432,6 +435,10 @@ def _envelope_reasons(request: ToolRequestV2, spec: ToolPackageSpecV2) -> list[s
         measurement_spec_count == 1 and spec.result_schema_ref != RESULT_SCHEMA_REF_V2
     ):
         reasons.append("measurement_projection_requires_profile_v2")
+    if measurement_spec_count == 1 and roles.count("biological_unit_manifest") != 1:
+        reasons.append("measurement_projection_requires_biological_unit_manifest")
+    if roles.count("biological_unit_manifest") > 1:
+        reasons.append("at_most_one_biological_unit_manifest_allowed")
     for role in BASE_ROLES:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
@@ -559,13 +566,6 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         reasons.append("cell_state_measurement_spec_binding_mismatch")
 
     if measurement_spec is not None:
-        if (
-            measurement_spec.measurement_spec_id
-            != product_case.measurement_spec_ref.object_id
-            or measurement_spec.version
-            != product_case.measurement_spec_ref.object_version
-        ):
-            reasons.append("measurement_spec_product_case_binding_mismatch")
         if measurement_spec.assay != product_case.assay:
             reasons.append("measurement_spec_assay_mismatch")
         if (
@@ -578,6 +578,23 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             reasons.append("measurement_spec_product_definition_not_applicable")
         if "P0-05" not in measurement_spec.tool_refs:
             reasons.append("measurement_spec_tool_not_authorized")
+        manifest = single_object(
+            request, loaded, "biological_unit_manifest", BiologicalUnitManifest
+        )
+        expected_observation_unit = (
+            "nucleus" if product_case.assay == "snRNA-seq" else "cell"
+        )
+        if (
+            measurement_spec.analysis_unit_kind != manifest.analysis_unit_kind
+            or measurement_spec.independence_group_kind
+            != manifest.independence_group_kind
+            or measurement_spec.observation_unit_kind != expected_observation_unit
+            or product_case.biological_unit_manifest_ref != manifest.ref
+            or product_case.biological_unit_manifest_sha256
+            != input_refs["biological_unit_manifest"].sha256
+            or evidence_bundle.denominator.n_observations != manifest.n_observations
+        ):
+            reasons.append("measurement_spec_biological_unit_mismatch")
         metric_names = measurement_spec.raw_metric_definition.get("metric_names")
         if (
             not isinstance(metric_names, list)
@@ -586,11 +603,6 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             or set(metric_names) != MEASUREMENT_PROJECTION_METRIC_NAMES
         ):
             reasons.append("measurement_spec_metric_names_mismatch")
-        if isinstance(cell_state_profile, CellStateEvidenceProfileV3) and (
-            cell_state_profile.measurement_spec_sha256
-            != input_refs[MEASUREMENT_SPEC_ROLE].sha256
-        ):
-            reasons.append("measurement_spec_checksum_mismatch")
 
     if not assessment_spec.active:
         reasons.append("off_target_assessment_spec_inactive")

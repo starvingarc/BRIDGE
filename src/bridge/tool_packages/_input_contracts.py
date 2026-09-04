@@ -481,6 +481,13 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                 ),
                 _role(
+                    "biological_unit_manifest",
+                    "bridge://schemas/biological-unit-manifest/v0.1",
+                    V01,
+                    0,
+                    1,
+                ),
+                _role(
                     "measurement_spec",
                     "bridge://schemas/measurement-spec/v0.2",
                     None,

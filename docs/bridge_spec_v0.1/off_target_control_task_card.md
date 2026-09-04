@@ -54,10 +54,10 @@ GMP 放行或产品排序结论。
 | `off_target_assessment_spec` | 两者 | map ref/hash、分母、unknown allowlist、rare-state rules |
 | `cell_state_evidence_profile` | 两者 | legacy 为 V2；方法模式为 V3，含 composition 与 DataView lineage |
 | `off_target_evidence_bundle` | 两者 | 上游 ref/hash、分母、state/unknown observations、supplied calibration |
-| `biological_unit_manifest` | 方法 | reviewed analysis-unit 与 independence-group mapping |
+| `biological_unit_manifest` | 方法及任何投影运行 | reviewed analysis-unit 与 independence-group mapping |
 | `off_target_method_spec` | 方法 | 方法选择、置信度、bootstrap 次数、planning target、OOD channel→family→upstream hash/method/reference 绑定与规则 |
 | `off_target_method_input` | 方法 | unit-level soft/hard composition、spike-in trials、仅含 channel ID/state/reason 的 OOD observations |
-| `measurement_spec` | 两者可选 | MeasurementSpecV2；须绑定 ProductCase、assay、P0-05 和三类允许的投影 metric |
+| `measurement_spec` | 两者可选 | 独立 P0-05 MeasurementSpecV2；须匹配 assay、产品适用范围、P0-05、三类投影 metric 及 reviewed manifest 的 analysis/independence/observation units |
 
 `OffTargetEvidenceBundle` 是上游计算结果的最小交接面。它包含 soft mass 与
 observed count，但不携带角色判断。完整覆盖状态下，state 与 unknown 的 soft
@@ -69,15 +69,16 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 1. 校验所选模式的六个或九个文件、Schema、版本、媒体类型和 checksum。
 2. 校验 ProductCase → ProductDefinitionCard → StateRoleMap、assay、
    MeasurementSpec、P0-02 profile 和 bundle 的引用及 checksum 血缘。
-3. 拒绝未映射 state、未声明 unknown reason、未声明的 rare calibration、
+3. 投影请求须提供 reviewed BiologicalUnitManifest，并核对 MeasurementSpec 的 analysis unit、independence group 及 scRNA/snRNA observation unit；P0-05 domain spec 与 ProductCase 中的 P0-02 source spec 保持独立。
+4. 拒绝未映射 state、未声明 unknown reason、未声明的 rare calibration、
    inactive spec 或分母不一致。
-4. 按外部 StateRoleMap 将预计算 state observations 确定性求和。
-5. 只有 composition coverage 为 `complete` 时才计算角色 fraction。
-6. unknown 只按外部 allowlist 中实际出现的 reason 汇总。
-7. 方法模式核对 DataView、BiologicalUnitManifest、unit-level 与 aggregate counts。
-8. 执行描述性 exact interval、hard/soft sensitivity 与 independence-group bootstrap。
-9. 每个 spike-in 浓度只允许每个 independence group 一次，计算候选检测限与单状态二项规划；按 MethodSpec 固定的上游来源族协调 OOD 状态。
-10. 从同一 typed visualization data 生成精确 TSV 与 SVG/PNG/PDF，在发布前再次检查输入 checksum 并原子写入全部 artifact。
+5. 按外部 StateRoleMap 将预计算 state observations 确定性求和。
+6. 只有 composition coverage 为 `complete` 时才计算角色 fraction。
+7. unknown 只按外部 allowlist 中实际出现的 reason 汇总。
+8. 方法模式核对 DataView、BiologicalUnitManifest、unit-level 与 aggregate counts。
+9. 执行描述性 exact interval、hard/soft sensitivity 与 independence-group bootstrap。
+10. 每个 spike-in 浓度只允许每个 independence group 一次，计算候选检测限与单状态二项规划；按 MethodSpec 固定的上游来源族协调 OOD 状态。
+11. 从同一 typed visualization data 生成精确 TSV 与 SVG/PNG/PDF，在发布前再次检查输入 checksum 并原子写入全部 artifact。
 
 相同输入内容与 random seed 产生相同 run ID、input hash 和 artifact hash；
 方法模式下 random seed 是运行指纹的一部分。
@@ -88,7 +89,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 `ToolRunV2.result` 返回；方法模式原子增加
 `off_target_method_bundle.json`。
 
-P0-05 v0.5 始终返回 profile v0.2。未提供 MeasurementSpec 时明确记录
+P0-05 v0.5.1 始终返回 profile v0.2。未提供 MeasurementSpec 时明确记录
 `not_requested` 且不生成 normalized measurement；提供并通过校验时，每条现有
 role、unknown 和 rare-state 记录各生成一个 checksummed MeasurementResultV2。
 
