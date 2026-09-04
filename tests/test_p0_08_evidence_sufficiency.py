@@ -118,7 +118,22 @@ def _qc(*, readiness_state: str = "ready") -> dict[str, Any]:
         "score_state": "unavailable",
         "domain_score": None,
         "measurement_spec_version": "0.1.0",
-        "selected_data_view": None,
+        "selected_data_view": {
+            "view_id": "data-view:case-001:selected",
+            "view_kind": "qc_selected_observations",
+            "artifact_id": "artifact:case-001:selected",
+            "sha256": "a" * 64,
+            "parent_asset_id": "asset:case-001",
+            "parent_asset_sha256": "b" * 64,
+            "matrix_location": "layers/counts",
+            "matrix_semantics": "raw_counts",
+            "n_observations": 100,
+            "observation_ids_sha256": "c" * 64,
+            "sample_or_preparation_ref": "preparation:case-001@1.0.0",
+            "selection_spec_ref": "QC-scRNA-candidate-v0.1@0.1.0",
+            "biological_unit_manifest_ref": None,
+            "biological_unit_manifest_sha256": None,
+        },
     }
 
 
@@ -226,6 +241,41 @@ def _sensitivity(**overrides: Any) -> dict[str, Any]:
     return payload
 
 
+def _product_case(**overrides: Any) -> dict[str, Any]:
+    payload = {
+        "object_version": "0.1.0",
+        "product_case_id": "product-case:case-001",
+        "case_version": "1.0.0",
+        "product_definition_ref": {
+            "object_id": "product-definition:pd-mda-progenitor",
+            "object_version": "1.0.0",
+        },
+        "source_unit_kind": "preparation",
+        "sample_or_preparation_ref": {
+            "object_id": "preparation:case-001",
+            "object_version": "1.0.0",
+        },
+        "independence_group_refs": [],
+        "biological_unit_manifest_ref": None,
+        "biological_unit_manifest_sha256": None,
+        "independence_scope_ref": None,
+        "measurement_spec_ref": {
+            "object_id": "measurement-spec:cell-state-source",
+            "object_version": "1.0.0",
+        },
+        "assay": "scRNA-seq",
+        "provenance_refs": [
+            {
+                "object_id": "provenance:case-001",
+                "object_version": "1.0.0",
+            }
+        ],
+        "created_at": "2026-08-13T00:00:00Z",
+    }
+    payload.update(overrides)
+    return payload
+
+
 def _domain(**overrides: Any) -> dict[str, Any]:
     payload = {
         "domain_gate_input_id": "domain-gate-input:case-001:target-identity",
@@ -260,10 +310,30 @@ def _domain(**overrides: Any) -> dict[str, Any]:
     return payload
 
 
+def _sparse_domain() -> dict[str, Any]:
+    return _domain(
+        product_case=None,
+        product_definition=None,
+        domain_id=None,
+        measurement_spec_input_id=None,
+        qc_profile_input_id=None,
+        measurement_result_input_ids=[],
+        validation_record_input_ids=[],
+        prior_record_input_ids=[],
+        sensitivity_record_input_ids=[],
+        method_requirement="not_assessed",
+        prior_requirement="not_assessed",
+        required_sensitivity_kinds=[],
+        task_validation_state="not_assessed",
+    )
+
+
 def _fixture_request(
     tmp_path: Path,
     *,
     domain: dict[str, Any] | None = None,
+    product_case: dict[str, Any] | None = None,
+    include_product_case: bool = True,
     measurement_spec: dict[str, Any] | None = None,
     qc: dict[str, Any] | None = None,
     measurement: dict[str, Any] | None = None,
@@ -302,6 +372,16 @@ def _fixture_request(
             "0.1.0",
         )
     ]
+    if include_product_case:
+        entries.append(
+            (
+                "product-case",
+                "product_case",
+                "bridge://schemas/product-case/v0.1",
+                product_case if product_case is not None else _product_case(),
+                "0.1.0",
+            )
+        )
     candidates = [
         (
             "target-spec",
@@ -377,7 +457,7 @@ def _fixture_request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-08",
-        tool_version="0.4.0",
+        tool_version="0.5.0",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -547,6 +627,27 @@ def test_module_models_round_trip_through_draft_2020_12(
     assert schema_ref.startswith("bridge://schemas/")
 
 
+def test_public_schemas_describe_the_checksummed_product_case_binding() -> None:
+    expected = (
+        "Versioned pointer declared inside DomainGateInput and, when present, "
+        "validated against the checksummed ProductCase supplied to P0-08."
+    )
+    profile_schema = load_schema(
+        "bridge://schemas/evidence-sufficiency-profile/v0.2"
+    )
+    result_schema = load_schema(RESULT_SCHEMA_REF)
+
+    assert (
+        profile_schema["properties"]["product_case_ref"]["description"]
+        == expected
+    )
+    assert (
+        result_schema["$defs"]["EvidenceSufficiencyProfileV2"]["properties"]
+        ["product_case_ref"]["description"]
+        == expected
+    )
+
+
 def test_sufficient_raw_evidence_never_enables_a_domain_score(tmp_path: Path) -> None:
     run = _run(tmp_path)
 
@@ -574,7 +675,13 @@ def test_sufficient_raw_evidence_never_enables_a_domain_score(tmp_path: Path) ->
     for ref in run.request.object_inputs:
         binding = source_by_input_id[ref.input_id]
         assert binding.role == ref.role
-        assert binding.object_version == ref.object_version
+        expected_version = (
+            result.case_summary.product_case_ref.object_version
+            if ref.role == "product_case"
+            and result.case_summary.product_case_ref is not None
+            else ref.object_version
+        )
+        assert binding.object_version == expected_version
         assert binding.schema_ref == ref.schema_ref
         assert binding.source_sha256 == ref.sha256
         assert "path" not in binding.model_dump(mode="json")
@@ -593,6 +700,143 @@ def test_sufficient_raw_evidence_never_enables_a_domain_score(tmp_path: Path) ->
             "alert",
         )
     }
+
+
+def test_v2_result_binds_exact_product_case_source_to_summary(tmp_path: Path) -> None:
+    run = _run(tmp_path)
+    result = EvidenceSufficiencyRunResult.model_validate(run.result)
+
+    case_bindings = [
+        binding
+        for binding in result.source_object_bindings
+        if binding.role == "product_case"
+    ]
+    product_case_input = next(
+        ref for ref in run.request.object_inputs if ref.role == "product_case"
+    )
+    assert result.case_summary.product_case_ref is not None
+    assert len(case_bindings) == 1
+    assert product_case_input.object_version == "0.1.0"
+    assert case_bindings[0].object_version == "1.0.0"
+    assert case_bindings[0].ref == result.case_summary.product_case_ref.ref
+    assert case_bindings[0].schema_ref == product_case_input.schema_ref
+    assert case_bindings[0].source_sha256 == product_case_input.sha256
+    assert all(
+        profile.product_case_ref == result.case_summary.product_case_ref
+        for profile in result.profiles
+    )
+
+
+@pytest.mark.parametrize(
+    "case_refs",
+    [
+        [],
+        [
+            ("product-case:case-001", "1.0.0"),
+            ("product-case:case-001", "1.0.0"),
+        ],
+        [("product-case:case-002", "1.0.0")],
+        [("product-case:case-001", "2.0.0")],
+    ],
+    ids=["missing", "duplicate", "id-mismatch", "version-mismatch"],
+)
+def test_v2_result_requires_one_exact_product_case_source_binding(
+    tmp_path: Path,
+    case_refs: list[tuple[str, str]],
+) -> None:
+    result = EvidenceSufficiencyRunResult.model_validate(_run(tmp_path).result)
+    payload = result.model_dump(mode="json")
+    template = next(
+        binding
+        for binding in payload["source_object_bindings"]
+        if binding["role"] == "product_case"
+    )
+    payload["source_object_bindings"] = [
+        binding
+        for binding in payload["source_object_bindings"]
+        if binding["role"] != "product_case"
+    ]
+    payload["source_object_bindings"].extend(
+        {
+            **template,
+            "input_id": f"product-case-{index}",
+            "logical_object_id": object_id,
+            "object_version": object_version,
+        }
+        for index, (object_id, object_version) in enumerate(case_refs)
+    )
+    payload["source_object_bindings"].sort(
+        key=lambda binding: (binding["role"], binding["input_id"])
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="result must bind its exact ProductCase source object",
+    ):
+        EvidenceSufficiencyRunResult.model_validate(payload)
+
+
+def test_v2_result_rejects_profile_product_case_summary_mismatch(
+    tmp_path: Path,
+) -> None:
+    result = EvidenceSufficiencyRunResult.model_validate(_run(tmp_path).result)
+    payload = result.model_dump(mode="json")
+    payload["profiles"][0]["product_case_ref"] = {
+        "object_id": "product-case:case-002",
+        "object_version": "1.0.0",
+    }
+
+    with pytest.raises(
+        ValueError, match="case summary product case must match profiles"
+    ):
+        EvidenceSufficiencyRunResult.model_validate(payload)
+
+
+def test_v2_result_rejects_null_case_profile_in_case_bound_multi_domain_result(
+    tmp_path: Path,
+) -> None:
+    case_bound_sparse_domain = _domain(
+        domain_gate_input_id="domain-gate-input:case-001:off-target-control",
+        domain_id="off_target_control",
+        product_definition=None,
+        measurement_spec_input_id=None,
+        qc_profile_input_id=None,
+        measurement_result_input_ids=[],
+        validation_record_input_ids=[],
+        prior_record_input_ids=[],
+        sensitivity_record_input_ids=[],
+        method_requirement="not_assessed",
+        prior_requirement="not_assessed",
+        required_sensitivity_kinds=[],
+        task_validation_state="not_assessed",
+    )
+    run = _run(
+        tmp_path,
+        extras=[
+            (
+                "off-target-domain",
+                "domain_gate_input",
+                "bridge://schemas/domain-gate-input/v0.1",
+                case_bound_sparse_domain,
+                "0.1.0",
+            )
+        ],
+    )
+    result = EvidenceSufficiencyRunResult.model_validate(run.result)
+    payload = result.model_dump(mode="json")
+    sparse_profile = next(
+        profile
+        for profile in payload["profiles"]
+        if profile["domain_id"] == "off_target_control"
+    )
+    assert sparse_profile["evidence_sufficiency_state"] == "not_assessed"
+    sparse_profile["product_case_ref"] = None
+
+    with pytest.raises(
+        ValueError,
+        match="profile ProductCase refs must match the case summary",
+    ):
+        EvidenceSufficiencyRunResult.model_validate(payload)
 
 
 def test_default_registry_dispatches_p0_08_through_declared_adapter(tmp_path: Path) -> None:
@@ -791,33 +1035,54 @@ def test_axis_folds_follow_fixed_precedence(
 
 
 def test_sparse_valid_binding_is_not_assessed_not_execution_failure(tmp_path: Path) -> None:
-    sparse = _domain(
-        product_case=None,
-        product_definition=None,
-        domain_id=None,
-        measurement_spec_input_id=None,
-        qc_profile_input_id=None,
-        measurement_result_input_ids=[],
-        validation_record_input_ids=[],
-        prior_record_input_ids=[],
-        sensitivity_record_input_ids=[],
-        method_requirement="not_assessed",
-        prior_requirement="not_assessed",
-        required_sensitivity_kinds=[],
-        task_validation_state="not_assessed",
-    )
-    run = _run(tmp_path, domain=sparse)
-    profile = EvidenceSufficiencyRunResult.model_validate(run.result).profiles[0]
+    sparse = _sparse_domain()
+    run = _run(tmp_path, domain=sparse, include_product_case=False)
+    result = EvidenceSufficiencyRunResult.model_validate(run.result)
+    profile = result.profiles[0]
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert profile.evidence_sufficiency_state.value == "not_assessed"
     assert "product_case_not_declared" in profile.missing_requirements
     assert "raw_evidence_gate_not_assessed" in profile.missing_requirements
     assert profile.blocking_reasons == []
-    assert EvidenceSufficiencyRunResult.model_validate(
-        run.result
-    ).case_summary.blocking_reasons == []
+    assert result.case_summary.blocking_reasons == []
+    assert result.case_summary.product_case_ref is None
+    assert not any(
+        binding.role == "product_case"
+        for binding in result.source_object_bindings
+    )
     assert profile.domain_score is None
+
+
+def test_sparse_v2_result_rejects_unexpected_product_case_source_binding(
+    tmp_path: Path,
+) -> None:
+    sparse = _sparse_domain()
+    result = EvidenceSufficiencyRunResult.model_validate(
+        _run(tmp_path, domain=sparse, include_product_case=False).result
+    )
+    payload = result.model_dump(mode="json")
+    payload["source_object_bindings"].append(
+        {
+            "input_id": "unexpected-product-case",
+            "role": "product_case",
+            "logical_object_id": "product-case:case-001",
+            "object_version": "1.0.0",
+            "schema_ref": "bridge://schemas/product-case/v0.1",
+            "source_sha256": "a" * 64,
+        }
+    )
+    payload["source_object_bindings"].sort(
+        key=lambda binding: (binding["role"], binding["input_id"])
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "result must not bind a ProductCase source object without a case summary"
+        ),
+    ):
+        EvidenceSufficiencyRunResult.model_validate(payload)
 
 
 @pytest.mark.parametrize(
@@ -1907,7 +2172,7 @@ def test_v1_invocation_and_forbidden_expression_channel_fail_eligibility(
     v1 = ToolRequest(
         request_id="v1",
         tool_id="P0-08",
-        tool_version="0.4.0",
+        tool_version="0.5.0",
         output_dir=(tmp_path / "out-v1").resolve(),
     )
     v1_eligibility = adapter.check_eligibility(v1, spec)  # type: ignore[arg-type]
@@ -2218,7 +2483,10 @@ def test_object_schema_and_packaged_gate_bytes_are_immutable(tmp_path: Path) -> 
     ).reason_codes
 
 
-@pytest.mark.parametrize("input_id", ["case-qc", "target-result", "target-spec"])
+@pytest.mark.parametrize(
+    "input_id",
+    ["product-case", "case-qc", "target-result", "target-spec"],
+)
 def test_structured_input_ref_version_is_strict_for_all_input_models(
     tmp_path: Path, input_id: str
 ) -> None:
@@ -2259,8 +2527,6 @@ def test_domain_bindings_measurement_and_product_definition_must_agree(
     [
         ("product_definition_not_applicable", "domain_input_product_definition_mismatch"),
         ("qc_assay", "domain_input_measurement_spec_mismatch"),
-        ("qc_measurement_status", "domain_input_measurement_spec_mismatch"),
-        ("qc_measurement_version", "domain_input_measurement_spec_mismatch"),
         ("measurement_result_version", "domain_input_measurement_spec_mismatch"),
         ("validation_modality", "domain_input_measurement_spec_mismatch"),
         ("validation_tool", "domain_input_measurement_spec_mismatch"),
@@ -2284,10 +2550,6 @@ def test_sufficient_path_cross_bindings_fail_eligibility(
         measurement_spec["applicable_product_cards"] = ["product-definition:other"]
     elif case == "qc_assay":
         qc["assay"] = "bulk-RNA-seq"
-    elif case == "qc_measurement_status":
-        qc["measurement_spec_status"] = "candidate"
-    elif case == "qc_measurement_version":
-        qc["measurement_spec_version"] = "9.9.9"
     elif case == "measurement_result_version":
         measurement["measurement_spec_version"] = "9.9.9"
     elif case == "validation_modality":
@@ -2337,6 +2599,164 @@ def test_requirement_contradictions_fail_eligibility(
     )
 
 
+def test_qc_profile_measurement_contract_is_independent_of_domain_spec(
+    tmp_path: Path,
+) -> None:
+    qc = _qc()
+    qc["measurement_spec_status"] = "candidate"
+    qc["measurement_spec_version"] = "9.9.9"
+
+    request = _fixture_request(tmp_path, qc=qc)
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    assert adapter.check_eligibility(request, spec).eligible
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("object_id", "product-case:other"),
+        ("object_version", "9.9.9"),
+        ("provenance_refs", ["provenance:other"]),
+    ],
+)
+def test_product_case_pointer_must_match_checksummed_case(
+    tmp_path: Path,
+    field: str,
+    value: object,
+) -> None:
+    pointer = dict(_domain()["product_case"])
+    pointer[field] = value
+    request = _fixture_request(tmp_path, domain=_domain(product_case=pointer))
+
+    _assert_failed_without_publication(request, "domain_gate_input_binding_invalid")
+
+
+def test_product_definition_pointer_must_match_product_case(
+    tmp_path: Path,
+) -> None:
+    domain = _domain(
+        product_definition={
+            "object_id": "product-definition:other",
+            "object_version": "1.0.0",
+            "provenance_refs": ["provenance:product-definition"],
+        }
+    )
+    request = _fixture_request(tmp_path, domain=domain)
+    _assert_failed_without_publication(
+        request,
+        "domain_input_product_definition_mismatch",
+    )
+
+def test_product_case_is_required_for_qc_bound_domain(tmp_path: Path) -> None:
+
+    request = _fixture_request(tmp_path, include_product_case=False)
+
+    _assert_failed_without_publication(request, "domain_gate_input_binding_invalid")
+
+
+@pytest.mark.parametrize(
+    ("case", "reason"),
+    [
+        ("missing_view", "qc_selected_data_view_required"),
+        ("sample", "product_case_data_view_binding_mismatch"),
+        ("manifest_ref", "product_case_data_view_binding_mismatch"),
+        ("manifest_sha", "product_case_data_view_binding_mismatch"),
+    ],
+)
+def test_qc_selected_view_must_match_product_case(
+    tmp_path: Path,
+    case: str,
+    reason: str,
+) -> None:
+    manifest_ref = {
+        "object_id": "biological-unit-manifest:case-001",
+        "object_version": "1.0.0",
+    }
+    product_case = _product_case(
+        biological_unit_manifest_ref=manifest_ref,
+        biological_unit_manifest_sha256="d" * 64,
+        independence_scope_ref={
+            "object_id": "independence-scope:case-001",
+            "object_version": "1.0.0",
+        },
+    )
+    qc = _qc()
+    qc["selected_data_view"].update(
+        {
+            "biological_unit_manifest_ref": (
+                "biological-unit-manifest:case-001@1.0.0"
+            ),
+            "biological_unit_manifest_sha256": "d" * 64,
+        }
+    )
+    if case == "missing_view":
+        qc["selected_data_view"] = None
+    elif case == "sample":
+        qc["selected_data_view"]["sample_or_preparation_ref"] = (
+            "preparation:other@1.0.0"
+        )
+    elif case == "manifest_ref":
+        qc["selected_data_view"]["biological_unit_manifest_ref"] = (
+            "biological-unit-manifest:other@1.0.0"
+        )
+    elif case == "manifest_sha":
+        qc["selected_data_view"]["biological_unit_manifest_sha256"] = "e" * 64
+    else:  # pragma: no cover - protects future parameter edits
+        raise AssertionError(case)
+
+    request = _fixture_request(tmp_path, product_case=product_case, qc=qc)
+
+    _assert_failed_without_publication(request, reason)
+
+
+@pytest.mark.parametrize(
+    ("module_eligibility", "expected"),
+    [
+        ({}, False),
+        ({"P0-03": "unknown"}, False),
+        ({"P0-03": "eligible"}, True),
+        ({"P0-03": "conditional"}, True),
+        ({"downstream_scientific_modules": "eligible"}, True),
+    ],
+)
+def test_qc_tool_authorization_is_positive_and_fail_closed(
+    tmp_path: Path,
+    module_eligibility: dict[str, str],
+    expected: bool,
+) -> None:
+    qc = _qc()
+    qc["module_eligibility"] = module_eligibility
+    request = _fixture_request(tmp_path, qc=qc)
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    eligibility = adapter.check_eligibility(request, spec)
+
+    assert eligibility.eligible is expected
+    if not expected:
+        assert "domain_input_measurement_spec_mismatch" in eligibility.reason_codes
+
+
+def test_product_case_source_measurement_spec_is_independent_of_domain_spec(
+    tmp_path: Path,
+) -> None:
+    product_case = _product_case()
+    measurement_spec = _measurement_spec()
+    assert (
+        product_case["measurement_spec_ref"]["object_id"]
+        != measurement_spec["measurement_spec_id"]
+    )
+
+    request = _fixture_request(
+        tmp_path,
+        product_case=product_case,
+        measurement_spec=measurement_spec,
+    )
+    spec = ToolRegistry.load_default().describe("P0-08")
+
+    assert adapter.check_eligibility(request, spec).eligible
+
+
 def test_qc_measurement_spec_version_may_be_explicitly_absent(
     tmp_path: Path,
 ) -> None:
@@ -2379,6 +2799,12 @@ def test_cross_domain_pointer_provenance_order_is_set_like(tmp_path: Path) -> No
     request = _fixture_request(
         tmp_path,
         domain=first,
+        product_case=_product_case(
+            provenance_refs=[
+                {"object_id": "provenance:case-a", "object_version": "1"},
+                {"object_id": "provenance:case-b", "object_version": "1"},
+            ]
+        ),
         extras=[
             (
                 "regional-domain",
@@ -2570,6 +2996,10 @@ def test_object_input_order_does_not_change_run_identity_or_result_bytes(
                 "blocking_issues": ["issue:a", "issue:b"],
                 "warnings": ["warning:a", "warning:b"],
                 "evidence_ids": ["evidence:qc-1", "evidence:qc-2"],
+                "module_eligibility": {
+                    "P0-03": "eligible",
+                    "P0-04": "conditional",
+                },
             }
         )
         measurement = _measurement()
@@ -2675,6 +3105,18 @@ def test_object_input_order_does_not_change_run_identity_or_result_bytes(
         request = _fixture_request(
             root,
             domain=domain,
+            product_case=_product_case(
+                provenance_refs=[
+                    {
+                        "object_id": "provenance:case-001",
+                        "object_version": "1",
+                    },
+                    {
+                        "object_id": "provenance:case-002",
+                        "object_version": "1",
+                    },
+                ]
+            ),
             measurement_spec=measurement_spec,
             qc=qc,
             measurement=measurement,

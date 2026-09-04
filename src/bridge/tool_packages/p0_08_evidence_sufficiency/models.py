@@ -838,6 +838,7 @@ class EvidenceSufficiencyRunResult(FrozenModel):
 
 
 SOURCE_OBJECT_SCHEMA_BY_ROLE = {
+    "product_case": "bridge://schemas/product-case/v0.1",
     "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
     "domain_gate_input": "bridge://schemas/domain-gate-input/v0.1",
     "measurement_spec": "bridge://schemas/measurement-spec/v0.2",
@@ -856,6 +857,7 @@ class SourceObjectBinding(FrozenModel):
 
     input_id: str = Field(min_length=1)
     role: Literal[
+        "product_case",
         "gate_rule_spec",
         "domain_gate_input",
         "measurement_spec",
@@ -868,6 +870,7 @@ class SourceObjectBinding(FrozenModel):
     logical_object_id: str = Field(min_length=1)
     object_version: str = Field(min_length=1)
     schema_ref: Literal[
+        "bridge://schemas/product-case/v0.1",
         "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
         "bridge://schemas/domain-gate-input/v0.1",
         "bridge://schemas/measurement-spec/v0.2",
@@ -922,8 +925,8 @@ class EvidenceSufficiencyProfileV2(EvidenceSufficiencyProfile):
     product_case_ref: VersionedObjectRef | None = Field(
         default=None,
         description=(
-            "Versioned pointer declared inside DomainGateInput; P0-08 does not "
-            "consume or validate ProductCase object content."
+            "Versioned pointer declared inside DomainGateInput and, when present, "
+            "validated against the checksummed ProductCase supplied to P0-08."
         ),
     )
     product_definition_ref: VersionedObjectRef | None = Field(
@@ -1041,6 +1044,23 @@ class EvidenceSufficiencyRunResultV2(EvidenceSufficiencyRunResult):
         source_by_role: dict[str, list[SourceObjectBinding]] = {}
         for binding in self.source_object_bindings:
             source_by_role.setdefault(binding.role, []).append(binding)
+        case_bindings = source_by_role.get("product_case", [])
+        summary_case_ref = self.case_summary.product_case_ref
+        if summary_case_ref is None:
+            if case_bindings:
+                raise ValueError(
+                    "result must not bind a ProductCase source object without a case summary"
+                )
+        elif (
+            len(case_bindings) != 1
+            or case_bindings[0].ref != summary_case_ref.ref
+        ):
+            raise ValueError("result must bind its exact ProductCase source object")
+        if any(
+            profile.product_case_ref != summary_case_ref
+            for profile in self.profiles
+        ):
+            raise ValueError("profile ProductCase refs must match the case summary")
         gate_bindings = source_by_role.get("gate_rule_spec", [])
         domain_bindings = source_by_role.get("domain_gate_input", [])
         if (

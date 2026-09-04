@@ -8,6 +8,7 @@ import re
 from typing import Any
 from urllib.parse import parse_qsl, urlsplit
 
+from bridge.tool_packages._configurable_contracts import ProductCase
 from bridge.tool_packages._structured_runtime import (
     LoadedInputs,
     PublicationError,
@@ -64,6 +65,7 @@ from bridge.toolkit.contracts import (
 
 RESULT_SCHEMA_REF = "bridge://schemas/evidence-sufficiency-run-result/v0.2"
 ROLE_SCHEMAS = {
+    "product_case": "bridge://schemas/product-case/v0.1",
     "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
     "domain_gate_input": "bridge://schemas/domain-gate-input/v0.1",
     "measurement_spec": "bridge://schemas/measurement-spec/v0.2",
@@ -74,6 +76,7 @@ ROLE_SCHEMAS = {
     "sensitivity_record": "bridge://schemas/evidence-sensitivity-record/v0.1",
 }
 ROLE_MODELS: dict[str, type[FrozenModel]] = {
+    "product_case": ProductCase,
     "gate_rule_spec": GateRuleSpec,
     "domain_gate_input": DomainGateInput,
     "measurement_spec": MeasurementSpec,
@@ -330,6 +333,8 @@ class EvidenceSufficiencyAdapter:
             reasons.append("exactly_one_gate_rule_spec_required")
         if not 1 <= roles.count("domain_gate_input") <= 5:
             reasons.append("one_to_five_domain_gate_inputs_required")
+        if roles.count("product_case") > 1:
+            reasons.append("domain_gate_input_binding_invalid")
         if len([role for role in roles if role == "measurement_spec"]) > 5:
             reasons.append("domain_gate_input_binding_invalid")
         if len([role for role in roles if role == "qc_readiness_profile"]) > 5:
@@ -431,7 +436,19 @@ def _validate_declared_object_version(
 
 def _validate_publishable_source_refs(role: str, value: FrozenModel) -> None:
     refs: list[str] = []
-    if role == "measurement_spec" and isinstance(value, MeasurementSpec):
+    if role == "product_case" and isinstance(value, ProductCase):
+        refs.extend(
+            [
+                value.product_case_id,
+                value.product_definition_ref.object_id,
+                value.sample_or_preparation_ref.object_id,
+                value.measurement_spec_ref.object_id,
+                *(item.object_id for item in value.provenance_refs),
+            ]
+        )
+        if value.biological_unit_manifest_ref is not None:
+            refs.append(value.biological_unit_manifest_ref.object_id)
+    elif role == "measurement_spec" and isinstance(value, MeasurementSpec):
         refs.append(value.measurement_spec_id)
     elif role == "qc_readiness_profile" and isinstance(value, QCReadinessProfile):
         refs.append(value.profile_id)
@@ -498,12 +515,27 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     domain_ids = [item.domain_id for item in domains if item.domain_id is not None]
     if len(domain_ids) != len(set(domain_ids)):
         reasons.append("duplicate_domain_id")
-    product_cases = {
+    product_case_refs = [
+        ref for ref in request.object_inputs if ref.role == "product_case"
+    ]
+    product_case_objects = _objects_for_role(
+        request, loaded, "product_case", ProductCase
+    )
+    product_case = (
+        product_case_objects[0] if len(product_case_objects) == 1 else None
+    )
+    case_required = any(
+        item.product_case is not None or item.qc_profile_input_id is not None
+        for item in domains
+    )
+    if case_required and len(product_case_objects) != 1:
+        reasons.append("domain_gate_input_binding_invalid")
+    product_case_pointers = {
         _pointer_identity(item.product_case)
         for item in domains
         if item.product_case is not None
     }
-    if len(product_cases) > 1:
+    if len(product_case_pointers) > 1:
         reasons.append("multiple_product_cases_in_request")
     product_definitions = {
         _pointer_identity(item.product_definition)
@@ -515,6 +547,8 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     reasons.extend(_logical_id_reasons(request, loaded))
 
     bound_ids: set[str] = set()
+    if case_required and len(product_case_refs) == 1:
+        bound_ids.add(product_case_refs[0].input_id)
     for domain in domains:
         bindings = _domain_bindings(domain)
         for input_id, expected_role in bindings:
@@ -528,6 +562,54 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             candidate = loaded.objects_by_input_id[domain.measurement_spec_input_id]
             if isinstance(candidate, MeasurementSpec):
                 measurement_spec = candidate
+        qc_profile = None
+        if domain.qc_profile_input_id in loaded.objects_by_input_id:
+            candidate = loaded.objects_by_input_id[domain.qc_profile_input_id]
+            if isinstance(candidate, QCReadinessProfile):
+                qc_profile = candidate
+        if product_case is not None:
+            case_provenance = tuple(
+                sorted(item.object_id for item in product_case.provenance_refs)
+            )
+            expected_case_identity = (
+                product_case.product_case_id,
+                product_case.case_version,
+                case_provenance,
+            )
+            if (
+                domain.product_case is None
+                or _pointer_identity(domain.product_case) != expected_case_identity
+            ):
+                reasons.append("domain_gate_input_binding_invalid")
+            if domain.product_definition is not None and (
+                domain.product_definition.object_id
+                != product_case.product_definition_ref.object_id
+                or domain.product_definition.object_version
+                != product_case.product_definition_ref.object_version
+            ):
+                reasons.append("domain_input_product_definition_mismatch")
+            if qc_profile is not None:
+                selected_view = qc_profile.selected_data_view
+                expected_manifest_ref = (
+                    None
+                    if product_case.biological_unit_manifest_ref is None
+                    else product_case.biological_unit_manifest_ref.ref
+                )
+                if selected_view is None:
+                    reasons.append("qc_selected_data_view_required")
+                elif (
+                    selected_view.sample_or_preparation_ref
+                    != product_case.sample_or_preparation_ref.ref
+                    or selected_view.biological_unit_manifest_ref
+                    != expected_manifest_ref
+                    or selected_view.biological_unit_manifest_sha256
+                    != product_case.biological_unit_manifest_sha256
+                ):
+                    reasons.append("product_case_data_view_binding_mismatch")
+                if qc_profile.assay != product_case.assay:
+                    reasons.append("qc_profile_assay_mismatch")
+        elif domain.product_case is not None or qc_profile is not None:
+            reasons.append("domain_gate_input_binding_invalid")
         if measurement_spec is not None:
             if (
                 domain.product_definition is not None
@@ -535,32 +617,35 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
                 not in measurement_spec.applicable_product_cards
             ):
                 reasons.append("domain_input_product_definition_mismatch")
-            if domain.qc_profile_input_id is not None:
-                qc_profile = loaded.objects_by_input_id.get(domain.qc_profile_input_id)
-                if isinstance(qc_profile, QCReadinessProfile):
-                    qc_keys = {
-                        "downstream_scientific_modules",
-                        *measurement_spec.tool_refs,
-                    }
-                    qc_blocks_bound_tool = any(
-                        qc_profile.module_eligibility.get(key, "")
-                        .strip()
-                        .casefold()
-                        in {"ineligible", "not_implemented", "blocked"}
-                        for key in qc_keys
+            if product_case is not None and (
+                measurement_spec.assay != product_case.assay
+            ):
+                reasons.append("domain_input_measurement_spec_mismatch")
+            if qc_profile is not None:
+                generic_state = qc_profile.module_eligibility.get(
+                    "downstream_scientific_modules", ""
+                )
+                tool_states = [
+                    qc_profile.module_eligibility.get(tool_ref, generic_state)
+                    .strip()
+                    .casefold()
+                    for tool_ref in measurement_spec.tool_refs
+                ]
+                normalized_generic_state = generic_state.strip().casefold()
+                if (
+                    qc_profile.assay != measurement_spec.assay
+                    or (
+                        normalized_generic_state
+                        and normalized_generic_state
+                        not in {"eligible", "conditional"}
                     )
-                    if (
-                        qc_profile.assay != measurement_spec.assay
-                        or qc_profile.measurement_spec_status
-                        != measurement_spec.status
-                        or (
-                            qc_profile.measurement_spec_version is not None
-                            and qc_profile.measurement_spec_version
-                            != measurement_spec.version
-                        )
-                        or qc_blocks_bound_tool
-                    ):
-                        reasons.append("domain_input_measurement_spec_mismatch")
+                    or not tool_states
+                    or any(
+                        state not in {"eligible", "conditional"}
+                        for state in tool_states
+                    )
+                ):
+                    reasons.append("domain_input_measurement_spec_mismatch")
             for input_id in domain.measurement_result_input_ids:
                 value = loaded.objects_by_input_id.get(input_id)
                 if (
@@ -812,6 +897,7 @@ def _logical_id_reasons(
 ) -> list[str]:
     duplicate = False
     simple_roles = {
+        "product_case": "product_case_id",
         "measurement_spec": "measurement_spec_id",
         "qc_readiness_profile": "profile_id",
         "measurement_result": "measurement_id",

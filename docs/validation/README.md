@@ -14,6 +14,7 @@ threshold, score or product conclusion.
 | P0-04 Developmental Compatibility | [Candidate validation, 2026-08-25](p0_04_developmental_compatibility_v0.2.md) |
 | P0-05 Off-target Control | [Candidate validation, 2026-08-25](p0_05_off_target_control_20260825.md) |
 | P0-06 Proliferation & Stress Response | [Method-measurement closeout, 2026-09-05](p0_06_method_measurement_closeout_20260905.md) · [Legacy aggregation validation, 2026-08-25](p0_06_proliferation_stress_response_20260825.md) |
+| P0-08 Evidence Sufficiency | [Case-binding validation, v0.5](p0_08_case_binding_v0.5.md) |
 
 ## P0-02 Scientific and Source Preparation
 
