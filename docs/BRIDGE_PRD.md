@@ -674,8 +674,9 @@ Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲
 结果页和 Visualization Composer 仍未实现。输入质量、产品目标与区域支持、发育
 阶段、非目标组成、增殖与应激信号、产品比较、证据解释、结构化报告核对和公开
 候选审阅已有 typed 静态图形；移植后样本也已有范围、上传 profile 组成及
-reference/program 两类数值分开的 typed 静态图形；细胞状态图仍为
-`legacy_untyped`。figure registry 当前登记 41 个组件，其中 34 个为 `typed_candidate`，7 个为
+reference/program 两类数值分开的 typed 静态图形；细胞状态兼容图仍为
+`legacy_untyped`，并新增层级参考对应和静态状态定义证据登记两项 typed 图形。
+figure registry 当前登记 43 个组件，其中 36 个为 `typed_candidate`，7 个为
 `legacy_untyped`。以下内容是后续实现必须遵守的设计合同，不表示对应页面已经存在。
 
 #### 用户问题与默认阅读顺序

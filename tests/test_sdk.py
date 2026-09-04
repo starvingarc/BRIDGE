@@ -44,7 +44,7 @@ def test_python_sdk_searches_packaged_knowledge() -> None:
 def test_python_sdk_discovers_figure_components() -> None:
     figures = list_figure_components(tool_id="P0-02")
 
-    assert len(figures) == 5
+    assert len(figures) == 7
     assert all(figure.producer_tool_ids == ["P0-02"] for figure in figures)
     assert (
         describe_figure_component("bridge.cell_state.composition-l1.v0.1").title
@@ -55,6 +55,6 @@ def test_python_sdk_discovers_figure_components() -> None:
 def test_python_sdk_validates_figure_registry() -> None:
     result = validate_figure_registry()
 
-    assert result["component_count"] == 41
-    assert result["typed_candidate_count"] == 34
+    assert result["component_count"] == 43
+    assert result["typed_candidate_count"] == 36
     assert result["legacy_untyped_count"] == 7
