@@ -67,7 +67,7 @@ DETAILS = {
     },
     "P0-06": {
         "input": "QC-qualified expression, Cell-State evidence, confirmed developmental context, ProtocolIR metadata, and versioned proliferation/stress-response program knowledge.",
-        "output": "State-conditioned proliferation and stress-response evidence, residual-pluripotency LOD, cycling identity, confounding record, and transcriptomic review flags.",
+        "output": "State-conditioned proliferation and stress-response evidence, aligned review flags, and optional checksummed MeasurementResultV2 projections for every source record.",
         "reject": "Missing stage context for stage-dependent interpretation, insufficient marker/program coverage, or process attribution without protocol metadata.",
         "visualization": "Program effect profiles, state-stratified distributions, rare-state LOD, process covariates, review flags, and sensitivity.",
         "validation": "Perturbation direction recovery, pluripotent-cell spike-ins, source/cell-line/modality holdouts, program overlap, and false-flag testing.",

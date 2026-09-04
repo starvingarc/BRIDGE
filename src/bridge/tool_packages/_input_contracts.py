@@ -147,6 +147,7 @@ V01 = "0.1.0"
 V02 = "0.2.0"
 V03 = "0.3.0"
 
+
 def _p006_base_roles(
     cell_state_schema: str,
     cell_state_version: str,
@@ -193,6 +194,13 @@ def _p006_base_roles(
             "bridge://schemas/program-evidence-bundle/v0.1",
             V01,
             1,
+            1,
+        ),
+        _role(
+            "measurement_spec",
+            "bridge://schemas/measurement-spec/v0.2",
+            None,
+            0,
             1,
         ),
     )

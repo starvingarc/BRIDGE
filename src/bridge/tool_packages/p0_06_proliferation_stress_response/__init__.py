@@ -3,11 +3,13 @@
 from bridge.tool_packages.p0_06_proliferation_stress_response.adapter import adapter
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     ProliferationStressResponseProfile,
+    ProliferationStressResponseProfileV2,
     TranscriptomicReviewFlag,
 )
 
 __all__ = [
     "ProliferationStressResponseProfile",
+    "ProliferationStressResponseProfileV2",
     "TranscriptomicReviewFlag",
     "adapter",
 ]

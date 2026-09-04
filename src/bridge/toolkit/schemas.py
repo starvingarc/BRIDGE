@@ -64,6 +64,7 @@ SCHEMA_REFS = {
     "bridge://schemas/program-evidence-bundle/v0.1": "program_evidence_bundle.schema.json",
     "bridge://schemas/transcriptomic-review-flag/v0.1": "transcriptomic_review_flag.schema.json",
     "bridge://schemas/proliferation-stress-response-profile/v0.1": "proliferation_stress_response_profile.schema.json",
+    "bridge://schemas/proliferation-stress-response-profile/v0.2": "proliferation_stress_response_profile_v2.schema.json",
     "bridge://schemas/proliferation-stress-visualization-data/v0.1": "proliferation_stress_visualization_data.schema.json",
     "bridge://schemas/process-method-spec/v0.1": "process_method_spec.schema.json",
     "bridge://schemas/process-method-input/v0.1": "process_method_input.schema.json",

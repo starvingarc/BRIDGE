@@ -1,0 +1,632 @@
+{
+  "$defs": {
+    "AnalysisScope": {
+      "enum": [
+        "whole_product",
+        "state_specific"
+      ],
+      "title": "AnalysisScope",
+      "type": "string"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ProcessAttributionState": {
+      "enum": [
+        "conditional_association",
+        "cannot_attribute",
+        "not_requested"
+      ],
+      "title": "ProcessAttributionState",
+      "type": "string"
+    },
+    "ProgramApplicabilityState": {
+      "enum": [
+        "applicable",
+        "not_applicable"
+      ],
+      "title": "ProgramApplicabilityState",
+      "type": "string"
+    },
+    "ProgramAvailabilityState": {
+      "enum": [
+        "available",
+        "unavailable",
+        "cannot_resolve"
+      ],
+      "title": "ProgramAvailabilityState",
+      "type": "string"
+    },
+    "ProgramEvidenceSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "applicability": {
+          "$ref": "#/$defs/ProgramApplicabilityState"
+        },
+        "availability": {
+          "$ref": "#/$defs/ProgramAvailabilityState"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "denominator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "evidence_state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Gene Coverage",
+          "type": "number"
+        },
+        "lod_state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Lod State",
+          "type": "string"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "minimum_gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Minimum Gene Coverage",
+          "type": "number"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "process_attribution": {
+          "$ref": "#/$defs/ProcessAttributionState"
+        },
+        "process_step_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Process Step Ids",
+          "type": "array"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "stage_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Stage Id",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "program_id",
+        "analysis_scope",
+        "stage_id",
+        "metric_id",
+        "gene_coverage",
+        "minimum_gene_coverage",
+        "lod_state",
+        "evidence_state",
+        "applicability",
+        "availability",
+        "process_attribution",
+        "process_step_ids",
+        "reason_codes"
+      ],
+      "title": "ProgramEvidenceSummary",
+      "type": "object"
+    },
+    "ProgramMeasurementArtifactBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "file_name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.json$",
+          "title": "File Name",
+          "type": "string"
+        },
+        "measurement_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Measurement Id",
+          "type": "string"
+        },
+        "projected_evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source_evidence_state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Evidence State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measurement_id",
+        "evidence_id",
+        "source_evidence_state",
+        "projected_evidence_state",
+        "artifact_id",
+        "file_name",
+        "sha256"
+      ],
+      "title": "ProgramMeasurementArtifactBinding",
+      "type": "object"
+    },
+    "ProgramSourceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "input_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Input Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "role": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_ref": {
+          "minLength": 1,
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "input_id",
+        "role",
+        "schema_ref",
+        "object_version",
+        "source_sha256"
+      ],
+      "title": "ProgramSourceBinding",
+      "type": "object"
+    },
+    "ReviewFlagState": {
+      "enum": [
+        "transcriptomic_review_flag",
+        "not_detected_above_lod",
+        "cannot_resolve",
+        "not_assessed"
+      ],
+      "title": "ReviewFlagState",
+      "type": "string"
+    },
+    "TranscriptomicReviewFlag": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "applicability": {
+          "$ref": "#/$defs/ProgramApplicabilityState"
+        },
+        "availability": {
+          "$ref": "#/$defs/ProgramAvailabilityState"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "flag_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Flag Id",
+          "type": "string"
+        },
+        "flag_status": {
+          "const": "shadow",
+          "default": "shadow",
+          "title": "Flag Status",
+          "type": "string"
+        },
+        "orthogonal_follow_up_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "title": "Orthogonal Follow Up Refs",
+          "type": "array"
+        },
+        "process_attribution": {
+          "$ref": "#/$defs/ProcessAttributionState"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "review_flag_state": {
+          "$ref": "#/$defs/ReviewFlagState"
+        },
+        "safety_interpretation": {
+          "const": "not_evidence_of_safety",
+          "default": "not_evidence_of_safety",
+          "title": "Safety Interpretation",
+          "type": "string"
+        },
+        "stage_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Stage Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "flag_id",
+        "evidence_id",
+        "program_id",
+        "analysis_scope",
+        "stage_id",
+        "review_flag_state",
+        "applicability",
+        "availability",
+        "process_attribution",
+        "orthogonal_follow_up_refs",
+        "reason_codes"
+      ],
+      "title": "TranscriptomicReviewFlag",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/proliferation-stress-response-profile/v0.2",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "measurement_projection_state": {
+            "const": "not_requested"
+          }
+        },
+        "required": [
+          "measurement_projection_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "measurement_artifacts": {
+            "maxItems": 0
+          },
+          "measurement_spec_ref": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "measurement_artifacts"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "measurement_projection_state": {
+            "const": "available"
+          }
+        },
+        "required": [
+          "measurement_projection_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "measurement_artifacts": {
+            "minItems": 1
+          },
+          "measurement_spec_ref": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": [
+          "measurement_spec_ref",
+          "measurement_artifacts"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "analysis_mode": {
+      "const": "descriptive_only",
+      "default": "descriptive_only",
+      "title": "Analysis Mode",
+      "type": "string"
+    },
+    "cell_state_profile_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Cell State Profile Ref",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "development_window_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_state": {
+      "const": "shadow",
+      "default": "shadow",
+      "title": "Evidence State",
+      "type": "string"
+    },
+    "measurement_artifacts": {
+      "items": {
+        "$ref": "#/$defs/ProgramMeasurementArtifactBinding"
+      },
+      "title": "Measurement Artifacts",
+      "type": "array"
+    },
+    "measurement_projection_state": {
+      "enum": [
+        "not_requested",
+        "available"
+      ],
+      "title": "Measurement Projection State",
+      "type": "string"
+    },
+    "measurement_spec_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "process_attribution_state": {
+      "$ref": "#/$defs/ProcessAttributionState"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "product_definition_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "profile_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "profile_version": {
+      "const": "0.2.0",
+      "title": "Profile Version",
+      "type": "string"
+    },
+    "program_results": {
+      "items": {
+        "$ref": "#/$defs/ProgramEvidenceSummary"
+      },
+      "title": "Program Results",
+      "type": "array"
+    },
+    "program_spec_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "protocol_context_ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Protocol Context Ref",
+      "type": "string"
+    },
+    "reason_codes": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "review_flags": {
+      "items": {
+        "$ref": "#/$defs/TranscriptomicReviewFlag"
+      },
+      "title": "Review Flags",
+      "type": "array"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "source_bindings": {
+      "items": {
+        "$ref": "#/$defs/ProgramSourceBinding"
+      },
+      "maxItems": 7,
+      "minItems": 7,
+      "title": "Source Bindings",
+      "type": "array"
+    },
+    "untriggered_interpretation": {
+      "const": "not_evidence_of_safety",
+      "default": "not_evidence_of_safety",
+      "title": "Untriggered Interpretation",
+      "type": "string"
+    }
+  },
+  "required": [
+    "profile_id",
+    "profile_version",
+    "product_case_ref",
+    "product_definition_ref",
+    "development_window_ref",
+    "program_spec_ref",
+    "cell_state_profile_ref",
+    "protocol_context_ref",
+    "source_bindings",
+    "process_attribution_state",
+    "program_results",
+    "review_flags",
+    "reason_codes",
+    "created_at",
+    "measurement_projection_state",
+    "measurement_artifacts"
+  ],
+  "title": "ProliferationStressResponseProfileV2",
+  "type": "object"
+}
