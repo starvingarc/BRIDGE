@@ -11,6 +11,9 @@ This directory contains the program-scoring and evidence-aggregation package.
   P0-06 MeasurementSpec, bind P0-02 V3 states, biological units and the exact
   selected DataView H5AD. It accepts normalized expression or integer raw
   counts; raw counts receive deterministic in-memory 10,000 scaling and `log1p`.
+  Its bundle records recipe ID `bridge_normalize_total_log1p_v0.1` and target
+  sum `10000.0`; the recipe ID is package metadata, not a knowledge-catalog
+  Method reference.
   Program genes, weights and phases remain in the checksummed ProgramSpec; the
   method spec only selects program IDs and execution parameters. A caller-owned
   `ProgramEvidenceBundle` is refused in this mode.

@@ -21,6 +21,8 @@ P0-06 `0.6.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式
 
 `ProgramSpec` 是 program gene/weight/phase 内容的唯一事实源，并持有这些内容的 canonical SHA-256、适用 stage/state/scope、coverage/LOD 和 review mapping。`ProcessMethodSpec` 只选择 program ID、方法、scope 与运行参数。method runtime 的 MeasurementSpec 必须精确绑定 P0-06、assay、生物学单位、实际启用的 metric/scope/unit/method；它不含阈值或 alert。两种模式均保持 `descriptive_only`、`candidate/shadow`、`domain_score=null`。
 
+raw-count 路径在 method bundle 中记录 `normalization_recipe_id=bridge_normalize_total_log1p_v0.1` 与 `normalization_target_sum=10000.0`；该标识是 P0-06 包内 recipe 元数据，不冒充 knowledge catalog 的 Method reference。
+
 ## 1. 任务目标与边界
 
 本模块在已有 Cell-State 与组成证据基础上，描述移植前产品中阶段条件化的增殖、应激及相关转录程序，识别需要复核的信号，并区分生物状态、样本处理影响和证据不足。当前候选既保留预计算证据聚合，也可在显式 `method_runtime` 模式读取所选 DataView 的 normalized-expression 或 raw-count H5AD 执行已登记方法；两者都不制定 0-100 指数。

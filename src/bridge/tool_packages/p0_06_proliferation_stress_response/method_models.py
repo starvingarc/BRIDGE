@@ -4,7 +4,14 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Literal, Self
 
-from pydantic import Field, StrictFloat, StrictInt, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    StrictFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     AnalysisScope,
@@ -310,30 +317,63 @@ class ProcessMethodBundle(FrozenModel):
 
 
 class ProcessMethodBundleV2(ProcessMethodBundle):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "input_matrix_semantics": {"const": "raw_counts"}
+                        },
+                        "required": ["input_matrix_semantics"],
+                    },
+                    "then": {
+                        "required": [
+                            "normalization_recipe_id",
+                            "normalization_target_sum",
+                        ],
+                        "properties": {
+                            "normalization_recipe_id": {
+                                "const": "bridge_normalize_total_log1p_v0.1"
+                            },
+                            "normalization_target_sum": {"const": 10000.0},
+                        },
+                    },
+                    "else": {
+                        "properties": {
+                            "normalization_recipe_id": {"type": "null"},
+                            "normalization_target_sum": {"type": "null"},
+                        }
+                    },
+                }
+            ]
+        }
+    )
+
     object_version: Literal["0.2.0"]
     input_matrix_location: str = Field(min_length=1)
     input_matrix_semantics: Literal["raw_counts", "normalized_expression"]
     analysis_matrix_semantics: Literal["normalized_expression"] = (
         "normalized_expression"
     )
-    normalization_method_ref: Literal[
-        "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P"
+    normalization_recipe_id: Literal[
+        "bridge_normalize_total_log1p_v0.1"
     ] | None = None
     normalization_target_sum: StrictFloat | None = Field(default=None, gt=0.0)
 
     @model_validator(mode="after")
     def normalization_lineage_is_coherent(self) -> Self:
-        normalized_in_package = self.input_matrix_semantics == "raw_counts"
-        if normalized_in_package != (
-            self.normalization_method_ref
-            == "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P"
-            and self.normalization_target_sum == 10000.0
-        ):
-            raise ValueError(
-                "raw counts require package-owned 1e4 normalize_total and log1p"
-            )
-        if not normalized_in_package and (
-            self.normalization_method_ref is not None
+        if self.input_matrix_semantics == "raw_counts":
+            if (
+                self.normalization_recipe_id
+                != "bridge_normalize_total_log1p_v0.1"
+                or self.normalization_target_sum != 10000.0
+            ):
+                raise ValueError(
+                    "raw counts require package-owned 1e4 normalize_total and log1p"
+                )
+        elif (
+            self.normalization_recipe_id is not None
             or self.normalization_target_sum is not None
         ):
             raise ValueError(

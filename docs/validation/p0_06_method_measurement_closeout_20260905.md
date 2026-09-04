@@ -38,6 +38,11 @@ input and analysis semantics, and package-owned normalization lineage. It binds
 the expression asset, ProgramSpec, method spec/input and BiologicalUnit inputs
 by checksum.
 
+Raw-count bundles use the package recipe ID
+`bridge_normalize_total_log1p_v0.1` with target sum `10000.0`; it is not a
+knowledge-catalog Method reference. Both the Pydantic model and public Draft
+2020-12 Schema reject missing or contradictory normalization lineage.
+
 Each real `ProgramScoreSummary` and `CellCycleSummary` produces exactly one
 checksummed `MeasurementResultV2`. Available program means and cycling
 fractions use `evidence_state=inferred`; `not_assessed` summaries remain

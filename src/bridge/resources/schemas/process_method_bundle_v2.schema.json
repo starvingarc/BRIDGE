@@ -423,6 +423,44 @@
   },
   "$id": "bridge://schemas/process-method-bundle/v0.2",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "normalization_recipe_id": {
+            "type": "null"
+          },
+          "normalization_target_sum": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "input_matrix_semantics": {
+            "const": "raw_counts"
+          }
+        },
+        "required": [
+          "input_matrix_semantics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "normalization_recipe_id": {
+            "const": "bridge_normalize_total_log1p_v0.1"
+          },
+          "normalization_target_sum": {
+            "const": 10000.0
+          }
+        },
+        "required": [
+          "normalization_recipe_id",
+          "normalization_target_sum"
+        ]
+      }
+    }
+  ],
   "properties": {
     "analysis_matrix_semantics": {
       "const": "normalized_expression",
@@ -532,10 +570,10 @@
       "title": "Method Spec Sha256",
       "type": "string"
     },
-    "normalization_method_ref": {
+    "normalization_recipe_id": {
       "anyOf": [
         {
-          "const": "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P",
+          "const": "bridge_normalize_total_log1p_v0.1",
           "type": "string"
         },
         {
@@ -543,7 +581,7 @@
         }
       ],
       "default": null,
-      "title": "Normalization Method Ref"
+      "title": "Normalization Recipe Id"
     },
     "normalization_target_sum": {
       "anyOf": [

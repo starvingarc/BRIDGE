@@ -469,7 +469,39 @@ def test_real_method_runtime_executes_and_is_deterministic(tmp_path: Path) -> No
     assert bundle.cell_cycle_summaries
     assert bundle.object_version == "0.2.0"
     assert bundle.input_matrix_semantics == "normalized_expression"
-    assert bundle.normalization_method_ref is None
+    assert bundle.normalization_recipe_id is None
+    bundle_payload = bundle.model_dump(mode="json")
+    bundle_schema = registry.resolve_schema(
+        "bridge://schemas/process-method-bundle/v0.2"
+    )
+    assert "normalization_method_ref" not in bundle_schema["properties"]
+    raw_without_lineage = deepcopy(bundle_payload)
+    raw_without_lineage.update(
+        {
+            "input_matrix_semantics": "raw_counts",
+            "normalization_recipe_id": None,
+            "normalization_target_sum": None,
+        }
+    )
+    assert list(
+        Draft202012Validator(bundle_schema).iter_errors(raw_without_lineage)
+    )
+    with pytest.raises(ValueError, match="raw counts require"):
+        ProcessMethodBundleV2.model_validate(raw_without_lineage)
+    normalized_with_package_lineage = deepcopy(bundle_payload)
+    normalized_with_package_lineage.update(
+        {
+            "normalization_recipe_id": "bridge_normalize_total_log1p_v0.1",
+            "normalization_target_sum": 10000.0,
+        }
+    )
+    assert list(
+        Draft202012Validator(bundle_schema).iter_errors(
+            normalized_with_package_lineage
+        )
+    )
+    with pytest.raises(ValueError, match="pre-normalized input cannot claim"):
+        ProcessMethodBundleV2.model_validate(normalized_with_package_lineage)
     assert profile.runtime_mode == "method_runtime"
     assert profile.program_results == []
     assert profile.review_flags == []
@@ -636,10 +668,18 @@ def test_raw_counts_are_normalized_inside_the_package(tmp_path: Path) -> None:
     assert bundle.input_matrix_semantics == "raw_counts"
     assert bundle.analysis_matrix_semantics == "normalized_expression"
     assert (
-        bundle.normalization_method_ref
-        == "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P"
+        bundle.normalization_recipe_id
+        == "bridge_normalize_total_log1p_v0.1"
     )
     assert bundle.normalization_target_sum == 10000.0
+    bundle_schema = registry.resolve_schema(
+        "bridge://schemas/process-method-bundle/v0.2"
+    )
+    assert not list(
+        Draft202012Validator(bundle_schema).iter_errors(
+            bundle.model_dump(mode="json")
+        )
+    )
     assert len(run.measurements) == (
         len(bundle.program_scores) + len(bundle.cell_cycle_summaries)
     )

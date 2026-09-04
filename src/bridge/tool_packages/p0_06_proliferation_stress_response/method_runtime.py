@@ -761,8 +761,8 @@ def run_process_methods(
         created_at=method_input.created_at,
         input_matrix_location=asset.matrix_location or "",
         input_matrix_semantics=asset.matrix_semantics,
-        normalization_method_ref=(
-            "METHOD-BRIDGE-NORMALIZE-TOTAL-LOG1P"
+        normalization_recipe_id=(
+            "bridge_normalize_total_log1p_v0.1"
             if asset.matrix_semantics == "raw_counts"
             else None
         ),
