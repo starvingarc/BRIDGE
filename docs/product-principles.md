@@ -18,9 +18,9 @@ layer that the Agent will call. The conversational Coordinator, AnalysisPlan and
 task-graph runtime, Web application, product-evidence database, Visualization
 Composer and interactive interpretation/recommendation workflow remain target
 product capabilities rather than integrated runtime behavior.
-The shared v0.2 visualization data binding and v0.1 figure registry are now
-available as standalone contracts; they do not constitute a Composer, renderer
-or Web result page.
+The shared v0.2 visualization data binding, v0.1 figure registry and
+package-owned deterministic static renderers are available; they do not
+constitute an integrated Composer or Web result page.
 
 ## Current Tool-layer Outputs
 
@@ -37,16 +37,19 @@ The approved [visualization system](BRIDGE_PRD.md#66-visualization-composer-与-
 experience around researcher questions: data readiness, product composition,
 identity support, target/regional and developmental fit, off-target/unknown and
 process signals, comparison, and evidence gaps.
-The registry discovers the seven existing P0-01/P0-02 components as
-`legacy_untyped`. Discovery records current capability and does not promote
-their scientific or publication status.
+The figure registry contains 38 components: 31 typed candidates and 7 legacy
+components. P0-11 contributes four typed local-review components for
+claim-content projection, candidate-digest state, candidate artifact status and
+registered checks. Discovery records current capability and does not promote
+scientific or publication status.
 
 The product overview uses domain rows with explicit status, denominator,
 limitations and evidence links. It does not use a total score, radar chart,
 overall rank or pass/fail traffic light. Interactive and static figures must use
 the same checksummed data and preserve missingness, uncertainty, provenance and
-candidate/shadow status. This is an approved design contract; the integrated Web
-runtime is not yet implemented.
+candidate/shadow status. P0-11 local-review figures are not publication approval;
+its internal ToolRun and provenance manifest are not public downloads. This is
+an approved design contract; the integrated Web runtime is not yet implemented.
 
 ## Current Non-claims
 

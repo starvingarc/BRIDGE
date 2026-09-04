@@ -110,6 +110,9 @@ from bridge.tool_packages.p0_12_graft_assessment.run_models import (
 from bridge.tool_packages.p0_11_public_safe_export.models import (
     PUBLIC_SCHEMA_MODELS as P0_11_SCHEMA_MODELS,
 )
+from bridge.tool_packages.p0_11_public_safe_export.visualization_data import (
+    PUBLIC_VISUALIZATION_SCHEMA_MODELS as P0_11_VISUALIZATION_SCHEMA_MODELS,
+)
 from bridge.toolkit.visualization import (
     FigureRegistrySnapshot,
     VisualizationArtifactV2,
@@ -226,6 +229,7 @@ for schema_models in (
     P0_10_SCHEMA_MODELS,
     P0_10_VISUALIZATION_SCHEMA_MODELS,
     P0_11_SCHEMA_MODELS,
+    P0_11_VISUALIZATION_SCHEMA_MODELS,
     P0_12_SCHEMA_MODELS,
 ):
     for schema_id, model in schema_models.items():

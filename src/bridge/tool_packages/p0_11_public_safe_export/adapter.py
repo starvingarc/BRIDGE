@@ -24,9 +24,9 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ReportDraft,
 )
 from bridge.tool_packages.p0_11_public_safe_export.artifact_audit import (
-    LEAK_PATTERNS,
     ROLE_MODELS as ARTIFACT_ROLE_MODELS,
     check_eligibility as check_artifact_eligibility,
+    contains_registered_leak,
     is_artifact_audit_request,
     run as run_artifact_audit,
 )
@@ -40,6 +40,14 @@ from bridge.tool_packages.p0_11_public_safe_export.models import (
     PublicExportState,
     PublicSafeClaim,
     PublicSafeReport,
+)
+from bridge.tool_packages.p0_11_public_safe_export.visualization import (
+    PreparedPublicSafeExportVisualizations,
+    prepare_public_safe_export_visualizations,
+)
+from bridge.tool_packages.p0_11_public_safe_export.visualization_data import (
+    ReportExportVisualizationDataV1,
+    build_report_export_visualization_data,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
@@ -76,6 +84,8 @@ FILENAMES = (
     "public_export_manifest.json",
     "public_export_result.json",
 )
+
+
 @dataclass(frozen=True)
 class ExportBundle:
     public_report: PublicSafeReport
@@ -124,29 +134,73 @@ class PublicSafeExportAdapter:
         loaded, reasons = _load_inputs(request.object_inputs)
         if loaded is None or reasons:
             return _failed_run(request, spec, reasons, input_hash=input_hash)
-        bundle = _build_bundle(request, loaded, spec)
         run_id = f"run-{input_hash[:16]}"
+        bundle = _build_bundle(request, loaded, spec)
+        report = single_object(request, loaded, "report_draft", ReportDraft)
+        policy = single_object(
+            request, loaded, "public_export_policy", PublicExportPolicySpec
+        )
+        result_bytes = bundle.payloads["public_export_result.json"]
+        try:
+            profile = build_report_export_visualization_data(
+                run_id=run_id,
+                tool_version=spec.version,
+                report=report,
+                policy=policy,
+                public_report=bundle.public_report,
+                result=bundle.result,
+                source_result_sha256=hashlib.sha256(result_bytes).hexdigest(),
+            )
+        except (KeyError, TypeError, ValueError):
+            return _failed_run(
+                request, spec, ["visualization_data_invalid"], input_hash=input_hash
+            )
+        try:
+            prepared = prepare_public_safe_export_visualizations(
+                profile=profile,
+                output_dir=request.output_dir,
+                run_id=run_id,
+                tool_version=spec.version,
+            )
+        except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+            return _failed_run(
+                request, spec, ["visualization_render_failed"], input_hash=input_hash
+            )
+        core_specs = [
+            {
+                "filename": name,
+                "kind": name.removesuffix(".json"),
+                "media_type": "application/json",
+                "sha256": hashlib.sha256(bundle.payloads[name]).hexdigest(),
+                "evidence_ids": [],
+            }
+            for name in FILENAMES
+        ]
+        payloads = {**bundle.payloads, **prepared.payloads}
+        artifact_specs = [
+            *core_specs,
+            *(_artifact_spec_from_manifest(item) for item in prepared.artifacts),
+        ]
+        payloads["artifact_manifest.json"] = canonical_json_bytes(
+            _manifest_payload(
+                request=request,
+                spec=spec,
+                run_id=run_id,
+                input_hash=input_hash,
+                artifact_specs=artifact_specs,
+            ),
+            indent=2,
+        )
         try:
             published = publish_json_bundle(
                 request=request,
                 run_id=run_id,
-                payloads=bundle.payloads,
+                payloads=payloads,
             )
         except PublicationError as exc:
             return _failed_run(
                 request, spec, [exc.reason_code], input_hash=input_hash
             )
-        artifacts = [
-            ArtifactManifest(
-                artifact_id=f"artifact:{run_id}:{name.removesuffix('.json')}",
-                kind=name.removesuffix(".json"),
-                path=published[name],
-                media_type="application/json",
-                sha256=hashlib.sha256(bundle.payloads[name]).hexdigest(),
-                evidence_ids=[],
-            )
-            for name in FILENAMES
-        ]
         export_request = single_object(
             request, loaded, "public_export_request", PublicExportRequest
         )
@@ -160,7 +214,14 @@ class PublicSafeExportAdapter:
             input_hash=input_hash,
             created_at=export_request.created_at,
             measurements=[],
-            artifacts=artifacts,
+            artifacts=_runtime_artifacts(
+                published=published,
+                payloads=payloads,
+                run_id=run_id,
+                profile=profile,
+                core_specs=core_specs,
+                prepared=prepared,
+            ),
             visualizations=[],
             result_schema_ref=RESULT_SCHEMA_REF,
             result=bundle.result.model_dump(mode="json"),
@@ -234,6 +295,8 @@ def _binding_reasons(
         request, loaded, "public_export_request", PublicExportRequest
     )
     reasons: list[str] = []
+    if _contains_leak([policy.ref, export_request.policy_ref]):
+        return ["public_artifact_metadata_leak_detected"]
     if not receipt.matches_report_draft(report):
         reasons.append("verification_receipt_report_binding_mismatch")
     if (
@@ -437,22 +500,8 @@ def _build_bundle(
     )
 
 
-def _strings(value: Any):
-    if isinstance(value, FrozenModel):
-        value = value.model_dump(mode="json", exclude_none=True)
-    if isinstance(value, dict):
-        for key, item in value.items():
-            yield str(key)
-            yield from _strings(item)
-    elif isinstance(value, list):
-        for item in value:
-            yield from _strings(item)
-    elif isinstance(value, str):
-        yield value
-
-
 def _contains_leak(value: Any) -> bool:
-    return any(pattern.search(text) for text in _strings(value) for pattern in LEAK_PATTERNS)
+    return contains_registered_leak(value)
 
 
 def _ref_for_role(request: ToolRequestV2, role: str) -> StructuredInputRef:
@@ -476,6 +525,91 @@ def _input_hash(request: ToolRequestV2, spec: ToolPackageSpecV2) -> str:
         ],
     }
     return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+
+
+def _artifact_spec_from_manifest(artifact: ArtifactManifest) -> dict[str, Any]:
+    return {
+        "filename": artifact.path.name,
+        "kind": artifact.kind,
+        "media_type": artifact.media_type,
+        "sha256": artifact.sha256,
+        "evidence_ids": artifact.evidence_ids,
+    }
+
+
+def _manifest_payload(
+    *,
+    request: ToolRequestV2,
+    spec: ToolPackageSpecV2,
+    run_id: str,
+    input_hash: str,
+    artifact_specs: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "scope": "internal_run_provenance",
+        "run_id": run_id,
+        "tool_id": spec.tool_id,
+        "tool_version": spec.version,
+        "environment_spec_id": spec.environment_spec_id,
+        "result_schema_ref": RESULT_SCHEMA_REF,
+        "input_hash": input_hash,
+        "structured_inputs": [
+            {
+                "role": ref.role,
+                "schema_ref": ref.schema_ref,
+                "object_version": ref.object_version,
+                "sha256": ref.sha256,
+                "media_type": ref.media_type,
+            }
+            for ref in sorted(
+                request.object_inputs,
+                key=lambda item: (item.role, item.input_id),
+            )
+        ],
+        "artifacts": artifact_specs,
+    }
+
+
+def _runtime_artifacts(
+    *,
+    published: dict[str, Path],
+    payloads: dict[str, bytes],
+    run_id: str,
+    profile: ReportExportVisualizationDataV1,
+    core_specs: list[dict[str, Any]],
+    prepared: PreparedPublicSafeExportVisualizations,
+) -> list[ArtifactManifest]:
+    artifacts = [
+        ArtifactManifest(
+            artifact_id=(
+                f"artifact:{run_id}:"
+                f"{str(item['filename']).removesuffix('.json')}"
+            ),
+            kind=str(item["kind"]),
+            path=published[str(item["filename"])].resolve(),
+            media_type=str(item["media_type"]),
+            sha256=str(item["sha256"]),
+            evidence_ids=[],
+        )
+        for item in core_specs
+    ]
+    artifacts.extend(
+        artifact.model_copy(
+            update={"path": published[artifact.path.name].resolve()}
+        )
+        for artifact in prepared.artifacts
+    )
+    artifacts.append(
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:artifact-manifest",
+            kind="artifact_manifest",
+            path=published["artifact_manifest.json"].resolve(),
+            media_type="application/json",
+            sha256=hashlib.sha256(payloads["artifact_manifest.json"]).hexdigest(),
+            evidence_ids=profile.evidence_ids,
+        )
+    )
+    return artifacts
 
 
 def _failed_run(

@@ -1,0 +1,880 @@
+{
+  "$defs": {
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "PublicSafeExportMode": {
+      "enum": [
+        "report_export",
+        "artifact_audit"
+      ],
+      "title": "PublicSafeExportMode",
+      "type": "string"
+    },
+    "VisualizationAccessibility": {
+      "additionalProperties": false,
+      "properties": {
+        "alt_text": {
+          "maxLength": 240,
+          "minLength": 12,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Alt Text",
+          "type": "string"
+        },
+        "data_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Data Sha256",
+          "type": "string"
+        },
+        "long_description": {
+          "minLength": 40,
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Long Description",
+          "type": "string"
+        },
+        "table_artifact_id": {
+          "minLength": 1,
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
+          "title": "Table Artifact Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alt_text",
+        "long_description",
+        "table_artifact_id",
+        "data_sha256"
+      ],
+      "title": "VisualizationAccessibility",
+      "type": "object"
+    },
+    "VisualizationArtifactV2": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "evidence_ids": {
+              "uniqueItems": true
+            },
+            "evidence_states": {
+              "uniqueItems": true
+            },
+            "limitations": {
+              "uniqueItems": true
+            },
+            "missing_reason_codes": {
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "denominator_label": {
+                  "type": "null"
+                },
+                "denominator_scope": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "denominator_label": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "denominator_scope": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "denominator_label",
+                "denominator_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "properties": {
+            "component_id": {
+              "not": {
+                "pattern": "\\.v[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_states": {
+                "contains": {
+                  "enum": [
+                    "missing",
+                    "unknown",
+                    "unavailable"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "evidence_states"
+            ]
+          },
+          "then": {
+            "properties": {
+              "missing_reason_codes": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "denominator_label": {
+                "type": "null"
+              },
+              "denominator_scope": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "data_binding": {
+                "properties": {
+                  "numerator_field": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "numerator_field"
+                ]
+              }
+            },
+            "required": [
+              "data_binding"
+            ]
+          },
+          "then": {
+            "properties": {
+              "denominator_label": {
+                "type": "string"
+              },
+              "denominator_scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "denominator_label",
+              "denominator_scope"
+            ]
+          }
+        }
+      ],
+      "description": "Portable figure contract; it is not embedded in ToolRun v0.1/v0.2.",
+      "properties": {
+        "accessibility": {
+          "$ref": "#/$defs/VisualizationAccessibility"
+        },
+        "applicability": {
+          "enum": [
+            "applicable",
+            "partially_applicable",
+            "not_applicable",
+            "not_assessed"
+          ],
+          "title": "Applicability",
+          "type": "string"
+        },
+        "component_id": {
+          "pattern": "^bridge\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$",
+          "title": "Component Id",
+          "type": "string"
+        },
+        "component_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "title": "Component Version",
+          "type": "string"
+        },
+        "context_bindings": {
+          "items": {
+            "$ref": "#/$defs/VisualizationContextBinding"
+          },
+          "title": "Context Bindings",
+          "type": "array"
+        },
+        "data_binding": {
+          "$ref": "#/$defs/VisualizationDataBinding"
+        },
+        "denominator_label": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Label"
+        },
+        "denominator_scope": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Scope"
+        },
+        "evidence_ids": {
+          "items": {
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9][A-Za-z0-9_.-]*)*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_states": {
+          "items": {
+            "$ref": "#/$defs/EvidenceState"
+          },
+          "minItems": 1,
+          "title": "Evidence States",
+          "type": "array"
+        },
+        "insight_title": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Insight Title",
+          "type": "string"
+        },
+        "interactions": {
+          "$ref": "#/$defs/VisualizationInteractionContract"
+        },
+        "limitations": {
+          "items": {
+            "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "missing_reason_codes": {
+          "items": {
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+            "type": "string"
+          },
+          "title": "Missing Reason Codes",
+          "type": "array"
+        },
+        "object_version": {
+          "const": "0.2.0",
+          "default": "0.2.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "producer_run_ref": {
+          "minLength": 1,
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
+          "title": "Producer Run Ref",
+          "type": "string"
+        },
+        "producer_tool_id": {
+          "pattern": "^P0-(0[1-9]|1[0-2])$",
+          "title": "Producer Tool Id",
+          "type": "string"
+        },
+        "producer_tool_version": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Producer Tool Version",
+          "type": "string"
+        },
+        "renders": {
+          "items": {
+            "$ref": "#/$defs/VisualizationRenderBinding"
+          },
+          "minItems": 1,
+          "title": "Renders",
+          "type": "array"
+        },
+        "scientific_status": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "takeaway": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Takeaway",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "visualization_id": {
+          "minLength": 1,
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
+          "title": "Visualization Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "visualization_id",
+        "component_id",
+        "component_version",
+        "data_binding",
+        "producer_tool_id",
+        "producer_tool_version",
+        "producer_run_ref",
+        "evidence_ids",
+        "evidence_states",
+        "scientific_status",
+        "applicability",
+        "insight_title",
+        "takeaway",
+        "limitations",
+        "accessibility",
+        "renders"
+      ],
+      "title": "VisualizationArtifactV2",
+      "type": "object"
+    },
+    "VisualizationContextBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "minLength": 1,
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
+          "title": "Ref",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "product_case",
+            "product_definition",
+            "measurement_spec",
+            "data_view",
+            "reference",
+            "method",
+            "environment",
+            "source_family"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "ref",
+        "version",
+        "sha256"
+      ],
+      "title": "VisualizationContextBinding",
+      "type": "object"
+    },
+    "VisualizationDataBinding": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "denominator_field": {
+                  "type": "null"
+                },
+                "denominator_scope_field": {
+                  "type": "null"
+                },
+                "numerator_field": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "denominator_field": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "denominator_scope_field": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "numerator_field": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "numerator_field",
+                "denominator_field",
+                "denominator_scope_field"
+              ]
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "interval_lower_field": {
+                  "type": "null"
+                },
+                "interval_semantics": {
+                  "type": "null"
+                },
+                "interval_upper_field": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "interval_lower_field": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "interval_semantics": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "interval_upper_field": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "interval_lower_field",
+                "interval_upper_field",
+                "interval_semantics"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "properties": {
+                "value_field": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value_field"
+              ]
+            },
+            {
+              "properties": {
+                "numerator_field": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "numerator_field"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Renderer-independent binding to one typed, immutable data object.",
+      "properties": {
+        "applicability_field": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Applicability Field",
+          "type": "string"
+        },
+        "artifact_id": {
+          "minLength": 1,
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "denominator_field": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Field"
+        },
+        "denominator_scope_field": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator Scope Field"
+        },
+        "evidence_ids_field": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Evidence Ids Field",
+          "type": "string"
+        },
+        "evidence_state_field": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Evidence State Field",
+          "type": "string"
+        },
+        "interval_lower_field": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval Lower Field"
+        },
+        "interval_semantics": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval Semantics"
+        },
+        "interval_upper_field": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval Upper Field"
+        },
+        "media_type": {
+          "const": "application/json",
+          "default": "application/json",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "missingness_field": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Missingness Field",
+          "type": "string"
+        },
+        "numerator_field": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator Field"
+        },
+        "object_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "record_lookup_key": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Record Lookup Key",
+          "type": "string"
+        },
+        "records_path": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Records Path",
+          "type": "string"
+        },
+        "schema_ref": {
+          "pattern": "^bridge://schemas/[a-z0-9-]+/v[0-9]+\\.[0-9]+$",
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "scientific_status_field": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Scientific Status Field",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "unit_field": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit Field"
+        },
+        "value_field": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Field"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "schema_ref",
+        "object_version",
+        "sha256",
+        "records_path",
+        "record_lookup_key",
+        "evidence_ids_field",
+        "evidence_state_field",
+        "scientific_status_field",
+        "missingness_field",
+        "applicability_field"
+      ],
+      "title": "VisualizationDataBinding",
+      "type": "object"
+    },
+    "VisualizationInteractionContract": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "drill_down_ids": {
+              "uniqueItems": true
+            },
+            "filter_ids": {
+              "uniqueItems": true
+            },
+            "selection_ids": {
+              "uniqueItems": true
+            }
+          }
+        }
+      ],
+      "properties": {
+        "drill_down_ids": {
+          "items": {
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+            "type": "string"
+          },
+          "title": "Drill Down Ids",
+          "type": "array"
+        },
+        "filter_ids": {
+          "items": {
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+            "type": "string"
+          },
+          "title": "Filter Ids",
+          "type": "array"
+        },
+        "selection_ids": {
+          "items": {
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+            "type": "string"
+          },
+          "title": "Selection Ids",
+          "type": "array"
+        }
+      },
+      "title": "VisualizationInteractionContract",
+      "type": "object"
+    },
+    "VisualizationRenderBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "pattern": "^(?:bridge://[A-Za-z0-9][A-Za-z0-9._~@+-]*(?:/[A-Za-z0-9][A-Za-z0-9._~@+-]*)*|(?:artifact|run|visualization):[A-Za-z0-9][A-Za-z0-9._~:@+-]*|[A-Za-z][A-Za-z0-9._-]*)$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "config_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Config Sha256",
+          "type": "string"
+        },
+        "data_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Data Sha256",
+          "type": "string"
+        },
+        "export_profile_id": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Export Profile Id",
+          "type": "string"
+        },
+        "media_type": {
+          "enum": [
+            "image/svg+xml",
+            "application/pdf",
+            "image/png"
+          ],
+          "title": "Media Type",
+          "type": "string"
+        },
+        "renderer_id": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Renderer Id",
+          "type": "string"
+        },
+        "renderer_version": {
+          "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
+          "title": "Renderer Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "media_type",
+        "renderer_id",
+        "renderer_version",
+        "export_profile_id",
+        "data_sha256",
+        "config_sha256"
+      ],
+      "title": "VisualizationRenderBinding",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/p0-11-visualization-artifact-set/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_set_id": {
+      "pattern": "^p0-11-visualizations:[a-f0-9]{16}$",
+      "title": "Artifact Set Id",
+      "type": "string"
+    },
+    "data_profile_artifact_id": {
+      "minLength": 1,
+      "title": "Data Profile Artifact Id",
+      "type": "string"
+    },
+    "data_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Data Profile Sha256",
+      "type": "string"
+    },
+    "mode": {
+      "$ref": "#/$defs/PublicSafeExportMode"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/p0-11-visualization-artifact-set/v0.1",
+      "default": "bridge://schemas/p0-11-visualization-artifact-set/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "visualizations": {
+      "items": {
+        "$ref": "#/$defs/VisualizationArtifactV2"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Visualizations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mode",
+    "artifact_set_id",
+    "data_profile_artifact_id",
+    "data_profile_sha256",
+    "visualizations"
+  ],
+  "title": "P011VisualizationArtifactSet",
+  "type": "object"
+}
