@@ -16,7 +16,7 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.method_models impo
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     PUBLIC_SCHEMA_MODELS,
-    ProliferationStressResponseProfileV2,
+    ProliferationStressResponseProfileV3,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.visualization_data import (
     P006_COMPONENT_REFS,
@@ -421,7 +421,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-06",
         tool_id="P0-06",
-        tool_version="0.5.0",
+        tool_version="0.6.0",
         output_dir=tmp_path / output_name,
         object_inputs=list(refs.values()),
     )
@@ -433,9 +433,9 @@ def _projection_spec() -> ToolPackageSpecV2:
         .describe("P0-06")
         .model_copy(
             update={
-                "version": "0.5.0",
+                "version": "0.6.0",
                 "result_schema_ref": (
-                    "bridge://schemas/proliferation-stress-response-profile/v0.2"
+                    "bridge://schemas/proliferation-stress-response-profile/v0.3"
                 ),
             }
         )
@@ -443,7 +443,7 @@ def _projection_spec() -> ToolPackageSpecV2:
 
 
 def _projection_request(request: ToolRequestV2) -> ToolRequestV2:
-    return request.model_copy(update={"tool_version": "0.5.0"})
+    return request.model_copy(update={"tool_version": "0.6.0"})
 
 
 def test_registry_declares_executable_v2_contract() -> None:
@@ -453,7 +453,7 @@ def test_registry_declares_executable_v2_contract() -> None:
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert spec.method_ids == METHOD_IDS
     assert spec.result_schema_ref == (
-        "bridge://schemas/proliferation-stress-response-profile/v0.2"
+        "bridge://schemas/proliferation-stress-response-profile/v0.3"
     )
 
 
@@ -466,12 +466,12 @@ def test_valid_bundle_is_descriptive_shadow_and_deterministic(
     assert registry.check_eligibility(request).eligible
     first = registry.run(request)
     second = registry.run(request)
-    result = ProliferationStressResponseProfileV2.model_validate(first.result)
+    result = ProliferationStressResponseProfileV3.model_validate(first.result)
 
     assert first.execution_state is ExecutionState.SUCCEEDED
     assert first.run_id == second.run_id
     assert first.result == second.result
-    assert result.profile_version == "0.2.0"
+    assert result.profile_version == "0.3.0"
     assert first.measurements == []
     assert not any(item.kind == "measurement_result_v2" for item in first.artifacts)
     assert result.analysis_mode == "descriptive_only"
@@ -523,18 +523,18 @@ def test_valid_bundle_is_descriptive_shadow_and_deterministic(
     )
 
 
-def test_v05_without_measurement_spec_uses_v2_not_requested_profile(
+def test_v06_legacy_without_measurement_spec_uses_v3_not_requested_profile(
     tmp_path: Path,
 ) -> None:
     run = adapter.run(
         _projection_request(_request(tmp_path)),
         _projection_spec(),
     )
-    profile = ProliferationStressResponseProfileV2.model_validate(run.result)
+    profile = ProliferationStressResponseProfileV3.model_validate(run.result)
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result_schema_ref == _projection_spec().result_schema_ref
-    assert profile.profile_version == "0.2.0"
+    assert profile.profile_version == "0.3.0"
     assert profile.measurement_projection_state == "not_requested"
     assert profile.measurement_spec_ref is None
     assert profile.measurement_artifacts == []
@@ -543,7 +543,7 @@ def test_v05_without_measurement_spec_uses_v2_not_requested_profile(
     assert not any(item.kind == "measurement_result_v2" for item in run.artifacts)
 
 
-def test_v2_json_schema_encodes_projection_state_coherence(tmp_path: Path) -> None:
+def test_v3_json_schema_encodes_projection_state_coherence(tmp_path: Path) -> None:
     spec = _projection_spec()
     not_requested = adapter.run(
         _projection_request(_request(tmp_path, output_name="not-requested")),
@@ -559,7 +559,7 @@ def test_v2_json_schema_encodes_projection_state_coherence(tmp_path: Path) -> No
         ),
         spec,
     ).result
-    schema = ProliferationStressResponseProfileV2.model_json_schema()
+    schema = ProliferationStressResponseProfileV3.model_json_schema()
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema)
 
@@ -568,7 +568,7 @@ def test_v2_json_schema_encodes_projection_state_coherence(tmp_path: Path) -> No
 
     omitted_default_ref = deepcopy(not_requested)
     omitted_default_ref.pop("measurement_spec_ref")
-    parsed = ProliferationStressResponseProfileV2.model_validate(
+    parsed = ProliferationStressResponseProfileV3.model_validate(
         omitted_default_ref
     )
 
@@ -583,7 +583,7 @@ def test_v2_json_schema_encodes_projection_state_coherence(tmp_path: Path) -> No
         }
     )
     with pytest.raises(ValueError):
-        ProliferationStressResponseProfileV2.model_validate(invalid_not_requested)
+        ProliferationStressResponseProfileV3.model_validate(invalid_not_requested)
     assert list(validator.iter_errors(invalid_not_requested))
 
     invalid_available = deepcopy(available)
@@ -594,7 +594,7 @@ def test_v2_json_schema_encodes_projection_state_coherence(tmp_path: Path) -> No
         }
     )
     with pytest.raises(ValueError):
-        ProliferationStressResponseProfileV2.model_validate(invalid_available)
+        ProliferationStressResponseProfileV3.model_validate(invalid_available)
     assert list(validator.iter_errors(invalid_available))
 
 
@@ -608,7 +608,7 @@ def test_default_contract_accepts_measurement_projection(tmp_path: Path) -> None
     assert eligibility.eligible
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result_schema_ref == spec.result_schema_ref
-    ProliferationStressResponseProfileV2.model_validate(run.result)
+    ProliferationStressResponseProfileV3.model_validate(run.result)
 
 
 def test_measurement_projection_checksummed_artifact_per_program_record(
@@ -620,14 +620,14 @@ def test_measurement_projection_checksummed_artifact_per_program_record(
     assert adapter.check_eligibility(request, spec).eligible
     run = adapter.run(request, spec)
     rerun = adapter.run(request, spec)
-    profile = ProliferationStressResponseProfileV2.model_validate(run.result)
+    profile = ProliferationStressResponseProfileV3.model_validate(run.result)
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result_schema_ref == _projection_spec().result_schema_ref
     assert run.run_id == rerun.run_id
     assert run.result == rerun.result
     assert run.measurements == rerun.measurements
-    assert profile.profile_version == "0.2.0"
+    assert profile.profile_version == "0.3.0"
     assert profile.measurement_projection_state == "available"
     assert profile.measurement_spec_ref.ref == "measurement-spec:p0-06-demo@1.0.0"
     assert len(profile.program_results) == 2
@@ -713,7 +713,7 @@ def test_numeric_projection_preserves_counts_and_unit_when_raw_value_is_null(
         ),
         _projection_spec(),
     )
-    profile = ProliferationStressResponseProfileV2.model_validate(run.result)
+    profile = ProliferationStressResponseProfileV3.model_validate(run.result)
     summary = next(
         item
         for item in profile.program_results
@@ -825,7 +825,7 @@ def test_non_numeric_projection_preserves_source_record_without_fabricating_valu
         ),
         _projection_spec(),
     )
-    profile = ProliferationStressResponseProfileV2.model_validate(run.result)
+    profile = ProliferationStressResponseProfileV3.model_validate(run.result)
     summary = next(
         item
         for item in profile.program_results
@@ -881,7 +881,7 @@ def test_non_numeric_projection_preserves_source_record_without_fabricating_valu
         ("projected_state", "measurement binding projected evidence state mismatch"),
     ],
 )
-def test_v2_profile_rejects_duplicate_or_tampered_measurement_bindings(
+def test_v3_profile_rejects_duplicate_or_tampered_measurement_bindings(
     tmp_path: Path,
     mutation: str,
     message: str,
@@ -900,7 +900,7 @@ def test_v2_profile_rejects_duplicate_or_tampered_measurement_bindings(
         bindings[0]["projected_evidence_state"] = "alert"
 
     with pytest.raises(ValueError, match=message):
-        ProliferationStressResponseProfileV2.model_validate(payload)
+        ProliferationStressResponseProfileV3.model_validate(payload)
 
 
 def test_projection_rerun_rejects_tampered_measurement_artifact(
@@ -979,7 +979,7 @@ def test_process_limits_force_cannot_attribute(
     payloads = _payloads()
     payloads["protocol_ir"][field] = value
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
-    result = ProliferationStressResponseProfileV2.model_validate(run.result)
+    result = ProliferationStressResponseProfileV3.model_validate(run.result)
 
     assert result.process_attribution_state == "cannot_attribute"
     first = next(
@@ -1019,7 +1019,7 @@ def test_coverage_and_lod_limit_resolution(
     payloads = _payloads()
     payloads["program_evidence_bundle"]["records"][0][field] = value
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
-    result = ProliferationStressResponseProfileV2.model_validate(run.result)
+    result = ProliferationStressResponseProfileV3.model_validate(run.result)
     first = next(
         item
         for item in result.program_results
@@ -1046,7 +1046,7 @@ def test_stage_not_applicable_is_unavailable(tmp_path: Path, change: str) -> Non
     else:
         payloads["program_evidence_bundle"]["records"][0]["stage_id"] = "stage:other"
     run = ToolRegistry.load_default().run(_request(tmp_path, payloads=payloads))
-    result = ProliferationStressResponseProfileV2.model_validate(run.result)
+    result = ProliferationStressResponseProfileV3.model_validate(run.result)
     first = next(
         item
         for item in result.program_results
@@ -1286,7 +1286,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-06",
-        tool_version="0.5.0",
+        tool_version="0.6.0",
         output_dir=tmp_path / "output",
     )
 

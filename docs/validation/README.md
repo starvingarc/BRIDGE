@@ -13,7 +13,7 @@ threshold, score or product conclusion.
 | P0-03 Target Identity & Regional Fidelity | [Aggregation validation, 2026-08-25](p0_03_target_regional_20260825.md) · [Expression-method validation, 2026-08-26](p0_03_expression_methods_20260826.md) |
 | P0-04 Developmental Compatibility | [Candidate validation, 2026-08-25](p0_04_developmental_compatibility_v0.2.md) |
 | P0-05 Off-target Control | [Candidate validation, 2026-08-25](p0_05_off_target_control_20260825.md) |
-| P0-06 Proliferation & Stress Response | [Candidate validation, 2026-08-25](p0_06_proliferation_stress_response_20260825.md) |
+| P0-06 Proliferation & Stress Response | [Method-measurement closeout, 2026-09-05](p0_06_method_measurement_closeout_20260905.md) · [Legacy aggregation validation, 2026-08-25](p0_06_proliferation_stress_response_20260825.md) |
 
 ## P0-02 Scientific and Source Preparation
 

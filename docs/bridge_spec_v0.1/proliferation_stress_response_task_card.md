@@ -3,27 +3,29 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.5-candidate` |
-| 日期 | 2026-09-02 |
+| 文档版本 | `0.6-candidate` |
+| 日期 | 2026-09-05 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | 两种 v0.5 模式共享 `ProductCase`、`ProductDefinitionCard`、外部 `DevelopmentWindowSpec`/`ProgramSpec`、`ProtocolIR` 和 `ProgramEvidenceBundle`，并可选接收一个 `MeasurementSpecV2`；`method_runtime` 另需 P0-02 V3、BiologicalUnit 绑定、方法 spec/input 与一个 normalized H5AD |
-| 主要输出 | 两种模式均输出 v0.2 `ProliferationStressResponseProfile`、typed visualization data、精确 TSV、SVG/PNG/PDF 和 visualization artifact set；提供 MeasurementSpec 时另输出每条现有 ProgramEvidence 一一对应的 checksummed `MeasurementResultV2`；`method_runtime` 另输出绑定 ProgramSpec checksum 的 `ProcessMethodBundle` |
+| 上游输入 | `legacy_aggregation` 使用七个对象，可选独立 P0-06 `MeasurementSpecV2`；`method_runtime` 使用六个共同对象（其中 Cell-State 为 P0-02 V3）、BiologicalUnit manifest/assignment、方法 spec/input、必需的 P0-06 `MeasurementSpecV2` 和一个与 DataView 精确一致的 normalized-expression 或 raw-count H5AD，不接收调用方 `ProgramEvidenceBundle` |
+| 主要输出 | 两种模式均输出 v0.3 `ProliferationStressResponseProfile`、typed visualization data、精确 TSV、SVG/PNG/PDF 和 artifact manifest；legacy projection 保留原有状态映射，method runtime 从真实 `ProgramScoreSummary`/`CellCycleSummary` 一一产生 `MeasurementResultV2`，并输出具备矩阵和 normalization lineage 的 v0.2 `ProcessMethodBundle` |
 
-## 0. 当前 v0.5 可执行候选
+## 0. 当前 v0.6 可执行候选
 
-P0-06 `0.5.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
+P0-06 `0.6.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
 
 | 模式 | 输入 | 实际执行 | 输出 |
 | --- | --- | --- | --- |
-| `legacy_aggregation` | 七个 checksummed JSON 对象；Cell-State 使用 V2 | 绑定并聚合预计算 `ProgramEvidenceBundle`，不读取表达矩阵 | `ProliferationStressResponseProfile` 与 manifest |
-| `method_runtime` | 十一个 checksummed JSON 对象、恰好一个 checksummed normalized H5AD；Cell-State 使用 V3 | 实际调用 Scanpy `score_genes`、decoupler ULM、Scanpy `score_genes_cell_cycle`，再按 BiologicalUnit 与 candidate state 聚合 | profile、绑定 ProgramSpec checksum 的 `ProcessMethodBundle` 与 manifest |
+| `legacy_aggregation` | 七个 checksummed JSON 对象；Cell-State 使用 V2；MeasurementSpec 可选 | 绑定并聚合预计算 `ProgramEvidenceBundle`，不读取表达矩阵 | profile v0.3、可选 legacy measurement projection 与 manifest |
+| `method_runtime` | 十一个 checksummed JSON 对象、恰好一个与 P0-02 DataView 一致的 H5AD；Cell-State 使用 V3；MeasurementSpec 必需；ProgramEvidenceBundle 禁止 | 对 normalized expression 直接运行，或对整数 raw counts 固定执行 1e4 library-size normalization + `log1p`，随后调用 Scanpy/decoupler 并按 BiologicalUnit 与 candidate state 聚合 | profile v0.3、method bundle v0.2、逐 summary measurement 与 manifest |
 
-`ProgramSpec` 是 program gene/weight/phase 内容的唯一事实源，并持有这些内容的 canonical SHA-256、适用 stage/state/scope、coverage/LOD 和 review mapping。`ProcessMethodSpec` 只选择 program ID、方法、scope 与运行参数，不再复制 gene-set 内容。两种模式均保持 `descriptive_only`、`candidate/shadow`、`domain_score=null`；工程执行成功不等于程序、阈值或生物学解释已验证。
+`ProgramSpec` 是 program gene/weight/phase 内容的唯一事实源，并持有这些内容的 canonical SHA-256、适用 stage/state/scope、coverage/LOD 和 review mapping。`ProcessMethodSpec` 只选择 program ID、方法、scope 与运行参数。method runtime 的 MeasurementSpec 必须精确绑定 P0-06、assay、生物学单位、实际启用的 metric/scope/unit/method；它不含阈值或 alert。两种模式均保持 `descriptive_only`、`candidate/shadow`、`domain_score=null`。
+
+raw-count 路径在 method bundle 中记录 `normalization_recipe_id=bridge_normalize_total_log1p_v0.1` 与 `normalization_target_sum=10000.0`；该标识是 P0-06 包内 recipe 元数据，不冒充 knowledge catalog 的 Method reference。
 
 ## 1. 任务目标与边界
 
-本模块在已有 Cell-State 与组成证据基础上，描述移植前产品中阶段条件化的增殖、应激及相关转录程序，识别需要复核的信号，并区分生物状态、样本处理影响和证据不足。当前候选既保留预计算证据聚合，也可在显式 `method_runtime` 模式读取 normalized H5AD 执行已登记的 Scanpy/decoupler 方法；两者都不制定 0-100 指数。
+本模块在已有 Cell-State 与组成证据基础上，描述移植前产品中阶段条件化的增殖、应激及相关转录程序，识别需要复核的信号，并区分生物状态、样本处理影响和证据不足。当前候选既保留预计算证据聚合，也可在显式 `method_runtime` 模式读取所选 DataView 的 normalized-expression 或 raw-count H5AD 执行已登记方法；两者都不制定 0-100 指数。
 
 - Proliferation & Stress Response 表示这些增殖、应激及相关转录程序与当前 `ProductDefinitionCard`、目标阶段及参考范围的相容性；它不重新判定细胞身份或计算 off-target 比例。
 - cycling、stress 或其他程序升高必须结合细胞身份、发育阶段、样本处理和 assay 解释，不能自动标记为异常。
@@ -90,13 +92,15 @@ P0-06 `0.5.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式
 ## 4. 分析流程
 ### 4.1 当前可执行基线
 
-P0-06 v0.5 提供两种兼容调用：
+P0-06 v0.6 提供两种兼容调用：
 
 - `legacy_aggregation` 保留七个结构化对象的预计算证据聚合；
-- `method_runtime` 读取一个 checksummed normalized H5AD，实际执行
-  Scanpy `score_genes`、decoupler ULM、Scanpy
-  `score_genes_cell_cycle`，再按 BiologicalUnit 和 candidate cell state
-  聚合。
+- `method_runtime` 读取 P0-02 V3 精确绑定的 checksummed DataView H5AD；
+  normalized expression 直接使用，整数 raw counts 在包内固定执行每 observation
+  1e4 library-size normalization 与 `log1p`，再实际执行 Scanpy
+  `score_genes`、decoupler ULM、Scanpy `score_genes_cell_cycle`，按
+  BiologicalUnit 和 candidate cell state 聚合，并从这些真实 summary 直接
+  生成 gate-facing MeasurementResult。
 
 程序基因、权重、适用状态/阶段、覆盖要求和运行参数全部来自版本化输入。
 UCell、AUCell、pseudobulk 和 CNV 路径仍是独立候选，不计入当前执行结果。
@@ -202,7 +206,7 @@ P0 核心候选不依赖 GPU。不同环境只交换版本化 h5ad/Parquet/TSV�
 
 ## 9. Web 必备可视化
 
-当前 v0.5 提供三组 package-owned typed candidate 图形：
+当前 v0.6 提供三组 package-owned typed candidate 图形：
 
 - 按 stage、cell state 和 scope 排列的 program evidence 与 review-state
   矩阵，显示 gene coverage、适用性、证据状态和缺失原因；
@@ -223,6 +227,9 @@ ProtocolIR timeline、数值 LOD/UCB 或 spike-in recovery curve，也不生成 
 - Cell-State evidence 不可用：不得强行生成 state-specific 过程结论。
 - 程序 gene coverage 不足或 `ProgramSpec` 不适用：该程序返回 `unavailable`，不补值。
 - `method_runtime` 选中的 program 缺少 gene/weight/phase 内容，或内容与 `gene_set_sha256` 不一致：运行前 typed refusal；不得从 `ProcessMethodSpec` 或代码默认值补齐。
+- `method_runtime` 提供调用方 `ProgramEvidenceBundle`，或 MeasurementSpec 未精确匹配 P0-06、assay、生物学单位、已选 metric/scope/unit/method：运行前 typed refusal。
+- H5AD asset 与 P0-02 V3 DataView 的 ID、checksum、assay、matrix location 或 semantics 不一致：拒绝；`ProcessMethodSpec.expression_layer` 不得切换至另一矩阵。
+- raw counts 包含负值、非整数、NaN/Infinity 或零 library-size observation：拒绝，不生成替代值。
 - `method_runtime` 的 `ProtocolIR.independent_replicate_count` 大于已绑定 manifest 的独立组数：返回 `protocol_independent_replicate_count_exceeds_manifest`，不得用细胞数或 preparation 数补足 biological replicate。
 - 无独立 preparation/replicate：不发布推断性差异，只作 `descriptive_only`。
 - 缺少 ProtocolIR 或与 batch 完全混杂：报告 `cannot_attribute`，不归因工艺。

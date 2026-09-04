@@ -1,0 +1,672 @@
+{
+  "$defs": {
+    "AnalysisScope": {
+      "enum": [
+        "whole_product",
+        "state_specific"
+      ],
+      "title": "AnalysisScope",
+      "type": "string"
+    },
+    "CellCycleSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "cycling_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cycling Fraction"
+        },
+        "g2m_gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "G2M Gene Coverage",
+          "type": "number"
+        },
+        "independence_group_ref": {
+          "minLength": 1,
+          "title": "Independence Group Ref",
+          "type": "string"
+        },
+        "mean_g2m_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean G2M Score"
+        },
+        "mean_s_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean S Score"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "phase_counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "propertyNames": {
+            "enum": [
+              "G1",
+              "S",
+              "G2M"
+            ]
+          },
+          "title": "Phase Counts",
+          "type": "object"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "s_gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "S Gene Coverage",
+          "type": "number"
+        }
+      },
+      "required": [
+        "analysis_scope",
+        "analysis_unit_ref",
+        "independence_group_ref",
+        "n_observations",
+        "s_gene_coverage",
+        "g2m_gene_coverage",
+        "phase_counts",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "CellCycleSummary",
+      "type": "object"
+    },
+    "MethodAgreementRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "n_analysis_units": {
+          "minimum": 0,
+          "title": "N Analysis Units",
+          "type": "integer"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "spearman_rho": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spearman Rho"
+        }
+      },
+      "required": [
+        "program_id",
+        "analysis_scope",
+        "n_analysis_units",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "MethodAgreementRecord",
+      "type": "object"
+    },
+    "MethodExecutionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "execution_state": {
+          "$ref": "#/$defs/MethodExecutionState"
+        },
+        "implementation": {
+          "minLength": 1,
+          "title": "Implementation",
+          "type": "string"
+        },
+        "method_id": {
+          "$ref": "#/$defs/ProcessMethodId"
+        },
+        "method_ref": {
+          "pattern": "^METHOD-[A-Z0-9-]+$",
+          "title": "Method Ref",
+          "type": "string"
+        },
+        "package_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Package Versions",
+          "type": "object"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "method_id",
+        "method_ref",
+        "implementation",
+        "execution_state",
+        "package_versions",
+        "reason_codes"
+      ],
+      "title": "MethodExecutionRecord",
+      "type": "object"
+    },
+    "MethodExecutionState": {
+      "enum": [
+        "succeeded",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "MethodExecutionState",
+      "type": "string"
+    },
+    "ProcessMethodId": {
+      "enum": [
+        "PROC-SCORE-SCANPY",
+        "PROC-SCORE-DECOUPLER",
+        "PROC-CYCLE-SCANPY",
+        "PROC-CYCLE-AGG"
+      ],
+      "title": "ProcessMethodId",
+      "type": "string"
+    },
+    "ProgramScoreSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "declared_gene_count": {
+          "exclusiveMinimum": 0,
+          "title": "Declared Gene Count",
+          "type": "integer"
+        },
+        "gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Gene Coverage",
+          "type": "number"
+        },
+        "independence_group_ref": {
+          "minLength": 1,
+          "title": "Independence Group Ref",
+          "type": "string"
+        },
+        "lower_quantile": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Quantile"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median"
+        },
+        "method_id": {
+          "$ref": "#/$defs/ProcessMethodId"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observed_gene_count": {
+          "minimum": 0,
+          "title": "Observed Gene Count",
+          "type": "integer"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "score_unit": {
+          "enum": [
+            "scanpy_control_adjusted_expression",
+            "decoupler_ulm_t_value"
+          ],
+          "title": "Score Unit",
+          "type": "string"
+        },
+        "upper_quantile": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upper Quantile"
+        }
+      },
+      "required": [
+        "method_id",
+        "program_id",
+        "analysis_scope",
+        "analysis_unit_ref",
+        "independence_group_ref",
+        "n_observations",
+        "observed_gene_count",
+        "declared_gene_count",
+        "gene_coverage",
+        "score_unit",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "ProgramScoreSummary",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/process-method-bundle/v0.2",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "normalization_recipe_id": {
+            "type": "null"
+          },
+          "normalization_target_sum": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "input_matrix_semantics": {
+            "const": "raw_counts"
+          }
+        },
+        "required": [
+          "input_matrix_semantics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "normalization_recipe_id": {
+            "const": "bridge_normalize_total_log1p_v0.1"
+          },
+          "normalization_target_sum": {
+            "const": 10000.0
+          }
+        },
+        "required": [
+          "normalization_recipe_id",
+          "normalization_target_sum"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "analysis_matrix_semantics": {
+      "const": "normalized_expression",
+      "default": "normalized_expression",
+      "title": "Analysis Matrix Semantics",
+      "type": "string"
+    },
+    "analysis_unit_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Analysis Unit Refs",
+      "type": "array"
+    },
+    "biological_unit_assignment_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Assignment Sha256",
+      "type": "string"
+    },
+    "biological_unit_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Manifest Sha256",
+      "type": "string"
+    },
+    "bundle_id": {
+      "pattern": "^process-method-bundle:[a-f0-9]{16}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "cell_cycle_summaries": {
+      "items": {
+        "$ref": "#/$defs/CellCycleSummary"
+      },
+      "title": "Cell Cycle Summaries",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_state": {
+      "const": "shadow",
+      "title": "Evidence State",
+      "type": "string"
+    },
+    "executions": {
+      "items": {
+        "$ref": "#/$defs/MethodExecutionRecord"
+      },
+      "title": "Executions",
+      "type": "array"
+    },
+    "expression_asset_id": {
+      "minLength": 1,
+      "title": "Expression Asset Id",
+      "type": "string"
+    },
+    "expression_asset_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Expression Asset Sha256",
+      "type": "string"
+    },
+    "independence_group_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Independence Group Refs",
+      "type": "array"
+    },
+    "input_matrix_location": {
+      "minLength": 1,
+      "title": "Input Matrix Location",
+      "type": "string"
+    },
+    "input_matrix_semantics": {
+      "enum": [
+        "raw_counts",
+        "normalized_expression"
+      ],
+      "title": "Input Matrix Semantics",
+      "type": "string"
+    },
+    "lower_quantile": {
+      "title": "Lower Quantile",
+      "type": "number"
+    },
+    "method_agreement": {
+      "items": {
+        "$ref": "#/$defs/MethodAgreementRecord"
+      },
+      "title": "Method Agreement",
+      "type": "array"
+    },
+    "method_input_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Method Input Sha256",
+      "type": "string"
+    },
+    "method_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Method Spec Sha256",
+      "type": "string"
+    },
+    "normalization_recipe_id": {
+      "anyOf": [
+        {
+          "const": "bridge_normalize_total_log1p_v0.1",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Normalization Recipe Id"
+    },
+    "normalization_target_sum": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Normalization Target Sum"
+    },
+    "object_version": {
+      "const": "0.2.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "program_scores": {
+      "items": {
+        "$ref": "#/$defs/ProgramScoreSummary"
+      },
+      "title": "Program Scores",
+      "type": "array"
+    },
+    "program_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Program Spec Sha256",
+      "type": "string"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "selected_method_ids": {
+      "items": {
+        "$ref": "#/$defs/ProcessMethodId"
+      },
+      "title": "Selected Method Ids",
+      "type": "array"
+    },
+    "tool_id": {
+      "const": "P0-06",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "upper_quantile": {
+      "title": "Upper Quantile",
+      "type": "number"
+    }
+  },
+  "required": [
+    "object_version",
+    "bundle_id",
+    "tool_id",
+    "tool_version",
+    "method_spec_sha256",
+    "program_spec_sha256",
+    "method_input_sha256",
+    "expression_asset_id",
+    "expression_asset_sha256",
+    "biological_unit_manifest_sha256",
+    "biological_unit_assignment_sha256",
+    "analysis_unit_refs",
+    "independence_group_refs",
+    "selected_method_ids",
+    "lower_quantile",
+    "upper_quantile",
+    "executions",
+    "program_scores",
+    "cell_cycle_summaries",
+    "method_agreement",
+    "evidence_state",
+    "score_state",
+    "created_at",
+    "input_matrix_location",
+    "input_matrix_semantics"
+  ],
+  "title": "ProcessMethodBundleV2",
+  "type": "object"
+}

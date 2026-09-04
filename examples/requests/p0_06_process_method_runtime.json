@@ -69,12 +69,12 @@
       "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
     },
     {
-      "input_id": "program-evidence",
+      "input_id": "measurement-spec",
       "media_type": "application/json",
-      "object_version": "0.1.0",
-      "path": "/absolute/path/to/program_evidence_bundle.json",
-      "role": "program_evidence_bundle",
-      "schema_ref": "bridge://schemas/program-evidence-bundle/v0.1",
+      "object_version": "1.0.0",
+      "path": "/absolute/path/to/p0_06_measurement_spec.json",
+      "role": "measurement_spec",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.2",
       "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
     },
     {
@@ -119,5 +119,5 @@
   "random_seed": 17,
   "request_id": "example-p0-06-method-runtime",
   "tool_id": "P0-06",
-  "tool_version": "0.5.0"
+  "tool_version": "0.6.0"
 }

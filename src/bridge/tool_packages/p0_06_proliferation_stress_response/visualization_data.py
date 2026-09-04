@@ -358,7 +358,7 @@ class ProliferationStressVisualizationDataV1(FrozenModel):
     producer_tool_version: str = Field(min_length=1)
     producer_run_ref: str = Field(pattern=r"^run:run-[a-f0-9]{16}$")
     source_profile_id: str = Field(min_length=1)
-    source_profile_version: Literal["0.1.0", "0.2.0"]
+    source_profile_version: Literal["0.1.0", "0.2.0", "0.3.0"]
     product_case_ref: VersionedObjectRef
     product_definition_ref: VersionedObjectRef
     development_window_ref: VersionedObjectRef
@@ -816,8 +816,6 @@ def build_proliferation_stress_visualization_data(
     if match is None:
         raise ValueError("run_id must contain 16 lowercase hex characters")
     sources = _source_binding_map(result.source_bindings)
-    if "program_evidence_bundle" not in sources:
-        raise ValueError("program_evidence_bundle source binding is required")
     joined = _strict_program_review_join(result)
     evidence_rows = [
         _program_evidence_row(index, summary, flag)
@@ -828,6 +826,10 @@ def build_proliferation_stress_visualization_data(
         item is not None for item in supplied
     ):
         raise ValueError("method spec, input, bundle and hash must be paired")
+    if method_bundle is None and "program_evidence_bundle" not in sources:
+        raise ValueError("legacy profile requires program_evidence_bundle binding")
+    if method_bundle is not None and "program_evidence_bundle" in sources:
+        raise ValueError("method runtime cannot bind caller program evidence")
     score_rows: list[ProgramScoreVisualizationRecord] = []
     agreement_rows: list[MethodAgreementVisualizationRecord] = []
     cycle_rows: list[CellCycleVisualizationRecord] = []
