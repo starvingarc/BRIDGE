@@ -26,6 +26,7 @@ from bridge.toolkit.contracts import (
     IndependenceGroupKind,
     MeasurementSpecV2,
     QCReadinessProfileV2,
+    ReadinessState,
 )
 
 OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -801,11 +802,28 @@ def parse_composition(
     return records
 
 
+def qc_allows_module(qc_profile: QCReadinessProfileV2, tool_id: str) -> bool:
+    """Interpret an explicit module gate before the generic downstream gate."""
+
+    if qc_profile.readiness_state in {
+        ReadinessState.BLOCKED,
+        ReadinessState.NOT_ASSESSED,
+        ReadinessState.NOT_APPLICABLE,
+    }:
+        return False
+    explicit = qc_profile.module_eligibility.get(tool_id)
+    if explicit is not None:
+        return explicit in {"eligible", "conditional"}
+    return qc_profile.module_eligibility.get(
+        "downstream_scientific_modules"
+    ) in {"eligible", "conditional"}
+
+
 def profile_lineage_reasons(
     *,
     product_case: ProductCase,
     cell_state_profile: CellStateEvidenceProfileV2,
-    measurement_spec: MeasurementSpecV2,
+    measurement_spec: MeasurementSpecV2 | None,
     qc_profile: QCReadinessProfileV2,
     biological_unit_manifest: BiologicalUnitManifest,
     biological_unit_assignment_artifact: BiologicalUnitAssignmentArtifact,
@@ -899,23 +917,31 @@ def profile_lineage_reasons(
     ):
         reasons.append("cell_state_qc_profile_checksum_mismatch")
     if (
-        measurement_spec.measurement_spec_id
+        cell_state_profile.measurement_spec_id
         != product_case.measurement_spec_ref.object_id
-        or measurement_spec.version
-        != product_case.measurement_spec_ref.object_version
-        or cell_state_profile.measurement_spec_id
-        != measurement_spec.measurement_spec_id
         or cell_state_profile.measurement_spec_version
-        != measurement_spec.version
+        != product_case.measurement_spec_ref.object_version
     ):
         reasons.append("measurement_spec_binding_mismatch")
-    if (
-        measurement_spec.analysis_unit_kind
-        != biological_unit_manifest.analysis_unit_kind
-        or measurement_spec.independence_group_kind
-        != biological_unit_manifest.independence_group_kind
-    ):
-        reasons.append("measurement_spec_biological_unit_mismatch")
+    if measurement_spec is not None:
+        if (
+            measurement_spec.measurement_spec_id
+            != product_case.measurement_spec_ref.object_id
+            or measurement_spec.version
+            != product_case.measurement_spec_ref.object_version
+            or cell_state_profile.measurement_spec_id
+            != measurement_spec.measurement_spec_id
+            or cell_state_profile.measurement_spec_version
+            != measurement_spec.version
+        ):
+            reasons.append("measurement_spec_binding_mismatch")
+        if (
+            measurement_spec.analysis_unit_kind
+            != biological_unit_manifest.analysis_unit_kind
+            or measurement_spec.independence_group_kind
+            != biological_unit_manifest.independence_group_kind
+        ):
+            reasons.append("measurement_spec_biological_unit_mismatch")
 
     if cell_state_view is not None:
         try:
