@@ -135,9 +135,9 @@ scientific methods.
 | Purpose | Decide whether existing domain evidence is ready for interpretation under a versioned gate specification. [Scientific task card](bridge_spec_v0.1/evidence_sufficiency_task_card.md). |
 | Executable implementation | Deterministic gate executor, packaged rule registry and validator, canonical per-domain handoff objects, and table-backed static evidence figures. |
 | Software | Shared Pydantic/JSON Schema runtime, Matplotlib, Python standard library and packaged JSON rule/reason-code resources. |
-| Input → output | GateRuleSpec plus one to five domain bundles → `EvidenceSufficiencyRunResultV2`, canonical v0.2 profile objects, gate trace, case summary, typed visualization data, three TSV tables and three SVG/PNG/PDF figure sets. [Tool Card](../src/bridge/tool_packages/cards/P0-08.md). |
+| Input → output | GateRuleSpec, one to five domain bundles, their evidence objects, and a checksummed ProductCase when case/QC context is declared → `EvidenceSufficiencyRunResultV2`, canonical v0.2 profile objects, gate trace, case summary, typed visualization data, three TSV tables and three SVG/PNG/PDF figure sets. [Tool Card](../src/bridge/tool_packages/cards/P0-08.md). |
 | Call | Shared CLI/SDK with `tool_id=P0-08`; start from the [request example](../examples/requests/p0_08_evidence_sufficiency.json). |
-| Current evidence / status | The module creates no measurement or score and remains a non-formal candidate. Axis terms apply only to the bound MeasurementSpec, declared context and current candidate interpretation rules; record and evidence-family counts are not independent evidence. |
+| Current evidence / status | ProductCase, ProductDefinition, QC-selected view, assay and biological-unit lineage are checked as one case boundary; absent or unknown QC authorization fails closed. The module creates no measurement or score and remains a non-formal candidate. Axis terms apply only to the bound domain MeasurementSpec and candidate rules; record and evidence-family counts are not independent evidence. [Validation record](validation/p0_08_case_binding_v0.5.md). |
 
 <a id="p0-09"></a>
 ## P0-09 Evidence Compiler & Reconciler

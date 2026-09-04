@@ -521,6 +521,7 @@
         },
         "role": {
           "enum": [
+            "product_case",
             "gate_rule_spec",
             "domain_gate_input",
             "measurement_spec",
@@ -535,6 +536,7 @@
         },
         "schema_ref": {
           "enum": [
+            "bridge://schemas/product-case/v0.1",
             "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
             "bridge://schemas/domain-gate-input/v0.1",
             "bridge://schemas/measurement-spec/v0.2",

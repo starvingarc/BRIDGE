@@ -727,6 +727,13 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     5,
                 ),
                 _role(
+                    "product_case",
+                    "bridge://schemas/product-case/v0.1",
+                    V01,
+                    0,
+                    1,
+                ),
+                _role(
                     "measurement_spec",
                     "bridge://schemas/measurement-spec/v0.2",
                     None,

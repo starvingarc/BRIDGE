@@ -6,7 +6,7 @@ import hashlib
 from typing import Any, Iterable, Mapping, Sequence, TypeVar
 
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
-from bridge.tool_packages._configurable_contracts import VersionedObjectRef
+from bridge.tool_packages._configurable_contracts import ProductCase, VersionedObjectRef
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     BLOCKING_REASON_CODES,
     ContractValidationState,
@@ -72,6 +72,7 @@ PRIOR_DIMENSIONS = (
     "license_match",
 )
 LOGICAL_OBJECT_ID_FIELD_BY_ROLE = {
+    "product_case": "product_case_id",
     "gate_rule_spec": "gate_rule_spec_id",
     "domain_gate_input": "domain_gate_input_id",
     "measurement_spec": "measurement_spec_id",
@@ -112,7 +113,18 @@ def _sort_set_like_field(payload: dict[str, Any], field: str) -> None:
 def _canonical_model_payload(model: FrozenModel) -> dict[str, Any]:
     """Normalize only contract-declared set-like lists for run identity."""
     payload = model.model_dump(mode="json")
-    if isinstance(model, DomainGateInput):
+    if isinstance(model, ProductCase):
+        for field in ("independence_group_refs", "provenance_refs"):
+            value = payload.get(field)
+            if isinstance(value, list):
+                payload[field] = sorted(
+                    value,
+                    key=lambda item: (
+                        str(item.get("object_id", "")),
+                        str(item.get("object_version", "")),
+                    ),
+                )
+    elif isinstance(model, DomainGateInput):
         for field in (
             "measurement_result_input_ids",
             "validation_record_input_ids",
@@ -863,7 +875,11 @@ def _source_object_bindings(
                 input_id=ref.input_id,
                 role=ref.role,
                 logical_object_id=str(logical_object_id),
-                object_version=ref.object_version,
+                object_version=(
+                    value.case_version
+                    if ref.role == "product_case" and isinstance(value, ProductCase)
+                    else ref.object_version
+                ),
                 schema_ref=ref.schema_ref,
                 source_sha256=ref.sha256,
             )
