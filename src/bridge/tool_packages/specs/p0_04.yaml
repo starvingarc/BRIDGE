@@ -1,6 +1,6 @@
 tool_id: P0-04
 name: Developmental Compatibility
-version: 0.5.0
+version: 0.5.1
 summary: Aggregate reviewed developmental roles, reference evidence, uncertainty, and ordered sampling-point summaries.
 implementation_state: implemented
 scientific_status: candidate
