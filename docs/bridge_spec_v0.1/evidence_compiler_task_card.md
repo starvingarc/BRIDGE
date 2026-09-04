@@ -3,7 +3,7 @@
 | 字段 | 内容 |
 |---|---|
 | Task ID | `TASK-EVIDENCE-COMPILER` |
-| Tool ID / version | `P0-09` / `0.3.0` |
+| Tool ID / version | `P0-09` / `0.4.0` |
 | Date | 2026-08-13 |
 | Analysis unit | `metric x claim target x biological context x MeasurementSpec` |
 | Runtime state | `implemented` |
@@ -24,15 +24,18 @@ P0-09 读取已经完成且版本化的产品证据，回答：哪些原子记�
 |---|---:|---|---|
 | `compilation_bundle` | 1 | `evidence-compilation-bundle/v0.1` | Case/Comparison scope、候选项、缺失观察、对象目录和可选历史 |
 | `evidence_sufficiency_profile` | Case 1–5；Comparison 2–25 | `evidence-sufficiency-profile/v0.1` 或 `v0.2` | P0-08 的产品、域、MeasurementSpec、sufficiency 和 provenance |
+| `evidence_sufficiency_run_result` | Case 1；Comparison 2–5 | `evidence-sufficiency-run-result/v0.2` | P0-08 canonical wrapper、source bindings、profiles、case summary 与 gate trace |
 | `evidence_family_registry` | 1 | `evidence-family-registry/v0.1` | family 类型、channel role、独立性范围和审核状态 |
 | `claim_registry` | 1 | `claim-registry/v0.1` | Claim、允许方向和 requirement template |
 | `reconciliation_spec_registry` | 1 | `reconciliation-spec-registry/v0.1` | required/optional channel、独立 family 数和冲突规则 |
-| `base_graph_manifest` / `base_evidence_record_set` / `base_evidence_requirement_set` | Case 有 base 时各 1，否则 0 | Case manifest / 两类 fact set | 三者与 `AppendGraphRef` 的 input ID 逐一绑定；Comparison 禁止 |
+| `base_graph_manifest` / `base_evidence_record_set` / `base_evidence_requirement_set` | Case 或 Comparison append 有对应 base 时各 1，否则 0 | 同类 graph manifest / 两类 fact set | 三者与 `AppendGraphRef` 的 input ID 逐一绑定；initial 模式禁止 |
 | `source_case_graph_manifest` / `source_case_evidence_record_set` | Comparison 每个 Case 各 1 | Case manifest / EvidenceRecordSet | 与每个 `BoundCaseGraphRef` input ID 严格双射；Case 禁止 |
+
+四个 direct-profile 模式保留兼容；四个对应 `_v2` 模式只接收 canonical run-result。两类输入不得混用。canonical-run 模式中，bundle 的 `sufficiency_profile_input_id` 指向 run-result input ID；adapter 仅按 wrapper、ProductCase 和 domain 唯一定位内嵌 profile。MeasurementSpec、MeasurementResult、Claim、source record 和 family 的逐条漂移由 compiler 隔离为 partial，不升级为整次技术失败。重复 result ID/version、case set 不闭合或 profile 无法唯一解析仍 fail closed。
 
 `assets=[]`、顶层 `measurement_spec_ref=null`、`parameters={}`。`random_seed` 仅为共享 envelope 兼容而保留，算法不使用随机数。输入期间发生任何字节变化都使整次运行失败。
 
-Case bundle 只拥有一个 ProductCase 及其记录历史；有历史时必须同时提供内容寻址的 base manifest、record set 和 requirement set，且三类事实与 bundle 历史完全一致。Comparison bundle 只引用至少两个 Case graph，不允许 base/prior/owned records，不复制案例值、区间或私有属性。每个 source manifest 会在原始目录中通过七查询层的 `open()` 完整验证五个 authoritative artifacts，再核对 raw manifest SHA、record-set SHA、确定性 graph ID、graph version 和 ProductCase。所有 Claim 映射、ProductCase、MeasurementSpec、EvidenceFamily 和 P0-08 profile 绑定必须显式声明，不能由 Agent 推断。
+Case bundle 只拥有一个 ProductCase 及其记录历史；有历史时必须同时提供内容寻址的 base manifest、record set 和 requirement set，且三类事实与 bundle 历史完全一致。Comparison bundle 只引用至少两个 Case graph，不拥有 Case candidate/missing/history；append 时可显式绑定一个既有 Comparison base graph，不复制案例值、区间或私有属性。每个 source manifest 会在原始目录中通过七查询层的 `open()` 完整验证五个 authoritative artifacts，再核对 raw manifest SHA、record-set SHA、确定性 graph ID、graph version 和 ProductCase。所有 Claim 映射、ProductCase、MeasurementSpec、EvidenceFamily 和 P0-08 profile 绑定必须显式声明，不能由 Agent 推断。
 
 ## 3. 原子 EvidenceRecord 与追加式修正
 
