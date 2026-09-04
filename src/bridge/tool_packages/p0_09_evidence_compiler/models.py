@@ -951,14 +951,9 @@ class EvidenceCompilationBundle(FrozenModel):
             )
             if not self.external_case_evidence_refs:
                 raise ValueError("comparison bundle requires external case evidence")
-            if (
-                self.base_graph_ref is not None
-                or
-                self.candidate_records
-                or self.missing_observations
-                or self.prior_evidence_records
-                or self.prior_requirements
-            ):
+            if self.candidate_records or self.missing_observations:
+                raise ValueError("comparison bundle cannot own case evidence candidates")
+            if self.prior_evidence_records or self.prior_requirements:
                 raise ValueError("comparison bundle cannot own case evidence history")
         return self
 

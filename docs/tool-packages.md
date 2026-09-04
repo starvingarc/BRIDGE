@@ -147,9 +147,9 @@ scientific methods.
 | Purpose | Compile immutable evidence, explicit missing requirements and versioned conflicts into a bounded evidence graph. [Scientific task card](bridge_spec_v0.1/evidence_compiler_task_card.md). |
 | Executable implementation | Deterministic compiler/reconciler, append-only versioning, graph reconstruction and seven named read-only queries; no arbitrary writes or Cypher. |
 | Software | [NetworkX](https://networkx.org/documentation/stable/) for reconstruction/invariant checks and [PyArrow/Parquet](https://arrow.apache.org/docs/python/) for graph facts, plus the shared runtime. |
-| Input → output | Compilation bundle, P0-08 v0.1/v0.2 profiles and EvidenceFamily, Claim and Reconciliation registries → record sets, JSON/Parquet graph facts, three typed figures with complete TSV fallbacks, Cytoscape elements and manifests. [Tool Card](../src/bridge/tool_packages/cards/P0-09.md). |
+| Input → output | Compilation bundle, either direct P0-08 v0.1/v0.2 profiles or canonical P0-08 v0.2 run results, and EvidenceFamily, Claim and Reconciliation registries → record sets, JSON/Parquet graph facts, three typed figures with complete TSV fallbacks, Cytoscape elements and manifests. [Tool Card](../src/bridge/tool_packages/cards/P0-09.md). |
 | Call | Shared CLI/SDK with `tool_id=P0-09`; start from the [request example](../examples/requests/p0_09_evidence_compiler.json). |
-| Current evidence / status | Implemented candidate. Missing evidence remains a requirement; record/family counts are not independent evidence; shadow input is not promoted. P0-08 v0.2 still lacks versioned family identity, so formal compilation remains conservatively unavailable. |
+| Current evidence / status | Implemented candidate. Canonical run-result ingestion supports case/comparison initial and append modes; duplicate run identity fails closed, while record-level provenance drift is isolated as partial. Missing evidence remains a requirement; record/family counts are not independent evidence; shadow input is not promoted. P0-08 v0.2 still lacks versioned family identity, so formal compilation remains conservatively unavailable. [Validation record](validation/p0_09_sufficiency_v2_ingestion_v0.4.md). |
 
 <a id="p0-10"></a>
 ## P0-10 Claim Verifier

@@ -12,12 +12,12 @@
       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
-      "input_id": "target-profile",
+      "input_id": "sufficiency-run",
       "media_type": "application/json",
-      "object_version": "0.1.0",
-      "path": "/absolute/path/to/evidence_sufficiency_profile.json",
-      "role": "evidence_sufficiency_profile",
-      "schema_ref": "bridge://schemas/evidence-sufficiency-profile/v0.1",
+      "object_version": "0.2.0",
+      "path": "/absolute/path/to/evidence_sufficiency_run_result.json",
+      "role": "evidence_sufficiency_run_result",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.2",
       "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     },
     {
@@ -53,5 +53,5 @@
   "random_seed": 0,
   "request_id": "example-p0-09-documentation-only",
   "tool_id": "P0-09",
-  "tool_version": "0.3.0"
+  "tool_version": "0.4.0"
 }

@@ -215,6 +215,115 @@ def _p006_base_roles(
     )
 
 
+def _p009_mode(
+    mode_id: str,
+    *,
+    comparison: bool,
+    append: bool,
+    canonical_run: bool,
+) -> ObjectInputModeContract:
+    if canonical_run:
+        sufficiency = _role(
+            "evidence_sufficiency_run_result",
+            "bridge://schemas/evidence-sufficiency-run-result/v0.2",
+            V02,
+            2 if comparison else 1,
+            5 if comparison else 1,
+        )
+    else:
+        sufficiency = _role(
+            "evidence_sufficiency_profile",
+            (
+                "bridge://schemas/evidence-sufficiency-profile/v0.1",
+                "bridge://schemas/evidence-sufficiency-profile/v0.2",
+            ),
+            (V01, V02),
+            2 if comparison else 1,
+            25 if comparison else 5,
+        )
+    roles = [
+        _role(
+            "compilation_bundle",
+            "bridge://schemas/evidence-compilation-bundle/v0.1",
+            V01,
+            1,
+            1,
+        ),
+        sufficiency,
+        _role(
+            "evidence_family_registry",
+            "bridge://schemas/evidence-family-registry/v0.1",
+            V01,
+            1,
+            1,
+        ),
+        _role(
+            "claim_registry",
+            "bridge://schemas/claim-registry/v0.1",
+            V01,
+            1,
+            1,
+        ),
+        _role(
+            "reconciliation_spec_registry",
+            "bridge://schemas/reconciliation-spec-registry/v0.1",
+            V01,
+            1,
+            1,
+        ),
+    ]
+    if append:
+        roles.extend(
+            [
+                _role(
+                    "base_graph_manifest",
+                    (
+                        "bridge://schemas/comparison-evidence-graph-manifest/v0.1"
+                        if comparison
+                        else "bridge://schemas/case-evidence-graph-manifest/v0.1"
+                    ),
+                    None,
+                    1,
+                    1,
+                ),
+                _role(
+                    "base_evidence_record_set",
+                    "bridge://schemas/evidence-record-set/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "base_evidence_requirement_set",
+                    "bridge://schemas/evidence-requirement-set/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+            ]
+        )
+    if comparison:
+        roles.extend(
+            [
+                _role(
+                    "source_case_graph_manifest",
+                    "bridge://schemas/case-evidence-graph-manifest/v0.1",
+                    None,
+                    2,
+                    5,
+                ),
+                _role(
+                    "source_case_evidence_record_set",
+                    "bridge://schemas/evidence-record-set/v0.1",
+                    V01,
+                    2,
+                    5,
+                ),
+            ]
+        )
+    return _mode(mode_id, *roles)
+
+
 INPUT_CONTRACTS: dict[str, ToolInputContract] = {
     "P0-01": ToolInputContract(
         tool_id="P0-01",
@@ -785,217 +894,53 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         parameters_allowed=False,
         random_seed_policy="any_integer",
         object_input_modes=[
-            _mode(
+            _p009_mode(
                 "case_initial",
-                _role(
-                    "compilation_bundle",
-                    "bridge://schemas/evidence-compilation-bundle/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "evidence_sufficiency_profile",
-                    "bridge://schemas/evidence-sufficiency-profile/v0.1",
-                    V01,
-                    1,
-                    5,
-                ),
-                _role(
-                    "evidence_family_registry",
-                    "bridge://schemas/evidence-family-registry/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "claim_registry", "bridge://schemas/claim-registry/v0.1", V01, 1, 1
-                ),
-                _role(
-                    "reconciliation_spec_registry",
-                    "bridge://schemas/reconciliation-spec-registry/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
+                comparison=False,
+                append=False,
+                canonical_run=False,
             ),
-            _mode(
+            _p009_mode(
                 "case_append",
-                _role(
-                    "compilation_bundle",
-                    "bridge://schemas/evidence-compilation-bundle/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "evidence_sufficiency_profile",
-                    "bridge://schemas/evidence-sufficiency-profile/v0.1",
-                    V01,
-                    1,
-                    5,
-                ),
-                _role(
-                    "evidence_family_registry",
-                    "bridge://schemas/evidence-family-registry/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "claim_registry", "bridge://schemas/claim-registry/v0.1", V01, 1, 1
-                ),
-                _role(
-                    "reconciliation_spec_registry",
-                    "bridge://schemas/reconciliation-spec-registry/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "base_graph_manifest",
-                    (
-                        "bridge://schemas/case-evidence-graph-manifest/v0.1",
-                        "bridge://schemas/comparison-evidence-graph-manifest/v0.1",
-                    ),
-                    None,
-                    1,
-                    1,
-                ),
-                _role(
-                    "base_evidence_record_set",
-                    "bridge://schemas/evidence-record-set/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "base_evidence_requirement_set",
-                    "bridge://schemas/evidence-requirement-set/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
+                comparison=False,
+                append=True,
+                canonical_run=False,
             ),
-            _mode(
+            _p009_mode(
                 "comparison_initial",
-                _role(
-                    "compilation_bundle",
-                    "bridge://schemas/evidence-compilation-bundle/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "evidence_sufficiency_profile",
-                    "bridge://schemas/evidence-sufficiency-profile/v0.1",
-                    V01,
-                    2,
-                    25,
-                ),
-                _role(
-                    "evidence_family_registry",
-                    "bridge://schemas/evidence-family-registry/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "claim_registry", "bridge://schemas/claim-registry/v0.1", V01, 1, 1
-                ),
-                _role(
-                    "reconciliation_spec_registry",
-                    "bridge://schemas/reconciliation-spec-registry/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "source_case_graph_manifest",
-                    "bridge://schemas/case-evidence-graph-manifest/v0.1",
-                    None,
-                    2,
-                    5,
-                ),
-                _role(
-                    "source_case_evidence_record_set",
-                    "bridge://schemas/evidence-record-set/v0.1",
-                    V01,
-                    2,
-                    5,
-                ),
+                comparison=True,
+                append=False,
+                canonical_run=False,
             ),
-            _mode(
+            _p009_mode(
                 "comparison_append",
-                _role(
-                    "compilation_bundle",
-                    "bridge://schemas/evidence-compilation-bundle/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "evidence_sufficiency_profile",
-                    "bridge://schemas/evidence-sufficiency-profile/v0.1",
-                    V01,
-                    2,
-                    25,
-                ),
-                _role(
-                    "evidence_family_registry",
-                    "bridge://schemas/evidence-family-registry/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "claim_registry", "bridge://schemas/claim-registry/v0.1", V01, 1, 1
-                ),
-                _role(
-                    "reconciliation_spec_registry",
-                    "bridge://schemas/reconciliation-spec-registry/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "base_graph_manifest",
-                    (
-                        "bridge://schemas/case-evidence-graph-manifest/v0.1",
-                        "bridge://schemas/comparison-evidence-graph-manifest/v0.1",
-                    ),
-                    None,
-                    1,
-                    1,
-                ),
-                _role(
-                    "base_evidence_record_set",
-                    "bridge://schemas/evidence-record-set/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "base_evidence_requirement_set",
-                    "bridge://schemas/evidence-requirement-set/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "source_case_graph_manifest",
-                    "bridge://schemas/case-evidence-graph-manifest/v0.1",
-                    None,
-                    2,
-                    5,
-                ),
-                _role(
-                    "source_case_evidence_record_set",
-                    "bridge://schemas/evidence-record-set/v0.1",
-                    V01,
-                    2,
-                    5,
-                ),
+                comparison=True,
+                append=True,
+                canonical_run=False,
+            ),
+            _p009_mode(
+                "case_initial_v2",
+                comparison=False,
+                append=False,
+                canonical_run=True,
+            ),
+            _p009_mode(
+                "case_append_v2",
+                comparison=False,
+                append=True,
+                canonical_run=True,
+            ),
+            _p009_mode(
+                "comparison_initial_v2",
+                comparison=True,
+                append=False,
+                canonical_run=True,
+            ),
+            _p009_mode(
+                "comparison_append_v2",
+                comparison=True,
+                append=True,
+                canonical_run=True,
             ),
         ],
     ),

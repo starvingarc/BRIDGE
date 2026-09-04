@@ -89,12 +89,50 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
 
     assert registry.describe_input("P0-01").asset_input.max_count == 1
     assert len(registry.describe_input("P0-03").object_input_modes[0].roles) == 12
-    assert [mode.mode_id for mode in registry.describe_input("P0-09").object_input_modes] == [
+    p009_modes = registry.describe_input("P0-09").object_input_modes
+    assert [mode.mode_id for mode in p009_modes] == [
         "case_initial",
         "case_append",
         "comparison_initial",
         "comparison_append",
+        "case_initial_v2",
+        "case_append_v2",
+        "comparison_initial_v2",
+        "comparison_append_v2",
     ]
+    legacy_profile = next(
+        role
+        for role in p009_modes[0].roles
+        if role.role == "evidence_sufficiency_profile"
+    )
+    assert legacy_profile.schema_refs == [
+        "bridge://schemas/evidence-sufficiency-profile/v0.1",
+        "bridge://schemas/evidence-sufficiency-profile/v0.2",
+    ]
+    assert legacy_profile.object_versions == ["0.1.0", "0.2.0"]
+    canonical_run = next(
+        role
+        for role in p009_modes[4].roles
+        if role.role == "evidence_sufficiency_run_result"
+    )
+    assert canonical_run.schema_refs == [
+        "bridge://schemas/evidence-sufficiency-run-result/v0.2"
+    ]
+    assert (canonical_run.min_count, canonical_run.max_count) == (1, 1)
+    for mode in (p009_modes[1], p009_modes[5]):
+        base_manifest = next(
+            role for role in mode.roles if role.role == "base_graph_manifest"
+        )
+        assert base_manifest.schema_refs == [
+            "bridge://schemas/case-evidence-graph-manifest/v0.1"
+        ]
+    for mode in (p009_modes[3], p009_modes[7]):
+        base_manifest = next(
+            role for role in mode.roles if role.role == "base_graph_manifest"
+        )
+        assert base_manifest.schema_refs == [
+            "bridge://schemas/comparison-evidence-graph-manifest/v0.1"
+        ]
     assert [mode.mode_id for mode in registry.describe_input("P0-12").object_input_modes] == [
         "not_provided",
         "graft_assessment",

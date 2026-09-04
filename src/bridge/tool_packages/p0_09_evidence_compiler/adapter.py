@@ -24,6 +24,7 @@ from bridge.tool_packages._structured_runtime import (
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
     EvidenceSufficiencyProfileV2,
+    EvidenceSufficiencyRunResultV2,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     CompilationInvariantError,
@@ -60,6 +61,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     GraphKind,
     GraphNodeType,
     GraphRecordMode,
+    MissingEvidenceObservation,
     ReconciliationSpecRegistry,
     VersionedObjectRef,
     contains_unsafe_reference,
@@ -93,6 +95,9 @@ ROLE_SCHEMAS = {
         "bridge://schemas/evidence-sufficiency-profile/v0.1",
         "bridge://schemas/evidence-sufficiency-profile/v0.2",
     },
+    "evidence_sufficiency_run_result": {
+        "bridge://schemas/evidence-sufficiency-run-result/v0.2"
+    },
     "evidence_family_registry": {"bridge://schemas/evidence-family-registry/v0.1"},
     "claim_registry": {"bridge://schemas/claim-registry/v0.1"},
     "reconciliation_spec_registry": {"bridge://schemas/reconciliation-spec-registry/v0.1"},
@@ -112,6 +117,7 @@ ROLE_SCHEMAS = {
 ROLE_MODELS: dict[str, type[FrozenModel]] = {
     "compilation_bundle": EvidenceCompilationBundle,
     "evidence_sufficiency_profile": EvidenceSufficiencyProfile,
+    "evidence_sufficiency_run_result": EvidenceSufficiencyRunResultV2,
     "evidence_family_registry": EvidenceFamilyRegistry,
     "claim_registry": ClaimRegistry,
     "reconciliation_spec_registry": ReconciliationSpecRegistry,
@@ -130,6 +136,13 @@ class VerifiedGraphInputs:
     source_effective_lifecycle: dict[
         str, dict[str, EvidenceLifecycleState]
     ]
+
+
+@dataclass(frozen=True)
+class ResolvedSufficiencyInputs:
+    bundle: EvidenceCompilationBundle
+    profiles_by_input_id: dict[str, EvidenceSufficiencyProfile]
+    objects_by_input_id: dict[str, FrozenModel]
 
 
 @dataclass(frozen=True)
@@ -179,18 +192,11 @@ class EvidenceCompilerAdapter:
             "reconciliation_spec_registry",
             ReconciliationSpecRegistry,
         )
-        profiles = {
-            ref.input_id: loaded.objects_by_input_id[ref.input_id]
-            for ref in request.object_inputs
-            if ref.role == "evidence_sufficiency_profile"
-        }
-        if not all(isinstance(item, EvidenceSufficiencyProfile) for item in profiles.values()):
-            return _failed_run(request, spec, ["structured_input_schema_invalid"])
-        typed_profiles: dict[str, EvidenceSufficiencyProfile] = {
-            key: value for key, value in profiles.items() if isinstance(value, EvidenceSufficiencyProfile)
-        }
         try:
             verified_graph_inputs = _verify_graph_inputs(request, loaded, bundle)
+            resolved = _resolve_sufficiency_inputs(
+                request, loaded, bundle, verified_graph_inputs
+            )
         except CompilationInvariantError as exc:
             return _failed_run(request, spec, [exc.reason_code])
         input_hash = canonical_input_hash(
@@ -203,13 +209,13 @@ class EvidenceCompilerAdapter:
             compiled = compile_evidence_graph(
                 request=request,
                 spec=spec,
-                bundle=bundle,
-                profiles_by_input_id=typed_profiles,
+                bundle=resolved.bundle,
+                profiles_by_input_id=resolved.profiles_by_input_id,
                 family_registry=family_registry,
                 claim_registry=claim_registry,
                 reconciliation_registry=reconciliation_registry,
                 verified_graph_inputs=verified_graph_inputs,
-                objects_by_input_id=loaded.objects_by_input_id,
+                objects_by_input_id=resolved.objects_by_input_id,
             )
         except CompilationInvariantError as exc:
             return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
@@ -266,10 +272,10 @@ class EvidenceCompilerAdapter:
                 staging=staging,
                 request=request,
                 spec=spec,
-                bundle=bundle,
+                bundle=resolved.bundle,
                 compiled=compiled,
                 run_id=run_id,
-                objects_by_input_id=loaded.objects_by_input_id,
+                objects_by_input_id=resolved.objects_by_input_id,
                 prepared_visualizations=prepared_visualizations,
             )
             if not _inputs_unchanged(request.object_inputs):
@@ -360,6 +366,16 @@ class EvidenceCompilerAdapter:
             reasons.append("exactly_one_claim_registry_required")
         if roles.count("reconciliation_spec_registry") != 1:
             reasons.append("exactly_one_reconciliation_registry_required")
+        if (
+            "evidence_sufficiency_profile" in roles
+            and "evidence_sufficiency_run_result" in roles
+        ):
+            reasons.append("mixed_sufficiency_input_modes")
+        if not any(
+            role in {"evidence_sufficiency_profile", "evidence_sufficiency_run_result"}
+            for role in roles
+        ):
+            reasons.append("sufficiency_input_required")
         if any(role not in ROLE_SCHEMAS for role in roles):
             reasons.append("unsupported_object_input_role")
         for ref in request.object_inputs:
@@ -392,6 +408,8 @@ def _role_model(ref: StructuredInputRef) -> type[FrozenModel] | None:
             == "bridge://schemas/evidence-sufficiency-profile/v0.2"
             else EvidenceSufficiencyProfile
         )
+    if ref.role == "evidence_sufficiency_run_result":
+        return EvidenceSufficiencyRunResultV2
     if ref.role in {"base_graph_manifest", "source_case_graph_manifest"}:
         if ref.schema_ref == "bridge://schemas/case-evidence-graph-manifest/v0.1":
             return CaseEvidenceGraphManifest
@@ -411,7 +429,8 @@ def _validate_input_payload(ref: StructuredInputRef, payload: Any) -> None:
         else payload
     )
     if (
-        ref.role != "evidence_sufficiency_profile"
+        ref.role
+        not in {"evidence_sufficiency_profile", "evidence_sufficiency_run_result"}
         and _contains_legacy_contract(no_score_payload)
     ):
         raise StructuredInputError("legacy_evidence_contract_rejected")
@@ -433,6 +452,7 @@ def _validate_declared_version(ref: StructuredInputRef, value: FrozenModel) -> N
         "registry_version",
         "record_set_version",
         "requirement_set_version",
+        "result_version",
         "graph_version",
         "version",
     ):
@@ -470,93 +490,404 @@ def _top_level_raw_payload(role: str, value: Any) -> Any:
 
 def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     reasons: list[str] = []
-    bundles = _objects_for_role(request, loaded, "compilation_bundle", EvidenceCompilationBundle)
+    bundles = _objects_for_role(
+        request, loaded, "compilation_bundle", EvidenceCompilationBundle
+    )
     if len(bundles) != 1:
         return ["exactly_one_compilation_bundle_required"]
     bundle = bundles[0]
-    profiles = {
-        ref.input_id: loaded.objects_by_input_id[ref.input_id]
-        for ref in request.object_inputs
-        if ref.role == "evidence_sufficiency_profile"
-    }
-    profile_count = len(profiles)
-    if bundle.graph_kind is GraphKind.CASE:
-        if not 1 <= profile_count <= 5:
-            reasons.append("sufficiency_profile_cardinality_invalid")
-        bound_ids = {
-            item.get("sufficiency_profile_input_id")
-            for item in bundle.candidate_records
-            if isinstance(item, dict)
-            and isinstance(item.get("sufficiency_profile_input_id"), str)
-        }
-        profile_input_by_ref = {
-            f"{profile.profile_id}@{profile.profile_version}": input_id
-            for input_id, profile in profiles.items()
-            if isinstance(profile, EvidenceSufficiencyProfile)
-        }
-        bound_ids.update(
-            profile_input_by_ref[record.sufficiency_profile_ref.ref]
-            for record in bundle.prior_evidence_records
-            if record.sufficiency_profile_ref.ref in profile_input_by_ref
-        )
-    else:
-        if not 2 <= profile_count <= 25:
-            reasons.append("sufficiency_profile_cardinality_invalid")
-        bound_ids = {
-            value
-            for item in bundle.external_case_evidence_refs
-            if isinstance(value := _external_profile_input_id(item), str)
-        }
-    if set(profiles) != bound_ids:
-        reasons.append("unbound_sufficiency_profile")
-    profile_ids = [
-        item.profile_id
-        for item in profiles.values()
-        if isinstance(item, EvidenceSufficiencyProfile)
-    ]
-    if len(profile_ids) != len(set(profile_ids)):
-        reasons.append("duplicate_sufficiency_profile_id")
+    verified_graph_inputs: VerifiedGraphInputs | None = None
     try:
-        claims = _objects_for_role(request, loaded, "claim_registry", ClaimRegistry)
-        family_registries = _objects_for_role(
-            request, loaded, "evidence_family_registry", EvidenceFamilyRegistry
-        )
-        validate_prior_history(
-            bundle,
-            profiles_by_input_id={
-                key: value
-                for key, value in profiles.items()
-                if isinstance(value, EvidenceSufficiencyProfile)
-            },
-            claims=(
-                {
-                    (item.claim_id, item.version): item
-                    for item in claims[0].claims
-                }
-                if len(claims) == 1
-                else None
-            ),
-            families=(
-                {
-                    (item.evidence_family_id, item.version): item
-                    for item in family_registries[0].families
-                }
-                if len(family_registries) == 1
-                else None
-            ),
-        )
+        verified_graph_inputs = _verify_graph_inputs(request, loaded, bundle)
     except CompilationInvariantError as exc:
         reasons.append(exc.reason_code)
-    try:
-        _verify_graph_inputs(request, loaded, bundle)
-    except CompilationInvariantError as exc:
-        reasons.append(exc.reason_code)
+    if verified_graph_inputs is not None:
+        try:
+            resolved = _resolve_sufficiency_inputs(
+                request, loaded, bundle, verified_graph_inputs
+            )
+            claims = _objects_for_role(request, loaded, "claim_registry", ClaimRegistry)
+            family_registries = _objects_for_role(
+                request, loaded, "evidence_family_registry", EvidenceFamilyRegistry
+            )
+            validate_prior_history(
+                resolved.bundle,
+                profiles_by_input_id=resolved.profiles_by_input_id,
+                claims=(
+                    {
+                        (item.claim_id, item.version): item
+                        for item in claims[0].claims
+                    }
+                    if len(claims) == 1
+                    else None
+                ),
+                families=(
+                    {
+                        (item.evidence_family_id, item.version): item
+                        for item in family_registries[0].families
+                    }
+                    if len(family_registries) == 1
+                    else None
+                ),
+            )
+        except CompilationInvariantError as exc:
+            reasons.append(exc.reason_code)
     resolved_output = request.output_dir.resolve()
     for ref in request.object_inputs:
         resolved_input = ref.path.resolve()
-        if resolved_input == resolved_output or resolved_input.is_relative_to(resolved_output):
+        if resolved_input == resolved_output or resolved_input.is_relative_to(
+            resolved_output
+        ):
             reasons.append("output_dir_overlaps_structured_input")
     return sorted(set(reasons))
+
+
+def _resolve_sufficiency_inputs(
+    request: ToolRequestV2,
+    loaded: LoadedInputs,
+    bundle: EvidenceCompilationBundle,
+    verified_graph_inputs: VerifiedGraphInputs,
+) -> ResolvedSufficiencyInputs:
+    profile_refs = [
+        ref
+        for ref in request.object_inputs
+        if ref.role == "evidence_sufficiency_profile"
+    ]
+    run_refs = [
+        ref
+        for ref in request.object_inputs
+        if ref.role == "evidence_sufficiency_run_result"
+    ]
+    if profile_refs and run_refs:
+        raise CompilationInvariantError("mixed_sufficiency_input_modes")
+    if profile_refs:
+        profiles = {
+            ref.input_id: loaded.objects_by_input_id[ref.input_id]
+            for ref in profile_refs
+        }
+        if not all(
+            isinstance(item, EvidenceSufficiencyProfile)
+            for item in profiles.values()
+        ):
+            raise CompilationInvariantError("structured_input_schema_invalid")
+        typed_profiles = {
+            key: value
+            for key, value in profiles.items()
+            if isinstance(value, EvidenceSufficiencyProfile)
+        }
+        expected = (1, 5) if bundle.graph_kind is GraphKind.CASE else (2, 25)
+        if not expected[0] <= len(typed_profiles) <= expected[1]:
+            raise CompilationInvariantError("sufficiency_profile_cardinality_invalid")
+        if bundle.graph_kind is GraphKind.CASE:
+            bound_ids = {
+                item.get("sufficiency_profile_input_id")
+                for item in bundle.candidate_records
+                if isinstance(item, dict)
+                and isinstance(item.get("sufficiency_profile_input_id"), str)
+            }
+            profile_input_by_ref = {
+                f"{profile.profile_id}@{profile.profile_version}": input_id
+                for input_id, profile in typed_profiles.items()
+            }
+            bound_ids.update(
+                profile_input_by_ref[record.sufficiency_profile_ref.ref]
+                for record in bundle.prior_evidence_records
+                if record.sufficiency_profile_ref.ref in profile_input_by_ref
+            )
+        else:
+            bound_ids = {
+                value
+                for item in bundle.external_case_evidence_refs
+                if isinstance(value := _external_profile_input_id(item), str)
+            }
+        if set(typed_profiles) != bound_ids:
+            raise CompilationInvariantError("unbound_sufficiency_profile")
+        if len({item.profile_id for item in typed_profiles.values()}) != len(
+            typed_profiles
+        ):
+            raise CompilationInvariantError("duplicate_sufficiency_profile_id")
+        return ResolvedSufficiencyInputs(
+            bundle=bundle,
+            profiles_by_input_id=typed_profiles,
+            objects_by_input_id=dict(loaded.objects_by_input_id),
+        )
+    if not run_refs:
+        raise CompilationInvariantError("sufficiency_input_required")
+    runs = {
+        ref.input_id: loaded.objects_by_input_id[ref.input_id]
+        for ref in run_refs
+    }
+    if not all(
+        isinstance(item, EvidenceSufficiencyRunResultV2)
+        for item in runs.values()
+    ):
+        raise CompilationInvariantError("structured_input_schema_invalid")
+    typed_runs = {
+        key: value
+        for key, value in runs.items()
+        if isinstance(value, EvidenceSufficiencyRunResultV2)
+    }
+    if (
+        bundle.graph_kind is GraphKind.CASE
+        and len(typed_runs) != 1
+    ) or (
+        bundle.graph_kind is GraphKind.COMPARISON
+        and not 2 <= len(typed_runs) <= 5
+    ):
+        raise CompilationInvariantError("sufficiency_run_cardinality_invalid")
+    run_identities = [
+        (result.result_id, result.result_version)
+        for result in typed_runs.values()
+    ]
+    if len(run_identities) != len(set(run_identities)):
+        raise CompilationInvariantError("duplicate_sufficiency_run_id")
+
+    run_case_refs = {
+        input_id: _object_ref_key(result.case_summary.product_case_ref)
+        for input_id, result in typed_runs.items()
+    }
+    if any(ref is None for ref in run_case_refs.values()):
+        raise CompilationInvariantError("sufficiency_run_case_binding_invalid")
+    if bundle.graph_kind is GraphKind.CASE:
+        if set(run_case_refs.values()) != {_object_ref_key(bundle.product_case_ref)}:
+            raise CompilationInvariantError("sufficiency_run_case_binding_invalid")
+    else:
+        expected_cases = {
+            _object_ref_key(item.product_case_ref) for item in bundle.case_graph_refs
+        }
+        if (
+            len(run_case_refs.values()) != len(set(run_case_refs.values()))
+            or set(run_case_refs.values()) != expected_cases
+        ):
+            raise CompilationInvariantError("sufficiency_run_case_binding_invalid")
+
+    profiles_by_key: dict[str, EvidenceSufficiencyProfileV2] = {}
+    profiles_by_run: dict[str, list[tuple[str, EvidenceSufficiencyProfileV2]]] = {}
+    profile_refs_seen: set[str] = set()
+    for run_input_id, result in typed_runs.items():
+        for profile in result.profiles:
+            profile_ref = f"{profile.profile_id}@{profile.profile_version}"
+            if profile_ref in profile_refs_seen:
+                raise CompilationInvariantError("duplicate_sufficiency_profile_id")
+            profile_refs_seen.add(profile_ref)
+            key_digest = hashlib.sha256(
+                (
+                    f"{result.result_id}@{result.result_version}|"
+                    f"{profile_ref}"
+                ).encode("utf-8")
+            ).hexdigest()[:24]
+            key = f"sufficiency-profile-binding:{key_digest}"
+            if key in profiles_by_key:
+                raise CompilationInvariantError("duplicate_sufficiency_profile_id")
+            profiles_by_key[key] = profile
+            profiles_by_run.setdefault(run_input_id, []).append((key, profile))
+
+    if set(profiles_by_key) & set(loaded.objects_by_input_id):
+        raise CompilationInvariantError(
+            "sufficiency_profile_binding_id_collision"
+        )
+
+    claims = _objects_for_role(request, loaded, "claim_registry", ClaimRegistry)
+    claim_by_ref = (
+        {
+            (item.claim_id, item.version): item
+            for item in claims[0].claims
+        }
+        if len(claims) == 1
+        else {}
+    )
+    bound_profile_keys: set[str] = set()
+    rewritten_candidates: list[dict[str, Any]] = []
+    for raw in bundle.candidate_records:
+        run_input_id = raw.get("sufficiency_profile_input_id")
+        if not isinstance(run_input_id, str):
+            rewritten_candidates.append(raw)
+            continue
+        choices = profiles_by_run.get(run_input_id)
+        if choices is None:
+            raise CompilationInvariantError("sufficiency_run_profile_binding_invalid")
+        claim = claim_by_ref.get(_object_ref_key(raw.get("claim_ref")))
+        domain_id = (
+            claim.domain_id
+            if claim is not None
+            else raw.get("domain_id")
+            if isinstance(raw.get("domain_id"), str)
+            else None
+        )
+        profile_key, _ = _select_embedded_profile(
+            choices,
+            product_case_ref=bundle.product_case_ref,
+            domain_id=domain_id,
+            allow_single_profile_fallback=True,
+        )
+        bound_profile_keys.add(profile_key)
+        rewritten_candidates.append(
+            {**raw, "sufficiency_profile_input_id": profile_key}
+        )
+
+    for record in bundle.prior_evidence_records:
+        profile_key, _ = _select_embedded_profile(
+            list(profiles_by_key.items()),
+            product_case_ref=bundle.product_case_ref,
+            profile_ref=_object_ref_key(record.sufficiency_profile_ref),
+        )
+        bound_profile_keys.add(profile_key)
+
+    case_choices = next(iter(profiles_by_run.values()), [])
+    for raw in bundle.missing_observations:
+        try:
+            observation = MissingEvidenceObservation.model_validate(raw)
+        except ValueError:
+            continue
+        claim = claim_by_ref.get(_object_ref_key(observation.claim_ref))
+        if claim is None:
+            continue
+        profile_key, _ = _select_embedded_profile(
+            case_choices,
+            product_case_ref=bundle.product_case_ref,
+            domain_id=claim.domain_id,
+            measurement_spec_ref=_object_ref_key(
+                observation.source_contract_ref
+            ),
+        )
+        bound_profile_keys.add(profile_key)
+
+    rewritten_externals: list[ExternalCaseEvidenceRef | dict[str, Any]] = []
+    for raw_item in bundle.external_case_evidence_refs:
+        raw = (
+            raw_item.model_dump(mode="json")
+            if isinstance(raw_item, ExternalCaseEvidenceRef)
+            else raw_item
+        )
+        run_input_id = raw.get("sufficiency_profile_input_id")
+        if not isinstance(run_input_id, str):
+            rewritten_externals.append(raw)
+            continue
+        choices = profiles_by_run.get(run_input_id)
+        if choices is None:
+            raise CompilationInvariantError("sufficiency_run_profile_binding_invalid")
+        try:
+            external = ExternalCaseEvidenceRef.model_validate(raw)
+        except ValueError:
+            external = None
+        source_set = (
+            verified_graph_inputs.source_record_sets.get(
+                external.source_case_graph_ref.graph_id
+            )
+            if external is not None
+            else None
+        )
+        source_record = next(
+            (
+                item
+                for item in (source_set.records if source_set is not None else [])
+                if external is not None and item.ref == external.evidence_ref
+            ),
+            None,
+        )
+        comparison_claim = claim_by_ref.get(
+            _object_ref_key(
+                external.comparison_claim_ref
+                if external is not None
+                else raw.get("comparison_claim_ref")
+            )
+        )
+        domain_id = (
+            comparison_claim.domain_id
+            if comparison_claim is not None
+            else source_record.domain_id
+            if source_record is not None
+            else None
+        )
+        profile_key, _ = _select_embedded_profile(
+            choices,
+            product_case_ref=typed_runs[run_input_id].case_summary.product_case_ref,
+            domain_id=domain_id,
+            allow_single_profile_fallback=True,
+        )
+        bound_profile_keys.add(profile_key)
+        rewritten_externals.append(
+            external.model_copy(update={"sufficiency_profile_input_id": profile_key})
+            if external is not None
+            else {**raw, "sufficiency_profile_input_id": profile_key}
+        )
+
+    if set(profiles_by_key) != bound_profile_keys:
+        raise CompilationInvariantError("unbound_sufficiency_profile")
+    resolved_bundle = bundle.model_copy(
+        update={
+            "candidate_records": rewritten_candidates,
+            "external_case_evidence_refs": rewritten_externals,
+        }
+    )
+    resolved_objects = dict(loaded.objects_by_input_id)
+    resolved_objects.update(profiles_by_key)
+    return ResolvedSufficiencyInputs(
+        bundle=resolved_bundle,
+        profiles_by_input_id=dict(profiles_by_key),
+        objects_by_input_id=resolved_objects,
+    )
+
+
+def _object_ref_key(value: Any) -> tuple[str, str] | None:
+    if isinstance(value, Mapping):
+        object_id = value.get("object_id")
+        object_version = value.get("object_version")
+    else:
+        object_id = getattr(value, "object_id", None)
+        object_version = getattr(value, "object_version", None)
+    if not isinstance(object_id, str) or not isinstance(object_version, str):
+        return None
+    return object_id, object_version
+
+
+def _select_embedded_profile(
+    choices: list[tuple[str, EvidenceSufficiencyProfileV2]],
+    *,
+    product_case_ref: Any,
+    domain_id: Any = None,
+    measurement_spec_ref: tuple[str, str] | None = None,
+    profile_ref: tuple[str, str] | None = None,
+    allow_single_profile_fallback: bool = False,
+) -> tuple[str, EvidenceSufficiencyProfileV2]:
+    case_ref = _object_ref_key(product_case_ref)
+    case_choices = [
+        item
+        for item in choices
+        if _object_ref_key(item[1].product_case_ref) == case_ref
+    ]
+    matches = case_choices
+    if profile_ref is not None:
+        matches = [
+            item
+            for item in matches
+            if (item[1].profile_id, item[1].profile_version) == profile_ref
+        ]
+    if measurement_spec_ref is not None:
+        matches = [
+            item
+            for item in matches
+            if _object_ref_key(item[1].measurement_spec_ref)
+            == measurement_spec_ref
+        ]
+    if domain_id is not None:
+        domain_value = getattr(domain_id, "value", domain_id)
+        matches = [
+            item
+            for item in matches
+            if item[1].domain_id is not None
+            and item[1].domain_id.value == domain_value
+        ]
+    if len(matches) == 1:
+        return matches[0]
+    if (
+        allow_single_profile_fallback
+        and profile_ref is None
+        and measurement_spec_ref is None
+        and len(case_choices) == 1
+    ):
+        return case_choices[0]
+    raise CompilationInvariantError("sufficiency_run_profile_binding_invalid")
 
 
 def _verify_graph_inputs(

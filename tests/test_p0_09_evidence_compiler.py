@@ -21,6 +21,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
     P0DomainId,
     EvidenceSufficiencyProfileV2,
+    EvidenceSufficiencyRunResultV2,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     PUBLIC_SCHEMA_MODELS,
@@ -36,6 +37,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     EvidenceRecord,
     EvidenceRequirement,
     CaseEvidenceGraphManifest,
+    ComparisonEvidenceGraphManifest,
     MissingEvidenceObservation,
     EvidenceFamilyRegistry,
     GraphArtifactRef,
@@ -121,7 +123,7 @@ def _spec() -> ToolPackageSpecV2:
     return ToolPackageSpecV2(
         tool_id="P0-09",
         name="Evidence Compiler & Reconciler",
-        version="0.3.0",
+        version="0.4.0",
         summary="Compile atomic evidence and reconcile conflicts by versioned rules.",
         implementation_state=ImplementationState.IMPLEMENTED,
         scientific_status="candidate",
@@ -855,10 +857,15 @@ def _request(
     output_name: str = "output",
     base_manifest_path: Path | None = None,
     source_case_manifest_paths: list[Path] | None = None,
+    sufficiency_runs: list[tuple[str, dict[str, Any]]] | None = None,
 ) -> ToolRequestV2:
     inputs = tmp_path / f"inputs-{request_id}"
     manifest_paths_by_input_id: dict[str, Path] = {}
-    profile_objects = profiles or [("profile-target", profile or _profile())]
+    profile_objects = (
+        [(input_id, payload["profiles"][0]) for input_id, payload in sufficiency_runs]
+        if sufficiency_runs is not None
+        else profiles or [("profile-target", profile or _profile())]
+    )
     effective_bundle = json.loads(json.dumps(bundle or _bundle()))
     if (
         effective_bundle["graph_kind"] == "comparison"
@@ -897,20 +904,33 @@ def _request(
             "0.1.0",
         ),
     ]
-    objects[1:1] = [
-        (
-            input_id,
-            "evidence_sufficiency_profile",
+    objects[1:1] = (
+        [
             (
-                "bridge://schemas/evidence-sufficiency-profile/v0.2"
-                if payload["profile_version"] == "0.2.0"
-                else "bridge://schemas/evidence-sufficiency-profile/v0.1"
-            ),
-            payload,
-            payload["profile_version"],
-        )
-        for input_id, payload in profile_objects
-    ]
+                input_id,
+                "evidence_sufficiency_run_result",
+                "bridge://schemas/evidence-sufficiency-run-result/v0.2",
+                payload,
+                "0.2.0",
+            )
+            for input_id, payload in sufficiency_runs
+        ]
+        if sufficiency_runs is not None
+        else [
+            (
+                input_id,
+                "evidence_sufficiency_profile",
+                (
+                    "bridge://schemas/evidence-sufficiency-profile/v0.2"
+                    if payload["profile_version"] == "0.2.0"
+                    else "bridge://schemas/evidence-sufficiency-profile/v0.1"
+                ),
+                payload,
+                payload["profile_version"],
+            )
+            for input_id, payload in profile_objects
+        ]
+    )
     if base_manifest_path is not None:
         manifest_paths_by_input_id["base-manifest"] = base_manifest_path
         base_manifest = json.loads(base_manifest_path.read_text())
@@ -992,7 +1012,7 @@ def _request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-09",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -1774,7 +1794,7 @@ def test_v1_adapter_invocation_has_one_stable_v2_reason(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="p0-09-v1",
         tool_id="P0-09",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
         output_dir=(tmp_path / "output").resolve(),
     )
     eligibility = adapter.check_eligibility(request, _spec())  # type: ignore[arg-type]
@@ -3715,6 +3735,122 @@ def _v2_profile(
     return payload
 
 
+def _v2_run(profile_payload: dict[str, Any]) -> dict[str, Any]:
+    profile = EvidenceSufficiencyProfileV2.model_validate(
+        _v2_profile(profile_payload)
+        if profile_payload["profile_version"] == "0.1.0"
+        else profile_payload
+    )
+    digest = profile.profile_id.split(":", 2)[1]
+    assert profile.domain_id is not None
+    assert profile.product_case_ref is not None
+    assert profile.measurement_spec_ref is not None
+    assert profile.qc_profile_ref is not None
+    bindings = [
+        {
+            "input_id": f"domain-{profile.domain_id.value}",
+            "role": "domain_gate_input",
+            "logical_object_id": (
+                f"domain-gate-input:{digest}:{profile.domain_id.value}"
+            ),
+            "object_version": "0.1.0",
+            "schema_ref": "bridge://schemas/domain-gate-input/v0.1",
+            "source_sha256": "1" * 64,
+        },
+        {
+            "input_id": "product-case",
+            "role": "product_case",
+            "logical_object_id": profile.product_case_ref.object_id,
+            "object_version": profile.product_case_ref.object_version,
+            "schema_ref": "bridge://schemas/product-case/v0.1",
+            "source_sha256": "f" * 64,
+        },
+        {
+            "input_id": "gate-rules",
+            "role": "gate_rule_spec",
+            "logical_object_id": "GATE-EVIDENCE-SUFFICIENCY-v0.2",
+            "object_version": "0.2.0",
+            "schema_ref": (
+                "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2"
+            ),
+            "source_sha256": "2" * 64,
+        },
+        *[
+            {
+                "input_id": f"measurement-{index}",
+                "role": "measurement_result",
+                "logical_object_id": item.object_id,
+                "object_version": item.object_version,
+                "schema_ref": "bridge://schemas/measurement-result/v0.2",
+                "source_sha256": f"{index + 3:x}" * 64,
+            }
+            for index, item in enumerate(profile.measurement_result_refs)
+        ],
+        {
+            "input_id": "measurement-spec",
+            "role": "measurement_spec",
+            "logical_object_id": profile.measurement_spec_ref.object_id,
+            "object_version": profile.measurement_spec_ref.object_version,
+            "schema_ref": "bridge://schemas/measurement-spec/v0.2",
+            "source_sha256": "d" * 64,
+        },
+        {
+            "input_id": "qc-profile",
+            "role": "qc_readiness_profile",
+            "logical_object_id": profile.qc_profile_ref.object_id,
+            "object_version": profile.qc_profile_ref.object_version,
+            "schema_ref": "bridge://schemas/qc-readiness-profile/v0.2",
+            "source_sha256": "e" * 64,
+        },
+    ]
+    bindings.sort(key=lambda item: (item["role"], item["input_id"]))
+    state_counts = {
+        state: int(profile.evidence_sufficiency_state.value == state)
+        for state in ("sufficient", "limited", "insufficient", "not_assessed")
+    }
+    payload = {
+        "result_id": f"evidence-sufficiency-result:{digest}",
+        "result_version": "0.2.0",
+        "gate_rule_spec_ref": "GATE-EVIDENCE-SUFFICIENCY-v0.2",
+        "source_object_bindings": bindings,
+        "profiles": [profile.model_dump(mode="json")],
+        "case_summary": {
+            "summary_id": f"case-evidence-readiness-summary:{digest}",
+            "summary_version": "0.2.0",
+            "product_case_ref": profile.product_case_ref.model_dump(mode="json"),
+            "profile_count": 1,
+            "evidence_sufficiency_counts": state_counts,
+            "score_state_counts": {"unavailable": 1},
+            "blocking_reasons": profile.blocking_reasons,
+            "measurement_evidence_state_counts": (
+                profile.measurement_evidence_state_counts.model_dump(mode="json")
+            ),
+        },
+        "gate_trace": [
+            {
+                "profile_ref": profile.profile_id,
+                "domain_gate_input_ref": (
+                    f"domain-gate-input:{digest}:{profile.domain_id.value}"
+                ),
+                "evaluated_precedence": (
+                    "not_assessed",
+                    "insufficient",
+                    "limited",
+                    "sufficient",
+                ),
+                "selected_state": profile.evidence_sufficiency_state.value,
+                "selected_reason_codes": (
+                    profile.blocking_reasons or ["raw_evidence_gate_sufficient"]
+                ),
+                "ignored_duplicate_input_refs": [],
+            }
+        ],
+    }
+    return EvidenceSufficiencyRunResultV2.model_validate(payload).model_dump(
+        mode="json"
+    )
+
+
 def _request_with_v2_profile(
     tmp_path: Path,
     *,
@@ -3744,6 +3880,546 @@ def _request_with_v2_profile(
                 for item in request.object_inputs
             ]
         }
+    )
+
+
+def _run_request(request: ToolRequestV2):
+    return adapter.run(request, _spec())
+
+
+def _case_v2_request(
+    tmp_path: Path,
+    *,
+    bundle: dict[str, Any] | None = None,
+    request_id: str = "case-v2",
+    output_name: str = "case-v2-output",
+    base_manifest_path: Path | None = None,
+) -> ToolRequestV2:
+    effective_bundle = json.loads(json.dumps(bundle or _bundle()))
+    for candidate in effective_bundle["candidate_records"]:
+        candidate["sufficiency_profile_input_id"] = "sufficiency-run"
+    return _request(
+        tmp_path,
+        bundle=effective_bundle,
+        request_id=request_id,
+        output_name=output_name,
+        base_manifest_path=base_manifest_path,
+        sufficiency_runs=[("sufficiency-run", _v2_run(_profile()))],
+    )
+
+
+def _comparison_v2_inputs(
+    bundle: dict[str, Any],
+) -> tuple[dict[str, Any], list[tuple[str, dict[str, Any]]]]:
+    bundle = json.loads(json.dumps(bundle))
+    direct_profiles = _comparison_profiles()
+    runs = []
+    for index, (_profile_input_id, profile) in enumerate(direct_profiles):
+        run_input_id = f"sufficiency-run-{index}"
+        bundle["external_case_evidence_refs"][index][
+            "sufficiency_profile_input_id"
+        ] = run_input_id
+        runs.append((run_input_id, _v2_run(profile)))
+    return bundle, runs
+
+
+def test_case_initial_v2_consumes_canonical_run_and_preserves_exact_profile_refs(
+    tmp_path: Path,
+) -> None:
+    request = _case_v2_request(tmp_path)
+    run_input = next(
+        item
+        for item in request.object_inputs
+        if item.role == "evidence_sufficiency_run_result"
+    )
+    run_payload = json.loads(run_input.path.read_text())
+    product_bindings = [
+        item
+        for item in run_payload["source_object_bindings"]
+        if item["role"] == "product_case"
+    ]
+    assert product_bindings == [
+        {
+            "input_id": "product-case",
+            "role": "product_case",
+            "logical_object_id": "product-case:synthetic-001",
+            "object_version": "1.0.0",
+            "schema_ref": "bridge://schemas/product-case/v0.1",
+            "source_sha256": "f" * 64,
+        }
+    ]
+
+    run = _run_request(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    final = run.request.output_dir / run.run_id
+    records = EvidenceRecordSet.model_validate_json(
+        (final / "evidence_records.json").read_bytes()
+    )
+    assert records.records[0].sufficiency_profile_ref.object_version == "0.2.0"
+    assert records.records[0].measurement_result_ref.object_version == "1.0.0"
+    manifest = json.loads((final / "artifact_manifest.json").read_text())
+    graph_manifest = json.loads(
+        (final / "case_evidence_graph_manifest.json").read_text()
+    )
+    assert run.run_id == f"run-{run.input_hash[:16]}"
+    assert manifest["run_id"] == run.run_id
+    assert manifest["input_hash"] == run.input_hash
+    assert graph_manifest["source_input_hash"] == run.input_hash
+    run_inputs = [
+        item
+        for item in manifest["structured_inputs"]
+        if item["role"] == "evidence_sufficiency_run_result"
+    ]
+    assert len(run_inputs) == 1
+    assert run_inputs[0]["schema_ref"] == (
+        "bridge://schemas/evidence-sufficiency-run-result/v0.2"
+    )
+    assert run_inputs[0]["object_version"] == "0.2.0"
+
+
+def test_case_initial_v2_rejects_profile_binding_id_collision_without_publication(
+    tmp_path: Path,
+) -> None:
+    request = _case_v2_request(
+        tmp_path,
+        request_id="binding-id-collision",
+        output_name="binding-id-collision-output",
+    )
+    run_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "evidence_sufficiency_run_result"
+    )
+    run_payload = json.loads(run_ref.path.read_text())
+    profile = run_payload["profiles"][0]
+    profile_ref = f"{profile['profile_id']}@{profile['profile_version']}"
+    collision_digest = hashlib.sha256(
+        (
+            f"{run_payload['result_id']}@{run_payload['result_version']}|"
+            f"{profile_ref}"
+        ).encode("utf-8")
+    ).hexdigest()[:24]
+    collision_id = f"sufficiency-profile-binding:{collision_digest}"
+
+    bundle_ref = next(
+        item for item in request.object_inputs if item.role == "compilation_bundle"
+    )
+    bundle_payload = json.loads(bundle_ref.path.read_text())
+    for candidate in bundle_payload["candidate_records"]:
+        candidate["sufficiency_profile_input_id"] = collision_id
+    bundle_sha256 = _write(bundle_ref.path, bundle_payload)
+    request = request.model_copy(
+        update={
+            "object_inputs": [
+                item.model_copy(update={"input_id": collision_id})
+                if item.role == "evidence_sufficiency_run_result"
+                else item.model_copy(update={"sha256": bundle_sha256})
+                if item.role == "compilation_bundle"
+                else item
+                for item in request.object_inputs
+            ],
+        }
+    )
+    spec = _spec()
+
+    eligibility = adapter.check_eligibility(request, spec)
+    run = adapter.run(request, spec)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == [
+        "sufficiency_profile_binding_id_collision"
+    ]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["sufficiency_profile_binding_id_collision"]
+    assert run.result is None and run.artifacts == []
+    assert not request.output_dir.exists()
+
+
+def test_case_append_v2_reuses_canonical_run_with_exact_base_binding(
+    tmp_path: Path,
+) -> None:
+    initial = _run_request(
+        _case_v2_request(
+            tmp_path, request_id="case-v2-initial", output_name="case-v2-initial-output"
+        )
+    )
+    assert initial.execution_state is ExecutionState.SUCCEEDED
+    initial_root = initial.request.output_dir / initial.run_id
+    manifest_path = initial_root / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    prior_records = json.loads((initial_root / "evidence_records.json").read_text())[
+        "records"
+    ]
+    prior_requirements = json.loads(
+        (initial_root / "evidence_requirements.json").read_text()
+    )["requirements"]
+    append_bundle = _bundle(
+        prior_records=prior_records,
+        prior_requirements=prior_requirements,
+        base_graph_ref={
+            "graph_id": manifest["graph_id"],
+            "graph_version": manifest["graph_version"],
+            "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        },
+    )
+    append = _run_request(
+        _case_v2_request(
+            tmp_path,
+            bundle=append_bundle,
+            request_id="case-v2-append",
+            output_name="case-v2-append-output",
+            base_manifest_path=manifest_path,
+        )
+    )
+
+    assert append.execution_state is ExecutionState.SUCCEEDED
+    assert append.result["graph_version"] == 2
+
+
+def test_comparison_initial_v2_consumes_two_canonical_runs(
+    tmp_path: Path,
+) -> None:
+    bundle, runs = _comparison_v2_inputs(_comparison_bundle())
+    request = _request(
+        tmp_path,
+        bundle=bundle,
+        request_id="comparison-v2-initial",
+        output_name="comparison-v2-initial-output",
+        claim_registry=_comparison_claim_registry(),
+        sufficiency_runs=runs,
+    )
+    run = _run_request(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    final = run.request.output_dir / run.run_id
+    manifest = ComparisonEvidenceGraphManifest.model_validate_json(
+        (final / "comparison_evidence_graph_manifest.json").read_bytes()
+    )
+    assert {
+        item.sufficiency_profile_ref.object_version
+        for item in manifest.external_evidence_bindings
+    } == {"0.2.0"}
+
+
+def test_comparison_append_legacy_and_v2_bind_exact_base_graph(
+    tmp_path: Path,
+) -> None:
+    legacy_bundle = _comparison_bundle()
+    legacy_initial = adapter.run(
+        _request(
+            tmp_path,
+            bundle=legacy_bundle,
+            request_id="comparison-legacy-initial",
+            output_name="comparison-legacy-initial-output",
+            profiles=_comparison_profiles(),
+            claim_registry=_comparison_claim_registry(),
+        ),
+        _spec(),
+    )
+    assert legacy_initial.execution_state is ExecutionState.SUCCEEDED
+    legacy_root = legacy_initial.request.output_dir / legacy_initial.run_id
+    legacy_manifest_path = legacy_root / "comparison_evidence_graph_manifest.json"
+    legacy_manifest = json.loads(legacy_manifest_path.read_text())
+    legacy_append_bundle = _comparison_bundle()
+    legacy_append_bundle["base_graph_ref"] = {
+        "graph_id": legacy_manifest["graph_id"],
+        "graph_version": legacy_manifest["graph_version"],
+        "manifest_sha256": hashlib.sha256(
+            legacy_manifest_path.read_bytes()
+        ).hexdigest(),
+        "manifest_input_id": "base-manifest",
+        "record_set_input_id": "base-records",
+        "requirement_set_input_id": "base-requirements",
+    }
+    legacy_append = adapter.run(
+        _request(
+            tmp_path,
+            bundle=legacy_append_bundle,
+            request_id="comparison-legacy-append",
+            output_name="comparison-legacy-append-output",
+            profiles=_comparison_profiles(),
+            claim_registry=_comparison_claim_registry(),
+            base_manifest_path=legacy_manifest_path,
+        ),
+        _spec(),
+    )
+    assert legacy_append.execution_state is ExecutionState.SUCCEEDED
+    assert legacy_append.result["graph_version"] == 2
+
+    v2_initial_bundle, v2_initial_runs = _comparison_v2_inputs(_comparison_bundle())
+    v2_initial = _run_request(
+        _request(
+            tmp_path,
+            bundle=v2_initial_bundle,
+            request_id="comparison-v2-for-append",
+            output_name="comparison-v2-for-append-output",
+            claim_registry=_comparison_claim_registry(),
+            sufficiency_runs=v2_initial_runs,
+        )
+    )
+    assert v2_initial.execution_state is ExecutionState.SUCCEEDED
+    v2_root = v2_initial.request.output_dir / v2_initial.run_id
+    v2_manifest_path = v2_root / "comparison_evidence_graph_manifest.json"
+    v2_manifest = json.loads(v2_manifest_path.read_text())
+    v2_append_bundle, v2_append_runs = _comparison_v2_inputs(_comparison_bundle())
+    v2_append_bundle["base_graph_ref"] = {
+        "graph_id": v2_manifest["graph_id"],
+        "graph_version": v2_manifest["graph_version"],
+        "manifest_sha256": hashlib.sha256(v2_manifest_path.read_bytes()).hexdigest(),
+        "manifest_input_id": "base-manifest",
+        "record_set_input_id": "base-records",
+        "requirement_set_input_id": "base-requirements",
+    }
+    v2_append = _run_request(
+        _request(
+            tmp_path,
+            bundle=v2_append_bundle,
+            request_id="comparison-v2-append",
+            output_name="comparison-v2-append-output",
+            claim_registry=_comparison_claim_registry(),
+            base_manifest_path=v2_manifest_path,
+            sufficiency_runs=v2_append_runs,
+        )
+    )
+    assert v2_append.execution_state is ExecutionState.SUCCEEDED
+    assert v2_append.result["graph_version"] == 2
+
+
+
+def test_case_initial_v2_missing_only_creates_requirement_without_zero_record(
+    tmp_path: Path,
+) -> None:
+    missing = _missing_observation()
+    missing["source_contract_ref"] = {
+        "object_id": "measurement-spec:target",
+        "object_version": "1.0.0",
+    }
+    bundle = _bundle(candidates=[], missing=[missing])
+    request = _request(
+        tmp_path,
+        bundle=bundle,
+        request_id="case-v2-missing-only",
+        output_name="case-v2-missing-only-output",
+        family_registry=_family_registry(second_family=True),
+        claim_registry=_claim_registry(orthogonal_required=True),
+        reconciliation_registry=_reconciliation_registry(
+            orthogonal_required=True
+        ),
+        sufficiency_runs=[("sufficiency-run", _v2_run(_profile()))],
+    )
+
+    run = _run_request(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    final = run.request.output_dir / run.run_id
+    records = json.loads((final / "evidence_records.json").read_text())["records"]
+    requirements = json.loads(
+        (final / "evidence_requirements.json").read_text()
+    )["requirements"]
+    assert records == []
+    assert {item["requirement_key"] for item in requirements} == {
+        "orthogonal_channel",
+        "transcriptomic_channel",
+    }
+    assert all(item["state"] == "open" for item in requirements)
+    orthogonal = next(
+        item
+        for item in requirements
+        if item["requirement_key"] == "orthogonal_channel"
+    )
+    assert orthogonal["source_contract_ref"] == missing["source_contract_ref"]
+    assert orthogonal["satisfying_evidence_refs"] == []
+    assert all("value" not in item for item in requirements)
+
+
+def test_comparison_v2_duplicate_run_identity_fails_closed(
+    tmp_path: Path,
+) -> None:
+    bundle, runs = _comparison_v2_inputs(_comparison_bundle())
+    first = runs[0][1]
+    duplicate = runs[1][1]
+    digest = first["result_id"].rsplit(":", 1)[1]
+    duplicate["result_id"] = first["result_id"]
+    duplicate["case_summary"]["summary_id"] = (
+        f"case-evidence-readiness-summary:{digest}"
+    )
+    duplicate_profile = duplicate["profiles"][0]
+    duplicate_profile["profile_id"] = (
+        f"evidence-sufficiency-profile:{digest}:target_identity"
+    )
+    duplicate_profile["deterministic_run_ref"] = f"run-{digest}"
+    duplicate["gate_trace"][0]["profile_ref"] = duplicate_profile["profile_id"]
+    request = _request(
+        tmp_path,
+        bundle=bundle,
+        request_id="comparison-v2-duplicate-run",
+        output_name="comparison-v2-duplicate-run-output",
+        claim_registry=_comparison_claim_registry(),
+        sufficiency_runs=runs,
+    )
+
+    eligibility = adapter.check_eligibility(request, _spec())
+    run = _run_request(request)
+
+    assert eligibility.eligible is False
+    assert eligibility.reason_codes == ["duplicate_sufficiency_run_id"]
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.reason_codes == ["duplicate_sufficiency_run_id"]
+    assert run.result is None and run.artifacts == []
+    assert not request.output_dir.exists()
+
+
+def test_dangling_comparison_provenance_is_partial_with_v2_run_inputs(
+    tmp_path: Path,
+) -> None:
+    bundle, runs = _comparison_v2_inputs(_comparison_bundle(dangling=True))
+    request = _request(
+        tmp_path,
+        bundle=bundle,
+        request_id="comparison-v2-dangling",
+        output_name="comparison-v2-dangling-output",
+        claim_registry=_comparison_claim_registry(),
+        sufficiency_runs=runs,
+    )
+
+    run = _run_request(request)
+
+    assert run.execution_state is ExecutionState.PARTIAL
+    assert run.reason_codes == ["individual_records_rejected"]
+    final = run.request.output_dir / run.run_id
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    assert len(rejected) == 1
+    assert rejected[0]["source_kind"] == "external_case_evidence_ref"
+    assert rejected[0]["reason_codes"] == [
+        "declared_object_ref_not_found",
+        "external_evidence_claim_mapping_invalid",
+    ]
+    queries = EvidenceGraphQueries.open(
+        final / "comparison_evidence_graph_manifest.json"
+    )
+    result = queries.compare_evidence_paths(
+        comparison_id="comparison:case-a-vs-b",
+        claim_id="claim:comparison",
+    )
+    external = [
+        item
+        for item in result.nodes
+        if item["node_type"] == "EvidenceRecord"
+        and item["record_mode"] == "external_ref"
+    ]
+    assert len(external) == 1
+
+
+def test_v2_sufficiency_modes_reject_mixing_and_binding_drift(
+    tmp_path: Path,
+) -> None:
+    mixed = _case_v2_request(
+        tmp_path, request_id="mixed-v2", output_name="mixed-v2-output"
+    )
+    legacy = _request(
+        tmp_path,
+        request_id="mixed-legacy-source",
+        output_name="mixed-legacy-source-output",
+    )
+    legacy_profile = next(
+        item
+        for item in legacy.object_inputs
+        if item.role == "evidence_sufficiency_profile"
+    ).model_copy(update={"input_id": "legacy-profile"})
+    mixed = mixed.model_copy(
+        update={"object_inputs": [*mixed.object_inputs, legacy_profile]}
+    )
+    mixed_run = _run_request(mixed)
+    assert mixed_run.execution_state is ExecutionState.FAILED
+    assert "mixed_sufficiency_input_modes" in mixed_run.reason_codes
+
+    drift_bundle = _bundle()
+    drift_bundle["candidate_records"][0]["sufficiency_profile_input_id"] = (
+        "sufficiency-run"
+    )
+    drift_bundle["candidate_records"][0]["measurement_result_ref"][
+        "object_version"
+    ] = "2.0.0"
+    drift = _run_request(
+        _case_v2_request(
+            tmp_path,
+            bundle=drift_bundle,
+            request_id="binding-drift-v2",
+            output_name="binding-drift-v2-output",
+        )
+    )
+    assert drift.execution_state is ExecutionState.PARTIAL
+    assert drift.reason_codes == ["individual_records_rejected"]
+    rejected = json.loads(
+        (
+            drift.request.output_dir
+            / drift.run_id
+            / "rejected_records.json"
+        ).read_text()
+    )["records"]
+    assert rejected[0]["reason_codes"] == [
+        "declared_object_ref_not_found",
+        "sufficiency_profile_measurement_result_mismatch",
+    ]
+
+
+def test_v2_run_schema_version_checksum_and_case_set_drift_fail_closed(
+    tmp_path: Path,
+) -> None:
+    version_request = _case_v2_request(
+        tmp_path, request_id="version-drift-v2", output_name="version-drift-v2-output"
+    )
+    run_ref = next(
+        item
+        for item in version_request.object_inputs
+        if item.role == "evidence_sufficiency_run_result"
+    )
+    version_request = version_request.model_copy(
+        update={
+            "object_inputs": [
+                item.model_copy(update={"object_version": "0.1.0"})
+                if item.input_id == run_ref.input_id
+                else item
+                for item in version_request.object_inputs
+            ]
+        }
+    )
+    version_run = _run_request(version_request)
+    assert version_run.execution_state is ExecutionState.FAILED
+    assert "structured_input_schema_invalid" in version_run.reason_codes
+
+    checksum_request = _case_v2_request(
+        tmp_path,
+        request_id="checksum-drift-v2",
+        output_name="checksum-drift-v2-output",
+    )
+    checksum_ref = next(
+        item
+        for item in checksum_request.object_inputs
+        if item.role == "evidence_sufficiency_run_result"
+    )
+    checksum_ref.path.write_text(checksum_ref.path.read_text() + " ")
+    checksum_run = _run_request(checksum_request)
+    assert checksum_run.execution_state is ExecutionState.FAILED
+    assert "structured_input_checksum_mismatch" in checksum_run.reason_codes
+
+    comparison_bundle, runs = _comparison_v2_inputs(_comparison_bundle())
+    runs[1][1]["case_summary"]["product_case_ref"]["object_id"] = (
+        "product-case:wrong"
+    )
+    case_drift_request = _request(
+        tmp_path,
+        bundle=comparison_bundle,
+        request_id="case-set-drift-v2",
+        output_name="case-set-drift-v2-output",
+        sufficiency_runs=runs,
+    )
+    case_drift = _run_request(case_drift_request)
+    assert case_drift.execution_state is ExecutionState.FAILED
+    assert (
+        "structured_input_schema_invalid" in case_drift.reason_codes
+        or "sufficiency_run_case_binding_invalid" in case_drift.reason_codes
     )
 
 
@@ -3959,7 +4635,7 @@ def test_static_capacity_uses_complete_table_without_top_n_selection(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-capacity",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
     )
 
     table = prepared.payloads["evidence_compiler_claim_interpretation.tsv"]
@@ -3992,7 +4668,7 @@ def test_static_capacity_falls_back_when_reason_text_cannot_fit(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-reason-capacity",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
     )
 
     table = prepared.payloads["evidence_compiler_requirements_exclusions.tsv"]
@@ -4481,7 +5157,7 @@ def test_long_reference_labels_remain_distinguishable_in_render(tmp_path: Path) 
         profile=profile,
         output_dir=tmp_path / "render",
         run_id="run-ref-collision",
-        tool_version="0.3.0",
+        tool_version="0.4.0",
     )
     labels = [_short_ref(ref) for ref in refs]
     svg = prepared.payloads["evidence_compiler_claim_interpretation.svg"]
