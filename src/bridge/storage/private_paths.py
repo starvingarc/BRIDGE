@@ -126,6 +126,8 @@ def _require_safe_ancestor_directory(descriptor: int) -> None:
     info = os.fstat(descriptor)
     if not stat.S_ISDIR(info.st_mode):
         raise PrivatePathError("private_path_not_directory")
+    if info.st_uid not in {0, os.geteuid()}:
+        raise PrivatePathError("private_path_ancestor_owner_invalid")
     mode = stat.S_IMODE(info.st_mode)
     if mode & 0o022 and not mode & stat.S_ISVTX:
         raise PrivatePathError("private_path_ancestor_permissions_invalid")

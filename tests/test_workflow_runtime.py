@@ -11,6 +11,7 @@ import pytest
 from bridge.domain import CaseInputBundle, approve_plan
 from bridge.planner import PlanBuilder
 from bridge.runners import ToolExecutionPipeline, ToolExecutionScope
+from bridge.storage import private_paths
 from bridge.toolkit.contracts import (
     EligibilityResult,
     ExecutionState,
@@ -341,6 +342,15 @@ def test_sqlite_store_rejects_shared_writable_ancestor(tmp_path: Path) -> None:
     shared.chmod(0o777)
     with pytest.raises(ValueError, match="private_path_ancestor_permissions_invalid"):
         SQLiteRunEventStore(shared / "events" / "runs.sqlite")
+
+
+def test_sqlite_store_rejects_untrusted_ancestor_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    current_uid = os.geteuid()
+    monkeypatch.setattr(private_paths.os, "geteuid", lambda: current_uid + 1)
+    with pytest.raises(ValueError, match="private_path_ancestor_owner_invalid"):
+        SQLiteRunEventStore(tmp_path / "events" / "runs.sqlite")
 
 
 def test_sqlite_store_rejects_symlinked_parent(tmp_path: Path) -> None:
