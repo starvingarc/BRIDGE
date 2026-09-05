@@ -712,7 +712,7 @@ class ProliferationStressResponseProfileV3(ProliferationStressResponseProfile):
 
     profile_version: Literal["0.3.0"]
     runtime_mode: Literal["legacy_aggregation", "method_runtime"]
-    source_bindings: list[ProgramSourceBinding] = Field(min_length=7, max_length=10)
+    source_bindings: list[ProgramSourceBinding] = Field(min_length=7, max_length=11)
     measurement_projection_state: Literal[
         "not_requested", "available", "not_assessed"
     ]
@@ -741,6 +741,7 @@ class ProliferationStressResponseProfileV3(ProliferationStressResponseProfile):
         method_roles = legacy_roles.difference({"program_evidence_bundle"}) | {
             "biological_unit_manifest",
             "biological_unit_assignment",
+            "biological_unit_attestation_receipt",
             "process_method_spec",
             "process_method_input",
         }

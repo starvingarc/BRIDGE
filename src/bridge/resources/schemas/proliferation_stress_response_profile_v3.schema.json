@@ -903,7 +903,7 @@
       "items": {
         "$ref": "#/$defs/ProgramSourceBinding"
       },
-      "maxItems": 10,
+      "maxItems": 11,
       "minItems": 7,
       "title": "Source Bindings",
       "type": "array"

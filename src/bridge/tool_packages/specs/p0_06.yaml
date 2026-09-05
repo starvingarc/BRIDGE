@@ -1,6 +1,6 @@
 tool_id: P0-06
 name: Proliferation & Stress Response
-version: 0.6.0
+version: 0.6.1
 summary: Measure stage-conditioned proliferation, stress-response, and cell-cycle transcriptomic review signals with typed figure artifacts.
 implementation_state: implemented
 scientific_status: candidate

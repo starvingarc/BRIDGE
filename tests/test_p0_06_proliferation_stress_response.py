@@ -421,7 +421,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-06",
         tool_id="P0-06",
-        tool_version="0.6.0",
+        tool_version="0.6.1",
         output_dir=tmp_path / output_name,
         object_inputs=list(refs.values()),
     )
@@ -433,7 +433,7 @@ def _projection_spec() -> ToolPackageSpecV2:
         .describe("P0-06")
         .model_copy(
             update={
-                "version": "0.6.0",
+                "version": "0.6.1",
                 "result_schema_ref": (
                     "bridge://schemas/proliferation-stress-response-profile/v0.3"
                 ),
@@ -443,7 +443,7 @@ def _projection_spec() -> ToolPackageSpecV2:
 
 
 def _projection_request(request: ToolRequestV2) -> ToolRequestV2:
-    return request.model_copy(update={"tool_version": "0.6.0"})
+    return request.model_copy(update={"tool_version": "0.6.1"})
 
 
 def test_registry_declares_executable_v2_contract() -> None:
@@ -1286,7 +1286,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-06",
-        tool_version="0.6.0",
+        tool_version="0.6.1",
         output_dir=tmp_path / "output",
     )
 

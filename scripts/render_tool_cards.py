@@ -66,7 +66,7 @@ DETAILS = {
         "details": "docs/bridge_spec_v0.1/off_target_control_task_card.md",
     },
     "P0-06": {
-        "input": "QC-qualified expression, Cell-State evidence, confirmed developmental context, ProtocolIR metadata, and versioned proliferation/stress-response program knowledge.",
+        "input": "QC-qualified expression, Cell-State evidence, confirmed developmental context, ProtocolIR metadata, versioned proliferation/stress-response program knowledge, and in method mode an exact caller/data-owner biological-unit attestation receipt.",
         "output": "State-conditioned proliferation and stress-response evidence, aligned review flags, and optional checksummed MeasurementResultV2 projections for every source record.",
         "reject": "Missing stage context for stage-dependent interpretation, insufficient marker/program coverage, or process attribution without protocol metadata.",
         "visualization": "Program effect profiles, state-stratified distributions, rare-state LOD, process covariates, review flags, and sensitivity.",

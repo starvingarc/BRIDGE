@@ -724,6 +724,13 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                 ),
                 _role(
+                    "biological_unit_attestation_receipt",
+                    "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
                     "process_method_spec",
                     "bridge://schemas/process-method-spec/v0.1",
                     V01,
