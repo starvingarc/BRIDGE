@@ -45,6 +45,7 @@ from bridge.toolkit.api import (
     validate_figure_registry,
     validate_request,
 )
+from bridge.toolkit.integration import AgentIntegrationProfile
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.visualization import (
     FigureComponentSpec,
@@ -55,6 +56,7 @@ from bridge.toolkit.visualization import (
 )
 
 __all__ = [
+    "AgentIntegrationProfile",
     "AnnotationVocabulary",
     "ArtifactManifest",
     "BiologicalUnitKind",

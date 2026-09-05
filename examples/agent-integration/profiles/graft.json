@@ -1,0 +1,113 @@
+{
+  "profile_id": "graft-branch",
+  "object_version": "0.1.0",
+  "schema_ref": "bridge://schemas/agent-integration-profile/v0.1",
+  "resource_slots": [
+    {
+      "slot_id": "graft-expression-upload",
+      "source": "user_upload",
+      "resource_type": "asset",
+      "min_count": 1,
+      "max_count": 1,
+      "asset_contract": {
+        "format": "h5ad",
+        "assay": "scRNA-seq",
+        "input_level": "analysis_ready",
+        "matrix_semantics": "normalized_expression",
+        "required_metadata_keys": []
+      }
+    },
+    {
+      "slot_id": "graft-case",
+      "source": "user_upload",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/graft-case/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "graft-expression-asset",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/graft-expression-asset/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "graft-expression-upload",
+        "graft-case"
+      ]
+    },
+    {
+      "slot_id": "graft-analysis-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/graft-expression-analysis-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "graft-reference-panel",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/graft-reference-panel/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "graft-marker-programs",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/graft-marker-program-collection/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    }
+  ],
+  "request_bindings": [
+    {
+      "binding_id": "graft-not-provided",
+      "tool_id": "P0-12",
+      "tool_version": "0.4.0",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "not_provided",
+      "asset_slot_ids": [],
+      "object_inputs": [],
+      "measurement_spec_slot_id": null
+    },
+    {
+      "binding_id": "graft-expression-analysis",
+      "tool_id": "P0-12",
+      "tool_version": "0.4.0",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "expression_analysis",
+      "asset_slot_ids": [],
+      "object_inputs": [
+        {
+          "slot_id": "graft-case",
+          "role": "graft_case"
+        },
+        {
+          "slot_id": "graft-expression-asset",
+          "role": "graft_expression_asset"
+        },
+        {
+          "slot_id": "graft-analysis-spec",
+          "role": "graft_expression_analysis_spec"
+        },
+        {
+          "slot_id": "graft-reference-panel",
+          "role": "graft_reference_panel"
+        },
+        {
+          "slot_id": "graft-marker-programs",
+          "role": "graft_marker_program_collection"
+        }
+      ],
+      "measurement_spec_slot_id": null
+    }
+  ]
+}

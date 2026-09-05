@@ -42,6 +42,41 @@ See the [Tool Package guide](../docs/tool-packages.md) for each tool's purpose,
 inputs, outputs, refusal behavior, Tool Card, scientific task card and validation
 record.
 
+## Agent Integration Profiles
+
+The profiles declare logical resource ownership and step bindings without
+embedding data, runtime paths, checksums, asset identifiers or deployment
+catalogs.
+
+| Profile | Coverage | Intended endpoint |
+|---|---|---|
+| [Single product](agent-integration/profiles/single-product.json) | P0-01–P0-06 and P0-08–P0-11 | Local candidate export |
+| [Comparison](agent-integration/profiles/comparison.json) | P0-07 `method_runtime` | Descriptive comparison |
+| [Graft](agent-integration/profiles/graft.json) | P0-12 `not_provided` and `expression_analysis` | Independent graft result |
+
+Validate a profile against the installed 12-tool registry:
+
+```bash
+python examples/agent-integration/reference_runner.py \
+  validate-profile \
+  --profile examples/agent-integration/profiles/single-product.json
+```
+
+Run one binding only after the Agent has materialized the exact request:
+
+```bash
+python examples/agent-integration/reference_runner.py \
+  run-step \
+  --profile examples/agent-integration/profiles/single-product.json \
+  --binding claim-verifier \
+  --request <materialized-request.json>
+```
+
+The runner validates and dispatches existing requests; it does not resolve
+resources or construct scientific objects. See
+[Agent Integration](../docs/agent-integration.md) for the ownership and failure
+boundaries.
+
 ## Synthetic scRNA Upload Demo
 
 `demo-data/scrna-upload-v0.1/` mimics files a user may upload for Agent

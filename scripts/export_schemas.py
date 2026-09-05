@@ -116,6 +116,7 @@ from bridge.tool_packages.p0_11_public_safe_export.models import (
 from bridge.tool_packages.p0_11_public_safe_export.visualization_data import (
     PUBLIC_VISUALIZATION_SCHEMA_MODELS as P0_11_VISUALIZATION_SCHEMA_MODELS,
 )
+from bridge.toolkit.integration import AgentIntegrationProfile
 from bridge.toolkit.visualization import (
     FigureRegistrySnapshot,
     VisualizationArtifactV2,
@@ -123,6 +124,10 @@ from bridge.toolkit.visualization import (
 
 
 MODELS = {
+    "agent_integration_profile": (
+        "bridge://schemas/agent-integration-profile/v0.1",
+        AgentIntegrationProfile,
+    ),
     "annotation_vocabulary": ("bridge://schemas/annotation-vocabulary/v0.1", AnnotationVocabulary),
     "artifact_manifest": ("bridge://schemas/artifact-manifest/v0.1", ArtifactManifest),
     "benchmark_split_manifest": ("bridge://schemas/benchmark-split-manifest/v0.2", BenchmarkSplitManifest),
