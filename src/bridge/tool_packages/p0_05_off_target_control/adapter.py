@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitManifest,
+    BiologicalUnitAttestationReceipt,
     ProductCase,
     ProductDefinitionCard,
 )
@@ -118,6 +119,11 @@ ROLE_CONTRACTS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
         "0.1.0",
         BiologicalUnitManifest,
     ),
+    "biological_unit_attestation_receipt": (
+        "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+        "0.1.0",
+        BiologicalUnitAttestationReceipt,
+    ),
     "off_target_method_spec": (
         "bridge://schemas/off-target-method-spec/v0.1",
         "0.1.0",
@@ -132,6 +138,7 @@ ROLE_CONTRACTS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
 METHOD_ROLES = frozenset(
     {
         "biological_unit_manifest",
+        "biological_unit_attestation_receipt",
         "off_target_method_spec",
         "off_target_method_input",
     }
@@ -662,6 +669,12 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             "biological_unit_manifest",
             BiologicalUnitManifest,
         )
+        attestation_receipt = single_object(
+            request,
+            loaded,
+            "biological_unit_attestation_receipt",
+            BiologicalUnitAttestationReceipt,
+        )
         method_spec = single_object(
             request, loaded, "off_target_method_spec", OffTargetMethodSpec
         )
@@ -681,6 +694,7 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
                     cell_state_profile=cell_state_profile,
                     evidence_bundle=evidence_bundle,
                     biological_units=biological_units,
+                    attestation_receipt=attestation_receipt,
                     method_spec=method_spec,
                     method_input=method_input,
                     role_map=role_map,

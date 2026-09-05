@@ -1,0 +1,220 @@
+{
+  "$defs": {
+    "BiologicalUnitAttestationConfirmations": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_unit_for_estimand": {
+          "enum": [
+            "confirmed",
+            "not_confirmed"
+          ],
+          "title": "Analysis Unit For Estimand",
+          "type": "string"
+        },
+        "independence_grouping": {
+          "enum": [
+            "confirmed",
+            "not_confirmed"
+          ],
+          "title": "Independence Grouping",
+          "type": "string"
+        },
+        "observation_to_analysis_unit_mapping": {
+          "enum": [
+            "confirmed",
+            "not_confirmed"
+          ],
+          "title": "Observation To Analysis Unit Mapping",
+          "type": "string"
+        },
+        "pooling_and_multiplexing_handling": {
+          "enum": [
+            "confirmed",
+            "not_confirmed"
+          ],
+          "title": "Pooling And Multiplexing Handling",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observation_to_analysis_unit_mapping",
+        "pooling_and_multiplexing_handling",
+        "analysis_unit_for_estimand",
+        "independence_grouping"
+      ],
+      "title": "BiologicalUnitAttestationConfirmations",
+      "type": "object"
+    },
+    "BiologicalUnitKind": {
+      "enum": [
+        "capture",
+        "preparation",
+        "sample",
+        "donor",
+        "animal",
+        "graft_unit"
+      ],
+      "title": "BiologicalUnitKind",
+      "type": "string"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+  "additionalProperties": false,
+  "description": "Caller assertion over immutable declared lineage.\n\nRuntime validates structure and content bindings; deployment authenticates the\nreferenced conversation or workflow record.",
+  "properties": {
+    "analysis_unit_kind": {
+      "$ref": "#/$defs/BiologicalUnitKind"
+    },
+    "attestation_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "attestation_scope": {
+      "const": "analysis_execution",
+      "title": "Attestation Scope",
+      "type": "string"
+    },
+    "attestation_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Attestation Sha256",
+      "type": "string"
+    },
+    "attested_at": {
+      "format": "date-time",
+      "title": "Attested At",
+      "type": "string"
+    },
+    "attestor_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "biological_unit_assignment_schema_ref": {
+      "const": "bridge://schemas/biological-unit-assignment/v0.1",
+      "title": "Biological Unit Assignment Schema Ref",
+      "type": "string"
+    },
+    "biological_unit_assignment_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Assignment Sha256",
+      "type": "string"
+    },
+    "biological_unit_manifest_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "biological_unit_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Manifest Sha256",
+      "type": "string"
+    },
+    "caveats": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Caveats",
+      "type": "array"
+    },
+    "confirmations": {
+      "$ref": "#/$defs/BiologicalUnitAttestationConfirmations"
+    },
+    "data_view_ref": {
+      "minLength": 1,
+      "title": "Data View Ref",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "confirmed",
+        "not_confirmed"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "independence_group_kind": {
+      "enum": [
+        "preparation",
+        "sample",
+        "donor",
+        "animal"
+      ],
+      "title": "Independence Group Kind",
+      "type": "string"
+    },
+    "independence_scope_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observation_ids_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Observation Ids Sha256",
+      "type": "string"
+    },
+    "receipt_id": {
+      "pattern": "^biological-unit-attestation-receipt:[A-Za-z0-9._:-]+$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "selected_artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Selected Artifact Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "receipt_id",
+    "receipt_version",
+    "schema_ref",
+    "attestation_scope",
+    "decision",
+    "attestor_ref",
+    "attestation_ref",
+    "attestation_sha256",
+    "attested_at",
+    "biological_unit_manifest_ref",
+    "biological_unit_manifest_sha256",
+    "biological_unit_assignment_schema_ref",
+    "biological_unit_assignment_sha256",
+    "data_view_ref",
+    "selected_artifact_sha256",
+    "observation_ids_sha256",
+    "analysis_unit_kind",
+    "independence_group_kind",
+    "independence_scope_ref",
+    "confirmations"
+  ],
+  "title": "BiologicalUnitAttestationReceipt",
+  "type": "object"
+}

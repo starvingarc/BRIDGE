@@ -22,6 +22,7 @@ from bridge.toolkit.contracts import (
     BiologicalUnitKind,
     CellStateComposition,
     CellStateEvidenceProfileV2,
+    DataViewBinding,
     FrozenModel,
     IndependenceGroupKind,
     MeasurementSpecV2,
@@ -481,6 +482,138 @@ class BiologicalUnitManifest(FrozenModel):
             BiologicalUnitLineageState.REVIEWED,
             BiologicalUnitLineageState.FROZEN,
         }
+
+
+class BiologicalUnitAttestationConfirmations(FrozenModel):
+    observation_to_analysis_unit_mapping: Literal[
+        "confirmed", "not_confirmed"
+    ]
+    pooling_and_multiplexing_handling: Literal[
+        "confirmed", "not_confirmed"
+    ]
+    analysis_unit_for_estimand: Literal["confirmed", "not_confirmed"]
+    independence_grouping: Literal["confirmed", "not_confirmed"]
+
+    @property
+    def all_confirmed(self) -> bool:
+        return all(
+            value == "confirmed"
+            for value in self.model_dump(mode="json").values()
+        )
+
+
+class BiologicalUnitAttestationReceipt(FrozenModel):
+    """Caller assertion over immutable declared lineage.
+
+    Runtime validates structure and content bindings; deployment authenticates the
+    referenced conversation or workflow record.
+    """
+
+    object_version: Literal["0.1.0"]
+    receipt_id: str = Field(
+        pattern=r"^biological-unit-attestation-receipt:[A-Za-z0-9._:-]+$"
+    )
+    receipt_version: str = Field(pattern=VERSION_PATTERN)
+    schema_ref: Literal[
+        "bridge://schemas/biological-unit-attestation-receipt/v0.1"
+    ]
+    attestation_scope: Literal["analysis_execution"]
+    decision: Literal["confirmed", "not_confirmed"]
+    attestor_ref: VersionedObjectRef
+    attestation_ref: VersionedObjectRef
+    attestation_sha256: str = Field(pattern=SHA256_PATTERN)
+    attested_at: datetime
+    biological_unit_manifest_ref: VersionedObjectRef
+    biological_unit_manifest_sha256: str = Field(pattern=SHA256_PATTERN)
+    biological_unit_assignment_schema_ref: Literal[
+        "bridge://schemas/biological-unit-assignment/v0.1"
+    ]
+    biological_unit_assignment_sha256: str = Field(pattern=SHA256_PATTERN)
+    data_view_ref: str = Field(min_length=1)
+    selected_artifact_sha256: str = Field(pattern=SHA256_PATTERN)
+    observation_ids_sha256: str = Field(pattern=SHA256_PATTERN)
+    analysis_unit_kind: BiologicalUnitKind
+    independence_group_kind: IndependenceGroupKind
+    independence_scope_ref: VersionedObjectRef
+    confirmations: BiologicalUnitAttestationConfirmations
+    caveats: list[str] = Field(default_factory=list)
+
+    @field_validator("attested_at")
+    @classmethod
+    def attested_at_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("attested_at must include a timezone")
+        return value.astimezone(timezone.utc)
+
+    @field_validator("caveats")
+    @classmethod
+    def caveats_are_nonblank_and_unique(cls, value: list[str]) -> list[str]:
+        if any(not item.strip() for item in value):
+            raise ValueError("attestation caveats must be nonblank")
+        _unique(value, "attestation caveats")
+        return value
+
+    @property
+    def ref(self) -> VersionedObjectRef:
+        return VersionedObjectRef(
+            object_id=self.receipt_id,
+            object_version=self.receipt_version,
+        )
+
+
+def biological_unit_attestation_reasons(
+    *,
+    manifest: BiologicalUnitManifest,
+    manifest_sha256: str,
+    data_view: DataViewBinding,
+    receipt: BiologicalUnitAttestationReceipt,
+) -> list[str]:
+    """Validate one caller attestation without mutating declared lineage."""
+
+    reasons: set[str] = set()
+    if (
+        manifest.generator_tool_id != "P0-01"
+        or manifest.lineage_state is not BiologicalUnitLineageState.DECLARED
+    ):
+        reasons.add("biological_unit_attestation_manifest_not_declared")
+    if receipt.decision != "confirmed":
+        reasons.add("biological_unit_attestation_not_confirmed")
+    if not receipt.confirmations.all_confirmed:
+        reasons.add("biological_unit_attestation_confirmations_incomplete")
+    if (
+        receipt.biological_unit_manifest_ref != manifest.ref
+        or receipt.biological_unit_manifest_sha256 != manifest_sha256
+    ):
+        reasons.add("biological_unit_attestation_manifest_mismatch")
+    if (
+        receipt.biological_unit_assignment_schema_ref
+        != manifest.assignment_schema_ref
+        or receipt.biological_unit_assignment_sha256
+        != manifest.assignment_artifact_sha256
+    ):
+        reasons.add("biological_unit_attestation_assignment_mismatch")
+    if (
+        receipt.data_view_ref != data_view.view_id
+        or manifest.data_view_ref != data_view.view_id
+        or data_view.biological_unit_manifest_ref != manifest.ref.ref
+        or data_view.biological_unit_manifest_sha256 != manifest_sha256
+        or receipt.selected_artifact_sha256 != data_view.sha256
+        or manifest.selected_artifact_sha256 != data_view.sha256
+    ):
+        reasons.add("biological_unit_attestation_data_view_mismatch")
+    if (
+        receipt.observation_ids_sha256 != data_view.observation_ids_sha256
+        or manifest.observation_ids_sha256 != data_view.observation_ids_sha256
+        or manifest.n_observations != data_view.n_observations
+    ):
+        reasons.add("biological_unit_attestation_observation_set_mismatch")
+    if (
+        receipt.analysis_unit_kind != manifest.analysis_unit_kind
+        or receipt.independence_group_kind != manifest.independence_group_kind
+        or receipt.independence_scope_ref != manifest.independence_scope_ref
+    ):
+        reasons.add("biological_unit_attestation_unit_contract_mismatch")
+    return sorted(reasons)
 
 
 def biological_unit_assignment_reasons(

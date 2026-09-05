@@ -66,6 +66,15 @@
       "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
     },
     {
+      "input_id": "biological-unit-attestation-receipt",
+      "media_type": "application/json",
+      "object_version": "0.1.0",
+      "path": "/absolute/path/to/biological_unit_attestation_receipt.json",
+      "role": "biological_unit_attestation_receipt",
+      "schema_ref": "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
       "input_id": "off-target-method-spec",
       "media_type": "application/json",
       "object_version": "0.1.0",
@@ -89,5 +98,5 @@
   "random_seed": 0,
   "request_id": "example-p0-05-documentation-only",
   "tool_id": "P0-05",
-  "tool_version": "0.5.1"
+  "tool_version": "0.5.2"
 }
