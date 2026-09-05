@@ -63,6 +63,10 @@ ROLE_CONTRACTS = {
         "bridge://schemas/biological-unit-assignment/v0.1",
         "0.1.0",
     ),
+    "biological_unit_attestation_receipt": (
+        "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+        "0.1.0",
+    ),
     "process_method_spec": (
         "bridge://schemas/process-method-spec/v0.1",
         "0.1.0",
@@ -133,6 +137,50 @@ def _write_ref(root: Path, role: str, payload: object) -> StructuredInputRef:
         sha256=hashlib.sha256(raw).hexdigest(),
         media_type="application/json",
     )
+
+
+def _attestation_receipt(manifest: dict, manifest_sha: str, view: dict) -> dict:
+    return {
+        "object_version": "0.1.0",
+        "receipt_id": "biological-unit-attestation-receipt:p0-06-demo",
+        "receipt_version": "1.0.0",
+        "schema_ref": "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+        "attestation_scope": "analysis_execution",
+        "decision": "confirmed",
+        "attestor_ref": {
+            "object_id": "attestor:synthetic-fixture",
+            "object_version": "1.0.0",
+        },
+        "attestation_ref": {
+            "object_id": "workflow-attestation:demo",
+            "object_version": "1.0.0",
+        },
+        "attestation_sha256": "9" * 64,  # Fixed synthetic fixture digest.
+        "attested_at": "2026-09-05T00:00:00Z",
+        "biological_unit_manifest_ref": {
+            "object_id": manifest["manifest_id"],
+            "object_version": manifest["manifest_version"],
+        },
+        "biological_unit_manifest_sha256": manifest_sha,
+        "biological_unit_assignment_schema_ref": manifest[
+            "assignment_schema_ref"
+        ],
+        "biological_unit_assignment_sha256": manifest[
+            "assignment_artifact_sha256"
+        ],
+        "data_view_ref": view["view_id"],
+        "selected_artifact_sha256": view["sha256"],
+        "observation_ids_sha256": view["observation_ids_sha256"],
+        "analysis_unit_kind": manifest["analysis_unit_kind"],
+        "independence_group_kind": manifest["independence_group_kind"],
+        "independence_scope_ref": manifest["independence_scope_ref"],
+        "confirmations": {
+            "observation_to_analysis_unit_mapping": "confirmed",
+            "pooling_and_multiplexing_handling": "confirmed",
+            "analysis_unit_for_estimand": "confirmed",
+            "independence_grouping": "confirmed",
+        },
+    }
 
 
 def _write_expression(
@@ -208,6 +256,7 @@ def _method_request(tmp_path: Path, *, raw_counts: bool = False) -> ToolRequestV
         view,
         slug="process-demo",
         units=units,
+        lineage_state="declared",
         observation_ids=observations,
     )
 
@@ -350,6 +399,16 @@ def _method_request(tmp_path: Path, *, raw_counts: bool = False) -> ToolRequestV
         "biological_unit_assignment",
     ):
         refs[role] = _write_ref(object_root, role, values[role])
+    manifest = values["biological_unit_manifest"]
+    refs["biological_unit_attestation_receipt"] = _write_ref(
+        object_root,
+        "biological_unit_attestation_receipt",
+        _attestation_receipt(
+            manifest,
+            refs["biological_unit_manifest"].sha256,
+            view,
+        ),
+    )
     refs["process_method_spec"] = _write_ref(
         object_root, "process_method_spec", method_spec
     )
@@ -411,7 +470,7 @@ def _method_request(tmp_path: Path, *, raw_counts: bool = False) -> ToolRequestV
     return ToolRequestV2(
         request_id="request-p0-06-method-runtime",
         tool_id="P0-06",
-        tool_version="0.6.0",
+        tool_version="0.6.1",
         output_dir=tmp_path / "output",
         assets=[
             InputAsset(
@@ -650,6 +709,102 @@ def test_real_method_runtime_executes_and_is_deterministic(tmp_path: Path) -> No
         if item.kind in kinds
     )
     assert first_signature == second_signature
+
+
+def test_method_runtime_binds_attestation_without_mutating_manifest(
+    tmp_path: Path,
+) -> None:
+    registry = ToolRegistry.load_default()
+    request = _method_request(tmp_path)
+    manifest_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "biological_unit_manifest"
+    )
+    receipt_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "biological_unit_attestation_receipt"
+    )
+    manifest_before = manifest_ref.path.read_bytes()
+
+    run = registry.run(request)
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert manifest_ref.path.read_bytes() == manifest_before
+    manifest = json.loads(manifest_before)
+    assert manifest["generator_tool_id"] == "P0-01"
+    assert manifest["lineage_state"] == "declared"
+    assert manifest["review_gate_ref"] is None
+    artifact_manifest_path = next(
+        item.path for item in run.artifacts if item.kind == "artifact_manifest"
+    )
+    artifact_manifest = json.loads(artifact_manifest_path.read_text())
+    assert any(
+        item["role"] == "biological_unit_attestation_receipt"
+        and item["sha256"] == receipt_ref.sha256
+        for item in artifact_manifest["inputs"]
+    )
+
+
+def test_method_runtime_requires_attestation_receipt(tmp_path: Path) -> None:
+    request = _method_request(tmp_path)
+    request = request.model_copy(
+        update={
+            "object_inputs": [
+                item
+                for item in request.object_inputs
+                if item.role != "biological_unit_attestation_receipt"
+            ]
+        }
+    )
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == [
+        "exactly_one_biological_unit_attestation_receipt_required"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason_code"),
+    [
+        (
+            lambda payload: payload.update({"decision": "not_confirmed"}),
+            "biological_unit_attestation_not_confirmed",
+        ),
+        (
+            lambda payload: payload.update(
+                {"biological_unit_assignment_sha256": "8" * 64}
+            ),
+            "biological_unit_attestation_assignment_mismatch",
+        ),
+    ],
+)
+def test_method_runtime_rejects_invalid_attestation(
+    tmp_path: Path,
+    mutation,
+    reason_code: str,
+) -> None:
+    request = _method_request(tmp_path)
+    receipt_ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "biological_unit_attestation_receipt"
+    )
+    receipt = json.loads(receipt_ref.path.read_text())
+    mutation(receipt)
+    request, _ = _replace_json_input(
+        request,
+        "biological_unit_attestation_receipt",
+        receipt,
+    )
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert reason_code in eligibility.reason_codes
 
 
 def test_raw_counts_are_normalized_inside_the_package(tmp_path: Path) -> None:

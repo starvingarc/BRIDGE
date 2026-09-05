@@ -73,6 +73,16 @@ cell-state profile and the observation-level `cell_state_evidence` table. The
 Agent uses that table when materializing P0-05 and P0-06 method inputs; it does
 not infer observation states from the aggregate profile.
 
+After the P0-01 manifest and assignment and the P0-02 V3 DataView are available,
+the Agent materializes one `BiologicalUnitAttestationReceipt` from those declared
+dependencies and an explicit caller/data-owner assertion for this
+`analysis_execution`. P0-05 and P0-06 consume the same checksummed receipt. The
+deployment maps its authenticated conversation or workflow record to the
+receipt's attestation reference and checksum. Tool runtimes validate only the
+receipt structure and exact content bindings; the receipt does not authenticate
+identity, establish biological truth or independent scientific review, grant
+publication or release authority, or change the P0-01 manifest from `declared`.
+
 P0-09's `evidence_records` artifact is declared separately from the case graph
 manifest so `ReportDraft.evidence_record_set_ref` is bound to the compiled
 record set that the Agent actually reads.

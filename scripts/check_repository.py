@@ -40,6 +40,7 @@ SHARED_CONTRACT_SPINE_FILES = (
     Path("docs/validation/shared_p0_scientific_contract_spine_20260825.md"),
     Path("src/bridge/resources/schemas/biological_unit_assignment.schema.json"),
     Path("src/bridge/resources/schemas/biological_unit_manifest.schema.json"),
+    Path("src/bridge/resources/schemas/biological_unit_attestation_receipt.schema.json"),
     Path("src/bridge/resources/schemas/measurement_result_v2.schema.json"),
     Path("src/bridge/resources/schemas/measurement_spec_v2.schema.json"),
     Path("src/bridge/resources/schemas/qc_readiness_profile_v2.schema.json"),

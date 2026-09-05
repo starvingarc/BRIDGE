@@ -120,6 +120,20 @@
       "artifact_kind": "biological_unit_assignment"
     },
     {
+      "slot_id": "biological-unit-attestation-receipt",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "biological-unit-manifest",
+        "biological-unit-assignment",
+        "cell-state-profile"
+      ]
+    },
+    {
       "slot_id": "cell-state-profile",
       "source": "derived_output",
       "resource_type": "structured_object",
@@ -711,7 +725,7 @@
     {
       "binding_id": "off-target-control",
       "tool_id": "P0-05",
-      "tool_version": "0.5.1",
+      "tool_version": "0.5.2",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": [],
@@ -724,6 +738,10 @@
         {"slot_id": "off-target-evidence", "role": "off_target_evidence_bundle"},
         {"slot_id": "off-target-measurement-spec", "role": "measurement_spec"},
         {"slot_id": "biological-unit-manifest", "role": "biological_unit_manifest"},
+        {
+          "slot_id": "biological-unit-attestation-receipt",
+          "role": "biological_unit_attestation_receipt"
+        },
         {"slot_id": "off-target-method-spec", "role": "off_target_method_spec"},
         {"slot_id": "off-target-method-input", "role": "off_target_method_input"}
       ],
@@ -732,7 +750,7 @@
     {
       "binding_id": "process-signals",
       "tool_id": "P0-06",
-      "tool_version": "0.6.0",
+      "tool_version": "0.6.1",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": ["qc-selected-expression"],
@@ -746,6 +764,10 @@
         {"slot_id": "process-measurement-spec", "role": "measurement_spec"},
         {"slot_id": "biological-unit-manifest", "role": "biological_unit_manifest"},
         {"slot_id": "biological-unit-assignment", "role": "biological_unit_assignment"},
+        {
+          "slot_id": "biological-unit-attestation-receipt",
+          "role": "biological_unit_attestation_receipt"
+        },
         {"slot_id": "process-method-spec", "role": "process_method_spec"},
         {"slot_id": "process-method-input", "role": "process_method_input"}
       ],

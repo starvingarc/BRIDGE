@@ -662,6 +662,13 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     1,
                 ),
                 _role(
+                    "biological_unit_attestation_receipt",
+                    "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
                     "off_target_method_spec",
                     "bridge://schemas/off-target-method-spec/v0.1",
                     V01,
@@ -712,6 +719,13 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 _role(
                     "biological_unit_assignment",
                     "bridge://schemas/biological-unit-assignment/v0.1",
+                    V01,
+                    1,
+                    1,
+                ),
+                _role(
+                    "biological_unit_attestation_receipt",
+                    "bridge://schemas/biological-unit-attestation-receipt/v0.1",
                     V01,
                     1,
                     1,

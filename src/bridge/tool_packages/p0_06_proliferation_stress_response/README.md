@@ -7,9 +7,10 @@ This directory contains the program-scoring and evidence-aggregation package.
 - **Legacy aggregation:** seven checksummed JSON objects bind case, product,
   developmental window, ProgramSpec, P0-02 profile, ProtocolIR and precomputed
   evidence; an independent MeasurementSpec remains optional.
-- **Method runtime:** eleven checksummed JSON objects, including a required
-  P0-06 MeasurementSpec, bind P0-02 V3 states, biological units and the exact
-  selected DataView H5AD. It accepts normalized expression or integer raw
+- **Method runtime:** twelve checksummed JSON objects, including a required
+  P0-06 MeasurementSpec and caller/data-owner biological-unit attestation
+  receipt, bind P0-02 V3 states, biological units and the exact selected DataView
+  H5AD. It accepts normalized expression or integer raw
   counts; raw counts receive deterministic in-memory 10,000 scaling and `log1p`.
   Its bundle records recipe ID `bridge_normalize_total_log1p_v0.1` and target
   sum `10000.0`; the recipe ID is package metadata, not a knowledge-catalog
@@ -17,7 +18,7 @@ This directory contains the program-scoring and evidence-aggregation package.
   Program genes, weights and phases remain in the checksummed ProgramSpec; the
   method spec only selects program IDs and execution parameters. A caller-owned
   `ProgramEvidenceBundle` is refused in this mode.
-- **Output:** tool v0.6 emits profile v0.3. Legacy projections preserve the
+- **Output:** tool v0.6.1 emits profile v0.3. Legacy projections preserve the
   legacy evidence-state mapping. Method projections are created one-to-one from
   actual program-score and cell-cycle summaries: available values are `inferred`;
   `not_assessed` values remain numeric-null `unavailable`. Both use
@@ -29,7 +30,10 @@ This directory contains the program-scoring and evidence-aggregation package.
   ProtocolIR timeline, numeric LOD/UCB, spike-in recovery curve or CNV
   visualization; unavailable views remain `not_assessed`.
 - **Boundary:** P0-06 adds no biological threshold, state definition, score or
-  alert. A review flag is not fitness, safety, potency or process-causality evidence.
+  alert. The attestation receipt is a caller/data-owner assertion; runtime checks
+  its immutable bindings but does not authenticate the attestor or establish
+  independent review. A review flag is not fitness, safety, potency or
+  process-causality evidence.
 
 ## Documentation
 

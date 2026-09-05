@@ -145,6 +145,29 @@ def test_expression_asset_bindings_include_method_specs() -> None:
     ] == "development-method-spec"
 
 
+def test_biological_unit_attestation_routes_to_method_tools() -> None:
+    profile = _load_profile("single-product")
+    slots = {item.slot_id: item for item in profile.resource_slots}
+    bindings = {item.tool_id: item for item in profile.request_bindings}
+
+    receipt = slots["biological-unit-attestation-receipt"]
+    assert receipt.source == "agent_constructed"
+    assert receipt.resource_type == "structured_object"
+    assert (
+        receipt.schema_ref
+        == "bridge://schemas/biological-unit-attestation-receipt/v0.1"
+    )
+    assert receipt.object_version == "0.1.0"
+    assert (receipt.min_count, receipt.max_count) == (1, 1)
+
+    for tool_id, version in (("P0-05", "0.5.2"), ("P0-06", "0.6.1")):
+        binding = bindings[tool_id]
+        assert binding.tool_version == version
+        assert {item.role: item.slot_id for item in binding.object_inputs}[
+            "biological_unit_attestation_receipt"
+        ] == "biological-unit-attestation-receipt"
+
+
 def test_domain_gate_inputs_depend_on_case_and_product_definition() -> None:
     profile = _load_profile("single-product")
     gate_slots = [
@@ -219,6 +242,11 @@ def test_single_product_agent_objects_declare_complete_direct_dependencies() -> 
         if slot.source == "agent_constructed"
     }
 
+    assert dependencies["biological-unit-attestation-receipt"] == {
+        "biological-unit-assignment",
+        "biological-unit-manifest",
+        "cell-state-profile",
+    }
     assert dependencies["product-case"] == {
         "biological-unit-manifest",
         "cell-state-measurement-spec",
@@ -398,6 +426,28 @@ def test_dynamic_validation_requires_p0_02_top_level_measurement_spec() -> None:
     profile = AgentIntegrationProfile.model_validate(payload)
 
     with pytest.raises(ValueError, match="measurement_spec_ref is required"):
+        validate_agent_integration_profile(profile)
+
+
+@pytest.mark.parametrize("tool_id", ["P0-05", "P0-06"])
+def test_dynamic_validation_requires_biological_unit_attestation_role(
+    tool_id: str,
+) -> None:
+    payload = _load_profile("single-product").model_dump(mode="json")
+    binding = next(
+        item for item in payload["request_bindings"] if item["tool_id"] == tool_id
+    )
+    binding["object_inputs"] = [
+        item
+        for item in binding["object_inputs"]
+        if item["role"] != "biological_unit_attestation_receipt"
+    ]
+    profile = AgentIntegrationProfile.model_validate(payload)
+
+    with pytest.raises(
+        ValueError,
+        match="role biological_unit_attestation_receipt minimum cardinality",
+    ):
         validate_agent_integration_profile(profile)
 
 

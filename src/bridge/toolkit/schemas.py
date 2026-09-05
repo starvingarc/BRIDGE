@@ -11,6 +11,7 @@ SCHEMA_REFS = {
     "bridge://schemas/biological-review-record/v0.1": "biological_review_record.schema.json",
     "bridge://schemas/biological-unit-assignment/v0.1": "biological_unit_assignment.schema.json",
     "bridge://schemas/biological-unit-manifest/v0.1": "biological_unit_manifest.schema.json",
+    "bridge://schemas/biological-unit-attestation-receipt/v0.1": "biological_unit_attestation_receipt.schema.json",
     "bridge://schemas/cell-state-benchmark-spec/v0.2": "cell_state_benchmark_spec.schema.json",
     "bridge://schemas/cell-state-evidence-profile/v0.1": "cell_state_evidence_profile.schema.json",
     "bridge://schemas/cell-state-evidence-profile/v0.2": "cell_state_evidence_profile_v2.schema.json",

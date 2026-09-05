@@ -6,9 +6,11 @@ from pathlib import Path
 
 from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitAssignmentArtifact,
+    BiologicalUnitAttestationReceipt,
     BiologicalUnitManifest,
     ProductCase,
     biological_unit_assignment_reasons,
+    biological_unit_attestation_reasons,
     observation_ids_sha256,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
@@ -80,6 +82,7 @@ def method_binding_reasons(
     program_spec: ProgramSpec,
     method_spec: ProcessMethodSpec,
     method_input: ProcessMethodInput,
+    attestation_receipt: BiologicalUnitAttestationReceipt,
     manifest: BiologicalUnitManifest,
     assignment: BiologicalUnitAssignmentArtifact,
     asset: InputAsset,
@@ -132,6 +135,14 @@ def method_binding_reasons(
 
     manifest_sha = input_sha256_by_role["biological_unit_manifest"]
     assignment_sha = input_sha256_by_role["biological_unit_assignment"]
+    reasons.update(
+        biological_unit_attestation_reasons(
+            manifest=manifest,
+            manifest_sha256=manifest_sha,
+            data_view=view,
+            receipt=attestation_receipt,
+        )
+    )
     if (
         product_case.biological_unit_manifest_ref != manifest.ref
         or product_case.biological_unit_manifest_sha256 != manifest_sha

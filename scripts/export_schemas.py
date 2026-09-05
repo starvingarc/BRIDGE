@@ -38,6 +38,7 @@ from bridge.toolkit.contracts import (
 from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitAssignmentArtifact,
     BiologicalUnitManifest,
+    BiologicalUnitAttestationReceipt,
     ProductCase,
     ProductDefinitionCard,
 )
@@ -139,6 +140,10 @@ MODELS = {
     "biological_unit_manifest": (
         "bridge://schemas/biological-unit-manifest/v0.1",
         BiologicalUnitManifest,
+    ),
+    "biological_unit_attestation_receipt": (
+        "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+        BiologicalUnitAttestationReceipt,
     ),
     "cell_state_benchmark_spec": ("bridge://schemas/cell-state-benchmark-spec/v0.2", CellStateBenchmarkSpec),
     "cell_state_evidence_profile": ("bridge://schemas/cell-state-evidence-profile/v0.1", CellStateEvidenceProfile),

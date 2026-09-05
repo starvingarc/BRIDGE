@@ -5,7 +5,9 @@ from collections import defaultdict
 
 from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitManifest,
+    BiologicalUnitAttestationReceipt,
     ProductCase,
+    biological_unit_attestation_reasons,
 )
 from bridge.tool_packages.p0_05_off_target_control.method_models import (
     OffTargetMethodInput,
@@ -29,6 +31,7 @@ def method_binding_reasons(
     cell_state_profile: CellStateEvidenceProfileV3,
     evidence_bundle: OffTargetEvidenceBundle,
     biological_units: BiologicalUnitManifest,
+    attestation_receipt: BiologicalUnitAttestationReceipt,
     method_spec: OffTargetMethodSpec,
     method_input: OffTargetMethodInput,
     role_map: StateRoleMap,
@@ -42,8 +45,14 @@ def method_binding_reasons(
 
     if not method_spec.active:
         reasons.append("off_target_method_spec_inactive")
-    if not biological_units.review_claim_is_present:
-        reasons.append("biological_unit_lineage_not_reviewed")
+    reasons.extend(
+        biological_unit_attestation_reasons(
+            manifest=biological_units,
+            manifest_sha256=manifest_sha,
+            data_view=cell_state_profile.input_data_view,
+            receipt=attestation_receipt,
+        )
+    )
     if (
         product_case.biological_unit_manifest_ref is None
         or product_case.biological_unit_manifest_ref.ref != manifest_ref
