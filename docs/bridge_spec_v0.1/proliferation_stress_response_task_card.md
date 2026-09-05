@@ -3,25 +3,27 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.6-candidate` |
+| 文档版本 | `0.6.1-candidate` |
 | 日期 | 2026-09-05 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | `legacy_aggregation` 使用七个对象，可选独立 P0-06 `MeasurementSpecV2`；`method_runtime` 使用六个共同对象（其中 Cell-State 为 P0-02 V3）、BiologicalUnit manifest/assignment、方法 spec/input、必需的 P0-06 `MeasurementSpecV2` 和一个与 DataView 精确一致的 normalized-expression 或 raw-count H5AD，不接收调用方 `ProgramEvidenceBundle` |
+| 上游输入 | `legacy_aggregation` 使用七个对象，可选独立 P0-06 `MeasurementSpecV2`；`method_runtime` 使用六个共同对象（其中 Cell-State 为 P0-02 V3）、BiologicalUnit manifest/assignment、caller/data-owner attestation receipt、方法 spec/input、必需的 P0-06 `MeasurementSpecV2` 和一个与 DataView 精确一致的 normalized-expression 或 raw-count H5AD，不接收调用方 `ProgramEvidenceBundle` |
 | 主要输出 | 两种模式均输出 v0.3 `ProliferationStressResponseProfile`、typed visualization data、精确 TSV、SVG/PNG/PDF 和 artifact manifest；legacy projection 保留原有状态映射，method runtime 从真实 `ProgramScoreSummary`/`CellCycleSummary` 一一产生 `MeasurementResultV2`，并输出具备矩阵和 normalization lineage 的 v0.2 `ProcessMethodBundle` |
 
 ## 0. 当前 v0.6 可执行候选
 
-P0-06 `0.6.0` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
+P0-06 `0.6.1` 通过同一 `ToolRequestV2 validate/run` 接口提供两种模式：
 
 | 模式 | 输入 | 实际执行 | 输出 |
 | --- | --- | --- | --- |
 | `legacy_aggregation` | 七个 checksummed JSON 对象；Cell-State 使用 V2；MeasurementSpec 可选 | 绑定并聚合预计算 `ProgramEvidenceBundle`，不读取表达矩阵 | profile v0.3、可选 legacy measurement projection 与 manifest |
-| `method_runtime` | 十一个 checksummed JSON 对象、恰好一个与 P0-02 DataView 一致的 H5AD；Cell-State 使用 V3；MeasurementSpec 必需；ProgramEvidenceBundle 禁止 | 对 normalized expression 直接运行，或对整数 raw counts 固定执行 1e4 library-size normalization + `log1p`，随后调用 Scanpy/decoupler 并按 BiologicalUnit 与 candidate state 聚合 | profile v0.3、method bundle v0.2、逐 summary measurement 与 manifest |
+| `method_runtime` | 十二个 checksummed JSON 对象、恰好一个与 P0-02 DataView 一致的 H5AD；Cell-State 使用 V3；MeasurementSpec 与 biological-unit attestation receipt 必需；ProgramEvidenceBundle 禁止 | 对 normalized expression 直接运行，或对整数 raw counts 固定执行 1e4 library-size normalization + `log1p`，随后调用 Scanpy/decoupler 并按 BiologicalUnit 与 candidate state 聚合 | profile v0.3、method bundle v0.2、逐 summary measurement 与 manifest |
 
 `ProgramSpec` 是 program gene/weight/phase 内容的唯一事实源，并持有这些内容的 canonical SHA-256、适用 stage/state/scope、coverage/LOD 和 review mapping。`ProcessMethodSpec` 只选择 program ID、方法、scope 与运行参数。method runtime 的 MeasurementSpec 必须精确绑定 P0-06、assay、生物学单位、实际启用的 metric/scope/unit/method；它不含阈值或 alert。两种模式均保持 `descriptive_only`、`candidate/shadow`、`domain_score=null`。
 
 raw-count 路径在 method bundle 中记录 `normalization_recipe_id=bridge_normalize_total_log1p_v0.1` 与 `normalization_target_sum=10000.0`；该标识是 P0-06 包内 recipe 元数据，不冒充 knowledge catalog 的 Method reference。
+
+`BiologicalUnitAttestationReceipt` 仅记录 caller/data owner 对本次 `analysis_execution` 生物学单位设计的显式声明。runtime 验证其结构，以及与 immutable P0-01 declared manifest、assignment、P0-02 DataView、observation digest 和 unit contract 的精确绑定；不认证 attestor，也不证明外部 attestation 来源、生物学真值、独立审核或发布权限。部署层负责将已认证的对话或工作流记录映射为 receipt 中的 attestation reference/checksum。
 
 ## 1. 任务目标与边界
 

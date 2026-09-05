@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitAssignmentArtifact,
+    BiologicalUnitAttestationReceipt,
     BiologicalUnitManifest,
     DevelopmentWindowSpec,
     ProductCase,
@@ -153,6 +154,11 @@ METHOD_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
         "bridge://schemas/biological-unit-assignment/v0.1",
         "0.1.0",
         BiologicalUnitAssignmentArtifact,
+    ),
+    "biological_unit_attestation_receipt": (
+        "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+        "0.1.0",
+        BiologicalUnitAttestationReceipt,
     ),
     "process_method_spec": (
         "bridge://schemas/process-method-spec/v0.1",
@@ -681,6 +687,12 @@ def _binding_reasons(
                         loaded,
                         "process_method_input",
                         ProcessMethodInput,
+                    ),
+                    attestation_receipt=single_object(
+                        request,
+                        loaded,
+                        "biological_unit_attestation_receipt",
+                        BiologicalUnitAttestationReceipt,
                     ),
                     manifest=manifest,
                     assignment=single_object(
