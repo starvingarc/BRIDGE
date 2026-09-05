@@ -25,3 +25,15 @@ package. Its output remains shadow without a signed release manifest.
 
 Use `bridge-tool describe P0-02` for the installed version, environment and
 registered method IDs.
+
+## Deterministic grouping artifacts
+
+Exploratory grouping records preserve stable method parameters, grouping
+membership, stability diagnostics and the configured thread count. Wall-clock
+duration and process peak memory are excluded from the scientific JSON so
+repeating the same request can reuse the checksummed bundle. Removing those
+volatile diagnostics does not change normalization, clustering, ARI or state
+evidence.
+
+See the [deterministic replay validation record](../../../../docs/validation/p0_02_deterministic_grouping_20260905.md)
+for the regression, installed-wheel checks and repeated-request evidence.

@@ -1085,3 +1085,53 @@ def test_identical_request_has_stable_artifact_hashes(tmp_path: Path, monkeypatc
     first_hashes = {(item.kind, item.path.name): item.sha256 for item in first.artifacts}
     second_hashes = {(item.kind, item.path.name): item.sha256 for item in second.artifacts}
     assert first_hashes == second_hashes
+
+
+def test_exploratory_grouping_scientific_metadata_ignores_runtime_telemetry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+    from bridge.tool_packages.p0_02_cell_state import grouping
+
+    matrix = ad.AnnData(X=sparse.csr_matrix(np.ones((200, 500), dtype=np.int64)))
+    asset = InputAsset(
+        asset_id="synthetic-counts",
+        path=tmp_path / "counts.h5ad",
+        format="h5ad",
+        assay="scRNA-seq",
+        input_level="count_ready",
+        matrix_semantics="raw_counts",
+    )
+    request = ToolRequest(
+        request_id="grouping-replay",
+        tool_id="P0-02",
+        assets=[asset],
+        output_dir=tmp_path / "output",
+    )
+    monkeypatch.setattr(
+        grouping,
+        "_cluster_preparation",
+        lambda *args, **kwargs: {
+            "reason_code": None,
+            "selected": np.array(["0"] * 100 + ["1"] * 100),
+            "medoid_mean_ari": 1.0,
+        },
+    )
+    clock = iter([1.0, 2.0, 10.0, 13.0])
+    rss = iter([100.0, 120.0, 150.0, 180.0])
+    monkeypatch.setattr(
+        grouping, "time", SimpleNamespace(perf_counter=lambda: next(clock)),
+        raising=False,
+    )
+    monkeypatch.setattr(grouping, "_peak_rss_mb", lambda: next(rss), raising=False)
+
+    first = grouping.resolve_product_grouping(matrix, asset, request, threads=2)
+    second = grouping.resolve_product_grouping(matrix, asset, request, threads=2)
+
+    assert first.state == second.state == "generated"
+    assert first.grouping_hash == second.grouping_hash
+    assert first.labels.equals(second.labels)
+    assert json.dumps(first.method, sort_keys=True) == json.dumps(
+        second.method, sort_keys=True
+    )
+    assert first.method["runtime"] == {"threads": 2}

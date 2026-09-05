@@ -1,6 +1,6 @@
 tool_id: P0-02
 name: Cell-State Evidence
-version: 0.5.2
+version: 0.5.3
 summary: Produce source-aware reference and marker-program evidence against the internal hierarchical annotation vocabulary.
 implementation_state: implemented
 scientific_status: candidate

@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
-import resource
-import time
 from typing import Any, Literal
 
 import anndata as ad
@@ -83,8 +81,6 @@ def resolve_product_grouping(
     if preparations.isna().any() or (preparations.str.strip() == "").any():
         return _not_generated("preparation_metadata_incomplete")
 
-    started = time.perf_counter()
-    peak_before = _peak_rss_mb()
     labels = pd.Series(index=adata.obs_names, dtype="string")
     records: list[dict[str, Any]] = []
     next_group = 1
@@ -166,8 +162,6 @@ def resolve_product_grouping(
         },
         "preparations": records,
         "runtime": {
-            "wall_clock_seconds": round(time.perf_counter() - started, 6),
-            "peak_rss_mb": max(_peak_rss_mb(), peak_before),
             "threads": threads,
         },
         "interpretation": (
@@ -376,8 +370,3 @@ def _series_hash(values: pd.Series) -> str:
 def _natural_cluster_key(value: object) -> tuple[int, str]:
     text = str(value)
     return (int(text), text) if text.isdigit() else (2**31 - 1, text)
-
-
-def _peak_rss_mb() -> float:
-    # Linux reports KiB; this runtime contract is server-only.
-    return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 3)
