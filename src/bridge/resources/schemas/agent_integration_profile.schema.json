@@ -1,0 +1,458 @@
+{
+  "$defs": {
+    "IntegrationAssetContract": {
+      "additionalProperties": false,
+      "properties": {
+        "assay": {
+          "minLength": 1,
+          "title": "Assay",
+          "type": "string"
+        },
+        "format": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]*$",
+          "title": "Format",
+          "type": "string"
+        },
+        "input_level": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Input Level",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "required_metadata_keys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Metadata Keys",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "format",
+        "assay",
+        "input_level",
+        "matrix_semantics"
+      ],
+      "title": "IntegrationAssetContract",
+      "type": "object"
+    },
+    "IntegrationObjectInput": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "slot_id": {
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Slot Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slot_id",
+        "role"
+      ],
+      "title": "IntegrationObjectInput",
+      "type": "object"
+    },
+    "IntegrationRequestBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_slot_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Asset Slot Ids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "binding_id": {
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Binding Id",
+          "type": "string"
+        },
+        "measurement_spec_slot_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measurement Spec Slot Id"
+        },
+        "mode_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mode Id"
+        },
+        "object_inputs": {
+          "items": {
+            "$ref": "#/$defs/IntegrationObjectInput"
+          },
+          "title": "Object Inputs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "request_schema_ref": {
+          "enum": [
+            "bridge://schemas/tool-request/v0.1",
+            "bridge://schemas/tool-request/v0.2"
+          ],
+          "title": "Request Schema Ref",
+          "type": "string"
+        },
+        "tool_id": {
+          "pattern": "^P0-(0[1-9]|1[0-2])$",
+          "title": "Tool Id",
+          "type": "string"
+        },
+        "tool_version": {
+          "minLength": 1,
+          "title": "Tool Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "binding_id",
+        "tool_id",
+        "tool_version",
+        "request_schema_ref"
+      ],
+      "title": "IntegrationRequestBinding",
+      "type": "object"
+    },
+    "IntegrationResourceSlot": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "resource_type": {
+                "const": "asset"
+              }
+            },
+            "required": [
+              "resource_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "asset_contract": {
+                "type": "object"
+              },
+              "object_version": {
+                "type": "null"
+              },
+              "schema_ref": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "asset_contract"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "resource_type": {
+                "const": "structured_object"
+              }
+            },
+            "required": [
+              "resource_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "asset_contract": {
+                "type": "null"
+              },
+              "object_version": {
+                "type": "string"
+              },
+              "schema_ref": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_ref",
+              "object_version"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "derived_output"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "artifact_kind": {
+                "type": "string"
+              },
+              "depends_on_slots": {
+                "maxItems": 0
+              },
+              "producer_binding_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "producer_binding_id",
+              "artifact_kind"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "agent_constructed"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "artifact_kind": {
+                "type": "null"
+              },
+              "depends_on_slots": {
+                "minItems": 1
+              },
+              "producer_binding_id": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "depends_on_slots"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "enum": [
+                  "user_upload",
+                  "system_resource"
+                ]
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "artifact_kind": {
+                "type": "null"
+              },
+              "depends_on_slots": {
+                "maxItems": 0
+              },
+              "producer_binding_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "artifact_kind": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Kind"
+        },
+        "asset_contract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntegrationAssetContract"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "depends_on_slots": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "title": "Depends On Slots",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "max_count": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 1,
+          "title": "Max Count"
+        },
+        "min_count": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Min Count",
+          "type": "integer"
+        },
+        "object_version": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object Version"
+        },
+        "producer_binding_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Producer Binding Id"
+        },
+        "resource_type": {
+          "enum": [
+            "asset",
+            "structured_object"
+          ],
+          "title": "Resource Type",
+          "type": "string"
+        },
+        "schema_ref": {
+          "anyOf": [
+            {
+              "pattern": "^bridge://schemas/[A-Za-z0-9][A-Za-z0-9._/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Schema Ref"
+        },
+        "slot_id": {
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Slot Id",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "user_upload",
+            "system_resource",
+            "derived_output",
+            "agent_constructed"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slot_id",
+        "source",
+        "resource_type"
+      ],
+      "title": "IntegrationResourceSlot",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/agent-integration-profile/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "profile_id": {
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "request_bindings": {
+      "items": {
+        "$ref": "#/$defs/IntegrationRequestBinding"
+      },
+      "minItems": 1,
+      "title": "Request Bindings",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "resource_slots": {
+      "items": {
+        "$ref": "#/$defs/IntegrationResourceSlot"
+      },
+      "title": "Resource Slots",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/agent-integration-profile/v0.1",
+      "default": "bridge://schemas/agent-integration-profile/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "profile_id",
+    "request_bindings"
+  ],
+  "title": "AgentIntegrationProfile",
+  "type": "object"
+}

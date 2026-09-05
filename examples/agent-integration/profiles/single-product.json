@@ -1,0 +1,853 @@
+{
+  "profile_id": "single-product-evidence-chain",
+  "object_version": "0.1.0",
+  "schema_ref": "bridge://schemas/agent-integration-profile/v0.1",
+  "resource_slots": [
+    {
+      "slot_id": "uploaded-expression",
+      "source": "user_upload",
+      "resource_type": "asset",
+      "min_count": 1,
+      "max_count": 1,
+      "asset_contract": {
+        "format": "h5ad",
+        "assay": "scRNA-seq",
+        "input_level": "analysis_ready",
+        "matrix_semantics": "normalized_expression",
+        "required_metadata_keys": [
+          "source_family_id",
+          "biological_unit_lineage"
+        ]
+      }
+    },
+    {
+      "slot_id": "qc-selected-expression",
+      "source": "agent_constructed",
+      "resource_type": "asset",
+      "min_count": 1,
+      "max_count": 1,
+      "asset_contract": {
+        "format": "h5ad",
+        "assay": "scRNA-seq",
+        "input_level": "analysis_ready",
+        "matrix_semantics": "normalized_expression",
+        "required_metadata_keys": [
+          "source_family_id",
+          "qc_profile_ref",
+          "data_view_id",
+          "parent_asset_sha256"
+        ]
+      },
+      "depends_on_slots": [
+        "uploaded-expression",
+        "qc-readiness-profile"
+      ]
+    },
+    {
+      "slot_id": "qc-measurement-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "cell-state-measurement-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "product-case",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/product-case/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "uploaded-expression",
+        "qc-readiness-profile",
+        "biological-unit-manifest",
+        "product-definition-card",
+        "cell-state-measurement-spec"
+      ]
+    },
+    {
+      "slot_id": "product-definition-card",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/product-definition-card/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "qc-readiness-profile",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/qc-readiness-profile/v0.2",
+      "object_version": "0.2.0",
+      "min_count": 1,
+      "max_count": 1,
+      "producer_binding_id": "input-audit-qc",
+      "artifact_kind": "qc_profile_v2"
+    },
+    {
+      "slot_id": "biological-unit-manifest",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/biological-unit-manifest/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "producer_binding_id": "input-audit-qc",
+      "artifact_kind": "biological_unit_manifest"
+    },
+    {
+      "slot_id": "biological-unit-assignment",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/biological-unit-assignment/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "producer_binding_id": "input-audit-qc",
+      "artifact_kind": "biological_unit_assignment"
+    },
+    {
+      "slot_id": "biological-unit-attestation-receipt",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "biological-unit-manifest",
+        "biological-unit-assignment",
+        "cell-state-profile"
+      ]
+    },
+    {
+      "slot_id": "cell-state-profile",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/cell-state-evidence-profile/v0.3",
+      "object_version": "0.3.0",
+      "min_count": 1,
+      "max_count": 1,
+      "producer_binding_id": "cell-state-evidence",
+      "artifact_kind": "cell_state_profile_v3"
+    },
+    {
+      "slot_id": "cell-state-observation-evidence",
+      "source": "derived_output",
+      "resource_type": "asset",
+      "min_count": 1,
+      "max_count": 1,
+      "asset_contract": {
+        "format": "parquet",
+        "assay": "scRNA-seq",
+        "input_level": "analysis_ready",
+        "matrix_semantics": "per_observation_cell_state_evidence",
+        "required_metadata_keys": []
+      },
+      "producer_binding_id": "cell-state-evidence",
+      "artifact_kind": "cell_state_evidence"
+    },
+    {
+      "slot_id": "state-role-map",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/state-role-map/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "target-assessment-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/target-regional-assessment-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "target-regional-method-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/target-regional-method-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "target-measurement-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.2",
+      "object_version": "1.0.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "annotation-vocabulary",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/annotation-vocabulary/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "reference-manifest",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/reference-manifest/v0.1",
+      "object_version": "0.2.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "target-measurements",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-result/v0.2",
+      "object_version": "0.2.0",
+      "min_count": 1,
+      "max_count": null,
+      "producer_binding_id": "target-regional",
+      "artifact_kind": "measurement_result_v2"
+    },
+    {
+      "slot_id": "development-window-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/development-window-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "development-state-map",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/development-state-map/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "development-method-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/development-method-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "development-measurement-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.2",
+      "object_version": "1.0.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "development-measurements",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-result/v0.2",
+      "object_version": "0.2.0",
+      "min_count": 1,
+      "max_count": null,
+      "producer_binding_id": "developmental-compatibility",
+      "artifact_kind": "measurement_result_v2"
+    },
+    {
+      "slot_id": "off-target-assessment-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/off-target-assessment-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "off-target-evidence",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/off-target-evidence-bundle/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "product-definition-card",
+        "cell-state-profile"
+      ]
+    },
+    {
+      "slot_id": "off-target-measurement-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.2",
+      "object_version": "1.0.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "off-target-method-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/off-target-method-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "off-target-method-input",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/off-target-method-input/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "cell-state-profile",
+        "off-target-evidence",
+        "biological-unit-manifest",
+        "biological-unit-assignment",
+        "cell-state-observation-evidence",
+        "state-role-map",
+        "off-target-assessment-spec",
+        "off-target-method-spec"
+      ]
+    },
+    {
+      "slot_id": "off-target-measurements",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-result/v0.2",
+      "object_version": "0.2.0",
+      "min_count": 1,
+      "max_count": null,
+      "producer_binding_id": "off-target-control",
+      "artifact_kind": "measurement_result_v2"
+    },
+    {
+      "slot_id": "process-program-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/program-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "protocol-ir",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/protocol-ir/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "uploaded-expression"
+      ]
+    },
+    {
+      "slot_id": "process-measurement-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-spec/v0.2",
+      "object_version": "1.0.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "process-method-spec",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/process-method-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "process-method-input",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/process-method-input/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "cell-state-profile",
+        "qc-selected-expression",
+        "biological-unit-manifest",
+        "biological-unit-assignment",
+        "cell-state-observation-evidence",
+        "process-program-spec"
+      ]
+    },
+    {
+      "slot_id": "process-measurements",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/measurement-result/v0.2",
+      "object_version": "0.2.0",
+      "min_count": 1,
+      "max_count": null,
+      "producer_binding_id": "process-signals",
+      "artifact_kind": "measurement_result_v2"
+    },
+    {
+      "slot_id": "sufficiency-gate-rules",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
+      "object_version": "0.2.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "target-domain-gate",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/domain-gate-input/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "product-definition-card",
+        "qc-readiness-profile",
+        "target-measurement-spec",
+        "target-measurements"
+      ]
+    },
+    {
+      "slot_id": "regional-domain-gate",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/domain-gate-input/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "product-definition-card",
+        "qc-readiness-profile",
+        "target-measurement-spec",
+        "target-measurements"
+      ]
+    },
+    {
+      "slot_id": "development-domain-gate",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/domain-gate-input/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "product-definition-card",
+        "qc-readiness-profile",
+        "development-measurement-spec",
+        "development-measurements"
+      ]
+    },
+    {
+      "slot_id": "off-target-domain-gate",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/domain-gate-input/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "product-definition-card",
+        "qc-readiness-profile",
+        "off-target-measurement-spec",
+        "off-target-measurements"
+      ]
+    },
+    {
+      "slot_id": "process-domain-gate",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/domain-gate-input/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "product-definition-card",
+        "qc-readiness-profile",
+        "process-measurement-spec",
+        "process-measurements"
+      ]
+    },
+    {
+      "slot_id": "sufficiency-result",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.2",
+      "object_version": "0.2.0",
+      "min_count": 1,
+      "max_count": 1,
+      "producer_binding_id": "evidence-sufficiency",
+      "artifact_kind": "evidence_sufficiency_run_result"
+    },
+    {
+      "slot_id": "compilation-bundle",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/evidence-compilation-bundle/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "sufficiency-result",
+        "target-measurement-spec",
+        "target-measurements",
+        "development-measurement-spec",
+        "development-measurements",
+        "off-target-measurement-spec",
+        "off-target-measurements",
+        "process-measurement-spec",
+        "process-measurements",
+        "evidence-family-registry",
+        "claim-registry",
+        "reconciliation-registry"
+      ]
+    },
+    {
+      "slot_id": "evidence-family-registry",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/evidence-family-registry/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "claim-registry",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/claim-registry/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "reconciliation-registry",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/reconciliation-spec-registry/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "case-graph-manifest",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/case-evidence-graph-manifest/v0.1",
+      "object_version": "1",
+      "min_count": 1,
+      "max_count": 1,
+      "producer_binding_id": "evidence-compiler",
+      "artifact_kind": "case_evidence_graph_manifest"
+    },
+    {
+      "slot_id": "evidence-record-set",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/evidence-record-set/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "producer_binding_id": "evidence-compiler",
+      "artifact_kind": "evidence_records"
+    },
+    {
+      "slot_id": "report-draft",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/report-draft/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "product-case",
+        "case-graph-manifest",
+        "evidence-record-set",
+        "claim-policy",
+        "statement-registry"
+      ]
+    },
+    {
+      "slot_id": "claim-policy",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/claim-policy-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "statement-registry",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/statement-registry/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "claim-verification-result",
+      "source": "derived_output",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/claim-verification-result/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "producer_binding_id": "claim-verifier",
+      "artifact_kind": "claim_verification_result"
+    },
+    {
+      "slot_id": "public-export-policy",
+      "source": "system_resource",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/public-export-policy-spec/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1
+    },
+    {
+      "slot_id": "public-export-request",
+      "source": "agent_constructed",
+      "resource_type": "structured_object",
+      "schema_ref": "bridge://schemas/public-export-request/v0.1",
+      "object_version": "0.1.0",
+      "min_count": 1,
+      "max_count": 1,
+      "depends_on_slots": [
+        "report-draft",
+        "claim-verification-result",
+        "public-export-policy"
+      ]
+    }
+  ],
+  "request_bindings": [
+    {
+      "binding_id": "input-audit-qc",
+      "tool_id": "P0-01",
+      "tool_version": "0.1.4",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.1",
+      "mode_id": null,
+      "asset_slot_ids": ["uploaded-expression"],
+      "object_inputs": [],
+      "measurement_spec_slot_id": "qc-measurement-spec"
+    },
+    {
+      "binding_id": "cell-state-evidence",
+      "tool_id": "P0-02",
+      "tool_version": "0.5.2",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.1",
+      "mode_id": null,
+      "asset_slot_ids": ["qc-selected-expression"],
+      "object_inputs": [],
+      "measurement_spec_slot_id": "cell-state-measurement-spec"
+    },
+    {
+      "binding_id": "target-regional",
+      "tool_id": "P0-03",
+      "tool_version": "0.4.1",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "default",
+      "asset_slot_ids": ["qc-selected-expression"],
+      "object_inputs": [
+        {"slot_id": "product-case", "role": "product_case"},
+        {"slot_id": "product-definition-card", "role": "product_definition_card"},
+        {"slot_id": "state-role-map", "role": "state_role_map"},
+        {"slot_id": "target-assessment-spec", "role": "target_regional_assessment_spec"},
+        {"slot_id": "target-measurement-spec", "role": "measurement_spec"},
+        {"slot_id": "cell-state-profile", "role": "cell_state_evidence_profile"},
+        {"slot_id": "qc-readiness-profile", "role": "qc_readiness_profile"},
+        {"slot_id": "biological-unit-manifest", "role": "biological_unit_manifest"},
+        {"slot_id": "biological-unit-assignment", "role": "biological_unit_assignment"},
+        {"slot_id": "annotation-vocabulary", "role": "annotation_vocabulary"},
+        {"slot_id": "reference-manifest", "role": "reference_manifest"},
+        {"slot_id": "target-regional-method-spec", "role": "target_regional_method_spec"}
+      ],
+      "measurement_spec_slot_id": null
+    },
+    {
+      "binding_id": "developmental-compatibility",
+      "tool_id": "P0-04",
+      "tool_version": "0.5.1",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "default",
+      "asset_slot_ids": ["qc-selected-expression"],
+      "object_inputs": [
+        {"slot_id": "product-case", "role": "product_case"},
+        {"slot_id": "product-definition-card", "role": "product_definition_card"},
+        {"slot_id": "development-window-spec", "role": "development_window_spec"},
+        {"slot_id": "development-state-map", "role": "development_state_map"},
+        {"slot_id": "development-measurement-spec", "role": "measurement_spec"},
+        {"slot_id": "cell-state-profile", "role": "cell_state_evidence_profile"},
+        {"slot_id": "qc-readiness-profile", "role": "qc_readiness_profile"},
+        {"slot_id": "biological-unit-manifest", "role": "biological_unit_manifest"},
+        {"slot_id": "biological-unit-assignment", "role": "biological_unit_assignment"},
+        {"slot_id": "annotation-vocabulary", "role": "annotation_vocabulary"},
+        {"slot_id": "reference-manifest", "role": "reference_manifest"},
+        {"slot_id": "development-method-spec", "role": "development_method_spec"}
+      ],
+      "measurement_spec_slot_id": null
+    },
+    {
+      "binding_id": "off-target-control",
+      "tool_id": "P0-05",
+      "tool_version": "0.5.2",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "method_runtime",
+      "asset_slot_ids": [],
+      "object_inputs": [
+        {"slot_id": "product-case", "role": "product_case"},
+        {"slot_id": "product-definition-card", "role": "product_definition_card"},
+        {"slot_id": "state-role-map", "role": "state_role_map"},
+        {"slot_id": "off-target-assessment-spec", "role": "off_target_assessment_spec"},
+        {"slot_id": "cell-state-profile", "role": "cell_state_evidence_profile"},
+        {"slot_id": "off-target-evidence", "role": "off_target_evidence_bundle"},
+        {"slot_id": "off-target-measurement-spec", "role": "measurement_spec"},
+        {"slot_id": "biological-unit-manifest", "role": "biological_unit_manifest"},
+        {
+          "slot_id": "biological-unit-attestation-receipt",
+          "role": "biological_unit_attestation_receipt"
+        },
+        {"slot_id": "off-target-method-spec", "role": "off_target_method_spec"},
+        {"slot_id": "off-target-method-input", "role": "off_target_method_input"}
+      ],
+      "measurement_spec_slot_id": null
+    },
+    {
+      "binding_id": "process-signals",
+      "tool_id": "P0-06",
+      "tool_version": "0.6.1",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "method_runtime",
+      "asset_slot_ids": ["qc-selected-expression"],
+      "object_inputs": [
+        {"slot_id": "product-case", "role": "product_case"},
+        {"slot_id": "product-definition-card", "role": "product_definition_card"},
+        {"slot_id": "development-window-spec", "role": "development_window_spec"},
+        {"slot_id": "process-program-spec", "role": "program_spec"},
+        {"slot_id": "cell-state-profile", "role": "cell_state_evidence_profile"},
+        {"slot_id": "protocol-ir", "role": "protocol_ir"},
+        {"slot_id": "process-measurement-spec", "role": "measurement_spec"},
+        {"slot_id": "biological-unit-manifest", "role": "biological_unit_manifest"},
+        {"slot_id": "biological-unit-assignment", "role": "biological_unit_assignment"},
+        {
+          "slot_id": "biological-unit-attestation-receipt",
+          "role": "biological_unit_attestation_receipt"
+        },
+        {"slot_id": "process-method-spec", "role": "process_method_spec"},
+        {"slot_id": "process-method-input", "role": "process_method_input"}
+      ],
+      "measurement_spec_slot_id": null
+    },
+    {
+      "binding_id": "evidence-sufficiency",
+      "tool_id": "P0-08",
+      "tool_version": "0.5.0",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "default",
+      "asset_slot_ids": [],
+      "object_inputs": [
+        {"slot_id": "sufficiency-gate-rules", "role": "gate_rule_spec"},
+        {"slot_id": "target-domain-gate", "role": "domain_gate_input"},
+        {
+          "slot_id": "regional-domain-gate",
+          "role": "domain_gate_input"
+        },
+        {"slot_id": "development-domain-gate", "role": "domain_gate_input"},
+        {"slot_id": "off-target-domain-gate", "role": "domain_gate_input"},
+        {"slot_id": "process-domain-gate", "role": "domain_gate_input"},
+        {"slot_id": "product-case", "role": "product_case"},
+        {"slot_id": "target-measurement-spec", "role": "measurement_spec"},
+        {"slot_id": "development-measurement-spec", "role": "measurement_spec"},
+        {"slot_id": "off-target-measurement-spec", "role": "measurement_spec"},
+        {"slot_id": "process-measurement-spec", "role": "measurement_spec"},
+        {"slot_id": "qc-readiness-profile", "role": "qc_readiness_profile"},
+        {"slot_id": "target-measurements", "role": "measurement_result"},
+        {"slot_id": "development-measurements", "role": "measurement_result"},
+        {"slot_id": "off-target-measurements", "role": "measurement_result"},
+        {"slot_id": "process-measurements", "role": "measurement_result"}
+      ],
+      "measurement_spec_slot_id": null
+    },
+    {
+      "binding_id": "evidence-compiler",
+      "tool_id": "P0-09",
+      "tool_version": "0.4.0",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "case_initial_v2",
+      "asset_slot_ids": [],
+      "object_inputs": [
+        {"slot_id": "compilation-bundle", "role": "compilation_bundle"},
+        {"slot_id": "sufficiency-result", "role": "evidence_sufficiency_run_result"},
+        {"slot_id": "evidence-family-registry", "role": "evidence_family_registry"},
+        {"slot_id": "claim-registry", "role": "claim_registry"},
+        {"slot_id": "reconciliation-registry", "role": "reconciliation_spec_registry"}
+      ],
+      "measurement_spec_slot_id": null
+    },
+    {
+      "binding_id": "claim-verifier",
+      "tool_id": "P0-10",
+      "tool_version": "0.4.0",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "default",
+      "asset_slot_ids": [],
+      "object_inputs": [
+        {"slot_id": "report-draft", "role": "report_draft"},
+        {"slot_id": "case-graph-manifest", "role": "evidence_graph_manifest"},
+        {"slot_id": "claim-policy", "role": "claim_policy_spec"},
+        {"slot_id": "statement-registry", "role": "statement_registry"}
+      ],
+      "measurement_spec_slot_id": null
+    },
+    {
+      "binding_id": "public-safe-export",
+      "tool_id": "P0-11",
+      "tool_version": "0.4.0",
+      "request_schema_ref": "bridge://schemas/tool-request/v0.2",
+      "mode_id": "report_export",
+      "asset_slot_ids": [],
+      "object_inputs": [
+        {"slot_id": "report-draft", "role": "report_draft"},
+        {"slot_id": "claim-verification-result", "role": "claim_verification_result"},
+        {"slot_id": "public-export-policy", "role": "public_export_policy"},
+        {"slot_id": "public-export-request", "role": "public_export_request"}
+      ],
+      "measurement_spec_slot_id": null
+    }
+  ]
+}

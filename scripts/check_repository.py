@@ -79,6 +79,15 @@ AGENT_RUNTIME_FILES = (
     Path("tests/test_tool_execution_pipeline.py"),
     Path("tests/test_workflow_runtime.py"),
 )
+AGENT_INTEGRATION_FILES = (
+    Path("examples/agent-integration/profiles/comparison.json"),
+    Path("examples/agent-integration/profiles/graft.json"),
+    Path("examples/agent-integration/profiles/single-product.json"),
+    Path("examples/agent-integration/reference_runner.py"),
+    Path("src/bridge/resources/schemas/agent_integration_profile.schema.json"),
+    Path("src/bridge/toolkit/integration.py"),
+    Path("tests/test_agent_integration.py"),
+)
 P001_VISUALIZATION_FILES = (
     Path("plans/p0-01-input-qc-visualization.md"),
     Path("docs/validation/p0_01_input_qc_visualization_20260828.md"),
@@ -186,6 +195,11 @@ def main() -> int:
             problems.append(
                 f"tracked file count exceeds {tracked_file_budget}: {len(tracked_files)}"
             )
+        missing_integration_files = set(AGENT_INTEGRATION_FILES) - set(tracked_files)
+        for relative in sorted(missing_integration_files):
+            problems.append(
+                f"missing Agent integration contract file: {relative}"
+            )
         _check_tracked_layout(tracked_files, problems)
         paths = [ROOT / relative for relative in tracked_files]
     else:
@@ -258,6 +272,10 @@ def _tracked_file_budget() -> int:
     agent_runtime_files = sum(
         (ROOT / relative).is_file()
         for relative in AGENT_RUNTIME_FILES
+    )
+    agent_integration_files = sum(
+        (ROOT / relative).is_file()
+        for relative in AGENT_INTEGRATION_FILES
     )
     p001_visualization_files = sum(
         (ROOT / relative).is_file()
@@ -332,6 +350,7 @@ def _tracked_file_budget() -> int:
         + shared_files
         + visualization_contract_files
         + agent_runtime_files
+        + agent_integration_files
         + p001_visualization_files
         + p002_visualization_files
         + p003_visualization_files

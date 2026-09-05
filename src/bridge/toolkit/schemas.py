@@ -4,6 +4,7 @@ import json
 from importlib.resources import files
 
 SCHEMA_REFS = {
+    "bridge://schemas/agent-integration-profile/v0.1": "agent_integration_profile.schema.json",
     "bridge://schemas/annotation-vocabulary/v0.1": "annotation_vocabulary.schema.json",
     "bridge://schemas/artifact-manifest/v0.1": "artifact_manifest.schema.json",
     "bridge://schemas/benchmark-split-manifest/v0.2": "benchmark_split_manifest.schema.json",
