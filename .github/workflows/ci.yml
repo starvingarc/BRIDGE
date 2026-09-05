@@ -48,7 +48,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build
-          python -m pip install ".[qc,test,freeze,evidence,target-regional,developmental,process]"
+          python -m pip install ".[qc,test,freeze,evidence,target-regional,developmental,process,web]"
 
       - name: Build and install wheel
         run: |
@@ -58,6 +58,20 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Check Web preview
+        working-directory: web
+        run: |
+          npm ci
+          npm test
+          npm run build
 
       - name: Verify tool discovery
         run: |

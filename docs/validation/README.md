@@ -27,6 +27,7 @@ lineage checks do not sign the biological FreezeGate.
 
 ## Shared Runtime and Repository Evidence
 
+- [Private conversational Web preview, 2026-09-05](web_preview_20260905.md)
 - [Visualization data contract, 2026-08-28](visualization_data_contract_20260828.md)
 - [Repository readability validation, 2026-08-25](repository_readability_20260825.md)
 - [Structured tool runtime contracts, 2026-08-13](tool_runtime_structured_contracts_20260813.md)

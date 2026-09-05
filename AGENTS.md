@@ -43,12 +43,14 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 
 ## 仓库地图
 
-当前仓库的 `main` 实现的是 BRIDGE 科学智能体的确定性 P0 工具底座，
-不是完整的对话式产品。Agent/Web/任务编排层通过稳定合同消费这些工具。
+当前仓库提供 BRIDGE 科学智能体的确定性 P0 工具底座，以及支持对话式输入质控
+和明确审批的私有 Web preview。完整工具链的 Agent 输入构造仍在开发中。
 
 | 路径 | 职责 |
 |---|---|
 | `src/bridge/toolkit/` | 公共对象、Registry、运行器、产物与知识检索 |
+| `src/bridge/web/` | 私有对话、上传、审批与现有 SDK 执行接入；不修改科学工具语义 |
+| `web/` | 对话与真实工具产物的浏览器界面 |
 | `src/bridge/tool_packages/` | 12 个高层科学工具包及其 Spec、Tool Card 和包内资源；底层方法不直接暴露给 Agent |
 | `src/bridge/resources/schemas/` | 随 Python 包发布的对外 JSON Schema；语义变更必须版本化 |
 | `knowledge/` | 方法目录策展、来源核验、当前 P0 短名单与知识快照重建输入 |

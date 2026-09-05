@@ -37,8 +37,8 @@ Registered P0 tools produce versioned measurements and evidence records.
 | Area | Current status |
 |---|---|
 | P0 tool packages | 12/12 implemented and callable |
-| Agent orchestration | In development |
-| Web interface | Planned |
+| Agent orchestration | Conversational intake and approved input QC; full chain in development |
+| Web interface | [Private preview](docs/web-preview.md) |
 | Scientific validation | In progress |
 
 ## Quickstart
@@ -77,6 +77,7 @@ current scope.
 ## Documentation
 
 - [Product requirements](docs/BRIDGE_PRD.md)
+- [Web preview](docs/web-preview.md)
 - [Agent integration](docs/agent-integration.md)
 - [P0 Tool Packages](docs/tool-packages.md)
 - [Scientific specifications](docs/bridge_spec_v0.1/README.md)

@@ -12,7 +12,7 @@ from bridge.toolkit.registry import ToolRegistry
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TEXT_SUFFIXES = {".css", ".html", ".json", ".jsonl", ".md", ".py", ".toml", ".tsv", ".txt", ".yaml", ".yml"}
+TEXT_SUFFIXES = {".css", ".html", ".json", ".jsonl", ".md", ".py", ".toml", ".ts", ".tsx", ".tsv", ".txt", ".yaml", ".yml"}
 EXCLUDED_PARTS = {
     ".git",
     ".pytest_cache",
@@ -21,6 +21,7 @@ EXCLUDED_PARTS = {
     "build",
     "dist",
     "private_assets",
+    "node_modules",
     "run_artifacts",
     "tmp",
     "venv",
@@ -78,6 +79,47 @@ AGENT_RUNTIME_FILES = (
     Path("tests/test_local_artifact_store.py"),
     Path("tests/test_tool_execution_pipeline.py"),
     Path("tests/test_workflow_runtime.py"),
+)
+# Bounded, reviewed Web surface; build products and dependencies are not sources.
+WEB_PREVIEW_FILES = (
+    Path("src/bridge/web/__init__.py"),
+    Path("src/bridge/web/__main__.py"),
+    Path("src/bridge/web/app.py"),
+    Path("src/bridge/web/provider.py"),
+    Path("tests/test_private_path_trust.py"),
+    Path("tests/test_web_service.py"),
+    Path("web/.gitignore"),
+    Path("web/README.md"),
+    Path("web/index.html"),
+    Path("web/package-lock.json"),
+    Path("web/package.json"),
+    Path("web/src/App.tsx"),
+    Path("web/src/api.ts"),
+    Path("web/src/components/Conversation.tsx"),
+    Path("web/src/components/LoginScreen.tsx"),
+    Path("web/src/components/MarkdownText.tsx"),
+    Path("web/src/components/MarkdownTextImpl.tsx"),
+    Path("web/src/components/PlanCard.tsx"),
+    Path("web/src/components/ResultsPane.tsx"),
+    Path("web/src/components/Sidebar.tsx"),
+    Path("web/src/components/StatusMark.tsx"),
+    Path("web/src/main.tsx"),
+    Path("web/src/runtime/BridgeRuntimeProvider.tsx"),
+    Path("web/src/styles.css"),
+    Path("web/src/types.ts"),
+    Path("web/src/vite-env.d.ts"),
+    Path("web/tests/api.test.ts"),
+    Path("web/tests/app-polling.test.tsx"),
+    Path("web/tests/markdown-security.test.tsx"),
+    Path("web/tests/plan-card.test.tsx"),
+    Path("web/tests/results-pane.test.tsx"),
+    Path("web/tests/setup.ts"),
+    Path("web/tsconfig.app.json"),
+    Path("web/tsconfig.json"),
+    Path("web/tsconfig.node.json"),
+    Path("web/vite.config.ts"),
+    Path("docs/web-preview.md"),
+    Path("docs/validation/web_preview_20260905.md"),
 )
 AGENT_INTEGRATION_FILES = (
     Path("examples/agent-integration/profiles/comparison.json"),
@@ -335,6 +377,7 @@ def _tracked_file_budget() -> int:
     )
     return (
         TRACKED_FILE_BASELINE
+        + sum((ROOT / relative).is_file() for relative in WEB_PREVIEW_FILES)
         + p004_visualization_files
         + p005_visualization_files
         + p005_measurement_projection_files
