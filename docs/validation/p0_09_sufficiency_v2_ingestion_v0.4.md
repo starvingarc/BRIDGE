@@ -71,3 +71,42 @@ This is engineering validation of deterministic ingestion, provenance,
 failure isolation and artifact behavior. It does not establish biological
 truth, evidence sufficiency, product superiority, potency, safety, efficacy or
 release eligibility. P0-09 remains `candidate`; no domain score is created.
+
+## Package 0.4.1 catalog compatibility correction
+
+Canonical upstream MeasurementSpec, MeasurementResult and ToolRun objects use
+v0.2 Schemas. The compiler previously required v0.1 catalog Schema references
+for those node types and rejected otherwise bound records with
+`declared_object_ref_not_found`.
+
+The catalog now accepts the explicit v0.1/v0.2 pair for those three types.
+Existing type, identity, version and downstream evidence checks remain active.
+Unknown Schema versions still reject the affected record. No input or result
+Schema changed. Catalog references do not contain upstream payloads: their
+Schema/content validation remains a caller responsibility.
+
+Verification:
+
+- `python -m pytest tests/test_p0_09_evidence_compiler.py -q`: 218 passed.
+- Six added regression cases exercise v0.2 acceptance and unknown-version
+  rejection for each of the three upstream object types; the existing node-role
+  confusion test and legacy-v0.1 cases remain passing.
+- A wheel was built and installed into a separate target; the installed registry
+  reports P0-09 0.4.1.
+- Repository policy and `git diff --check` passed.
+
+This correction establishes interface compatibility. It adds no biological
+validation, score, release authority or scientific-state promotion.
+
+The same compatibility correction preserves namespaced logical provenance such
+as `data-view:run-example:all-observations@0.1.0`. Previously that valid upstream
+reference caused `individual_record_schema_invalid`. One version suffix is
+validated with the existing object-version grammar; empty/compound suffixes,
+email-shaped strings, paths and credential-like values remain rejected.
+The JSON Schema still describes the same string fields and object shape.
+
+After this additional correction, the focused catalog, provenance, publication
+and Schema selection passed: 63 passed, 162 deselected. This includes a full
+compiled-record check that retains the exact versioned provenance plus six
+negative grammar/privacy cases. The wheel was rebuilt into a new installation
+target; the earlier diagnostic wheel was retained separately.

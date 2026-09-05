@@ -183,9 +183,18 @@ def publication_ref(value: str) -> str:
     """
 
     value = _strip(value)
-    if not PUBLICATION_REF_PATTERN.fullmatch(value):
-        raise ValueError("published references must be scheme- or identifier-shaped")
-    return value
+    if PUBLICATION_REF_PATTERN.fullmatch(value):
+        return value
+    identifier, separator, version = value.rpartition("@")
+    if (
+        separator
+        and ":" in identifier
+        and "://" not in identifier
+        and PUBLICATION_REF_PATTERN.fullmatch(identifier)
+    ):
+        publication_version(version)
+        return value
+    raise ValueError("published references must be scheme- or identifier-shaped")
 
 
 def _unique(values: list[Any], field_name: str) -> list[Any]:
