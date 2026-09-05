@@ -20,6 +20,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+web = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.32,<1",
+  "httpx>=0.28,<1",
+  "python-multipart>=0.0.20,<1",
+]
 qc = [
   "anndata>=0.11,<0.13",
   "h5py>=3.11,<4",

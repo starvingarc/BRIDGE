@@ -47,3 +47,26 @@ registered blocking finding is not proof that a separate renderer is XSS-safe.
 Repository fixtures are synthetic, public, licensed or irreversibly de-identified.
 Each fixture records source class, intended tests and checksum. A fixture validates
 only the behavior it explicitly covers.
+
+## Private Runtime Ancestor Trust
+
+Private storage rejects ancestors not owned by the process user or root by
+default. A deployment operator may call
+`bridge.storage.private_paths.configure_trusted_ancestors(ancestors)` at process
+startup, before any private-path I/O. The mapping has exact absolute `Path` keys
+and `(uid, device, inode)` integer tuples, obtained and approved out of band.
+There is no automatic environment discovery, request-level override or runtime
+trust expansion. Configuration is copied, validated and locked; changing it
+requires a process restart. Repeating the identical configuration revalidates it.
+
+This narrowly trusts the specified directory administrator, not every ancestor
+or descendant. Every traversal uses descriptor-relative no-follow opens and
+rechecks each configured identity. Replacements, symlinks, identity changes and
+group/world-writable trusted ancestors (including sticky ones) are rejected.
+Other ancestors retain the default guard. Final private directories must still
+be owned by the process user and inaccessible to group/other; files retain the
+owner, regular-file and no-follow checks. The guard never changes ancestor
+permissions or ownership. Explicitly trusted administrators and root remain in
+the deployment trust boundary; this is not isolation from them or a public
+multi-tenant security model. Deployment paths and identity pins remain outside
+repository content and HTTP/model inputs.

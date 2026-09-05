@@ -93,3 +93,18 @@ the scientific `ProductCase` contract. Workflow success describes execution
 only and does not change evidence state, scientific readiness or release status.
 Model-provider integration, distributed execution and authentication remain
 outside this core.
+
+## 2026-09-05: Keep The First Web Preview Bounded
+
+The private Web preview adds conversation, uploaded-file intake and explicit
+approval around the existing input-QC planner and local workflow. It does not
+construct the scientific contracts required for every downstream P0 package.
+Browser results are registered tool-owned artifacts, not model-generated
+measurements. Numerical results and raw matrices are excluded from provider
+context by default.
+
+Deployment trust for an administrator-owned shared ancestor is explicit,
+startup-only and pinned to its path, owner and filesystem identity. Default
+private-path ownership checks remain strict; trust does not propagate to
+descendants or relax symlink, permission or replacement checks. This is a
+single-operator deployment boundary, not a multi-tenant authorization model.
