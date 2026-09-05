@@ -449,19 +449,28 @@ def logical_key_hash(logical_key: str) -> str:
     return hashlib.sha256(logical_key.encode("utf-8")).hexdigest()
 
 
-EXPECTED_CATALOG_SCHEMAS: dict[GraphNodeType, str] = {
-    GraphNodeType.PRODUCT_CASE: "bridge://schemas/product-case/v0.1",
-    GraphNodeType.PRODUCT_DEFINITION_CARD: "bridge://schemas/product-definition-card/v0.1",
-    GraphNodeType.SAMPLE: "bridge://schemas/sample/v0.1",
-    GraphNodeType.PREPARATION: "bridge://schemas/preparation/v0.1",
-    GraphNodeType.MEASUREMENT_SPEC: "bridge://schemas/measurement-spec/v0.1",
-    GraphNodeType.SCORE_CONTRACT: "bridge://schemas/score-contract/v0.1",
-    GraphNodeType.TOOL_RUN: "bridge://schemas/tool-run/v0.1",
-    GraphNodeType.MEASUREMENT_RESULT: "bridge://schemas/measurement-result/v0.1",
-    GraphNodeType.REFERENCE_SNAPSHOT: "bridge://schemas/reference-snapshot/v0.1",
-    GraphNodeType.PRIOR_SNAPSHOT: "bridge://schemas/prior-snapshot/v0.1",
-    GraphNodeType.ARTIFACT: "bridge://schemas/artifact/v0.1",
-    GraphNodeType.COMPARISON_RECORD: "bridge://schemas/comparison-record/v0.1",
+EXPECTED_CATALOG_SCHEMAS: dict[GraphNodeType, tuple[str, ...]] = {
+    GraphNodeType.PRODUCT_CASE: ("bridge://schemas/product-case/v0.1",),
+    GraphNodeType.PRODUCT_DEFINITION_CARD: ("bridge://schemas/product-definition-card/v0.1",),
+    GraphNodeType.SAMPLE: ("bridge://schemas/sample/v0.1",),
+    GraphNodeType.PREPARATION: ("bridge://schemas/preparation/v0.1",),
+    GraphNodeType.MEASUREMENT_SPEC: (
+        "bridge://schemas/measurement-spec/v0.1",
+        "bridge://schemas/measurement-spec/v0.2",
+    ),
+    GraphNodeType.SCORE_CONTRACT: ("bridge://schemas/score-contract/v0.1",),
+    GraphNodeType.TOOL_RUN: (
+        "bridge://schemas/tool-run/v0.1",
+        "bridge://schemas/tool-run/v0.2",
+    ),
+    GraphNodeType.MEASUREMENT_RESULT: (
+        "bridge://schemas/measurement-result/v0.1",
+        "bridge://schemas/measurement-result/v0.2",
+    ),
+    GraphNodeType.REFERENCE_SNAPSHOT: ("bridge://schemas/reference-snapshot/v0.1",),
+    GraphNodeType.PRIOR_SNAPSHOT: ("bridge://schemas/prior-snapshot/v0.1",),
+    GraphNodeType.ARTIFACT: ("bridge://schemas/artifact/v0.1",),
+    GraphNodeType.COMPARISON_RECORD: ("bridge://schemas/comparison-record/v0.1",),
 }
 
 
@@ -474,7 +483,7 @@ def _catalog_binding_matches(
     return bool(
         item is not None
         and item.node_type in allowed_types
-        and item.schema_ref == EXPECTED_CATALOG_SCHEMAS.get(item.node_type)
+        and item.schema_ref in EXPECTED_CATALOG_SCHEMAS.get(item.node_type, ())
     )
 
 

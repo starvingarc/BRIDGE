@@ -25,6 +25,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
 )
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     PUBLIC_SCHEMA_MODELS,
+    publication_ref,
     BaseGraphRef,
     ClaimRequirementSpec,
     EvidenceCandidate,
@@ -123,7 +124,7 @@ def _spec() -> ToolPackageSpecV2:
     return ToolPackageSpecV2(
         tool_id="P0-09",
         name="Evidence Compiler & Reconciler",
-        version="0.4.0",
+        version="0.4.1",
         summary="Compile atomic evidence and reconcile conflicts by versioned rules.",
         implementation_state=ImplementationState.IMPLEMENTED,
         scientific_status="candidate",
@@ -1012,7 +1013,7 @@ def _request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-09",
-        tool_version="0.4.0",
+        tool_version="0.4.1",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -1794,7 +1795,7 @@ def test_v1_adapter_invocation_has_one_stable_v2_reason(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="p0-09-v1",
         tool_id="P0-09",
-        tool_version="0.4.0",
+        tool_version="0.4.1",
         output_dir=(tmp_path / "output").resolve(),
     )
     eligibility = adapter.check_eligibility(request, _spec())  # type: ignore[arg-type]
@@ -2311,6 +2312,59 @@ def test_prior_history_from_another_product_case_fails_without_artifacts(
     assert run.reason_codes == ["prior_history_invalid"]
     assert run.result is None and run.artifacts == []
     assert not request.output_dir.exists()
+
+
+@pytest.mark.parametrize("schema_version", ["v0.2", "v9.9"])
+@pytest.mark.parametrize("schema_name", ["measurement-spec", "measurement-result", "tool-run"])
+def test_catalog_checks_supported_upstream_schema_versions(
+    tmp_path: Path, schema_name: str, schema_version: str
+) -> None:
+    bundle = _bundle()
+    catalog_entry = next(
+        item for item in bundle["object_catalog"]
+        if item["schema_ref"] == f"bridge://schemas/{schema_name}/v0.1"
+    )
+    catalog_entry["schema_ref"] = f"bridge://schemas/{schema_name}/{schema_version}"
+
+    run = _run(tmp_path, bundle=bundle)
+    final = run.request.output_dir / run.run_id
+    records = json.loads((final / "evidence_records.json").read_text())["records"]
+    rejected = json.loads((final / "rejected_records.json").read_text())["records"]
+    if schema_version == "v0.2":
+        assert len(records) == 1
+        assert rejected == []
+    else:
+        assert records == []
+        assert rejected[0]["reason_codes"] == ["declared_object_ref_not_found"]
+
+
+def test_versioned_data_view_provenance_is_preserved(tmp_path: Path) -> None:
+    bundle = _bundle()
+    reference = "data-view:run-example:all-observations@0.1.0"
+    bundle["candidate_records"][0]["provenance_refs"] = [reference]
+
+    run = _run(tmp_path, bundle=bundle)
+    final = run.request.output_dir / run.run_id
+    records = json.loads((final / "evidence_records.json").read_text())["records"]
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    assert records[0]["provenance_refs"] == [reference]
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "data-view:example@",
+        "data-view:example@0.1.0/extra",
+        "data-view:example@0.1.0@other",
+        "user@example.org",
+        "data-view:example@/private/input",
+        "data-view:example@sk-" + "a" * 24,
+    ],
+)
+def test_versioned_provenance_keeps_strict_publication_guard(reference: str) -> None:
+    with pytest.raises(ValueError):
+        publication_ref(reference)
 
 
 def test_catalog_node_role_confusion_rejects_only_the_candidate(tmp_path: Path) -> None:
@@ -4714,7 +4768,7 @@ def test_static_capacity_uses_complete_table_without_top_n_selection(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-capacity",
-        tool_version="0.4.0",
+        tool_version="0.4.1",
     )
 
     table = prepared.payloads["evidence_compiler_claim_interpretation.tsv"]
@@ -4747,7 +4801,7 @@ def test_static_capacity_falls_back_when_reason_text_cannot_fit(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-reason-capacity",
-        tool_version="0.4.0",
+        tool_version="0.4.1",
     )
 
     table = prepared.payloads["evidence_compiler_requirements_exclusions.tsv"]
@@ -5236,7 +5290,7 @@ def test_long_reference_labels_remain_distinguishable_in_render(tmp_path: Path) 
         profile=profile,
         output_dir=tmp_path / "render",
         run_id="run-ref-collision",
-        tool_version="0.4.0",
+        tool_version="0.4.1",
     )
     labels = [_short_ref(ref) for ref in refs]
     svg = prepared.payloads["evidence_compiler_claim_interpretation.svg"]

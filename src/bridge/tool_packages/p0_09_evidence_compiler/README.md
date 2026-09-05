@@ -19,6 +19,15 @@ package.
 - **Boundary:** it compiles existing facts, preserves history and explicit
   missingness, and never reruns biology, majority-votes tools or verifies claims.
 
+## Upstream catalog compatibility
+
+Catalog entries for MeasurementSpec, MeasurementResult and ToolRun accept the
+published v0.1 and v0.2 Schema references. Node types and exact object ID/version
+bindings remain required; other Schema versions are rejected for the affected
+record. A catalog entry contains a content hash and reference, not the complete
+upstream object. The caller remains responsible for validating that object's
+content against its declared Schema before materializing the compilation bundle.
+
 ## Documentation
 
 - [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-09)
@@ -29,3 +38,7 @@ package.
 
 Use `bridge-tool describe P0-09` for the installed version, schemas, environment
 and registered method IDs.
+
+Versioned logical references such as `data-view:run-example:all-observations@0.1.0`
+are preserved in provenance. The suffix must satisfy the existing object-version
+grammar; path and credential guards still apply.
