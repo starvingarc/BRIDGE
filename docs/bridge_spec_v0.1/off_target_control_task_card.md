@@ -2,9 +2,9 @@
 
 | 字段 | 内容 |
 |---|---|
-| Task ID | `TASK-OFFTARGET-v0.3` |
-| 文档版本 | `0.3` |
-| 日期 | 2026-08-25 |
+| Task ID | `TASK-OFFTARGET-v0.4` |
+| 文档版本 | `0.4` |
+| 日期 | 2026-09-05 |
 | 状态 | `candidate / executable shadow` |
 | 上游 | P0-02 V2/V3、预计算 evidence bundle 与可选方法运行对象 |
 | 输出 | `OffTargetControlProfile v0.2`；可选 checksummed `MeasurementResultV2`；方法模式另含 `OffTargetMethodBundle v0.1`；两种模式均含 typed visualization data、精确 TSV 与静态图 |
@@ -43,7 +43,7 @@ GMP 放行或产品排序结论。
 ## 3. 精确输入合同
 
 请求必须是 `ToolRequestV2`。`legacy_aggregation` 恰好包含原有六个对象；
-`method_runtime` 恰好包含九个对象，并将 P0-02 输入升级为 V3。每个
+`method_runtime` 恰好包含十个对象，并将 P0-02 输入升级为 V3。每个
 `StructuredInputRef` 均需绝对普通文件路径、Schema URI、对象版本和 SHA-256。
 
 | role | 模式 | Schema / 关键绑定 |
@@ -54,10 +54,11 @@ GMP 放行或产品排序结论。
 | `off_target_assessment_spec` | 两者 | map ref/hash、分母、unknown allowlist、rare-state rules |
 | `cell_state_evidence_profile` | 两者 | legacy 为 V2；方法模式为 V3，含 composition 与 DataView lineage |
 | `off_target_evidence_bundle` | 两者 | 上游 ref/hash、分母、state/unknown observations、supplied calibration |
-| `biological_unit_manifest` | 方法及任何投影运行 | reviewed analysis-unit 与 independence-group mapping |
+| `biological_unit_manifest` | 方法及任何投影运行 | P0-01 生成的 immutable `declared` analysis-unit 与 independence-group mapping |
+| `biological_unit_attestation_receipt` | 方法 | data owner/caller 对 `analysis_execution` 设计的显式声明；绑定 manifest/assignment/DataView/observation digest、逐项确认、attestor、UTC 时间与外部 attestation ref/hash |
 | `off_target_method_spec` | 方法 | 方法选择、置信度、bootstrap 次数、planning target、OOD channel→family→upstream hash/method/reference 绑定与规则 |
 | `off_target_method_input` | 方法 | unit-level soft/hard composition、spike-in trials、仅含 channel ID/state/reason 的 OOD observations |
-| `measurement_spec` | 两者可选 | 独立 P0-05 MeasurementSpecV2；须匹配 assay、产品适用范围、P0-05、三类投影 metric 及 reviewed manifest 的 analysis/independence/observation units |
+| `measurement_spec` | 两者可选 | 独立 P0-05 MeasurementSpecV2；须匹配 assay、产品适用范围、P0-05、三类投影 metric 及 BiologicalUnitManifest 的 analysis/independence/observation units |
 
 `OffTargetEvidenceBundle` 是上游计算结果的最小交接面。它包含 soft mass 与
 observed count，但不携带角色判断。完整覆盖状态下，state 与 unknown 的 soft
@@ -66,19 +67,20 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 
 ## 4. 确定性处理
 
-1. 校验所选模式的六个或九个文件、Schema、版本、媒体类型和 checksum。
+1. 校验所选模式的六个或十个文件、Schema、版本、媒体类型和 checksum。
 2. 校验 ProductCase → ProductDefinitionCard → StateRoleMap、assay、
    MeasurementSpec、P0-02 profile 和 bundle 的引用及 checksum 血缘。
-3. 投影请求须提供 reviewed BiologicalUnitManifest，并核对 MeasurementSpec 的 analysis unit、independence group 及 scRNA/snRNA observation unit；P0-05 domain spec 与 ProductCase 中的 P0-02 source spec 保持独立。
-4. 拒绝未映射 state、未声明 unknown reason、未声明的 rare calibration、
+3. 方法模式须提供 P0-01 `declared` manifest 和独立 attestation receipt；其 `decision` 必须为 `confirmed`、`attestation_scope` 必须为 `analysis_execution`、四项设计确认必须完整，并与 manifest、assignment、DataView、observation digest 和 unit contract 完全一致。旧 `reviewed/frozen` manifest 不能代替该收据。
+4. 投影请求须提供 BiologicalUnitManifest，并核对 MeasurementSpec 的 analysis unit、independence group 及 scRNA/snRNA observation unit；P0-05 domain spec 与 ProductCase 中的 P0-02 source spec 保持独立。
+5. 拒绝未映射 state、未声明 unknown reason、未声明的 rare calibration、
    inactive spec 或分母不一致。
-5. 按外部 StateRoleMap 将预计算 state observations 确定性求和。
-6. 只有 composition coverage 为 `complete` 时才计算角色 fraction。
-7. unknown 只按外部 allowlist 中实际出现的 reason 汇总。
-8. 方法模式核对 DataView、BiologicalUnitManifest、unit-level 与 aggregate counts。
-9. 执行描述性 exact interval、hard/soft sensitivity 与 independence-group bootstrap。
-10. 每个 spike-in 浓度只允许每个 independence group 一次，计算候选检测限与单状态二项规划；按 MethodSpec 固定的上游来源族协调 OOD 状态。
-11. 从同一 typed visualization data 生成精确 TSV 与 SVG/PNG/PDF，在发布前再次检查输入 checksum 并原子写入全部 artifact。
+6. 按外部 StateRoleMap 将预计算 state observations 确定性求和。
+7. 只有 composition coverage 为 `complete` 时才计算角色 fraction。
+8. unknown 只按外部 allowlist 中实际出现的 reason 汇总。
+9. 方法模式核对 DataView、BiologicalUnitManifest、unit-level 与 aggregate counts。
+10. 执行描述性 exact interval、hard/soft sensitivity 与 independence-group bootstrap。
+11. 每个 spike-in 浓度只允许每个 independence group 一次，计算候选检测限与单状态二项规划；按 MethodSpec 固定的上游来源族协调 OOD 状态。
+12. 从同一 typed visualization data 生成精确 TSV 与 SVG/PNG/PDF，在发布前再次检查输入 checksum 并原子写入全部 artifact。
 
 相同输入内容与 random seed 产生相同 run ID、input hash 和 artifact hash；
 方法模式下 random seed 是运行指纹的一部分。
@@ -89,7 +91,7 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 `ToolRunV2.result` 返回；方法模式原子增加
 `off_target_method_bundle.json`。
 
-P0-05 v0.5.1 始终返回 profile v0.2。未提供 MeasurementSpec 时明确记录
+P0-05 v0.5.2 始终返回 profile v0.2。未提供 MeasurementSpec 时明确记录
 `not_requested` 且不生成 normalized measurement；提供并通过校验时，每条现有
 role、unknown 和 rare-state 记录各生成一个 checksummed MeasurementResultV2。
 
@@ -132,7 +134,7 @@ role、unknown 和 rare-state 记录各生成一个 checksummed MeasurementResul
 
 以下情况在 eligibility 阶段 fail closed：V1 请求、表达资产、任意 parameters、
 对象数量/role/Schema/version 不符、checksum 漂移、跨对象引用不一致、未映射
-state、未允许 unknown reason、未声明 calibration、inactive spec、方法对象不完整、
+state、未允许 unknown reason、未声明 calibration、inactive spec、方法对象不完整、attestation receipt 缺失或未确认、attestation/manifest/assignment/DataView/observation/unit 绑定漂移、
 analysis-unit/independence-group 漂移、同一状态/浓度内重复 spike-in independence group、OOD channel/upstream lineage 不匹配或 aggregate count 不闭合。
 
 本版本不承担：
@@ -150,10 +152,14 @@ analysis-unit/independence-group 漂移、同一状态/浓度内重复 spike-in 
 当前工程验证使用完全合成的结构化对象，覆盖两个模式、八个 selector、角色映射
 可替换性、完整/部分分母、analysis-unit 与 independence-group 血缘、exact 与
 bootstrap interval、hard/soft sensitivity、独立组 spike-in、单状态二项规划、checksummed OOD 协调、零/缺失、
-checksum、seeded deterministic reuse 和篡改。该验证仅证明接口、计算路径与
+checksum、attestation receipt 和外部记录摘要绑定、seeded deterministic reuse 和篡改。该验证仅证明接口、计算路径与
 fail-closed 语义可执行。
 
 在任何科学冻结前仍需独立完成：真实全制剂分母审查、StateRoleMap 生物学审核、
 source-family/OOD holdout、known-mixture 组成误差、稀有状态 spike-in 与假阳性
 校准、reference/preprocessing/assay sensitivity，以及对每个产品定义版本的签名
 审核。以上未完成项不阻塞第一版工具调用，但阻止 formal evidence 与发布声明。
+
+## 9. BiologicalUnitAttestationReceipt 边界
+
+该收据记录 data owner/caller 对四项 biological-unit 设计作出的显式、可追溯声明。runtime 只验证收据结构，以及它与 manifest、assignment、DataView、observation digest、unit contract 和外部 attestation 摘要的绑定；不认证 attestor 身份，也不验证外部记录来源的真实性。部署层负责将已认证的对话或工作流记录映射为 `attestation_ref` 与 `attestation_sha256`。该收据不证明生物学真值、独立审核或科学发布、临床、GMP、疗效、安全、potency 权限。可选 `caveats` 仅保存简短限制，不改变 `confirmed` 语义。

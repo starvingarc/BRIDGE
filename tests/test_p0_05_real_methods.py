@@ -7,6 +7,11 @@ from pathlib import Path
 
 import pytest
 
+from bridge.tool_packages._configurable_contracts import (
+    BiologicalUnitManifest,
+    BiologicalUnitAttestationReceipt,
+    biological_unit_attestation_reasons,
+)
 from bridge.tool_packages.p0_05_off_target_control.adapter import adapter
 from bridge.tool_packages.p0_05_off_target_control.visualization import (
     prepare_off_target_control_visualizations,
@@ -17,7 +22,12 @@ from bridge.tool_packages.p0_05_off_target_control.visualization_data import (
     RARE_COMPONENT_REF,
     P005VisualizationArtifactSet,
 )
-from bridge.toolkit.contracts import ExecutionState, StructuredInputRef, ToolRequestV2
+from bridge.toolkit.contracts import (
+    DataViewBinding,
+    ExecutionState,
+    StructuredInputRef,
+    ToolRequestV2,
+)
 from bridge.toolkit.registry import ToolRegistry
 from p0_biological_units import bind_reviewed_biological_units
 from test_p0_05_off_target_control import (
@@ -33,6 +43,10 @@ from test_p0_05_off_target_control import (
 METHOD_ROLE_SCHEMAS = {
     "biological_unit_manifest": (
         "bridge://schemas/biological-unit-manifest/v0.1",
+        "0.1.0",
+    ),
+    "biological_unit_attestation_receipt": (
+        "bridge://schemas/biological-unit-attestation-receipt/v0.1",
         "0.1.0",
     ),
     "off_target_method_spec": (
@@ -148,6 +162,50 @@ def _analysis_units() -> list[dict]:
     ]
 
 
+def _attestation_receipt(manifest: dict, manifest_sha: str, view: dict) -> dict:
+    return {
+        "object_version": "0.1.0",
+        "receipt_id": "biological-unit-attestation-receipt:p0-05-demo",
+        "receipt_version": "1.0.0",
+        "schema_ref": "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+        "attestation_scope": "analysis_execution",
+        "decision": "confirmed",
+        "attestor_ref": {
+            "object_id": "attestor:synthetic-fixture",
+            "object_version": "1.0.0",
+        },
+        "attestation_ref": {
+            "object_id": "workflow-attestation:demo",
+            "object_version": "1.0.0",
+        },
+        "attestation_sha256": "9" * 64,  # Fixed synthetic fixture digest.
+        "attested_at": "2026-09-05T00:00:00Z",
+        "biological_unit_manifest_ref": {
+            "object_id": manifest["manifest_id"],
+            "object_version": manifest["manifest_version"],
+        },
+        "biological_unit_manifest_sha256": manifest_sha,
+        "biological_unit_assignment_schema_ref": manifest[
+            "assignment_schema_ref"
+        ],
+        "biological_unit_assignment_sha256": manifest[
+            "assignment_artifact_sha256"
+        ],
+        "data_view_ref": view["view_id"],
+        "selected_artifact_sha256": view["sha256"],
+        "observation_ids_sha256": view["observation_ids_sha256"],
+        "analysis_unit_kind": manifest["analysis_unit_kind"],
+        "independence_group_kind": manifest["independence_group_kind"],
+        "independence_scope_ref": manifest["independence_scope_ref"],
+        "confirmations": {
+            "observation_to_analysis_unit_mapping": "confirmed",
+            "pooling_and_multiplexing_handling": "confirmed",
+            "analysis_unit_for_estimand": "confirmed",
+            "independence_grouping": "confirmed",
+        },
+    }
+
+
 def _method_request(tmp_path: Path) -> ToolRequestV2:
     legacy = _request(tmp_path)
     payloads = {
@@ -177,12 +235,14 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
         view,
         slug="p0-05-demo",
         units=units,
+        lineage_state="declared",
         observation_ids=[f"demo-cell-{index:02d}" for index in range(10)],
     )
     manifest = payloads["biological_unit_manifest"]
     manifest_sha = _sha(manifest)
     view["biological_unit_manifest_sha256"] = manifest_sha
     payloads["product_case"]["biological_unit_manifest_sha256"] = manifest_sha
+    attestation_receipt = _attestation_receipt(manifest, manifest_sha, view)
 
     payloads["cell_state_evidence_profile"] = {
         "profile_id": "cell-state-profile:run-p0-05-demo",
@@ -245,6 +305,7 @@ def _method_request(tmp_path: Path) -> ToolRequestV2:
     )
     evidence_sha = _write(root / "off_target_evidence_bundle.json", evidence)
     _write(root / "biological_unit_manifest.json", manifest)
+    _write(root / "biological_unit_attestation_receipt.json", attestation_receipt)
 
     method_spec = {
         "object_version": "0.1.0",
@@ -637,7 +698,7 @@ def test_method_mode_partial_coverage_withholds_intervals(tmp_path: Path) -> Non
 
 
 
-def test_method_mode_requires_all_three_additional_objects(tmp_path: Path) -> None:
+def test_method_mode_requires_complete_method_inputs(tmp_path: Path) -> None:
     request = _method_request(tmp_path)
     request = request.model_copy(
         update={
@@ -729,81 +790,203 @@ def test_method_mode_rejects_one_upstream_result_as_two_ood_families(
     )
 
 
-def test_method_mode_requires_reviewed_biological_unit_lineage(
+def test_method_mode_accepts_declared_lineage_with_exact_attestation_receipt(
     tmp_path: Path,
 ) -> None:
     request = _method_request(tmp_path)
-    request = _rewrite_method(
-        request,
-        "biological_unit_manifest",
-        lambda payload: payload.update(
-            {
-                "generator_tool_id": "P0-01",
-                "lineage_state": "declared",
-                "review_gate_ref": None,
-                "review_gate_sha256": None,
-            }
-        ),
-    )
-    manifest_sha = next(
-        item.sha256
+    manifest_ref = next(
+        item
         for item in request.object_inputs
         if item.role == "biological_unit_manifest"
     )
-    request = _rewrite_method(
-        request,
-        "product_case",
-        lambda payload: payload.update(
-            {"biological_unit_manifest_sha256": manifest_sha}
-        ),
-    )
-    product_case_sha = next(
-        item.sha256 for item in request.object_inputs if item.role == "product_case"
-    )
-    request = _rewrite_method(
-        request,
-        "cell_state_evidence_profile",
-        lambda payload: payload["input_data_view"].update(
-            {"biological_unit_manifest_sha256": manifest_sha}
-        ),
-    )
-    profile_sha = next(
-        item.sha256
+    manifest = json.loads(manifest_ref.path.read_text(encoding="utf-8"))
+    receipt_ref = next(
+        item
         for item in request.object_inputs
-        if item.role == "cell_state_evidence_profile"
+        if item.role == "biological_unit_attestation_receipt"
     )
-    request = _rewrite_method(
-        request,
-        "off_target_evidence_bundle",
-        lambda payload: payload.update(
-            {
-                "product_case_sha256": product_case_sha,
-                "cell_state_profile_sha256": profile_sha,
-            }
-        ),
-    )
-    evidence_sha = next(
-        item.sha256
-        for item in request.object_inputs
-        if item.role == "off_target_evidence_bundle"
-    )
-    request = _rewrite_method(
-        request,
-        "off_target_method_input",
-        lambda payload: payload.update(
-            {
-                "product_case_sha256": product_case_sha,
-                "cell_state_profile_sha256": profile_sha,
-                "evidence_bundle_sha256": evidence_sha,
-                "biological_unit_manifest_sha256": manifest_sha,
-            }
-        ),
+    receipt = json.loads(receipt_ref.path.read_text(encoding="utf-8"))
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert manifest["generator_tool_id"] == "P0-01"
+    assert manifest["lineage_state"] == "declared"
+    assert manifest["review_gate_ref"] is None
+    assert receipt["attestation_scope"] == "analysis_execution"
+    assert eligibility.eligible, eligibility.reason_codes
+
+
+def test_method_mode_requires_attestation_receipt(tmp_path: Path) -> None:
+    request = _method_request(tmp_path)
+    request = request.model_copy(
+        update={
+            "object_inputs": [
+                ref
+                for ref in request.object_inputs
+                if ref.role != "biological_unit_attestation_receipt"
+            ]
+        }
     )
 
     eligibility = ToolRegistry.load_default().check_eligibility(request)
 
     assert not eligibility.eligible
-    assert "biological_unit_lineage_not_reviewed" in eligibility.reason_codes
+    assert eligibility.reason_codes == [
+        "exactly_one_biological_unit_attestation_receipt_required"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("change", "reason_code"),
+    [
+        (
+            lambda payload: payload.update({"decision": "not_confirmed"}),
+            "biological_unit_attestation_not_confirmed",
+        ),
+        (
+            lambda payload: payload["confirmations"].update(
+                {"independence_grouping": "not_confirmed"}
+            ),
+            "biological_unit_attestation_confirmations_incomplete",
+        ),
+        (
+            lambda payload: payload.update(
+                {"biological_unit_manifest_sha256": "8" * 64}
+            ),
+            "biological_unit_attestation_manifest_mismatch",
+        ),
+        (
+            lambda payload: payload.update(
+                {"biological_unit_assignment_sha256": "8" * 64}
+            ),
+            "biological_unit_attestation_assignment_mismatch",
+        ),
+        (
+            lambda payload: payload.update({"data_view_ref": "data-view:other"}),
+            "biological_unit_attestation_data_view_mismatch",
+        ),
+        (
+            lambda payload: payload.update({"observation_ids_sha256": "8" * 64}),
+            "biological_unit_attestation_observation_set_mismatch",
+        ),
+        (
+            lambda payload: payload.update({"analysis_unit_kind": "capture"}),
+            "biological_unit_attestation_unit_contract_mismatch",
+        ),
+    ],
+)
+def test_method_mode_rejects_invalid_attestation_receipt_binding(
+    tmp_path: Path,
+    change,
+    reason_code: str,
+) -> None:
+    request = _rewrite_method(
+        _method_request(tmp_path),
+        "biological_unit_attestation_receipt",
+        change,
+    )
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert reason_code in eligibility.reason_codes
+
+
+@pytest.mark.parametrize(
+    ("change", "reason_code"),
+    [
+        (
+            lambda payload: payload.pop("attestor_ref"),
+            "structured_input_schema_validation_failed",
+        ),
+        (
+            lambda payload: payload.pop("attestation_ref"),
+            "structured_input_schema_validation_failed",
+        ),
+        (
+            lambda payload: payload.pop("attestation_sha256"),
+            "structured_input_schema_validation_failed",
+        ),
+        (
+            lambda payload: payload.update(
+                {"attested_at": "2026-09-05T00:00:00"}
+            ),
+            "structured_input_schema_invalid",
+        ),
+    ],
+)
+def test_method_mode_rejects_incomplete_attestation_trace(
+    tmp_path: Path,
+    change,
+    reason_code: str,
+) -> None:
+    request = _rewrite_method(
+        _method_request(tmp_path),
+        "biological_unit_attestation_receipt",
+        change,
+    )
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == [reason_code]
+
+
+def test_method_mode_rejects_attestation_receipt_file_replacement(
+    tmp_path: Path,
+) -> None:
+    request = _method_request(tmp_path)
+    ref = next(
+        item
+        for item in request.object_inputs
+        if item.role == "biological_unit_attestation_receipt"
+    )
+    ref.path.write_text(ref.path.read_text(encoding="utf-8") + " ")
+
+    eligibility = ToolRegistry.load_default().check_eligibility(request)
+
+    assert not eligibility.eligible
+    assert eligibility.reason_codes == ["structured_input_checksum_mismatch"]
+
+
+@pytest.mark.parametrize("lineage_state", ["reviewed", "frozen"])
+def test_reviewed_manifest_cannot_bypass_separate_receipt(
+    tmp_path: Path,
+    lineage_state: str,
+) -> None:
+    request = _method_request(tmp_path)
+    by_role = {ref.role: ref for ref in request.object_inputs}
+    manifest_payload = json.loads(
+        by_role["biological_unit_manifest"].path.read_text(encoding="utf-8")
+    )
+    manifest_payload.update(
+        {
+            "generator_tool_id": "BRIDGE-BIOLOGICAL-UNIT-REVIEW",
+            "lineage_state": lineage_state,
+            "review_gate_ref": {
+                "object_id": "legacy-review-gate:demo",
+                "object_version": "1.0.0",
+            },
+            "review_gate_sha256": "7" * 64,
+        }
+    )
+    profile_payload = json.loads(
+        by_role["cell_state_evidence_profile"].path.read_text(encoding="utf-8")
+    )
+    receipt_payload = json.loads(
+        by_role["biological_unit_attestation_receipt"].path.read_text(encoding="utf-8")
+    )
+
+    reasons = biological_unit_attestation_reasons(
+        manifest=BiologicalUnitManifest.model_validate(manifest_payload),
+        manifest_sha256=by_role["biological_unit_manifest"].sha256,
+        data_view=DataViewBinding.model_validate(
+            profile_payload["input_data_view"]
+        ),
+        receipt=BiologicalUnitAttestationReceipt.model_validate(receipt_payload),
+    )
+
+    assert "biological_unit_attestation_manifest_not_declared" in reasons
 
 
 def test_mixed_channel_availability_marks_family_partially_applicable(
@@ -877,7 +1060,7 @@ def test_renderer_retains_more_than_five_spike_in_states(
         profile=profile,
         output_dir=tmp_path / "rerender",
         run_id=run.run_id,
-        tool_version="0.5.1",
+        tool_version="0.5.2",
     )
     svg = rendered.payloads[
         "off_target_control_rare-state-detectability.svg"

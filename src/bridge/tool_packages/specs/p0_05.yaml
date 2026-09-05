@@ -1,6 +1,6 @@
 tool_id: P0-05
 name: Off-target Control
-version: 0.5.1
+version: 0.5.2
 summary: Account for declared product roles, rare-state detectability, and supplied OOD states with typed figures and exact tables.
 implementation_state: implemented
 scientific_status: candidate
