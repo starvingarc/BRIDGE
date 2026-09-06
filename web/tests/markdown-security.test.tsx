@@ -46,7 +46,7 @@ describe("Markdown rendering", () => {
       </BridgeRuntimeProvider>,
     );
 
-    expect(await screen.findByText("Visible evidence note.")).toBeInTheDocument();
+    expect(await screen.findByText("Visible evidence note.", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 });

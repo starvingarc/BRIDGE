@@ -1,14 +1,19 @@
 # Web preview
 
 BRIDGE has a private, single-operator conversational preview. Upload an H5AD,
-declare its assay and counts layer, review an input-QC plan, then confirm it.
-The existing P0-01 package produces the figures and artifacts shown alongside
-the conversation.
+declare its assay and counts layer, then review and confirm each analysis stage.
+Actual tool figures, tables and downloads remain available beside the conversation.
 
-This first Web release covers input QC. The 12 P0 packages remain available
-through their existing CLI and SDK; the Web interface does not yet construct
-the scientific inputs needed to execute the full tool chain. Missing sample
-design, product definitions and reference contracts are not invented.
+| Web stage | Required context | Current scope |
+|---|---|---|
+| P0-01 input QC | Uploaded H5AD and explicit assay/raw-count declarations | Input quality and readiness evidence |
+| P0-02 cell-state evidence | Completed canonical QC, a privately supplied source-family reference and configured candidate reference resources | Existing raw-count-compatible candidate analysis; not guaranteed to produce a V3 result |
+| P0-12 graft assessment | Explicit declaration that no graft data are provided, within an existing product analysis | Zero-input `not_provided` record only; no expression-graft analysis |
+| P0-03–P0-11 | Additional scientific objects and Web input constructors | Not connected in the Web preview |
+
+The 12 P0 packages remain callable through their CLI and SDK. This preview does
+not yet construct a complete product-evaluation chain. Missing sample design,
+product definitions, reference contracts and composition weights are not invented.
 
 The preview supports explicit `scRNA-seq` or `snRNA-seq` declarations and raw
 counts in `X` or `layers/counts`. Uploads are limited to 128 MiB per file and
@@ -41,6 +46,18 @@ operator-owned private environment file, never in Git or the browser bundle.
 | `BRIDGE_WEB_ORIGIN` | Exact browser origin; defaults to `http://127.0.0.1:8765` |
 | `BRIDGE_WEB_PORT` | Loopback port; defaults to `8765` |
 | `BRIDGE_WEB_TRUSTED_ANCESTORS` | Optional startup-only JSON mapping from explicitly approved ancestor paths to `[uid, device, inode]` pins |
+| `BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF` | Optional registered MeasurementSpec for P0-02; no biological default is selected |
+
+The configured chat-completions provider must support JSON mode through
+`response_format: {"type": "json_object"}`. BRIDGE requests one typed JSON
+action and does not send native tool definitions; malformed prose, XML/DSML or
+incomplete actions fail closed. See the [DeepSeek JSON Output guide](https://api-docs.deepseek.com/guides/json_mode/).
+
+P0-02 also requires the toolkit's existing reference configuration and permitted
+candidate resources. A nonblank MeasurementSpec ID is insufficient: capability
+checks inspect the registered spec, reference artifacts and canonical QC receipt.
+The service maintains its private QC catalog; operators do not copy presentation
+JSON into that catalog. Missing configuration is shown as `needs_input`.
 
 With these variables supplied by the deployment environment:
 
@@ -70,8 +87,21 @@ private-leaf checks. See [privacy and provenance](privacy-and-provenance.md).
    digest; sending a chat message alone never approves execution.
 5. Inspect actual figures, tables, evidence and downloads. Refreshing the page
    restores the session.
-6. Ask follow-up questions. The conversation retains context; the tool outputs
-   remain the source of numerical evidence.
+6. To continue with cell-state analysis, expand **Data and tool chain** and enter
+   the uploaded dataset's actual **Data source / experiment reference**. This
+   value is saved privately, outside the model conversation. Ask for P0-02 and
+   confirm its new plan once the prerequisites are met.
+7. If no graft data are available, explicitly say so and request that this be
+   recorded. P0-12 receives no expression assets or structured inputs in this
+   mode; the original upload supplies product planning context only.
+8. Open **Stage history** to inspect previous plans and per-step outcomes. Ask
+   follow-up questions or refresh the page; prior results are retained.
+
+Each proposed stage has its own exact approval. Changing source information or
+sending another message invalidates an unapproved proposal. Completed evidence
+is retained, not rewritten. `partial`, `blocked` and `cancelled` are displayed
+separately from successful execution. Older sessions without canonical QC
+receipts must run QC again before proceeding to P0-02.
 
 Counts declarations do not establish sample, capture, preparation or batch
 relationships. Unknown biological design remains unknown. A successful tool
@@ -87,8 +117,9 @@ not act as a second workflow engine.
 |---|---|
 | `POST /api/login`, `POST /api/logout` | Establish or revoke the operator cookie |
 | `GET /api/sessions`, `POST /api/sessions` | List or create analyses |
-| `GET /api/sessions/{id}` | Read messages, uploads, plan status and artifact index |
+| `GET /api/sessions/{id}` | Read messages, uploads, current plan, stage history, capabilities and artifacts |
 | `POST /api/sessions/{id}/uploads` | Accept a bounded multipart upload |
+| `POST /api/sessions/{id}/inputs` | Bind `{upload_id, source_family_id}` to an existing upload; source ID starts with an ASCII letter/digit, permits letters/digits/`.`/`_`/`:`/`-`, and is at most 160 characters |
 | `POST /api/sessions/{id}/messages` | Submit one conversation turn |
 | `POST /api/sessions/{id}/approve` | Approve the exact proposed plan ID and digest |
 | `GET /api/sessions/{id}/artifacts/{artifact_id}` | Retrieve a registered artifact under authentication |
@@ -104,8 +135,10 @@ outside the registered package.
 - Provider requests contain conversation text and a small status context, not
   uploaded matrices, private file paths or tool-owned biological measurements.
   Avoid entering confidential identifiers or secrets into chat text.
-- The model can request a bounded QC plan or reply. It cannot approve a plan,
-  change scientific values or select arbitrary filesystem paths. Model replies
+- The model can reply or propose QC, candidate cell-state analysis or explicit
+  no-graft recording. It cannot approve a plan, change scientific values or
+  select arbitrary filesystem paths. Privately entered source-family values
+  are excluded from its status context. Model replies
   are not P0-10-verified reports; numerical evidence belongs to the tool artifacts.
 - Artifacts are private downloads. Downloading them is not P0-11 public-safe
   export, release approval or an assertion that they contain no private data.

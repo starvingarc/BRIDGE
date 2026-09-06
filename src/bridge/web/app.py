@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -28,6 +28,10 @@ from bridge.runners import ToolExecutionPipeline, ToolExecutionScope
 from bridge.storage.private_paths import ensure_private_directory, verify_private_directory
 from bridge.workflow import LocalWorkflowExecutor, SQLiteRunEventStore
 from .provider import converse
+from bridge.toolkit.registry import ToolRegistry
+from bridge.toolkit.contracts import ToolRequest, ToolRequestV2
+
+CATALOG_LOCK = RLock()
 
 ID = re.compile(r"^[a-f0-9]{32}$")
 RETRACTION = re.compile(
@@ -35,8 +39,14 @@ RETRACTION = re.compile(
     r"|\b(?:not|no|don.t|isn.t|aren.t|wasn.t|cancel|stop|retract|revoke)\b",
     re.I,
 )
+NO_GRAFT_DECLARATION = re.compile(
+    r"(?:没有|无|未提供)(?:任何)?(?:移植|graft)(?:数据|证据)?"
+    r"|\bno graft (?:data|evidence)(?:,\s*(?:please )?record (?:it as )?not provided)?\b"
+    r"|\bgraft data (?:is |was )?not provided\b",
+    re.I,
+)
 COOKIE = "bridge_session"
-PUBLIC = ("id", "title", "updated_at", "status", "messages", "uploads", "plan", "artifacts", "error")
+PUBLIC = ("id", "title", "updated_at", "status", "messages", "uploads", "plan", "artifacts", "error", "plan_history", "capabilities")
 
 
 @dataclass(frozen=True)
@@ -50,6 +60,7 @@ class Settings:
     static_dir: Path | None = None
     upload_limit: int = 128 * 1024 * 1024
     cookie_ttl: int = 12 * 3600
+    cell_state_measurement_spec_ref: str | None = None
 
     def __post_init__(self):
         if len(self.token) < 24 or not self.model_api_key or not self.model:
@@ -70,6 +81,11 @@ class Login(Body):
 
 class Message(Body):
     text: str = Field(min_length=1, max_length=8000)
+
+
+class SourceInput(Body):
+    upload_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    source_family_id: str = Field(min_length=1, max_length=160, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
 
 
 class Approval(Body):
@@ -152,11 +168,16 @@ def inspect_h5ad(path: Path) -> list[str]:
         ]
 
 
+class ProviderUnavailable(RuntimeError):
+    pass
+
+
 class Service:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.root, self.device, self.inode = ensure_private_directory(settings.storage_root)
         self.lock = RLock()
+        self.registry = ToolRegistry.load_default()
         self.cookies: dict[str, float] = {}
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bridge-web")
         self.capacity = BoundedSemaphore(2)
@@ -166,8 +187,11 @@ class Service:
                 state = self.load(item.name)
                 if state["status"] in {"running", "thinking", "awaiting_approval"}:
                     state["status"], state["error"] = "failed", "interrupted"
-                    if state["plan"]:
-                        state["plan"]["status"] = "failed"
+                    if state["plan"] and state["plan"]["status"] in {"proposed", "approved"}:
+                        state["plan"]["status"] = "cancelled"
+                        for step in state["plan"]["steps"]:
+                            if step["status"] in {"pending", "running"}:
+                                step["status"], step["reason"] = "cancelled", "interrupted"
                     if state.get("_run_id"):
                         self.executor.cancel(state["_run_id"])
                     self.save(state)
@@ -183,7 +207,11 @@ class Service:
         return target
 
     def load(self, sid):
-        return json.loads(read_file(self.directory(sid) / "session.json", 8 * 1024 * 1024))
+        state = json.loads(read_file(self.directory(sid) / "session.json", 8 * 1024 * 1024))
+        state.setdefault("plan_history", [])
+        state.setdefault("_plan_history", [])
+        state.setdefault("_tool_runs", [])
+        return state
 
     def save(self, state):
         state["updated_at"] = now()
@@ -191,7 +219,8 @@ class Service:
                    json.dumps(state, ensure_ascii=False).encode())
 
     def public(self, state):
-        return {key: state[key] for key in PUBLIC}
+        state["capabilities"] = self.capabilities(state)
+        return {key: state.get(key, [] if key == "plan_history" else None) for key in PUBLIC}
 
     def message(self, state, role, content):
         state["messages"].append({"id": uid(), "role": role, "content": private_text(content), "created_at": now()})
@@ -201,10 +230,226 @@ class Service:
         ensure_private_directory(self.root / sid)
         state = {"id": sid, "title": "New analysis", "updated_at": now(), "status": "idle",
                  "messages": [], "uploads": [], "plan": None, "artifacts": [], "error": None,
-                 "_uploads": {}, "_artifacts": {}, "_plan": None}
-        self.message(state, "assistant", "我是 BRIDGE。请描述研究问题并上传 H5AD。当前预览可执行输入 QC；其他分析需要额外科学输入。所有运行都需要您确认计划，不提供临床或放行结论。")
+                 "_uploads": {}, "_artifacts": {}, "_plan": None,
+                 "plan_history": [], "_plan_history": [], "_tool_runs": []}
+        self.message(state, "assistant", "我是 BRIDGE。请描述研究问题并上传 H5AD。当前预览可执行输入 QC；服务端条件就绪后可准备 P0-02 候选细胞状态分析，明确无移植数据时可准备 P0-12。所有运行都需要您确认计划，不提供临床或放行结论。")
         self.save(state)
         return state
+
+
+    @contextmanager
+    def qc_catalog(self):
+        # Toolkit currently resolves QC through a process environment variable.
+        # Every Service shares this lock; restore even on planning/tool failure.
+        with CATALOG_LOCK:
+            previous = os.environ.get("BRIDGE_QC_PROFILE_CATALOG")
+            os.environ["BRIDGE_QC_PROFILE_CATALOG"] = str(self.root / "qc-catalog.json")
+            try:
+                yield
+            finally:
+                if previous is None:
+                    os.environ.pop("BRIDGE_QC_PROFILE_CATALOG", None)
+                else:
+                    os.environ["BRIDGE_QC_PROFILE_CATALOG"] = previous
+
+    def archive_plan(self, state):
+        if state.get("plan") and state["plan"]["status"] not in {"proposed", "approved"}:
+            state["plan_history"].append(state["plan"])
+            state["_plan_history"].append({"plan": state["_plan"], "bundle": state.get("_bundle"),
+                                           "run_id": state.get("_run_id")})
+        state["plan"], state["_plan"] = None, None
+        state.pop("_run_id", None)
+
+    def cell_state_config_reasons(self):
+        if not self.settings.cell_state_measurement_spec_ref:
+            return ["measurement_spec_not_configured"]
+        from bridge.tool_packages.p0_02_cell_state.measurement_specs import load_measurement_spec
+        from bridge.tool_packages.p0_02_cell_state.reference import (
+            resolve_reference_snapshot, validate_reference_snapshot, validate_runtime_reference)
+        try:
+            spec = load_measurement_spec(self.settings.cell_state_measurement_spec_ref)
+            if spec is None:
+                return ["measurement_spec_not_found"]
+            manifest = validate_reference_snapshot(resolve_reference_snapshot(spec.reference_refs[0]))
+            validate_runtime_reference(manifest)
+            if spec.measurement_spec_id not in manifest.measurement_spec_ids:
+                return ["measurement_spec_not_supported_by_reference"]
+        except Exception as exc:
+            return [getattr(exc, "reason_code", "reference_configuration_invalid")]
+        return []
+
+    def no_graft_declared(self, state):
+        text = next((item["content"] for item in reversed(state["messages"]) if item["role"] == "user"), "")
+        if re.search(r"[?？]|并非没有|不是没有|不要|取消|停止|撤回|假设|如果|假如|\b(?:not without|not no|do not|don.t|cancel|stop|if|suppose)\b", text, re.I):
+            return False
+        return bool(NO_GRAFT_DECLARATION.search(text))
+
+    def independent_retraction(self, state):
+        text = state["messages"][-1]["content"]
+        if self.no_graft_declared(state):
+            text = NO_GRAFT_DECLARATION.sub("", text)
+        return bool(RETRACTION.search(text))
+
+    def capabilities(self, state):
+        result = []
+        selected = state["uploads"][-1]["id"] if state["uploads"] else None
+        for spec in self.registry.list():
+            reasons = []
+            if spec.tool_id == "P0-01":
+                reasons = [] if selected else ["product_upload_required"]
+                if selected and not self.assay(state, selected):
+                    reasons.append("assay_declaration_required")
+                if selected and not state.get("_pending_qc") and not any(item["asset_id"] == selected for item in state.get("_bundle", {}).get("assets", [])):
+                    reasons.append("raw_count_declaration_required")
+            elif spec.tool_id == "P0-02":
+                reasons = self.cell_state_config_reasons()
+                if not selected:
+                    reasons.append("product_upload_required")
+                elif not state["_uploads"][selected].get("source_family_id"):
+                    reasons.append("source_family_id_required")
+                if selected:
+                    try:
+                        self.qc_asset(state, selected, register=False)
+                    except Exception as exc:
+                        reasons.append(str(exc) if str(exc) in {"completed_qc_required", "qc_artifacts_missing", "qc_artifact_integrity_mismatch", "qc_declaration_retracted"} else "qc_artifacts_unavailable")
+                else:
+                    reasons.append("completed_qc_required")
+            elif spec.tool_id == "P0-12":
+                reasons = [] if self.no_graft_declared(state) else ["no_graft_declaration_required"]
+                if selected and not any(item["asset_id"] == selected for item in state.get("_bundle", {}).get("assets", [])):
+                    reasons.append("product_analysis_context_required")
+                if not selected:
+                    reasons.append("product_upload_required")
+            else:
+                reasons = ["stage_materializer_not_connected"]
+            result.append({"tool_id": spec.tool_id, "label": spec.name,
+                           "state": "not_connected" if spec.tool_id not in {"P0-01", "P0-02", "P0-12"} else "needs_input" if reasons else "ready",
+                           "reason_codes": reasons})
+        return result
+
+    def stage_blocked(self, state, reason):
+        state["status"], state["error"] = "idle", reason
+        self.message(state, "assistant", "当前阶段输入尚未满足：" + reason + "。保留已有工具证据，不会推断缺失事实。")
+        self.save(state)
+
+    def prepare_analysis(self, state, tool_id):
+        if tool_id not in {"P0-02", "P0-12"}:
+            self.stage_blocked(state, "stage_materializer_not_connected")
+            return
+        if tool_id == "P0-12":
+            if not self.no_graft_declared(state):
+                self.stage_blocked(state, "no_graft_declaration_required")
+                return
+        if not state["uploads"]:
+            self.stage_blocked(state, "product_upload_required")
+            return
+        selected = state["uploads"][-1]["id"]
+        upload = state["_uploads"][selected]
+        try:
+            directory, _, _ = ensure_private_directory(self.directory(state["id"]) / "uploads")
+            path = directory / (selected + ".h5ad")
+            if hashlib.sha256(read_file(path, self.settings.upload_limit)).hexdigest() != upload["sha256"]:
+                raise ValueError("upload_integrity_mismatch")
+            if tool_id == "P0-02":
+                reasons = self.cell_state_config_reasons()
+                if reasons:
+                    self.stage_blocked(state, reasons[0])
+                    return
+                if not upload.get("source_family_id"):
+                    self.stage_blocked(state, "source_family_id_required")
+                    return
+                asset = self.qc_asset(state, selected)
+            else:
+                # Context only: no biological semantics are inferred or sent to P0-12.
+                context_assets = state.get("_bundle", {}).get("assets", [])
+                context = next((item for item in context_assets if item["asset_id"] == selected), None)
+                if context is None:
+                    self.stage_blocked(state, "product_analysis_context_required")
+                    return
+                asset = CaseInputAsset.model_validate(context)
+            bundle = CaseInputBundle(bundle_id=uid(), version="1", assets=[asset])
+            spec = self.registry.describe(tool_id)
+            arguments = dict(request_id=uid(), tool_id=tool_id, tool_version=spec.version,
+                             output_dir=self.directory(state["id"]) / "runs")
+            if tool_id == "P0-02":
+                request = ToolRequest(**arguments, assets=[asset.to_toolkit_asset()],
+                                      measurement_spec_ref=self.settings.cell_state_measurement_spec_ref)
+            else:
+                request = ToolRequestV2(**arguments, assets=[], object_inputs=[])
+            snapshot = files("bridge.resources").joinpath("knowledge_snapshot.json.gz").read_bytes()
+            with self.qc_catalog():
+                plan = PlanBuilder(self.registry).build(bundle, output_root=arguments["output_dir"],
+                    knowledge_snapshot_ref="sha256:" + hashlib.sha256(snapshot).hexdigest(),
+                    requests=[request], include_input_qc=False)
+            self.archive_plan(state)
+            state["_bundle"] = bundle.model_dump(mode="json")
+            state["_plan"] = plan.model_dump(mode="json")
+            state["plan"] = {"id": plan.plan_id, "digest": plan.approval_sha256(), "status": "proposed",
+                "summary": tool_id + (" 细胞状态候选分析；不保证 V3 或完整生物学证据。" if tool_id == "P0-02" else " 明确未提供移植数据；不运行 graft 表达分析，不回填产品证据。"),
+                "steps": [{"id": item.step_id, "tool_id": item.tool_id, "label": spec.name,
+                           "status": "pending" if item.disposition.value == "execute" else "blocked",
+                           "reason": None if not item.reason_codes else "input_not_eligible"} for item in plan.steps]}
+            state["status"], state["error"] = "awaiting_approval", None
+            self.message(state, "assistant", "新阶段计划已生成。请检查并单独确认；之前的审批不适用于本阶段。")
+            self.save(state)
+        except Exception as exc:
+            reason = str(exc) if str(exc) in {"upload_integrity_mismatch", "completed_qc_required", "qc_artifacts_missing", "qc_artifact_integrity_mismatch", "qc_declaration_retracted"} else "stage_input_construction_failed"
+            self.stage_blocked(state, reason)
+
+    def qc_asset(self, state, selected, *, register=True):
+        for receipt in reversed(state.get("_tool_runs", [])):
+            if receipt["tool_id"] != "P0-01" or receipt["state"] != "succeeded":
+                continue
+            directory, _, _ = ensure_private_directory(self.directory(state["id"]) / "receipts")
+            raw = read_file(directory / receipt["file"])
+            if hashlib.sha256(raw).hexdigest() != receipt["sha256"]:
+                raise ValueError("qc_artifact_integrity_mismatch")
+            run = json.loads(raw)
+            if run["request"]["assets"][0]["asset_id"] != selected:
+                continue
+            if receipt.get("declaration_start") != state["_uploads"][selected]["declaration_start"]:
+                raise ValueError("qc_declaration_retracted")
+            artifacts = {Path(item["path"]).name: item for item in run["artifacts"]}
+            values = {}
+            for name in ("qc_readiness_profile.json", "qc_readiness_profile_v2.json", "structured_output_index.json"):
+                if name not in artifacts:
+                    raise ValueError("qc_artifacts_missing")
+                entry = artifacts[name]
+                target = Path(entry["path"])
+                relative = target.relative_to(self.directory(state["id"]) / "runs")
+                current = self.directory(state["id"]) / "runs"
+                for part in relative.parts:
+                    current = current / part
+                    if current.is_symlink():
+                        raise ValueError("qc_artifact_integrity_mismatch")
+                if not target.exists():
+                    raise ValueError("qc_artifacts_missing")
+                content = read_file(target)
+                if hashlib.sha256(content).hexdigest() != entry["sha256"]:
+                    raise ValueError("qc_artifact_integrity_mismatch")
+                values[name] = json.loads(content)
+            profile = values["qc_readiness_profile.json"]
+            view = values["qc_readiness_profile_v2.json"]["selected_data_view"]
+            if not view:
+                raise ValueError("qc_artifacts_missing")
+            if not register:
+                return None
+            catalog_path = self.root / "qc-catalog.json"
+            with CATALOG_LOCK:
+                catalog = json.loads(read_file(catalog_path)) if catalog_path.exists() else {"profiles": {}}
+                catalog["profiles"][profile["profile_id"]] = {
+                    "path": artifacts["qc_readiness_profile.json"]["path"],
+                    "sha256": artifacts["qc_readiness_profile.json"]["sha256"],
+                    "structured_output_index_path": artifacts["structured_output_index.json"]["path"],
+                    "structured_output_index_sha256": artifacts["structured_output_index.json"]["sha256"]}
+                write_file(catalog_path, json.dumps(catalog).encode())
+            payload = run["request"]["assets"][0]
+            payload["metadata"] = {**payload.get("metadata", {}),
+                "source_family_id": state["_uploads"][selected]["source_family_id"],
+                "qc_profile_ref": profile["profile_id"], "data_view_id": view["view_id"],
+                "parent_asset_sha256": view["parent_asset_sha256"]}
+            return CaseInputAsset.model_validate(payload)
+        raise ValueError("completed_qc_required")
 
     def busy(self, state):
         if state["status"] in {"thinking", "running"}:
@@ -219,13 +464,13 @@ class Service:
         def run():
             try:
                 work(sid)
-            except Exception:
+            except Exception as exc:
                 with self.lock:
                     failed = self.load(sid)
                     failed["status"] = "failed"
-                    failed["error"] = "provider_unavailable" if status == "thinking" else "execution_failed"
+                    failed["error"] = ("provider_unavailable" if isinstance(exc, ProviderUnavailable) else "stage_input_construction_failed") if status == "thinking" else "execution_failed"
                     if failed["plan"] and status == "running":
-                        failed["plan"]["status"] = "failed"
+                        failed["plan"]["status"] = "partial" if any(step["status"] in {"succeeded", "partial"} for step in failed["plan"]["steps"]) else "failed"
                         for step in failed["plan"]["steps"]:
                             if step["status"] in {"pending", "running"}:
                                 step["status"], step["reason"] = "failed", "execution_failed"
@@ -252,8 +497,7 @@ class Service:
 
     def think(self, sid):
         state = self.load(sid)
-        latest = state["messages"][-1]["content"]
-        if RETRACTION.search(latest):
+        if self.independent_retraction(state):
             state.pop("_pending_qc", None)
             # A retraction fences off all earlier declarations conservatively.
             # Both matrix intent and assay must be positively declared again.
@@ -261,6 +505,8 @@ class Service:
                 upload["declaration_start"] = len(state["messages"])
                 upload.pop("question_id", None)
             self.save(state)
+        if self.no_graft_declared(state):
+            state.pop("_pending_qc", None)
         if state.get("_pending_qc") and self.assay(state, state["_pending_qc"]["upload_id"]):
             self.prepare(state, **state["_pending_qc"])
             return
@@ -270,11 +516,23 @@ class Service:
             if location:
                 self.prepare(state, selected, location)
                 return
+        allowed_tools = {spec.tool_id for spec in self.registry.list()}
+        allowed_states = {"succeeded", "failed", "partial", "cancelled", "blocked"}
+        tool_history = [{"tool_id": item["tool_id"], "state": item["state"]}
+                        for item in state.get("_tool_runs", [])[-24:]
+                        if item.get("tool_id") in allowed_tools and item.get("state") in allowed_states]
         context = {"status": "idle", "upload_ids": [item["id"] for item in state["uploads"]],
                    "plan_status": state["plan"]["status"] if state["plan"] else None,
-                   "available_tool": "P0-01", "results_sent_to_model": False}
-        action = converse(self.settings, [{"role": item["role"], "content": private_text(item["content"])}
-                                         for item in state["messages"]], context)
+                   "capabilities": self.capabilities(state), "tool_execution_history": tool_history,
+                   "results_sent_to_model": False}
+        try:
+            action = converse(self.settings, [{"role": item["role"], "content": private_text(item["content"])}
+                                             for item in state["messages"]], context)
+        except Exception as exc:
+            raise ProviderUnavailable() from exc
+        if action.action == "prepare_analysis":
+            self.prepare_analysis(state, action.tool_id)
+            return
         if action.action == "prepare_qc":
             if action.upload_id not in state["_uploads"]:
                 raise ValueError("unknown_upload")
@@ -326,6 +584,8 @@ class Service:
         snapshot = files("bridge.resources").joinpath("knowledge_snapshot.json.gz").read_bytes()
         plan = PlanBuilder().build(bundle, output_root=self.directory(state["id"]) / "runs",
                                    knowledge_snapshot_ref="sha256:" + hashlib.sha256(snapshot).hexdigest())
+        self.archive_plan(state)
+        state["_bundle"] = bundle.model_dump(mode="json")
         state["_plan"] = plan.model_dump(mode="json")
         state["plan"] = {"id": plan.plan_id, "digest": plan.approval_sha256(), "status": "proposed",
                          "summary": "P0-01 输入 QC；实验类型：" + assay + "；原始计数位置：" + location + "。仅研究性候选结果；未声明 sample/capture 元数据，不推断生物学重复。",
@@ -337,6 +597,10 @@ class Service:
         self.save(state)
 
     def execute(self, sid):
+        with self.qc_catalog():
+            self._execute(sid)
+
+    def _execute(self, sid):
         state = self.load(sid)
         plan = AnalysisPlan.model_validate(state["_plan"])
         # Verify all registered input bytes immediately before any SDK execution.
@@ -355,18 +619,27 @@ class Service:
                     item["status"] = "running"
             self.save(state)
             outcome = self.executor.execute_claim(claim, pipeline)
-            self.register_artifacts(state, outcome)
+            receipt_id = uid()
+            receipt = outcome.model_dump_json().encode()
+            write_file(self.directory(sid) / "receipts" / (receipt_id + ".json"), receipt)
+            state["_tool_runs"].append({"file": receipt_id + ".json", "sha256": hashlib.sha256(receipt).hexdigest(),
+                                       "tool_id": outcome.request.tool_id, "state": outcome.execution_state.value,
+                                       "plan_id": plan.plan_id,
+                                       "declaration_start": state["_uploads"].get(outcome.request.assets[0].asset_id, {}).get("declaration_start") if outcome.request.assets else None})
+            self.save(state)
             for item in state["plan"]["steps"]:
                 if item["id"] == claim.step_id:
-                    item["status"] = "succeeded" if outcome.execution_state.value == "succeeded" else "failed"
+                    item["status"] = outcome.execution_state.value if outcome.execution_state.value in {"succeeded", "partial", "cancelled", "blocked"} else "failed"
                     item["reason"] = None if item["status"] == "succeeded" else "tool_not_successful"
             self.save(state)
+            self.register_artifacts(state, outcome)
         snapshot = self.executor.get_status(run_id)
         success = snapshot.status.value == "succeeded"
         state["status"] = "idle" if success else "failed"
         state["error"] = None if success else "execution_incomplete"
-        state["plan"]["status"] = "completed" if success else "failed"
-        self.message(state, "assistant", "输入 QC 运行已结束。请在结果面板查看工具生成的图表和证据。未声明的采样或捕获信息不会被补造；运行完成不代表科学验证通过，不能用于临床或放行结论。" if success else "QC 未完整完成。未将缺失或失败证据解释为产品失败。")
+        actual = {item["status"] for item in state["plan"]["steps"]}
+        state["plan"]["status"] = "completed" if success else ("partial" if "partial" in actual or "succeeded" in actual else "cancelled" if "cancelled" in actual else "failed")
+        self.message(state, "assistant", "工具运行已结束。请在结果面板查看工具生成的图表和证据。未声明的采样或捕获信息不会被补造；运行完成不代表科学验证通过，不能用于临床或放行结论。" if success else "工具运行未完整完成。未将缺失或失败证据解释为产品失败。")
         self.save(state)
 
     def register_artifacts(self, state, outcome):
@@ -410,6 +683,7 @@ class Service:
             state["_artifacts"][aid] = {"file": aid + suffix, "sha256": hashlib.sha256(data).hexdigest(),
                                        "source_artifact_id": artifact.artifact_id, "source_sha256": artifact.sha256,
                                        "projection": "path_redacted_display" if suffix == ".json" else "identity"}
+            self.save(state)
 
 
 def create_app(settings: Settings) -> FastAPI:
@@ -534,9 +808,26 @@ def create_app(settings: Settings) -> FastAPI:
             state["_uploads"][aid] = {"sha256": hashlib.sha256(content).hexdigest(), "locations": locations, "declaration_start": len(state["messages"]),
                                       "suggested": "layers/counts" if "layers/counts" in locations else None}
             state.pop("_pending_qc", None)
+            service.archive_plan(state)
             state["plan"], state["_plan"], state["status"], state["error"] = None, None, "idle", None
             service.message(state, "assistant", "文件已接收。检测到 counts 层：是否将它声明为原始计数并用于 QC？请回复“是，使用 counts 层进行 QC”。" if "layers/counts" in locations else "文件已接收。请声明原始计数位置，例如“X 是原始计数，进行 QC”。若 X 已标准化，请勿将它声明为原始计数。")
             state["_uploads"][aid]["question_id"] = state["messages"][-1]["id"]
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/inputs")
+    def inputs(sid: str, body: SourceInput):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            if body.upload_id not in state["_uploads"]:
+                raise HTTPException(404, "upload_not_found")
+            state["_uploads"][body.upload_id]["source_family_id"] = body.source_family_id
+            for upload in state["uploads"]:
+                if upload["id"] == body.upload_id:
+                    upload["source_family_id"] = body.source_family_id
+            if state["plan"] and state["plan"]["status"] == "proposed":
+                state["plan"], state["_plan"], state["status"] = None, None, "idle"
             service.save(state)
             return service.public(state)
 
@@ -568,6 +859,8 @@ def create_app(settings: Settings) -> FastAPI:
             plan = AnalysisPlan.model_validate(state["_plan"])
             if body.plan_id != plan.plan_id or not secrets.compare_digest(body.plan_digest, plan.approval_sha256()):
                 raise HTTPException(409, "approval_mismatch")
+            if not any(item.disposition.value == "execute" for item in plan.steps):
+                raise HTTPException(409, "plan_has_no_executable_steps")
             approved = approve_plan(plan, approver_id="private-operator", authority_ref="web-session:" + sid,
                                     approved_at=datetime.now(timezone.utc))
             state["_plan"] = approved.model_dump(mode="json")

@@ -41,6 +41,46 @@ describe("API client", () => {
     );
   });
 
+  it("posts only the registered upload and source identifier as private input", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ id: "session-1" }),
+    );
+
+    await api.setSourceInput("session-1", "upload-7", "source-family:donor-a");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/sessions/session-1/inputs",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          upload_id: "upload-7",
+          source_family_id: "source-family:donor-a",
+        }),
+      }),
+    );
+  });
+
+  it("normalizes missing stage additions for saved sessions", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({
+        id: "saved-session",
+        title: "Saved",
+        updated_at: "2026-09-05T00:00:00Z",
+        status: "idle",
+        messages: [],
+        uploads: [],
+        plan: null,
+        artifacts: [],
+        error: null,
+      }),
+    );
+
+    const session = await api.getSession("saved-session");
+
+    expect(session.plan_history).toEqual([]);
+    expect(session.capabilities).toEqual([]);
+  });
+
   it("uses multipart FormData for uploads without overriding its content type", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse({ id: "session-1" }),

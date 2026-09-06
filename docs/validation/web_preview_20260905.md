@@ -83,3 +83,47 @@ conditional on the required checks for the exact PR head.
 
 See [Web setup and interface](../web-preview.md) and
 [Agent integration](../agent-integration.md).
+
+
+## Staged Web extension — 2026-09-07
+
+The extension connects the existing P0-02 raw-count-compatible candidate path
+and P0-12 explicit no-graft path after input QC. It preserves per-stage approval,
+canonical receipts, historical plans and the privately entered source reference.
+It does not connect the remaining nine Web input constructors or assert a V3
+cell-state profile, a complete product-evaluation chain or scientific validation.
+
+A fresh private real-data browser conversation exercised upload, explicit count
+and assay declarations, QC approval, private source entry, cell-state approval,
+explicit no-graft approval, actual tool outputs, follow-up, refresh, desktop and
+narrow layouts. P0-01, P0-02 and P0-12 each produced a successful canonical
+ToolRun. P0-12 received zero assets and zero structured inputs; its output
+records missing graft evidence, not graft expression analysis. Registered
+download bytes matched their private receipts. Every displayed figure card
+loaded; the narrow context panel remained bounded and scrollable. No browser
+page errors occurred; the initial unauthenticated session request correctly
+returned 401. Private resources, results, screenshots and their hashes are not
+part of this repository.
+
+Validation exposed two provider-integration failures: an ambiguous readiness
+summary prompted repeated requests for already-supplied inputs, and a gateway
+returned tool-call markup as ordinary message content. The service now sends
+bounded actual tool execution states and uses a strict JSON Action response
+protocol. It rejects malformed or unrecognized responses rather than presenting
+them as executed calls. Local eligibility and exact approval remain mandatory.
+See the [JSON-mode requirement](../web-preview.md#privacy-and-interpretation).
+
+| Check | Evidence |
+|---|---|
+| Installed Web service | 44 tests passed; two existing upstream deprecation warnings remain |
+| Browser client | 24 tests and production build passed |
+| Packaging and contracts | Installed wheel imports and source correspondence checked; 12-tool discovery and describe/input-contract calls verified |
+| Fresh actual browser | Three connected stages, independent approvals, canonical receipts, all registered downloads, figure cards, refresh and narrow layout checked |
+| Independent review | Backend, frontend and final integrated change reviewed; Critical/Important findings closed; blocked-only proposal confirmation corrected |
+| Repository checks | Policy, knowledge, figure registry and whitespace gates passed; required CI binds the public PR revision |
+
+The model receives execution status, not biological measurements. Chat replies
+are not P0-10-verified reports. The first-stage integration remains separate
+from full-chain acceptance, which requires real biological design/product facts,
+faithful composition contracts and the remaining input constructors. Scientific
+candidate/shadow states and null scores are unchanged.
