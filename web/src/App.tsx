@@ -305,6 +305,8 @@ export default function App() {
               onUpload={upload}
               onSourceInput={setSourceInput}
               onApprove={approve}
+              onSession={mergeSession}
+              onError={handleActionError}
             />
           </BridgeRuntimeProvider>
         ) : (

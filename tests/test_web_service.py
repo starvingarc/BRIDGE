@@ -14,10 +14,10 @@ from bridge.web.provider import parse_action
 
 
 
-def test_prepare_analysis_accepts_only_connected_tool_actions():
-    for tool_id in ("P0-02", "P0-12"):
+def test_prepare_analysis_accepts_registered_tool_actions():
+    for tool_id in (f"P0-{index:02}" for index in range(1, 13)):
         assert parse_action({"content": json.dumps({"action": "prepare_analysis", "tool_id": tool_id})}).tool_id == tool_id
-    for tool_id in ("P0-05", "P0-01"):
+    for tool_id in ("P0-00", "P0-13", "/private/tool"):
         with pytest.raises(ValueError):
             parse_action({"content": json.dumps({"action": "prepare_analysis", "tool_id": tool_id})})
 
@@ -263,7 +263,7 @@ def test_legacy_sessions_default_history_and_unconnected_capabilities(client):
     assert value["plan_history"] == []
     caps = {item["tool_id"]: item for item in value["capabilities"]}
     assert len(caps) == 12
-    assert caps["P0-05"]["state"] == "not_connected"
+    assert caps["P0-05"]["state"] == "needs_input"
     assert "measurement_spec_not_configured" in caps["P0-02"]["reason_codes"]
 
 

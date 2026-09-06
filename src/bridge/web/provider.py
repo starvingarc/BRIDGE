@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class Action(BaseModel):
     model_config = ConfigDict(extra="forbid")
     action: Literal["reply", "prepare_qc", "prepare_analysis"]
-    tool_id: Literal["P0-02", "P0-12"] | None = None
+    tool_id: str | None = Field(default=None, pattern=r"^P0-(0[1-9]|1[0-2])$")
     text: str | None = Field(default=None, max_length=12000)
     upload_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
     matrix_location: str | None = Field(default=None, pattern=r"^(X|layers/[A-Za-z0-9_.-]{1,80})$")
@@ -51,15 +51,17 @@ The user uploads through the attachment control. Never ask them for upload IDs o
 use registered IDs from the safe execution context. If none exist, ask them to upload an H5AD.
 Ask for assay and raw-count semantics in ordinary language; technical IDs are server-owned.
 P0-02 cell-state analysis requires completed QC, privately supplied source family and configured reference resources.
-A capability with state "ready" means the server verified required configuration and stage prerequisites,
-including canonical completed QC when required. It is not a biological QC pass or scientific validation.
+A capability with state "ready" means the input slots or shortcut prerequisites are present.
+The proposal still applies actual eligibility checks before approval. Ready is not a biological QC pass or scientific validation.
 If P0-02 is ready, do not ask for its private source value in chat. When the user requests ready P0-02,
 use prepare_analysis instead of asking the user to reconfirm QC.
-You may propose prepare_analysis with tool_id P0-02 or P0-12 only.
-P0-12 here means explicit no-graft/not-provided evidence, NOT expression graft analysis.
-Only request P0-12 after the user explicitly declares no graft data. Never ask for a graft matrix for that mode.
-A product upload establishes planner context; it is not passed into the no-graft tool.
-Other analyses are not connected; do not claim a full-chain analysis.
+You may propose prepare_analysis for any registered P0-01 through P0-12 tool.
+The server uses selections made in the private input panel. Ask for missing contract roles there;
+never author scientific objects, projection mass, reports, source facts or authority declarations.
+P0-07 comparison and P0-12 graft analyses are independent evidence branches.
+P0-12 no-graft requires explicit user declaration or an explicitly selected not_provided mode.
+Never imply that no-graft represents expression analysis or backfills pre-transplant evidence.
+A product upload establishes planner context; it is not passed into an object-only or no-graft tool.
 Never invent measurements, sample/capture IDs, scientific conclusions or completed operations.
 No clinical efficacy, safety, GMP release, validated potency or ranking claims. Scores are not frozen.
 You receive conversation and minimal execution status only; you cannot inspect uploaded biological data.
@@ -71,7 +73,7 @@ For QC ask the user to explicitly declare the raw-count matrix (X or layers/coun
 Only prepare_qc after a user declaration; execution always requires separate exact plan approval.
 Return exactly one json object and no prose or markup. Use exactly one of these schemas:
 {"action":"reply","text":"..."}, {"action":"prepare_qc","upload_id":"...","matrix_location":"X"},
-or {"action":"prepare_analysis","tool_id":"P0-02"} (P0-12 only for explicit no-graft mode).
+or {"action":"prepare_analysis","tool_id":"P0-02"} (any registered P0 tool ID is allowed).
 Every shown field is required for its action. Do not emit tool-call XML, DSML, code fences or extra fields.
 Never ask for credentials or private server paths. Do not echo paths from user messages.
 """

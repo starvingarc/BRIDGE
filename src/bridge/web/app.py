@@ -28,6 +28,7 @@ from bridge.runners import ToolExecutionPipeline, ToolExecutionScope
 from bridge.storage.private_paths import ensure_private_directory, verify_private_directory
 from bridge.workflow import LocalWorkflowExecutor, SQLiteRunEventStore
 from .provider import converse
+from .inputs import Inputs, Selection, AssetDeclaration, PrepareAnalysis, OBJECT_LIMIT
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.contracts import ToolRequest, ToolRequestV2
 
@@ -110,7 +111,7 @@ def read_file(path: Path, limit: int | None = None) -> bytes:
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(fd, "rb") as stream:
         info = os.fstat(stream.fileno())
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid():
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
             raise ValueError("private_file_invalid")
         if limit is not None and info.st_size > limit:
             raise ValueError("private_file_too_large")
@@ -178,6 +179,7 @@ class Service:
         self.root, self.device, self.inode = ensure_private_directory(settings.storage_root)
         self.lock = RLock()
         self.registry = ToolRegistry.load_default()
+        self.inputs = Inputs(self)
         self.cookies: dict[str, float] = {}
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bridge-web")
         self.capacity = BoundedSemaphore(2)
@@ -211,6 +213,7 @@ class Service:
         state.setdefault("plan_history", [])
         state.setdefault("_plan_history", [])
         state.setdefault("_tool_runs", [])
+        self.inputs.initialize(state)
         return state
 
     def save(self, state):
@@ -295,7 +298,14 @@ class Service:
         selected = state["uploads"][-1]["id"] if state["uploads"] else None
         for spec in self.registry.list():
             reasons = []
-            if spec.tool_id == "P0-01":
+            self.inputs.initialize(state)
+            selection = state["_input_selections"].get(spec.tool_id)
+            if selection is not None:
+                try:
+                    reasons = self.inputs.selection_reasons(state, Selection.model_validate(selection))
+                except ValueError:
+                    reasons = ["input_binding_invalid"]
+            elif spec.tool_id == "P0-01":
                 reasons = [] if selected else ["product_upload_required"]
                 if selected and not self.assay(state, selected):
                     reasons.append("assay_declaration_required")
@@ -321,10 +331,13 @@ class Service:
                 if not selected:
                     reasons.append("product_upload_required")
             else:
-                reasons = ["stage_materializer_not_connected"]
+                contract = self.registry.describe_input(spec.tool_id)
+                mode = contract.object_input_modes[0] if len(contract.object_input_modes) == 1 else None
+                reasons = (["object_required:" + role.role for role in mode.roles if role.min_count]
+                           if mode else ["input_mode_required"])
             result.append({"tool_id": spec.tool_id, "label": spec.name,
-                           "state": "not_connected" if spec.tool_id not in {"P0-01", "P0-02", "P0-12"} else "needs_input" if reasons else "ready",
-                           "reason_codes": reasons})
+                           "state": "needs_input" if reasons else "ready",
+                           "reason_codes": reasons, "mode_id": selection["mode_id"] if selection else None})
         return result
 
     def stage_blocked(self, state, reason):
@@ -333,8 +346,9 @@ class Service:
         self.save(state)
 
     def prepare_analysis(self, state, tool_id):
-        if tool_id not in {"P0-02", "P0-12"}:
-            self.stage_blocked(state, "stage_materializer_not_connected")
+        self.inputs.initialize(state)
+        if tool_id in state["_input_selections"] or tool_id not in {"P0-02", "P0-12"}:
+            self.prepare_selected(state, tool_id)
             return
         if tool_id == "P0-12":
             if not self.no_graft_declared(state):
@@ -376,22 +390,9 @@ class Service:
                                       measurement_spec_ref=self.settings.cell_state_measurement_spec_ref)
             else:
                 request = ToolRequestV2(**arguments, assets=[], object_inputs=[])
-            snapshot = files("bridge.resources").joinpath("knowledge_snapshot.json.gz").read_bytes()
-            with self.qc_catalog():
-                plan = PlanBuilder(self.registry).build(bundle, output_root=arguments["output_dir"],
-                    knowledge_snapshot_ref="sha256:" + hashlib.sha256(snapshot).hexdigest(),
-                    requests=[request], include_input_qc=False)
-            self.archive_plan(state)
-            state["_bundle"] = bundle.model_dump(mode="json")
-            state["_plan"] = plan.model_dump(mode="json")
-            state["plan"] = {"id": plan.plan_id, "digest": plan.approval_sha256(), "status": "proposed",
-                "summary": tool_id + (" 细胞状态候选分析；不保证 V3 或完整生物学证据。" if tool_id == "P0-02" else " 明确未提供移植数据；不运行 graft 表达分析，不回填产品证据。"),
-                "steps": [{"id": item.step_id, "tool_id": item.tool_id, "label": spec.name,
-                           "status": "pending" if item.disposition.value == "execute" else "blocked",
-                           "reason": None if not item.reason_codes else "input_not_eligible"} for item in plan.steps]}
-            state["status"], state["error"] = "awaiting_approval", None
-            self.message(state, "assistant", "新阶段计划已生成。请检查并单独确认；之前的审批不适用于本阶段。")
-            self.save(state)
+            self.propose_request(state, bundle, request, tool_id +
+                (" 细胞状态候选分析；不保证 V3 或完整生物学证据。" if tool_id == "P0-02" else
+                 " 明确未提供移植数据；不运行 graft 表达分析，不回填产品证据。"))
         except Exception as exc:
             reason = str(exc) if str(exc) in {"upload_integrity_mismatch", "completed_qc_required", "qc_artifacts_missing", "qc_artifact_integrity_mismatch", "qc_declaration_retracted"} else "stage_input_construction_failed"
             self.stage_blocked(state, reason)
@@ -450,6 +451,48 @@ class Service:
                 "parent_asset_sha256": view["parent_asset_sha256"]}
             return CaseInputAsset.model_validate(payload)
         raise ValueError("completed_qc_required")
+
+    def prepare_selected(self, state, tool_id):
+        self.inputs.initialize(state)
+        contract = self.registry.describe_input(tool_id)
+        saved = state["_input_selections"].get(tool_id)
+        if saved is None:
+            mode_id = contract.object_input_modes[0].mode_id if len(contract.object_input_modes) == 1 else None
+            saved = dict(tool_id=tool_id, mode_id=mode_id, asset_ids=[], object_inputs=[], measurement_spec_ref=None)
+        try:
+            bundle, request = self.inputs.construct(state, Selection.model_validate(saved))
+        except (ValueError, OSError) as exc:
+            reason = str(exc)
+            if not re.fullmatch(r"[a-z_]+(?::[a-z_]+)?", reason):
+                reason = "input_binding_invalid"
+            self.stage_blocked(state, reason)
+            return
+        self.propose_request(state, bundle, request, tool_id + " / " + (saved["mode_id"] or "asset_input") +
+            "；使用明确选择的输入；仅研究性证据，不补造事实。请单独确认本次计划。")
+
+    def propose_request(self, state, bundle, request, summary):
+        snapshot = files("bridge.resources").joinpath("knowledge_snapshot.json.gz").read_bytes()
+        with self.qc_catalog():
+            plan = PlanBuilder(self.registry).build(bundle, output_root=request.output_dir,
+                knowledge_snapshot_ref="sha256:" + hashlib.sha256(snapshot).hexdigest(),
+                requests=[request], include_input_qc=False)
+        self.archive_plan(state)
+        state["_bundle"], state["_plan"] = bundle.model_dump(mode="json"), plan.model_dump(mode="json")
+        state["plan"] = {"id": plan.plan_id, "digest": plan.approval_sha256(), "status": "proposed",
+            "summary": summary,
+            "steps": [{"id": item.step_id, "tool_id": item.tool_id,
+                       "label": self.registry.describe(item.tool_id).name,
+                       "status": "pending" if item.disposition.value == "execute" else "blocked",
+                       "reason": None if not item.reason_codes else "input_not_eligible"} for item in plan.steps]}
+        state["status"], state["error"] = "awaiting_approval", None
+        self.message(state, "assistant", "新阶段计划已生成。请检查输入模式并单独确认；之前的审批不适用于本阶段。")
+        self.save(state)
+
+    def input_changed(self, state):
+        if state.get("plan") and state["plan"]["status"] == "proposed":
+            state["plan"], state["_plan"], state["status"] = None, None, "idle"
+        state["error"] = None
+        self.save(state)
 
     def busy(self, state):
         if state["status"] in {"thinking", "running"}:
@@ -603,6 +646,7 @@ class Service:
     def _execute(self, sid):
         state = self.load(sid)
         plan = AnalysisPlan.model_validate(state["_plan"])
+        self.inputs.verify_plan(state, plan)
         # Verify all registered input bytes immediately before any SDK execution.
         for upload_id, upload in state["_uploads"].items():
             directory, _, _ = ensure_private_directory(self.directory(sid) / "uploads")
@@ -632,6 +676,7 @@ class Service:
                     item["status"] = outcome.execution_state.value if outcome.execution_state.value in {"succeeded", "partial", "cancelled", "blocked"} else "failed"
                     item["reason"] = None if item["status"] == "succeeded" else "tool_not_successful"
             self.save(state)
+            self.inputs.register_outputs(state, outcome, state["_tool_runs"][-1])
             self.register_artifacts(state, outcome)
         snapshot = self.executor.get_status(run_id)
         success = snapshot.status.value == "succeeded"
@@ -680,6 +725,10 @@ class Service:
                 name = name.removesuffix(".json") + ".display-redacted.json"
             state["artifacts"].append({"id": aid, "name": name, "kind": kind, "media_type": media,
                                        "url": f"/api/sessions/{state['id']}/artifacts/{aid}", "tool_id": outcome.request.tool_id})
+            self.inputs.initialize(state)
+            state["_canonical_artifacts"][aid] = {"path": str(artifact.path), "sha256": artifact.sha256,
+                "artifact_id": artifact.artifact_id, "receipt_file": state["_tool_runs"][-1]["file"],
+                "receipt_sha256": state["_tool_runs"][-1]["sha256"]}
             state["_artifacts"][aid] = {"file": aid + suffix, "sha256": hashlib.sha256(data).hexdigest(),
                                        "source_artifact_id": artifact.artifact_id, "source_sha256": artifact.sha256,
                                        "projection": "path_redacted_display" if suffix == ".json" else "identity"}
@@ -713,7 +762,9 @@ def create_app(settings: Settings) -> FastAPI:
                     if request.headers.get("origin") != settings.origin:
                         return JSONResponse({"detail": "origin_required"}, status_code=403)
                     length = request.headers.get("content-length")
-                    limit = settings.upload_limit + 65536 if request.url.path.endswith("/uploads") else 32768
+                    limit = (settings.upload_limit + 65536 if request.url.path.endswith("/uploads") else
+                             OBJECT_LIMIT + 65536 if request.url.path.endswith("/analysis-inputs/objects") else
+                             65536 if request.url.path.endswith("/analysis-inputs/assets") else 32768)
                     if length is None or not length.isdigit() or int(length) > limit:
                         return JSONResponse({"detail": "request_too_large"}, status_code=413)
                     original_receive = request._receive
@@ -829,6 +880,65 @@ def create_app(settings: Settings) -> FastAPI:
             if state["plan"] and state["plan"]["status"] == "proposed":
                 state["plan"], state["_plan"], state["status"] = None, None, "idle"
             service.save(state)
+            return service.public(state)
+
+    @app.get("/api/sessions/{sid}/analysis-inputs")
+    def analysis_inputs(sid: str):
+        with service.lock:
+            state = service.load(sid)
+            value = service.inputs.public(state)
+            if state["status"] not in {"thinking", "running"}:
+                service.save(state)
+            return value
+
+    @app.post("/api/sessions/{sid}/analysis-inputs")
+    def select_inputs(sid: str, body: Selection):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            try:
+                service.inputs.selection_reasons(state, body, verify=True)
+            except (ValueError, OSError):
+                raise HTTPException(422, "invalid_input_selection") from None
+            state["_input_selections"][body.tool_id] = body.model_dump(mode="json")
+            service.input_changed(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/analysis-inputs/objects")
+    def input_object(sid: str, tool_id: str, mode_id: str, role: str, schema_ref: str,
+                     object_version: str, file: UploadFile = File(...)):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            try:
+                service.inputs.add_object(state, tool_id=tool_id, mode_id=mode_id, role=role,
+                    schema_ref=schema_ref, object_version=object_version, data=file.file.read(OBJECT_LIMIT + 1))
+            except (ValueError, OSError, KeyError) as exc:
+                reason = str(exc)
+                if not re.fullmatch(r"[a-z_]+(?::[a-z_]+)?", reason):
+                    reason = "invalid_scientific_object"
+                raise HTTPException(422, reason) from None
+            service.input_changed(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/analysis-inputs/assets")
+    def declare_asset(sid: str, body: AssetDeclaration):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            try:
+                service.inputs.declare_asset(state, body)
+            except (ValueError, OSError):
+                raise HTTPException(422, "invalid_asset_declaration") from None
+            service.input_changed(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/prepare-analysis")
+    def prepare_analysis(sid: str, body: PrepareAnalysis):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.prepare_analysis(state, body.tool_id)
             return service.public(state)
 
     @app.post("/api/sessions/{sid}/messages")

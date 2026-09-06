@@ -127,3 +127,63 @@ are not P0-10-verified reports. The first-stage integration remains separate
 from full-chain acceptance, which requires real biological design/product facts,
 faithful composition contracts and the remaining input constructors. Scientific
 candidate/shadow states and null scores are unchanged.
+
+## Contract-driven Web access — 2026-09-07
+
+The input panel now exposes the current contracts of all twelve P0 tools. A
+caller can select a mode, explicitly declare an uploaded H5AD, register named
+scientific JSON objects, reuse compatible canonical outputs, save the selection,
+and separately prepare and approve a stage. This extends Web access; it does
+not automatically author all scientific inputs or establish a complete
+real-data product evaluation.
+
+### Verified coverage
+
+| Evidence layer | Checked behavior | Boundary |
+|---|---|---|
+| Package-backed HTTP routes | Representative modes across all twelve tools use the actual planner, eligibility, exact approval, adapters and workflow receipts | Synthetic fixtures cover missing genuine prerequisites; not every optional method/mode is validated |
+| Connected browser evidence chain | Fresh supplied objects → P0-08 canonical v2 result → P0-09 case graph → P0-10 verification → P0-11 artifact audit | Synthetic engineering scenario; P0-10's negative release decision remains intact; audit is not publication |
+| Fresh real-data browser conversation | QC → candidate cell-state analysis → explicit no-graft record; input panel, inherited expression controls, history, figures, downloads, follow-up, refresh and narrow layout | No sample/capture facts or composition weights invented; no-graft is not expression-graft analysis |
+| Packaging and client | Installed imports and source-byte correspondence, twelve-tool discovery and input contracts, frontend regression and production build | Engineering evidence, not biological calibration |
+
+The browser test registers scientific files through the visible input controls;
+it does not submit prebuilt ToolRequests or approve through a second execution
+path. Canonical producer objects keep their original bytes, location and checked
+bundle. Request-local binding IDs are supplied explicitly; graph manifests cannot
+be uploaded as detached substitutes. Missing inputs produce named blockers.
+
+Independent reviews found and closed four functional seams: successful
+scientific reason codes incorrectly entering workflow failure events; canonical
+object-version discovery and paired Schema/version checks; undeclared H5ADs
+shown as compatible; and inherited mode asset contracts disappearing from the
+client. The final fixes also corrected blocked-plan notices and a native HTML
+matrix-location pattern rejected by Chromium's UnicodeSets grammar. Reviewer
+and browser findings were followed by scoped checks, not scientific contract changes.
+
+The private evidence retains complete conversations, canonical requests and
+receipts, artifact integrity checks and actual figure screenshots. Resource
+identities, data, private hashes, biological values and deployment details remain
+outside Git. The required `repository-gates` checks bind the public PR revision.
+
+### Regression environment
+
+The installed-wheel server run completed with 1,883 passed and 64 failed tests.
+All failures were in the synthetic private-path startup-policy suite: its
+per-test policy reset omits the deployment's approved foreign-owned ancestor.
+The failure log is retained. No path guards, permissions or assertions were
+relaxed, and the server run is not reported as fully passing. The deployed Web
+checks use the existing exact operator-approved ancestor configuration. The
+required CI independently runs the unmodified full suite on a standard runner.
+
+### Remaining limits
+
+- Scientific JSON authoring is still explicit. The Web layer does not infer
+  product definitions, biological units, state roles, soft mass or report claims.
+- Genuine twelve-tool acceptance remains blocked by missing source facts and
+  scientifically defined upstream/downstream inputs; engineering routing does
+  not close those gaps.
+- Model follow-up is status-grounded, not measurement-grounded interpretation
+  or a P0-10-verified scientific report. Authoritative numerical results remain
+  in the actual tool artifacts.
+- This remains a single-operator private preview. Candidate/shadow, null scores
+  and the existing scientific/publication boundaries remain unchanged.

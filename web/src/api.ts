@@ -1,4 +1,11 @@
-import { normalizeSession, type Session, type SessionsResponse } from "./types";
+import {
+  normalizeSession,
+  type AnalysisAssetRegistration,
+  type AnalysisInputsResponse,
+  type AnalysisSelection,
+  type Session,
+  type SessionsResponse,
+} from "./types";
 
 const GENERIC_ERROR = "The request could not be completed. Please try again.";
 
@@ -81,5 +88,50 @@ export const api = {
     sessionRequest(`/api/sessions/${encodeURIComponent(id)}/approve`, {
       method: "POST",
       body: JSON.stringify({ plan_id: planId, plan_digest: planDigest }),
+    }),
+  getAnalysisInputs: (id: string, signal?: AbortSignal) =>
+    request<AnalysisInputsResponse>(
+      `/api/sessions/${encodeURIComponent(id)}/analysis-inputs`,
+      { signal },
+    ),
+  saveAnalysisInputs: (id: string, selection: AnalysisSelection) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/analysis-inputs`, {
+      method: "POST",
+      body: JSON.stringify(selection),
+    }),
+  uploadAnalysisObject: (
+    id: string,
+    input: {
+      toolId: string;
+      modeId: string | null;
+      role: string;
+      schemaRef: string;
+      objectVersion: string;
+      file: File;
+    },
+  ) => {
+    const query = new URLSearchParams({
+      tool_id: input.toolId,
+      role: input.role,
+      schema_ref: input.schemaRef,
+      object_version: input.objectVersion,
+    });
+    if (input.modeId !== null) query.set("mode_id", input.modeId);
+    const body = new FormData();
+    body.append("file", input.file);
+    return sessionRequest(
+      `/api/sessions/${encodeURIComponent(id)}/analysis-inputs/objects?${query.toString()}`,
+      { method: "POST", body },
+    );
+  },
+  registerAnalysisAsset: (id: string, registration: AnalysisAssetRegistration) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/analysis-inputs/assets`, {
+      method: "POST",
+      body: JSON.stringify(registration),
+    }),
+  prepareAnalysis: (id: string, toolId: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/prepare-analysis`, {
+      method: "POST",
+      body: JSON.stringify({ tool_id: toolId }),
     }),
 };

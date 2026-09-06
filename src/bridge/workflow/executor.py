@@ -179,7 +179,9 @@ class LocalWorkflowExecutor:
                 else RunEventType.STEP_FAILED
             )
         )
-        reasons = tuple(outcome.reason_codes)
+        # Tool reasons may describe scientific limits on successful execution.
+        # Preserve them in the hashed ToolRun, not the workflow failure channel.
+        reasons = () if event_type is RunEventType.STEP_SUCCEEDED else tuple(outcome.reason_codes)
         if event_type is RunEventType.STEP_FAILED and not reasons:
             reasons = ("tool_run_not_successful",)
         self._append_completion(

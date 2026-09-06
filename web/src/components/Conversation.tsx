@@ -6,6 +6,7 @@ import {
 import { File, Menu, MoreVertical, Paperclip, Send, Square } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useRef } from "react";
 import type { Session, Upload } from "../types";
+import { AnalysisInputs } from "./AnalysisInputs";
 import { MarkdownText } from "./MarkdownText";
 import { PlanCard, PlanHistory } from "./PlanCard";
 import { SessionStatusMark } from "./StatusMark";
@@ -19,6 +20,8 @@ type Props = {
   onUpload: (file: File) => void;
   onSourceInput: (uploadId: string, sourceFamilyId: string) => void;
   onApprove: () => void;
+  onSession: (session: Session) => void;
+  onError: (error: unknown) => void;
 };
 
 function UserMessage() {
@@ -101,6 +104,8 @@ export function Conversation({
   onUpload,
   onSourceInput,
   onApprove,
+  onSession,
+  onError,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -160,31 +165,21 @@ export function Conversation({
             ) : null}
           </div>
           <ThreadPrimitive.ViewportFooter className="composer-footer">
-            {session.uploads.length || session.capabilities?.length ? (
-              <details className="analysis-context">
-                <summary>Data and tool chain</summary>
-                <SourceInputForms
-                  uploads={session.uploads}
-                  disabled={busy}
-                  onSourceInput={onSourceInput}
-                />
-                {session.capabilities?.length ? (
-                  <ul className="capability-list" aria-label="Tool-chain status">
-                    {session.capabilities.map((capability) => (
-                      <li key={capability.tool_id}>
-                        <span><strong>{capability.tool_id}</strong> {capability.label}</span>
-                        <span className={`capability-state capability-state--${capability.state}`}>
-                          {capability.state.replace("_", " ")}
-                        </span>
-                        {capability.reason_codes.length ? (
-                          <small>{capability.reason_codes.map((reason) => reason.replaceAll("_", " ")).join(" · ")}</small>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </details>
-            ) : null}
+            <AnalysisInputs
+              key={session.id}
+              sessionId={session.id}
+              uploads={session.uploads}
+              capabilities={session.capabilities ?? []}
+              disabled={busy}
+              onSession={onSession}
+              onError={onError}
+            >
+              <SourceInputForms
+                uploads={session.uploads}
+                disabled={busy}
+                onSourceInput={onSourceInput}
+              />
+            </AnalysisInputs>
             {session.uploads.length ? (
               <div className="upload-list" aria-label="Uploaded files">
                 {session.uploads.map((upload) => (
