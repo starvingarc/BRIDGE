@@ -46,6 +46,19 @@ NO_GRAFT_DECLARATION = re.compile(
     r"|\bgraft data (?:is |was )?not provided\b",
     re.I,
 )
+NO_GRAFT_UNCERTAIN = re.compile(
+    r"[?？]|并非没有|不是没有|不要|取消|停止|撤回|假设|如果|假如"
+    r"|\b(?:not without|not no|do not|don.t|cancel|stop|if|suppose)\b", re.I,
+)
+QC_UNRELATED_ABSENCE = re.compile(
+    r"(?:没有|未提供)(?:提供)?(?:额外的?)?"
+    r"(?:(?:样本|批次)(?:或|和)(?:样本|批次)表|(?:样本|批次)(?:表|元数据)|产品定义|状态角色|实验方案)"
+    r"|\bno (?:additional |extra )?"
+    r"(?:(?:sample|batch)(?: or | and )(?:sample|batch) tables?"
+    r"|(?:sample|batch) (?:tables?|metadata)|product definition|state roles?|experimental protocol)\b"
+    r"|不要把空分数当成运行失败",
+    re.I,
+)
 COOKIE = "bridge_session"
 PUBLIC = ("id", "title", "updated_at", "status", "messages", "uploads", "plan", "artifacts", "error", "plan_history", "capabilities")
 
@@ -283,15 +296,20 @@ class Service:
 
     def no_graft_declared(self, state):
         text = next((item["content"] for item in reversed(state["messages"]) if item["role"] == "user"), "")
-        if re.search(r"[?？]|并非没有|不是没有|不要|取消|停止|撤回|假设|如果|假如|\b(?:not without|not no|do not|don.t|cancel|stop|if|suppose)\b", text, re.I):
+        if NO_GRAFT_UNCERTAIN.search(text):
             return False
         return bool(NO_GRAFT_DECLARATION.search(text))
 
-    def independent_retraction(self, state):
-        text = state["messages"][-1]["content"]
-        if self.no_graft_declared(state):
+    def independent_retraction(self, text):
+        if not NO_GRAFT_UNCERTAIN.search(text):
             text = NO_GRAFT_DECLARATION.sub("", text)
-        return bool(RETRACTION.search(text))
+        # A negative turn touching QC semantics is not clearly unrelated: keep
+        # coordinated absences such as "no sample table or raw counts" fenced.
+        if re.search(r"(?:sc|sn)RNA-seq|原始计数|矩阵|\b(?:counts?|QC|X)\b", text, re.I):
+            return bool(RETRACTION.search(text))
+        # Remove only bounded, clearly unrelated absence spans, never an entire
+        # mixed message. Any remaining cancellation or declaration negation fences QC.
+        return bool(RETRACTION.search(QC_UNRELATED_ABSENCE.sub("", text)))
 
     def capabilities(self, state):
         result = []
@@ -540,7 +558,7 @@ class Service:
 
     def think(self, sid):
         state = self.load(sid)
-        if self.independent_retraction(state):
+        if self.independent_retraction(state["messages"][-1]["content"]):
             state.pop("_pending_qc", None)
             # A retraction fences off all earlier declarations conservatively.
             # Both matrix intent and assay must be positively declared again.
@@ -567,6 +585,12 @@ class Service:
         context = {"status": "idle", "upload_ids": [item["id"] for item in state["uploads"]],
                    "plan_status": state["plan"]["status"] if state["plan"] else None,
                    "capabilities": self.capabilities(state), "tool_execution_history": tool_history,
+                   "input_contracts": {
+                       spec.tool_id: [{"mode_id": mode.mode_id,
+                                       "required_roles": [role.role for role in mode.roles if role.min_count]}
+                                      for mode in self.registry.describe_input(spec.tool_id).object_input_modes]
+                       for spec in self.registry.list()
+                   },
                    "results_sent_to_model": False}
         try:
             action = converse(self.settings, [{"role": item["role"], "content": private_text(item["content"])}
@@ -594,9 +618,11 @@ class Service:
         start = state["_uploads"][upload_id]["declaration_start"]
         for item in reversed(state["messages"][start:]):
             if item["role"] == "user":
-                if RETRACTION.search(item["content"]):
+                if self.independent_retraction(item["content"]):
                     return None
-                if re.search(r"[?？]", item["content"]):
+                # Unrelated negative messages preserve older declarations, but
+                # cannot establish a new assay from an otherwise ambiguous turn.
+                if RETRACTION.search(item["content"]) or re.search(r"[?？]", item["content"]):
                     continue
                 matches = re.findall(r"(?<![A-Za-z])(scRNA-seq|snRNA-seq)(?![A-Za-z])", item["content"])
                 if len(set(matches)) == 1:

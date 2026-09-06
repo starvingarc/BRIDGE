@@ -16,6 +16,9 @@ their CLI/SDK. This is tool access, not automatic authorship of every scientific
 input or proof that a complete product-evaluation chain has run. Missing sample
 design, product definitions, reference contracts and composition weights are not
 invented. A connected tool can remain `needs_input` until its named roles are supplied.
+Choosing a mode does not mean its remaining inputs exist: model context includes
+package-owned mode IDs and required role names, without selected values or
+scientific payloads. Actual eligibility is still checked before approval.
 
 H5AD uploads are limited to 128 MiB per file and eight files per conversation.
 The HDF5 structure is checked before planning. Conversational QC accepts explicit
@@ -108,7 +111,10 @@ separately from successful execution. Older sessions without canonical QC
 receipts must run QC again before proceeding to P0-02.
 
 Counts declarations do not establish sample, capture, preparation or batch
-relationships. Unknown biological design remains unknown. A successful tool
+relationships. Clearly unrelated statements about missing metadata preserve
+earlier assay/count declarations and reusable QC. Explicit retractions and
+cancellations still require a fresh declaration; unfamiliar negative wording is
+handled conservatively. Unknown biological design remains unknown. A successful tool
 run can still have limited readiness or unavailable measurements.
 
 ## Analysis inputs

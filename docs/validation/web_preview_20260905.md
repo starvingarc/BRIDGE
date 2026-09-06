@@ -187,3 +187,44 @@ required CI independently runs the unmodified full suite on a standard runner.
   in the actual tool artifacts.
 - This remains a single-operator private preview. Candidate/shadow, null scores
   and the existing scientific/publication boundaries remain unchanged.
+
+## Genuine-conversation follow-up — 2026-09-07
+
+A fresh actual-provider run reproduced two Web defects: statements about missing
+unrelated metadata revoked a valid counts/assay declaration, and sparse mode
+readiness context led the model to suggest unsupported input choices. The fix
+uses a bounded unrelated-absence exception in declaration tracking and historical
+assay lookup. Explicit retractions and cancellations remain conservative. Safe
+provider context adds package-derived mode IDs and required object-role names;
+mode selection is not evidence that the remaining inputs exist. No scientific
+objects or selected resource values are added to model context.
+
+The scoped Web/input/workflow suite passed 111 tests, with two pre-existing
+dependency deprecation warnings. Independent review found no Critical or
+Important issue. A fresh wheel's packaged source was checked against the reviewed
+implementation, and package discovery, input contracts, knowledge/figure
+registries, repository policy and diff checks passed.
+
+The updated installed service then completed a new genuine-data conversation
+using the configured real model API, without model or execution mocks. The
+previously failing missing-metadata statement preserved the declaration epoch
+and kept canonical QC reusable. QC, candidate cell-state analysis and the
+explicit no-graft record executed with separate approvals; registered downloads,
+figure loading, restored history and narrow layout passed. There were no browser
+page errors or unexpected console errors. The sampled model replies no longer
+invented unsupported comparison modes, but still listed internal object names;
+this remains an expert-input preview, not a finished upload-only experience.
+
+The genuine full-chain result remains incomplete. A read-only contract audit
+confirmed that missing typed source lineage blocks a genuine V3 continuation.
+Separately, P0-05 requires assignment mass not defined by the current producer
+and P0-06 cannot losslessly represent source-conflict observations through its
+current observation-state input. Neither gap is fixed by fabricating weights,
+unknown labels or caller attestations. They require separately scoped module
+decisions, not a silent Web-layer conversion. These blockers are distinct from
+limited readiness, null scores and provider availability.
+
+All actual input identities, transcripts, numerical outputs, screenshots and
+content hashes remain private. This follow-up does not replace the earlier
+full-server regression record or claim new full-suite success; required CI binds
+the corresponding updated public head independently.

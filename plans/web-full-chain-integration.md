@@ -6,7 +6,7 @@
 **Architecture:** Retain PlanBuilder, exact AnalysisPlan approval, ToolExecutionPipeline and LocalWorkflowExecutor. Materialize each stage only after its real inputs exist; retain prior plans and canonical ToolRuns.
 **Tech Stack:** Existing Python/FastAPI runtime, React/assistant-ui client and server-side Playwright.
 **Spec:** [Agent integration](../docs/agent-integration.md), [local runtime](../docs/local-agent-runtime.md), [Web preview](../docs/web-preview.md), and the user-approved design below.
-**Status:** in_progress; full-chain real-data acceptance blocked on source facts and the explicit P0-05 projection gap.
+**Status:** in_progress; full-chain real-data acceptance blocked on source lineage and explicit P0-05 mass / P0-06 unresolved-state contract gaps.
 
 ## Approved design and current finding
 
@@ -17,7 +17,7 @@ data acceptance conditions.
 
 The user approved reusing the existing tools/executor, connecting Web inputs, staged approval and per-tool results; single-product, comparison and independent graft paths remain the complete target. This plan does not replace those targets with an offline replay.
 
-The current genuine upload lacks declared sample/capture/independence relationships. Historical reconstructed-design objects must not be registered as genuine user facts. Current P0-02 observation outputs do not define P0-05 soft mass or close its single-source accounting. No conversion that invents weights, unknown labels or scientific definitions is authorized.
+The current genuine upload lacks declared sample/capture/independence relationships. Historical reconstructed-design objects must not be registered as genuine user facts. Current P0-02 observation outputs do not define P0-05 soft mass or close its single-source accounting. No conversion that invents weights, unknown labels or scientific definitions is authorized. The follow-up contract audit also found that P0-06's current observation input cannot preserve P0-02 source-conflict evidence losslessly; mapping it to unknown, unavailable or a winning state is not authorized.
 
 The first executable increment adds the existing raw-count-compatible P0-02 candidate path and independent P0-12 no-graft path to the existing QC conversation. P0-03–P0-11 remain explicitly not connected until their constructors and real prerequisite facts can be defined faithfully. This increment is not 12/12 Web completion. A normalized single-product profile requires its own explicitly declared matrix semantics and true lineage; a raw-count QC DataView must not be relabeled.
 
@@ -169,6 +169,17 @@ Add the stage approval and zero-input no-graft assertions using the existing rea
 - [x] Prove all twelve routes against explicitly synthetic engineering fixtures where real source inputs are unavailable, separately from genuine real-data coverage. Do not use old ToolRequest replay or synthetic metadata as real-user data evidence.
 - [x] Run the complete suite once on integrated head plus policy/knowledge/diff/privacy gates. Aggregate one final review with scoped corrections. The server result is 1,883 passed / 64 synthetic trust-fixture failures; retain that limitation and require the unmodified standard-runner CI before any merge.
 - [ ] Update the same Draft PR with code/docs only. Keep actual data, resource identities/hashes/results and screenshots private; no merged/full-chain claim until corresponding gates actually pass.
+
+## Task 7: Genuine-conversation declaration and readiness semantics
+
+A fresh actual-provider Web conversation exposed two input-layer defects: unrelated missing-metadata statements retract the earlier QC declaration, and an unselected mode is described as though choosing a mode alone establishes data readiness.
+
+**Scope:** src/bridge/web/app.py, src/bridge/web/provider.py and tests/test_web_service.py only. Root updates plan and validation docs. No scientific modules, Schemas, thresholds, lineage/soft-mass definitions, provider permissions, release authority or dependencies.
+
+- [x] Add failing reproductions using the actual conversation's generic missing sample/batch/product-context statements. Clearly unrelated absence must not revoke existing assay/count declarations or prevent canonical QC reuse. Keep explicit cancellations, assay/count retractions and mixed unrelated-plus-retraction messages fenced. Never infer a new declaration from a negative or ambiguous message.
+- [x] Provide bounded package-derived mode IDs and required-role names in safe provider context so the model cannot treat input_mode_required as proof that other inputs exist. No scientific payloads, selected values, source identifiers, paths or hashes. State needs_input means not executable yet; no invented modes or unsupported comparison fallback.
+- [x] Run focused tests, all Web/input/workflow tests, and diff checks remotely; preserve all prior retraction/approval tests and immutable history.
+- [x] Independently review the scoped diff, install the exact updated wheel in the isolated candidate, and rerun the same fresh genuine-data/current-provider conversation. Report achieved tools and remaining genuine full-chain blockers separately.
 
 ## Full-chain continuation conditions
 

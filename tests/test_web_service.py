@@ -68,8 +68,11 @@ def test_real_qc_then_no_graft_has_new_approval_and_canonical_receipts(client, t
     "No graft data. This is not scRNA-seq.",
     "没有移植数据。这个不是 scRNA-seq。",
     "No graft data. X is not raw counts.",
+    "没有样本表。这个不是 scRNA-seq。",
+    "没有批次表。counts 层不是原始计数。",
+    "No product definition. Cancel analysis.",
 ])
-def test_mixed_no_graft_message_fences_qc_before_neutral_cell_state_request(
+def test_mixed_unrelated_message_fences_qc_before_neutral_cell_state_request(
         client, tmp_path, monkeypatch, retraction):
     sid = new_session(client)["id"]
     url = f"/api/sessions/{sid}"
@@ -99,6 +102,78 @@ def test_mixed_no_graft_message_fences_qc_before_neutral_cell_state_request(
     value = settle(client, sid)
     assert value["plan"]["status"] == "completed"
     assert value["error"] == "qc_declaration_retracted"
+
+
+@pytest.mark.parametrize("statement", [
+    "目前我没有额外的样本或批次表，也没有提供产品定义、状态角色和实验方案。请保持这些事实未知，告诉我哪些分析现在确实能运行，哪些需要我补什么材料。不要把空分数当成运行失败。",
+    "没有样本表，也没有批次表。",
+    "I have no additional sample or batch tables. No product definition, state roles or experimental protocol.",
+    "没有移植数据，请记录未提供 graft 数据",
+    "No graft data, please record not provided",
+])
+def test_unrelated_missing_metadata_preserves_declared_assay_and_canonical_qc(
+        client, tmp_path, monkeypatch, statement):
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    uploaded = client.post(url + "/uploads", files={
+        "file": ("synthetic.h5ad", h5ad(tmp_path, layer=True)),
+    }).json()
+    aid = uploaded["uploads"][0]["id"]
+    client.post(url + "/messages", json={"text": "scRNA-seq，使用 counts 层进行 QC"})
+    plan = settle(client, sid)["plan"]
+    client.post(url + "/approve", json={"plan_id": plan["id"], "plan_digest": plan["digest"]})
+    done = settle(client, sid)
+    assert done["plan"]["status"] == "completed"
+    client.post(url + "/inputs", json={"upload_id": aid, "source_family_id": "test-source"})
+    service = client.app.state.service
+    monkeypatch.setattr(service, "cell_state_config_reasons", lambda: [])
+    before = service.load(sid)
+    assert next(item for item in service.capabilities(before) if item["tool_id"] == "P0-02")["state"] == "ready"
+    asset = service.qc_asset(before, aid, register=False)
+    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+        "content": '{"action":"reply","text":"Please supply missing inputs privately."}',
+    }))
+
+    client.post(url + "/messages", json={"text": statement})
+    after = settle(client, sid)
+    state = service.load(sid)
+    assert state["_uploads"][aid]["declaration_start"] == before["_uploads"][aid]["declaration_start"]
+    assert service.assay(state, aid) == "scRNA-seq"
+    assert service.qc_asset(state, aid, register=False) == asset
+    assert after["plan"] == done["plan"]
+    assert after["artifacts"] == done["artifacts"]
+    assert state["_tool_runs"] == before["_tool_runs"]
+    assert next(item for item in after["capabilities"] if item["tool_id"] == "P0-02")["state"] == "ready"
+
+
+@pytest.mark.parametrize("statement", [
+    "没有样本表。这个不是 scRNA-seq。",
+    "没有批次表。counts 层不是原始计数。",
+    "No sample table. X is not raw counts.",
+    "No product definition. Cancel analysis.",
+    "没有产品定义，请停止分析。",
+    "没有产品定义和原始计数。",
+    "没有样本表中的原始计数。",
+    "No sample table or raw counts.",
+])
+def test_unrelated_absence_does_not_mask_independent_qc_retraction(client, statement):
+    service = client.app.state.service
+    assert service.independent_retraction(statement)
+
+
+@pytest.mark.parametrize("statement", [
+    "No sample table; scRNA-seq, X contains raw counts",
+    "没有批次表，这是 scRNA-seq，使用 counts 层进行 QC",
+    "没有产品定义，这是 scRNA-seq，使用 counts 层？",
+])
+def test_unrelated_negative_message_cannot_form_new_qc_declarations(client, statement):
+    service = client.app.state.service
+    state = {
+        "messages": [{"role": "user", "content": statement}],
+        "_uploads": {"test": {"locations": ["X", "layers/counts"], "declaration_start": 0}},
+    }
+    assert service.declaration(state, "test") is None
+    assert service.assay(state, "test") is None
 
 
 def test_no_graft_cannot_be_inferred_by_provider(client, tmp_path, monkeypatch):
@@ -234,7 +309,7 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
     context = captured[0]
     assert set(context) == {
         "status", "upload_ids", "plan_status", "capabilities",
-        "tool_execution_history", "results_sent_to_model",
+        "tool_execution_history", "results_sent_to_model", "input_contracts",
     }
     assert context["status"] == "idle"
     assert context["upload_ids"] == [aid]
@@ -244,6 +319,29 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
     }]
     p002 = next(item for item in context["capabilities"] if item["tool_id"] == "P0-02")
     assert p002["state"] == "ready" and p002["reason_codes"] == []
+    contracts = context["input_contracts"]
+    assert set(contracts) == {f"P0-{index:02}" for index in range(1, 13)}
+    assert contracts["P0-01"] == []
+    assert contracts["P0-07"] == [
+        {"mode_id": "legacy_comparison", "required_roles": [
+            "comparison_stability_spec", "comparison_case_manifest", "product_evidence_bundle",
+        ]},
+        {"mode_id": "method_runtime", "required_roles": [
+            "comparison_stability_spec", "comparison_case_manifest", "product_evidence_bundle",
+            "comparison_method_spec", "comparison_method_input",
+        ]},
+    ]
+    assert {mode["mode_id"] for mode in contracts["P0-05"]} == {"legacy_aggregation", "method_runtime"}
+    assert contracts["P0-12"][0] == {"mode_id": "not_provided", "required_roles": []}
+    for modes in contracts.values():
+        for mode in modes:
+            assert set(mode) == {"mode_id", "required_roles"}
+            assert all(isinstance(role, str) for role in mode["required_roles"])
+    assert len(json.dumps(contracts)) < 16000
+    p007 = next(item for item in context["capabilities"] if item["tool_id"] == "P0-07")
+    assert p007["state"] == "needs_input"
+    assert p007["reason_codes"] == ["input_mode_required"]
+    assert p007["mode_id"] is None
     serialized = json.dumps(context)
     for private_value in (
         "PRIVATE-ACTUAL-SOURCE-ID", "private-source-name.h5ad", str(tmp_path),
