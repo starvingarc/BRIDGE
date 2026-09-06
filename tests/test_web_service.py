@@ -12,15 +12,426 @@ from bridge.web.app import Settings, create_app
 from bridge.web.provider import parse_action
 
 
-def test_provider_accepts_real_tool_call_and_content_fallback():
-    action = {"action": "prepare_qc", "upload_id": "a" * 32, "matrix_location": "X"}
-    assert parse_action({"content": json.dumps(action)}).action == "prepare_qc"
-    assert parse_action({"tool_calls": [{"function": {"name": "prepare_qc", "arguments": json.dumps({k: v for k, v in action.items() if k != "action"})}}]}).matrix_location == "X"
-    assert parse_action({"content": "Please upload a file."}).text == "Please upload a file."
-    with pytest.raises(ValueError):
-        parse_action({"content": '{"action":"shell","command":"ls"}'})
-    with pytest.raises(ValueError):
-        parse_action({"content": '{"action":"prepare_qc","upload_id":"abc","matrix_location":"../../secret"}'})
+
+
+def test_prepare_analysis_accepts_registered_tool_actions():
+    for tool_id in (f"P0-{index:02}" for index in range(1, 13)):
+        assert parse_action({"content": json.dumps({"action": "prepare_analysis", "tool_id": tool_id})}).tool_id == tool_id
+    for tool_id in ("P0-00", "P0-13", "/private/tool"):
+        with pytest.raises(ValueError):
+            parse_action({"content": json.dumps({"action": "prepare_analysis", "tool_id": tool_id})})
+
+
+def test_private_source_input_is_bound_to_registered_upload(client, tmp_path):
+    sid = new_session(client)["id"]
+    value = client.post(f"/api/sessions/{sid}/uploads",
+        files={"file": ("synthetic.h5ad", h5ad(tmp_path, layer=True))}).json()
+    aid = value["uploads"][0]["id"]
+    url = f"/api/sessions/{sid}/inputs"
+    saved = client.post(url, json={"upload_id": aid, "source_family_id": "source-family:unit-test"})
+    assert saved.status_code == 200
+    assert saved.json()["uploads"][0]["source_family_id"] == "source-family:unit-test"
+    assert client.post(url, json={"upload_id": "0"*32, "source_family_id": "test"}).status_code == 404
+    for bad in (" ", "/private/file", "a"*161):
+        assert client.post(url, json={"upload_id": aid, "source_family_id": bad}).status_code == 422
+
+
+@pytest.mark.parametrize("declaration", ["没有移植数据，请记录未提供 graft 数据", "No graft data, please record not provided"])
+def test_real_qc_then_no_graft_has_new_approval_and_canonical_receipts(client, tmp_path, monkeypatch, declaration):
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path, layer=True))})
+    client.post(url + "/messages", json={"text": "scRNA-seq，使用 counts 层进行 QC"})
+    first = settle(client, sid)["plan"]
+    client.post(url + "/approve", json={"plan_id": first["id"], "plan_digest": first["digest"]})
+    done = settle(client, sid)
+    service = client.app.state.service
+    assert service.load(sid)["_tool_runs"]
+    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
+    client.post(url + "/messages", json={"text": declaration})
+    proposed = settle(client, sid)
+    assert proposed["status"] == "awaiting_approval", proposed
+    assert proposed["plan_history"][0]["id"] == first["id"]
+    assert proposed["artifacts"] == done["artifacts"]
+    state = service.load(sid)
+    request = json.loads(state["_plan"]["steps"][0]["approved_request_json"])
+    assert request["assets"] == [] and request["object_inputs"] == []
+    assert client.post(url + "/approve", json={"plan_id": first["id"], "plan_digest": first["digest"]}).status_code == 409
+    second = proposed["plan"]
+    client.post(url + "/approve", json={"plan_id": second["id"], "plan_digest": second["digest"]})
+    result = settle(client, sid)
+    assert result["plan"]["status"] == "completed", result
+    assert len(service.load(sid)["_tool_runs"]) == 2
+
+
+@pytest.mark.parametrize("retraction", [
+    "No graft data. This is not scRNA-seq.",
+    "没有移植数据。这个不是 scRNA-seq。",
+    "No graft data. X is not raw counts.",
+    "没有样本表。这个不是 scRNA-seq。",
+    "没有批次表。counts 层不是原始计数。",
+    "No product definition. Cancel analysis.",
+])
+def test_mixed_unrelated_message_fences_qc_before_neutral_cell_state_request(
+        client, tmp_path, monkeypatch, retraction):
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    uploaded = client.post(url + "/uploads", files={
+        "file": ("synthetic.h5ad", h5ad(tmp_path, layer=True)),
+    }).json()
+    aid = uploaded["uploads"][0]["id"]
+    client.post(url + "/messages", json={
+        "text": "scRNA-seq，使用 counts 层进行 QC",
+    })
+    first = settle(client, sid)["plan"]
+    client.post(url + "/approve", json={
+        "plan_id": first["id"], "plan_digest": first["digest"],
+    })
+    assert settle(client, sid)["plan"]["status"] == "completed"
+    client.post(url + "/inputs", json={
+        "upload_id": aid, "source_family_id": "source-family:unit-test",
+    })
+    monkeypatch.setattr(client.app.state.service, "cell_state_config_reasons", lambda: [])
+    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+        "content": '{"action":"prepare_analysis","tool_id":"P0-02"}',
+    }))
+
+    client.post(url + "/messages", json={"text": retraction})
+    assert settle(client, sid)["error"] == "qc_declaration_retracted"
+    client.post(url + "/messages", json={"text": "Continue cell-state analysis."})
+    value = settle(client, sid)
+    assert value["plan"]["status"] == "completed"
+    assert value["error"] == "qc_declaration_retracted"
+
+
+@pytest.mark.parametrize("statement", [
+    "目前我没有额外的样本或批次表，也没有提供产品定义、状态角色和实验方案。请保持这些事实未知，告诉我哪些分析现在确实能运行，哪些需要我补什么材料。不要把空分数当成运行失败。",
+    "没有样本表，也没有批次表。",
+    "I have no additional sample or batch tables. No product definition, state roles or experimental protocol.",
+    "没有移植数据，请记录未提供 graft 数据",
+    "No graft data, please record not provided",
+])
+def test_unrelated_missing_metadata_preserves_declared_assay_and_canonical_qc(
+        client, tmp_path, monkeypatch, statement):
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    uploaded = client.post(url + "/uploads", files={
+        "file": ("synthetic.h5ad", h5ad(tmp_path, layer=True)),
+    }).json()
+    aid = uploaded["uploads"][0]["id"]
+    client.post(url + "/messages", json={"text": "scRNA-seq，使用 counts 层进行 QC"})
+    plan = settle(client, sid)["plan"]
+    client.post(url + "/approve", json={"plan_id": plan["id"], "plan_digest": plan["digest"]})
+    done = settle(client, sid)
+    assert done["plan"]["status"] == "completed"
+    client.post(url + "/inputs", json={"upload_id": aid, "source_family_id": "test-source"})
+    service = client.app.state.service
+    monkeypatch.setattr(service, "cell_state_config_reasons", lambda: [])
+    before = service.load(sid)
+    assert next(item for item in service.capabilities(before) if item["tool_id"] == "P0-02")["state"] == "ready"
+    asset = service.qc_asset(before, aid, register=False)
+    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+        "content": '{"action":"reply","text":"Please supply missing inputs privately."}',
+    }))
+
+    client.post(url + "/messages", json={"text": statement})
+    after = settle(client, sid)
+    state = service.load(sid)
+    assert state["_uploads"][aid]["declaration_start"] == before["_uploads"][aid]["declaration_start"]
+    assert service.assay(state, aid) == "scRNA-seq"
+    assert service.qc_asset(state, aid, register=False) == asset
+    assert after["plan"] == done["plan"]
+    assert after["artifacts"] == done["artifacts"]
+    assert state["_tool_runs"] == before["_tool_runs"]
+    assert next(item for item in after["capabilities"] if item["tool_id"] == "P0-02")["state"] == "ready"
+
+
+@pytest.mark.parametrize("statement", [
+    "没有样本表。这个不是 scRNA-seq。",
+    "没有批次表。counts 层不是原始计数。",
+    "No sample table. X is not raw counts.",
+    "No product definition. Cancel analysis.",
+    "没有产品定义，请停止分析。",
+    "没有产品定义和原始计数。",
+    "没有样本表中的原始计数。",
+    "No sample table or raw counts.",
+])
+def test_unrelated_absence_does_not_mask_independent_qc_retraction(client, statement):
+    service = client.app.state.service
+    assert service.independent_retraction(statement)
+
+
+@pytest.mark.parametrize("statement", [
+    "No sample table; scRNA-seq, X contains raw counts",
+    "没有批次表，这是 scRNA-seq，使用 counts 层进行 QC",
+    "没有产品定义，这是 scRNA-seq，使用 counts 层？",
+])
+def test_unrelated_negative_message_cannot_form_new_qc_declarations(client, statement):
+    service = client.app.state.service
+    state = {
+        "messages": [{"role": "user", "content": statement}],
+        "_uploads": {"test": {"locations": ["X", "layers/counts"], "declaration_start": 0}},
+    }
+    assert service.declaration(state, "test") is None
+    assert service.assay(state, "test") is None
+
+
+def test_no_graft_cannot_be_inferred_by_provider(client, tmp_path, monkeypatch):
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path))})
+    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
+    client.post(url + "/messages", json={"text": "What is graft assessment?"})
+    value = settle(client, sid)
+    assert value["plan"] is None
+    assert value["error"] == "no_graft_declaration_required"
+
+
+
+
+def test_real_qc_cell_state_stage_binds_canonical_data_and_new_approval(client, tmp_path, monkeypatch):
+    from dataclasses import replace
+    from test_cell_state import _build_snapshot, _write_query
+    from bridge.tool_packages.p0_02_cell_state.qc import validate_upstream_qc_bundle
+    from bridge.toolkit.contracts import InputAsset
+    import hashlib
+    import os
+
+    service = client.app.state.service
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    data = _write_query(tmp_path / "query.h5ad").read_bytes()
+    uploaded = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", data)}).json()
+    aid = uploaded["uploads"][0]["id"]
+    client.post(url + "/messages", json={"text": "scRNA-seq，X 是原始计数，进行 QC"})
+    first = settle(client, sid)["plan"]
+    client.post(url + "/approve", json={"plan_id": first["id"], "plan_digest": first["digest"]})
+    assert settle(client, sid)["plan"]["status"] == "completed"
+    captured = []
+    def action(settings, messages, context):
+        captured.append(context)
+        return parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-02"}'})
+    monkeypatch.setattr("bridge.web.app.converse", action)
+    def propose():
+        client.post(url + "/messages", json={"text": "继续细胞状态分析"})
+        return settle(client, sid)
+    assert propose()["error"] == "measurement_spec_not_configured"
+    service.settings = replace(service.settings, cell_state_measurement_spec_ref="CELLSTATE-scRNA-shadow-v0.1")
+    monkeypatch.delenv("BRIDGE_REFERENCE_ROOT", raising=False)
+    assert propose()["error"] == "reference_root_not_configured"
+    _build_snapshot(tmp_path, monkeypatch)
+    assert propose()["error"] == "source_family_id_required"
+    client.post(url + "/inputs", json={"upload_id": aid, "source_family_id": "PRIVATE-UNIT-TEST-SOURCE"})
+    proposed = propose()
+    assert proposed["status"] == "awaiting_approval", proposed
+    assert proposed["plan"]["steps"][0]["status"] == "pending", proposed
+    assert "PRIVATE-UNIT-TEST-SOURCE" not in json.dumps(captured)
+    state = service.load(sid)
+    request = json.loads(state["_plan"]["steps"][0]["approved_request_json"])
+    asset = request["assets"][0]
+    assert asset["checksum"] == hashlib.sha256(data).hexdigest()
+    assert asset["input_level"] == "count_ready"
+    assert asset["matrix_location"] == "X" and asset["matrix_semantics"] == "raw_counts"
+    assert asset["metadata"]["parent_asset_sha256"] == asset["checksum"]
+    assert ".display-redacted" not in json.dumps(request)
+    monkeypatch.setenv("BRIDGE_QC_PROFILE_CATALOG", "original-catalog-sentinel")
+    with service.qc_catalog():
+        upstream = validate_upstream_qc_bundle(InputAsset.model_validate(asset))
+        assert upstream.profile.profile_id == asset["metadata"]["qc_profile_ref"]
+        assert upstream.profile_v2.selected_data_view.view_id == asset["metadata"]["data_view_id"]
+    assert os.environ["BRIDGE_QC_PROFILE_CATALOG"] == "original-catalog-sentinel"
+    with pytest.raises(RuntimeError), service.qc_catalog():
+        raise RuntimeError("intentional")
+    assert os.environ["BRIDGE_QC_PROFILE_CATALOG"] == "original-catalog-sentinel"
+    # Fact edits invalidate only mutable proposals, and historical approvals survive.
+    second = proposed["plan"]
+    edited = client.post(url + "/inputs", json={"upload_id": aid, "source_family_id": "PRIVATE-UNIT-TEST-SOURCE-2"}).json()
+    assert edited["plan"] is None and edited["plan_history"][0]["id"] == first["id"]
+    assert client.post(url + "/approve", json={"plan_id": second["id"], "plan_digest": second["digest"]}).status_code == 409
+    third = propose()["plan"]
+    assert third["digest"] != second["digest"]
+    client.post(url + "/approve", json={"plan_id": third["id"], "plan_digest": third["digest"]})
+    done = settle(client, sid)
+    assert done["plan"]["status"] == "completed", done
+    assert any(item["tool_id"] == "P0-02" for item in done["artifacts"])
+    assert os.environ["BRIDGE_QC_PROFILE_CATALOG"] == "original-catalog-sentinel"
+    # Declared assay retractions block reuse without rewriting historical evidence.
+    client.post(url + "/messages", json={"text": "This is not scRNA-seq"})
+    retracted = settle(client, sid)
+    assert retracted["error"] == "qc_declaration_retracted"
+    assert retracted["plan"]["status"] == "completed"
+    restored_state = service.load(sid)
+    restored_state["_uploads"][aid]["declaration_start"] = state["_uploads"][aid]["declaration_start"]
+    service.save(restored_state)
+    # Downstream construction must not fall back to display copies after deletion.
+    upstream.profile_path.unlink()
+    assert propose()["error"] == "qc_artifacts_missing"
+
+    capability = next(item for item in client.get(url).json()["capabilities"] if item["tool_id"] == "P0-02")
+    assert capability["state"] == "needs_input"
+    assert "qc_artifacts_missing" in capability["reason_codes"]
+
+
+
+def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_private_values(
+        client, tmp_path, monkeypatch):
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    uploaded = client.post(url + "/uploads", files={
+        "file": ("private-source-name.h5ad", h5ad(tmp_path, layer=True)),
+    }).json()
+    aid = uploaded["uploads"][0]["id"]
+    client.post(url + "/messages", json={
+        "text": "scRNA-seq，使用 counts 层进行 QC",
+    })
+    plan = settle(client, sid)["plan"]
+    client.post(url + "/approve", json={
+        "plan_id": plan["id"], "plan_digest": plan["digest"],
+    })
+    assert settle(client, sid)["plan"]["status"] == "completed"
+    client.post(url + "/inputs", json={
+        "upload_id": aid, "source_family_id": "PRIVATE-ACTUAL-SOURCE-ID",
+    })
+    service = client.app.state.service
+    monkeypatch.setattr(service, "cell_state_config_reasons", lambda: [])
+    captured = []
+    def action(settings, messages, context):
+        captured.append(context)
+        return parse_action({"content": '{"action":"reply","text":"bounded"}'})
+    monkeypatch.setattr("bridge.web.app.converse", action)
+
+    client.post(url + "/messages", json={
+        "text": "来源信息已在数据表单填写。请继续细胞状态分析。",
+    })
+    settle(client, sid)
+
+    assert len(captured) == 1
+    context = captured[0]
+    assert set(context) == {
+        "status", "upload_ids", "plan_status", "capabilities",
+        "tool_execution_history", "results_sent_to_model", "input_contracts",
+    }
+    assert context["status"] == "idle"
+    assert context["upload_ids"] == [aid]
+    assert context["plan_status"] == "completed"
+    assert context["tool_execution_history"] == [{
+        "tool_id": "P0-01", "state": "succeeded",
+    }]
+    p002 = next(item for item in context["capabilities"] if item["tool_id"] == "P0-02")
+    assert p002["state"] == "ready" and p002["reason_codes"] == []
+    contracts = context["input_contracts"]
+    assert set(contracts) == {f"P0-{index:02}" for index in range(1, 13)}
+    assert contracts["P0-01"] == []
+    assert contracts["P0-07"] == [
+        {"mode_id": "legacy_comparison", "required_roles": [
+            "comparison_stability_spec", "comparison_case_manifest", "product_evidence_bundle",
+        ]},
+        {"mode_id": "method_runtime", "required_roles": [
+            "comparison_stability_spec", "comparison_case_manifest", "product_evidence_bundle",
+            "comparison_method_spec", "comparison_method_input",
+        ]},
+    ]
+    assert {mode["mode_id"] for mode in contracts["P0-05"]} == {"legacy_aggregation", "method_runtime"}
+    assert contracts["P0-12"][0] == {"mode_id": "not_provided", "required_roles": []}
+    for modes in contracts.values():
+        for mode in modes:
+            assert set(mode) == {"mode_id", "required_roles"}
+            assert all(isinstance(role, str) for role in mode["required_roles"])
+    assert len(json.dumps(contracts)) < 16000
+    p007 = next(item for item in context["capabilities"] if item["tool_id"] == "P0-07")
+    assert p007["state"] == "needs_input"
+    assert p007["reason_codes"] == ["input_mode_required"]
+    assert p007["mode_id"] is None
+    serialized = json.dumps(context)
+    for private_value in (
+        "PRIVATE-ACTUAL-SOURCE-ID", "private-source-name.h5ad", str(tmp_path),
+        service.load(sid)["_uploads"][aid]["sha256"], "private-cell-a",
+    ):
+        assert private_value not in serialized
+
+
+def test_legacy_sessions_default_history_and_unconnected_capabilities(client):
+    sid = new_session(client)["id"]
+    service = client.app.state.service
+    state = service.load(sid)
+    for key in ("plan_history", "_plan_history", "_tool_runs"):
+        state.pop(key)
+    service.save(state)
+    value = client.get(f"/api/sessions/{sid}").json()
+    assert value["plan_history"] == []
+    caps = {item["tool_id"]: item for item in value["capabilities"]}
+    assert len(caps) == 12
+    assert caps["P0-05"]["state"] == "needs_input"
+    assert "measurement_spec_not_configured" in caps["P0-02"]["reason_codes"]
+
+
+def test_partial_run_keeps_real_state_and_artifacts(client, tmp_path, monkeypatch):
+    from bridge.runners import ToolExecutionPipeline
+    from bridge.toolkit.contracts import ExecutionState
+    original = ToolExecutionPipeline.execute_step
+    def partial(self, step):
+        outcome = original(self, step)
+        return outcome.model_copy(update={"execution_state": ExecutionState.PARTIAL})
+    monkeypatch.setattr(ToolExecutionPipeline, "execute_step", partial)
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path))})
+    client.post(url + "/messages", json={"text": "scRNA-seq，X 是原始计数，进行 QC"})
+    plan = settle(client, sid)["plan"]
+    client.post(url + "/approve", json={"plan_id": plan["id"], "plan_digest": plan["digest"]})
+    done = settle(client, sid)
+    assert done["plan"]["status"] == "partial"
+    assert done["plan"]["steps"][0]["status"] == "partial"
+    assert done["artifacts"]
+
+
+
+
+@pytest.mark.parametrize("text", ["No graft data, do not run analysis", "没有移植数据，不要分析", "假设没有移植数据", "If there is no graft data"])
+def test_no_graft_negative_or_hypothetical_intent_never_plans(client, tmp_path, monkeypatch, text):
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path))})
+    client.post(url + "/messages", json={"text": "scRNA-seq，X 是原始计数，进行 QC"})
+    assert settle(client, sid)["status"] == "awaiting_approval"
+    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
+    client.post(url + "/messages", json={"text": text})
+    value = settle(client, sid)
+    assert value["plan"] is None
+    assert value["error"] == "no_graft_declaration_required"
+
+
+
+def test_restart_preserves_completed_plan_during_interrupted_conversation(client):
+    sid = new_session(client)["id"]
+    store = client.app.state.service
+    state = store.load(sid)
+    state["status"] = "thinking"
+    state["plan"] = {"id": "completed", "status": "completed", "steps": []}
+    store.save(state)
+    other = create_app(store.settings)
+    other.state.service.pool.shutdown()
+    assert other.state.service.load(sid)["plan"]["status"] == "completed"
+
+
+def test_provider_accepts_only_complete_typed_json_actions():
+    qc = {"action": "prepare_qc", "upload_id": "a" * 32, "matrix_location": "X"}
+    assert parse_action({"content": json.dumps(qc)}).action == "prepare_qc"
+    assert parse_action({"content": '{"action":"reply","text":"Please upload a file."}'}).text == "Please upload a file."
+    assert parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-02"}'}).tool_id == "P0-02"
+    invalid = [
+        {"content": "Please upload a file."},
+        {"content": '<｜DSML｜function_calls><｜DSML｜invoke name="prepare_analysis">P0-02</｜DSML｜invoke>'},
+        {"content": '{"action":"reply"}'},
+        {"content": '{"action":"prepare_qc","upload_id":"a"}'},
+        {"content": '{"action":"prepare_analysis"}'},
+        {"content": '{"action":"shell","command":"ls"}'},
+        {"content": '{"action":"prepare_qc","upload_id":"abc","matrix_location":"../../secret"}'},
+        {"content": json.dumps(qc), "tool_calls": [{"function": {"name": "prepare_qc", "arguments": "{}"}}]},
+    ]
+    for message in invalid:
+        with pytest.raises(ValueError):
+            parse_action(message)
 
 
 @pytest.fixture
@@ -101,13 +512,18 @@ def test_model_context_and_real_http_error(client, monkeypatch):
     sid = new_session(client)["id"]
     def response(request):
         payload = json.loads(request.content)
-        assert "tool_choice" not in payload
+        assert "tools" not in payload and "tool_choice" not in payload
+        assert payload["response_format"] == {"type": "json_object"}
         assert [item["role"] for item in payload["messages"]].count("system") == 1
         assert payload["messages"][0]["role"] == "system"
-        assert "Safe execution context:" in payload["messages"][0]["content"]
+        system = payload["messages"][0]["content"]
+        assert "Safe execution context:" in system
+        assert 'A capability with state "ready" means' in system
+        assert "do not ask for its private source value in chat" in system
+        assert "use prepare_analysis instead of asking the user to reconfirm QC" in system
         assert payload["messages"][-1] == {"role": "user", "content": "What can you do?"}
         assert "private-key" not in json.dumps(payload)
-        return httpx.Response(200, json={"choices": [{"message": {"content": "I can help prepare QC."}}]})
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"action":"reply","text":"I can help prepare QC."}'}}]})
     original = httpx.Client
     monkeypatch.setattr("bridge.web.provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(response), **kwargs))
     client.post(f"/api/sessions/{sid}/messages", json={"text": "What can you do?"})

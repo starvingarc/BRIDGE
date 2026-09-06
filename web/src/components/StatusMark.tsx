@@ -1,4 +1,4 @@
-import { Check, CircleAlert, CircleDashed, LoaderCircle, Minus } from "lucide-react";
+import { Ban, Check, CircleAlert, CircleDashed, LoaderCircle, Minus, OctagonX } from "lucide-react";
 import type { PlanStep, SessionStatus } from "../types";
 
 export function SessionStatusMark({ status }: { status: SessionStatus }) {
@@ -22,6 +22,9 @@ export function StepStatusMark({ status }: { status: PlanStep["status"] }) {
   if (status === "running") return <LoaderCircle aria-label="Running" className="spin" />;
   if (status === "succeeded") return <Check aria-label="Succeeded" />;
   if (status === "failed") return <CircleAlert aria-label="Failed" />;
+  if (status === "partial") return <CircleAlert aria-label="Partial" />;
+  if (status === "blocked") return <OctagonX aria-label="Blocked" />;
+  if (status === "cancelled") return <Ban aria-label="Cancelled" />;
   if (status === "skipped") return <Minus aria-label="Skipped" />;
   return <CircleDashed aria-label="Pending" />;
 }

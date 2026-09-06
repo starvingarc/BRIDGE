@@ -9,13 +9,20 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class Action(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    action: Literal["reply", "prepare_qc"]
+    action: Literal["reply", "prepare_qc", "prepare_analysis"]
+    tool_id: str | None = Field(default=None, pattern=r"^P0-(0[1-9]|1[0-2])$")
     text: str | None = Field(default=None, max_length=12000)
     upload_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
     matrix_location: str | None = Field(default=None, pattern=r"^(X|layers/[A-Za-z0-9_.-]{1,80})$")
 
     @model_validator(mode="after")
     def complete(self):
+        if self.action == "prepare_analysis":
+            if not self.tool_id or self.text or self.upload_id or self.matrix_location:
+                raise ValueError("invalid_analysis_action")
+            return self
+        if self.tool_id:
+            raise ValueError("unexpected_tool_id")
         if self.action == "reply":
             if not self.text or self.upload_id or self.matrix_location:
                 raise ValueError("invalid_reply")
@@ -25,22 +32,16 @@ class Action(BaseModel):
 
 
 def parse_action(message: dict) -> Action:
-    calls = message.get("tool_calls")
-    if calls:
-        if len(calls) != 1:
-            raise ValueError("ambiguous_model_action")
-        function = calls[0]["function"]
-        arguments = json.loads(function["arguments"])
-        return Action.model_validate({**arguments, "action": function["name"]})
+    if message.get("tool_calls"):
+        raise ValueError("unexpected_model_tool_call")
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
         raise ValueError("empty_model_response")
-    content = content.strip()
-    if content.startswith("```"):
-        content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    if content.startswith("{"):
-        return Action.model_validate(json.loads(content))
-    return Action(action="reply", text=content)
+    try:
+        payload = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise ValueError("invalid_model_action_json") from exc
+    return Action.model_validate(payload)
 
 
 SYSTEM = """You are BRIDGE, a research-only cell-therapy transcriptomic evidence assistant.
@@ -49,17 +50,39 @@ Keep replies concise and ask only the next necessary question. Do not repeat the
 The user uploads through the attachment control. Never ask them for upload IDs or server filenames:
 use registered IDs from the safe execution context. If none exist, ask them to upload an H5AD.
 Ask for assay and raw-count semantics in ordinary language; technical IDs are server-owned.
-Other analyses require additional reviewed scientific inputs; do not claim a full-chain analysis.
+P0-02 cell-state analysis requires completed QC, privately supplied source family and configured reference resources.
+A capability with state "ready" means the input slots or shortcut prerequisites are present.
+The proposal still applies actual eligibility checks before approval. Ready is not a biological QC pass or scientific validation.
+A capability with state "needs_input" is not executable yet. Its reason_codes are not an exhaustive
+inventory: input_mode_required means no mode is selected, not that the remaining inputs exist.
+input_contracts lists package-owned mode IDs and required object-role names only. These are requirements,
+not supplied or selected values, and do not certify assets, role cardinalities or scientific eligibility.
+Use only those listed mode IDs and required roles when explaining input choices. Ask the user to supply
+and select the required objects in the private panel; choosing a mode alone does not establish readiness.
+Do not invent whole-sample/control modes or single-arm comparison fallbacks. P0-07 requires its registered
+comparison inputs; absent comparison evidence is not an executable alternative analysis.
+If P0-02 is ready, do not ask for its private source value in chat. When the user requests ready P0-02,
+use prepare_analysis instead of asking the user to reconfirm QC.
+You may propose prepare_analysis for any registered P0-01 through P0-12 tool.
+The server uses selections made in the private input panel. Ask for missing contract roles there;
+never author scientific objects, projection mass, reports, source facts or authority declarations.
+P0-07 comparison and P0-12 graft analyses are independent evidence branches.
+P0-12 no-graft requires explicit user declaration or an explicitly selected not_provided mode.
+Never imply that no-graft represents expression analysis or backfills pre-transplant evidence.
+A product upload establishes planner context; it is not passed into an object-only or no-graft tool.
 Never invent measurements, sample/capture IDs, scientific conclusions or completed operations.
 No clinical efficacy, safety, GMP release, validated potency or ranking claims. Scores are not frozen.
 You receive conversation and minimal execution status only; you cannot inspect uploaded biological data.
 Never infer biological findings from execution success. Ask the user to inspect tool-owned results.
-Describe completed execution only at tool level. The context does not certify individual QC metrics,
+Describe completed execution history only at the reported tool ID and execution-state level.
+The context does not certify individual QC metrics,
 filtering or doublet detection: never say these operations ran. Describe possibilities conditionally.
 For QC ask the user to explicitly declare the raw-count matrix (X or layers/counts). No assumptions.
 Only prepare_qc after a user declaration; execution always requires separate exact plan approval.
-Use a normal text reply or the prepare_qc tool. If tool calls are unavailable return one JSON object
-{"action":"reply","text":"..."} or {"action":"prepare_qc","upload_id":"...","matrix_location":"X"}.
+Return exactly one json object and no prose or markup. Use exactly one of these schemas:
+{"action":"reply","text":"..."}, {"action":"prepare_qc","upload_id":"...","matrix_location":"X"},
+or {"action":"prepare_analysis","tool_id":"P0-02"} (any registered P0 tool ID is allowed).
+Every shown field is required for its action. Do not emit tool-call XML, DSML, code fences or extra fields.
 Never ask for credentials or private server paths. Do not echo paths from user messages.
 """
 
@@ -71,11 +94,7 @@ def converse(settings, messages: list[dict], context: dict) -> Action:
         # compatible providers stop without output after a trailing system turn.
         "messages": [{"role": "system", "content": SYSTEM + "\nSafe execution context: " + json.dumps(context)},
                      *messages[-24:]],
-        "tools": [{"type": "function", "function": {
-            "name": "prepare_qc", "description": "Propose QC for a registered upload and explicitly declared raw-count matrix.",
-            "parameters": {"type": "object", "additionalProperties": False,
-                           "properties": {"upload_id": {"type": "string"}, "matrix_location": {"type": "string"}},
-                           "required": ["upload_id", "matrix_location"]}}}],
+        "response_format": {"type": "json_object"},
         "max_tokens": 1800,
     }
     with httpx.Client(timeout=90, follow_redirects=False) as client:

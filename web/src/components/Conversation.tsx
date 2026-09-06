@@ -4,10 +4,11 @@ import {
   ThreadPrimitive,
 } from "@assistant-ui/react";
 import { File, Menu, MoreVertical, Paperclip, Send, Square } from "lucide-react";
-import { type ChangeEvent, useRef } from "react";
-import type { Session } from "../types";
+import { type ChangeEvent, type FormEvent, useRef } from "react";
+import type { Session, Upload } from "../types";
+import { AnalysisInputs } from "./AnalysisInputs";
 import { MarkdownText } from "./MarkdownText";
-import { PlanCard } from "./PlanCard";
+import { PlanCard, PlanHistory } from "./PlanCard";
 import { SessionStatusMark } from "./StatusMark";
 
 type Props = {
@@ -17,7 +18,10 @@ type Props = {
   approveBusy: boolean;
   onOpenSidebar: () => void;
   onUpload: (file: File) => void;
+  onSourceInput: (uploadId: string, sourceFamilyId: string) => void;
   onApprove: () => void;
+  onSession: (session: Session) => void;
+  onError: (error: unknown) => void;
 };
 
 function UserMessage() {
@@ -43,6 +47,54 @@ function AssistantMessage() {
   );
 }
 
+export function SourceInputForms({
+  uploads,
+  disabled,
+  onSourceInput,
+}: {
+  uploads: Upload[];
+  disabled: boolean;
+  onSourceInput: (uploadId: string, sourceFamilyId: string) => void;
+}) {
+  const nameCounts = uploads.reduce<Map<string, number>>(
+    (counts, upload) => counts.set(upload.name, (counts.get(upload.name) ?? 0) + 1),
+    new Map(),
+  );
+  const submit = (event: FormEvent<HTMLFormElement>, uploadId: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const sourceFamilyId = String(form.get("source_family_id") ?? "").trim();
+    if (sourceFamilyId) onSourceInput(uploadId, sourceFamilyId);
+  };
+
+  return uploads.map((upload) => {
+    const uploadLabel = nameCounts.get(upload.name) === 1
+      ? upload.name
+      : `${upload.name} · ${upload.id.slice(0, 8)}`;
+    return (
+      <form className="source-form" key={upload.id} onSubmit={(event) => submit(event, upload.id)}>
+        <strong className="source-upload-name">{uploadLabel}</strong>
+        <label htmlFor={`source-${upload.id}`}>Data source / experiment reference</label>
+        <div>
+          <input
+            id={`source-${upload.id}`}
+            name="source_family_id"
+            defaultValue={upload.source_family_id ?? ""}
+            maxLength={160}
+            pattern={"[A-Za-z0-9][A-Za-z0-9_.:\\-]*"}
+            title="Start with a letter or number; use only letters, numbers, dot, underscore, colon, or hyphen."
+            required
+            disabled={disabled}
+            placeholder="e.g. source-family:study-cohort"
+          />
+          <button type="submit" disabled={disabled}>Save</button>
+        </div>
+        <small>Stored with this upload locally, up to 160 letters, numbers, . _ : or -. It is not sent to the model.</small>
+      </form>
+    );
+  });
+}
+
 export function Conversation({
   session,
   busy,
@@ -50,7 +102,10 @@ export function Conversation({
   approveBusy,
   onOpenSidebar,
   onUpload,
+  onSourceInput,
   onApprove,
+  onSession,
+  onError,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -99,6 +154,7 @@ export function Conversation({
                 {session.error}
               </div>
             ) : null}
+            <PlanHistory plans={session.plan_history ?? []} currentPlanId={session.plan?.id} />
             {session.plan ? (
               <PlanCard
                 plan={session.plan}
@@ -109,6 +165,21 @@ export function Conversation({
             ) : null}
           </div>
           <ThreadPrimitive.ViewportFooter className="composer-footer">
+            <AnalysisInputs
+              key={session.id}
+              sessionId={session.id}
+              uploads={session.uploads}
+              capabilities={session.capabilities ?? []}
+              disabled={busy}
+              onSession={onSession}
+              onError={onError}
+            >
+              <SourceInputForms
+                uploads={session.uploads}
+                disabled={busy}
+                onSourceInput={onSourceInput}
+              />
+            </AnalysisInputs>
             {session.uploads.length ? (
               <div className="upload-list" aria-label="Uploaded files">
                 {session.uploads.map((upload) => (

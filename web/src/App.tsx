@@ -64,7 +64,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [action, setAction] = useState<"create" | "load" | "upload" | "approve" | "logout" | null>(null);
+  const [action, setAction] = useState<"create" | "load" | "upload" | "source" | "approve" | "logout" | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [resultsWidth, setResultsWidth] = useState(() =>
     Math.max(420, Math.min(620, Math.round(window.innerWidth * 0.4))),
@@ -243,6 +243,19 @@ export default function App() {
     }
   };
 
+  const setSourceInput = async (uploadId: string, sourceFamilyId: string) => {
+    if (!session) return;
+    setAction("source");
+    setNotice(null);
+    try {
+      mergeSession(await api.setSourceInput(session.id, uploadId, sourceFamilyId));
+    } catch (error) {
+      handleActionError(error);
+    } finally {
+      setAction(null);
+    }
+  };
+
   const approve = async () => {
     if (!session?.plan) return;
     setAction("approve");
@@ -290,7 +303,10 @@ export default function App() {
               approveBusy={action !== null}
               onOpenSidebar={() => setSidebarOpen(true)}
               onUpload={upload}
+              onSourceInput={setSourceInput}
               onApprove={approve}
+              onSession={mergeSession}
+              onError={handleActionError}
             />
           </BridgeRuntimeProvider>
         ) : (

@@ -41,6 +41,121 @@ describe("API client", () => {
     );
   });
 
+  it("posts only the registered upload and source identifier as private input", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ id: "session-1" }),
+    );
+
+    await api.setSourceInput("session-1", "upload-7", "source-family:donor-a");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/sessions/session-1/inputs",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          upload_id: "upload-7",
+          source_family_id: "source-family:donor-a",
+        }),
+      }),
+    );
+  });
+
+  it("uses the frozen analysis-input routes and exact public request shapes", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        id: "session-1",
+        title: "Session",
+        updated_at: "2026-09-07T00:00:00Z",
+        status: "idle",
+        messages: [],
+        uploads: [],
+        plan: null,
+        artifacts: [],
+        error: null,
+      }),
+    );
+    const selection = {
+      tool_id: "P0-06",
+      mode_id: "supplied_evidence",
+      asset_ids: ["asset-1"],
+      object_inputs: [{ role: "product_case", input_id: "object-1" }],
+      measurement_spec_ref: "measurement-1",
+    };
+
+    await api.saveAnalysisInputs("session-1", selection);
+    await api.registerAnalysisAsset("session-1", {
+      upload_id: "upload-1",
+      assay: "scRNA-seq",
+      matrix_location: "layers/counts",
+      matrix_semantics: "raw_counts",
+      input_level: "count_ready",
+      metadata: { biological_unit: "donor" },
+    });
+    await api.prepareAnalysis("session-1", "P0-06");
+    await api.uploadAnalysisObject("session-1", {
+      toolId: "P0-06",
+      modeId: "supplied_evidence",
+      role: "product_case",
+      schemaRef: "bridge://schemas/product-case/v0.1",
+      objectVersion: "0.1.0",
+      file: new File(["{}"], "case.json", { type: "application/json" }),
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/sessions/session-1/analysis-inputs");
+    expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify(selection),
+    }));
+    expect(fetchMock.mock.calls[1]).toEqual([
+      "/api/sessions/session-1/analysis-inputs/assets",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          upload_id: "upload-1",
+          assay: "scRNA-seq",
+          matrix_location: "layers/counts",
+          matrix_semantics: "raw_counts",
+          input_level: "count_ready",
+          metadata: { biological_unit: "donor" },
+        }),
+      }),
+    ]);
+    expect(fetchMock.mock.calls[2]).toEqual([
+      "/api/sessions/session-1/prepare-analysis",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ tool_id: "P0-06" }),
+      }),
+    ]);
+    expect(String(fetchMock.mock.calls[3][0])).toContain(
+      "/api/sessions/session-1/analysis-inputs/objects?",
+    );
+    const objectRequest = fetchMock.mock.calls[3][1] as RequestInit;
+    expect(objectRequest.body).toBeInstanceOf(FormData);
+    expect((objectRequest.headers as Headers).has("Content-Type")).toBe(false);
+  });
+
+  it("normalizes missing stage additions for saved sessions", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({
+        id: "saved-session",
+        title: "Saved",
+        updated_at: "2026-09-05T00:00:00Z",
+        status: "idle",
+        messages: [],
+        uploads: [],
+        plan: null,
+        artifacts: [],
+        error: null,
+      }),
+    );
+
+    const session = await api.getSession("saved-session");
+
+    expect(session.plan_history).toEqual([]);
+    expect(session.capabilities).toEqual([]);
+  });
+
   it("uses multipart FormData for uploads without overriding its content type", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse({ id: "session-1" }),

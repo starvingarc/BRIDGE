@@ -158,6 +158,25 @@ def test_executor_rejects_unapproved_plan(tmp_path: Path) -> None:
         LocalWorkflowExecutor().submit(AnalysisPlan.model_validate(payload))
 
 
+def test_successful_scientific_reasons_remain_in_canonical_receipt(tmp_path: Path) -> None:
+    import json
+    plan = _plan(tmp_path)
+    executor = LocalWorkflowExecutor()
+    run_id = executor.submit(plan)
+    claim = executor.claim_step(run_id)
+    outcome = executor.execute_claim(claim, _pipeline(plan, FakeRegistry(reason_codes=["descriptive_only"])))
+    assert outcome.execution_state is ExecutionState.SUCCEEDED
+    assert outcome.reason_codes == ["descriptive_only"]
+    snapshot = executor.get_status(run_id)
+    assert snapshot.status.value == "succeeded"
+    assert snapshot.steps[0].reason_codes == []
+    receipt = snapshot.steps[0].outcome_receipt
+    assert receipt.execution_state == "succeeded"
+    assert receipt.tool_run_sha256 == hashlib.sha256(
+        json.dumps(outcome.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
 def test_claim_execution_persists_tool_run_receipt(tmp_path: Path) -> None:
     plan = _plan(tmp_path)
     executor = LocalWorkflowExecutor()
