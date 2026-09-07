@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-09-07: Separate P0-05 Counts From Assignment Mass
+
+The approved P0-05 hard_count_accounting input mode consumes the existing
+producer V3 count partition without requiring a caller-authored mass bundle.
+Consensus-supported role counts and non-consensus reconciliation buckets remain
+separate. A zero supported count cannot establish biological absence. Soft mass,
+open-set assessment and rare-state detection remain unavailable/not assessed.
+
+A distinct versioned profile and package result union preserve existing profile
+contracts. The count-only mode does not run soft-composition figures, bootstrap
+inference or detection calibration. Required manifest/receipt bindings establish
+execution ownership correspondence, not independently verified biological units.
+The branch plan tracks implementation and validation; this decision does not
+claim a completed genuine-data chain or scientific release.
+
+
 ## 2026-08-10: Rebuild The Active Package
 
 The historical Step1-Step3 implementation remains available through Git history. BRIDGE uses new high-level Tool Package contracts and has no compatibility requirement with historical score or report APIs.

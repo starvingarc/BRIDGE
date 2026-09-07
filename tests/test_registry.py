@@ -140,6 +140,24 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
     ]
 
 
+def test_p005_discovery_exposes_count_only_inputs_without_mass_bundle() -> None:
+    registry = ToolRegistry.load_default()
+    modes = {mode.mode_id: mode for mode in registry.describe_input("P0-05").object_input_modes}
+    assert "hard_count_accounting" in modes
+    roles = {role.role: role for role in modes["hard_count_accounting"].roles}
+    assert set(roles) == {
+        "product_case", "product_definition_card", "state_role_map",
+        "off_target_assessment_spec", "cell_state_evidence_profile",
+        "biological_unit_manifest", "biological_unit_attestation_receipt", "measurement_spec",
+    }
+    assert roles["cell_state_evidence_profile"].schema_refs == ["bridge://schemas/cell-state-evidence-profile/v0.3"]
+    assert roles["cell_state_evidence_profile"].object_versions == ["0.3.0"]
+    assert roles["measurement_spec"].min_count == 0
+    assert all(role.max_count == 1 for role in roles.values())
+    assert all(role.min_count == 1 for name, role in roles.items() if name != "measurement_spec")
+    assert {"legacy_aggregation", "method_runtime"} <= set(modes)
+
+
 def test_input_contract_roles_match_runtime_adapters() -> None:
     modules = {
         "P0-03": "bridge.tool_packages.p0_03_target_regional.adapter",

@@ -148,6 +148,29 @@ V02 = "0.2.0"
 V03 = "0.3.0"
 
 
+def _p005_context_roles() -> tuple[ObjectInputRoleContract, ...]:
+    return (
+        _role("product_case", "bridge://schemas/product-case/v0.1", V01, 1, 1),
+        _role(
+            "product_definition_card",
+            "bridge://schemas/product-definition-card/v0.1",
+            V01,
+            1,
+            1,
+        ),
+        _role(
+            "state_role_map", "bridge://schemas/state-role-map/v0.1", V01, 1, 1
+        ),
+        _role(
+            "off_target_assessment_spec",
+            "bridge://schemas/off-target-assessment-spec/v0.1",
+            V01,
+            1,
+            1,
+        ),
+    )
+
+
 def _p006_base_roles(
     cell_state_schema: str,
     cell_state_version: str,
@@ -566,24 +589,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         object_input_modes=[
             _mode(
                 "legacy_aggregation",
-                _role("product_case", "bridge://schemas/product-case/v0.1", V01, 1, 1),
-                _role(
-                    "product_definition_card",
-                    "bridge://schemas/product-definition-card/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "state_role_map", "bridge://schemas/state-role-map/v0.1", V01, 1, 1
-                ),
-                _role(
-                    "off_target_assessment_spec",
-                    "bridge://schemas/off-target-assessment-spec/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
+                *_p005_context_roles(),
                 _role(
                     "cell_state_evidence_profile",
                     "bridge://schemas/cell-state-evidence-profile/v0.2",
@@ -615,24 +621,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
             ),
             _mode(
                 "method_runtime",
-                _role("product_case", "bridge://schemas/product-case/v0.1", V01, 1, 1),
-                _role(
-                    "product_definition_card",
-                    "bridge://schemas/product-definition-card/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "state_role_map", "bridge://schemas/state-role-map/v0.1", V01, 1, 1
-                ),
-                _role(
-                    "off_target_assessment_spec",
-                    "bridge://schemas/off-target-assessment-spec/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
+                *_p005_context_roles(),
                 _role(
                     "cell_state_evidence_profile",
                     "bridge://schemas/cell-state-evidence-profile/v0.3",
@@ -681,6 +670,30 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     V01,
                     1,
                     1,
+                ),
+            ),
+            _mode(
+                "hard_count_accounting",
+                *_p005_context_roles(),
+                _role(
+                    "cell_state_evidence_profile",
+                    "bridge://schemas/cell-state-evidence-profile/v0.3",
+                    V03, 1, 1,
+                ),
+                _role(
+                    "biological_unit_manifest",
+                    "bridge://schemas/biological-unit-manifest/v0.1",
+                    V01, 1, 1,
+                ),
+                _role(
+                    "biological_unit_attestation_receipt",
+                    "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+                    V01, 1, 1,
+                ),
+                _role(
+                    "measurement_spec",
+                    "bridge://schemas/measurement-spec/v0.2",
+                    None, 0, 1,
                 ),
             ),
         ],

@@ -176,6 +176,13 @@ P005_MEASUREMENT_PROJECTION_FILES = (
     Path("src/bridge/resources/schemas/off_target_control_profile_v2.schema.json"),
     Path("src/bridge/tool_packages/p0_05_off_target_control/executor.py"),
 )
+P005_INPUT_ROUTE_FILES = (
+    Path("plans/p0-05-hard-count-accounting.md"),
+    Path("src/bridge/resources/schemas/off_target_control_result.schema.json"),
+    Path("src/bridge/resources/schemas/off_target_hard_count_profile.schema.json"),
+    Path("tests/test_p0_05_hard_count_accounting.py"),
+    Path("docs/validation/p0_05_hard_count_accounting_20260907.md"),
+)
 P006_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/proliferation_stress_visualization_data.schema.json"),
     Path("src/bridge/resources/schemas/p0_06_visualization_artifact_set.schema.json"),
@@ -381,6 +388,7 @@ def _tracked_file_budget() -> int:
         + p004_visualization_files
         + p005_visualization_files
         + p005_measurement_projection_files
+        + sum((ROOT / relative).is_file() for relative in P005_INPUT_ROUTE_FILES)
         + p006_visualization_files
         + p006_measurement_projection_files
         + p007_visualization_files

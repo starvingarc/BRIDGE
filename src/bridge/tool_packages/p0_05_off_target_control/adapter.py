@@ -25,11 +25,15 @@ from bridge.tool_packages._structured_runtime import (
     single_object,
 )
 from bridge.tool_packages.p0_05_off_target_control.executor import (
+    HARD_COUNT_MEASUREMENT_METRIC_NAMES,
     MEASUREMENT_PROJECTION_METRIC_NAMES,
+    aggregate_hard_count_profile,
     profile_v2_without_projection,
+    project_hard_count_measurements,
     project_off_target_measurements,
 )
 from bridge.tool_packages.p0_05_off_target_control.method_binding import (
+    hard_count_binding_reasons,
     method_binding_reasons,
 )
 from bridge.tool_packages.p0_05_off_target_control.method_models import (
@@ -46,6 +50,7 @@ from bridge.tool_packages.p0_05_off_target_control.models import (
     OffTargetAssessmentSpec,
     OffTargetControlProfile,
     OffTargetEvidenceBundle,
+    OffTargetHardCountProfileV1,
     ProductRole,
     RareDetectionState,
     RareStateRecord,
@@ -77,6 +82,7 @@ from bridge.toolkit.contracts import (
 )
 
 RESULT_SCHEMA_REF_V2 = "bridge://schemas/off-target-control-profile/v0.2"
+RESULT_SCHEMA_REF_UNION = "bridge://schemas/off-target-control-result/v0.1"
 MEASUREMENT_SPEC_ROLE = "measurement_spec"
 ROLE_CONTRACTS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
     "product_case": (
@@ -135,6 +141,15 @@ ROLE_CONTRACTS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
         OffTargetMethodInput,
     ),
 }
+CONTEXT_ROLES = frozenset(
+    {
+        "product_case",
+        "product_definition_card",
+        "state_role_map",
+        "off_target_assessment_spec",
+        "cell_state_evidence_profile",
+    }
+)
 METHOD_ROLES = frozenset(
     {
         "biological_unit_manifest",
@@ -146,7 +161,12 @@ METHOD_ROLES = frozenset(
 METHOD_TRIGGER_ROLES = frozenset(
     {"off_target_method_spec", "off_target_method_input"}
 )
-BASE_ROLES = frozenset(set(ROLE_CONTRACTS) - METHOD_ROLES - {MEASUREMENT_SPEC_ROLE})
+LEGACY_REQUIRED_ROLES = CONTEXT_ROLES | {"off_target_evidence_bundle"}
+METHOD_REQUIRED_ROLES = LEGACY_REQUIRED_ROLES | METHOD_ROLES
+HARD_COUNT_REQUIRED_ROLES = CONTEXT_ROLES | {
+    "biological_unit_manifest",
+    "biological_unit_attestation_receipt",
+}
 CELL_STATE_V3_CONTRACT = (
     "bridge://schemas/cell-state-evidence-profile/v0.3",
     "0.3.0",
@@ -205,8 +225,11 @@ class OffTargetControlAdapter:
             OffTargetAssessmentSpec,
         )
         method_mode = _uses_method_runtime(request.object_inputs)
+        hard_count_mode = _uses_hard_count_accounting(request.object_inputs)
         cell_state_model = (
-            CellStateEvidenceProfileV3 if method_mode else CellStateEvidenceProfileV2
+            CellStateEvidenceProfileV3
+            if method_mode or hard_count_mode
+            else CellStateEvidenceProfileV2
         )
         cell_state_profile = single_object(
             request,
@@ -214,17 +237,42 @@ class OffTargetControlAdapter:
             "cell_state_evidence_profile",
             cell_state_model,
         )
+        measurement_specs = objects_for_role(
+            request, loaded, MEASUREMENT_SPEC_ROLE, MeasurementSpecV2
+        )
+        measurement_spec = measurement_specs[0] if measurement_specs else None
+        if hard_count_mode:
+            biological_units = single_object(
+                request,
+                loaded,
+                "biological_unit_manifest",
+                BiologicalUnitManifest,
+            )
+            attestation_receipt = single_object(
+                request,
+                loaded,
+                "biological_unit_attestation_receipt",
+                BiologicalUnitAttestationReceipt,
+            )
+            return _run_hard_count_accounting(
+                request=request,
+                spec=spec,
+                product_case=product_case,
+                product_definition=product_definition,
+                role_map=role_map,
+                assessment_spec=assessment_spec,
+                cell_state_profile=cell_state_profile,
+                biological_units=biological_units,
+                attestation_receipt=attestation_receipt,
+                measurement_spec=measurement_spec,
+            )
+
         evidence_bundle = single_object(
             request,
             loaded,
             "off_target_evidence_bundle",
             OffTargetEvidenceBundle,
         )
-        measurement_specs = objects_for_role(
-            request, loaded, MEASUREMENT_SPEC_ROLE, MeasurementSpecV2
-        )
-        measurement_spec = measurement_specs[0] if measurement_specs else None
-
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
         base_result = _aggregate_profile(
@@ -260,7 +308,10 @@ class OffTargetControlAdapter:
             result = projection.profile
             measurements = projection.measurements
             measurement_payloads = projection.payloads
-        elif spec.result_schema_ref == RESULT_SCHEMA_REF_V2:
+        elif spec.result_schema_ref in {
+            RESULT_SCHEMA_REF_V2,
+            RESULT_SCHEMA_REF_UNION,
+        }:
             result = profile_v2_without_projection(base_result)
         result_bytes = canonical_json_bytes(result.model_dump(mode="json"), indent=2)
         payloads = {
@@ -407,6 +458,113 @@ class OffTargetControlAdapter:
         )
 
 
+def _run_hard_count_accounting(
+    *,
+    request: ToolRequestV2,
+    spec: ToolPackageSpecV2,
+    product_case: ProductCase,
+    product_definition: ProductDefinitionCard,
+    role_map: StateRoleMap,
+    assessment_spec: OffTargetAssessmentSpec,
+    cell_state_profile: CellStateEvidenceProfileV3,
+    biological_units: BiologicalUnitManifest,
+    attestation_receipt: BiologicalUnitAttestationReceipt,
+    measurement_spec: MeasurementSpecV2 | None,
+) -> ToolRunV2:
+    input_hash = _input_hash(request, spec)
+    run_id = f"run-{input_hash[:16]}"
+    input_sha256_by_role = {
+        ref.role: ref.sha256 for ref in request.object_inputs
+    }
+    result: OffTargetHardCountProfileV1 = aggregate_hard_count_profile(
+        tool_version=spec.version,
+        input_hash=input_hash,
+        product_case=product_case,
+        product_definition=product_definition,
+        role_map=role_map,
+        assessment_spec=assessment_spec,
+        cell_state_profile=cell_state_profile,
+        biological_units=biological_units,
+        attestation_receipt=attestation_receipt,
+        input_sha256_by_role=input_sha256_by_role,
+    )
+    evidence_ids = sorted(set(cell_state_profile.evidence_ids))
+    projection = None
+    measurements = []
+    measurement_payloads: dict[str, bytes] = {}
+    if measurement_spec is not None:
+        projection = project_hard_count_measurements(
+            run_id=run_id,
+            profile=result,
+            measurement_spec=measurement_spec,
+            measurement_spec_sha256=input_sha256_by_role[MEASUREMENT_SPEC_ROLE],
+            evidence_refs=evidence_ids,
+        )
+        result = projection.profile
+        measurements = projection.measurements
+        measurement_payloads = projection.payloads
+    result_bytes = canonical_json_bytes(
+        result.model_dump(mode="json"),
+        indent=2,
+    )
+    payloads = {
+        "off_target_hard_count_profile.json": result_bytes,
+        **measurement_payloads,
+    }
+    try:
+        published = publish_json_bundle(
+            request=request,
+            run_id=run_id,
+            payloads=payloads,
+        )
+    except PublicationError as exc:
+        return _failed_run(
+            request,
+            spec,
+            [exc.reason_code],
+            input_hash=input_hash,
+        )
+    artifacts = [
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:off-target-hard-count",
+            kind="off_target_hard_count_profile",
+            path=published["off_target_hard_count_profile.json"],
+            media_type="application/json",
+            sha256=hashlib.sha256(result_bytes).hexdigest(),
+            evidence_ids=evidence_ids,
+        )
+    ]
+    if projection is not None:
+        for binding in projection.profile.measurement_artifacts:
+            artifacts.append(
+                ArtifactManifest(
+                    artifact_id=binding.artifact_id,
+                    kind="measurement_result_v2",
+                    path=published[binding.file_name],
+                    media_type="application/json",
+                    sha256=binding.sha256,
+                    evidence_ids=evidence_ids,
+                )
+            )
+    return ToolRunV2(
+        run_id=run_id,
+        request=request,
+        implementation_state=ImplementationState.IMPLEMENTED,
+        execution_state=ExecutionState.SUCCEEDED,
+        tool_version=spec.version,
+        environment_spec_id=spec.environment_spec_id,
+        input_hash=input_hash,
+        created_at=result.created_at,
+        measurements=measurements,
+        artifacts=artifacts,
+        visualizations=[],
+        result_schema_ref=spec.result_schema_ref,
+        result=result.model_dump(mode="json"),
+        reason_codes=[],
+        warnings=[],
+    )
+
+
 adapter = OffTargetControlAdapter()
 
 
@@ -414,10 +572,18 @@ def _uses_method_runtime(refs: list[StructuredInputRef]) -> bool:
     return any(ref.role in METHOD_TRIGGER_ROLES for ref in refs)
 
 
-def _cell_state_contract(method_mode: bool):
+def _uses_hard_count_accounting(refs: list[StructuredInputRef]) -> bool:
+    return not _uses_method_runtime(refs) and any(
+        ref.role == "cell_state_evidence_profile"
+        and ref.schema_ref == CELL_STATE_V3_CONTRACT[0]
+        for ref in refs
+    )
+
+
+def _cell_state_contract(method_mode: bool, hard_count_mode: bool = False):
     return (
         CELL_STATE_V3_CONTRACT
-        if method_mode
+        if method_mode or hard_count_mode
         else ROLE_CONTRACTS["cell_state_evidence_profile"]
     )
 
@@ -438,22 +604,34 @@ def _envelope_reasons(request: ToolRequestV2, spec: ToolPackageSpecV2) -> list[s
     measurement_spec_count = roles.count(MEASUREMENT_SPEC_ROLE)
     if measurement_spec_count > 1:
         reasons.append("at_most_one_measurement_spec_allowed")
-    if (
-        measurement_spec_count == 1 and spec.result_schema_ref != RESULT_SCHEMA_REF_V2
-    ):
+    if measurement_spec_count == 1 and spec.result_schema_ref not in {
+        RESULT_SCHEMA_REF_V2,
+        RESULT_SCHEMA_REF_UNION,
+    }:
         reasons.append("measurement_projection_requires_profile_v2")
     if measurement_spec_count == 1 and roles.count("biological_unit_manifest") != 1:
         reasons.append("measurement_projection_requires_biological_unit_manifest")
     if roles.count("biological_unit_manifest") > 1:
         reasons.append("at_most_one_biological_unit_manifest_allowed")
-    for role in BASE_ROLES:
+    method_mode = _uses_method_runtime(request.object_inputs)
+    hard_count_mode = _uses_hard_count_accounting(request.object_inputs)
+    if method_mode:
+        required_roles = METHOD_REQUIRED_ROLES
+        allowed_roles = METHOD_REQUIRED_ROLES | {MEASUREMENT_SPEC_ROLE}
+    elif hard_count_mode:
+        required_roles = HARD_COUNT_REQUIRED_ROLES
+        allowed_roles = HARD_COUNT_REQUIRED_ROLES | {MEASUREMENT_SPEC_ROLE}
+    else:
+        required_roles = LEGACY_REQUIRED_ROLES
+        allowed_roles = LEGACY_REQUIRED_ROLES | {
+            "biological_unit_manifest",
+            MEASUREMENT_SPEC_ROLE,
+        }
+    for role in required_roles:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
-    method_mode = _uses_method_runtime(request.object_inputs)
-    if method_mode:
-        for role in METHOD_ROLES:
-            if roles.count(role) != 1:
-                reasons.append(f"exactly_one_{role}_required")
+    if any(role in ROLE_CONTRACTS and role not in allowed_roles for role in roles):
+        reasons.append("object_input_role_not_allowed_in_selected_mode")
     if any(role not in ROLE_CONTRACTS for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
@@ -465,7 +643,7 @@ def _envelope_reasons(request: ToolRequestV2, spec: ToolPackageSpecV2) -> list[s
         if contract is None:
             continue
         if ref.role == "cell_state_evidence_profile":
-            contract = _cell_state_contract(method_mode)
+            contract = _cell_state_contract(method_mode, hard_count_mode)
         schema_ref, object_version, _model = contract
         if ref.schema_ref != schema_ref:
             reasons.append("object_input_schema_mismatch")
@@ -480,10 +658,11 @@ def _load_inputs(
     refs: list[StructuredInputRef],
 ) -> tuple[LoadedInputs | None, list[str]]:
     method_mode = _uses_method_runtime(refs)
+    hard_count_mode = _uses_hard_count_accounting(refs)
 
     def model_for(ref: StructuredInputRef):
         if ref.role == "cell_state_evidence_profile":
-            return _cell_state_contract(method_mode)[2]
+            return _cell_state_contract(method_mode, hard_count_mode)[2]
         return ROLE_CONTRACTS.get(ref.role, ("", "", None))[2]
 
     return load_structured_inputs(
@@ -523,8 +702,11 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         OffTargetAssessmentSpec,
     )
     method_mode = _uses_method_runtime(request.object_inputs)
+    hard_count_mode = _uses_hard_count_accounting(request.object_inputs)
     cell_state_model = (
-        CellStateEvidenceProfileV3 if method_mode else CellStateEvidenceProfileV2
+        CellStateEvidenceProfileV3
+        if method_mode or hard_count_mode
+        else CellStateEvidenceProfileV2
     )
     cell_state_profile = single_object(
         request,
@@ -532,12 +714,13 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
         "cell_state_evidence_profile",
         cell_state_model,
     )
-    evidence_bundle = single_object(
+    evidence_bundles = objects_for_role(
         request,
         loaded,
         "off_target_evidence_bundle",
         OffTargetEvidenceBundle,
     )
+    evidence_bundle = evidence_bundles[0] if evidence_bundles else None
     measurement_specs = objects_for_role(
         request, loaded, MEASUREMENT_SPEC_ROLE, MeasurementSpecV2
     )
@@ -599,7 +782,7 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             or product_case.biological_unit_manifest_ref != manifest.ref
             or product_case.biological_unit_manifest_sha256
             != input_refs["biological_unit_manifest"].sha256
-            or evidence_bundle.denominator.n_observations != manifest.n_observations
+            or cell_state_profile.n_observations != manifest.n_observations
         ):
             reasons.append("measurement_spec_biological_unit_mismatch")
         metric_names = measurement_spec.raw_metric_definition.get("metric_names")
@@ -607,7 +790,12 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             not isinstance(metric_names, list)
             or not all(isinstance(item, str) for item in metric_names)
             or len(metric_names) != len(set(metric_names))
-            or set(metric_names) != MEASUREMENT_PROJECTION_METRIC_NAMES
+            or set(metric_names)
+            != (
+                HARD_COUNT_MEASUREMENT_METRIC_NAMES
+                if hard_count_mode
+                else MEASUREMENT_PROJECTION_METRIC_NAMES
+            )
         ):
             reasons.append("measurement_spec_metric_names_mismatch")
 
@@ -620,6 +808,41 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     if assessment_spec.state_role_map_sha256 != input_refs["state_role_map"].sha256:
         reasons.append("assessment_spec_state_role_map_checksum_mismatch")
 
+    assignment_ids = {item.state_id for item in role_map.assignments}
+    rare_rule_ids = {item.state_id for item in assessment_spec.rare_state_rules}
+    if not rare_rule_ids.issubset(assignment_ids):
+        reasons.append("rare_state_rule_contains_unmapped_state")
+    if hard_count_mode:
+        biological_units = single_object(
+            request,
+            loaded,
+            "biological_unit_manifest",
+            BiologicalUnitManifest,
+        )
+        attestation_receipt = single_object(
+            request,
+            loaded,
+            "biological_unit_attestation_receipt",
+            BiologicalUnitAttestationReceipt,
+        )
+        if not isinstance(cell_state_profile, CellStateEvidenceProfileV3):
+            reasons.append("cell_state_evidence_profile_v3_required")
+        else:
+            reasons.extend(
+                hard_count_binding_reasons(
+                    input_refs=input_refs,
+                    product_case=product_case,
+                    cell_state_profile=cell_state_profile,
+                    biological_units=biological_units,
+                    attestation_receipt=attestation_receipt,
+                    role_map=role_map,
+                )
+            )
+        return sorted(set(reasons))
+
+    if evidence_bundle is None:
+        reasons.append("exactly_one_off_target_evidence_bundle_required")
+        return sorted(set(reasons))
     if evidence_bundle.product_case_ref != product_case.ref.ref:
         reasons.append("evidence_bundle_product_case_ref_mismatch")
     if evidence_bundle.product_case_sha256 != input_refs["product_case"].sha256:
@@ -646,7 +869,6 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     if evidence_bundle.denominator.n_observations != cell_state_profile.n_observations:
         reasons.append("cell_state_denominator_observation_mismatch")
 
-    assignment_ids = {item.state_id for item in role_map.assignments}
     observed_ids = {item.state_id for item in evidence_bundle.state_observations}
     if not observed_ids.issubset(assignment_ids):
         reasons.append("evidence_bundle_contains_unmapped_state")
@@ -654,9 +876,6 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
     observed_unknown = {item.reason_id for item in evidence_bundle.unknown_observations}
     if not observed_unknown.issubset(allowed_unknown):
         reasons.append("unknown_reason_not_allowed")
-    rare_rule_ids = {item.state_id for item in assessment_spec.rare_state_rules}
-    if not rare_rule_ids.issubset(assignment_ids):
-        reasons.append("rare_state_rule_contains_unmapped_state")
     calibration_ids = {
         item.state_id for item in evidence_bundle.rare_state_calibrations
     }
