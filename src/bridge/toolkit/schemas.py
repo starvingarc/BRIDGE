@@ -74,6 +74,7 @@ SCHEMA_REFS = {
     "bridge://schemas/proliferation-stress-visualization-data/v0.1": "proliferation_stress_visualization_data.schema.json",
     "bridge://schemas/process-method-spec/v0.1": "process_method_spec.schema.json",
     "bridge://schemas/process-method-input/v0.1": "process_method_input.schema.json",
+    "bridge://schemas/process-method-input/v0.2": "process_method_input_v2.schema.json",
     "bridge://schemas/process-method-bundle/v0.1": "process_method_bundle.schema.json",
     "bridge://schemas/process-method-bundle/v0.2": "process_method_bundle_v2.schema.json",
     "bridge://schemas/graft-assessment-result/v0.1": "graft_assessment_result.schema.json",

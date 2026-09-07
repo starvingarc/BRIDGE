@@ -215,6 +215,63 @@ def _p006_base_roles(
     )
 
 
+def _p006_method_mode(
+    mode_id: str, input_schema: str, input_version: str
+) -> ObjectInputModeContract:
+    return _mode(
+        mode_id,
+        *_p006_base_roles(
+            "bridge://schemas/cell-state-evidence-profile/v0.3",
+            V03,
+            include_program_evidence=False,
+            measurement_min_count=1,
+        ),
+        _role(
+            "biological_unit_manifest",
+            "bridge://schemas/biological-unit-manifest/v0.1",
+            V01,
+            1,
+            1,
+        ),
+        _role(
+            "biological_unit_assignment",
+            "bridge://schemas/biological-unit-assignment/v0.1",
+            V01,
+            1,
+            1,
+        ),
+        _role(
+            "biological_unit_attestation_receipt",
+            "bridge://schemas/biological-unit-attestation-receipt/v0.1",
+            V01,
+            1,
+            1,
+        ),
+        _role(
+            "process_method_spec",
+            "bridge://schemas/process-method-spec/v0.1",
+            V01,
+            1,
+            1,
+        ),
+        _role(
+            "process_method_input",
+            input_schema,
+            input_version,
+            1,
+            1,
+        ),
+        asset_input=AssetInputContract(
+            min_count=1,
+            max_count=1,
+            formats=["h5ad"],
+            assays=["scRNA-seq", "snRNA-seq"],
+            input_levels=["analysis_ready", "count_ready"],
+            matrix_semantics=["normalized_expression", "raw_counts"],
+        ),
+    )
+
+
 def _p009_mode(
     mode_id: str,
     *,
@@ -701,57 +758,11 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     measurement_min_count=0,
                 ),
             ),
-            _mode(
-                "method_runtime",
-                *_p006_base_roles(
-                    "bridge://schemas/cell-state-evidence-profile/v0.3",
-                    V03,
-                    include_program_evidence=False,
-                    measurement_min_count=1,
-                ),
-                _role(
-                    "biological_unit_manifest",
-                    "bridge://schemas/biological-unit-manifest/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "biological_unit_assignment",
-                    "bridge://schemas/biological-unit-assignment/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "biological_unit_attestation_receipt",
-                    "bridge://schemas/biological-unit-attestation-receipt/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "process_method_spec",
-                    "bridge://schemas/process-method-spec/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                _role(
-                    "process_method_input",
-                    "bridge://schemas/process-method-input/v0.1",
-                    V01,
-                    1,
-                    1,
-                ),
-                asset_input=AssetInputContract(
-                    min_count=1,
-                    max_count=1,
-                    formats=["h5ad"],
-                    assays=["scRNA-seq", "snRNA-seq"],
-                    input_levels=["analysis_ready", "count_ready"],
-                    matrix_semantics=["normalized_expression", "raw_counts"],
-                ),
+            _p006_method_mode(
+                "method_runtime", "bridge://schemas/process-method-input/v0.1", V01
+            ),
+            _p006_method_mode(
+                "method_runtime_source_bound", "bridge://schemas/process-method-input/v0.2", V02
             ),
         ],
     ),

@@ -17,7 +17,9 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.method_models impo
     ObservationState,
     ProcessMethodId,
     ProcessMethodInput,
+    ProcessMethodInputV2,
     ProcessMethodSpec,
+    ProcessObservationStateV2,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
     ProgramSpec,
@@ -81,7 +83,8 @@ def method_binding_reasons(
     cell_state: CellStateEvidenceProfileV3,
     program_spec: ProgramSpec,
     method_spec: ProcessMethodSpec,
-    method_input: ProcessMethodInput,
+    method_input: ProcessMethodInput | ProcessMethodInputV2,
+    source_observation_states: tuple[ProcessObservationStateV2, ...] | None,
     attestation_receipt: BiologicalUnitAttestationReceipt,
     manifest: BiologicalUnitManifest,
     assignment: BiologicalUnitAssignmentArtifact,
@@ -188,9 +191,14 @@ def method_binding_reasons(
     ):
         reasons.add("method_input_data_lineage_mismatch")
 
-    observation_ids = [
-        item.observation_id for item in method_input.observation_states
-    ]
+    if isinstance(method_input, ProcessMethodInputV2):
+        observation_states = source_observation_states
+        if observation_states is None:
+            reasons.add("source_observations_not_loaded")
+            observation_states = ()
+    else:
+        observation_states = tuple(method_input.observation_states)
+    observation_ids = [item.observation_id for item in observation_states]
     calculated_observation_sha = observation_ids_sha256(observation_ids)
     if (
         set(observation_ids)
@@ -204,10 +212,10 @@ def method_binding_reasons(
     allowed_states = {
         state_id for rule in rules.values() for state_id in rule.allowed_state_ids
     }
-    if any(
+    if isinstance(method_input, ProcessMethodInput) and any(
         item.state is ObservationState.CANDIDATE
         and item.state_id not in allowed_states
-        for item in method_input.observation_states
+        for item in observation_states
     ):
         reasons.add("method_input_state_not_declared")
     for program in method_spec.programs:

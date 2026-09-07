@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "ProcessObservationSourceV1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_manifest_path": {
+          "format": "path",
+          "title": "Artifact Manifest Path",
+          "type": "string"
+        },
+        "artifact_manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Artifact Manifest Sha256",
+          "type": "string"
+        },
+        "evidence_artifact_id": {
+          "minLength": 1,
+          "title": "Evidence Artifact Id",
+          "type": "string"
+        },
+        "evidence_path": {
+          "format": "path",
+          "title": "Evidence Path",
+          "type": "string"
+        },
+        "evidence_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Sha256",
+          "type": "string"
+        },
+        "label_level": {
+          "const": "L1",
+          "title": "Label Level",
+          "type": "string"
+        },
+        "producer_run_ref": {
+          "minLength": 1,
+          "title": "Producer Run Ref",
+          "type": "string"
+        },
+        "producer_tool_id": {
+          "const": "P0-02",
+          "title": "Producer Tool Id",
+          "type": "string"
+        },
+        "producer_tool_version": {
+          "minLength": 1,
+          "title": "Producer Tool Version",
+          "type": "string"
+        },
+        "source_format": {
+          "const": "p0_02_cell_state_evidence_parquet_v0.1",
+          "title": "Source Format",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_format",
+        "producer_tool_id",
+        "producer_run_ref",
+        "producer_tool_version",
+        "artifact_manifest_path",
+        "artifact_manifest_sha256",
+        "evidence_artifact_id",
+        "evidence_path",
+        "evidence_sha256",
+        "label_level"
+      ],
+      "title": "ProcessObservationSourceV1",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/process-method-input/v0.2",
+  "additionalProperties": false,
+  "properties": {
+    "biological_unit_assignment_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Assignment Sha256",
+      "type": "string"
+    },
+    "biological_unit_manifest_ref": {
+      "minLength": 1,
+      "title": "Biological Unit Manifest Ref",
+      "type": "string"
+    },
+    "biological_unit_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Biological Unit Manifest Sha256",
+      "type": "string"
+    },
+    "cell_state_profile_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Cell State Profile Id",
+      "type": "string"
+    },
+    "cell_state_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Cell State Profile Sha256",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "data_view_ref": {
+      "minLength": 1,
+      "title": "Data View Ref",
+      "type": "string"
+    },
+    "method_input_id": {
+      "pattern": "^process-method-input:[A-Za-z0-9._:-]+$",
+      "title": "Method Input Id",
+      "type": "string"
+    },
+    "method_input_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Method Input Version",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.2.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "observation_ids_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Observation Ids Sha256",
+      "type": "string"
+    },
+    "product_case_ref": {
+      "minLength": 1,
+      "title": "Product Case Ref",
+      "type": "string"
+    },
+    "product_case_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Product Case Sha256",
+      "type": "string"
+    },
+    "source_observations": {
+      "$ref": "#/$defs/ProcessObservationSourceV1"
+    }
+  },
+  "required": [
+    "object_version",
+    "method_input_id",
+    "method_input_version",
+    "product_case_ref",
+    "product_case_sha256",
+    "cell_state_profile_id",
+    "cell_state_profile_sha256",
+    "data_view_ref",
+    "observation_ids_sha256",
+    "biological_unit_manifest_ref",
+    "biological_unit_manifest_sha256",
+    "biological_unit_assignment_sha256",
+    "source_observations",
+    "created_at"
+  ],
+  "title": "ProcessMethodInputV2",
+  "type": "object"
+}

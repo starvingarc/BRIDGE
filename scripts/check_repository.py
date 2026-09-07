@@ -185,6 +185,13 @@ P006_VISUALIZATION_FILES = (
 P006_MEASUREMENT_PROJECTION_FILES = (
     Path("src/bridge/resources/schemas/proliferation_stress_response_profile_v2.schema.json"),
 )
+P006_INPUT_ROUTE_FILES = (
+    Path("plans/p0-06-unresolved-observations.md"),
+    Path("src/bridge/resources/schemas/process_method_input_v2.schema.json"),
+    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/observation_source.py"),
+    Path("tests/test_p0_06_source_bound_observations.py"),
+    Path("docs/validation/p0_06_source_bound_observations_20260907.md"),
+)
 P007_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/product_comparison_visualization_data.schema.json"),
     Path("src/bridge/resources/schemas/p0_07_visualization_artifact_set.schema.json"),
@@ -383,6 +390,7 @@ def _tracked_file_budget() -> int:
         + p005_measurement_projection_files
         + p006_visualization_files
         + p006_measurement_projection_files
+        + sum((ROOT / relative).is_file() for relative in P006_INPUT_ROUTE_FILES)
         + p007_visualization_files
         + p008_visualization_files
         + p009_visualization_files

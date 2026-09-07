@@ -1,5 +1,23 @@
 # Decision Log
 
+## 2026-09-07: Bind P0-06 Observations To Producer Artifacts
+
+The approved ProcessMethodInput v0.2 replaces caller-repeated state rows with a
+checksummed descriptor of the existing P0-02 evidence table and same-run artifact
+manifest. Source conflict remains unresolved; no winning identity, probability
+or biological unknown state is invented. Whole-product summaries retain every
+selected observation. Conditioned summaries use only uniquely supported states
+that match externally declared ProgramSpec rules.
+
+The existing v0.1 input remains unchanged. Exact artifact correspondence is not
+authentication of an arbitrary fabricated bundle; deployment registration owns
+that trust boundary. No new source catalog or signature framework is introduced.
+This follows [AnnData observation identity](https://anndata.readthedocs.io/en/stable/generated/anndata.AnnData.obs_names.html)
+and explicit entity/derivation binding in [W3C PROV-DM](https://www.w3.org/TR/prov-dm/)
+without adopting a separate platform stack. Implementation and validation remain
+tracked in the branch plan, independently of scientific readiness.
+
+
 ## 2026-08-10: Rebuild The Active Package
 
 The historical Step1-Step3 implementation remains available through Git history. BRIDGE uses new high-level Tool Package contracts and has no compatibility requirement with historical score or report APIs.

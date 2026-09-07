@@ -160,7 +160,7 @@ def test_biological_unit_attestation_routes_to_method_tools() -> None:
     assert receipt.object_version == "0.1.0"
     assert (receipt.min_count, receipt.max_count) == (1, 1)
 
-    for tool_id, version in (("P0-05", "0.5.2"), ("P0-06", "0.6.1")):
+    for tool_id, version in (("P0-05", "0.5.2"), ("P0-06", "0.7.0")):
         binding = bindings[tool_id]
         assert binding.tool_version == version
         assert {item.role: item.slot_id for item in binding.object_inputs}[

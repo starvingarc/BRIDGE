@@ -30,7 +30,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-11").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
-    assert proliferation_stress_response.version == "0.6.1"
+    assert proliferation_stress_response.version == "0.7.0"
     assert product_comparison.version == "0.4.0"
 
 
@@ -138,6 +138,24 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
         "graft_assessment",
         "expression_analysis",
     ]
+
+
+def test_p006_discovery_selects_source_bound_input_without_changing_legacy_mode() -> None:
+    registry = ToolRegistry.load_default()
+    modes = {mode.mode_id: mode for mode in registry.describe_input("P0-06").object_input_modes}
+    assert "method_runtime_source_bound" in modes
+    source = modes["method_runtime_source_bound"]
+    legacy = modes["method_runtime"]
+    source_roles = {role.role: role for role in source.roles}
+    legacy_roles = {role.role: role for role in legacy.roles}
+    assert len(source_roles) == 12
+    assert set(source_roles) == set(legacy_roles)
+    assert source.asset_input == legacy.asset_input
+    assert source_roles["process_method_input"].schema_refs == ["bridge://schemas/process-method-input/v0.2"]
+    assert source_roles["process_method_input"].object_versions == ["0.2.0"]
+    assert legacy_roles["process_method_input"].schema_refs == ["bridge://schemas/process-method-input/v0.1"]
+    for role in source_roles.keys() - {"process_method_input"}:
+        assert source_roles[role] == legacy_roles[role]
 
 
 def test_input_contract_roles_match_runtime_adapters() -> None:
