@@ -42,6 +42,16 @@ work queues. The latest public-head CI is reported independently; old green chec
 never certify a newly published revision. The PR remains Draft while integration
 checks and genuine downstream acceptance are incomplete.
 
+The first closeout CI on public head `4855c0a` ([run 34194301229](https://github.com/starvingarc/BRIDGE/actions/runs/34194301229))
+reported **2 failed, 2,137 passed, 66 warnings**. Both failures were service-test
+setups/expectations that still assumed the removed initial chat declaration or
+upload message. They now explicitly confirm the count declaration, check the
+bounded intake-readiness context without private values, and inspect count-layer
+availability in the intake structure without inferring raw-count semantics.
+The two exact failed node IDs in `tests/test_web_service.py` passed in the focused
+follow-up (**2 passed, 2 warnings**). Runtime files and the installed preview were
+unchanged; this focused result does not replace CI on the corrected public head.
+
 The next development milestone is a reviewable scientific-input candidate flow:
 use the confirmed product intent plus versioned knowledge to propose the required
 product definition and state-role inputs, explain their sources and missing facts,

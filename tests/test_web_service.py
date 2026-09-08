@@ -999,6 +999,7 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
         "file": ("private-source-name.h5ad", h5ad(tmp_path, layer=True)),
     }).json()
     aid = uploaded["uploads"][0]["id"]
+    declare_counts(client, sid, aid, location="layers/counts")
     client.post(url + "/messages", json={
         "text": "scRNA-seq，使用 counts 层进行 QC",
     })
@@ -1026,7 +1027,13 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
     assert set(context) == {
         "status", "upload_ids", "plan_status", "capabilities",
         "tool_execution_history", "results_sent_to_model", "input_contracts", "input_review_required",
+        "intake_context",
     }
+    assert context["intake_context"] == [{
+        "upload_id": aid, "state": "needs_confirmation",
+        "missing_fields": ["product_name", "product_family", "target_cell_type",
+                           "target_stage", "sampling_context", "independent_cultures"],
+    }]
     assert context["status"] == "idle"
     assert context["upload_ids"] == [aid]
     assert context["plan_status"] == "completed"
@@ -1498,7 +1505,11 @@ def test_upload_validation_and_private_state(client, tmp_path):
     assert str(tmp_path) not in response.text
     assert "private-cell-a" not in response.text
     assert value["plan"] is None
-    assert "counts" in value["messages"][-1]["content"]
+    intake = client.get(f"/api/sessions/{session['id']}/intake",
+        params={"upload_id": value["uploads"][0]["id"]})
+    assert intake.status_code == 200
+    assert intake.json()["observed"]["matrix_locations"] == ["X", "layers/counts"]
+    assert intake.json()["facts"]["count_semantics"] == "unknown"
     assert client.get(f"/api/sessions/{session['id']}/artifacts/" + "a" * 32).status_code == 404
 
 
