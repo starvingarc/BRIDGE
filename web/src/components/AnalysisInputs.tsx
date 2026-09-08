@@ -36,6 +36,7 @@ type Props = {
   uploads: Upload[];
   capabilities: ToolCapability[];
   disabled: boolean;
+  inputReviewRequired: boolean;
   onSession: (session: Session) => void;
   onError: (error: unknown) => void;
   children?: ReactNode;
@@ -303,6 +304,7 @@ export function AnalysisInputs({
   uploads,
   capabilities,
   disabled,
+  inputReviewRequired,
   onSession,
   onError,
   children,
@@ -514,7 +516,7 @@ export function AnalysisInputs({
   };
 
   const preparePlan = () => {
-    if (!draft || dirty) return;
+    if (!draft || dirty || inputReviewRequired) return;
     void runMutation(
       "prepare",
       () => api.prepareAnalysis(sessionId, draft.tool_id),
@@ -594,7 +596,9 @@ export function AnalysisInputs({
         assetForm.current?.reset();
         setMetadata({ value: {}, name: null });
       },
-      "H5AD declaration registered. Select the registered asset, then save.",
+      (next) => next.pending_input_change
+        ? "H5AD declaration change staged. Confirm it before selecting the asset."
+        : "H5AD declaration already matches the current committed input.",
     );
   };
 
@@ -660,7 +664,7 @@ export function AnalysisInputs({
         <div className="analysis-inputs-heading">
           <div>
             <strong>Tool-chain selection</strong>
-            <small>Save inputs before preparing a proposal.</small>
+            <small>Save selections; staged declarations require confirmation.</small>
           </div>
           {loading ? <span role="status">Refreshing…</span> : null}
         </div>
@@ -823,7 +827,7 @@ export function AnalysisInputs({
                         </small>
                       ) : null}
                       <button type="submit" disabled={panelDisabled || !uploads.length}>
-                        {mutation === "asset" ? "Registering…" : "Register declaration"}
+                        {mutation === "asset" ? "Staging…" : "Stage declaration"}
                       </button>
                     </form>
                   </section>
@@ -875,11 +879,16 @@ export function AnalysisInputs({
                     type="button"
                     className="analysis-prepare-button"
                     onClick={preparePlan}
-                    disabled={panelDisabled || dirty}
+                    disabled={panelDisabled || dirty || inputReviewRequired}
                   >
                     {mutation === "prepare" ? "Preparing…" : "Prepare plan"}
                   </button>
                 </div>
+                {inputReviewRequired ? (
+                  <small className="analysis-input-hint">
+                    Resolve the input review before preparing another plan.
+                  </small>
+                ) : null}
                 {dirty ? (
                   <small className="analysis-input-hint">
                     Save this new or changed selection before preparing a plan.

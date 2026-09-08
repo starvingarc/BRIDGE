@@ -23,7 +23,9 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.method_models impo
     ProcessMethodBundleV2,
     ProcessMethodId,
     ProcessMethodInput,
+    ProcessMethodInputV2,
     ProcessMethodSpec,
+    ProcessObservationStateV2,
     ProgramScoreSummary,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
@@ -100,8 +102,9 @@ def _load_expression(
     *,
     asset: InputAsset,
     method_spec: ProcessMethodSpec,
-    method_input: ProcessMethodInput,
+    method_input: ProcessMethodInput | ProcessMethodInputV2,
     assignment: BiologicalUnitAssignmentArtifact,
+    source_observation_states: tuple[ProcessObservationStateV2, ...] | None,
 ) -> _ExpressionData:
     anndata = _require_module("anndata")
     try:
@@ -163,8 +166,14 @@ def _load_expression(
     assignment_by_id = {
         item.observation_id: item for item in assignment.assignments
     }
+    if isinstance(method_input, ProcessMethodInputV2):
+        if source_observation_states is None:
+            raise ProcessMethodError("source_observations_not_loaded")
+        observation_states = source_observation_states
+    else:
+        observation_states = tuple(method_input.observation_states)
     state_by_id = {
-        item.observation_id: item for item in method_input.observation_states
+        item.observation_id: item for item in observation_states
     }
     observed = set(observation_ids.tolist())
     if observed != set(assignment_by_id):
@@ -182,7 +191,7 @@ def _load_expression(
     state_ids = np.asarray(
         [
             state_by_id[item].state_id
-            if state_by_id[item].state is ObservationState.CANDIDATE
+            if state_by_id[item].state == ObservationState.CANDIDATE
             else None
             for item in observation_ids
         ],
@@ -633,8 +642,9 @@ def run_process_methods(
     method_spec: ProcessMethodSpec,
     method_spec_sha256: str,
     program_spec_sha256: str,
-    method_input: ProcessMethodInput,
+    method_input: ProcessMethodInput | ProcessMethodInputV2,
     method_input_sha256: str,
+    source_observation_states: tuple[ProcessObservationStateV2, ...] | None,
     assignment: BiologicalUnitAssignmentArtifact,
     assignment_sha256: str,
     biological_unit_manifest_sha256: str,
@@ -648,6 +658,7 @@ def run_process_methods(
         method_spec=method_spec,
         method_input=method_input,
         assignment=assignment,
+        source_observation_states=source_observation_states,
     )
     rules = {item.program_id: item for item in program_spec.program_rules}
     package_versions = _package_versions()

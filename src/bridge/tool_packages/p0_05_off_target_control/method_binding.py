@@ -24,35 +24,22 @@ from bridge.toolkit.contracts import (
 )
 
 
-def method_binding_reasons(
+def biological_unit_context_reasons(
     *,
     input_refs: dict[str, StructuredInputRef],
     product_case: ProductCase,
     cell_state_profile: CellStateEvidenceProfileV3,
-    evidence_bundle: OffTargetEvidenceBundle,
     biological_units: BiologicalUnitManifest,
     attestation_receipt: BiologicalUnitAttestationReceipt,
-    method_spec: OffTargetMethodSpec,
-    method_input: OffTargetMethodInput,
-    role_map: StateRoleMap,
-    assessment_spec: OffTargetAssessmentSpec,
 ) -> list[str]:
-    reasons: list[str] = []
+    reasons = biological_unit_attestation_reasons(
+        manifest=biological_units,
+        manifest_sha256=input_refs["biological_unit_manifest"].sha256,
+        data_view=cell_state_profile.input_data_view,
+        receipt=attestation_receipt,
+    )
     manifest_ref = biological_units.ref.ref
     manifest_sha = input_refs["biological_unit_manifest"].sha256
-    cell_state_sha = input_refs["cell_state_evidence_profile"].sha256
-    evidence_sha = input_refs["off_target_evidence_bundle"].sha256
-
-    if not method_spec.active:
-        reasons.append("off_target_method_spec_inactive")
-    reasons.extend(
-        biological_unit_attestation_reasons(
-            manifest=biological_units,
-            manifest_sha256=manifest_sha,
-            data_view=cell_state_profile.input_data_view,
-            receipt=attestation_receipt,
-        )
-    )
     if (
         product_case.biological_unit_manifest_ref is None
         or product_case.biological_unit_manifest_ref.ref != manifest_ref
@@ -69,6 +56,91 @@ def method_binding_reasons(
         reasons.append("biological_unit_data_view_mismatch")
     if biological_units.n_observations != cell_state_profile.n_observations:
         reasons.append("biological_unit_observation_count_mismatch")
+    return reasons
+
+
+def hard_count_binding_reasons(
+    *,
+    input_refs: dict[str, StructuredInputRef],
+    product_case: ProductCase,
+    cell_state_profile: CellStateEvidenceProfileV3,
+    biological_units: BiologicalUnitManifest,
+    attestation_receipt: BiologicalUnitAttestationReceipt,
+    role_map: StateRoleMap,
+) -> list[str]:
+    reasons = biological_unit_context_reasons(
+        input_refs=input_refs,
+        product_case=product_case,
+        cell_state_profile=cell_state_profile,
+        biological_units=biological_units,
+        attestation_receipt=attestation_receipt,
+    )
+    composition = cell_state_profile.composition
+    if composition.state != "shadow" or not composition.records:
+        reasons.append("hard_count_complete_shadow_composition_required")
+        return reasons
+    if any(
+        item.label_level != "L1"
+        or item.denominator != cell_state_profile.n_observations
+        for item in composition.records
+    ):
+        reasons.append("hard_count_canonical_l1_selected_view_required")
+    canonical_states = {
+        "consensus_supported": "candidate",
+        "single_source_supported": "candidate",
+        "source_conflict": "unresolved",
+        "unavailable": "unavailable",
+        "unknown": "unknown",
+        "ood": "ood",
+    }
+    reconciliation = [
+        item
+        for item in composition.records
+        if item.view.value == "reconciliation_state"
+    ]
+    if any(
+        item.label not in canonical_states
+        or item.state_evidence_state.value != canonical_states[item.label]
+        for item in reconciliation
+    ):
+        reasons.append("hard_count_reconciliation_label_state_mismatch")
+    assignment_ids = {item.state_id for item in role_map.assignments}
+    if any(
+        item.label not in assignment_ids
+        for item in composition.records
+        if item.view.value == "consensus_supported_only"
+    ):
+        reasons.append("hard_count_contains_unmapped_consensus_state")
+    return reasons
+
+
+def method_binding_reasons(
+    *,
+    input_refs: dict[str, StructuredInputRef],
+    product_case: ProductCase,
+    cell_state_profile: CellStateEvidenceProfileV3,
+    evidence_bundle: OffTargetEvidenceBundle,
+    biological_units: BiologicalUnitManifest,
+    attestation_receipt: BiologicalUnitAttestationReceipt,
+    method_spec: OffTargetMethodSpec,
+    method_input: OffTargetMethodInput,
+    role_map: StateRoleMap,
+    assessment_spec: OffTargetAssessmentSpec,
+) -> list[str]:
+    reasons = biological_unit_context_reasons(
+        input_refs=input_refs,
+        product_case=product_case,
+        cell_state_profile=cell_state_profile,
+        biological_units=biological_units,
+        attestation_receipt=attestation_receipt,
+    )
+    manifest_ref = biological_units.ref.ref
+    manifest_sha = input_refs["biological_unit_manifest"].sha256
+    cell_state_sha = input_refs["cell_state_evidence_profile"].sha256
+    evidence_sha = input_refs["off_target_evidence_bundle"].sha256
+
+    if not method_spec.active:
+        reasons.append("off_target_method_spec_inactive")
 
     expected_bindings = {
         item.analysis_unit_ref.ref: item.independence_group_ref.ref

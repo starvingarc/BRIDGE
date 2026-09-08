@@ -23,6 +23,8 @@ describe("Markdown rendering", () => {
       plan: null,
       artifacts: [],
       error: null,
+      input_review_required: false,
+      pending_input_change: null,
     };
 
     render(

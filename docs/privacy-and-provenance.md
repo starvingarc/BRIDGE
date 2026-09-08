@@ -35,6 +35,22 @@ Web clients must render `PublicSafeReport.claim.text` as escaped plain text.
 They must not inject it directly as HTML or Markdown. A candidate with no
 registered blocking finding is not proof that a separate renderer is XSS-safe.
 
+## Approved Model Interpretation Boundary
+
+The owner may explicitly authorize a private deployment to send bounded,
+field-allowlisted aggregate results to its configured model for research
+interpretation. Status-only remains the default. Raw matrices, observation-level
+records, sample/source identities, private paths, credentials and private
+provenance hashes remain local. Aggregation is not anonymous-data certification
+or public-export permission.
+
+A summary must preserve verified tool values, denominators, uncertainty and
+missingness. Its local per-turn provenance binding must remain available without
+being transmitted. Unknown fields or unsupported result shapes are excluded by
+construction, not passed through a generic redaction filter. The approved initial
+implementation scope and acceptance gates are tracked in the
+[Web integration plan](../plans/web-full-chain-integration.md).
+
 ## Knowledge Sources
 
 - Official documentation, source repositories and primary papers are recorded separately.

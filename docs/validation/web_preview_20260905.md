@@ -1,6 +1,33 @@
-# Private conversational Web preview — 2026-09-05
+# Private conversational Web preview — validation history
 
-## Question and scope
+## Current closeout — 2026-09-08
+
+The sections below preserve dated validation records, not competing descriptions
+of the current preview. Current functionality and acceptance boundaries are
+summarized in the [integration progress](../../plans/web-full-chain-integration.md#current-progress-2026-09-08)
+and [Web interface contract](../web-preview.md). The current PR includes explicit
+stop/input confirmation, selectable JSON/native actions, opt-in canonical evidence
+summaries, bounded Parquet previews and privately confirmed product intake.
+
+A fresh genuine-data/current-model journey exercised upload, typed product draft,
+explicit fact confirmation, a separate next-stage plan, and independently approved
+QC execution. Its explanation reused canonical QC evidence without a second run.
+Desktop/mobile presentation, refresh retention, bounded table preview and original
+download integrity were checked. Missing product/design facts stayed unknown;
+no formal scientific objects or complete downstream product assessment were made.
+Measurements, input identities, source hashes and deployment details remain private.
+
+The [Task 20 engineering record](../../plans/web-full-chain-integration.md#task-20-engineering-evidence-2026-09-08-installed-snapshot)
+retains the exact focused-test/build scope and minor limitations. Recorded earlier
+full-suite/review results apply only to their dated revisions. No new independent
+review or unchanged-suite replay was performed for this closeout; required CI
+binds the exact public PR head. This is an installed entry-flow increment, not a
+validated score, P0-10-verified narrative, complete genuine twelve-tool chain or
+release approval.
+
+## Initial preview — 2026-09-05
+
+### Question and scope
 
 Can a researcher upload an expression file, declare its assay and count
 semantics, approve a plan, and inspect the actual input-QC evidence within a
@@ -228,3 +255,114 @@ All actual input identities, transcripts, numerical outputs, screenshots and
 content hashes remain private. This follow-up does not replace the earlier
 full-server regression record or claim new full-suite success; required CI binds
 the corresponding updated public head independently.
+
+## Source-bound Web input closeout — 2026-09-07
+
+The separately reviewed P0-05 count-only and P0-06 source-bound implementations
+were integrated in the isolated Web branch for combined validation. The Web
+change accepts only the two P0-06 v0.2 canonical artifact locators documented in
+[Web preview](../web-preview.md). Same-session provenance, same P0-02 receipt,
+artifact kinds, checksums and execution-time dependency integrity remain enforced.
+
+A scoped independent review found an unhandled structured-checksum input.
+The fix was reproduced through HTTP, then verified to return a bounded 422
+without registering an object for arrays or objects in either checksum field.
+The scoped re-review approved the fix.
+
+Installed-package evidence is deliberately split:
+
+- Combined revision `78c5ebcb`: 391 related module, Web, workflow and shared
+  contract tests passed, with 58 recorded dependency warnings.
+- Final fix revision `6e881861`: 129 Web-input and shared-contract tests passed,
+  with 9 recorded dependency warnings. The scientific module sources are
+  byte-identical to the combined revision; only the named-checksum validation
+  and its tests changed.
+- Both installations passed 12-tool discovery, 24 CLI describe/input-contract
+  calls, knowledge/figure validation, repository policy and diff checks.
+  Packaged source in the final installation was compared with tracked source.
+
+This is focused installation evidence, not a new full-repository or
+genuine-twelve-tool acceptance claim. The existing server-specific trust-fixture
+limitation remains documented above. No startup trust guard or scientific
+eligibility condition was weakened. Synthetic module/HTTP fixtures prove
+engineering behavior only; actual-data/browser results remain separately bound
+in private evidence.
+
+## Conversation withdrawal follow-up: review blocked
+
+A genuine follow-up about a missing plan reached prepare_analysis, but the
+conversation layer treated unrelated negative wording as a withdrawal of the
+earlier QC declaration. The immutable QC receipt then correctly failed the
+changed-declaration check; this was not a biological readiness failure.
+
+The bounded correction was developed and reviewed separately from scientific
+input construction. Installed revision `078f19c1` passed 114 Web/input/workflow
+tests. Review then found missed cancellation and coordinated-count negation.
+Revision `9b3ab7e` addressed those examples and passed 119 installed tests, with
+9 existing dependency warnings, plus discovery, 24 CLI interface checks,
+knowledge/figure validation, repository policy and diff checks. All 349 packaged
+source files matched the tracked source.
+
+The final scoped review nevertheless found another Important regression:
+`QC is complete, not all biological replicates are confirmed.` is incorrectly
+classified as a withdrawal. A direct probe against the installed package
+reproduced it. The candidate is therefore **not approved for deployment or merge**.
+Passing tests do not supersede that open finding.
+
+Further phrase-level fixes are paused pending an explicit interaction decision
+for declaration changes and their confirmation. Existing services and historical
+evidence were not changed. Full genuine-data acceptance remains incomplete.
+
+## Explicit controls and genuine continuation — 2026-09-07
+
+The owner approved replacing conversation-based declaration withdrawal with
+explicit input review and exact confirmation. Ordinary chat no longer edits
+committed metadata; stop fences later work immediately while an in-flight
+non-interruptible outcome is retained. The preceding regex review stop is
+superseded by this approved interaction, not retrospectively declared correct.
+
+Source-backed column selectors and separately confirmed culture relationships
+now support genuine QC and V3 cell-state outputs. They do not establish donor,
+pooling or cross-timepoint facts, calibrated assignments or product validity.
+The Web allowlist now accepts the three already-supported sample/capture/gene
+column selectors through its existing staged confirmation path.
+
+| Exact revision | Verification |
+|---|---|
+| `428ba2e6` | Integrated controls: 136 installed Web/input/workflow tests; client 50 tests, typecheck and production build |
+| `a812b661` | Existing-column alignment: 137 installed Web/input/workflow tests, 9 dependency warnings |
+| `c9f8df55` | Reply-envelope clarification: 86 installed Web-service tests, 2 dependency warnings; input/workflow sources unchanged from the preceding baseline |
+
+The final installation matched all 350 packaged source files and passed discovery,
+24 describe/input-contract calls, knowledge/figure validation, policy and diff
+checks. Its complete client tree and built bytes match the validated control
+revision. These are scoped checks, not a new full-repository pass; the earlier
+server trust-fixture limitation and exact-head CI requirement remain open.
+
+Real browser evidence is deliberately split:
+
+- Resumed and fresh genuine inputs reached successful P0-01 and P0-02 runs after
+  exact declarations and separate approvals. Missing-product-definition wording
+  preserved canonical QC; requesting review and explicitly keeping inputs worked.
+- The primary provider was unavailable, so the owner-authorized prior API was
+  configured only in the isolated candidate. Post-tool explanation still failed
+  intermittently. Prompt clarification and successful direct replays do not prove
+  reliable browser follow-up; a history-envelope experiment was not deployed.
+- A separate final-revision stop, refresh, desktop/narrow-layout and download
+  inspection passed. All registered download bytes matched private registration
+  hashes. Presentation-redacted downloads remain distinct from canonical inputs.
+  An earlier real in-flight QC stop retained its completed receipt and fenced
+  later work. These checks do not replace the failed conversational acceptance.
+
+Independent reviews closed the explicit-control findings before integration;
+the later column/prompt changes had focused regressions and root review, not a
+new independent review claim. Existing components, executor, strict Action
+validation and dependencies were reused. No parser fallback, retry framework or
+scientific API change was added.
+
+Genuine full-chain acceptance remains incomplete: provider reliability and
+explicit product/process definitions, scientific input review, comparison design
+and genuine graft evidence are separate unresolved requirements. Scores remain
+null and methods candidate/shadow. Original preview services remain untouched;
+only the idle isolated candidate was upgraded with its existing session storage.
+No GitHub update, merge or publication was performed in this continuation.

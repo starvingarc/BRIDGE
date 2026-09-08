@@ -5,11 +5,16 @@ evidence you need.
 
 > [!NOTE]
 > **Product and current stage:** BRIDGE's final product is a scientific
-> evaluation Agent. The current `main` branch provides its deterministic P0 tool
-> layer: all 12 packages are executable engineering candidates. A private
-> [Web preview](web-preview.md) supports staged conversation, contract-driven
-> inputs and approved tool execution; complete scientific input construction
-> remains in development. A shared
+> evaluation Agent. The deterministic P0 tool layer contains 12 executable
+> engineering candidates. This branch's private [Web preview](web-preview.md)
+> connects all 12 through contract-driven inputs and staged approval; it does not
+> automatically construct the required scientific objects. A private product
+> draft can be confirmed before a separately approved first-stage plan; it is not
+> a formal product definition. Genuine Web coverage is QC, cell-state evidence
+> and the explicit no-graft path, not a complete product-evaluation chain.
+> Source implementation, installed acceptance and
+> remaining work are separated in the [current integration plan](../plans/web-full-chain-integration.md#current-progress-2026-09-08).
+> A shared
 > visualization data contract and figure registry are available. P0-01 provides four
 > `typed_candidate` figure components, alongside two compatibility
 > `legacy_untyped` components; P0-03 provides two typed candidate figures for

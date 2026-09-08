@@ -3,7 +3,7 @@ import type { PlanStep, SessionStatus } from "../types";
 
 export function SessionStatusMark({ status }: { status: SessionStatus }) {
   const content =
-    status === "thinking" || status === "running" ? (
+    status === "thinking" || status === "running" || status === "stopping" ? (
       <LoaderCircle aria-hidden="true" className="spin" />
     ) : status === "failed" ? (
       <CircleAlert aria-hidden="true" />

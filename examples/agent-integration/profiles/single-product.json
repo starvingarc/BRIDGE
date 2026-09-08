@@ -725,7 +725,7 @@
     {
       "binding_id": "off-target-control",
       "tool_id": "P0-05",
-      "tool_version": "0.5.2",
+      "tool_version": "0.6.0",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": [],
@@ -750,7 +750,7 @@
     {
       "binding_id": "process-signals",
       "tool_id": "P0-06",
-      "tool_version": "0.6.1",
+      "tool_version": "0.7.0",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": ["qc-selected-expression"],

@@ -37,9 +37,12 @@ Registered P0 tools produce versioned measurements and evidence records.
 | Area | Current status |
 |---|---|
 | P0 tool packages | 12/12 implemented and callable |
-| Agent orchestration | Conversational intake and approved input QC; full chain in development |
-| Web interface | [Private preview](docs/web-preview.md) |
-| Scientific validation | In progress |
+| Agent orchestration | Staged approval and contract-driven access to all 12 tools; scientific input drafting remains incomplete |
+| Web interface | [Private preview](docs/web-preview.md) with product draft, exact fact confirmation and separate stage approval; installed acceptance is tracked explicitly |
+| Genuine Web coverage | Input QC, cell-state evidence and explicit no-graft path; not a complete product-evaluation chain |
+| Scientific validation | Candidate/shadow; no validated product score or release conclusion |
+
+See the [current integration plan](plans/web-full-chain-integration.md#current-progress-2026-09-08) for completed work, installed acceptance and remaining user-flow gaps.
 
 ## Quickstart
 

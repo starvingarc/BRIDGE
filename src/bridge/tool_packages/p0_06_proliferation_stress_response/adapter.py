@@ -31,13 +31,20 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.method_binding imp
     expression_asset_sha256,
     method_binding_reasons,
 )
+from bridge.tool_packages.p0_06_proliferation_stress_response.observation_source import (
+    SourceObservationError,
+    load_source_observations,
+    source_observations_unchanged,
+)
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import (
     CellCycleSummary,
     MethodExecutionState,
     ProcessMethodBundle,
     ProcessMethodId,
     ProcessMethodInput,
+    ProcessMethodInputV2,
     ProcessMethodSpec,
+    ProcessObservationStateV2,
     ProgramScoreSummary,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.method_runtime import (
@@ -171,6 +178,16 @@ METHOD_ROLE_MODELS: dict[str, tuple[str, str, type[FrozenModel]]] = {
         ProcessMethodInput,
     ),
 }
+SOURCE_BOUND_METHOD_ROLE_MODELS: dict[
+    str, tuple[str, str, type[FrozenModel]]
+] = {
+    **METHOD_ROLE_MODELS,
+    "process_method_input": (
+        "bridge://schemas/process-method-input/v0.2",
+        "0.2.0",
+        ProcessMethodInputV2,
+    ),
+}
 
 OPTIONAL_ROLE_MODELS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
     "measurement_spec": (
@@ -181,7 +198,13 @@ OPTIONAL_ROLE_MODELS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
 }
 # Public union used by repository contract-parity checks. Runtime loading still
 # selects the mode-specific maps above.
-ROLE_MODELS = {**LEGACY_ROLE_MODELS, **METHOD_ROLE_MODELS, **OPTIONAL_ROLE_MODELS}
+ROLE_MODELS = {
+    **LEGACY_ROLE_MODELS,
+    **METHOD_ROLE_MODELS,
+    **SOURCE_BOUND_METHOD_ROLE_MODELS,
+    **OPTIONAL_ROLE_MODELS,
+}
+METHOD_MODES = {"method_runtime", "method_runtime_source_bound"}
 
 
 
@@ -231,8 +254,9 @@ class ProliferationStressResponseAdapter:
         method_sha: str | None = None
         asset_sha: str | None = None
         method_spec: ProcessMethodSpec | None = None
-        method_input: ProcessMethodInput | None = None
-        if mode == "method_runtime":
+        method_input: ProcessMethodInput | ProcessMethodInputV2 | None = None
+        source_observation_states: tuple[ProcessObservationStateV2, ...] | None = None
+        if mode in METHOD_MODES:
             asset = request.assets[0]
             try:
                 asset_sha = expression_asset_sha256(asset.path)
@@ -242,12 +266,34 @@ class ProliferationStressResponseAdapter:
                     "process_method_spec",
                     ProcessMethodSpec,
                 )
+                method_input_model = (
+                    ProcessMethodInputV2
+                    if mode == "method_runtime_source_bound"
+                    else ProcessMethodInput
+                )
                 method_input = single_object(
                     request,
                     loaded,
                     "process_method_input",
-                    ProcessMethodInput,
+                    method_input_model,
                 )
+                if isinstance(method_input, ProcessMethodInputV2):
+                    cell_state = single_object(
+                        request,
+                        loaded,
+                        "cell_state_evidence_profile",
+                        CellStateEvidenceProfileV3,
+                    )
+                    cell_state_path = next(
+                        ref.path
+                        for ref in request.object_inputs
+                        if ref.role == "cell_state_evidence_profile"
+                    )
+                    source_observation_states = load_source_observations(
+                        method_input=method_input,
+                        cell_state=cell_state,
+                        cell_state_path=cell_state_path,
+                    ).rows
                 assignment = single_object(
                     request,
                     loaded,
@@ -264,6 +310,7 @@ class ProliferationStressResponseAdapter:
                     program_spec_sha256=_input_sha(request, "program_spec"),
                     method_input=method_input,
                     method_input_sha256=_input_sha(request, "process_method_input"),
+                    source_observation_states=source_observation_states,
                     assignment=assignment,
                     assignment_sha256=_input_sha(request, "biological_unit_assignment"),
                     biological_unit_manifest_sha256=_input_sha(
@@ -274,7 +321,11 @@ class ProliferationStressResponseAdapter:
                     ),
                     random_seed=request.random_seed,
                 )
-            except (ExpressionAssetError, ProcessMethodError) as exc:
+            except (
+                ExpressionAssetError,
+                ProcessMethodError,
+                SourceObservationError,
+            ) as exc:
                 return _failed_run(
                     request, spec, [exc.reason_code], input_hash=input_hash
                 )
@@ -301,7 +352,7 @@ class ProliferationStressResponseAdapter:
         measurement_specs = objects_for_role(
             request, loaded, "measurement_spec", MeasurementSpecV2
         )
-        if mode == "method_runtime":
+        if mode in METHOD_MODES:
             assert method_bundle is not None
             assert method_sha is not None
             assert method_spec is not None
@@ -391,6 +442,13 @@ class ProliferationStressResponseAdapter:
                 inputs_are_unchanged=lambda refs: (
                     inputs_unchanged(refs)
                     and _expression_asset_unchanged(request.assets, asset_sha)
+                    and (
+                        mode != "method_runtime_source_bound"
+                        or (
+                            isinstance(method_input, ProcessMethodInputV2)
+                            and source_observations_unchanged(method_input)
+                        )
+                    )
                 ),
             )
         except PublicationError as exc:
@@ -479,8 +537,27 @@ def _request_mode(request: ToolRequestV2) -> str:
     if request.assets or any(
         ref.role in method_only_roles for ref in request.object_inputs
     ):
+        method_input_refs = [
+            ref for ref in request.object_inputs if ref.role == "process_method_input"
+        ]
+        if (
+            len(method_input_refs) == 1
+            and method_input_refs[0].schema_ref
+            == "bridge://schemas/process-method-input/v0.2"
+        ):
+            return "method_runtime_source_bound"
         return "method_runtime"
     return "legacy_aggregation"
+
+
+def _role_models_for_mode(
+    mode: str,
+) -> dict[str, tuple[str, str, type[FrozenModel]]]:
+    if mode == "method_runtime_source_bound":
+        return SOURCE_BOUND_METHOD_ROLE_MODELS
+    if mode == "method_runtime":
+        return METHOD_ROLE_MODELS
+    return LEGACY_ROLE_MODELS
 
 
 def _envelope_reasons(
@@ -495,19 +572,17 @@ def _envelope_reasons(
         reasons.append("p0_06_measurement_spec_forbidden")
     if request.parameters:
         reasons.append("p0_06_parameters_forbidden")
-    required_role_models = (
-        METHOD_ROLE_MODELS if mode == "method_runtime" else LEGACY_ROLE_MODELS
-    )
+    required_role_models = _role_models_for_mode(mode)
     role_models = {**required_role_models, **OPTIONAL_ROLE_MODELS}
     roles = [ref.role for ref in request.object_inputs]
     for role in required_role_models:
         if roles.count(role) != 1:
             reasons.append(f"exactly_one_{role}_required")
-    if mode == "method_runtime" and roles.count("measurement_spec") != 1:
+    if mode in METHOD_MODES and roles.count("measurement_spec") != 1:
         reasons.append("exactly_one_measurement_spec_required")
     elif roles.count("measurement_spec") > 1:
         reasons.append("at_most_one_measurement_spec_allowed")
-    if mode == "method_runtime" and "program_evidence_bundle" in roles:
+    if mode in METHOD_MODES and "program_evidence_bundle" in roles:
         reasons.append("program_evidence_bundle_forbidden_in_method_runtime")
     if spec.result_schema_ref != PROFILE_V3_SCHEMA_REF:
         reasons.append("p0_06_profile_v3_required")
@@ -557,9 +632,7 @@ def _load_inputs(
     refs: list[StructuredInputRef],
     mode: str,
 ) -> tuple[LoadedInputs | None, list[str]]:
-    required_role_models = (
-        METHOD_ROLE_MODELS if mode == "method_runtime" else LEGACY_ROLE_MODELS
-    )
+    required_role_models = _role_models_for_mode(mode)
     role_models = {**required_role_models, **OPTIONAL_ROLE_MODELS}
     return load_structured_inputs(
         refs,
@@ -611,7 +684,7 @@ def _binding_reasons(
         loaded,
         "cell_state_evidence_profile",
         CellStateEvidenceProfileV3
-        if mode == "method_runtime"
+        if mode in METHOD_MODES
         else CellStateEvidenceProfileV2,
     )
     protocol = single_object(request, loaded, "protocol_ir", ProtocolIR)
@@ -656,7 +729,7 @@ def _binding_reasons(
                 protocol=protocol,
             )
         )
-    if mode == "method_runtime":
+    if mode in METHOD_MODES:
         asset = request.assets[0]
         manifest = single_object(
             request,
@@ -671,56 +744,81 @@ def _binding_reasons(
         except ExpressionAssetError as exc:
             reasons.append(exc.reason_code)
         else:
-            reasons.extend(
-                method_binding_reasons(
-                    product_case=product_case,
-                    cell_state=cell_state,
-                    program_spec=program_spec,
-                    method_spec=single_object(
-                        request,
-                        loaded,
-                        "process_method_spec",
-                        ProcessMethodSpec,
-                    ),
-                    method_input=single_object(
-                        request,
-                        loaded,
-                        "process_method_input",
-                        ProcessMethodInput,
-                    ),
-                    attestation_receipt=single_object(
-                        request,
-                        loaded,
-                        "biological_unit_attestation_receipt",
-                        BiologicalUnitAttestationReceipt,
-                    ),
-                    manifest=manifest,
-                    assignment=single_object(
-                        request,
-                        loaded,
-                        "biological_unit_assignment",
-                        BiologicalUnitAssignmentArtifact,
-                    ),
-                    asset=asset,
-                    asset_sha256=asset_sha,
-                    input_sha256_by_role={
-                        ref.role: ref.sha256 for ref in request.object_inputs
-                    },
-                    tool_spec=spec,
-                )
+            method_input_model = (
+                ProcessMethodInputV2
+                if mode == "method_runtime_source_bound"
+                else ProcessMethodInput
             )
+            method_input = single_object(
+                request,
+                loaded,
+                "process_method_input",
+                method_input_model,
+            )
+            source_observation_states = None
+            source_loading_failed = False
+            if isinstance(method_input, ProcessMethodInputV2):
+                cell_state_path = next(
+                    ref.path
+                    for ref in request.object_inputs
+                    if ref.role == "cell_state_evidence_profile"
+                )
+                try:
+                    source_observation_states = load_source_observations(
+                        method_input=method_input,
+                        cell_state=cell_state,
+                        cell_state_path=cell_state_path,
+                    ).rows
+                except SourceObservationError as exc:
+                    reasons.append(exc.reason_code)
+                    source_loading_failed = True
+            if not source_loading_failed:
+                reasons.extend(
+                    method_binding_reasons(
+                        product_case=product_case,
+                        cell_state=cell_state,
+                        program_spec=program_spec,
+                        method_spec=single_object(
+                            request,
+                            loaded,
+                            "process_method_spec",
+                            ProcessMethodSpec,
+                        ),
+                        method_input=method_input,
+                        source_observation_states=source_observation_states,
+                        attestation_receipt=single_object(
+                            request,
+                            loaded,
+                            "biological_unit_attestation_receipt",
+                            BiologicalUnitAttestationReceipt,
+                        ),
+                        manifest=manifest,
+                        assignment=single_object(
+                            request,
+                            loaded,
+                            "biological_unit_assignment",
+                            BiologicalUnitAssignmentArtifact,
+                        ),
+                        asset=asset,
+                        asset_sha256=asset_sha,
+                        input_sha256_by_role={
+                            ref.role: ref.sha256 for ref in request.object_inputs
+                        },
+                        tool_spec=spec,
+                    )
+                )
     measurement_specs = objects_for_role(
         request, loaded, "measurement_spec", MeasurementSpecV2
     )
     if measurement_specs:
         manifest = (
             single_object(request, loaded, "biological_unit_manifest", BiologicalUnitManifest)
-            if mode == "method_runtime"
+            if mode in METHOD_MODES
             else None
         )
         method_spec = (
             single_object(request, loaded, "process_method_spec", ProcessMethodSpec)
-            if mode == "method_runtime"
+            if mode in METHOD_MODES
             else None
         )
         reasons.extend(

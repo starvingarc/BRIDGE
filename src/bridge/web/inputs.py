@@ -19,6 +19,23 @@ GRAPH_SCHEMAS = {
     "bridge://schemas/case-evidence-graph-manifest/v0.1",
     "bridge://schemas/comparison-evidence-graph-manifest/v0.1",
 }
+P006_SOURCE_BOUND_METADATA = (
+    "P0-06",
+    "method_runtime_source_bound",
+    "process_method_input",
+    "bridge://schemas/process-method-input/v0.2",
+    "0.2.0",
+)
+P006_SOURCE_ARTIFACTS = {
+    ("source_observations", "artifact_manifest_path"): (
+        "artifact_manifest_sha256",
+        "manifest",
+    ),
+    ("source_observations", "evidence_path"): (
+        "evidence_sha256",
+        "cell_state_evidence",
+    ),
+}
 
 
 class InputBody(BaseModel):
@@ -278,17 +295,53 @@ class Inputs:
             raise ValueError("system_resource_binding_changed")
         return root
 
-    def bind_nested(self, state, payload):
+    def bind_nested(self, state, payload, named_artifacts=None):
         dependencies = []
-        def walk(item):
+        named_artifacts = named_artifacts or {}
+        bound_named = {}
+
+        def canonical_artifact(value, expected_kind):
+            if not isinstance(value, str):
+                raise ValueError("opaque_artifact_reference_required")
+            kind, sep, identifier = value.partition(":")
+            if not sep or kind != "artifact":
+                raise ValueError("opaque_artifact_reference_required")
+            dependency = state["_canonical_artifacts"].get(identifier)
+            if dependency is None:
+                raise ValueError("unknown_nested_artifact")
+            artifacts = self.receipt_artifacts(state, dependency)
+            artifact = artifacts[dependency["artifact_id"]]
+            if artifact["kind"] != expected_kind:
+                raise ValueError("canonical_artifact_kind_mismatch")
+            return dependency
+
+        def walk(item, trail=()):
             if isinstance(item, list):
-                return [walk(child) for child in item]
+                return [walk(child, trail) for child in item]
             if not isinstance(item, dict):
                 return item
             result = {}
             for key, value in item.items():
+                location = trail + (key,)
+                named = named_artifacts.get(location)
                 locator = key == "path" or key.endswith(("_path", "_file")) or key in {"output_dir"}
-                if locator and value is not None:
+                if named is not None and value is not None:
+                    checksum_field, expected_kind = named
+                    dependency = canonical_artifact(value, expected_kind)
+                    if checksum_field not in item:
+                        raise ValueError("nested_checksum_required")
+                    supplied_checksum = item[checksum_field]
+                    if (
+                        supplied_checksum is not None
+                        and supplied_checksum != ""
+                        and supplied_checksum != dependency["sha256"]
+                    ):
+                        raise ValueError("nested_checksum_mismatch")
+                    result[checksum_field] = dependency["sha256"]
+                    result[key] = dependency["path"]
+                    dependencies.append(dict(dependency))
+                    bound_named[location] = dependency
+                elif locator and value is not None:
                     if key != "path" or not isinstance(value, str):
                         raise ValueError("unsupported_file_binding:" + key)
                     kind, sep, identifier = value.partition(":")
@@ -316,9 +369,32 @@ class Inputs:
                     result[key] = dependency["path"]
                     dependencies.append(dict(dependency))
                 elif key not in result:
-                    result[key] = walk(value)
+                    result[key] = walk(value, location)
             return result
-        return walk(payload), dependencies
+
+        result = walk(payload)
+        if named_artifacts:
+            if set(bound_named) != set(named_artifacts):
+                raise ValueError("canonical_source_artifacts_required")
+            receipts = {
+                (record["receipt_file"], record["receipt_sha256"])
+                for record in bound_named.values()
+            }
+            if len(receipts) != 1:
+                raise ValueError("canonical_source_receipt_mismatch")
+            receipt_file, receipt_sha256 = next(iter(receipts))
+            receipt = next(
+                (
+                    item
+                    for item in state["_tool_runs"]
+                    if item["file"] == receipt_file
+                    and item["sha256"] == receipt_sha256
+                ),
+                None,
+            )
+            if receipt is None or receipt["tool_id"] != "P0-02":
+                raise ValueError("canonical_source_producer_mismatch")
+        return result, dependencies
 
     def add_object(self, state, *, tool_id, mode_id, role, schema_ref, object_version, data):
         from .app import uid, write_file
@@ -329,7 +405,15 @@ class Inputs:
         if len(state["_input_objects"]) >= 128:
             raise ValueError("object_count_limit")
         original = strict_json(data)
-        payload, dependencies = self.bind_nested(state, original)
+        metadata = (tool_id, mode_id, role, schema_ref, object_version)
+        named_artifacts = (
+            P006_SOURCE_ARTIFACTS
+            if metadata == P006_SOURCE_BOUND_METADATA
+            else None
+        )
+        payload, dependencies = self.bind_nested(
+            state, original, named_artifacts=named_artifacts
+        )
         self.validate_object(payload, schema_ref, object_version)
         encoded = data if payload == original else json.dumps(payload, ensure_ascii=False, allow_nan=False).encode()
         if len(encoded) > OBJECT_LIMIT:
@@ -444,7 +528,25 @@ class Inputs:
         spec = load_measurement_spec(ref)
         return [] if spec is None else [{"id": spec.measurement_spec_id, "label": "Configured cell-state MeasurementSpec"}]
 
+    def selected_asset(self, state, tool_id, asset_id, *, register_qc=False):
+        if tool_id == "P0-02":
+            if not state["_uploads"][asset_id].get("source_family_id"):
+                raise ValueError("source_family_id_required")
+            return self.service.effective_qc_asset(
+                state, asset_id, register=register_qc
+            )
+        declaration = state["_asset_declarations"].get(asset_id)
+        if declaration is None:
+            raise ValueError("asset_declaration_required")
+        return CaseInputAsset.model_validate(declaration)
+
     def selection_reasons(self, state, selection, verify=False):
+        reasons, _ = self._selection(
+            state, selection, verify=verify, register_qc=False
+        )
+        return reasons
+
+    def _selection(self, state, selection, *, verify, register_qc):
         self.initialize(state)
         contract, mode = self.contract_mode(selection.tool_id, selection.mode_id)
         reasons = []
@@ -482,14 +584,38 @@ class Inputs:
             raise ValueError("asset_cardinality_exceeded")
         if asset_contract and len(selection.asset_ids) < asset_contract.min_count:
             reasons.append("asset_required")
+        assets = []
         for aid in selection.asset_ids:
             if aid not in state["_uploads"]:
                 raise ValueError("unknown_input_asset")
-            declaration = state["_asset_declarations"].get(aid)
-            if declaration is None:
-                reasons.append("asset_declaration_required")
+            try:
+                asset = self.selected_asset(
+                    state,
+                    selection.tool_id,
+                    aid,
+                    register_qc=register_qc,
+                )
+            except ValueError as exc:
+                reason = str(exc)
+                if reason == "asset_declaration_required" or (
+                    selection.tool_id == "P0-02"
+                    and reason in {
+                        "source_family_id_required",
+                        "completed_qc_required",
+                        "qc_artifacts_missing",
+                        "qc_artifact_integrity_mismatch",
+                        "qc_declaration_retracted",
+                    }
+                ):
+                    reasons.append(reason)
+                    continue
+                raise
+            except (OSError, KeyError):
+                if selection.tool_id != "P0-02":
+                    raise
+                reasons.append("qc_artifacts_unavailable")
                 continue
-            asset = CaseInputAsset.model_validate(declaration)
+            assets.append(asset)
             for field, allowed in (("format", asset_contract.formats), ("assay", asset_contract.assays),
                                    ("input_level", asset_contract.input_levels), ("matrix_semantics", asset_contract.matrix_semantics)):
                 if allowed and getattr(asset, field) not in allowed:
@@ -506,7 +632,7 @@ class Inputs:
             reasons.append("measurement_spec_required")
         if not selection.asset_ids and not state.get("_bundle", {}).get("assets") and not state["_asset_declarations"]:
             reasons.append("product_analysis_context_required")
-        return reasons
+        return reasons, assets
 
     def declare_asset(self, state, declaration):
         self.initialize(state)
@@ -516,7 +642,8 @@ class Inputs:
         if declaration.matrix_location not in upload["locations"]:
             raise ValueError("matrix_not_registered")
         from bridge.tool_packages.p0_01_input_qc.io import LINEAGE_METADATA_KEY, DeclaredLineageMetadata
-        keys = {"sample_id", "capture_id", "source_family_id", LINEAGE_METADATA_KEY}
+        keys = {"sample_id", "capture_id", "source_family_id", LINEAGE_METADATA_KEY,
+                "sample_id_column", "capture_id_column", "gene_symbol_column"}
         for spec in self.service.registry.list():
             contract = self.service.registry.describe_input(spec.tool_id)
             for item in [contract.asset_input, *(mode.asset_input for mode in contract.object_input_modes)]:
@@ -537,11 +664,15 @@ class Inputs:
 
     def construct(self, state, selection):
         from .app import uid
-        reasons = self.selection_reasons(state, selection, verify=True)
+        reasons, assets = self._selection(
+            state,
+            selection,
+            verify=True,
+            register_qc=selection.tool_id == "P0-02",
+        )
         if reasons:
             raise ValueError(reasons[0])
         contract, mode = self.contract_mode(selection.tool_id, selection.mode_id)
-        assets = [CaseInputAsset.model_validate(state["_asset_declarations"][aid]) for aid in selection.asset_ids]
         context = assets or [CaseInputAsset.model_validate(item) for item in
             (state.get("_bundle", {}).get("assets") or list(state["_asset_declarations"].values()))]
         bundle = CaseInputBundle(bundle_id=uid(), version="1", assets=context)

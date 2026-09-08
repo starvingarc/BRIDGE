@@ -52,7 +52,10 @@ export function BridgeRuntimeProvider({
   const runtime = useExternalStoreRuntime({
     messages: session.messages,
     convertMessage,
-    isRunning: session.status === "thinking" || session.status === "running",
+    isRunning:
+      session.status === "thinking"
+      || session.status === "running"
+      || session.status === "stopping",
     isSendDisabled: disabled,
     onNew,
   });

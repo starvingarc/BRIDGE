@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import hashlib
 from importlib.resources import files
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -14,6 +15,7 @@ import secrets
 import stat
 from threading import BoundedSemaphore, RLock
 import time
+from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
@@ -28,6 +30,8 @@ from bridge.runners import ToolExecutionPipeline, ToolExecutionScope
 from bridge.storage.private_paths import ensure_private_directory, verify_private_directory
 from bridge.workflow import LocalWorkflowExecutor, SQLiteRunEventStore
 from .provider import converse
+from .control import Controls
+from .intake import Intake, IntakeFacts, IntakeInput, IntakePrepare
 from .inputs import Inputs, Selection, AssetDeclaration, PrepareAnalysis, OBJECT_LIMIT
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.contracts import ToolRequest, ToolRequestV2
@@ -35,11 +39,6 @@ from bridge.toolkit.contracts import ToolRequest, ToolRequestV2
 CATALOG_LOCK = RLock()
 
 ID = re.compile(r"^[a-f0-9]{32}$")
-RETRACTION = re.compile(
-    r"不是|并非|不属于|不要|不能|不使用|没有|不做|停止|取消|撤回|撤销"
-    r"|\b(?:not|no|don.t|isn.t|aren.t|wasn.t|cancel|stop|retract|revoke)\b",
-    re.I,
-)
 NO_GRAFT_DECLARATION = re.compile(
     r"(?:没有|无|未提供)(?:任何)?(?:移植|graft)(?:数据|证据)?"
     r"|\bno graft (?:data|evidence)(?:,\s*(?:please )?record (?:it as )?not provided)?\b"
@@ -50,17 +49,124 @@ NO_GRAFT_UNCERTAIN = re.compile(
     r"[?？]|并非没有|不是没有|不要|取消|停止|撤回|假设|如果|假如"
     r"|\b(?:not without|not no|do not|don.t|cancel|stop|if|suppose)\b", re.I,
 )
-QC_UNRELATED_ABSENCE = re.compile(
-    r"(?:没有|未提供)(?:提供)?(?:额外的?)?"
-    r"(?:(?:样本|批次)(?:或|和)(?:样本|批次)表|(?:样本|批次)(?:表|元数据)|产品定义|状态角色|实验方案)"
-    r"|\bno (?:additional |extra )?"
-    r"(?:(?:sample|batch)(?: or | and )(?:sample|batch) tables?"
-    r"|(?:sample|batch) (?:tables?|metadata)|product definition|state roles?|experimental protocol)\b"
-    r"|不要把空分数当成运行失败",
-    re.I,
-)
 COOKIE = "bridge_session"
-PUBLIC = ("id", "title", "updated_at", "status", "messages", "uploads", "plan", "artifacts", "error", "plan_history", "capabilities")
+PUBLIC = ("id", "title", "updated_at", "status", "messages", "uploads", "plan", "artifacts", "error", "plan_history", "capabilities", "input_review_required", "pending_input_change")
+PARQUET_MEDIA_TYPES = {"application/vnd.apache.parquet", "application/x-parquet"}
+PARQUET_STORED_LIMIT = 8 * 1024 * 1024
+PARQUET_ROW_GROUP_LIMIT = 32 * 1024 * 1024
+PARQUET_ROW_LIMIT = 100
+PARQUET_COLUMN_LIMIT = 24
+PARQUET_RESPONSE_LIMIT = 200_000
+PARQUET_TEXT_LIMIT = 1_000
+PARQUET_TEXT_SUFFIX = "… [truncated]"
+JSON_SAFE_INTEGER_LIMIT = (1 << 53) - 1
+
+
+class ArtifactPreviewUnavailable(ValueError):
+    pass
+
+
+class ArtifactPreviewTooLarge(ArtifactPreviewUnavailable):
+    pass
+
+
+def parquet_preview(data: bytes) -> bytes:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    parquet = pq.ParquetFile(pa.BufferReader(data))
+    metadata = parquet.metadata
+    schema = parquet.schema_arrow
+    total_rows = metadata.num_rows
+    total_columns = len(schema)
+    columns = schema.names[:PARQUET_COLUMN_LIMIT]
+    if len(set(columns)) != len(columns):
+        raise ArtifactPreviewUnavailable
+    for field in list(schema)[:PARQUET_COLUMN_LIMIT]:
+        data_type = field.type
+        if not (
+            pa.types.is_null(data_type)
+            or pa.types.is_boolean(data_type)
+            or pa.types.is_integer(data_type)
+            or pa.types.is_floating(data_type)
+            or pa.types.is_string(data_type)
+            or pa.types.is_large_string(data_type)
+        ):
+            raise ArtifactPreviewUnavailable
+
+    row_groups = []
+    rows_accounted = 0
+    declared_size = 0
+    if total_rows:
+        for index in range(metadata.num_row_groups):
+            row_group = metadata.row_group(index)
+            if row_group.num_rows < 0 or row_group.total_byte_size < 0:
+                raise ArtifactPreviewUnavailable
+            row_groups.append(index)
+            rows_accounted += row_group.num_rows
+            declared_size += row_group.total_byte_size
+            if declared_size > PARQUET_ROW_GROUP_LIMIT:
+                raise ArtifactPreviewTooLarge
+            if rows_accounted >= PARQUET_ROW_LIMIT:
+                break
+
+    rows = []
+    text_truncated = False
+    for batch in parquet.iter_batches(
+        batch_size=PARQUET_ROW_LIMIT,
+        row_groups=row_groups,
+        columns=columns,
+        use_threads=False,
+    ):
+        for values in zip(*(column.to_pylist() for column in batch.columns)):
+            rendered = []
+            for value in values:
+                if value is None or isinstance(value, bool):
+                    rendered.append(value)
+                elif isinstance(value, int):
+                    rendered.append(
+                        value if -JSON_SAFE_INTEGER_LIMIT <= value <= JSON_SAFE_INTEGER_LIMIT else str(value)
+                    )
+                elif isinstance(value, float):
+                    if not math.isfinite(value):
+                        rendered.append(
+                            "NaN" if math.isnan(value) else "Infinity" if value > 0 else "-Infinity"
+                        )
+                    elif value.is_integer() and not (
+                        -JSON_SAFE_INTEGER_LIMIT <= value <= JSON_SAFE_INTEGER_LIMIT
+                    ):
+                        rendered.append(str(value))
+                    else:
+                        rendered.append(value)
+                elif isinstance(value, str):
+                    if len(value) > PARQUET_TEXT_LIMIT:
+                        value = value[:PARQUET_TEXT_LIMIT - len(PARQUET_TEXT_SUFFIX)] + PARQUET_TEXT_SUFFIX
+                        text_truncated = True
+                    rendered.append(value)
+                else:
+                    raise ArtifactPreviewUnavailable
+            rows.append(rendered)
+            if len(rows) >= PARQUET_ROW_LIMIT:
+                break
+        if len(rows) >= PARQUET_ROW_LIMIT:
+            break
+
+    payload = {
+        "columns": columns,
+        "rows": rows,
+        "total_rows": total_rows,
+        "total_columns": total_columns,
+        "truncated": text_truncated or total_rows > len(rows) or total_columns > len(columns),
+    }
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+    ).encode()
+    if len(encoded) > PARQUET_RESPONSE_LIMIT:
+        raise ArtifactPreviewTooLarge
+    return encoded
 
 
 @dataclass(frozen=True)
@@ -75,8 +181,15 @@ class Settings:
     upload_limit: int = 128 * 1024 * 1024
     cookie_ttl: int = 12 * 3600
     cell_state_measurement_spec_ref: str | None = None
+    share_result_summaries: bool = False
+    model_action_protocol: Literal["json", "deepseek_tools"] = "json"
 
     def __post_init__(self):
+        if (
+            type(self.share_result_summaries) is not bool
+            or self.model_action_protocol not in {"json", "deepseek_tools"}
+        ):
+            raise ValueError("invalid_server_configuration")
         if len(self.token) < 24 or not self.model_api_key or not self.model:
             raise ValueError("invalid_server_configuration")
         for url in (self.origin, self.model_base_url):
@@ -100,6 +213,11 @@ class Message(Body):
 class SourceInput(Body):
     upload_id: str = Field(pattern=r"^[a-f0-9]{32}$")
     source_family_id: str = Field(min_length=1, max_length=160, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
+
+
+class InputChange(Body):
+    change_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    change_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class Approval(Body):
@@ -193,6 +311,8 @@ class Service:
         self.lock = RLock()
         self.registry = ToolRegistry.load_default()
         self.inputs = Inputs(self)
+        self.controls = Controls(self)
+        self.intake = Intake(self)
         self.cookies: dict[str, float] = {}
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bridge-web")
         self.capacity = BoundedSemaphore(2)
@@ -200,9 +320,9 @@ class Service:
         for item in self.root.iterdir():
             if ID.fullmatch(item.name):
                 state = self.load(item.name)
-                if state["status"] in {"running", "thinking", "awaiting_approval"}:
+                if state["status"] in {"running", "thinking", "stopping", "awaiting_approval"}:
                     state["status"], state["error"] = "failed", "interrupted"
-                    if state["plan"] and state["plan"]["status"] in {"proposed", "approved"}:
+                    if state["plan"] and state["plan"]["status"] in {"proposed", "approved", "cancelled"}:
                         state["plan"]["status"] = "cancelled"
                         for step in state["plan"]["steps"]:
                             if step["status"] in {"pending", "running"}:
@@ -227,6 +347,7 @@ class Service:
         state.setdefault("_plan_history", [])
         state.setdefault("_tool_runs", [])
         self.inputs.initialize(state)
+        self.controls.initialize(state)
         return state
 
     def save(self, state):
@@ -248,7 +369,8 @@ class Service:
                  "messages": [], "uploads": [], "plan": None, "artifacts": [], "error": None,
                  "_uploads": {}, "_artifacts": {}, "_plan": None,
                  "plan_history": [], "_plan_history": [], "_tool_runs": []}
-        self.message(state, "assistant", "我是 BRIDGE。请描述研究问题并上传 H5AD。当前预览可执行输入 QC；服务端条件就绪后可准备 P0-02 候选细胞状态分析，明确无移植数据时可准备 P0-12。所有运行都需要您确认计划，不提供临床或放行结论。")
+        self.message(state, "assistant", "我是 BRIDGE。准备评估移植前的细胞产品？先上传这批细胞的 H5AD，再确认右侧产品资料。我会先检查数据可分析性，再按产品目标梳理细胞状态证据与缺口。资料确认后会生成下一阶段计划，单独批准才运行。这里提供研究性证据，不作临床或放行判断。")
+        self.controls.initialize(state)
         self.save(state)
         return state
 
@@ -300,17 +422,6 @@ class Service:
             return False
         return bool(NO_GRAFT_DECLARATION.search(text))
 
-    def independent_retraction(self, text):
-        if not NO_GRAFT_UNCERTAIN.search(text):
-            text = NO_GRAFT_DECLARATION.sub("", text)
-        # A negative turn touching QC semantics is not clearly unrelated: keep
-        # coordinated absences such as "no sample table or raw counts" fenced.
-        if re.search(r"(?:sc|sn)RNA-seq|原始计数|矩阵|\b(?:counts?|QC|X)\b", text, re.I):
-            return bool(RETRACTION.search(text))
-        # Remove only bounded, clearly unrelated absence spans, never an entire
-        # mixed message. Any remaining cancellation or declaration negation fences QC.
-        return bool(RETRACTION.search(QC_UNRELATED_ABSENCE.sub("", text)))
-
     def capabilities(self, state):
         result = []
         selected = state["uploads"][-1]["id"] if state["uploads"] else None
@@ -327,7 +438,7 @@ class Service:
                 reasons = [] if selected else ["product_upload_required"]
                 if selected and not self.assay(state, selected):
                     reasons.append("assay_declaration_required")
-                if selected and not state.get("_pending_qc") and not any(item["asset_id"] == selected for item in state.get("_bundle", {}).get("assets", [])):
+                if selected and not self.declaration(state, selected):
                     reasons.append("raw_count_declaration_required")
             elif spec.tool_id == "P0-02":
                 reasons = self.cell_state_config_reasons()
@@ -353,6 +464,10 @@ class Service:
                 mode = contract.object_input_modes[0] if len(contract.object_input_modes) == 1 else None
                 reasons = (["object_required:" + role.role for role in mode.roles if role.min_count]
                            if mode else ["input_mode_required"])
+            if spec.tool_id == "P0-02":
+                aids = selection["asset_ids"] if selection else ([selected] if selected else [])
+                for aid in aids:
+                    reasons.extend(self.intake.cell_state_reasons(state, aid))
             result.append({"tool_id": spec.tool_id, "label": spec.name,
                            "state": "needs_input" if reasons else "ready",
                            "reason_codes": reasons, "mode_id": selection["mode_id"] if selection else None})
@@ -364,7 +479,24 @@ class Service:
         self.save(state)
 
     def prepare_analysis(self, state, tool_id):
+        self.controls.require_ready(state)
+        # Another session's in-flight tool may own the process QC catalog.
+        # Never wait for that lock while holding the HTTP/session state lock.
+        if not CATALOG_LOCK.acquire(blocking=False):
+            raise HTTPException(409, "worker_busy")
+        try:
+            self._prepare_analysis(state, tool_id)
+        finally:
+            CATALOG_LOCK.release()
+
+    def _prepare_analysis(self, state, tool_id):
         self.inputs.initialize(state)
+        if tool_id == "P0-02":
+            selection = state["_input_selections"].get(tool_id)
+            aids = selection["asset_ids"] if selection else [item["id"] for item in state["uploads"][-1:]]
+            if any(self.intake.cell_state_reasons(state, aid) for aid in aids):
+                self.stage_blocked(state, "supported_product_family_required")
+                return
         if tool_id in state["_input_selections"] or tool_id not in {"P0-02", "P0-12"}:
             self.prepare_selected(state, tool_id)
             return
@@ -416,8 +548,54 @@ class Service:
             self.stage_blocked(state, reason)
 
     def qc_asset(self, state, selected, *, register=True):
+        return self._qc_asset(state, selected, register=register, enrich=register)
+
+    def effective_qc_asset(self, state, selected, *, register=False):
+        return self._qc_asset(state, selected, register=register, enrich=True)
+
+    def _qc_receipt_asset_id(self, state, receipt):
+        plan_id = receipt.get("plan_id")
+        if not plan_id:
+            return None
+        plans = [state.get("_plan"), *(
+            item.get("plan")
+            for item in state.get("_plan_history", [])
+            if isinstance(item, dict)
+        )]
+        matches = [
+            plan for plan in plans
+            if isinstance(plan, dict) and plan.get("plan_id") == plan_id
+        ]
+        if len(matches) != 1:
+            return None
+        asset_ids = set()
+        for step in matches[0].get("steps", []):
+            approved = step.get("approved_request_json")
+            if approved is None:
+                continue
+            try:
+                request = json.loads(approved)
+            except (TypeError, json.JSONDecodeError):
+                return None
+            if request.get("tool_id") != "P0-01":
+                continue
+            assets = request.get("assets")
+            if (
+                not isinstance(assets, list)
+                or len(assets) != 1
+                or not isinstance(assets[0], dict)
+                or not isinstance(assets[0].get("asset_id"), str)
+            ):
+                return None
+            asset_ids.add(assets[0]["asset_id"])
+        return next(iter(asset_ids)) if len(asset_ids) == 1 else None
+
+    def _qc_asset(self, state, selected, *, register, enrich):
         for receipt in reversed(state.get("_tool_runs", [])):
             if receipt["tool_id"] != "P0-01" or receipt["state"] != "succeeded":
+                continue
+            receipt_asset_id = self._qc_receipt_asset_id(state, receipt)
+            if receipt_asset_id is not None and receipt_asset_id != selected:
                 continue
             directory, _, _ = ensure_private_directory(self.directory(state["id"]) / "receipts")
             raw = read_file(directory / receipt["file"])
@@ -425,8 +603,16 @@ class Service:
                 raise ValueError("qc_artifact_integrity_mismatch")
             run = json.loads(raw)
             if run["request"]["assets"][0]["asset_id"] != selected:
+                if receipt_asset_id == selected:
+                    raise ValueError("qc_artifact_integrity_mismatch")
                 continue
             if receipt.get("declaration_start") != state["_uploads"][selected]["declaration_start"]:
+                raise ValueError("qc_declaration_retracted")
+            payload = run["request"]["assets"][0]
+            declared = state.get("_asset_declarations", {}).get(selected) or state.get("_qc_declarations", {}).get(selected)
+            if (payload.get("checksum") != state["_uploads"][selected]["sha256"]
+                    or declared and any(payload.get(key) != declared.get(key) for key in
+                        ("assay", "matrix_location", "matrix_semantics", "input_level"))):
                 raise ValueError("qc_declaration_retracted")
             artifacts = {Path(item["path"]).name: item for item in run["artifacts"]}
             values = {}
@@ -451,17 +637,40 @@ class Service:
             view = values["qc_readiness_profile_v2.json"]["selected_data_view"]
             if not view:
                 raise ValueError("qc_artifacts_missing")
-            if not register:
-                return None
-            catalog_path = self.root / "qc-catalog.json"
-            with CATALOG_LOCK:
-                catalog = json.loads(read_file(catalog_path)) if catalog_path.exists() else {"profiles": {}}
-                catalog["profiles"][profile["profile_id"]] = {
-                    "path": artifacts["qc_readiness_profile.json"]["path"],
-                    "sha256": artifacts["qc_readiness_profile.json"]["sha256"],
-                    "structured_output_index_path": artifacts["structured_output_index.json"]["path"],
-                    "structured_output_index_sha256": artifacts["structured_output_index.json"]["sha256"]}
-                write_file(catalog_path, json.dumps(catalog).encode())
+            if declared:
+                committed_metadata = dict(declared.get("metadata") or {})
+                receipt_metadata = dict(payload.get("metadata") or {})
+                # Source-only form edits intentionally preserve QC; downstream
+                # source binding comes from the separately confirmed upload field.
+                committed_metadata.pop("source_family_id", None)
+                receipt_metadata.pop("source_family_id", None)
+                # Permit only the exact enrichments this method derives from
+                # the checksummed canonical QC artifacts above.
+                for key, value in {
+                    "qc_profile_ref": profile["profile_id"],
+                    "data_view_id": view["view_id"],
+                    "parent_asset_sha256": view["parent_asset_sha256"],
+                }.items():
+                    if key in committed_metadata and committed_metadata[key] == value:
+                        if key in receipt_metadata and receipt_metadata[key] != value:
+                            raise ValueError("qc_declaration_retracted")
+                        committed_metadata.pop(key)
+                        receipt_metadata.pop(key, None)
+                if json.dumps(committed_metadata, sort_keys=True, allow_nan=False) != json.dumps(
+                        receipt_metadata, sort_keys=True, allow_nan=False):
+                    raise ValueError("qc_declaration_retracted")
+            if register:
+                catalog_path = self.root / "qc-catalog.json"
+                with CATALOG_LOCK:
+                    catalog = json.loads(read_file(catalog_path)) if catalog_path.exists() else {"profiles": {}}
+                    catalog["profiles"][profile["profile_id"]] = {
+                        "path": artifacts["qc_readiness_profile.json"]["path"],
+                        "sha256": artifacts["qc_readiness_profile.json"]["sha256"],
+                        "structured_output_index_path": artifacts["structured_output_index.json"]["path"],
+                        "structured_output_index_sha256": artifacts["structured_output_index.json"]["sha256"]}
+                    write_file(catalog_path, json.dumps(catalog).encode())
+            if not enrich:
+                return CaseInputAsset.model_validate(payload)
             payload = run["request"]["assets"][0]
             payload["metadata"] = {**payload.get("metadata", {}),
                 "source_family_id": state["_uploads"][selected]["source_family_id"],
@@ -507,75 +716,66 @@ class Service:
         self.save(state)
 
     def input_changed(self, state):
+        state["_input_revision"] += 1
         if state.get("plan") and state["plan"]["status"] == "proposed":
             state["plan"], state["_plan"], state["status"] = None, None, "idle"
         state["error"] = None
         self.save(state)
 
     def busy(self, state):
-        if state["status"] in {"thinking", "running"}:
+        if state["status"] in {"thinking", "running", "stopping"}:
             raise HTTPException(409, "session_busy")
 
     def schedule(self, state, status, work):
         if not self.capacity.acquire(blocking=False):
             raise HTTPException(429, "worker_busy")
+        state["_control_epoch"] += 1
+        epoch = state["_control_epoch"]
         state["status"], state["error"] = status, None
         self.save(state)
         sid = state["id"]
         def run():
             try:
-                work(sid)
+                work(sid, epoch)
             except Exception as exc:
                 with self.lock:
                     failed = self.load(sid)
-                    failed["status"] = "failed"
-                    failed["error"] = ("provider_unavailable" if isinstance(exc, ProviderUnavailable) else "stage_input_construction_failed") if status == "thinking" else "execution_failed"
-                    if failed["plan"] and status == "running":
-                        failed["plan"]["status"] = "partial" if any(step["status"] in {"succeeded", "partial"} for step in failed["plan"]["steps"]) else "failed"
-                        for step in failed["plan"]["steps"]:
-                            if step["status"] in {"pending", "running"}:
-                                step["status"], step["reason"] = "failed", "execution_failed"
-                    self.save(failed)
+                    if failed["_control_epoch"] == epoch:
+                        failed["status"] = "failed"
+                        failed["error"] = ("provider_unavailable" if isinstance(exc, ProviderUnavailable) else "stage_input_construction_failed") if status == "thinking" else "execution_failed"
+                        if failed["plan"] and status == "running":
+                            failed["plan"]["status"] = "partial" if any(step["status"] in {"succeeded", "partial"} for step in failed["plan"]["steps"]) else "failed"
+                            for step in failed["plan"]["steps"]:
+                                if step["status"] in {"pending", "running"}:
+                                    step["status"], step["reason"] = "failed", "execution_failed"
+                        self.save(failed)
             finally:
+                # The sole worker owns executor cancellation, after any in-flight
+                # tool has released its operation lock. HTTP only fences state.
+                with self.lock:
+                    current = self.load(sid)
+                    stopped = current["_control_epoch"] != epoch
+                    run_id = current.get("_run_id") if stopped and status == "running" else None
+                if run_id:
+                    self.executor.cancel(run_id)
+                with self.lock:
+                    current = self.load(sid)
+                    if current["_control_epoch"] != epoch and current["status"] == "stopping":
+                        self.controls.settle(current)
+                        self.save(current)
                 self.capacity.release()
         self.pool.submit(run)
 
     def declaration(self, state, upload_id):
-        upload = state["_uploads"][upload_id]
-        user = next((item["content"] for item in reversed(state["messages"]) if item["role"] == "user"), "")
-        if re.search(r"[?？]", user) or RETRACTION.search(user):
-            return None
-        # Only explicit raw-count/QC intent may bind a matrix, never a model guess.
-        if re.search(r"(使用|原始计数|raw counts|/counts|\buse\b)", user, re.I):
-            if "layers/counts" in upload["locations"] and re.search(r"counts", user, re.I):
-                return "layers/counts"
-            if "X" in upload["locations"] and re.search(r"\bX\b", user):
-                return "X"
-        if (upload.get("suggested") == "layers/counts" and len(state["messages"]) >= 2
-                and state["messages"][-2]["id"] == upload.get("question_id")) and re.fullmatch(r"(是|是的|好|好的|确认|yes|ok)[。！! ]*", user, re.I):
-            return "layers/counts"
+        declared = state.get("_asset_declarations", {}).get(upload_id) or state.get("_qc_declarations", {}).get(upload_id)
+        if declared:
+            return declared["matrix_location"] if declared.get("matrix_semantics") == "raw_counts" else None
         return None
 
-    def think(self, sid):
-        state = self.load(sid)
-        if self.independent_retraction(state["messages"][-1]["content"]):
-            state.pop("_pending_qc", None)
-            # A retraction fences off all earlier declarations conservatively.
-            # Both matrix intent and assay must be positively declared again.
-            for upload in state["_uploads"].values():
-                upload["declaration_start"] = len(state["messages"])
-                upload.pop("question_id", None)
-            self.save(state)
-        if self.no_graft_declared(state):
-            state.pop("_pending_qc", None)
-        if state.get("_pending_qc") and self.assay(state, state["_pending_qc"]["upload_id"]):
-            self.prepare(state, **state["_pending_qc"])
-            return
-        if state["uploads"]:
-            selected = state["uploads"][-1]["id"]
-            location = self.declaration(state, selected)
-            if location:
-                self.prepare(state, selected, location)
+    def think(self, sid, epoch):
+        with self.lock:
+            state = self.load(sid)
+            if state["_control_epoch"] != epoch:
                 return
         allowed_tools = {spec.tool_id for spec in self.registry.list()}
         allowed_states = {"succeeded", "failed", "partial", "cancelled", "blocked"}
@@ -592,52 +792,120 @@ class Service:
                        for spec in self.registry.list()
                    },
                    "results_sent_to_model": False}
+        context["input_review_required"] = state["input_review_required"]
+        # Provider receives readiness only, never private form values or column names.
+        context["intake_context"] = [
+            {"upload_id": item["id"],
+             "state": "confirmed" if state.get("_intakes", {}).get(item["id"], {}).get("signature") ==
+                 self.intake.signature(state, item["id"]) else "needs_confirmation",
+             "missing_fields": self.intake.missing_fields(self.intake.current_facts(state, item["id"]))}
+            for item in state["uploads"]
+        ]
+        result_turn_id = None
+        if self.settings.share_result_summaries and not state["input_review_required"]:
+            from .evidence import build_result_context
+            summary, binding = build_result_context(self.inputs, state)
+            context["result_summary"] = summary
+            context["results_sent_to_model"] = summary["state"] == "available"
+            result_turn_id = next(
+                (item["id"] for item in reversed(state["messages"]) if item["role"] == "user"),
+                None,
+            )
+            if result_turn_id is not None:
+                with self.lock:
+                    current = self.load(sid)
+                    if current["_control_epoch"] != epoch:
+                        return
+                    records = current.setdefault("_result_contexts", {})
+                    records[result_turn_id] = {
+                        "control_epoch": epoch,
+                        "result_summary": summary,
+                        "private_binding": binding,
+                    }
+                    while len(records) > 24:
+                        records.pop(next(iter(records)))
+                    self.save(current)
+        result_reply_ids = {
+            record.get("assistant_message_id")
+            for record in state.get("_result_contexts", {}).values()
+            if isinstance(record, dict) and record.get("assistant_message_id")
+        }
+        provider_messages = [
+            {"role": item["role"], "content": private_text(item["content"])}
+            for item in state["messages"]
+            if context["results_sent_to_model"] or item["id"] not in result_reply_ids
+        ]
         try:
-            action = converse(self.settings, [{"role": item["role"], "content": private_text(item["content"])}
-                                             for item in state["messages"]], context)
+            action = converse(self.settings, provider_messages, context)
         except Exception as exc:
             raise ProviderUnavailable() from exc
-        if action.action == "prepare_analysis":
-            self.prepare_analysis(state, action.tool_id)
-            return
-        if action.action == "prepare_qc":
-            if action.upload_id not in state["_uploads"]:
-                raise ValueError("unknown_upload")
-            declaration = self.declaration(state, action.upload_id)
-            if declaration != action.matrix_location:
-                self.message(state, "assistant", "请明确声明原始计数所在位置：例如“使用 counts 层进行 QC”，或“X 是原始计数，进行 QC”。不会根据文件名推断计数语义。")
-            else:
-                self.prepare(state, action.upload_id, declaration)
+        with self.lock:
+            state = self.load(sid)
+            if state["_control_epoch"] != epoch:
                 return
-        else:
-            self.message(state, "assistant", action.text)
-        state["status"] = "idle"
-        self.save(state)
+            assistant_message_id = None
+            if action.action == "review_inputs":
+                self.controls.review(state)
+                self.message(state, "assistant", action.text)
+                assistant_message_id = state["messages"][-1]["id"]
+            elif action.action == "propose_intake":
+                if action.upload_id not in state["_uploads"]:
+                    raise ValueError("unknown_upload")
+                if action.upload_id in state.get("_intakes", {}) or state["input_review_required"]:
+                    self.message(state, "assistant", "请在右侧产品资料中查看或修改已确认事实，并确认精确变更。聊天不会改写现有声明。")
+                else:
+                    facts = self.intake.current_facts(state, action.upload_id).model_dump()
+                    facts.update(action.facts.model_dump(exclude_unset=True))
+                    self.controls.stage(state, "intake", IntakeInput(upload_id=action.upload_id,
+                        facts=IntakeFacts.model_validate(facts)))
+                    self.message(state, "assistant", "产品资料草稿已整理，请在右侧核对并确认。确认资料不会自动启动分析。")
+            elif action.action in {"prepare_analysis", "prepare_qc"} and state["input_review_required"]:
+                self.stage_blocked(state, "input_review_required")
+                return
+            elif action.action == "prepare_analysis":
+                self.prepare_analysis(state, action.tool_id)
+                return
+            elif action.action == "prepare_qc":
+                if action.upload_id not in state["_uploads"]:
+                    raise ValueError("unknown_upload")
+                declaration = self.declaration(state, action.upload_id)
+                if declaration != action.matrix_location:
+                    self.message(state, "assistant", "请先在右侧产品资料中确认实验类型与原始计数位置。聊天中的说法不会自动成为已确认输入。")
+                else:
+                    try:
+                        self.qc_asset(state, action.upload_id, register=False)
+                    except (ValueError, OSError, KeyError) as exc:
+                        if str(exc) not in {"completed_qc_required", "qc_declaration_retracted"}:
+                            self.stage_blocked(state, "qc_evidence_unavailable")
+                            return
+                        self.prepare(state, action.upload_id, declaration)
+                        return
+                    self.message(state, "assistant", "这份输入已有仍有效的 QC 证据，无需重复运行。可直接查看已有结果或继续下一阶段。")
+            else:
+                self.message(state, "assistant", action.text)
+                assistant_message_id = state["messages"][-1]["id"]
+            if (
+                assistant_message_id is not None
+                and result_turn_id is not None
+                and context["results_sent_to_model"]
+            ):
+                record = state.get("_result_contexts", {}).get(result_turn_id)
+                if record is not None:
+                    record["assistant_message_id"] = assistant_message_id
+            state["status"] = "idle"
+            self.save(state)
 
     def assay(self, state, upload_id):
-        start = state["_uploads"][upload_id]["declaration_start"]
-        for item in reversed(state["messages"][start:]):
-            if item["role"] == "user":
-                if self.independent_retraction(item["content"]):
-                    return None
-                # Unrelated negative messages preserve older declarations, but
-                # cannot establish a new assay from an otherwise ambiguous turn.
-                if RETRACTION.search(item["content"]) or re.search(r"[?？]", item["content"]):
-                    continue
-                matches = re.findall(r"(?<![A-Za-z])(scRNA-seq|snRNA-seq)(?![A-Za-z])", item["content"])
-                if len(set(matches)) == 1:
-                    return matches[0]
+        declared = state.get("_asset_declarations", {}).get(upload_id) or state.get("_qc_declarations", {}).get(upload_id)
+        if declared:
+            return declared.get("assay")
         return None
 
     def prepare(self, state, upload_id, location):
+        self.controls.require_ready(state)
         assay = self.assay(state, upload_id)
-        if assay is None:
-            state["_pending_qc"] = {"upload_id": upload_id, "location": location}
-            state["status"] = "idle"
-            self.message(state, "assistant", "计数位置声明已记录。还需要您明确实验类型：scRNA-seq（单细胞）还是 snRNA-seq（单核）？不会根据表达数据自动推断。")
-            self.save(state)
-            return
-        state.pop("_pending_qc", None)
+        if assay is None or self.declaration(state, upload_id) != location:
+            raise HTTPException(409, "intake_confirmation_required")
         upload = state["_uploads"][upload_id]
         if location not in upload["locations"]:
             raise ValueError("matrix_not_registered")
@@ -646,9 +914,10 @@ class Service:
         data = read_file(path, self.settings.upload_limit)
         if hashlib.sha256(data).hexdigest() != upload["sha256"]:
             raise ValueError("upload_integrity_mismatch")
-        asset = CaseInputAsset(asset_id=upload_id, path=path, format="h5ad",
-                               input_level="count_ready", checksum=upload["sha256"],
-                               matrix_location=location, matrix_semantics="raw_counts", assay=assay)
+        declared = state["_asset_declarations"].get(upload_id)
+        asset = (CaseInputAsset.model_validate(declared) if declared else
+                 CaseInputAsset(asset_id=upload_id, path=path, format="h5ad",
+                                checksum=upload["sha256"], **state["_qc_declarations"][upload_id]))
         bundle = CaseInputBundle(bundle_id=uid(), version="1", assets=[asset])
         snapshot = files("bridge.resources").joinpath("knowledge_snapshot.json.gz").read_bytes()
         plan = PlanBuilder().build(bundle, output_root=self.directory(state["id"]) / "runs",
@@ -657,7 +926,7 @@ class Service:
         state["_bundle"] = bundle.model_dump(mode="json")
         state["_plan"] = plan.model_dump(mode="json")
         state["plan"] = {"id": plan.plan_id, "digest": plan.approval_sha256(), "status": "proposed",
-                         "summary": "P0-01 输入 QC；实验类型：" + assay + "；原始计数位置：" + location + "。仅研究性候选结果；未声明 sample/capture 元数据，不推断生物学重复。",
+                         "summary": "P0-01 输入 QC；实验类型：" + assay + "；原始计数位置：" + location + "。使用已确认的输入声明；仅研究性候选结果，不推断生物学重复。",
                          "steps": [{"id": item.step_id, "tool_id": item.tool_id, "label": "输入质量与可分析性",
                                     "status": "pending" if item.disposition.value == "execute" else "skipped",
                                     "reason": None if not item.reason_codes else "input_not_eligible"} for item in plan.steps]}
@@ -665,53 +934,83 @@ class Service:
         self.message(state, "assistant", "已根据您的计数声明生成输入 QC 计划。请检查并确认；确认前不会运行。结果不代表科学方法已验证。")
         self.save(state)
 
-    def execute(self, sid):
+    def execute(self, sid, epoch):
         with self.qc_catalog():
-            self._execute(sid)
+            self._execute(sid, epoch)
 
-    def _execute(self, sid):
-        state = self.load(sid)
-        plan = AnalysisPlan.model_validate(state["_plan"])
-        self.inputs.verify_plan(state, plan)
-        # Verify all registered input bytes immediately before any SDK execution.
-        for upload_id, upload in state["_uploads"].items():
-            directory, _, _ = ensure_private_directory(self.directory(sid) / "uploads")
-            path = directory / (upload_id + ".h5ad")
-            if hashlib.sha256(read_file(path, self.settings.upload_limit)).hexdigest() != upload["sha256"]:
-                raise ValueError("upload_integrity_mismatch")
-        run_id = self.executor.submit(plan)
-        state["_run_id"] = run_id
-        self.save(state)
+    def _execute(self, sid, epoch):
+        with self.lock:
+            state = self.load(sid)
+            if state["_control_epoch"] != epoch or state["input_review_required"]:
+                return
+            plan = AnalysisPlan.model_validate(state["_plan"])
+            self.inputs.verify_plan(state, plan)
+            for upload_id, upload in state["_uploads"].items():
+                directory, _, _ = ensure_private_directory(self.directory(sid) / "uploads")
+                path = directory / (upload_id + ".h5ad")
+                if hashlib.sha256(read_file(path, self.settings.upload_limit)).hexdigest() != upload["sha256"]:
+                    raise ValueError("upload_integrity_mismatch")
+            run_id = self.executor.submit(plan)
+            state["_run_id"] = run_id
+            self.save(state)
         pipeline = ToolExecutionPipeline(ToolExecutionScope.from_plan(plan))
-        while claim := self.executor.claim_step(run_id):
-            for item in state["plan"]["steps"]:
-                if item["id"] == claim.step_id:
-                    item["status"] = "running"
-            self.save(state)
+        while True:
+            with self.lock:
+                state = self.load(sid)
+                if state["_control_epoch"] != epoch or state["input_review_required"]:
+                    return
+                claim = self.executor.claim_step(run_id)
+                if claim is None:
+                    break
+                for item in state["plan"]["steps"]:
+                    if item["id"] == claim.step_id:
+                        item["status"] = "running"
+                # Capture declaration binding before this exact in-flight step.
+                qc_revision = {key: value["declaration_start"] for key, value in state["_uploads"].items()}
+                self.save(state)
             outcome = self.executor.execute_claim(claim, pipeline)
-            receipt_id = uid()
-            receipt = outcome.model_dump_json().encode()
-            write_file(self.directory(sid) / "receipts" / (receipt_id + ".json"), receipt)
-            state["_tool_runs"].append({"file": receipt_id + ".json", "sha256": hashlib.sha256(receipt).hexdigest(),
-                                       "tool_id": outcome.request.tool_id, "state": outcome.execution_state.value,
-                                       "plan_id": plan.plan_id,
-                                       "declaration_start": state["_uploads"].get(outcome.request.assets[0].asset_id, {}).get("declaration_start") if outcome.request.assets else None})
+            with self.lock:
+                state = self.load(sid)
+                receipt_id = uid()
+                receipt = outcome.model_dump_json().encode()
+                write_file(self.directory(sid) / "receipts" / (receipt_id + ".json"), receipt)
+                state["_tool_runs"].append({"file": receipt_id + ".json", "sha256": hashlib.sha256(receipt).hexdigest(),
+                                           "tool_id": outcome.request.tool_id, "state": outcome.execution_state.value,
+                                           "plan_id": plan.plan_id,
+                                           "declaration_start": qc_revision.get(outcome.request.assets[0].asset_id) if outcome.request.assets else None})
+                self.save(state)
+                for item in state["plan"]["steps"]:
+                    if item["id"] == claim.step_id:
+                        item["status"] = outcome.execution_state.value if outcome.execution_state.value in {"succeeded", "partial", "cancelled", "blocked"} else "failed"
+                        item["reason"] = None if item["status"] == "succeeded" else "tool_not_successful"
+                self.save(state)
+                self.inputs.register_outputs(state, outcome, state["_tool_runs"][-1])
+                self.register_artifacts(state, outcome)
+        with self.lock:
+            state = self.load(sid)
+            if state["_control_epoch"] != epoch:
+                return
+            snapshot = self.executor.get_status(run_id)
+            success = snapshot.status.value == "succeeded"
+            state["status"] = "idle" if success else "failed"
+            state["error"] = None if success else "execution_incomplete"
+            actual = {item["status"] for item in state["plan"]["steps"]}
+            state["plan"]["status"] = "completed" if success else ("partial" if "partial" in actual or "succeeded" in actual else "cancelled" if "cancelled" in actual else "failed")
+            self.message(state, "assistant", "工具运行已结束。请在结果面板查看工具生成的图表和证据。未声明的采样或捕获信息不会被补造；运行完成不代表科学验证通过，不能用于临床或放行结论。" if success else "工具运行未完整完成。未将缺失或失败证据解释为产品失败。")
             self.save(state)
-            for item in state["plan"]["steps"]:
-                if item["id"] == claim.step_id:
-                    item["status"] = outcome.execution_state.value if outcome.execution_state.value in {"succeeded", "partial", "cancelled", "blocked"} else "failed"
-                    item["reason"] = None if item["status"] == "succeeded" else "tool_not_successful"
-            self.save(state)
-            self.inputs.register_outputs(state, outcome, state["_tool_runs"][-1])
-            self.register_artifacts(state, outcome)
-        snapshot = self.executor.get_status(run_id)
-        success = snapshot.status.value == "succeeded"
-        state["status"] = "idle" if success else "failed"
-        state["error"] = None if success else "execution_incomplete"
-        actual = {item["status"] for item in state["plan"]["steps"]}
-        state["plan"]["status"] = "completed" if success else ("partial" if "partial" in actual or "succeeded" in actual else "cancelled" if "cancelled" in actual else "failed")
-        self.message(state, "assistant", "工具运行已结束。请在结果面板查看工具生成的图表和证据。未声明的采样或捕获信息不会被补造；运行完成不代表科学验证通过，不能用于临床或放行结论。" if success else "工具运行未完整完成。未将缺失或失败证据解释为产品失败。")
-        self.save(state)
+
+    def read_registered_artifact(self, state, aid, limit=128 * 1024 * 1024):
+        if not ID.fullmatch(aid) or aid not in state["_artifacts"]:
+            raise HTTPException(404, "not_found")
+        record = state["_artifacts"][aid]
+        path = self.directory(state["id"]) / "artifacts" / record["file"]
+        if path.parent.is_symlink():
+            raise HTTPException(404, "not_found")
+        data = read_file(path, limit)
+        if hashlib.sha256(data).hexdigest() != record["sha256"]:
+            raise HTTPException(409, "artifact_integrity_mismatch")
+        public = next(item for item in state["artifacts"] if item["id"] == aid)
+        return public, data
 
     def register_artifacts(self, state, outcome):
         root = self.directory(state["id"])
@@ -882,13 +1181,45 @@ def create_app(settings: Settings) -> FastAPI:
                 path.unlink(missing_ok=True)
                 raise HTTPException(400, "invalid_h5ad") from None
             state["uploads"].append({"id": aid, "name": re.sub(r"[\x00-\x1f\x7f]", "", name), "kind": "h5ad", "size": len(content)})
-            state["_uploads"][aid] = {"sha256": hashlib.sha256(content).hexdigest(), "locations": locations, "declaration_start": len(state["messages"]),
-                                      "suggested": "layers/counts" if "layers/counts" in locations else None}
-            state.pop("_pending_qc", None)
+            state["_uploads"][aid] = {"sha256": hashlib.sha256(content).hexdigest(), "locations": locations,
+                                      "declaration_start": len(state["messages"])}
             service.archive_plan(state)
             state["plan"], state["_plan"], state["status"], state["error"] = None, None, "idle", None
-            service.message(state, "assistant", "文件已接收。检测到 counts 层：是否将它声明为原始计数并用于 QC？请回复“是，使用 counts 层进行 QC”。" if "layers/counts" in locations else "文件已接收。请声明原始计数位置，例如“X 是原始计数，进行 QC”。若 X 已标准化，请勿将它声明为原始计数。")
-            state["_uploads"][aid]["question_id"] = state["messages"][-1]["id"]
+            service.message(state, "assistant", "文件已接收。右侧已列出文件结构，请补充产品目标与取样背景，并确认实验类型和计数来源。不确定的项目可以保留未知；系统不会据此判断产品失败。")
+            service.save(state)
+            return service.public(state)
+
+    @app.get("/api/sessions/{sid}/intake")
+    def intake(sid: str, upload_id: str):
+        with service.lock:
+            state = service.load(sid)
+            try:
+                return service.intake.public(state, upload_id)
+            except (ValueError, OSError, KeyError):
+                raise HTTPException(409, "intake_file_unavailable") from None
+
+    @app.post("/api/sessions/{sid}/intake")
+    def stage_intake(sid: str, body: IntakeInput):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.controls.stage(state, "intake", body)
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/intake/prepare")
+    def prepare_intake(sid: str, body: IntakePrepare):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.intake.prepare(state, body.upload_id)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/stop")
+    def stop(sid: str, body: Body):
+        with service.lock:
+            state = service.load(sid)
+            service.controls.fence(state)
             service.save(state)
             return service.public(state)
 
@@ -896,15 +1227,31 @@ def create_app(settings: Settings) -> FastAPI:
     def inputs(sid: str, body: SourceInput):
         with service.lock:
             state = service.load(sid)
-            service.busy(state)
-            if body.upload_id not in state["_uploads"]:
-                raise HTTPException(404, "upload_not_found")
-            state["_uploads"][body.upload_id]["source_family_id"] = body.source_family_id
-            for upload in state["uploads"]:
-                if upload["id"] == body.upload_id:
-                    upload["source_family_id"] = body.source_family_id
-            if state["plan"] and state["plan"]["status"] == "proposed":
-                state["plan"], state["_plan"], state["status"] = None, None, "idle"
+            service.controls.stage(state, "source", body)
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/input-change/confirm")
+    def confirm_input_change(sid: str, body: InputChange):
+        with service.lock:
+            state = service.load(sid)
+            service.controls.resolve(state, body.change_id, body.change_digest, commit=True)
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/input-change/discard")
+    def discard_input_change(sid: str, body: InputChange):
+        with service.lock:
+            state = service.load(sid)
+            service.controls.resolve(state, body.change_id, body.change_digest, commit=False)
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/input-review/keep")
+    def keep_inputs(sid: str, body: Body):
+        with service.lock:
+            state = service.load(sid)
+            service.controls.keep(state)
             service.save(state)
             return service.public(state)
 
@@ -913,7 +1260,7 @@ def create_app(settings: Settings) -> FastAPI:
         with service.lock:
             state = service.load(sid)
             value = service.inputs.public(state)
-            if state["status"] not in {"thinking", "running"}:
+            if state["status"] not in {"thinking", "running", "stopping"}:
                 service.save(state)
             return value
 
@@ -951,18 +1298,15 @@ def create_app(settings: Settings) -> FastAPI:
     def declare_asset(sid: str, body: AssetDeclaration):
         with service.lock:
             state = service.load(sid)
-            service.busy(state)
-            try:
-                service.inputs.declare_asset(state, body)
-            except (ValueError, OSError):
-                raise HTTPException(422, "invalid_asset_declaration") from None
-            service.input_changed(state)
+            service.controls.stage(state, "asset", body)
+            service.save(state)
             return service.public(state)
 
     @app.post("/api/sessions/{sid}/prepare-analysis")
     def prepare_analysis(sid: str, body: PrepareAnalysis):
         with service.lock:
             state = service.load(sid)
+            service.controls.require_ready(state)
             service.busy(state)
             service.prepare_analysis(state, body.tool_id)
             return service.public(state)
@@ -971,9 +1315,14 @@ def create_app(settings: Settings) -> FastAPI:
     def message(sid: str, body: Message):
         with service.lock:
             state = service.load(sid)
-            service.busy(state)
             if len(state["messages"]) >= 100:
                 raise HTTPException(400, "conversation_limit")
+            if body.text.strip().casefold() in {"stop", "cancel", "停止", "取消"}:
+                service.message(state, "user", body.text.strip())
+                service.controls.fence(state)
+                service.save(state)
+                return service.public(state)
+            service.busy(state)
             if not body.text.strip():
                 raise HTTPException(422, "invalid_request")
             service.message(state, "user", body.text.strip())
@@ -989,6 +1338,7 @@ def create_app(settings: Settings) -> FastAPI:
     def approve(sid: str, body: Approval):
         with service.lock:
             state = service.load(sid)
+            service.controls.require_ready(state)
             service.busy(state)
             if state["status"] != "awaiting_approval" or not state["_plan"]:
                 raise HTTPException(409, "approval_not_pending")
@@ -1008,20 +1358,45 @@ def create_app(settings: Settings) -> FastAPI:
     def artifact(sid: str, aid: str):
         with service.lock:
             state = service.load(sid)
-            if not ID.fullmatch(aid) or aid not in state["_artifacts"]:
-                raise HTTPException(404, "not_found")
-            record = state["_artifacts"][aid]
-            path = service.directory(sid) / "artifacts" / record["file"]
-            if path.parent.is_symlink():
-                raise HTTPException(404, "not_found")
-            data = read_file(path, 128 * 1024 * 1024)
-            if hashlib.sha256(data).hexdigest() != record["sha256"]:
-                raise HTTPException(409, "artifact_integrity_mismatch")
-            public = next(item for item in state["artifacts"] if item["id"] == aid)
+            public, data = service.read_registered_artifact(state, aid)
             inline = public["media_type"] in {"image/png", "image/svg+xml"}
             return Response(data, media_type=public["media_type"],
                             headers={"Content-Disposition": ("inline" if inline else "attachment") + '; filename="' + public["name"] + '"',
                                      "Content-Security-Policy": "default-src 'none'; sandbox", "X-Content-Type-Options": "nosniff"})
+
+    @app.get("/api/sessions/{sid}/artifacts/{aid}/preview")
+    def artifact_preview(sid: str, aid: str):
+        with service.lock:
+            state = service.load(sid)
+            try:
+                public, data = service.read_registered_artifact(
+                    state,
+                    aid,
+                    limit=PARQUET_STORED_LIMIT,
+                )
+            except ValueError as exc:
+                if str(exc) == "private_file_too_large":
+                    raise HTTPException(413, "artifact_preview_too_large") from None
+                raise HTTPException(422, "artifact_preview_unavailable") from None
+            if not (
+                public["kind"] == "table"
+                and (
+                    public["media_type"] in PARQUET_MEDIA_TYPES
+                    or public["name"].lower().endswith(".parquet")
+                )
+            ):
+                raise HTTPException(415, "artifact_preview_unsupported")
+        try:
+            encoded = parquet_preview(data)
+        except ArtifactPreviewTooLarge:
+            raise HTTPException(413, "artifact_preview_too_large") from None
+        except Exception:
+            raise HTTPException(422, "artifact_preview_unavailable") from None
+        return Response(
+            encoded,
+            media_type="application/json",
+            headers={"X-Content-Type-Options": "nosniff"},
+        )
 
     @app.get("/api/sessions/{sid}/transcript")
     def transcript(sid: str):

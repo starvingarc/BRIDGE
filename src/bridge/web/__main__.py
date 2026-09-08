@@ -9,6 +9,9 @@ from .app import Settings, create_app
 
 
 def main():
+    share_result_summaries = os.environ.get("BRIDGE_WEB_SHARE_RESULT_SUMMARIES")
+    if share_result_summaries not in {None, "0", "1"}:
+        raise ValueError("invalid_server_configuration")
     pins = json.loads(os.environ.get("BRIDGE_WEB_TRUSTED_ANCESTORS", "{}"))
     if pins:
         from bridge.storage.private_paths import configure_trusted_ancestors
@@ -22,6 +25,11 @@ def main():
         origin=os.environ.get("BRIDGE_WEB_ORIGIN", "http://127.0.0.1:8765"),
         cell_state_measurement_spec_ref=os.environ.get("BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF") or None,
         static_dir=Path(os.environ["BRIDGE_WEB_STATIC_DIR"]) if os.environ.get("BRIDGE_WEB_STATIC_DIR") else None,
+        share_result_summaries=share_result_summaries == "1",
+        model_action_protocol=os.environ.get(
+            "BRIDGE_WEB_MODEL_ACTION_PROTOCOL",
+            "json",
+        ),
     )
     uvicorn.run(create_app(settings), host="127.0.0.1", port=int(os.environ.get("BRIDGE_WEB_PORT", "8765")),
                 access_log=False, proxy_headers=False)

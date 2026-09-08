@@ -1,5 +1,39 @@
 # Decision Log
 
+## 2026-09-07: Separate P0-05 Counts From Assignment Mass
+
+The approved P0-05 hard_count_accounting input mode consumes the existing
+producer V3 count partition without requiring a caller-authored mass bundle.
+Consensus-supported role counts and non-consensus reconciliation buckets remain
+separate. A zero supported count cannot establish biological absence. Soft mass,
+open-set assessment and rare-state detection remain unavailable/not assessed.
+
+A distinct versioned profile and package result union preserve existing profile
+contracts. The count-only mode does not run soft-composition figures, bootstrap
+inference or detection calibration. Required manifest/receipt bindings establish
+execution ownership correspondence, not independently verified biological units.
+The branch plan tracks implementation and validation; this decision does not
+claim a completed genuine-data chain or scientific release.
+
+
+## 2026-09-07: Bind P0-06 Observations To Producer Artifacts
+
+The approved ProcessMethodInput v0.2 replaces caller-repeated state rows with a
+checksummed descriptor of the existing P0-02 evidence table and same-run artifact
+manifest. Source conflict remains unresolved; no winning identity, probability
+or biological unknown state is invented. Whole-product summaries retain every
+selected observation. Conditioned summaries use only uniquely supported states
+that match externally declared ProgramSpec rules.
+
+The existing v0.1 input remains unchanged. Exact artifact correspondence is not
+authentication of an arbitrary fabricated bundle; deployment registration owns
+that trust boundary. No new source catalog or signature framework is introduced.
+This follows [AnnData observation identity](https://anndata.readthedocs.io/en/stable/generated/anndata.AnnData.obs_names.html)
+and explicit entity/derivation binding in [W3C PROV-DM](https://www.w3.org/TR/prov-dm/)
+without adopting a separate platform stack. Implementation and validation remain
+tracked in the branch plan, independently of scientific readiness.
+
+
 ## 2026-08-10: Rebuild The Active Package
 
 The historical Step1-Step3 implementation remains available through Git history. BRIDGE uses new high-level Tool Package contracts and has no compatibility requirement with historical score or report APIs.
@@ -108,3 +142,18 @@ startup-only and pinned to its path, owner and filesystem identity. Default
 private-path ownership checks remain strict; trust does not propagate to
 descendants or relax symlink, permission or replacement checks. This is a
 single-operator deployment boundary, not a multi-tenant authorization model.
+
+## 2026-09-07: Permit Explicitly Opted-in Aggregate Interpretation
+
+The owner approved sending field-allowlisted aggregate analysis summaries to the
+configured model for research interpretation. Raw expression matrices,
+observation-level records, sample/source identities, private paths, credentials
+and private provenance hashes remain local. The default deployment remains
+status-only; the opt-in is startup-owned, not a model or HTTP permission.
+
+Summary values must come from verified canonical tool artifacts and preserve
+counts, denominators, evidence states and uncertainty. A private per-turn binding
+retains their exact provenance. An interpretation is not a verified report,
+scientific validation or public-export approval. Aggregate results remain
+controlled biological data even after identifiers are removed. Implementation
+and acceptance are tracked in the existing Web integration plan.

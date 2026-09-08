@@ -3,6 +3,7 @@ export type SessionStatus =
   | "thinking"
   | "awaiting_approval"
   | "running"
+  | "stopping"
   | "failed";
 
 export type Message = {
@@ -146,6 +147,22 @@ export type AnalysisAssetRegistration = {
   metadata: Record<string, unknown>;
 };
 
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export type PendingInputChange = {
+  id: string;
+  digest: string;
+  kind: "asset" | "source" | "intake";
+  upload_id: string;
+  changes: Array<{ field: string; before: JsonValue; after: JsonValue }>;
+};
+
 export type Session = {
   id: string;
   title: string;
@@ -158,12 +175,50 @@ export type Session = {
   capabilities?: ToolCapability[];
   artifacts: Artifact[];
   error: string | null;
+  input_review_required: boolean;
+  pending_input_change: PendingInputChange | null;
 };
 
 export type SessionSummary = Pick<Session, "id" | "title" | "updated_at">;
 
 export type SessionsResponse = {
   sessions: SessionSummary[];
+};
+
+
+export type IntakeFacts = {
+  product_name: string | null;
+  product_family: "hpsc_mda" | "other" | "unknown";
+  target_cell_type: string | null;
+  target_stage: string | null;
+  sampling_context: "pretransplant_preparation" | "process_sample" | "unknown";
+  independent_cultures: number | null;
+  assay: "scRNA-seq" | "snRNA-seq" | "unknown";
+  matrix_location: string | null;
+  count_semantics: "raw_counts" | "not_raw_counts" | "unknown";
+  source_family_id: string | null;
+  sample_id_column: string | null;
+  capture_id_column: string | null;
+  gene_symbol_column: string | null;
+};
+
+export type IntakeResponse = {
+  upload_id: string;
+  facts: IntakeFacts;
+  observed: {
+    n_observations: number | null;
+    n_genes: number | null;
+    matrix_locations: string[];
+    obs_columns: string[];
+    var_columns: string[];
+  };
+  state: "draft" | "confirmed" | "stale";
+  missing_fields: string[];
+  next_tool: string | null;
+  blockers: string[];
+  qc_state: string;
+  measurement_spec_ref: string | null;
+  roadmap: Array<{ question: string; state: string }>;
 };
 
 export type NormalizedSession = Session & {
@@ -176,5 +231,7 @@ export function normalizeSession(session: Session): NormalizedSession {
     ...session,
     plan_history: session.plan_history ?? [],
     capabilities: session.capabilities ?? [],
+    input_review_required: session.input_review_required ?? false,
+    pending_input_change: session.pending_input_change ?? null,
   };
 }

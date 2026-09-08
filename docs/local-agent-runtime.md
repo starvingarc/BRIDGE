@@ -1,8 +1,9 @@
 # Local Runtime Core
 
 BRIDGE includes a small, framework-neutral runtime core for executing approved
-Tool Package requests. It is infrastructure for the future Agent, not a complete
-conversational Agent or Web service.
+Tool Package requests. The private [Web preview](web-preview.md) uses this core
+for its approved stages. The core itself does not provide conversation, scientific
+input drafting or an automatic complete product-evaluation workflow.
 
 ## Contracts
 

@@ -9,7 +9,15 @@ import pytest
 
 from bridge.web.inputs import Inputs, Selection, strict_json
 from bridge.web.app import write_file
-from test_web_service import client, h5ad, new_session, settle
+from test_web_service import (
+    client,
+    confirm_change,
+    declare_source,
+    declare_counts,
+    h5ad,
+    new_session,
+    settle,
+)
 
 
 def context_upload(client, tmp_path):
@@ -17,11 +25,42 @@ def context_upload(client, tmp_path):
     url = f"/api/sessions/{sid}"
     response = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path, layer=True))})
     aid = response.json()["uploads"][0]["id"]
-    assert client.post(url + "/analysis-inputs/assets", json={
+    staged = client.post(url + "/analysis-inputs/assets", json={
         "upload_id": aid, "assay": "scRNA-seq", "matrix_location": "layers/counts",
         "matrix_semantics": "raw_counts", "input_level": "count_ready", "metadata": {},
-    }).status_code == 200
+    })
+    assert staged.status_code == 200, staged.json()
+    confirm_change(client, sid, staged.json())
     return sid, aid
+
+
+def test_optional_column_mappings_are_confirmed_and_bound_to_requests(client, tmp_path):
+    sid, aid = context_upload(client, tmp_path)
+    url = f"/api/sessions/{sid}"
+    metadata = {
+        "sample_id_column": "sample",
+        "capture_id_column": "capture",
+        "gene_symbol_column": "symbol",
+    }
+    declaration = dict(upload_id=aid, assay="scRNA-seq", matrix_location="layers/counts",
+                       matrix_semantics="raw_counts", input_level="count_ready", metadata=metadata)
+    staged = client.post(url + "/analysis-inputs/assets", json=declaration)
+    assert staged.status_code == 200, staged.json()
+    service = client.app.state.service
+    assert service.load(sid)["_asset_declarations"][aid]["metadata"] == {}
+    confirm_change(client, sid, staged.json())
+    assert service.load(sid)["_asset_declarations"][aid]["metadata"] == metadata
+    rejected = client.post(url + "/analysis-inputs/assets",
+                          json={**declaration, "metadata": {**metadata, "arbitrary_option": True}})
+    assert rejected.status_code == 422
+    assert service.load(sid)["_asset_declarations"][aid]["metadata"] == metadata
+    assert client.post(url + "/analysis-inputs",
+                       json=choice("P0-01", None, assets=[aid])).status_code == 200
+    prepared = client.post(url + "/prepare-analysis", json={"tool_id": "P0-01"})
+    assert prepared.status_code == 200, prepared.json()
+    step = service.load(sid)["_plan"]["steps"][0]
+    request = json.loads(step["approved_request_json"])
+    assert request["assets"][0]["metadata"] == metadata
 
 
 def choice(tool, mode, objects=(), assets=()):
@@ -64,6 +103,270 @@ def approve(client, sid, proposal):
         json={"plan_id": proposal["id"], "plan_digest": proposal["digest"]})
     assert response.status_code == 200, response.json()
     return settle(client, sid)
+
+
+def selected_p002_context(client, tmp_path, monkeypatch, *, panel):
+    from dataclasses import replace
+    from test_cell_state import _build_snapshot, _write_query
+
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    data = _write_query(tmp_path / "query.h5ad").read_bytes()
+    aid = client.post(
+        url + "/uploads",
+        files={"file": ("synthetic.h5ad", data)},
+    ).json()["uploads"][0]["id"]
+    if panel:
+        staged = client.post(url + "/analysis-inputs/assets", json={
+            "upload_id": aid,
+            "assay": "scRNA-seq",
+            "matrix_location": "X",
+            "matrix_semantics": "raw_counts",
+            "input_level": "count_ready",
+            "metadata": {"sample_id": "panel-sample"},
+        })
+        assert staged.status_code == 200, staged.json()
+        confirm_change(client, sid, staged.json())
+        selected = client.post(
+            url + "/analysis-inputs",
+            json=choice("P0-01", None, assets=[aid]),
+        )
+        assert selected.status_code == 200, selected.json()
+        qc_proposal = client.post(
+            url + "/prepare-analysis",
+            json={"tool_id": "P0-01"},
+        ).json()["plan"]
+    else:
+        declare_counts(client, sid, aid)
+        client.post(
+            url + "/messages",
+            json={"text": "scRNA-seq，X 是原始计数，进行 QC"},
+        )
+        qc_proposal = settle(client, sid)["plan"]
+    assert approve(client, sid, qc_proposal)["plan"]["status"] == "completed"
+    _build_snapshot(tmp_path, monkeypatch)
+    service = client.app.state.service
+    service.settings = replace(
+        service.settings,
+        cell_state_measurement_spec_ref="CELLSTATE-scRNA-shadow-v0.1",
+    )
+    declare_source(client, sid, aid, "source-family:selected-input")
+    selection = {
+        **choice("P0-02", None, assets=[aid]),
+        "measurement_spec_ref": "CELLSTATE-scRNA-shadow-v0.1",
+    }
+    return sid, aid, data, selection
+
+
+def test_selected_p002_panel_declaration_uses_read_only_qc_enrichment(
+        client, tmp_path, monkeypatch):
+    sid, aid, data, selection = selected_p002_context(
+        client, tmp_path, monkeypatch, panel=True
+    )
+    service = client.app.state.service
+    state = service.load(sid)
+    original = service.qc_asset(state, aid, register=False)
+    before = json.loads(json.dumps({
+        "asset": state["_asset_declarations"],
+        "qc": state["_qc_declarations"],
+        "uploads": state["_uploads"],
+        "runs": state["_tool_runs"],
+    }))
+    catalog_path = service.root / "qc-catalog.json"
+    before_catalog = catalog_path.read_bytes() if catalog_path.exists() else None
+
+    saved = client.post(f"/api/sessions/{sid}/analysis-inputs", json=selection)
+    assert saved.status_code == 200, saved.json()
+    capability = next(
+        item for item in saved.json()["capabilities"]
+        if item["tool_id"] == "P0-02"
+    )
+    assert capability["state"] == "ready"
+    current = service.load(sid)
+    effective = service.inputs.selected_asset(current, "P0-02", aid)
+    assert effective.asset_id == aid
+    assert effective.checksum == hashlib.sha256(data).hexdigest()
+    assert effective.assay == original.assay == "scRNA-seq"
+    assert effective.matrix_location == original.matrix_location == "X"
+    assert effective.metadata["sample_id"] == "panel-sample"
+    assert effective.metadata["source_family_id"] == "source-family:selected-input"
+    assert effective.metadata["parent_asset_sha256"] == effective.checksum
+    assert service.qc_asset(current, aid, register=False) == original
+    assert current["_asset_declarations"] == before["asset"]
+    assert current["_qc_declarations"] == before["qc"]
+    assert current["_uploads"] == before["uploads"]
+    assert current["_tool_runs"] == before["runs"]
+    assert (
+        catalog_path.read_bytes() if catalog_path.exists() else None
+    ) == before_catalog
+
+
+def test_selected_p002_ignores_corrupt_qc_receipt_for_other_upload(
+        client, tmp_path, monkeypatch):
+    sid, earlier, _, selection = selected_p002_context(
+        client, tmp_path, monkeypatch, panel=False
+    )
+    service = client.app.state.service
+    url = f"/api/sessions/{sid}"
+    later = client.post(
+        url + "/uploads",
+        files={"file": ("later.h5ad", h5ad(tmp_path, layer=True))},
+    ).json()["uploads"][-1]["id"]
+    staged = client.post(url + "/analysis-inputs/assets", json={
+        "upload_id": later,
+        "assay": "scRNA-seq",
+        "matrix_location": "layers/counts",
+        "matrix_semantics": "raw_counts",
+        "input_level": "count_ready",
+        "metadata": {},
+    })
+    assert staged.status_code == 200, staged.json()
+    confirm_change(client, sid, staged.json())
+    selected = client.post(
+        url + "/analysis-inputs",
+        json=choice("P0-01", None, assets=[later]),
+    )
+    assert selected.status_code == 200, selected.json()
+    qc_proposal = client.post(
+        url + "/prepare-analysis",
+        json={"tool_id": "P0-01"},
+    ).json()["plan"]
+    assert approve(client, sid, qc_proposal)["plan"]["status"] == "completed"
+    declare_source(client, sid, later, "source-family:later-qc")
+
+    earlier_selection = client.post(url + "/analysis-inputs", json=selection)
+    assert earlier_selection.status_code == 200, earlier_selection.json()
+    assert next(
+        item for item in earlier_selection.json()["capabilities"]
+        if item["tool_id"] == "P0-02"
+    )["state"] == "ready"
+    state = service.load(sid)
+    assert [item["state"] for item in state["_tool_runs"]] == [
+        "succeeded",
+        "succeeded",
+    ]
+    later_receipt = state["_tool_runs"][-1]
+    later_receipt_path = (
+        service.directory(sid) / "receipts" / later_receipt["file"]
+    )
+    write_file(later_receipt_path, later_receipt_path.read_bytes() + b" ")
+
+    earlier_capability = next(
+        item for item in client.get(url).json()["capabilities"]
+        if item["tool_id"] == "P0-02"
+    )
+    assert earlier_capability["state"] == "ready"
+    assert service.inputs.selected_asset(
+        service.load(sid), "P0-02", earlier
+    ).asset_id == earlier
+
+    corrupted = client.post(
+        url + "/analysis-inputs",
+        json={**selection, "asset_ids": [later]},
+    )
+    assert corrupted.status_code == 200, corrupted.json()
+    later_capability = next(
+        item for item in corrupted.json()["capabilities"]
+        if item["tool_id"] == "P0-02"
+    )
+    assert later_capability["state"] == "needs_input"
+    assert later_capability["reason_codes"] == [
+        "qc_artifact_integrity_mismatch"
+    ]
+
+
+def test_selected_p002_binds_explicit_earlier_upload_and_requires_committed_source(
+        client, tmp_path, monkeypatch):
+    sid, aid, _, selection = selected_p002_context(
+        client, tmp_path, monkeypatch, panel=False
+    )
+    service = client.app.state.service
+    url = f"/api/sessions/{sid}"
+    later = client.post(
+        url + "/uploads",
+        files={"file": ("later.h5ad", h5ad(tmp_path, layer=True))},
+    ).json()["uploads"][-1]["id"]
+    declare_source(client, sid, later, "source-family:later-no-qc")
+    missing = client.post(
+        url + "/analysis-inputs",
+        json={**selection, "asset_ids": [later]},
+    )
+    assert missing.status_code == 200, missing.json()
+    missing_capability = next(
+        item for item in missing.json()["capabilities"]
+        if item["tool_id"] == "P0-02"
+    )
+    assert missing_capability["state"] == "needs_input"
+    assert missing_capability["reason_codes"] == ["completed_qc_required"]
+
+    earlier = client.post(url + "/analysis-inputs", json=selection)
+    assert earlier.status_code == 200, earlier.json()
+    earlier_capability = next(
+        item for item in earlier.json()["capabilities"]
+        if item["tool_id"] == "P0-02"
+    )
+    assert earlier_capability["state"] == "ready"
+    state = service.load(sid)
+    runs = list(state["_tool_runs"])
+    state["_qc_declarations"][aid]["metadata"]["source_family_id"] = (
+        "stale-declaration-source"
+    )
+    state["_uploads"][aid].pop("source_family_id")
+    service.save(state)
+    no_source = next(
+        item for item in client.get(url).json()["capabilities"]
+        if item["tool_id"] == "P0-02"
+    )
+    assert no_source["state"] == "needs_input"
+    assert no_source["reason_codes"] == ["source_family_id_required"]
+    assert service.load(sid)["_tool_runs"] == runs
+
+
+@pytest.mark.parametrize(
+    ("tamper", "reason"),
+    [
+        ("receipt", "qc_artifact_integrity_mismatch"),
+        ("artifact", "qc_artifact_integrity_mismatch"),
+        ("declaration", "qc_declaration_retracted"),
+    ],
+)
+def test_selected_p002_readiness_rejects_changed_qc_proof_without_catalog_write(
+        client, tmp_path, monkeypatch, tamper, reason):
+    sid, aid, _, selection = selected_p002_context(
+        client, tmp_path, monkeypatch, panel=False
+    )
+    service = client.app.state.service
+    url = f"/api/sessions/{sid}"
+    saved = client.post(url + "/analysis-inputs", json=selection)
+    assert saved.status_code == 200, saved.json()
+    state = service.load(sid)
+    catalog_path = service.root / "qc-catalog.json"
+    before_catalog = catalog_path.read_bytes() if catalog_path.exists() else None
+    receipt = state["_tool_runs"][-1]
+    receipt_path = service.directory(sid) / "receipts" / receipt["file"]
+    if tamper == "receipt":
+        write_file(receipt_path, receipt_path.read_bytes() + b" ")
+    elif tamper == "artifact":
+        run = json.loads(receipt_path.read_bytes())
+        artifact = next(
+            item for item in run["artifacts"]
+            if Path(item["path"]).name == "qc_readiness_profile.json"
+        )
+        path = Path(artifact["path"])
+        write_file(path, path.read_bytes() + b" ")
+    else:
+        state["_uploads"][aid]["declaration_start"] += 1
+        service.save(state)
+
+    capability = next(
+        item for item in client.get(url).json()["capabilities"]
+        if item["tool_id"] == "P0-02"
+    )
+    assert capability["state"] == "needs_input"
+    assert capability["reason_codes"] == [reason]
+    assert (
+        catalog_path.read_bytes() if catalog_path.exists() else None
+    ) == before_catalog
 
 
 @pytest.mark.parametrize("data", [
@@ -114,6 +417,7 @@ def test_selection_rejects_modes_roles_ids_cardinality_and_extra_envelope(client
 
 @pytest.mark.parametrize("tool,mode,module,factory", [
     ("P0-05", "legacy_aggregation", "test_p0_05_off_target_control", "_request"),
+    ("P0-05", "hard_count_accounting", "test_p0_05_hard_count_accounting", "_hard_count_request"),
     ("P0-06", "legacy_aggregation", "test_p0_06_proliferation_stress_response", "_request"),
     ("P0-07", "legacy_comparison", "test_p0_07_product_comparison_stability", "_write_request"),
     ("P0-08", "default", "test_p0_08_evidence_sufficiency", "_fixture_request"),
@@ -149,6 +453,291 @@ def test_real_fixture_request_plan_approval_execution(client, tmp_path, tool, mo
     assert state["_tool_runs"][-1]["tool_id"] == tool
     assert state["_tool_runs"][-1]["state"] in {"succeeded", "partial"}
     assert state["_canonical_artifacts"]
+
+
+def _register_source_receipt(service, state, request, suffix, tool_id="P0-02"):
+    from bridge.toolkit.contracts import ArtifactManifest, ToolRequest, ToolRun
+
+    refs = {item.role: item for item in request.object_inputs}
+    source = json.loads(
+        refs["process_method_input"].path.read_bytes()
+    )["source_observations"]
+    run_root = service.directory(state["id"]) / "runs" / ("p002-source-" + suffix)
+    manifest_path = run_root / "artifact_manifest.json"
+    evidence_path = run_root / "cell_state_evidence.parquet"
+    write_file(manifest_path, Path(source["artifact_manifest_path"]).read_bytes())
+    write_file(evidence_path, Path(source["evidence_path"]).read_bytes())
+    artifacts = [
+        ArtifactManifest(
+            artifact_id=f"artifact:{source['producer_run_ref']}:manifest",
+            kind="manifest",
+            path=manifest_path,
+            media_type="application/json",
+            sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        ),
+        ArtifactManifest(
+            artifact_id=source["evidence_artifact_id"],
+            kind="cell_state_evidence",
+            path=evidence_path,
+            media_type="application/vnd.apache.parquet",
+            sha256=hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
+        ),
+    ]
+    outcome = ToolRun(
+        run_id=source["producer_run_ref"],
+        request=ToolRequest(
+            request_id="p002-source-" + suffix,
+            tool_id=tool_id,
+            tool_version=source["producer_tool_version"],
+            output_dir=run_root,
+        ),
+        implementation_state="implemented",
+        execution_state="succeeded",
+        tool_version=source["producer_tool_version"],
+        environment_spec_id="environment:synthetic-web-binding-fixture",
+        artifacts=artifacts,
+        result={"score_state": "shadow", "domain_score": None},
+    )
+    receipt_bytes = outcome.model_dump_json().encode()
+    receipt_file = "p002-source-" + suffix + ".json"
+    write_file(service.directory(state["id"]) / "receipts" / receipt_file, receipt_bytes)
+    receipt = {
+        "file": receipt_file,
+        "sha256": hashlib.sha256(receipt_bytes).hexdigest(),
+        "tool_id": tool_id,
+        "state": "succeeded",
+        "plan_id": "fixture-plan-" + suffix,
+        "declaration_start": None,
+    }
+    state["_tool_runs"].append(receipt)
+    service.inputs.register_outputs(state, outcome, receipt)
+    canonical = {
+        record["artifact_id"]: identifier
+        for identifier, record in state["_canonical_artifacts"].items()
+        if record["receipt_file"] == receipt_file
+    }
+    return {
+        "manifest": canonical[artifacts[0].artifact_id],
+        "evidence": canonical[artifacts[1].artifact_id],
+        "manifest_sha256": artifacts[0].sha256,
+        "evidence_sha256": artifacts[1].sha256,
+    }
+
+
+def test_source_bound_p006_accepts_only_one_p002_canonical_receipt(
+    client, tmp_path
+):
+    from test_p0_06_source_bound_observations import _source_bound_request
+
+    source_root = tmp_path / "p006-source"
+    source_root.mkdir()
+    request = _source_bound_request(source_root)
+    from bridge.toolkit.contracts import ExecutionState
+    from bridge.toolkit.registry import ToolRegistry
+
+    fixture_run = ToolRegistry.load_default().run(request)
+    assert fixture_run.execution_state is ExecutionState.SUCCEEDED
+    sid, asset_id = context_upload(client, tmp_path)
+    url = f"/api/sessions/{sid}"
+    service = client.app.state.service
+    state = service.load(sid)
+    first = _register_source_receipt(service, state, request, "first")
+    second = _register_source_receipt(service, state, request, "second")
+    wrong_producer = _register_source_receipt(
+        service, state, request, "wrong-producer", tool_id="P0-05"
+    )
+    service.save(state)
+
+    process_ref = next(
+        item for item in request.object_inputs if item.role == "process_method_input"
+    )
+    original = json.loads(process_ref.path.read_bytes())
+    source = original["source_observations"]
+    original_source_metadata = {
+        key: value
+        for key, value in source.items()
+        if key
+        not in {
+            "artifact_manifest_path",
+            "artifact_manifest_sha256",
+            "evidence_path",
+            "evidence_sha256",
+        }
+    }
+    source = {
+        "artifact_manifest_sha256": None,
+        "artifact_manifest_path": "artifact:" + first["manifest"],
+        **original_source_metadata,
+        "evidence_sha256": "",
+        "evidence_path": "artifact:" + first["evidence"],
+    }
+    payload = {**original, "source_observations": source}
+
+    def add(value, **metadata):
+        return service.inputs.add_object(
+            state,
+            tool_id=metadata.get("tool_id", "P0-06"),
+            mode_id=metadata.get("mode_id", "method_runtime_source_bound"),
+            role=metadata.get("role", "process_method_input"),
+            schema_ref=metadata.get(
+                "schema_ref", "bridge://schemas/process-method-input/v0.2"
+            ),
+            object_version=metadata.get("object_version", "0.2.0"),
+            data=json.dumps(value).encode(),
+        )
+
+    for metadata in [
+        {"role": "process_method_spec"},
+        {
+            "mode_id": "method_runtime",
+            "schema_ref": "bridge://schemas/process-method-input/v0.1",
+            "object_version": "0.1.0",
+        },
+        {"mode_id": "legacy_aggregation"},
+    ]:
+        with pytest.raises(ValueError):
+            add(payload, **metadata)
+
+    for bad_locator in [
+        original["source_observations"]["evidence_path"],
+        "https://example.org/evidence.parquet",
+        "upload:" + asset_id,
+    ]:
+        changed = json.loads(json.dumps(payload))
+        changed["source_observations"]["evidence_path"] = bad_locator
+        with pytest.raises(ValueError, match="opaque|artifact"):
+            add(changed)
+
+    for checksum_field in [
+        "artifact_manifest_sha256",
+        "evidence_sha256",
+    ]:
+        for checksum in ["0" * 64, "__missing__"]:
+            changed = json.loads(json.dumps(payload))
+            if checksum == "__missing__":
+                changed["source_observations"].pop(checksum_field)
+            else:
+                changed["source_observations"][checksum_field] = checksum
+            with pytest.raises(ValueError, match="checksum"):
+                add(changed)
+        for checksum in [[], {}]:
+            changed = json.loads(json.dumps(payload))
+            changed["source_observations"][checksum_field] = checksum
+            before = set(service.load(sid)["_input_objects"])
+            invalid = client.post(
+                url + "/analysis-inputs/objects",
+                params={
+                    "tool_id": "P0-06",
+                    "mode_id": "method_runtime_source_bound",
+                    "role": "process_method_input",
+                    "schema_ref": "bridge://schemas/process-method-input/v0.2",
+                    "object_version": "0.2.0",
+                },
+                files={
+                    "file": (
+                        "process.json",
+                        json.dumps(changed).encode(),
+                    )
+                },
+            )
+            assert invalid.status_code == 422, invalid.json()
+            assert set(service.load(sid)["_input_objects"]) == before
+
+    swapped = json.loads(json.dumps(payload))
+    swapped["source_observations"]["evidence_path"] = (
+        "artifact:" + first["manifest"]
+    )
+    swapped["source_observations"]["evidence_sha256"] = first["manifest_sha256"]
+    with pytest.raises(ValueError, match="kind"):
+        add(swapped)
+
+    other = service.load(new_session(client)["id"])
+    with pytest.raises(ValueError, match="artifact"):
+        service.inputs.add_object(
+            other,
+            tool_id="P0-06",
+            mode_id="method_runtime_source_bound",
+            role="process_method_input",
+            schema_ref="bridge://schemas/process-method-input/v0.2",
+            object_version="0.2.0",
+            data=json.dumps(payload).encode(),
+        )
+
+    mixed = json.loads(json.dumps(payload))
+    mixed["source_observations"]["evidence_path"] = "artifact:" + second["evidence"]
+    mixed["source_observations"]["evidence_sha256"] = second["evidence_sha256"]
+    with pytest.raises(ValueError, match="receipt"):
+        add(mixed)
+
+    non_p002 = json.loads(json.dumps(payload))
+    non_p002["source_observations"]["artifact_manifest_path"] = (
+        "artifact:" + wrong_producer["manifest"]
+    )
+    non_p002["source_observations"]["artifact_manifest_sha256"] = wrong_producer[
+        "manifest_sha256"
+    ]
+    non_p002["source_observations"]["evidence_path"] = (
+        "artifact:" + wrong_producer["evidence"]
+    )
+    non_p002["source_observations"]["evidence_sha256"] = wrong_producer[
+        "evidence_sha256"
+    ]
+    with pytest.raises(ValueError, match="producer"):
+        add(non_p002)
+
+    response = client.post(
+        url + "/analysis-inputs/objects",
+        params={
+            "tool_id": "P0-06",
+            "mode_id": "method_runtime_source_bound",
+            "role": "process_method_input",
+            "schema_ref": "bridge://schemas/process-method-input/v0.2",
+            "object_version": "0.2.0",
+        },
+        files={"file": ("process.json", json.dumps(payload).encode())},
+    )
+    assert response.status_code == 200, response.json()
+    state = service.load(sid)
+    process_id = next(reversed(state["_input_objects"]))
+    bound = service.inputs.verify(state, state["_input_objects"][process_id])
+    assert {
+        key: value
+        for key, value in bound["source_observations"].items()
+        if key
+        not in {
+            "artifact_manifest_path",
+            "artifact_manifest_sha256",
+            "evidence_path",
+            "evidence_sha256",
+        }
+    } == original_source_metadata
+    assert bound["source_observations"]["artifact_manifest_sha256"] == first[
+        "manifest_sha256"
+    ]
+    assert (
+        bound["source_observations"]["evidence_sha256"] == first["evidence_sha256"]
+    )
+
+    current = service.load(sid)
+    record = current["_input_objects"][process_id]
+    assert len(record["dependencies"]) == 2
+    for dependency in record["dependencies"]:
+        path = Path(dependency["path"])
+        original_bytes = path.read_bytes()
+        write_file(path, original_bytes + b" ")
+        with pytest.raises(ValueError, match="integrity"):
+            service.inputs.verify(current, record)
+        write_file(path, original_bytes)
+    receipt_path = (
+        service.directory(sid)
+        / "receipts"
+        / record["dependencies"][0]["receipt_file"]
+    )
+    receipt_bytes = receipt_path.read_bytes()
+    write_file(receipt_path, receipt_bytes + b" ")
+    with pytest.raises(ValueError, match="integrity"):
+        service.inputs.verify(current, record)
+    write_file(receipt_path, receipt_bytes)
 
 
 def test_explicit_no_graft_reapproval_and_mutation_rejects_stale_plan(client, tmp_path):

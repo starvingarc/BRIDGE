@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import StrEnum
+from pathlib import Path
 from typing import Literal, Self
 
 from pydantic import (
@@ -154,6 +155,77 @@ class ProcessMethodInput(FrozenModel):
     ) -> list[ObservationStateAssignment]:
         _unique([item.observation_id for item in value], "observation IDs")
         return value
+
+    _created_at_utc = field_validator("created_at")(_aware_utc)
+
+
+class ProcessObservationStateV2(FrozenModel):
+    observation_id: str = Field(min_length=1)
+    state: Literal["candidate", "unknown", "unavailable", "unresolved"]
+    state_id: SafeId | None = None
+    prediction_set: list[SafeId]
+    support_state: Literal[
+        "consensus_supported",
+        "single_source_supported",
+        "source_conflict",
+        "unavailable",
+    ]
+    assignment_state: str = Field(min_length=1)
+    open_set_state: str = Field(min_length=1)
+
+    @field_validator("prediction_set")
+    @classmethod
+    def prediction_candidates_are_unique(cls, value: list[SafeId]) -> list[SafeId]:
+        _unique(value, "prediction candidates")
+        return value
+
+    @model_validator(mode="after")
+    def normalized_state_is_coherent(self) -> Self:
+        if self.state == "candidate":
+            if self.state_id is None or len(self.prediction_set) != 1:
+                raise ValueError("candidate state requires one prediction")
+        elif self.state_id is not None:
+            raise ValueError("non-candidate state cannot carry state_id")
+        return self
+
+
+class ProcessObservationSourceV1(FrozenModel):
+    source_format: Literal["p0_02_cell_state_evidence_parquet_v0.1"]
+    producer_tool_id: Literal["P0-02"]
+    producer_run_ref: str = Field(min_length=1)
+    producer_tool_version: str = Field(min_length=1)
+    artifact_manifest_path: Path
+    artifact_manifest_sha256: Sha256
+    evidence_artifact_id: str = Field(min_length=1)
+    evidence_path: Path
+    evidence_sha256: Sha256
+    label_level: Literal["L1"]
+
+    @field_validator("artifact_manifest_path", "evidence_path")
+    @classmethod
+    def source_paths_are_absolute(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError("source observation paths must be absolute")
+        return value
+
+
+class ProcessMethodInputV2(FrozenModel):
+    object_version: Literal["0.2.0"]
+    method_input_id: str = Field(
+        pattern=r"^process-method-input:[A-Za-z0-9._:-]+$"
+    )
+    method_input_version: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+    product_case_ref: str = Field(min_length=1)
+    product_case_sha256: Sha256
+    cell_state_profile_id: SafeId
+    cell_state_profile_sha256: Sha256
+    data_view_ref: str = Field(min_length=1)
+    observation_ids_sha256: Sha256
+    biological_unit_manifest_ref: str = Field(min_length=1)
+    biological_unit_manifest_sha256: Sha256
+    biological_unit_assignment_sha256: Sha256
+    source_observations: ProcessObservationSourceV1
+    created_at: datetime
 
     _created_at_utc = field_validator("created_at")(_aware_utc)
 
@@ -385,6 +457,7 @@ class ProcessMethodBundleV2(ProcessMethodBundle):
 PUBLIC_METHOD_SCHEMA_MODELS = {
     "bridge://schemas/process-method-spec/v0.1": ProcessMethodSpec,
     "bridge://schemas/process-method-input/v0.1": ProcessMethodInput,
+    "bridge://schemas/process-method-input/v0.2": ProcessMethodInputV2,
     "bridge://schemas/process-method-bundle/v0.1": ProcessMethodBundle,
     "bridge://schemas/process-method-bundle/v0.2": ProcessMethodBundleV2,
 }

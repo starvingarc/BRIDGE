@@ -83,7 +83,7 @@ describe("PlanCard", () => {
   it("distinguishes duplicate upload names and binds valid source punctuation to the selected upload", async () => {
     const save = vi.fn();
     const user = userEvent.setup();
-    render(
+    const view = render(
       <SourceInputForms
         uploads={[
           { id: "aaaaaaaa11111111", name: "sample.h5ad", kind: "h5ad", size: 1 },
@@ -99,13 +99,33 @@ describe("PlanCard", () => {
     const inputs = screen.getAllByLabelText("Data source / experiment reference");
     await user.type(inputs[1], "Study_1.batch-2:donor.A");
     expect(inputs[1]).toBeValid();
-    await user.click(screen.getAllByRole("button", { name: "Save" })[1]);
+    expect(screen.getAllByText(/staged for confirmation/)).toHaveLength(2);
+    await user.click(screen.getAllByRole("button", { name: "Stage change" })[1]);
     expect(save).toHaveBeenCalledWith("bbbbbbbb22222222", "Study_1.batch-2:donor.A");
 
+    view.rerender(
+      <SourceInputForms
+        uploads={[
+          { id: "aaaaaaaa11111111", name: "sample.h5ad", kind: "h5ad", size: 1 },
+          {
+            id: "bbbbbbbb22222222",
+            name: "sample.h5ad",
+            kind: "h5ad",
+            size: 1,
+            source_family_id: "Study_1.batch-2:donor.A",
+          },
+        ]}
+        disabled={false}
+        onSourceInput={save}
+      />,
+    );
+    const refreshedInputs = screen.getAllByLabelText("Data source / experiment reference");
+    expect(refreshedInputs[1]).toHaveValue("Study_1.batch-2:donor.A");
+
     for (const invalidValue of ["invalid source", "invalid/source"]) {
-      await user.clear(inputs[1]);
-      await user.type(inputs[1], invalidValue);
-      expect((inputs[1] as HTMLInputElement).checkValidity()).toBe(false);
+      await user.clear(refreshedInputs[1]);
+      await user.type(refreshedInputs[1], invalidValue);
+      expect((refreshedInputs[1] as HTMLInputElement).checkValidity()).toBe(false);
     }
   });
 

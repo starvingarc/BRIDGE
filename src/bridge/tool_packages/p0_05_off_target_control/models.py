@@ -10,6 +10,7 @@ from pydantic import (
     Field,
     StrictFloat,
     StrictInt,
+    RootModel,
     field_validator,
     model_validator,
 )
@@ -22,7 +23,12 @@ from bridge.tool_packages._configurable_contracts import (
 from bridge.tool_packages.p0_05_off_target_control.method_models import (
     PUBLIC_METHOD_SCHEMA_MODELS,
 )
-from bridge.toolkit.contracts import EvidenceState, FrozenModel
+from bridge.toolkit.contracts import (
+    CellStateComposition,
+    DataViewBinding,
+    EvidenceState,
+    FrozenModel,
+)
 
 OBJECT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9._:-]*$"
 VERSION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
@@ -464,11 +470,368 @@ class OffTargetControlProfileV2(OffTargetControlProfile):
         return self
 
 
+HardCountMetricName = Literal[
+    "off_target_hard_count_accounting",
+    "off_target_soft_mass_composition",
+    "off_target_identity_unknown",
+    "off_target_rare_state_detection",
+]
+
+
+class OffTargetHardCountRoleRecord(FrozenModel):
+    product_role: ProductRole
+    consensus_supported_count: StrictInt = Field(ge=0)
+    fraction_of_selected_view: StrictFloat = Field(ge=0.0, le=1.0)
+    support_basis: Literal["consensus_supported_only"]
+    exclusion_state: Literal["cannot_exclude"]
+
+
+class OffTargetHardCountAccounting(FrozenModel):
+    primary_denominator_id: str = Field(pattern=OBJECT_ID_PATTERN)
+    n_observations: StrictInt = Field(gt=0)
+    observation_unit: Literal["cell", "nucleus"]
+    producer_composition: CellStateComposition
+    role_counts: list[OffTargetHardCountRoleRecord] = Field(
+        min_length=4,
+        max_length=4,
+    )
+    accounting_basis: Literal["producer_reference_support_counts"]
+    accounting_state: Literal["complete"]
+    mass_state: Literal["unavailable"]
+    total_soft_mass: None = None
+    reason_codes: list[str]
+
+    @field_validator("reason_codes")
+    @classmethod
+    def reasons_are_unique(cls, value: list[str]) -> list[str]:
+        _unique(value, "hard-count accounting reason codes")
+        return value
+
+    @model_validator(mode="after")
+    def selected_view_count_partition_is_coherent(self) -> Self:
+        if self.producer_composition.state != "shadow":
+            raise ValueError("hard-count accounting requires shadow composition")
+        records = self.producer_composition.records
+        if not records:
+            raise ValueError("hard-count accounting requires composition records")
+        if any(
+            item.label_level != "L1" or item.denominator != self.n_observations
+            for item in records
+        ):
+            raise ValueError(
+                "hard-count accounting requires one canonical L1 selected-view denominator"
+            )
+        expected_reconciliation_states = {
+            "consensus_supported": "candidate",
+            "single_source_supported": "candidate",
+            "source_conflict": "unresolved",
+            "unavailable": "unavailable",
+            "unknown": "unknown",
+            "ood": "ood",
+        }
+        reconciliation = [
+            item for item in records if item.view.value == "reconciliation_state"
+        ]
+        if any(
+            item.label not in expected_reconciliation_states
+            or item.state_evidence_state.value
+            != expected_reconciliation_states[item.label]
+            for item in reconciliation
+        ):
+            raise ValueError("reconciliation label and evidence state must be canonical")
+        role_by_name = {item.product_role: item for item in self.role_counts}
+        if set(role_by_name) != set(ProductRole):
+            raise ValueError("hard-count accounting requires exactly four product roles")
+        for item in self.role_counts:
+            if not math.isclose(
+                item.fraction_of_selected_view,
+                item.consensus_supported_count / self.n_observations,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                raise ValueError("role fraction must equal count / selected-view N")
+        role_count = sum(
+            item.consensus_supported_count for item in self.role_counts
+        )
+        consensus_count = sum(
+            item.count
+            for item in records
+            if item.view.value == "consensus_supported_only"
+        )
+        if role_count != consensus_count:
+            raise ValueError(
+                "role counts must account the consensus-supported producer records"
+            )
+        non_consensus_count = sum(
+            item.count
+            for item in reconciliation
+            if item.label != "consensus_supported"
+        )
+        if role_count + non_consensus_count != self.n_observations:
+            raise ValueError(
+                "role and non-consensus reconciliation counts must equal selected N"
+            )
+        return self
+
+
+class OffTargetHardCountMeasurementArtifactBinding(FrozenModel):
+    measurement_id: str = Field(min_length=1)
+    metric_name: HardCountMetricName
+    evidence_state: Literal["inferred", "unavailable"]
+    artifact_id: str = Field(min_length=1)
+    file_name: str = Field(pattern=r"^[a-z0-9][a-z0-9_.-]*\.json$")
+    sha256: str = Field(pattern=SHA256_PATTERN)
+
+
+class OffTargetHardCountProfileV1(FrozenModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {
+                                "const": "not_requested"
+                            }
+                        },
+                        "required": [
+                            "measurement_projection_state"
+                        ]
+                    },
+                    "then": {
+                        "required": [
+                            "measurement_artifacts"
+                        ],
+                        "properties": {
+                            "measurement_spec_ref": {
+                                "type": "null"
+                            },
+                            "measurement_spec_sha256": {
+                                "type": "null"
+                            },
+                            "measurement_artifacts": {
+                                "maxItems": 0
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "measurement_projection_state": {
+                                "const": "available"
+                            }
+                        },
+                        "required": [
+                            "measurement_projection_state"
+                        ]
+                    },
+                    "then": {
+                        "required": [
+                            "measurement_spec_ref",
+                            "measurement_spec_sha256",
+                            "measurement_artifacts"
+                        ],
+                        "properties": {
+                            "measurement_spec_ref": {
+                                "not": {
+                                    "type": "null"
+                                }
+                            },
+                            "measurement_spec_sha256": {
+                                "not": {
+                                    "type": "null"
+                                }
+                            },
+                            "measurement_artifacts": {
+                                "minItems": 4,
+                                "maxItems": 4,
+                                "allOf": [
+                                    {
+                                        "contains": {
+                                            "type": "object",
+                                            "required": [
+                                                "metric_name",
+                                                "evidence_state"
+                                            ],
+                                            "properties": {
+                                                "metric_name": {
+                                                    "const": "off_target_hard_count_accounting"
+                                                },
+                                                "evidence_state": {
+                                                    "const": "inferred"
+                                                }
+                                            }
+                                        },
+                                        "minContains": 1,
+                                        "maxContains": 1
+                                    },
+                                    {
+                                        "contains": {
+                                            "type": "object",
+                                            "required": [
+                                                "metric_name",
+                                                "evidence_state"
+                                            ],
+                                            "properties": {
+                                                "metric_name": {
+                                                    "const": "off_target_soft_mass_composition"
+                                                },
+                                                "evidence_state": {
+                                                    "const": "unavailable"
+                                                }
+                                            }
+                                        },
+                                        "minContains": 1,
+                                        "maxContains": 1
+                                    },
+                                    {
+                                        "contains": {
+                                            "type": "object",
+                                            "required": [
+                                                "metric_name",
+                                                "evidence_state"
+                                            ],
+                                            "properties": {
+                                                "metric_name": {
+                                                    "const": "off_target_identity_unknown"
+                                                },
+                                                "evidence_state": {
+                                                    "const": "unavailable"
+                                                }
+                                            }
+                                        },
+                                        "minContains": 1,
+                                        "maxContains": 1
+                                    },
+                                    {
+                                        "contains": {
+                                            "type": "object",
+                                            "required": [
+                                                "metric_name",
+                                                "evidence_state"
+                                            ],
+                                            "properties": {
+                                                "metric_name": {
+                                                    "const": "off_target_rare_state_detection"
+                                                },
+                                                "evidence_state": {
+                                                    "const": "unavailable"
+                                                }
+                                            }
+                                        },
+                                        "minContains": 1,
+                                        "maxContains": 1
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    )
+
+    object_version: Literal["0.1.0"]
+    profile_id: str = Field(pattern=r"^off-target-hard-count:[A-Za-z0-9._:-]+$")
+    profile_version: Literal["0.1.0"]
+    tool_id: Literal["P0-05"]
+    tool_version: Literal["0.6.0"]
+    product_case_ref: str = Field(min_length=1)
+    product_case_sha256: str = Field(pattern=SHA256_PATTERN)
+    product_definition_ref: str = Field(min_length=1)
+    product_definition_sha256: str = Field(pattern=SHA256_PATTERN)
+    state_role_map_ref: str = Field(min_length=1)
+    state_role_map_sha256: str = Field(pattern=SHA256_PATTERN)
+    assessment_spec_ref: str = Field(min_length=1)
+    assessment_spec_sha256: str = Field(pattern=SHA256_PATTERN)
+    cell_state_profile_id: str = Field(min_length=1)
+    cell_state_profile_sha256: str = Field(pattern=SHA256_PATTERN)
+    biological_unit_manifest_ref: str = Field(min_length=1)
+    biological_unit_manifest_sha256: str = Field(pattern=SHA256_PATTERN)
+    biological_unit_attestation_receipt_ref: str = Field(min_length=1)
+    biological_unit_attestation_receipt_sha256: str = Field(pattern=SHA256_PATTERN)
+    input_data_view: DataViewBinding
+    accounting: OffTargetHardCountAccounting
+    open_set_assessment_state: Literal["not_assessed"]
+    rare_detection_state: Literal["not_assessed"]
+    measurement_projection_state: Literal["not_requested", "available"]
+    measurement_spec_ref: VersionedObjectRef | None = None
+    measurement_spec_sha256: str | None = Field(
+        default=None,
+        pattern=SHA256_PATTERN,
+    )
+    measurement_artifacts: list[OffTargetHardCountMeasurementArtifactBinding]
+    evidence_state: Literal["shadow"]
+    score_state: Literal["unavailable"]
+    domain_score: None = None
+    reason_codes: list[str]
+    created_at: datetime
+
+    _created_at_utc = field_validator("created_at")(_aware_utc)
+
+    @field_validator("reason_codes")
+    @classmethod
+    def profile_reasons_are_unique(cls, value: list[str]) -> list[str]:
+        _unique(value, "hard-count profile reason codes")
+        return value
+
+    @model_validator(mode="after")
+    def hard_count_profile_is_coherent(self) -> Self:
+        if self.accounting.n_observations != self.input_data_view.n_observations:
+            raise ValueError("accounting N must match the selected DataView")
+        ids = [item.measurement_id for item in self.measurement_artifacts]
+        artifacts = [item.artifact_id for item in self.measurement_artifacts]
+        files = [item.file_name for item in self.measurement_artifacts]
+        metrics = [item.metric_name for item in self.measurement_artifacts]
+        for values, name in (
+            (ids, "measurement IDs"),
+            (artifacts, "measurement artifact IDs"),
+            (files, "measurement artifact file names"),
+            (metrics, "measurement metrics"),
+        ):
+            _unique(values, name)
+        if self.measurement_projection_state == "not_requested":
+            if (
+                self.measurement_spec_ref is not None
+                or self.measurement_spec_sha256 is not None
+                or self.measurement_artifacts
+            ):
+                raise ValueError(
+                    "not-requested projection cannot bind a spec or measurements"
+                )
+            return self
+        if self.measurement_spec_ref is None or self.measurement_spec_sha256 is None:
+            raise ValueError("available projection requires a measurement spec")
+        expected_metrics = {
+            "off_target_hard_count_accounting": "inferred",
+            "off_target_soft_mass_composition": "unavailable",
+            "off_target_identity_unknown": "unavailable",
+            "off_target_rare_state_detection": "unavailable",
+        }
+        if set(metrics) != set(expected_metrics) or any(
+            item.evidence_state != expected_metrics[item.metric_name]
+            for item in self.measurement_artifacts
+        ):
+            raise ValueError(
+                "available hard-count projection requires all four metric states"
+            )
+        return self
+
+
+class OffTargetControlResultV1(
+    RootModel[OffTargetControlProfileV2 | OffTargetHardCountProfileV1]
+):
+    pass
+
+
 PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/state-role-map/v0.1": StateRoleMap,
     "bridge://schemas/off-target-assessment-spec/v0.1": OffTargetAssessmentSpec,
     "bridge://schemas/off-target-evidence-bundle/v0.1": OffTargetEvidenceBundle,
     "bridge://schemas/off-target-control-profile/v0.1": OffTargetControlProfile,
     "bridge://schemas/off-target-control-profile/v0.2": OffTargetControlProfileV2,
+    "bridge://schemas/off-target-hard-count-profile/v0.1": OffTargetHardCountProfileV1,
+    "bridge://schemas/off-target-control-result/v0.1": OffTargetControlResultV1,
     **PUBLIC_METHOD_SCHEMA_MODELS,
 }

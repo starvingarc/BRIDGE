@@ -7,6 +7,7 @@ import { File, Menu, MoreVertical, Paperclip, Send, Square } from "lucide-react"
 import { type ChangeEvent, type FormEvent, useRef } from "react";
 import type { Session, Upload } from "../types";
 import { AnalysisInputs } from "./AnalysisInputs";
+import { InputChangeCard } from "./InputChangeCard";
 import { MarkdownText } from "./MarkdownText";
 import { PlanCard, PlanHistory } from "./PlanCard";
 import { SessionStatusMark } from "./StatusMark";
@@ -16,10 +17,15 @@ type Props = {
   busy: boolean;
   uploadBusy: boolean;
   approveBusy: boolean;
+  stopBusy: boolean;
   onOpenSidebar: () => void;
   onUpload: (file: File) => void;
   onSourceInput: (uploadId: string, sourceFamilyId: string) => void;
   onApprove: () => void;
+  onStop: () => void;
+  onConfirmInputChange: () => void;
+  onDiscardInputChange: () => void;
+  onKeepCurrentInputs: () => void;
   onSession: (session: Session) => void;
   onError: (error: unknown) => void;
 };
@@ -79,6 +85,7 @@ export function SourceInputForms({
           <input
             id={`source-${upload.id}`}
             name="source_family_id"
+            key={`${upload.id}:${upload.source_family_id ?? ""}`}
             defaultValue={upload.source_family_id ?? ""}
             maxLength={160}
             pattern={"[A-Za-z0-9][A-Za-z0-9_.:\\-]*"}
@@ -87,9 +94,9 @@ export function SourceInputForms({
             disabled={disabled}
             placeholder="e.g. source-family:study-cohort"
           />
-          <button type="submit" disabled={disabled}>Save</button>
+          <button type="submit" disabled={disabled}>Stage change</button>
         </div>
-        <small>Stored with this upload locally, up to 160 letters, numbers, . _ : or -. It is not sent to the model.</small>
+        <small>The exact source change is staged for confirmation and is not sent to the model.</small>
       </form>
     );
   });
@@ -100,10 +107,15 @@ export function Conversation({
   busy,
   uploadBusy,
   approveBusy,
+  stopBusy,
   onOpenSidebar,
   onUpload,
   onSourceInput,
   onApprove,
+  onStop,
+  onConfirmInputChange,
+  onDiscardInputChange,
+  onKeepCurrentInputs,
   onSession,
   onError,
 }: Props) {
@@ -127,15 +139,29 @@ export function Conversation({
             <span>{session.status.replace("_", " ")}</span>
           </div>
         </div>
-        <a
-          className="icon-button"
-          href={`/api/sessions/${encodeURIComponent(session.id)}/transcript`}
-          download
-          aria-label="Download transcript"
-          title="Download transcript"
-        >
-          <MoreVertical aria-hidden="true" />
-        </a>
+        <div className="conversation-header-actions">
+          {["thinking", "running", "awaiting_approval"].includes(session.status) ? (
+            <button
+              className="stop-button"
+              type="button"
+              onClick={onStop}
+              disabled={stopBusy}
+              aria-label="Stop analysis"
+            >
+              <Square aria-hidden="true" />
+              {stopBusy ? "Stopping…" : "Stop"}
+            </button>
+          ) : null}
+          <a
+            className="icon-button"
+            href={`/api/sessions/${encodeURIComponent(session.id)}/transcript`}
+            download
+            aria-label="Download transcript"
+            title="Download transcript"
+          >
+            <MoreVertical aria-hidden="true" />
+          </a>
+        </div>
       </header>
       <ThreadPrimitive.Root className="thread-root">
         <ThreadPrimitive.Viewport className="thread-viewport">
@@ -149,6 +175,11 @@ export function Conversation({
                 <p>Upload an H5AD file, then describe the question you want BRIDGE to assess.</p>
               </div>
             ) : null}
+            {session.status === "stopping" ? (
+              <div className="stopping-notice" role="status">
+                Stop acknowledged. Current in-process work may still finish; later work is stopped.
+              </div>
+            ) : null}
             {session.error ? (
               <div className="session-error" role="alert">
                 {session.error}
@@ -159,18 +190,29 @@ export function Conversation({
               <PlanCard
                 plan={session.plan}
                 sessionStatus={session.status}
-                busy={approveBusy}
+                busy={approveBusy || session.input_review_required}
                 onApprove={onApprove}
               />
             ) : null}
           </div>
           <ThreadPrimitive.ViewportFooter className="composer-footer">
+            {session.input_review_required && session.pending_input_change?.kind !== "intake" ? (
+              <InputChangeCard
+                pending={session.pending_input_change}
+                uploads={session.uploads}
+                busy={approveBusy}
+                onConfirm={onConfirmInputChange}
+                onDiscard={onDiscardInputChange}
+                onKeep={onKeepCurrentInputs}
+              />
+            ) : null}
             <AnalysisInputs
-              key={session.id}
+              key={`${session.id}:${session.pending_input_change?.id ?? session.input_review_required}`}
               sessionId={session.id}
               uploads={session.uploads}
               capabilities={session.capabilities ?? []}
               disabled={busy}
+              inputReviewRequired={session.input_review_required}
               onSession={onSession}
               onError={onError}
             >

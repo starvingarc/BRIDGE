@@ -4,6 +4,8 @@ import {
   type AnalysisInputsResponse,
   type AnalysisSelection,
   type Session,
+  type IntakeFacts,
+  type IntakeResponse,
   type SessionsResponse,
 } from "./types";
 
@@ -88,6 +90,36 @@ export const api = {
     sessionRequest(`/api/sessions/${encodeURIComponent(id)}/approve`, {
       method: "POST",
       body: JSON.stringify({ plan_id: planId, plan_digest: planDigest }),
+    }),
+  stopSession: (id: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/stop`, {
+      method: "POST",
+      body: "{}",
+    }),
+  confirmInputChange: (id: string, changeId: string, changeDigest: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/input-change/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ change_id: changeId, change_digest: changeDigest }),
+    }),
+  discardInputChange: (id: string, changeId: string, changeDigest: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/input-change/discard`, {
+      method: "POST",
+      body: JSON.stringify({ change_id: changeId, change_digest: changeDigest }),
+    }),
+  keepCurrentInputs: (id: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/input-review/keep`, {
+      method: "POST",
+      body: "{}",
+    }),
+  getIntake: (id: string, uploadId: string, signal?: AbortSignal) =>
+    request<IntakeResponse>(`/api/sessions/${encodeURIComponent(id)}/intake?upload_id=${encodeURIComponent(uploadId)}`, { signal }),
+  stageIntake: (id: string, uploadId: string, facts: IntakeFacts) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/intake`, {
+      method: "POST", body: JSON.stringify({ upload_id: uploadId, facts }),
+    }),
+  prepareIntake: (id: string, uploadId: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/intake/prepare`, {
+      method: "POST", body: JSON.stringify({ upload_id: uploadId }),
     }),
   getAnalysisInputs: (id: string, signal?: AbortSignal) =>
     request<AnalysisInputsResponse>(

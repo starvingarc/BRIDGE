@@ -135,6 +135,43 @@ describe("API client", () => {
     expect((objectRequest.headers as Headers).has("Content-Type")).toBe(false);
   });
 
+  it("uses exact stop and input-review control requests", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        id: "session-1",
+        title: "Session",
+        updated_at: "2026-09-07T00:00:00Z",
+        status: "idle",
+        messages: [],
+        uploads: [],
+        plan: null,
+        artifacts: [],
+        error: null,
+      }),
+    );
+
+    await api.stopSession("session-1");
+    await api.confirmInputChange("session-1", "change-1", "sha256:one");
+    await api.discardInputChange("session-1", "change-2", "sha256:two");
+    await api.keepCurrentInputs("session-1");
+
+    expect(fetchMock.mock.calls.slice(0, 4)).toEqual([
+      ["/api/sessions/session-1/stop", expect.objectContaining({ method: "POST", body: "{}" })],
+      ["/api/sessions/session-1/input-change/confirm", expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ change_id: "change-1", change_digest: "sha256:one" }),
+      })],
+      ["/api/sessions/session-1/input-change/discard", expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ change_id: "change-2", change_digest: "sha256:two" }),
+      })],
+      ["/api/sessions/session-1/input-review/keep", expect.objectContaining({
+        method: "POST",
+        body: "{}",
+      })],
+    ]);
+  });
+
   it("normalizes missing stage additions for saved sessions", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse({
@@ -154,6 +191,8 @@ describe("API client", () => {
 
     expect(session.plan_history).toEqual([]);
     expect(session.capabilities).toEqual([]);
+    expect(session.input_review_required).toBe(false);
+    expect(session.pending_input_change).toBeNull();
   });
 
   it("uses multipart FormData for uploads without overriding its content type", async () => {

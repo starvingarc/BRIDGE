@@ -20,6 +20,8 @@ const session = (id = "session-a"): Session => ({
   plan: null,
   artifacts: [],
   error: null,
+  input_review_required: false,
+  pending_input_change: null,
 });
 
 const role = {
@@ -113,6 +115,7 @@ const props = (overrides: Partial<React.ComponentProps<typeof AnalysisInputs>> =
   uploads: [],
   capabilities: [],
   disabled: false,
+  inputReviewRequired: false,
   onSession: vi.fn(),
   onError: vi.fn(),
   ...overrides,
@@ -645,14 +648,21 @@ describe("AnalysisInputs", () => {
       },
     };
     response.assets = [{ ...declaredAsset, declaration: null }];
-    const registeredResponse = { ...response, assets: [declaredAsset] };
-    let registered = false;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
       if (init?.method === "POST") {
-        registered = true;
-        return jsonResponse(session());
+        return jsonResponse({
+          ...session(),
+          input_review_required: true,
+          pending_input_change: {
+            id: "change-asset-1",
+            digest: "sha256:asset-change",
+            kind: "asset",
+            upload_id: "upload-1",
+            changes: [{ field: "matrix_location", before: null, after: "layers/counts" }],
+          },
+        });
       }
-      return jsonResponse(registered ? registeredResponse : response);
+      return jsonResponse(response);
     });
     const user = userEvent.setup();
     render(
@@ -680,11 +690,14 @@ describe("AnalysisInputs", () => {
     await user.type(screen.getByLabelText("Matrix location"), "layers/counts");
     await user.selectOptions(screen.getByLabelText("Matrix semantics"), "raw_counts");
     await user.selectOptions(screen.getByLabelText("Input level"), "count_ready");
-    await user.click(screen.getByRole("button", { name: "Register declaration" }));
+    await user.click(screen.getByRole("button", { name: "Stage declaration" }));
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([path, init]) =>
       String(path).endsWith("/analysis-inputs/assets") && init?.method === "POST")).toBe(true));
-    expect(await screen.findByRole("option", { name: "Declared case H5AD" })).toBeInTheDocument();
+    expect(await screen.findByText(
+      "H5AD declaration change staged. Confirm it before selecting the asset.",
+    )).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Declared case H5AD" })).not.toBeInTheDocument();
     const registration = fetchMock.mock.calls.find(([path]) =>
       String(path).endsWith("/analysis-inputs/assets"));
     expect(registration?.[1]).toEqual(expect.objectContaining({

@@ -30,7 +30,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-11").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
-    assert proliferation_stress_response.version == "0.6.1"
+    assert proliferation_stress_response.version == "0.7.0"
     assert product_comparison.version == "0.4.0"
 
 
@@ -138,6 +138,42 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
         "graft_assessment",
         "expression_analysis",
     ]
+
+
+def test_p005_discovery_exposes_count_only_inputs_without_mass_bundle() -> None:
+    registry = ToolRegistry.load_default()
+    modes = {mode.mode_id: mode for mode in registry.describe_input("P0-05").object_input_modes}
+    assert "hard_count_accounting" in modes
+    roles = {role.role: role for role in modes["hard_count_accounting"].roles}
+    assert set(roles) == {
+        "product_case", "product_definition_card", "state_role_map",
+        "off_target_assessment_spec", "cell_state_evidence_profile",
+        "biological_unit_manifest", "biological_unit_attestation_receipt", "measurement_spec",
+    }
+    assert roles["cell_state_evidence_profile"].schema_refs == ["bridge://schemas/cell-state-evidence-profile/v0.3"]
+    assert roles["cell_state_evidence_profile"].object_versions == ["0.3.0"]
+    assert roles["measurement_spec"].min_count == 0
+    assert all(role.max_count == 1 for role in roles.values())
+    assert all(role.min_count == 1 for name, role in roles.items() if name != "measurement_spec")
+    assert {"legacy_aggregation", "method_runtime"} <= set(modes)
+
+
+def test_p006_discovery_selects_source_bound_input_without_changing_legacy_mode() -> None:
+    registry = ToolRegistry.load_default()
+    modes = {mode.mode_id: mode for mode in registry.describe_input("P0-06").object_input_modes}
+    assert "method_runtime_source_bound" in modes
+    source = modes["method_runtime_source_bound"]
+    legacy = modes["method_runtime"]
+    source_roles = {role.role: role for role in source.roles}
+    legacy_roles = {role.role: role for role in legacy.roles}
+    assert len(source_roles) == 12
+    assert set(source_roles) == set(legacy_roles)
+    assert source.asset_input == legacy.asset_input
+    assert source_roles["process_method_input"].schema_refs == ["bridge://schemas/process-method-input/v0.2"]
+    assert source_roles["process_method_input"].object_versions == ["0.2.0"]
+    assert legacy_roles["process_method_input"].schema_refs == ["bridge://schemas/process-method-input/v0.1"]
+    for role in source_roles.keys() - {"process_method_input"}:
+        assert source_roles[role] == legacy_roles[role]
 
 
 def test_input_contract_roles_match_runtime_adapters() -> None:
