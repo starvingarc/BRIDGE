@@ -17,7 +17,7 @@ jobs:
   repository-gates:
     name: repository-gates
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository

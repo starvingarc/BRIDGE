@@ -157,3 +157,19 @@ retains their exact provenance. An interpretation is not a verified report,
 scientific validation or public-export approval. Aggregate results remain
 controlled biological data even after identifiers are removed. Implementation
 and acceptance are tracked in the existing Web integration plan.
+
+## 2026-09-08: Bound Product-intent Sharing To Scientific-input Drafts
+
+The owner approved the configured model receiving three explicitly confirmed
+product-intent fields for scientific-input candidate drafting: `product_family`,
+`target_cell_type` and `target_stage`. This is a purpose-specific authorization,
+not permission to send the whole intake form or to expand ordinary conversation
+context. Product names, sampling and independence information, sample/source
+identities, metadata columns, raw expression, paths and private provenance remain
+outside this new authorization. Existing aggregate-summary consent is separate.
+
+Draft, stale, retracted or unconfirmed values must not be promoted to confirmed
+intent. Any candidate remains reviewable and source-backed; confirmation is not
+scientific freezing, biological validation or public-export approval. The current
+runtime still sends intake readiness only. Implementation and acceptance of the
+new draft-specific projection belong to the existing Web integration plan.

@@ -52,6 +52,17 @@ The two exact failed node IDs in `tests/test_web_service.py` passed in the focus
 follow-up (**2 passed, 2 warnings**). Runtime files and the installed preview were
 unchanged; this focused result does not replace CI on the corrected public head.
 
+The corrected-head run `34196606403` was subsequently cancelled by the job's
+30-minute execution limit (GitHub annotation: maximum execution time exceeded),
+not recorded as a completed test result. The job budget is now 45 minutes; the
+suite, checks and failure conditions are unchanged. A new-head result is still
+required before closing the engineering gate.
+
+The owner has approved a draft-purpose-only projection of confirmed
+`product_family`, `target_cell_type` and `target_stage` to the configured model.
+All other private intake fields remain excluded. This authorization is recorded
+in the decision log; it is not yet enabled in the current readiness-only runtime.
+
 The next development milestone is a reviewable scientific-input candidate flow:
 use the confirmed product intent plus versioned knowledge to propose the required
 product definition and state-role inputs, explain their sources and missing facts,
