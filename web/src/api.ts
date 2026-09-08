@@ -4,6 +4,8 @@ import {
   type AnalysisInputsResponse,
   type AnalysisSelection,
   type Session,
+  type ClarificationAnswer,
+  type ScienceCandidate,
   type IntakeFacts,
   type IntakeResponse,
   type SessionsResponse,
@@ -110,6 +112,34 @@ export const api = {
     sessionRequest(`/api/sessions/${encodeURIComponent(id)}/input-review/keep`, {
       method: "POST",
       body: "{}",
+    }),
+  prepareReportInputs: (id: string, draftId: string, draftDigest: string, toolId: "P0-08" | "P0-09" | "P0-10" = "P0-08") =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/report-inputs/prepare`, {
+      method: "POST", body: JSON.stringify({ draft_id: draftId, draft_digest: draftDigest, tool_id: toolId }),
+    }),
+  draftScientificInputs: (id: string, uploadId: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/scientific-inputs/draft`, {
+      method: "POST", body: JSON.stringify({ upload_id: uploadId }),
+    }),
+  confirmScientificInputs: (id: string, draftId: string, draftDigest: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/scientific-inputs/confirm`, {
+      method: "POST", body: JSON.stringify({ draft_id: draftId, draft_digest: draftDigest }),
+    }),
+  reviseScientificInputs: (id: string, draftId: string, draftDigest: string, candidate: ScienceCandidate) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/scientific-inputs/revise`, {
+      method: "POST", body: JSON.stringify({ draft_id: draftId, draft_digest: draftDigest, candidate }),
+    }),
+  answerClarification: (id: string, cardId: string, cardDigest: string, answers: ClarificationAnswer[]) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/clarification/answer`, {
+      method: "POST", body: JSON.stringify({ card_id: cardId, card_digest: cardDigest, answers }),
+    }),
+  cancelClarification: (id: string, cardId: string, cardDigest: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/clarification/cancel`, {
+      method: "POST", body: JSON.stringify({ card_id: cardId, card_digest: cardDigest }),
+    }),
+  reviseClarification: (id: string, cardId: string, cardDigest: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/clarification/revise`, {
+      method: "POST", body: JSON.stringify({ card_id: cardId, card_digest: cardDigest }),
     }),
   getIntake: (id: string, uploadId: string, signal?: AbortSignal) =>
     request<IntakeResponse>(`/api/sessions/${encodeURIComponent(id)}/intake?upload_id=${encodeURIComponent(uploadId)}`, { signal }),

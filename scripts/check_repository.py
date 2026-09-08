@@ -133,6 +133,20 @@ WEB_PREVIEW_FILES = (
     Path("web/vite.config.ts"),
     Path("docs/web-preview.md"),
     Path("docs/validation/web_preview_20260905.md"),
+    # Owner-approved scientific-input increment; only these concrete sources.
+    Path("plans/web-scientific-input-design.md"),
+    Path("src/bridge/web/clarification.py"),
+    Path("src/bridge/web/scientific_inputs.py"),
+    Path("src/bridge/web/report_inputs.py"),
+    Path("src/bridge/tool_packages/p0_09_evidence_compiler/candidate_policy.py"),
+    Path("tests/test_web_clarification.py"),
+    Path("tests/test_web_scientific_inputs.py"),
+    Path("tests/test_web_legacy_evidence.py"),
+    Path("tests/test_web_report_inputs.py"),
+    Path("web/src/components/ClarificationCard.tsx"),
+    Path("web/src/components/ScientificInputs.tsx"),
+    Path("web/tests/clarification-card.test.tsx"),
+    Path("web/tests/scientific-inputs.test.tsx"),
 )
 AGENT_INTEGRATION_FILES = (
     Path("examples/agent-integration/profiles/comparison.json"),

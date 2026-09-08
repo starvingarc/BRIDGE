@@ -4,9 +4,11 @@ from __future__ import annotations
 import json
 import math
 
+from bridge.tool_packages._configurable_contracts import parse_composition
 from bridge.tool_packages.p0_02_cell_state.reference import load_packaged_vocabulary
 from bridge.toolkit.contracts import (
     CellStateCompositionView,
+    CellStateEvidenceProfileV2,
     CellStateEvidenceProfileV3,
     QCReadinessProfileV2,
     ToolRun,
@@ -15,6 +17,7 @@ from bridge.toolkit.contracts import (
 from .inputs import checked_bytes, strict_json
 
 PROFILE_SCHEMA = "bridge://schemas/cell-state-evidence-profile/v0.3"
+LEGACY_PROFILE_SCHEMA = "bridge://schemas/cell-state-evidence-profile/v0.2"
 QC_PROFILE_SCHEMA = "bridge://schemas/qc-readiness-profile/v0.2"
 MAX_ROWS = 128
 MAX_SUMMARY_BYTES = 32 * 1024
@@ -183,6 +186,113 @@ def _project(inputs, state, receipt, input_id, record):
         }
     }
     return summary, binding
+
+
+def _project_legacy(inputs, state, receipt, input_id, record):
+    """Interpret the historical V2 denominator; never create V3 lineage."""
+    if record.get("producer_tool_id") != "P0-02":
+        raise ValueError("canonical_source_producer_mismatch")
+    payload = inputs.verify(state, record)
+    run = ToolRun.model_validate(_verified_receipt(inputs, state, receipt))
+    profile = CellStateEvidenceProfileV2.model_validate(payload)
+    if (
+        run.request.tool_id != "P0-02"
+        or _value(run.execution_state) != receipt["state"]
+        or run.request.tool_version != run.tool_version
+        or profile.profile_id != f"cell-state-profile:{run.run_id}"
+        or type(payload["n_observations"]) is not int
+        or profile.n_observations <= 0
+        or profile.assay not in QC_ASSAYS
+        or profile.denominator != "all observations in the declared post-QC input view"
+        or len(run.request.assets) != 1
+    ):
+        raise ValueError("legacy_profile_binding_invalid")
+    asset = run.request.assets[0]
+    upload = state["_uploads"].get(asset.asset_id)
+    expected_path = inputs.service.directory(state["id"]) / "uploads" / (asset.asset_id + ".h5ad")
+    if (
+        upload is None or asset.path != expected_path
+        or asset.checksum != upload["sha256"] or asset.assay != profile.assay
+    ):
+        raise ValueError("legacy_upload_binding_invalid")
+    checked_bytes(inputs.service, state, asset.path, asset.checksum,
+                  limit=inputs.service.settings.upload_limit)
+
+    composition_state = profile.composition.get("state")
+    if composition_state not in {"shadow", "not_assessed", "unavailable", "unknown", "missing"}:
+        raise ValueError("legacy_composition_state_invalid")
+    records = parse_composition(profile)
+    if composition_state != "shadow" and records:
+        raise ValueError("legacy_composition_state_invalid")
+    vocabulary = load_packaged_vocabulary()
+    labels = {(item.level, item.state_id) for item in vocabulary.labels}
+    scopes = {"L1": ("all input observations", "all_input_observations"),
+              "L2": ("L2-eligible observations", "l2_eligible_observations")}
+    composition, reconciliation = [], []
+    grouped = {}
+    for item in records:
+        if item.label_level not in scopes:
+            raise ValueError("legacy_denominator_invalid")
+        original_scope, scope = scopes[item.label_level]
+        level_count = profile.label_levels[item.label_level]["n_observations"]
+        if (
+            type(level_count) is not int or level_count <= 0
+            or level_count > profile.n_observations or item.denominator != level_count
+            or item.denominator_view != original_scope
+            or item.label_level == "L1" and level_count != profile.n_observations
+        ):
+            raise ValueError("legacy_denominator_invalid")
+        view = _value(item.view)
+        grouped.setdefault(item.label_level, {}).setdefault((view, item.source_id), []).append(item)
+        if view == "reconciliation_state":
+            evidence_state = RECONCILIATION_STATES.get(item.label)
+            if evidence_state is None:
+                raise ValueError("unknown_reconciliation_state")
+        else:
+            if (item.label_level, item.label) not in labels:
+                raise ValueError("unknown_annotation_label")
+            evidence_state = "candidate"
+        if view == "source_specific":
+            continue
+        row = {"label_level": item.label_level, "label": item.label,
+               "count": item.count, "fraction": item.fraction, "denominator": item.denominator,
+               "denominator_scope": scope, "state_evidence_state": evidence_state}
+        (reconciliation if view == "reconciliation_state" else composition).append(row)
+    for groups in grouped.values():
+        reconciled = groups.get(("reconciliation_state", None), [])
+        denominator = next(iter(groups.values()))[0].denominator
+        if not reconciled or sum(item.count for item in reconciled) != denominator:
+            raise ValueError("legacy_reconciliation_partition_invalid")
+        if any(sum(item.count for item in rows) > denominator for rows in groups.values()):
+            raise ValueError("legacy_composition_partition_invalid")
+        consensus = groups.get(("consensus_supported_only", None), [])
+        if sum(item.count for item in consensus) != sum(
+            item.count for item in reconciled if item.label == "consensus_supported"
+        ):
+            raise ValueError("legacy_consensus_partition_invalid")
+    if len(composition) + len(reconciliation) > MAX_ROWS:
+        raise _SummaryLimit()
+    open_set = profile.prediction_sets.get("open_set_state")
+    calibration = profile.calibration.get("state")
+    if open_set not in {"not_assessed", "candidate", "calibrated"} or calibration not in {
+        "not_assessed", "candidate", "calibrated"
+    }:
+        raise ValueError("legacy_assessment_state_invalid")
+    summary = {
+        "state": "available", "evidence_ref": "E1", "tool_id": "P0-02",
+        "execution_state": _value(run.execution_state), "profile_schema_version": "0.2",
+        "downstream_readiness": "not_established", "n_observations": profile.n_observations,
+        "denominator_scope": "historical_tool_input", "composition_state": composition_state,
+        "open_set_state": open_set, "calibration_state": calibration,
+        "score_state": _value(profile.score_state), "domain_score": None,
+        "composition": composition, "reconciliation": reconciliation,
+    }
+    _check_summary_limit(summary)
+    return summary, {"E1": {
+        "input_id": input_id, "receipt_file": record["receipt_file"],
+        "receipt_sha256": record["receipt_sha256"], "artifact_id": record["artifact_id"],
+        "artifact_sha256": record["sha256"],
+    }}
 
 
 def _check_summary_limit(summary):
@@ -381,10 +491,14 @@ def _cell_state_context(inputs, state):
     if receipt is None:
         return {"state": "not_available"}, {}
     registered = _registered_profile(state, receipt)
+    projector = _project
+    if registered is None:
+        registered = _registered_profile(state, receipt, LEGACY_PROFILE_SCHEMA)
+        projector = _project_legacy
     if registered is None:
         return {"state": "not_available"}, {}
     try:
-        return _project(inputs, state, receipt, *registered)
+        return projector(inputs, state, receipt, *registered)
     except _SummaryLimit:
         return {"state": "unavailable", "reason_code": "result_summary_limit"}, {}
     except (KeyError, OSError, TypeError, UnicodeError, ValueError):

@@ -1,0 +1,187 @@
+{
+  "resource_candidate_id": "SEURAT-CC-UPDATED-2019-v5.5.1-candidate",
+  "candidate_version": "0.1.0",
+  "status": "owner_selected_resource_candidate_not_ProgramSpec",
+  "review_date": "2026-09-09",
+  "upstream": {
+    "repository": "satijalab/seurat",
+    "release": "v5.5.1",
+    "commit": "4c0f2dc16fad4e8f0d7b5c98321d8bcb18caa13a",
+    "resource_name": "cc.genes.updated.2019",
+    "resource_path": "data/cc.genes.updated.2019.rda",
+    "url": "https://raw.githubusercontent.com/satijalab/seurat/4c0f2dc16fad4e8f0d7b5c98321d8bcb18caa13a/data/cc.genes.updated.2019.rda",
+    "sha256": "ffd7a3644f3137098d0d4b35c5ff654d70377a3ceab597b8159b0b9d16d84edf",
+    "docs_url": "https://satijalab.org/seurat/reference/cc.genes.updated.2019.html",
+    "paper_doi": "10.1126/science.aad0501"
+  },
+  "license": {
+    "identifier": "MIT",
+    "declaration": "MIT + file LICENSE",
+    "copyright": "Copyright (c) 2021 Seurat authors",
+    "source_url": "https://github.com/satijalab/seurat/blob/4c0f2dc16fad4e8f0d7b5c98321d8bcb18caa13a/LICENSE",
+    "notice_file": "seurat-cell-cycle-LICENSE.txt"
+  },
+  "selection": {
+    "primary": "updated_resource_exact_membership",
+    "owner_decision": "Use the updated version as primary; check current official documentation.",
+    "mapping_policy": "Preserve exact upstream symbols and gene membership; no local alias replacement or automatic update.",
+    "legacy_resource_use": "version-difference record only; no sensitivity run approved by this selection",
+    "scientific_release_approved": false
+  },
+  "list_hash_format": "UTF-8 gene symbols joined by LF with a final LF, in original order",
+  "lists": {
+    "s.genes": {
+      "genes": [
+        "MCM5",
+        "PCNA",
+        "TYMS",
+        "FEN1",
+        "MCM7",
+        "MCM4",
+        "RRM1",
+        "UNG",
+        "GINS2",
+        "MCM6",
+        "CDCA7",
+        "DTL",
+        "PRIM1",
+        "UHRF1",
+        "CENPU",
+        "HELLS",
+        "RFC2",
+        "POLR1B",
+        "NASP",
+        "RAD51AP1",
+        "GMNN",
+        "WDR76",
+        "SLBP",
+        "CCNE2",
+        "UBR7",
+        "POLD3",
+        "MSH2",
+        "ATAD2",
+        "RAD51",
+        "RRM2",
+        "CDC45",
+        "CDC6",
+        "EXO1",
+        "TIPIN",
+        "DSCC1",
+        "BLM",
+        "CASP8AP2",
+        "USP1",
+        "CLSPN",
+        "POLA1",
+        "CHAF1B",
+        "MRPL36",
+        "E2F8"
+      ],
+      "sha256": "419afea70ded303a3bdd0ab266ec66b4cfac294eead5abdf597dbd6a5d9c8f44"
+    },
+    "g2m.genes": {
+      "genes": [
+        "HMGB2",
+        "CDK1",
+        "NUSAP1",
+        "UBE2C",
+        "BIRC5",
+        "TPX2",
+        "TOP2A",
+        "NDC80",
+        "CKS2",
+        "NUF2",
+        "CKS1B",
+        "MKI67",
+        "TMPO",
+        "CENPF",
+        "TACC3",
+        "PIMREG",
+        "SMC4",
+        "CCNB2",
+        "CKAP2L",
+        "CKAP2",
+        "AURKB",
+        "BUB1",
+        "KIF11",
+        "ANP32E",
+        "TUBB4B",
+        "GTSE1",
+        "KIF20B",
+        "HJURP",
+        "CDCA3",
+        "JPT1",
+        "CDC20",
+        "TTK",
+        "CDC25C",
+        "KIF2C",
+        "RANGAP1",
+        "NCAPD2",
+        "DLGAP5",
+        "CDCA2",
+        "CDCA8",
+        "ECT2",
+        "KIF23",
+        "HMMR",
+        "AURKA",
+        "PSRC1",
+        "ANLN",
+        "LBR",
+        "CKAP5",
+        "CENPE",
+        "CTCF",
+        "NEK2",
+        "G2E3",
+        "GAS2L3",
+        "CBX5",
+        "CENPA"
+      ],
+      "sha256": "17d6ba175e0a733e8e2849ffeaf73fd260ea45c8865017e51e4d665e4ff91ddf"
+    }
+  },
+  "documented_changes_from_cc_genes": [
+    [
+      "MCM2",
+      "MCM7"
+    ],
+    [
+      "MLF1IP",
+      "CENPU"
+    ],
+    [
+      "RPA2",
+      "POLR1B"
+    ],
+    [
+      "BRIP1",
+      "MRPL36"
+    ],
+    [
+      "FAM64A",
+      "PIMREG"
+    ],
+    [
+      "HN1",
+      "JPT1"
+    ]
+  ],
+  "identity_caveat": "MCM2/MCM7, RPA2/POLR1B and BRIP1/MRPL36 have distinct current NCBI Gene records. Preserve them as upstream resource differences, not same-gene aliases.",
+  "intended_use": {
+    "scope": "whole_product",
+    "method_ids": [
+      "PROC-CYCLE-SCANPY",
+      "PROC-CYCLE-AGG"
+    ],
+    "minimum_gene_coverage_candidate": 1,
+    "cycle_signal_regression": false,
+    "product_acceptance_threshold": null,
+    "domain_score": null
+  },
+  "not_yet_bound": [
+    "reviewed product definition and development window",
+    "ProgramSpec stage, LOD and review fields",
+    "ProtocolIR and genuine design facts",
+    "canonical P0-02 V3 biological-unit lineage",
+    "separately confirmed biological-unit attestation",
+    "process method specifications and approved execution plan"
+  ]
+}

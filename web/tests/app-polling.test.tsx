@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../src/App";
-import type { Session } from "../src/types";
+import type { IntakeResponse, Session } from "../src/types";
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -21,6 +21,24 @@ const makeSession = (status: Session["status"]): Session => ({
   error: null,
   input_review_required: false,
   pending_input_change: null,
+});
+
+const makeIntake = (uploadId: string): IntakeResponse => ({
+  upload_id: uploadId,
+  facts: {
+    product_name: null, product_family: "unknown", target_cell_type: null,
+    target_stage: null, sampling_context: "unknown", independent_cultures: null,
+    assay: "unknown", matrix_location: null, count_semantics: "unknown",
+    source_family_id: null, sample_id_column: null, capture_id_column: null,
+    gene_symbol_column: null,
+  },
+  observed: {
+    n_observations: 4, n_genes: 3, matrix_locations: ["X"],
+    obs_columns: [], var_columns: [],
+  },
+  state: "draft", missing_fields: ["assay", "count_semantics"],
+  next_tool: null, blockers: [], qc_state: "not_run",
+  measurement_spec_ref: null, roadmap: [],
 });
 
 function deferred<T>() {
@@ -214,6 +232,7 @@ describe("session loading and polling", () => {
           sessions: [{ id: current.id, title: current.title, updated_at: current.updated_at }],
         });
       }
+      if (path.includes("/intake?")) return jsonResponse(makeIntake(current.uploads[0].id));
       if (path.endsWith("/inputs") && init?.method === "POST") return oldSourceResponse.promise;
       if (path.endsWith("/stop") && init?.method === "POST") {
         return jsonResponse({ ...current, status: "stopping" });
@@ -223,6 +242,7 @@ describe("session loading and polling", () => {
     const user = userEvent.setup();
     render(<App />);
 
+    expect(await screen.findByText("4 个观测 · 3 个基因")).toBeInTheDocument();
     const source = await screen.findByLabelText("Data source / experiment reference");
     await user.type(source, "source-family:new{Enter}");
     await vi.waitFor(() => expect(fetchMock.mock.calls.some(
@@ -368,12 +388,17 @@ describe("session loading and polling", () => {
           plan: null,
         });
       }
+      if (path.includes("/intake?")) {
+        const uploadId = new URL(path, "http://testserver").searchParams.get("upload_id");
+        return jsonResponse(makeIntake(uploadId!));
+      }
       if (path.endsWith("/analysis-inputs")) return jsonResponse(analysisRegistry);
       return jsonResponse(proposed);
     });
     const user = userEvent.setup();
     render(<App />);
 
+    expect(await screen.findByText("4 个观测 · 3 个基因")).toBeInTheDocument();
     const reviewCard = await screen.findByRole("region", { name: "Input change review" });
     expect(reviewCard).toHaveTextContent("source_family_id");
     expect(within(reviewCard).getByText("case.h5ad")).toBeInTheDocument();

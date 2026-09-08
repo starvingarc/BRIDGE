@@ -51,6 +51,28 @@ construction, not passed through a generic redaction filter. The approved initia
 implementation scope and acceptance gates are tracked in the
 [Web integration plan](../plans/web-full-chain-integration.md).
 
+## Scientific Draft Purpose
+
+The private Web backend has a separate scientific-input draft request. It
+projects only confirmed product_family, target_cell_type and target_stage,
+together with versioned local state definitions and their review limitations.
+Ordinary chat remains status-only for privately entered intake fields. Stale
+or unconfirmed intake cannot supply draft intent. Draft and clarification cards
+and their private answer echoes are excluded from ordinary provider history.
+
+The application binds the exact upload, intake revision, source resources and
+upstream receipts locally. Candidate choices cannot contain measurements or
+arbitrary scientific JSON. Exact confirmation materializes candidate objects,
+not reviewed lineage, independent cultures, tool approval or release authority.
+Source review prohibitions remain active. This source capability does not imply
+that a running deployment or its scientific-draft UI has been updated.
+
+The private internal-report card is a deterministic projection of the exact
+candidate ReportDraft and canonical P0-10 result. It contains bounded plain text,
+verification reasons and next steps, not raw rows, private paths, hashes or
+credentials. It is not included in ordinary model context. This UI projection is
+not a PublicSafeReport and grants no export or publication authority.
+
 ## Knowledge Sources
 
 - Official documentation, source repositories and primary papers are recorded separately.

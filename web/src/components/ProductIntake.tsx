@@ -155,6 +155,13 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
         </li>)}</ol>
         {data.state === "confirmed" ? (
           <>
+            {data.facts.product_family === "hpsc_mda" && data.facts.target_cell_type && data.facts.target_stage && !session.input_review_required ? (
+              <div className="intake-scientific-next">
+                <button disabled={busy || editing || session.plan?.status === "proposed"}
+                  onClick={() => void perform(() => api.draftScientificInputs(session.id, aid))}>整理科学输入草稿</button>
+                <small>仅向模型提供已确认的产品家族、目标细胞与预期阶段。候选来源和确认卡片显示在对话中。</small>
+              </div>
+            ) : null}
             {data.blockers.map((reason) => <p className="intake-gap" key={reason}>
               {blockerLabels[reason] ?? "细胞状态分析所需的参考资源尚未就绪；已有证据会保留。"}
             </p>)}

@@ -8,10 +8,17 @@ evidence you need.
 > evaluation Agent. The deterministic P0 tool layer contains 12 executable
 > engineering candidates. This branch's private [Web preview](web-preview.md)
 > connects all 12 through contract-driven inputs and staged approval; it does not
-> automatically construct the required scientific objects. A private product
-> draft can be confirmed before a separately approved first-stage plan; it is not
-> a formal product definition. Genuine Web coverage is QC, cell-state evidence
-> and the explicit no-graft path, not a complete product-evaluation chain.
+> automatically construct every required scientific object. A private product
+> intake can be confirmed before a separately approved first-stage plan. The
+> tested source backend additionally builds explicit candidate product/role
+> objects after review; inline review/revision and a separately approved
+> missingness-only evidence check are implemented. Candidate missingness-graph
+> construction, an internal research report and actual blocked claim verification
+> are also installed and browser-exercised. Measured downstream prerequisites and
+> a qualified/exportable report remain unfinished; exact acceptance is recorded
+> in the current plan. Genuine Web coverage includes QC, cell-state evidence,
+> missingness checking/compilation, blocked internal-report verification and the
+> separate explicit no-graft path, not a complete product-evaluation chain.
 > Source implementation, installed acceptance and
 > remaining work are separated in the [current integration plan](../plans/web-full-chain-integration.md#current-progress-2026-09-08).
 > A shared

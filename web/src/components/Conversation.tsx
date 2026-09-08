@@ -4,7 +4,10 @@ import {
   ThreadPrimitive,
 } from "@assistant-ui/react";
 import { File, Menu, MoreVertical, Paperclip, Send, Square } from "lucide-react";
-import { type ChangeEvent, type FormEvent, useRef } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useRef } from "react";
+import { api } from "../api";
+import { ClarificationCard } from "./ClarificationCard";
+import { ScientificInputs } from "./ScientificInputs";
 import type { Session, Upload } from "../types";
 import { AnalysisInputs } from "./AnalysisInputs";
 import { InputChangeCard } from "./InputChangeCard";
@@ -40,7 +43,7 @@ function UserMessage() {
   );
 }
 
-function AssistantMessage() {
+function AssistantMessage({ children }: { children?: ReactNode }) {
   return (
     <MessagePrimitive.Root className="message message--assistant">
       <div className="assistant-mark" aria-hidden="true">
@@ -48,6 +51,7 @@ function AssistantMessage() {
       </div>
       <div className="message-bubble message-bubble--assistant">
         <MessagePrimitive.Parts components={{ Text: MarkdownText }} />
+        {children}
       </div>
     </MessagePrimitive.Root>
   );
@@ -167,7 +171,22 @@ export function Conversation({
         <ThreadPrimitive.Viewport className="thread-viewport">
           <div className="message-stack">
             <ThreadPrimitive.Messages>
-              {({ message }) => (message.role === "user" ? <UserMessage /> : <AssistantMessage />)}
+              {({ message }) => (message.role === "user" ? <UserMessage /> : (
+                <AssistantMessage>
+                  {(session.clarifications ?? []).filter((card) => card.message_id === message.id).map((card) => (
+                    <ClarificationCard key={session.id + ":" + card.id + ":" + card.digest} card={card} busy={busy}
+                      onAnswer={async (answers) => onSession(await api.answerClarification(session.id, card.id, card.digest, answers))}
+                      onCancel={async () => onSession(await api.cancelClarification(session.id, card.id, card.digest))}
+                      onRevise={async () => onSession(await api.reviseClarification(session.id, card.id, card.digest))} />
+                  ))}
+                  {(session.scientific_drafts ?? []).filter((draft) => draft.message_id === message.id).map((draft) => (
+                    <ScientificInputs key={session.id + ":" + draft.id + ":" + draft.digest} draft={draft} busy={busy}
+                      onPrepareReport={async (toolId) => onSession(await api.prepareReportInputs(session.id, draft.id, draft.digest, toolId))}
+                      onConfirm={async () => onSession(await api.confirmScientificInputs(session.id, draft.id, draft.digest))}
+                      onRevise={async (candidate) => onSession(await api.reviseScientificInputs(session.id, draft.id, draft.digest, candidate))} />
+                  ))}
+                </AssistantMessage>
+              ))}
             </ThreadPrimitive.Messages>
             {session.messages.length === 0 ? (
               <div className="conversation-empty">

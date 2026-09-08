@@ -163,7 +163,55 @@ export type PendingInputChange = {
   changes: Array<{ field: string; before: JsonValue; after: JsonValue }>;
 };
 
+export type ClarificationAnswer = {
+  field: string;
+  selected: string[];
+  text: string;
+  unknown: boolean;
+};
+
+export type Clarification = {
+  id: string;
+  digest: string;
+  upload_id: string;
+  message_id: string;
+  status: "pending" | "answered" | "cancelled" | "stale" | "superseded";
+  input_revision: number;
+  questions: Array<{
+    field: string; title: string; reason: string; multiple: boolean;
+    options: Array<{ id: string; label: string; description: string }>;
+  }>;
+  answers: ClarificationAnswer[];
+};
+
+export type ScienceCandidate = {
+  label_level: "L1" | "L2";
+  roles: Array<{ state_id: string; product_role: "target" | "acceptable_adjacent" | "known_off_target" | "role_unresolved"; source_ids: string[]; rationale: string }>;
+  development: Array<{ state_id: string; stage_role: "earlier" | "within_window" | "later" | "branch_shift" | "unresolved"; source_ids: string[]; rationale: string }>;
+  regional_denominator_state_ids: string[];
+  regional_target_state_ids: string[];
+};
+export type InternalReport = {
+  audience: "internal_research"; policy_state: "candidate_unreviewed"; boundaries: string[];
+  sections: Array<{ domain_id: string; title: string; text: string; evidence_state: "not_assessed" }>;
+  verification: { release_state: string; public_export_eligibility: string; reason_codes: string[] } | null;
+  next_actions: string[];
+};
+export type ScientificDraft = {
+  internal_report?: InternalReport | null;
+  id: string; digest: string; upload_id: string; message_id: string;
+  status: "pending" | "confirmed" | "stale" | "superseded";
+  facts: IntakeFacts; candidate: ScienceCandidate; unknowns: string[];
+  attestation_state: string; object_ids: Record<string, string>;
+  sources: Array<{ source_id: string; version: string; state_id: string; label_level: string;
+    definition: string; anatomy_scope: string; developmental_scope: string; derivation: string;
+    review_status: string; limitations: string[]; source_refs: string[] }>;
+  stages: Array<{ tool_id: string; state: string; reason_codes: string[] }>;
+};
+
 export type Session = {
+  scientific_drafts?: ScientificDraft[];
+  clarifications?: Clarification[];
   id: string;
   title: string;
   updated_at: string;

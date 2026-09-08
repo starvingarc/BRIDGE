@@ -19,15 +19,39 @@ separates implemented changes, installed acceptance and genuine execution covera
 
 All 12 P0 packages share the Web input, planning and approval route as well as
 their CLI/SDK. This is tool access, not automatic authorship of every scientific
-input or proof that a complete product-evaluation chain has run. There is no general
-candidate-drafting/review builder for missing product definitions, role maps,
-protocols, comparison objects or report drafts: the current panel registers
-supplied scientific JSON and reuses compatible existing objects. Missing sample
-design, product definitions, reference contracts and composition weights are not
-invented. A connected tool can remain `needs_input` until its named roles are supplied.
+input or proof that a complete product-evaluation chain has run. The source
+backend now supports reviewable, source-backed product-definition/role candidates
+and optional regional/development candidates. Exact confirmation creates draft
+objects through the existing registration route. Inline cards expose candidate
+sources, unknowns, editable choices and exact confirmation. A revision creates a
+new pending draft and cannot approve analysis. Superseded and confirmed cards
+always display their recorded server candidate, not local edits from a newer
+version. The confirmed card lists later
+stages and offers a separately approved P0-08 missingness check. This narrow
+check supplies the confirmed ProductCase and five unmeasured domains to the
+package-owned gate; it does not reinterpret old QC/cell-state outputs as matched
+domain measurements. If measured domain runs exist, it refuses this shortcut.
+From that same verified missingness result, the card can separately prepare
+candidate evidence compilation and an internal research report for actual claim
+verification. The current report retains five unassessed domains and a blocked
+release result; see the evidence/report construction boundary below.
+Draft requests enforce one label level, one matching source per choice and
+consistent regional numerator/denominator sets. Shape/source validation permits
+one purpose-scoped correction with an error code; invalid values are not accepted
+or repeated as conversation history. Two invalid responses leave no draft, and
+network/provider failures are not retried by this correction path.
+Full measured prerequisite, protocol, comparison and qualified-report construction remain open;
+installed acceptance is recorded separately in the active plan. The advanced
+panel still accepts supplied scientific objects and reuses compatible results.
+Missing sample design, reference contracts and composition weights are not invented. A connected tool can remain `needs_input` until its named roles are supplied.
 Choosing a mode does not mean its remaining inputs exist: model context includes
 package-owned mode IDs and required role names, without selected values or
 scientific payloads. Actual eligibility is still checked before approval.
+
+Inline questions add application-owned unknown and free-text answers. A single
+model-supplied option with reserved ID `unknown` is shape-validated and deduplicated;
+there must still be two to four valid substantive choices. Other invalid factual
+IDs remain errors, and submitting answers only stages a private fact draft.
 
 H5AD uploads are limited to 128 MiB per file and eight files per conversation.
 The HDF5 structure is checked before planning. Initial chat facts use a typed
@@ -102,11 +126,13 @@ Malformed prose, XML/DSML, empty content and incomplete actions fail closed. See
 the [DeepSeek JSON Output guide](https://api-docs.deepseek.com/guides/json_mode/).
 
 Operators may explicitly select `deepseek_tools` for a compatible configured
-provider. This sends five actions (`reply`, `review_inputs`,
-`prepare_qc`, `propose_intake`, `prepare_analysis`) as native function definitions, requires one
-function call, disables thinking and omits JSON response mode. Both protocols
-retain the same Action validation, substantive guidance, aggregate-sharing
-boundary and output-token limit. Native responses must have exactly the required
+provider. This sends eight actions (`reply`, `review_inputs`,
+`prepare_qc`, `propose_intake`, `prepare_analysis`, `ask_user_input`,
+`draft_scientific_inputs`, `propose_scientific_inputs`) as native function definitions,
+requires one function call, disables thinking and omits JSON response mode.
+Both protocols retain the same Action validation, guidance and sharing boundary.
+Ordinary replies have an 1,800-token limit; the separate bounded scientific
+candidate request allows 6,000 tokens. Native responses must have exactly the required
 arguments and no non-whitespace text outside the call. The service does not guess
 a protocol, retry with another parser or execute functions from model text:
 preparation actions still create unapproved plans and require exact user approval.
@@ -177,7 +203,8 @@ receipts must run QC again before proceeding to P0-02.
 The product-intake draft is private Web context, not a formal
 `ProductDefinitionCard`, reviewed state-role map or `ProductCase`. It materializes
 only compatible existing asset declarations after exact confirmation. General
-candidate authoring for downstream scientific objects remains unimplemented.
+candidate authoring is limited to the separate source-backed scientific-draft flow
+described above. It does not supply every downstream prerequisite or report rule.
 The six-question roadmap is prospective and marks missing evidence explicitly;
 it is not a completed report or a plan to run all 12 tools. Comparison and
 post-transplant graft evidence are not prerequisites for beginning pre-transplant QC.
@@ -185,8 +212,10 @@ post-transplant graft evidence are not prerequisites for beginning pre-transplan
 The structure readout uses a checksummed registered upload and returns only
 observation/gene counts, matrix locations and bounded column names, never row
 identities, gene values or expression. Private form values and these structure
-details are not added to provider context; only per-upload confirmation status
-and missing-field names are supplied. Facts independently entered in chat remain
+details are not added to ordinary provider context; only per-upload confirmation
+status and missing-field names are supplied. The separate scientific-draft
+request shares only the three approved confirmed product-intent fields; see
+[privacy and provenance](privacy-and-provenance.md#scientific-draft-purpose). Facts independently entered in chat remain
 ordinary conversation content. Culture counts do not generate biological-unit
 mappings or attestations. Confirmed intake with an unknown or unsupported product
 family permits generic QC, but does not authorize the hPSC-mDA-specific P0-02
@@ -286,6 +315,20 @@ This panel does not invent P0-05 soft mass, domain-gate requirements, comparison
 design or report claims. Supplied ReportDrafts remain subject to P0-10's exact
 renderer/authority/content checks. Graft and comparison are independent branches.
 A P0-11 local candidate export is not a network upload or publication approval.
+The source-backed card can now prepare P0-09 from its own verified missingness-only
+P0-08 receipt. A versioned tool-package factory constructs five descriptive
+candidate claims, one unreviewed shared-source family and candidate reconciliation
+rules from the confirmed case and definition. It creates five open requirements,
+not MeasurementResults or independence evidence; it uses no test-fixture policy.
+P0-10 preparation builds a case-bound internal draft and binds the genuine graph
+manifest plus the existing approved policy/statement registry. The current release
+contract does not support availability claims and does not approve this renderer:
+the actual verifier therefore returns release_blocked, which the card displays
+with next steps. No release policy is relaxed and no export control is offered.
+Preparation, approval and display recheck the owned inputs and upstream receipts;
+corruption/source changes invalidate use without rewriting completed evidence.
+The bounded private report projection contains plain text and actual verification
+states, not raw matrices, paths or hashes. It is not added to model context.
 
 ## Interface and ownership
 
@@ -306,6 +349,11 @@ not act as a second workflow engine.
 | `POST /api/sessions/{id}/analysis-inputs/assets` | Stage one registered H5AD's assay, matrix and factual metadata |
 | `POST /api/sessions/{id}/input-change/confirm`, `.../discard` | Confirm or discard the exact `{change_id, change_digest}` proposal |
 | `POST /api/sessions/{id}/input-review/keep` | Explicitly keep current declarations after a chat-triggered review |
+| `POST /api/sessions/{id}/scientific-inputs/draft` | Request constrained candidates from confirmed intent and local state-review sources |
+| `POST /api/sessions/{id}/scientific-inputs/confirm` | Confirm the exact draft ID/digest; register candidate objects without running tools |
+| `POST /api/sessions/{id}/scientific-inputs/revise` | Validate the current source binding and save choices as a new pending version |
+| `POST /api/sessions/{id}/report-inputs/prepare` | Prepare the confirmed draft's selected P0-08, P0-09 or P0-10 stage; tool_id defaults to P0-08, and each plan needs separate approval |
+| `POST /api/sessions/{id}/clarification/answer`, `.../cancel`, `.../revise` | Persist exact private choice responses without automatically confirming facts |
 | `POST /api/sessions/{id}/stop` | Stop future work without waiting for the current provider/tool call |
 | `POST /api/sessions/{id}/prepare-analysis` | Propose the selected tool stage; never approve it |
 | `POST /api/sessions/{id}/messages` | Submit one conversation turn |
@@ -326,17 +374,20 @@ outside the registered package.
   identifiers or secrets into chat text.
 - With explicit owner authorization and `BRIDGE_WEB_SHARE_RESULT_SUMMARIES=1`,
   the model can receive canonical P0-01 aggregate QC evidence as `E0` and the
-  supported P0-02 V3 composition/reconciliation summary as `E1`. QC includes only
+  supported P0-02 V3 or separately identified V2 composition/reconciliation summary as `E1`. QC includes only
   allowed schema counts, tool-owned median measurements, their denominators and
   evidence states, four assessment states and the minimal historical DataView.
   Cell-state labels come only from the packaged public vocabulary. Both preserve
   declared states and `domain_score=null`. Raw matrices, observation-level
   records, source-specific rows, sample/source identities, private paths and
-  provenance hashes remain local. Summary construction does not read Parquet
-  tables or expression matrices. This is not anonymous-data certification or
+  provenance hashes remain local. Summary construction does not decode Parquet
+  tables or expression matrices. V2 verifies the original upload bytes and
+  preserves its historical per-level denominators without manufacturing V3
+  lineage, downstream readiness or QC filtering. This is not anonymous-data certification or
   public-export permission.
 - Each alias refers to its own historical producer and selected data view, not
-  to a later upload or changed declaration. QC and cell-state evidence may come
+  to a later upload or changed declaration. V2 uses its original historical
+  input scope, not a claimed V3 selected view. QC and cell-state evidence may come
   from different runs; their uploads or denominators must not be conflated.
   The latest succeeded/partial producer is checked independently before selecting
   its supported artifact; invalid evidence does not fall back to an older result.
@@ -357,7 +408,8 @@ outside the registered package.
   or input review is active, prior evidence-bearing assistant content is withheld
   from the model history while remaining visible in the private conversation.
 - The model can reply, request input review or propose a registered tool using
-  the saved input selection. It cannot approve a plan, author missing scientific objects,
+  the saved input selection. It can propose constrained candidates only in the
+  scientific-draft request; it cannot approve a plan, author arbitrary scientific objects,
   change scientific values or select arbitrary filesystem paths. Privately entered source-family values
   are excluded from its status context. Model replies
   are not P0-10-verified reports; numerical evidence belongs to the tool artifacts.

@@ -1682,6 +1682,9 @@ def test_native_protocol_wire_and_service_proposal_never_executes(
         "prepare_qc",
         "propose_intake",
         "prepare_analysis",
+        "ask_user_input",
+        "draft_scientific_inputs",
+        "propose_scientific_inputs",
     ]
     assert tools["reply"] == {
         "type": "object",

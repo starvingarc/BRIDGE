@@ -7,7 +7,7 @@
 **Architecture:** Retain PlanBuilder, exact AnalysisPlan approval, ToolExecutionPipeline and LocalWorkflowExecutor. Materialize each stage only after its real inputs exist; retain prior plans and canonical ToolRuns.
 **Tech Stack:** Existing Python/FastAPI runtime, React/assistant-ui client and server-side Playwright.
 **Spec:** [Agent integration](../docs/agent-integration.md), [local runtime](../docs/local-agent-runtime.md), [Web preview](../docs/web-preview.md), and the user-approved design below.
-**Status:** pr_closeout_downstream_inputs_pending. Tasks 1–20 record the current PR's implemented or explicitly superseded scope. Tasks 16–20 are installed in the isolated preview; their individual acceptance scope is recorded below. The installed code snapshot predates the closeout commit but remains byte-identical to its runtime files; documentation was reconciled afterward. Source implementation, installed acceptance and genuine scientific coverage are distinct.
+**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Measured downstream construction and a qualified/exportable report remain unfinished.
 
 ## Current progress (2026-09-08)
 
@@ -19,13 +19,13 @@ path records absence, not post-transplant validation.
 | Area | Implemented / observed | Still open |
 |---|---|---|
 | Tool access | All 12 packages have contract-driven Web input, plan, approval and execution routes | Tool availability does not supply scientific inputs |
-| Real user execution | Prior installed genuine conversations executed P0-01, P0-02 and P0-12 no-graft | No complete genuine P0-03–P0-11 chain, comparison analysis or graft-expression analysis |
+| Real user execution | Prior genuine P0-01/P0-02 and separate P0-12 no-graft remain recorded; the author-data case now has separately approved missingness-only P0-08, candidate P0-09 compilation and P0-10 blocked internal-report verification | No measured P0-03–P0-06, qualified/exportable report, comparison or graft-expression chain |
 | Controls and interpretation | Stop, exact input-change confirmation, stage history, JSON/native actions and opt-in aggregate projection exist | Model interpretation quality is separate from transport tests |
 | Task 16: table preview | Installed; fresh genuine QC Parquet preview shows bounded rows; original download checksum verified | Preview is intentionally bounded, not the complete artifact |
 | Task 17: selected P0-02 | Installed; exact selected-upload reuse retains its recorded focused tests | No new P0-02 execution in the intake journey; product family was intentionally left unknown |
 | Task 18: QC explanation | Installed; actual configured model explained genuine canonical E0 measurements and unavailable assessments without rerunning QC | E1 interpretation was not repeated in this journey; independent review cancelled, not passed; one reply's unconfirmed/unsupported wording remains imprecise |
-| Task 20 (absorbs 19): product intake | Installed; actual model draft, private exact confirmation, separately approved genuine QC, desktop/mobile, refresh and download observed | Formal downstream scientific-input authoring remains absent; this is entry-flow acceptance, not full product evaluation |
-| Downstream inputs | All 25 P0-03–P0-12 mode panels inspected through the ordinary UI | Panel visits are not executions; candidate scientific-input drafting is absent |
+| Task 20 (absorbs 19): product intake | Installed; actual model draft, private exact confirmation, separately approved genuine QC, desktop/mobile, refresh and download observed | This is entry-flow acceptance; later candidate authoring is recorded under Tasks 21–25, not full product evaluation |
+| Downstream inputs | Installed and browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision, stage blockers, missingness checks/compilation and a readable internal report with actual release_blocked/ineligible findings | Reviewed state/role definitions, lineage/attestation and curated measured-stage inputs remain open; current release policy does not approve availability claims or this renderer |
 
 ### Current PR closeout and next development
 
@@ -61,18 +61,57 @@ required before closing the engineering gate.
 The owner has approved a draft-purpose-only projection of confirmed
 `product_family`, `target_cell_type` and `target_stage` to the configured model.
 All other private intake fields remain excluded. This authorization is recorded
-in the decision log; it is not yet enabled in the current readiness-only runtime.
+in the decision log. Task 22 implements it for scientific-draft requests only;
+the current installed preview includes this purpose boundary.
 
-The next development milestone is a reviewable scientific-input candidate flow:
-use the confirmed product intent plus versioned knowledge to propose the required
-product definition and state-role inputs, explain their sources and missing facts,
-and materialize only validated, explicitly confirmed inputs through the existing
-registration/planner path. Do not infer product targets from the observed result,
-create biological replicates from a count, promote provisional states, or require
+The reviewable scientific-input candidate flow is now installed: it uses the
+confirmed product intent plus versioned knowledge to propose product-definition
+and state-role inputs, explains sources and missing facts, and materializes
+validated, explicitly confirmed candidates through the existing registration and
+planner path. The next milestone returns to PRD steps 4 and 7: resolve the actual
+state/role review and experiment-design facts needed for measured product domains.
+Do not infer product targets from the observed result, create biological replicates from a count, promote provisional states, or require
 the researcher to author internal scientific JSON. Detailed implementation starts
 from the current contract inventory, not another QC or provider-protocol rewrite.
 Later milestones are question-led product evidence, evidence-grounded report
 assembly, and separate comparison/graft journeys when their genuine inputs exist.
+
+### Scientific-input construction design (2026-09-08)
+
+The owner has now explicitly approved filling the Agent construction gap. The
+[written design](web-scientific-input-design.md) extends this existing workstream,
+not a second plan. It records the observed missing provider action, purpose-scoped
+intent projection and deterministic object construction, plus the V2 cell-state
+interpretation gap. The design preserves separate scientific-choice review,
+biological-unit attestation, analysis approval and export approval. The owner's
+subsequent request adds inline single/multiple-choice clarification with free
+text and unknown answers, persisted responses and purpose-scoped privacy;
+answering a question is not execution or attestation approval.
+
+The owner has approved the written design, including inline choice questions,
+and requested implementation. Tasks 21–25 below govern the increment; Task 25
+records its installed/browser acceptance and remaining limits. Existing genuine
+runs remain immutable; missing sample independence is not filled to unlock a stage.
+
+### Downstream candidate-rule design (2026-09-08; formulation completed)
+
+After the owner requested further downstream completion, the explicit packaged
+source-review gate and missing product-specific graph/report rules were confirmed.
+The owner then authorized source-backed formulation of new candidate rules.
+The [v0.1 candidate appendix](web-scientific-input-design.md#downstream-candidate-rules-v01)
+now proposes separate identity/anatomy/development accounting, unresolved-state
+preservation, descriptive cell-cycle scope, dependency-aware claims and an
+evidence-bound partial report. Its source ledger distinguishes original studies,
+current state-review limitations and BRIDGE's proposed governance rules.
+
+At that formulation checkpoint this was research and written design only; Task 23
+continuation below records the subsequent owner-approved implementation. No
+candidate policy was scientifically approved at that earlier checkpoint and
+no source gate, score, schema, service or historical run was changed. The owner
+subsequently approved bounded implementation; the continuation below records the
+code and installed acceptance, while scientific source and release review remain
+separate. The earlier documentation-only proposal passed repository policy and
+whitespace checks; it did not include biological tests or broad regressions.
 
 ### Remaining product and scientific gaps
 
@@ -80,13 +119,14 @@ assembly, and separate comparison/graft journeys when their genuine inputs exist
   specifications and mode-specific measurement/attestation inputs. Existing
   QC, cell-state and biological-unit outputs do not supply those decisions.
 - P0-07 needs real comparison arms, bundles and a comparison design.
-- P0-08–P0-11 need actual upstream domain evidence, compilation inputs and a
-  report/verification/export chain. Package policies are not completed evidence.
+- P0-08–P0-11 still need measured upstream domain evidence and a qualified
+  report/export path. The current genuine missingness-only graph and blocked
+  internal report do not supply that evidence or release approval.
 - P0-12 supplied-evidence/expression modes need genuine graft inputs; a no-graft
   result does not satisfy either mode.
-- The input panel offers registration/reuse, not an Agent candidate builder.
-  Repeated indistinguishable QC option labels were observed; no hidden input
-  identity was guessed to continue.
+- The advanced input panel still offers registration/reuse; the separate Agent
+  candidate card now covers product/role and optional regional/development drafts,
+  not every measured-stage prerequisite. No hidden input identity was guessed.
 - Culture/source declarations do not establish donor, pooling or cross-timepoint
   independence. No new scientific state, score or release claim is authorized.
 
@@ -157,6 +197,628 @@ The first increment connected raw-count-compatible P0-02 and independent P0-12 n
 - Shared policy, docs and integration are root-owned; implementation workers write only their assigned server worktree paths.
 - No private host/path/environment/key/resource identity, hash, biological result or scale in public Git content.
 - One integration PR; any necessary P0 contract change is a separate module decision, not hidden in this branch.
+
+
+## Tasks 21–25: Owner-approved scientific construction (2026-09-08)
+
+The owner approved the written construction design and conversational choice
+questions, and explicitly requested connection to existing product code.
+Execute inline under executing-plans and test-driven-development. The current
+isolated worktree is retained; no new review wave, baseline rerun or automatic
+delegation is part of this increment.
+
+**Spec:** [Scientific-input design](web-scientific-input-design.md).
+**Goal:** Connect source-backed input candidates, exact user review, registered
+scientific execution and evidence-bound report delivery in the existing Web.
+**Architecture:** Extend the current Action, private session, Controls, Inputs,
+PlanBuilder and executor. A choice answer is a draft fact, not tool approval.
+Use package-owned scientific contracts and policies without changing them.
+**Tech stack:** Existing Python/FastAPI/Pydantic and React/assistant-ui; configured
+provider transports; installed server test and browser runtimes.
+
+### Task 21: Conversation questions that produce private, reviewable answers
+
+**Implemented and installed; real choice-card acceptance is recorded in Task 25.** The new action first failed in both
+transports and all 14 initial service cases because the feature was absent.
+Those 14 then passed. A separate native JSON Schema check caught nested local
+references resolving from the wrong root; inlining the local definitions fixed
+it. The extended focused run passed 36 cases with one expected action-inventory
+assertion requiring the new action; that exact corrected case passed afterward.
+All 17 new cases passed in that extended run. Two existing dependency deprecation
+warnings remain. This is engineering evidence, not an actual-model or browser
+acceptance result. No scientific tools were invoked by these question tests.
+
+**Files:** Create src/bridge/web/clarification.py and
+tests/test_web_clarification.py; modify provider.py and app.py.
+**Interfaces:** QuestionSet has upload_id and one to three Question records.
+Question has field, title, reason, multiple and two to four Option records
+(id, label, description). Allowed fields are IntakeFacts fields plus
+assessment_focus. Application-owned unknown and free-text answers remain
+available. Clarifications(service).stage(state, QuestionSet) returns an inline
+private card. AnswerBody carries card_id, card_digest and answers
+(field, selected option IDs, text, unknown). Clarifications.answer stages intake
+changes via Controls; it never confirms them or executes tools.
+Clarifications.context returns status/field names only.
+
+- [ ] Add transport/service tests using real session storage and the existing
+  synthetic upload helper, replacing only provider HTTP. The missing action must
+  first fail an assertion that parse_action accepts this proposal:
+  ```python
+  payload = {"action": "ask_user_input", "questions": {
+      "upload_id": "a" * 32, "questions": [{
+          "field": "assay", "title": "Which assay?", "reason": "Choose compatible input checks.",
+          "multiple": False, "options": [
+              {"id": "scRNA-seq", "label": "Single-cell", "description": ""},
+              {"id": "snRNA-seq", "label": "Single-nucleus", "description": ""}]}]}}
+  try:
+      action = parse_action({"content": json.dumps(payload)})
+  except ValueError:
+      action = None
+  assert action is not None
+  assert action.action == "ask_user_input"
+  ```
+- [ ] Run pytest tests/test_web_clarification.py. Confirm rejection of the new
+  action is the RED failure, not missing runtime setup.
+- [ ] Add the constrained model and both transport schemas; stage bounded,
+  session/revision-bound cards; add POST clarification/answer and
+  clarification/cancel. Validate option membership, duplicates, multi-selection,
+  unknown exclusivity, free text and allowed field types. Compare exact digest
+  before mutation. Persist answered cards, idempotent identical retries and
+  pending facts; exclude their transcript records from provider history.
+- [ ] Verify submitted assay remains unconfirmed until Controls.resolve; no
+  ToolRun appears. Verify private supplementary text never reaches converse;
+  stale/cross-session/unknown-option requests reject without state changes.
+- [ ] Run this focused test file plus affected provider protocol tests once,
+  inspect the diff and commit the tested feature.
+
+### Task 22: Source-backed scientific candidates and canonical interpretation
+
+**Candidate backend installed in part; not a completed measured scientific stage.**
+Eleven initial tests failed for the absent service/action. They then passed.
+The focused construction/intake/question run passed 49 tests, including actual
+HTTP-boundary coverage of JSON and native draft requests, matching state/source
+IDs, exact confirmation, stale/cross-session refusal, no invented independence,
+and candidate regional/development objects without review promotion.
+A new source-review gating test first exposed the generic missing-object reason;
+the exact source gate is now retained before preparation. Dependency deprecation
+warnings remain. Eighteen additional action/protocol cases passed; their sole
+outdated native-action inventory assertion was updated for the two new actions,
+and that exact case then passed. These are engineering fixtures, not genuine
+scientific execution.
+The source catalog is the packaged biological review, not method-search titles.
+Its pending review and product-context execution prohibition remain explicit.
+Core ProductCase/definition/role-map and supported optional regional/development
+objects are built after confirmation. Remaining prerequisite binding, typed
+lineage/attestation and P0-05/P0-06 inputs remain unfinished. The review UI and
+exact revision endpoint are now implemented under Task 24.
+
+**V2 interpretation installed; remaining measured-stage construction still pending.** Five
+new canonical legacy tests first failed because V2 was not projected. All five
+then passed with 40 affected existing evidence tests (45 passed). Six additional
+negative cases passed in an 11-case legacy run. The implementation validates the
+original upload, producer, artifact, per-level denominator, labels, partitions
+and assessment states. It identifies V2 and does not create typed lineage or
+fallback from an invalid V3. No scientific tool was rerun. Existing dependency
+deprecation warnings remain; this code is now installed, with actual E1 interpretation recorded in Task 25.
+
+**Files:** Create src/bridge/web/scientific_inputs.py and
+tests/test_web_scientific_inputs.py; modify intake.py, control.py, inputs.py,
+provider.py, app.py, evidence.py and tests/test_web_evidence.py.
+**Interfaces:** ScientificInputs(service).context(state, upload_id) returns
+draft-purpose product intent and configured versioned scientific choices.
+ScientificInputs.propose(state, upload_id, candidate) stores a private draft;
+candidate contains semantic choice IDs and supporting source IDs, not arbitrary
+scientific JSON. ScientificInputs.confirm(state, draft_id, digest) validates,
+materializes and registers ProductCase, ProductDefinitionCard and supported
+stage-specific objects, returning their existing input IDs. The draft response
+contains sources, unknowns and per-stage blocking reasons.
+
+- [ ] Add a real-service test confirming only product_family, target_cell_type
+  and target_stage enter a draft request; ordinary chat still excludes all
+  privately entered facts. Assert a stale intake cannot produce draft context.
+- [ ] Add canonical synthetic V2 result tests: expose its bounded tool-owned
+  counts with its original denominator, explicitly identify V2 and reject a
+  modified receipt/hash. Never label this result V3 or downstream-ready.
+- [ ] Run the new tests and observe missing construction/V2 support failures.
+- [ ] Build context from existing configured reference/vocabulary and local
+  knowledge resources. Validate candidate source/choice IDs against that exact
+  snapshot. Construct required models through the existing package classes;
+  unknown independence remains absent. Register objects only after exact
+  confirmation and use existing Selection/Inputs validation for eligible stages.
+  Missing V3 lineage or attestation is an explicit blocker, not a fallback
+  fabricated evidence bundle.
+- [ ] Verify a confirmed source-backed draft produces schema-valid input objects,
+  unknown choices do not acquire positive roles, tampered dependencies invalidate
+  only mutable proposals, and no tool runs before plan approval.
+- [ ] Run focused construction/evidence tests, inspect and commit the change.
+
+### Task 23: Evidence sufficiency, graph, report verification and export inputs
+
+**Historical checkpoint after the owner's “先完成” continuation; the candidate-report continuation below supersedes this earlier construction limit.** Eight focused
+report tests pass, including the actual P0-08 tool on a synthetic Web case, five
+not-assessed profiles with null scores, no execution during preparation, cached
+input reuse, stale draft refusal and source change between proposal and approval.
+The owned selection is rechecked before preparing and approving a plan. Together
+with the candidate/revision tests, the focused run passed 29 tests (two existing
+deprecation warnings). This does not establish genuine-data browser acceptance.
+The missingness-only route intentionally does not bind unmatched historical QC
+or V2 cell-state evidence. No report policy or scientific threshold was added.
+P0-09–P0-11 construction remains unavailable for the following reason. Read-only
+inspection found that P0-08 supplies its gate rule and P0-10 supplies its
+hash-approved claim policy/statement registry, but P0-09 supplies models and
+adapters only, not packaged EvidenceFamilyRegistry, ClaimRegistry or
+ReconciliationSpecRegistry instances. They require product-specific channel,
+independence-family and reconciliation decisions. No configured Web catalog
+supplies these instances. Test/example registries are not scientific authority.
+The approved design says to reuse package-owned rules and forbids new scientific
+thresholds or release authority. Do not invent those registries to obtain a
+successful graph/report. The owner then directed completion of the existing
+scope first. Expose the missing policy in the page and finish available review
+and missingness routes; do not repeatedly ask the same question or silently
+invent policy. Preview installation and genuine missingness-only execution are
+now recorded in Task 25; complete report acceptance has not happened. This is an
+unconfigured scientific-policy prerequisite, not evidence
+that a tool or completed upstream run failed.
+
+**Files:** Create src/bridge/web/report_inputs.py and
+tests/test_web_report_inputs.py; modify scientific_inputs.py, intake.py and app.py.
+**Interfaces:** ReportInputs(service).prepare(state, tool_id, upload_id) constructs
+inputs for P0-08–P0-11 from the current confirmed product context and canonical
+ToolRun artifacts. It registers and selects through Inputs, then calls the
+existing preparation path. Only explicit plan approval executes a tool.
+
+- [ ] Add tests with real schema-valid canonical outputs for stage input
+  construction. Assert an unrun target stage is a missing observation, not a
+  MeasurementResult; a draft cannot bind a numeric claim absent from evidence.
+- [ ] Run the new tests to observe missing report-construction behavior.
+- [ ] Assemble DomainGateInput using load_gate_rule; assemble compilation inputs
+  using package registries, real outputs and unresolved requirements. Construct
+  ReportDraft with exact evidence bindings and package-approved statement
+  policy; feed P0-10 rather than self-certifying it. P0-11 remains a distinct
+  approved plan using its export policy and verified draft binding.
+- [ ] Test canonical receipt changes, stale product context, unavailable source
+  stages, verifier findings and separate export approval. Reject unsupported
+  report claims instead of replacing missing values with zero.
+- [ ] Run the focused report-input tests and commit the verified integration.
+
+
+### Task 23 continuation: PRD-led candidate evidence and internal report
+
+**Status:** implementation authorized by the owner on 2026-09-08, including the
+v0.1 candidate proposal. The owner requires regular PRD review, explicit personas,
+step-by-step user/developer reasoning and concrete examples. The earlier
+no-new-policy limitation above is history for that earlier authorization; source
+review, attestation, execution and export gates still apply. Execute inline in
+this existing worktree; no automatic independent review waves or new plan.
+
+**Goal:** A researcher who has a confirmed product draft and genuine P0-08
+missingness result can inspect its candidate evidence graph and an honest internal
+report, without writing scientific JSON or rerunning QC. A verified report or
+export is not promised when the current P0-10 contract rejects availability text.
+
+**PRD:** sections 1.2, 3.3–3.6 and 6.1.1 steps 4–12.
+**Spec:** downstream candidate appendix R1–R6 in the existing scientific-input
+design. Correct its schema term `observed` to the actual `measured` enum; this is
+a naming alignment, not additional measurement or scientific approval.
+
+**Exact changes and responsibilities:**
+
+- Modify `docs/BRIDGE_PRD.md`: refresh confirmed capability boundaries, describe
+  wet-lab/researcher and developer responsibilities, the detailed journey and two
+  worked examples. Do not maintain a second per-commit runtime ledger there.
+- Create `src/bridge/tool_packages/p0_09_evidence_compiler/candidate_policy.py`:
+  a narrowly scoped, versioned candidate factory owns descriptive claim semantics,
+  the one-family minimum and candidate/unreviewed statuses. It does not run a
+  method or freeze science. Account for this one source file in
+  `scripts/check_repository.py`; no generic policy engine or new public Schema.
+- Modify `src/bridge/web/report_inputs.py`: keep P0-08 preparation, extend the
+  same endpoint to exact next-stage P0-09/P0-10 preparation, bind verified
+  same-draft producer receipts, and expose a bounded private report projection.
+  Cache immutable inputs per draft/stage; reject stale/mixed selections.
+- Modify `src/bridge/web/app.py`, `scientific_inputs.py`, existing
+  `provider.py` guidance and `web/src/{api.ts,types.ts}`: connect the existing
+  prepare/approval path and private projection. Do not broaden model sharing.
+- Modify `web/src/components/ScientificInputs.tsx` and `Conversation.tsx`:
+  explicit next-stage controls and internal-report reading; fix P0-07's observed
+  “graft evidence” mislabel to product comparison, with its own missing-input
+  reason. No graft input is required for a pre-transplant comparison.
+- Extend `tests/test_web_report_inputs.py` and
+  `web/tests/scientific-inputs.test.tsx`; run only newly changed behavior and
+  directly affected tests. Keep genuine data and browser artifacts private.
+
+**Interfaces to implement:**
+
+`build_missingness_policy(case: ProductCase, definition: ProductDefinitionCard,
+result: EvidenceSufficiencyRunResultV2, *, created_at: datetime)
+-> dict[str, FrozenModel]` returns the four P0-09 input roles:
+compilation_bundle, evidence_family_registry, claim_registry and
+reconciliation_spec_registry. The Web boundary rejects non-hPSC-mDA scope using
+confirmed intake facts (ProductCase has no product-family field). The factory
+rejects wrong case/definition, duplicate/incomplete domains, or measured results rather than turning them into
+missingness. Compilation references actual object hashes and canonical P0-08
+provenance; each missing observation refers to the real candidate claim contract.
+
+`ReportPreparation(DraftIdentity)` adds
+`tool_id: Literal["P0-08", "P0-09", "P0-10"] = "P0-08"`.
+`ReportInputs.prepare(state, body)` constructs only that requested eligible stage.
+`ReportInputs.public_report(state, draft)` returns no paths, hashes, raw rows or
+credentials; report/claim-check status and wording are derived from exact verified
+objects. Source changes or any successful P0-03–P0-06 result invalidate this
+missingness-only construction; measured report binding is a separate path.
+
+- [x] Write/observe a failing endpoint test for P0-09 preparation after a genuine
+  P0-08 ToolRun on a synthetic case; construction must not execute:
+  ```python
+  response = client.post(f"/api/sessions/{sid}/report-inputs/prepare",
+      json={**body, "tool_id": "P0-09"})
+  assert response.status_code == 200
+  assert response.json()["plan"]["steps"][0]["tool_id"] == "P0-09"
+  assert service.load(sid)["_tool_runs"] == before["_tool_runs"]
+  ```
+- [x] Implement the package candidate factory and P0-09 assembly. Approve the
+  synthetic plan through the real API. Assert five open domain requirements,
+  zero EvidenceRecords, candidate/unreviewed contracts and not_assessed
+  reconciliation; do not assert science from test success.
+- [x] Check missing/corrupt/wrong-draft producer,
+  modified selection, altered policy and repeated preparation. Assert rejection
+  before a new ToolRun and preservation of historical receipts.
+- [x] Write/observe a failing P0-10 construction test. Generate actual
+  ReportDraft claims from the P0-09 requirements, include the existing approved
+  boundary statement verbatim, and bind the real graph and unchanged package
+  policy/registry. Use a genuine authoring/renderer identity; unsupported claim
+  types must keep the actual verifier's blocked result.
+  ```python
+  response = client.post(f"/api/sessions/{sid}/report-inputs/prepare",
+      json={**body, "tool_id": "P0-10"})
+  assert response.status_code == 200
+  assert response.json()["plan"]["steps"][0]["tool_id"] == "P0-10"
+  assert not response.json().get("public_export_approved", False)
+  ```
+- [x] Implement report projection and rendered next-step controls. Write the
+  frontend tests first for the correct comparison label, explicit report step,
+  readable missingness and blocked-export explanation. Verify requests carry
+  the exact draft identity and selected tool, and do not approve themselves.
+- [x] Revisit PRD steps 9–11, run the focused tests and client typecheck/build,
+  inspect the changed diff and record limitations. Commit the coherent increment.
+- [x] Build/install in the isolated acceptance runtime first, then update the
+  existing preview after acceptance; preserve all original inputs/history and
+  walk the genuine case through the ordinary browser.
+  Reuse the existing approved P0-08 receipt if all exact bindings remain valid.
+  Approve each new tool stage separately, inspect desktop/mobile and refreshed
+  report state, and record actual P0-09/P0-10 receipts and export eligibility.
+- [ ] Return to PRD steps 4 and 7 after report acceptance: implement only the
+  source-backed measured-stage construction permitted by actual reviewed
+  definitions, fully curated program resources and genuine experiment facts.
+  Preserve every unsupported state and required confirmation; do not invent
+  these inputs or mark the full downstream chain completed.
+
+
+### Task 23 candidate-report engineering evidence (2026-09-08)
+
+The candidate graph test first failed on the absent selected-stage interface; the
+internal report test first failed on the missing P0-10 preparation path. Real
+approved synthetic P0-08/P0-09/P0-10 calls now retain five open requirements,
+zero EvidenceRecords, five not_assessed reconciliation records and the actual
+release_blocked/ineligible verification. The packaged safety-boundary statement
+is copied exactly; no release rule, scientific source or renderer approval changed.
+
+A targeted corruption test exposed that P0-10 approval did not yet recheck the
+P0-08 result. After adding upstream input verification, all four corruption
+variants passed; stale reports are withheld. Repeat preparation preserves
+immutable inputs, a modified selection cannot be approved, and a new scientific
+draft cannot borrow an earlier draft result. The factory rejects wrong or
+incomplete case/domain bindings and measured inputs. Sixteen related backend
+cases were covered across focused runs, not a new whole-repository suite.
+
+Three new browser-component cases first failed on the missing comparison label,
+next-stage controls and report. Those three plus the directly affected P0-08
+request case passed. The report shows candidate status, exact blocked reasons,
+unchanged safety boundary, next facts and no export control after refresh.
+These are engineering tests with synthetic fixtures, not genuine-data or
+scientific validation. Packaging, installed browser acceptance and actual
+case receipts remain separate work below.
+
+The isolated browser then completed all three stages using a clearly labeled
+synthetic input and the configured model. It showed the actual blocked result,
+with source-review and independence gates unchanged and no QC run. Visual
+acceptance found alphabetical domain ordering and an incorrect "above" approval
+hint. A failing first-heading assertion reproduced the order issue; the client
+now follows the PRD domain order and uses a position-independent approval hint.
+No ReportDraft, evidence receipt or verifier result was changed by this display fix.
+
+### Task 23 installed browser acceptance and PRD return (2026-09-09)
+
+**Biological question and observation.** Can the existing pre-transplant product
+case show what remains unanswered without turning reference correspondence into
+product purity? Its genuine, previously registered author-count input and
+canonical QC/cell-state/missingness receipts were retained. The original case
+then separately approved exactly two new stages through the ordinary browser:
+P0-09 compilation and P0-10 verification. The graph contains five open domain
+requirements, zero domain EvidenceRecords and five not_assessed reconciliation
+records. This zero refers to the missingness-only domain graph, not absence of
+the earlier QC or cell-state observations.
+
+The internal report displays each unmeasured domain, the exact existing safety
+boundary and actual release_blocked/ineligible findings. The reasons are
+claim_type_policy_missing and unapproved_renderer_requires_review. A successful
+ToolRun is therefore not a passed claim check or a product failure. No score,
+biological independence, source approval or export permission was created.
+The interface offers no export control.
+
+**Installation and acceptance evidence.** Clean source snapshot `ea655bc6`
+was built into a wheel and installed in private acceptance directories. Installed
+Python and client bytes were compared with their source/build inputs; all
+12 tool packages and eight model actions imported. The isolated synthetic case
+used the configured model and ordinary UI, then approved P0-08/P0-09/P0-10.
+After the domain-order and approval-hint fixes, its desktop/mobile and refreshed
+report were inspected before switching the existing preview. Provider settings,
+reference resources and trust configuration were unchanged.
+
+The controlled preview replacement preserved all six original sessions and
+166 existing case files at startup. The genuine-case audit subsequently checked
+every new receipt/artifact hash, exact report-to-verification content binding,
+the unchanged first three ToolRun registrations and every original non-session
+case file. It passed. Exact paths, case IDs, hashes, process identities and
+backups remain private; no original data or tool artifact was overwritten.
+No prior QC, cell-state or missingness stage was rerun.
+
+Regular server-side Playwright was used because the Browser plugin was not
+available; no browser dependencies were installed. The intended page rendered
+without a framework overlay. Separate preparation/approval, target-first report
+order, five missing domains, blocked reasons and absence of export controls were
+observed at 1280 x 900 and 390 x 844, then after refresh. Screenshots were
+visually inspected. There were no page errors, failed requests or browser
+operation errors; the genuine run retained one pre-authentication 401 and a
+favicon 404 console message, not a zero-warning claim. This is an Agent-operated
+walkthrough, not external wet-lab user acceptance. The non-fatal client chunk-size
+warning remains. No push, merge or formal deployment is claimed.
+
+**Return to PRD steps 4 and 7.** The package's current product-context review
+still says `review_status: pending` and `execution_allowed: false`; the
+biological-review source has pending product/state-role review and no signatures.
+The current case has no approved regional numerator/denominator or developmental
+window and still lacks confirmed sample/preparation/independence relationships.
+At that installed checkpoint the descriptive cell-cycle candidate also lacked
+fully curated resource contents; Task 26 now supplies the candidate resource, but
+genuine ProgramSpec/ProtocolIR review/design fields remain missing. These are separate
+scientific-definition, resource-curation and experiment-fact gaps, not a request
+for the researcher to write JSON. R1-R4 measured construction and a qualified
+report/export remain open. The next scientific work is to review source state
+definitions and their product-role/anatomy/development mappings, curate the exact
+program resources, and confirm only experiment facts that can be established.
+Implementation approval does not provide the missing scientific signatures.
+No protected source or release gate was changed to make this case run further.
+
+### Task 26: Source-state review and curated program inputs (2026-09-09)
+
+**Owner direction:** continue the PRD-led downstream work, ask about material
+scientific choices, and synchronize actual progress to the existing GitHub PR
+after this increment. The owner located original plots mainly in notebooks under
+private server research directories and requested the latest relevant versions,
+literature context and joint checks using packaged tools. This does not approve
+state definitions, attest independence, open locked data or authorize a merge.
+
+**PRD link:** sections 1.2, 3.3-3.6 and 6.1.1 steps 4 and 7; retain the two
+worked product examples. A researcher needs to understand what a state means
+and what decision it supports, not reconstruct internal JSON.
+
+- [x] Inventory relevant original annotation and RG/Nb notebooks read-only,
+  compare content/version lineage as well as timestamps, and retain exact private
+  artifact identities. Do not execute or rewrite notebooks during retrieval.
+  Stop at unreadable directories; never bypass permissions. Exclude sealed and
+  competitor-isolated evidence from source construction.
+- [x] Inspect saved marker/annotation figures and their producing cells; reconcile
+  original source metadata against the seven packaged RG/Nb states. Preserve
+  shared lineage, unavailable features and mixed execution-order caveats.
+- [ ] Complete exact source-state discriminants and product role/window review.
+  Historical plots and clinical product descriptions are candidate context,
+  not independent validation, executable mappings or human approval.
+- [x] Curate the complete proposed S/G2M resource from an exact official release,
+  preserving the original bytes, extracted list order, license, provenance and
+  content hashes. Check name changes against stable gene identities; ambiguous
+  replacements require explicit review, not automatic alias rewriting.
+- [x] Establish which source-backed cross-checks the registered packages can
+  actually run. Use separate method channels and true source-family dependence;
+  no majority vote, fabricated measurement, unreviewed production default or
+  locked runner. Record blocked inputs as explicitly as executed checks.
+- [x] Ask the owner about material product/resource choices and record the
+  updated-list selection. Respond to the tentative target-lineage preference
+  with primary clinical literature and a candidate identity-versus-stage
+  recommendation. Final product mapping and source review remain separate.
+- [x] Verify the changed curation evidence and exact failed Web fixtures; prepare
+  the public-safe increment for the existing Draft PR. Preserve public history,
+  private runtime/data and the recorded acceptance from earlier increments.
+  No private intermediate history, notebook, path, credential or unpublished
+  measurement is part of publication.
+- [ ] Complete current-public-head CI before closing the engineering gate.
+  The PR conversation records the publication receipt and current-head status.
+  No automatic independent review, full-suite replay, force push or merge.
+
+
+#### Task 26 evidence checkpoint
+
+- Read-only source inspection and exact-ID/parent reconciliation reproduce all
+  seven packaged RG/Nb scRNA counts, totaling 11,366. Original notebook cells and
+  saved figures were inspected; mixed execution order, silently omitted features
+  and shared annotation lineage remain explicit caveats. No source file changed.
+- The owner selected the official updated cell-cycle list as primary. Seurat
+  v5.5.1's exact resource has 43 S and 54 G2M genes; release commit, raw/list
+  hashes, exact symbols and MIT attribution are recorded in the linked candidate
+  resource. No runtime default, program score or acceptance threshold changed.
+- Live P0-02–P0-06 registry/input inspection separates actual candidate channels
+  from method-catalog entries. New measured runs remain blocked by genuine
+  V3/attestation, reviewed state/role/window inputs and complete ProgramSpec/
+  ProtocolIR. Metadata reconciliation is not a new biological ToolRun.
+- Full evidence limits and joint-check disposition are in the
+  [source/program checkpoint](web-scientific-input-design.md#source-state-and-program-curation-checkpoint--2026-09-09).
+  Private notebook excerpts, image hashes and the reproducible metadata audit
+  remain private. No old notebook, locked runner, unchanged QC or cell-state
+  analysis was rerun; the original preview and case receipts were preserved.
+- At the owner's request, three primary clinical publications were checked for
+  actual product-state definitions (Kyoto 2025, bemdaneprocel 2025, STEM-PD 2026).
+  The design recommends reviewing a specified mDA-lineage developmental interval,
+  potentially including early differentiating neurons. Clinical composition,
+  assay classes and culture days are not imported as our thresholds or mappings.
+  This remains a recommendation; no source signatures or frozen decisions exist.
+- Publication validation also inspected the previous public-head CI
+  [run 34217860693](https://github.com/starvingarc/BRIDGE/actions/runs/34217860693):
+  Python completed with 2,139 passed and 66 warnings; Web had 2 failed, 62 passed
+  and two unhandled errors, so later gates were skipped. The two old polling
+  fixtures returned a Session for the new intake GET. Both exact failures were
+  reproduced, then passed after adding typed synthetic intake responses and
+  explicit rendered-structure checks. Existing stop/stale-response and exact
+  confirmation assertions remain unchanged. Type-check passed. No runtime code,
+  dependency, timeout or test assertion was weakened; no broad suite was replayed.
+- Resource/hash integrity, repository-policy and whitespace checks passed for
+  this curation increment. Exact notebook evidence remains private and original
+  analysis receipts/runtime are unchanged. Latest-head CI is a separate gate,
+  not established by the two focused tests or the previous head's Python result.
+
+### Task 24: Inline question/draft cards and the real next-stage route
+
+**Question and scientific-draft consumers installed; bounded acceptance recorded in Task 25.**
+Six initial scientific-card interaction tests failed for absent rendering/entry,
+then passed. Two added stage/next-plan tests failed for absent stage rendering,
+then passed with all affected question/intake/API cases (27 passed, four files).
+Type-check and production build passed; the existing large-chunk advisory remains.
+Scientific cards show actual source definitions, unknowns, editable role/stage
+choices, exact confirmation, explicit revision and per-stage blockers. A separate
+button prepares (not approves) the missingness check. Six backend revision cases
+first failed for the absent endpoint, then passed in the 21-case candidate run.
+These checks precede real-model/browser acceptance and preview installation.
+
+Historical question-card verification:
+Six new whole-App interaction tests first failed because no choice card was
+rendered. The same six then passed, together with the affected intake and API
+tests (19 passed across three files). Type-check and production build passed
+using existing pinned dependencies in a private build copy. The build retains
+its existing large-chunk advisory; no dependency or bundle-budget policy changed.
+These are component/build checks, not browser, actual-model or installed acceptance.
+The question card preserves the existing page layout and binds to its exact
+assistant message. No new UI design, image assets or scientific run is included.
+
+
+**Files:** Create web/src/components/ClarificationCard.tsx,
+ScientificInputs.tsx and web/tests/clarification-card.test.tsx,
+scientific-inputs.test.tsx; modify Conversation.tsx, api.ts, types.ts,
+ProductIntake.tsx, intakeLabels.ts and styles.css only as needed.
+**Interfaces:** ClarificationCard receives its persisted card, busy flag and
+onAnswer/onCancel callbacks. ScientificInputs receives the current server draft
+and onConfirm callback. api.answerClarification and api.confirmScientificInputs
+return the normalized current Session. Cards attach to their recorded message,
+not an unrelated floating panel.
+
+- [ ] Add a real-component test using controlled HTTP: choices begin unselected;
+  choosing an option does not write; Submit answers sends the exact card digest.
+  Unknown is exclusive, free text is preserved, refresh restores the answer.
+- [ ] Run the new browser tests to observe the missing card behavior.
+- [ ] Implement accessible radio/checkbox groups, fieldsets, explanation and
+  optional text entry. Show pending/answered/stale/cancelled states; render
+  scientific choices and source references with explicit missingness. Confirming
+  a draft does not approve an analysis. Route the next-stage button through
+  actual server eligibility; preserve the manual input panel as an advanced
+  existing route, not a second materializer.
+- [ ] Verify stale/cross-session responses do not replace the active case, keyboard
+  submission, mobile layout and single/multiple selection. Run affected tests
+  and one production build using the existing installed Node runtime.
+- [ ] Commit the verified Web consumer and API/type changes.
+
+### Task 25: Isolated installation and genuine Web acceptance
+
+The first isolated installed browser request reached the actual provider but
+failed parsing: it returned the correct two assay choices plus an explicit
+reserved "unknown" option, which the application already owns. A diagnostic
+confirmed HTTP 200 and invalid_fact_options rather than an unavailable model.
+Two transport regressions reproduced this exact duplication, then passed with
+all 17 affected question tests (19 passed, two existing warnings). The narrow repair
+validates and removes one reserved unknown option before normal question
+validation; it does not map arbitrary IDs, remove the two-choice requirement,
+select an answer or relax factual enums. Original preview and genuine receipts
+remain untouched while this installed-path repair is verified.
+
+The repaired isolated UI produced a real choice card and preserved separate
+answer submission and fact confirmation. Another malformed provider attempt
+before diagnostic capture remains unexplained, not counted as success. The
+scientific-draft request then exposed an actual mixed-L1/L2 candidate with parent
+citations and a numerator outside its denominator. Validation rejected it without
+materialization. Source-specific constraints are now explicit in draft context;
+shape/source failures receive at most one bounded correction, never relaxed
+validation. Four initial source-correction tests failed for the absent recovery,
+then passed with the 21 candidate cases (25 passed). Four additional mixed-level
+shape cases passed; both transports and repeated-invalid termination are covered.
+Two existing dependency warnings remain. Actual-model candidate acceptance is
+still pending on this repair.
+
+### Task 25 accepted increment and remaining scope
+
+The final installed runtime is committed snapshot `3d8a06af`. Its wheel and
+client were built without changing dependencies; installed package files and
+client runtime sources matched their source snapshot. Eight final scientific UI
+tests passed after a real RED regression caught a superseded card displaying
+unsaved local edits. Type-check/build passed; the existing large-chunk advisory
+remains. Earlier focused Python and client evidence is recorded above, not
+represented as a fresh full-suite/CI run. The repository-policy check initially
+failed because the approved increment's twelve concrete source/test/design files
+were absent from its Web inventory. Adding exactly those paths (no blanket budget
+increase) made the same check pass; diff checks also passed. Subsequent documentation
+and inventory edits leave all installed runtime sources unchanged.
+
+In the isolated browser, the configured model produced the assay question card,
+then a valid source-backed scientific candidate. Answer submission, fact
+confirmation, candidate revision and scientific confirmation were separate.
+Source definitions and pending review were visible. Revision preserved both the
+original read-only choice and the new pending choice. The final confirmed card
+prepared a separate P0-08 approval card; desktop and narrow-layout screenshots
+were inspected. No scientific tool was run in this isolated case.
+
+The known idle preview was then replaced using the same configured credentials
+and storage. Session backups and before/after hashes preserved existing sessions
+and the author-data case; original QC/cell-state receipts and artifacts remained
+byte-identical after the subsequent work. The genuine browser reopened the same
+case, and the configured model now interpreted its canonical V2 E1 counts and
+denominators without rerunning QC or cell-state analysis. Its explanation still
+contains imprecise advice to revisit already-bound reference settings; this is
+not accepted as a fully polished scientific interpretation.
+
+The genuine draft retained unresolved roles and developmental choices rather
+than inventing a source-supported decision. It was explicitly confirmed, then
+missingness-only P0-08 was prepared and separately approved in the browser.
+The actual canonical ToolRun succeeded and retained unassessed domain profiles,
+null scores and unavailable score states. This is a genuine Web check of
+missing evidence, not measured downstream science or a product verdict.
+The result figures/tables rendered; the downloaded domain SVG and TSV matched
+canonical bytes, and the display-redacted result matched its registered hash
+while retaining the same states. Refresh retained the confirmed draft and
+completed run. Private receipts, transcripts, screenshots and deployment
+records stay outside Git.
+
+**Done for this increment:** installed choice/review/revision flow, restored V2
+interpretation, exact independent P0-08 approval, missingness-result display and
+verified private downloads. **Still open:** genuine measured P0-03–P0-06 inputs,
+typed lineage and biological-unit attestation, source review, product-specific
+P0-09 compilation registries, and the P0-10/P0-11 verified report/export chain.
+No scientific policy was fabricated, no PR was pushed or merged, and no public
+report/export was created. The original full-chain goal is not marked complete.
+
+**Files:** Stable behavior updates in docs/web-preview.md and docs/README.md;
+execution evidence and current state in this plan. Runtime and Agent ownership
+contracts are unchanged; no documentation-only duplication is added there.
+
+- [x] Install the tested build in a separate acceptance runtime while preserving
+  the currently running preview and immutable author-data case.
+- [x] Use ordinary browser conversation, choice answers, draft confirmation,
+  stage-plan approval and result navigation. Reuse valid canonical QC/cell-state
+  receipts; approve a new run only for a genuine changed input or failed stage.
+- [x] Read actual ToolRuns and rendered artifacts. Distinguish executed science,
+  unavailable stages, checked reports and exported outputs. No offline analysis,
+  synthetic fixture or manually authored JSON counts as genuine Web acceptance.
+- [x] Verify actual missingness downloads; retain explicit unknown independence
+  and all candidate/shadow states. Record changed tests, build, installation
+  and genuine stage coverage; update stable docs for exercised behavior.
+- [ ] Verify final report bindings and public export once real compilation
+  policies and the remaining measured-stage prerequisites are supplied.
+- [x] Leave PRs unmerged and private data unexported except for the explicitly
+  approved allowlisted report delivery. State any unmet scientific prerequisites.
 
 ## Task 1: Exact staged Web execution and truthful capabilities
 

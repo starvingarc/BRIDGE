@@ -31,6 +31,9 @@ from bridge.storage.private_paths import ensure_private_directory, verify_privat
 from bridge.workflow import LocalWorkflowExecutor, SQLiteRunEventStore
 from .provider import converse
 from .control import Controls
+from .clarification import Clarifications, AnswerBody, CardIdentity
+from .scientific_inputs import ScientificInputs, DraftIdentity, DraftRevision
+from .report_inputs import ReportInputs, ReportPreparation
 from .intake import Intake, IntakeFacts, IntakeInput, IntakePrepare
 from .inputs import Inputs, Selection, AssetDeclaration, PrepareAnalysis, OBJECT_LIMIT
 from bridge.toolkit.registry import ToolRegistry
@@ -313,6 +316,9 @@ class Service:
         self.inputs = Inputs(self)
         self.controls = Controls(self)
         self.intake = Intake(self)
+        self.clarifications = Clarifications(self)
+        self.scientific_inputs = ScientificInputs(self)
+        self.report_inputs = ReportInputs(self)
         self.cookies: dict[str, float] = {}
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bridge-web")
         self.capacity = BoundedSemaphore(2)
@@ -357,7 +363,10 @@ class Service:
 
     def public(self, state):
         state["capabilities"] = self.capabilities(state)
-        return {key: state.get(key, [] if key == "plan_history" else None) for key in PUBLIC}
+        value = {key: state.get(key, [] if key == "plan_history" else None) for key in PUBLIC}
+        value["clarifications"] = self.clarifications.public(state)
+        value["scientific_drafts"] = self.scientific_inputs.public(state)
+        return value
 
     def message(self, state, role, content):
         state["messages"].append({"id": uid(), "role": role, "content": private_text(content), "created_at": now()})
@@ -681,6 +690,10 @@ class Service:
 
     def prepare_selected(self, state, tool_id):
         self.inputs.initialize(state)
+        blocker = self.scientific_inputs.selected_blocker(state, tool_id) or self.report_inputs.selected_blocker(state, tool_id)
+        if blocker:
+            self.stage_blocked(state, blocker)
+            return
         contract = self.registry.describe_input(tool_id)
         saved = state["_input_selections"].get(tool_id)
         if saved is None:
@@ -793,6 +806,7 @@ class Service:
                    },
                    "results_sent_to_model": False}
         context["input_review_required"] = state["input_review_required"]
+        context["clarification_context"] = self.clarifications.context(state)
         # Provider receives readiness only, never private form values or column names.
         context["intake_context"] = [
             {"upload_id": item["id"],
@@ -830,21 +844,32 @@ class Service:
             for record in state.get("_result_contexts", {}).values()
             if isinstance(record, dict) and record.get("assistant_message_id")
         }
+        private_message_ids = self.clarifications.private_message_ids(state) | self.scientific_inputs.private_message_ids(state)
         provider_messages = [
             {"role": item["role"], "content": private_text(item["content"])}
             for item in state["messages"]
-            if context["results_sent_to_model"] or item["id"] not in result_reply_ids
+            if item["id"] not in private_message_ids
+            and (context["results_sent_to_model"] or item["id"] not in result_reply_ids)
         ]
         try:
             action = converse(self.settings, provider_messages, context)
         except Exception as exc:
             raise ProviderUnavailable() from exc
+        if action.action == "draft_scientific_inputs":
+            self.draft_scientific_inputs(sid, epoch, action.upload_id)
+            return
+        if action.action == "propose_scientific_inputs":
+            raise ValueError("scientific_draft_purpose_required")
         with self.lock:
             state = self.load(sid)
             if state["_control_epoch"] != epoch:
                 return
             assistant_message_id = None
-            if action.action == "review_inputs":
+            if action.action == "ask_user_input":
+                card = self.clarifications.stage(state, action.questions)
+                if card is None or card["status"] != "pending":
+                    self.message(state, "assistant", "这些项目已有回答或已确认资料，我会保留现有信息；未知项仍按缺失处理。可在原问题卡片中修改。")
+            elif action.action == "review_inputs":
                 self.controls.review(state)
                 self.message(state, "assistant", action.text)
                 assistant_message_id = state["messages"][-1]["id"]
@@ -895,6 +920,61 @@ class Service:
             state["status"] = "idle"
             self.save(state)
 
+    def draft_scientific_inputs(self, sid, epoch, aid):
+        with self.lock:
+            state = self.load(sid)
+            if state["_control_epoch"] != epoch:
+                return
+            try:
+                context, binding = self.scientific_inputs.request_context(state, aid)
+            except (ValueError, OSError, KeyError, HTTPException):
+                state["status"], state["error"] = "idle", "scientific_intent_or_source_required"
+                self.save(state)
+                return
+        for attempt in range(2):
+            feedback = None
+            try:
+                action = converse(self.settings, [{"role": "user", "content":
+                    "请用中文提出有来源的科学输入候选，供用户逐项确认。严格遵守上下文中的候选约束；没有充分来源的选择保持未确定。不要运行分析或确认任何声明。"}], context)
+            except ValueError:
+                feedback = "scientific_candidate_shape_invalid"
+            except Exception as exc:
+                raise ProviderUnavailable() from exc
+            else:
+                if action.action != "propose_scientific_inputs" or action.upload_id != aid:
+                    feedback = "scientific_candidate_required"
+                else:
+                    try:
+                        self.scientific_inputs._validate(action.candidate, context)
+                    except ValueError as exc:
+                        feedback = str(exc)
+            with self.lock:
+                current = self.load(sid)
+                if current["_control_epoch"] != epoch:
+                    return
+                if feedback:
+                    try:
+                        _, current_binding = self.scientific_inputs.request_context(current, aid)
+                        if current_binding != binding:
+                            raise ValueError("scientific_draft_stale")
+                    except (ValueError, OSError, KeyError, HTTPException):
+                        current["status"], current["error"] = "idle", "scientific_draft_stale"
+                        self.save(current)
+                        return
+                    if attempt == 0:
+                        # Retry only shape/source validation once. Never resend
+                        # invalid values, private history or unconfirmed facts.
+                        context = {**context, "validation_feedback": feedback}
+                        continue
+                    current["status"], current["error"] = "idle", "scientific_candidate_invalid"
+                    self.message(current, "assistant", "候选仍未通过来源或结构校验，未生成科学草稿，也未运行分析。请重新整理候选；未知项继续保留。")
+                    self.save(current)
+                    return
+                self.scientific_inputs.propose(current, aid, action.candidate, expected_binding=binding)
+                current["status"], current["error"] = "idle", None
+                self.save(current)
+                return
+
     def assay(self, state, upload_id):
         declared = state.get("_asset_declarations", {}).get(upload_id) or state.get("_qc_declarations", {}).get(upload_id)
         if declared:
@@ -934,6 +1014,13 @@ class Service:
         self.message(state, "assistant", "已根据您的计数声明生成输入 QC 计划。请检查并确认；确认前不会运行。结果不代表科学方法已验证。")
         self.save(state)
 
+    def verify_scientific_plan(self, state, plan):
+        for step in plan.steps:
+            blocker = (self.scientific_inputs.selected_blocker(state, step.tool_id)
+                       or self.report_inputs.selected_blocker(state, step.tool_id))
+            if blocker:
+                raise ValueError(blocker)
+
     def execute(self, sid, epoch):
         with self.qc_catalog():
             self._execute(sid, epoch)
@@ -944,6 +1031,7 @@ class Service:
             if state["_control_epoch"] != epoch or state["input_review_required"]:
                 return
             plan = AnalysisPlan.model_validate(state["_plan"])
+            self.verify_scientific_plan(state, plan)
             self.inputs.verify_plan(state, plan)
             for upload_id, upload in state["_uploads"].items():
                 directory, _, _ = ensure_private_directory(self.directory(sid) / "uploads")
@@ -1215,6 +1303,72 @@ def create_app(settings: Settings) -> FastAPI:
             service.intake.prepare(state, body.upload_id)
             return service.public(state)
 
+    @app.post("/api/sessions/{sid}/scientific-inputs/draft")
+    def draft_scientific_inputs(sid: str, body: IntakePrepare):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            try:
+                service.scientific_inputs.context(state, body.upload_id)
+            except (ValueError, OSError, KeyError):
+                raise HTTPException(409, "scientific_intent_or_source_required") from None
+            service.schedule(state, "thinking",
+                lambda session_id, epoch: service.draft_scientific_inputs(session_id, epoch, body.upload_id))
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/scientific-inputs/confirm")
+    def confirm_scientific_inputs(sid: str, body: DraftIdentity):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.scientific_inputs.confirm(state, body.draft_id, body.draft_digest)
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/report-inputs/prepare")
+    def prepare_report_inputs(sid: str, body: ReportPreparation):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.report_inputs.prepare(state, body)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/scientific-inputs/revise")
+    def revise_scientific_inputs(sid: str, body: DraftRevision):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.scientific_inputs.revise(state, body)
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/clarification/answer")
+    def answer_clarification(sid: str, body: AnswerBody):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.clarifications.answer(state, body)
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/clarification/cancel")
+    def cancel_clarification(sid: str, body: CardIdentity):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.clarifications.cancel(state, body)
+            service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/clarification/revise")
+    def revise_clarification(sid: str, body: CardIdentity):
+        with service.lock:
+            state = service.load(sid)
+            service.busy(state)
+            service.clarifications.revise(state, body)
+            service.save(state)
+            return service.public(state)
+
     @app.post("/api/sessions/{sid}/stop")
     def stop(sid: str, body: Body):
         with service.lock:
@@ -1347,6 +1501,10 @@ def create_app(settings: Settings) -> FastAPI:
                 raise HTTPException(409, "approval_mismatch")
             if not any(item.disposition.value == "execute" for item in plan.steps):
                 raise HTTPException(409, "plan_has_no_executable_steps")
+            try:
+                service.verify_scientific_plan(state, plan)
+            except ValueError:
+                raise HTTPException(409, "scientific_plan_invalid_or_stale") from None
             approved = approve_plan(plan, approver_id="private-operator", authority_ref="web-session:" + sid,
                                     approved_at=datetime.now(timezone.utc))
             state["_plan"] = approved.model_dump(mode="json")

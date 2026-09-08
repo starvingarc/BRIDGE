@@ -7,11 +7,15 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from .intake import IntakeFacts
+from .clarification import QuestionSet
+from .scientific_inputs import ScienceCandidate
 
 
 class Action(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    action: Literal["reply", "review_inputs", "propose_intake", "prepare_qc", "prepare_analysis"]
+    action: Literal["reply", "review_inputs", "propose_intake", "prepare_qc", "prepare_analysis", "ask_user_input", "draft_scientific_inputs", "propose_scientific_inputs"]
+    candidate: ScienceCandidate | None = None
+    questions: QuestionSet | None = None
     facts: IntakeFacts | None = None
     tool_id: str | None = Field(default=None, pattern=r"^P0-(0[1-9]|1[0-2])$")
     text: str | None = Field(default=None, max_length=12000)
@@ -20,6 +24,21 @@ class Action(BaseModel):
 
     @model_validator(mode="after")
     def complete(self):
+        if self.action in {"draft_scientific_inputs", "propose_scientific_inputs"}:
+            if (not self.upload_id or any(value is not None for value in
+                    (self.questions, self.facts, self.tool_id, self.text, self.matrix_location))
+                    or (self.action == "propose_scientific_inputs") != (self.candidate is not None)):
+                raise ValueError("invalid_scientific_action")
+            return self
+        if self.candidate is not None:
+            raise ValueError("unexpected_scientific_candidate")
+        if self.action == "ask_user_input":
+            if self.questions is None or any(value is not None for value in
+                    (self.facts, self.tool_id, self.text, self.upload_id, self.matrix_location)):
+                raise ValueError("invalid_question_action")
+            return self
+        if self.questions is not None:
+            raise ValueError("unexpected_questions")
         if self.action == "propose_intake":
             if not self.upload_id or self.facts is None or self.tool_id or self.text or self.matrix_location:
                 raise ValueError("invalid_intake_action")
@@ -46,12 +65,28 @@ _ACTION_FIELDS = {
     "prepare_qc": ("upload_id", "matrix_location"),
     "propose_intake": ("upload_id", "facts"),
     "prepare_analysis": ("tool_id",),
+    "ask_user_input": ("questions",),
+    "draft_scientific_inputs": ("upload_id",),
+    "propose_scientific_inputs": ("upload_id", "candidate"),
 }
 
 
 def _action_field_schema(field_name: str) -> dict:
-    if field_name == "facts":
-        return IntakeFacts.model_json_schema()
+    if field_name in {"facts", "questions", "candidate"}:
+        schema = {"facts": IntakeFacts, "questions": QuestionSet, "candidate": ScienceCandidate}[field_name].model_json_schema()
+        definitions = schema.pop("$defs", {})
+        # Function arguments are nested below a parameters object. Inline local
+        # model refs so they do not resolve against the wrong JSON Schema root.
+        def inline(value):
+            if isinstance(value, list):
+                return [inline(item) for item in value]
+            if not isinstance(value, dict):
+                return value
+            if "$ref" in value:
+                return inline({**definitions[value["$ref"].removeprefix("#/$defs/")],
+                               **{key: item for key, item in value.items() if key != "$ref"}})
+            return {key: inline(item) for key, item in value.items()}
+        return inline(schema)
     field = Action.model_json_schema()["properties"][field_name]
     return next(option.copy() for option in field["anyOf"] if option.get("type") == "string")
 
@@ -140,6 +175,16 @@ Never emit the answer outside that JSON envelope.
 _SUBSTANTIVE_GUIDANCE = """You are BRIDGE, a research-only cell-therapy transcriptomic evidence assistant.
 Respond in the user's language. You can discuss the research question and prepare P0-01 input QC.
 Keep replies concise and ask only the next necessary question. Do not repeat the same disclaimer.
+Use ask_user_input(questions) for a necessary choice inside the conversation. Its QuestionSet has
+upload_id and 1-3 questions, each with field, title, reason, multiple and 2-4 options (id, label, description).
+Use allowed IntakeFacts field names or assessment_focus. Enum option IDs must be the actual known enum
+values; unknown and free text are always added by the application. For private matrix/metadata fields,
+the application replaces options with verified local choices. Never infer facts from a recommendation.
+Use multiple=true only for assessment_focus preferences, not biological facts. Prefer one question.
+clarification_context records answered/pending/unknown decisions by field, without private values.
+Do not repeat an answered question. Unknown remains missing; use its consequence, not a question loop.
+Answers stage a private draft; they do not approve analysis, define biological independence or export.
+Do not ask for product facts that intake_context says are already confirmed and not missing.
 The user uploads through the attachment control. Never ask them for upload IDs or server filenames:
 use registered IDs from the safe execution context. If none exist, ask them to upload an H5AD.
 Ask for product target, sampling context, assay and raw-count semantics in ordinary language.
@@ -172,6 +217,22 @@ use prepare_analysis instead of asking the user to reconfirm QC.
 You may propose prepare_analysis for any registered P0-01 through P0-12 tool.
 The server uses selections made in the private input panel. Ask for missing contract roles there;
 never author formal scientific objects, projection mass, verified reports or authority declarations.
+When the user requests construction of scientific inputs, use draft_scientific_inputs(upload_id).
+That opens a separate purpose-limited request with only three confirmed product-intent fields and
+versioned local state-review sources. Do not ask the researcher to write internal objects or JSON.
+Only when context.purpose is scientific_input_draft, use propose_scientific_inputs(upload_id, candidate).
+Candidate fields are label_level (L1 or L2), roles, development, regional_denominator_state_ids and
+regional_target_state_ids. A role has state_id, product_role, source_ids and rationale. A development
+choice has state_id, stage_role, source_ids and rationale. Use only state/source IDs supplied together
+in sources; pending review is not scientific approval. Unsupported choices remain empty/unresolved.
+Never propose a candidate in ordinary chat or assert its objects were confirmed or tools executed.
+For a source review marked execution_allowed false, candidate confirmation does not lift that gate.
+The confirmed scientific card has explicit controls to prepare missingness checks, organize current evidence,
+and generate/verify an internal report, each with separate analysis approval. Direct the researcher to the
+currently enabled next-stage control; do not ask them to author compilation policies or report JSON.
+Candidate missingness reports do not contain domain measurements. A release_blocked verification result
+is a restriction on the report, not a failed product. Never imply the report is verified or exportable
+merely because P0-09/P0-10 execution succeeded; consult the tool-owned receipt and private report card.
 The separate propose_intake draft may contain user-stated product facts; it is not a ProductDefinitionCard or ProductCase.
 P0-07 comparison and P0-12 graft analyses are independent evidence branches.
 P0-12 no-graft requires explicit user declaration or an explicitly selected not_provided mode.
@@ -185,8 +246,10 @@ When results_sent_to_model is true, use the supplied result_summary to answer th
 When results_sent_to_model is true, result_summary is the only scientific result evidence you may
 interpret. Result evidence may contain E0 for aggregate P0-01 QC, E1 for P0-02 cell-state evidence, or both.
 Cite the local evidence alias attached to each available summary and preserve its execution,
-evidence, score, assessment and denominator states. An available E1 describes the selected DataView
-of its exact historical P0-02 run, not the latest upload or current declarations. Reference support
+evidence, score, assessment and denominator states. An available E1 describes the exact historical
+P0-02 input, not the latest upload or current declarations. If profile_schema_version is 0.2,
+its per-level historical denominators differ from V3 selected DataView lineage; preserve
+historical_tool_input and downstream_readiness not_established. It does not prove QC filtering. Reference support
 is not released cell identity, purity, efficacy, maturity or a product ranking.
 Interpret QC only from an available E0 summary or qc_summary. Its metrics are bounded,
 tool-owned aggregate MeasurementResults from the exact historical P0-01 run; do not infer raw rows,
@@ -218,12 +281,16 @@ metadata or biological replicates is not a command to retract earlier counts or 
 _JSON_RESPONSE_GUIDANCE = """Return exactly one json object and no prose or markup. Use exactly one of these schemas:
 {"action":"reply","text":"..."}, {"action":"review_inputs","text":"..."}, {"action":"prepare_qc","upload_id":"...","matrix_location":"X"},
 {"action":"propose_intake","upload_id":"...","facts":{"assay":"scRNA-seq","count_semantics":"raw_counts","matrix_location":"X"}},
+{"action":"ask_user_input","questions":{"upload_id":"...","questions":[{"field":"assay","title":"Which assay?","reason":"Choose compatible checks.","multiple":false,"options":[{"id":"scRNA-seq","label":"Single-cell","description":""},{"id":"snRNA-seq","label":"Single-nucleus","description":""}]}]}},
+{"action":"draft_scientific_inputs","upload_id":"..."}, or, only for scientific_input_draft purpose,
+{"action":"propose_scientific_inputs","upload_id":"...","candidate":{"label_level":"L1","roles":[],"development":[],"regional_denominator_state_ids":[],"regional_target_state_ids":[]}},
 or {"action":"prepare_analysis","tool_id":"P0-02"} (any registered P0 tool ID is allowed).
 The facts example is illustrative only; include only fields actually stated by the user.
 Every shown field is required for its action. Do not emit tool-call XML, DSML, code fences or extra fields.
 """
 _NATIVE_RESPONSE_GUIDANCE = """The response requires exactly one named function with JSON arguments and no content outside the call.
 Use exactly one of reply(text), review_inputs(text), propose_intake(upload_id, facts), prepare_qc(upload_id, matrix_location),
+ask_user_input(questions), draft_scientific_inputs(upload_id), propose_scientific_inputs(upload_id, candidate),
 or prepare_analysis(tool_id). Every listed argument is required. Supply arguments without an action key.
 Do not emit JSON or prose as message content, and do not emit XML, DSML or code fences.
 """
@@ -253,7 +320,7 @@ def converse(settings, messages: list[dict], context: dict) -> Action:
         "messages": [{"role": "system", "content": system + "\nSafe execution context: " + json.dumps(context)},
                      *messages[-24:]],
         "response_format": {"type": "json_object"},
-        "max_tokens": 1800,
+        "max_tokens": 6000 if context.get("purpose") == "scientific_input_draft" else 1800,
     }
     if protocol == "deepseek_tools":
         payload.pop("response_format")

@@ -72,7 +72,7 @@ def profile(run_id, *, n=10, composition=None, version="0.4.9"):
 
 def register(service, sid, payload, *, run_id, tool_id="P0-02",
              artifact_kind="cell_state_evidence_profile", measurements=None,
-             schema_ref=SCHEMA):
+             schema_ref=SCHEMA, request_assets=None):
     state = service.load(sid)
     run_root = service.directory(sid) / "runs" / run_id
     artifact_path = run_root / "PRIVATE_PATH_SENTINEL-result.json"
@@ -82,7 +82,7 @@ def register(service, sid, payload, *, run_id, tool_id="P0-02",
         kind=artifact_kind, path=artifact_path, media_type="application/json",
         sha256=hashlib.sha256(raw).hexdigest())
     outcome = ToolRun(run_id=run_id, request=ToolRequest(request_id=f"request-{run_id}",
-        tool_id=tool_id, tool_version="0.4.9", output_dir=run_root),
+        tool_id=tool_id, tool_version="0.4.9", output_dir=run_root, assets=request_assets or []),
         implementation_state="implemented", execution_state="succeeded", tool_version="0.4.9",
         environment_spec_id="PRIVATE_ENVIRONMENT_SENTINEL", artifacts=[artifact],
         measurements=measurements or [], result={"secret": "PRIVATE_RESULT_SENTINEL"},
