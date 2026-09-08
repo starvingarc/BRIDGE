@@ -1,0 +1,1794 @@
+{
+  "$defs": {
+    "AnalysisScope": {
+      "enum": [
+        "whole_product",
+        "state_specific"
+      ],
+      "title": "AnalysisScope",
+      "type": "string"
+    },
+    "DataViewBinding": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "type": "null"
+                },
+                "biological_unit_manifest_sha256": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "biological_unit_manifest_sha256": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "biological_unit_manifest_ref",
+                "biological_unit_manifest_sha256"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Content-addressed expression view passed between scientific tools.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Ref"
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
+        "matrix_location": {
+          "minLength": 1,
+          "title": "Matrix Location",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "enum": [
+            "raw_counts",
+            "normalized_expression"
+          ],
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_ids_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Ids Sha256",
+          "type": "string"
+        },
+        "parent_asset_id": {
+          "minLength": 1,
+          "title": "Parent Asset Id",
+          "type": "string"
+        },
+        "parent_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Parent Asset Sha256",
+          "type": "string"
+        },
+        "sample_or_preparation_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Or Preparation Ref"
+        },
+        "selection_spec_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Spec Ref"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "view_id": {
+          "minLength": 1,
+          "title": "View Id",
+          "type": "string"
+        },
+        "view_kind": {
+          "enum": [
+            "all_observations",
+            "qc_selected_observations"
+          ],
+          "title": "View Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "view_kind",
+        "artifact_id",
+        "sha256",
+        "parent_asset_id",
+        "parent_asset_sha256",
+        "matrix_location",
+        "matrix_semantics",
+        "n_observations",
+        "observation_ids_sha256"
+      ],
+      "title": "DataViewBinding",
+      "type": "object"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ExploratoryCellCycleSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "g2m_ambiguous_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "G2M Ambiguous Genes",
+          "type": "array"
+        },
+        "g2m_missing_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "G2M Missing Genes",
+          "type": "array"
+        },
+        "mean_g2m_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean G2M Score"
+        },
+        "mean_s_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean S Score"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "phase_counts": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "propertyNames": {
+                "enum": [
+                  "G1",
+                  "S",
+                  "G2M"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Counts"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "s_ambiguous_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "S Ambiguous Genes",
+          "type": "array"
+        },
+        "s_g2m_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "S G2M Fraction"
+        },
+        "s_missing_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "S Missing Genes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "n_observations",
+        "s_missing_genes",
+        "g2m_missing_genes",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "ExploratoryCellCycleSummary",
+      "type": "object"
+    },
+    "ExploratoryMethodParameters": {
+      "additionalProperties": false,
+      "description": "Versioned first-mode parameters, not a product-specific decision rule.",
+      "properties": {
+        "cell_cycle_ctrl_size": {
+          "minimum": 5,
+          "title": "Cell Cycle Ctrl Size",
+          "type": "integer"
+        },
+        "decoupler_empty": {
+          "const": false,
+          "default": false,
+          "title": "Decoupler Empty",
+          "type": "boolean"
+        },
+        "decoupler_tmin": {
+          "const": 5,
+          "default": 5,
+          "title": "Decoupler Tmin",
+          "type": "integer"
+        },
+        "layer": {
+          "default": null,
+          "title": "Layer",
+          "type": "null"
+        },
+        "lower_quantile": {
+          "const": 0.1,
+          "default": 0.1,
+          "title": "Lower Quantile",
+          "type": "number"
+        },
+        "minimum_gene_coverage": {
+          "const": 1.0,
+          "default": 1.0,
+          "title": "Minimum Gene Coverage",
+          "type": "number"
+        },
+        "random_seed": {
+          "title": "Random Seed",
+          "type": "integer"
+        },
+        "scanpy_ctrl_as_ref": {
+          "const": true,
+          "default": true,
+          "title": "Scanpy Ctrl As Ref",
+          "type": "boolean"
+        },
+        "scanpy_ctrl_size": {
+          "const": 50,
+          "default": 50,
+          "title": "Scanpy Ctrl Size",
+          "type": "integer"
+        },
+        "scanpy_n_bins": {
+          "const": 25,
+          "default": 25,
+          "title": "Scanpy N Bins",
+          "type": "integer"
+        },
+        "upper_quantile": {
+          "const": 0.9,
+          "default": 0.9,
+          "title": "Upper Quantile",
+          "type": "number"
+        },
+        "use_raw": {
+          "const": false,
+          "default": false,
+          "title": "Use Raw",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cell_cycle_ctrl_size",
+        "random_seed"
+      ],
+      "title": "ExploratoryMethodParameters",
+      "type": "object"
+    },
+    "ExploratoryProcessInput": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "data_view": {
+          "$ref": "#/$defs/DataViewBinding"
+        },
+        "g2m_genes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 5,
+          "title": "G2M Genes",
+          "type": "array"
+        },
+        "g2m_genes_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "G2M Genes Sha256",
+          "type": "string"
+        },
+        "gene_symbol_column": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gene Symbol Column"
+        },
+        "input_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Input Id",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "resource_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+          "title": "Resource Ref",
+          "type": "string"
+        },
+        "resource_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Resource Sha256",
+          "type": "string"
+        },
+        "resource_version": {
+          "minLength": 1,
+          "title": "Resource Version",
+          "type": "string"
+        },
+        "s_genes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 5,
+          "title": "S Genes",
+          "type": "array"
+        },
+        "s_genes_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "S Genes Sha256",
+          "type": "string"
+        },
+        "source_family_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Family Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "input_id",
+        "source_family_id",
+        "data_view",
+        "resource_ref",
+        "resource_version",
+        "resource_sha256",
+        "s_genes",
+        "s_genes_sha256",
+        "g2m_genes",
+        "g2m_genes_sha256",
+        "created_at"
+      ],
+      "title": "ExploratoryProcessInput",
+      "type": "object"
+    },
+    "ExploratoryProcessProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "cell_cycle": {
+          "$ref": "#/$defs/ExploratoryCellCycleSummary"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "data_view_provenance_state": {
+          "const": "caller_declared_content_verified",
+          "default": "caller_declared_content_verified",
+          "title": "Data View Provenance State",
+          "type": "string"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "duplicated_background_symbol_count": {
+          "minimum": 0,
+          "title": "Duplicated Background Symbol Count",
+          "type": "integer"
+        },
+        "evidence_family_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Family Id",
+          "type": "string"
+        },
+        "executions": {
+          "items": {
+            "$ref": "#/$defs/MethodExecutionRecord"
+          },
+          "title": "Executions",
+          "type": "array"
+        },
+        "expression_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Expression Asset Sha256",
+          "type": "string"
+        },
+        "feature_resolution_policy": {
+          "const": "exact_symbols_to_unique_input_feature_ids",
+          "default": "exact_symbols_to_unique_input_feature_ids",
+          "title": "Feature Resolution Policy",
+          "type": "string"
+        },
+        "independence_state": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Independence State",
+          "type": "string"
+        },
+        "input_contract": {
+          "$ref": "#/$defs/ExploratoryProcessInput"
+        },
+        "input_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Input Sha256",
+          "type": "string"
+        },
+        "interpretation_scope": {
+          "const": "descriptive_only",
+          "default": "descriptive_only",
+          "title": "Interpretation Scope",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "method_parameters": {
+          "$ref": "#/$defs/ExploratoryMethodParameters"
+        },
+        "n_features": {
+          "exclusiveMinimum": 0,
+          "title": "N Features",
+          "type": "integer"
+        },
+        "n_independent_replicates": {
+          "default": null,
+          "title": "N Independent Replicates",
+          "type": "null"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "normalization_recipe": {
+          "enum": [
+            "normalize_total_10000_log1p",
+            "declared_normalized_expression"
+          ],
+          "title": "Normalization Recipe",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "profile_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "program_summaries": {
+          "items": {
+            "$ref": "#/$defs/ExploratoryProgramSummary"
+          },
+          "title": "Program Summaries",
+          "type": "array"
+        },
+        "runtime_mode": {
+          "const": "exploratory_process",
+          "default": "exploratory_process",
+          "title": "Runtime Mode",
+          "type": "string"
+        },
+        "score_state": {
+          "const": "unavailable",
+          "default": "unavailable",
+          "title": "Score State",
+          "type": "string"
+        },
+        "state_review_status": {
+          "const": "pending",
+          "default": "pending",
+          "title": "State Review Status",
+          "type": "string"
+        },
+        "target_feature_ids": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Target Feature Ids",
+          "type": "object"
+        },
+        "tool_id": {
+          "const": "P0-06",
+          "default": "P0-06",
+          "title": "Tool Id",
+          "type": "string"
+        },
+        "tool_version": {
+          "title": "Tool Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "tool_version",
+        "input_sha256",
+        "expression_asset_sha256",
+        "input_contract",
+        "method_parameters",
+        "normalization_recipe",
+        "evidence_family_id",
+        "n_observations",
+        "n_features",
+        "target_feature_ids",
+        "duplicated_background_symbol_count",
+        "executions",
+        "program_summaries",
+        "cell_cycle",
+        "limitations",
+        "created_at"
+      ],
+      "title": "ExploratoryProcessProfile",
+      "type": "object"
+    },
+    "ExploratoryProgramSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "ambiguous_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ambiguous Genes",
+          "type": "array"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "declared_gene_count": {
+          "exclusiveMinimum": 0,
+          "title": "Declared Gene Count",
+          "type": "integer"
+        },
+        "lower_quantile": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Quantile"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median"
+        },
+        "method_id": {
+          "enum": [
+            "PROC-SCORE-SCANPY",
+            "PROC-SCORE-DECOUPLER"
+          ],
+          "title": "Method Id",
+          "type": "string"
+        },
+        "missing_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Genes",
+          "type": "array"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observed_gene_count": {
+          "minimum": 0,
+          "title": "Observed Gene Count",
+          "type": "integer"
+        },
+        "program_id": {
+          "enum": [
+            "S",
+            "G2M"
+          ],
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "score_unit": {
+          "enum": [
+            "scanpy_control_adjusted_expression",
+            "decoupler_ulm_t_value"
+          ],
+          "title": "Score Unit",
+          "type": "string"
+        },
+        "upper_quantile": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upper Quantile"
+        }
+      },
+      "required": [
+        "program_id",
+        "method_id",
+        "score_unit",
+        "n_observations",
+        "observed_gene_count",
+        "declared_gene_count",
+        "missing_genes",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "ExploratoryProgramSummary",
+      "type": "object"
+    },
+    "MethodExecutionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "execution_state": {
+          "$ref": "#/$defs/MethodExecutionState"
+        },
+        "implementation": {
+          "minLength": 1,
+          "title": "Implementation",
+          "type": "string"
+        },
+        "method_id": {
+          "$ref": "#/$defs/ProcessMethodId"
+        },
+        "method_ref": {
+          "pattern": "^METHOD-[A-Z0-9-]+$",
+          "title": "Method Ref",
+          "type": "string"
+        },
+        "package_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Package Versions",
+          "type": "object"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "method_id",
+        "method_ref",
+        "implementation",
+        "execution_state",
+        "package_versions",
+        "reason_codes"
+      ],
+      "title": "MethodExecutionRecord",
+      "type": "object"
+    },
+    "MethodExecutionState": {
+      "enum": [
+        "succeeded",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "MethodExecutionState",
+      "type": "string"
+    },
+    "MethodMeasurementArtifactBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "analysis_unit_ref": {
+          "minLength": 1,
+          "title": "Analysis Unit Ref",
+          "type": "string"
+        },
+        "artifact_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "file_name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.json$",
+          "title": "File Name",
+          "type": "string"
+        },
+        "independence_group_ref": {
+          "minLength": 1,
+          "title": "Independence Group Ref",
+          "type": "string"
+        },
+        "measurement_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Measurement Id",
+          "type": "string"
+        },
+        "metric_name": {
+          "enum": [
+            "program_score_mean",
+            "cell_cycle_cycling_fraction"
+          ],
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source_method_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Method Id",
+          "type": "string"
+        },
+        "source_summary_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Summary Sha256",
+          "type": "string"
+        },
+        "summary_kind": {
+          "enum": [
+            "program_score",
+            "cell_cycle"
+          ],
+          "title": "Summary Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measurement_id",
+        "summary_kind",
+        "source_method_id",
+        "source_summary_sha256",
+        "metric_name",
+        "program_id",
+        "analysis_scope",
+        "analysis_unit_ref",
+        "independence_group_ref",
+        "assessment_state",
+        "n_observations",
+        "artifact_id",
+        "file_name",
+        "sha256"
+      ],
+      "title": "MethodMeasurementArtifactBinding",
+      "type": "object"
+    },
+    "ProcessAttributionState": {
+      "enum": [
+        "conditional_association",
+        "cannot_attribute",
+        "not_requested"
+      ],
+      "title": "ProcessAttributionState",
+      "type": "string"
+    },
+    "ProcessMethodId": {
+      "enum": [
+        "PROC-SCORE-SCANPY",
+        "PROC-SCORE-DECOUPLER",
+        "PROC-CYCLE-SCANPY",
+        "PROC-CYCLE-AGG"
+      ],
+      "title": "ProcessMethodId",
+      "type": "string"
+    },
+    "ProgramApplicabilityState": {
+      "enum": [
+        "applicable",
+        "not_applicable"
+      ],
+      "title": "ProgramApplicabilityState",
+      "type": "string"
+    },
+    "ProgramAvailabilityState": {
+      "enum": [
+        "available",
+        "unavailable",
+        "cannot_resolve"
+      ],
+      "title": "ProgramAvailabilityState",
+      "type": "string"
+    },
+    "ProgramEvidenceSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "applicability": {
+          "$ref": "#/$defs/ProgramApplicabilityState"
+        },
+        "availability": {
+          "$ref": "#/$defs/ProgramAvailabilityState"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "denominator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "evidence_state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Gene Coverage",
+          "type": "number"
+        },
+        "lod_state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Lod State",
+          "type": "string"
+        },
+        "metric_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "minimum_gene_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Minimum Gene Coverage",
+          "type": "number"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "process_attribution": {
+          "$ref": "#/$defs/ProcessAttributionState"
+        },
+        "process_step_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Process Step Ids",
+          "type": "array"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "stage_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Stage Id",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "program_id",
+        "analysis_scope",
+        "stage_id",
+        "metric_id",
+        "gene_coverage",
+        "minimum_gene_coverage",
+        "lod_state",
+        "evidence_state",
+        "applicability",
+        "availability",
+        "process_attribution",
+        "process_step_ids",
+        "reason_codes"
+      ],
+      "title": "ProgramEvidenceSummary",
+      "type": "object"
+    },
+    "ProgramMeasurementArtifactBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "file_name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.json$",
+          "title": "File Name",
+          "type": "string"
+        },
+        "measurement_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Measurement Id",
+          "type": "string"
+        },
+        "projected_evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source_evidence_state": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Evidence State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measurement_id",
+        "evidence_id",
+        "source_evidence_state",
+        "projected_evidence_state",
+        "artifact_id",
+        "file_name",
+        "sha256"
+      ],
+      "title": "ProgramMeasurementArtifactBinding",
+      "type": "object"
+    },
+    "ProgramSourceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "input_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Input Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "role": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_ref": {
+          "minLength": 1,
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "input_id",
+        "role",
+        "schema_ref",
+        "object_version",
+        "source_sha256"
+      ],
+      "title": "ProgramSourceBinding",
+      "type": "object"
+    },
+    "ProliferationStressResponseProfileV3": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "measurement_projection_state": {
+                "const": "not_requested"
+              }
+            },
+            "required": [
+              "measurement_projection_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_artifacts": {
+                "maxItems": 0
+              },
+              "measurement_spec_ref": {
+                "type": "null"
+              },
+              "measurement_spec_sha256": {
+                "type": "null"
+              },
+              "process_method_bundle_ref": {
+                "type": "null"
+              },
+              "process_method_bundle_sha256": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "measurement_projection_state": {
+                "const": "available"
+              }
+            },
+            "required": [
+              "measurement_projection_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_artifacts": {
+                "minItems": 1
+              },
+              "measurement_spec_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "measurement_spec_sha256": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            },
+            "required": [
+              "measurement_spec_ref",
+              "measurement_spec_sha256"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "measurement_projection_state": {
+                "const": "not_assessed"
+              }
+            },
+            "required": [
+              "measurement_projection_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_artifacts": {
+                "maxItems": 0
+              },
+              "measurement_spec_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "measurement_spec_sha256": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "process_method_bundle_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "process_method_bundle_sha256": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            },
+            "required": [
+              "measurement_spec_ref",
+              "measurement_spec_sha256",
+              "process_method_bundle_ref",
+              "process_method_bundle_sha256"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "runtime_mode": {
+                "const": "method_runtime"
+              }
+            },
+            "required": [
+              "runtime_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_projection_state": {
+                "enum": [
+                  "available",
+                  "not_assessed"
+                ]
+              },
+              "measurement_spec_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "measurement_spec_sha256": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "process_method_bundle_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "process_method_bundle_sha256": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "program_results": {
+                "maxItems": 0
+              },
+              "review_flags": {
+                "maxItems": 0
+              }
+            },
+            "required": [
+              "measurement_spec_ref",
+              "measurement_spec_sha256",
+              "process_method_bundle_ref",
+              "process_method_bundle_sha256"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "runtime_mode": {
+                "const": "legacy_aggregation"
+              }
+            },
+            "required": [
+              "runtime_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_projection_state": {
+                "enum": [
+                  "not_requested",
+                  "available"
+                ]
+              },
+              "process_method_bundle_ref": {
+                "type": "null"
+              },
+              "process_method_bundle_sha256": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "analysis_mode": {
+          "const": "descriptive_only",
+          "default": "descriptive_only",
+          "title": "Analysis Mode",
+          "type": "string"
+        },
+        "cell_state_profile_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Cell State Profile Ref",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "development_window_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_state": {
+          "const": "shadow",
+          "default": "shadow",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "measurement_artifacts": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ProgramMeasurementArtifactBinding"
+              },
+              {
+                "$ref": "#/$defs/MethodMeasurementArtifactBinding"
+              }
+            ]
+          },
+          "title": "Measurement Artifacts",
+          "type": "array"
+        },
+        "measurement_projection_state": {
+          "enum": [
+            "not_requested",
+            "available",
+            "not_assessed"
+          ],
+          "title": "Measurement Projection State",
+          "type": "string"
+        },
+        "measurement_spec_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "measurement_spec_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measurement Spec Sha256"
+        },
+        "process_attribution_state": {
+          "$ref": "#/$defs/ProcessAttributionState"
+        },
+        "process_method_bundle_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process Method Bundle Ref"
+        },
+        "process_method_bundle_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process Method Bundle Sha256"
+        },
+        "product_case_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "product_definition_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "profile_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_version": {
+          "const": "0.3.0",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "program_results": {
+          "items": {
+            "$ref": "#/$defs/ProgramEvidenceSummary"
+          },
+          "title": "Program Results",
+          "type": "array"
+        },
+        "program_spec_ref": {
+          "$ref": "#/$defs/VersionedObjectRef"
+        },
+        "protocol_context_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Protocol Context Ref",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "review_flags": {
+          "items": {
+            "$ref": "#/$defs/TranscriptomicReviewFlag"
+          },
+          "title": "Review Flags",
+          "type": "array"
+        },
+        "runtime_mode": {
+          "enum": [
+            "legacy_aggregation",
+            "method_runtime"
+          ],
+          "title": "Runtime Mode",
+          "type": "string"
+        },
+        "score_state": {
+          "const": "unavailable",
+          "default": "unavailable",
+          "title": "Score State",
+          "type": "string"
+        },
+        "source_bindings": {
+          "items": {
+            "$ref": "#/$defs/ProgramSourceBinding"
+          },
+          "maxItems": 11,
+          "minItems": 7,
+          "title": "Source Bindings",
+          "type": "array"
+        },
+        "untriggered_interpretation": {
+          "const": "not_evidence_of_safety",
+          "default": "not_evidence_of_safety",
+          "title": "Untriggered Interpretation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "profile_version",
+        "product_case_ref",
+        "product_definition_ref",
+        "development_window_ref",
+        "program_spec_ref",
+        "cell_state_profile_ref",
+        "protocol_context_ref",
+        "source_bindings",
+        "process_attribution_state",
+        "program_results",
+        "review_flags",
+        "reason_codes",
+        "created_at",
+        "runtime_mode",
+        "measurement_projection_state",
+        "measurement_artifacts"
+      ],
+      "title": "ProliferationStressResponseProfileV3",
+      "type": "object"
+    },
+    "ReviewFlagState": {
+      "enum": [
+        "transcriptomic_review_flag",
+        "not_detected_above_lod",
+        "cannot_resolve",
+        "not_assessed"
+      ],
+      "title": "ReviewFlagState",
+      "type": "string"
+    },
+    "TranscriptomicReviewFlag": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_scope": {
+          "$ref": "#/$defs/AnalysisScope"
+        },
+        "applicability": {
+          "$ref": "#/$defs/ProgramApplicabilityState"
+        },
+        "availability": {
+          "$ref": "#/$defs/ProgramAvailabilityState"
+        },
+        "cell_state_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell State Id"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "flag_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Flag Id",
+          "type": "string"
+        },
+        "flag_status": {
+          "const": "shadow",
+          "default": "shadow",
+          "title": "Flag Status",
+          "type": "string"
+        },
+        "orthogonal_follow_up_refs": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+            "type": "string"
+          },
+          "title": "Orthogonal Follow Up Refs",
+          "type": "array"
+        },
+        "process_attribution": {
+          "$ref": "#/$defs/ProcessAttributionState"
+        },
+        "program_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "review_flag_state": {
+          "$ref": "#/$defs/ReviewFlagState"
+        },
+        "safety_interpretation": {
+          "const": "not_evidence_of_safety",
+          "default": "not_evidence_of_safety",
+          "title": "Safety Interpretation",
+          "type": "string"
+        },
+        "stage_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Stage Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "flag_id",
+        "evidence_id",
+        "program_id",
+        "analysis_scope",
+        "stage_id",
+        "review_flag_state",
+        "applicability",
+        "availability",
+        "process_attribution",
+        "orthogonal_follow_up_refs",
+        "reason_codes"
+      ],
+      "title": "TranscriptomicReviewFlag",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/proliferation-stress-response-result/v0.1",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/ProliferationStressResponseProfileV3"
+    },
+    {
+      "$ref": "#/$defs/ExploratoryProcessProfile"
+    }
+  ],
+  "description": "Additive result envelope: no reinterpretation of old profile payloads.",
+  "title": "ProliferationStressResponseResult"
+}

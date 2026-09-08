@@ -1027,8 +1027,9 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
     assert set(context) == {
         "status", "upload_ids", "plan_status", "capabilities",
         "tool_execution_history", "results_sent_to_model", "input_contracts", "input_review_required",
-        "intake_context",
+        "intake_context", "clarification_context",
     }
+    assert context["clarification_context"] == []
     assert context["intake_context"] == [{
         "upload_id": aid, "state": "needs_confirmation",
         "missing_fields": ["product_name", "product_family", "target_cell_type",

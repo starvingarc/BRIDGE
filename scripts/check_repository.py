@@ -147,6 +147,9 @@ WEB_PREVIEW_FILES = (
     Path("web/src/components/ScientificInputs.tsx"),
     Path("web/tests/clarification-card.test.tsx"),
     Path("web/tests/scientific-inputs.test.tsx"),
+    # Owner-selected candidate resource and required license; not runtime defaults.
+    Path("plans/resources/seurat-cell-cycle-v5.5.1-candidate.json"),
+    Path("plans/resources/seurat-cell-cycle-LICENSE.txt"),
 )
 AGENT_INTEGRATION_FILES = (
     Path("examples/agent-integration/profiles/comparison.json"),
@@ -225,6 +228,13 @@ P006_INPUT_ROUTE_FILES = (
     Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/observation_source.py"),
     Path("tests/test_p0_06_source_bound_observations.py"),
     Path("docs/validation/p0_06_source_bound_observations_20260907.md"),
+    # Approved descriptive input route; only its concrete implementation/contracts.
+    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/exploratory.py"),
+    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/exploratory_models.py"),
+    Path("src/bridge/resources/schemas/exploratory_process_input.schema.json"),
+    Path("src/bridge/resources/schemas/exploratory_process_profile.schema.json"),
+    Path("src/bridge/resources/schemas/proliferation_stress_response_result.schema.json"),
+    Path("tests/test_p0_06_exploratory.py"),
 )
 P007_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/product_comparison_visualization_data.schema.json"),

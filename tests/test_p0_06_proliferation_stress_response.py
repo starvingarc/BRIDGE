@@ -421,7 +421,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-06",
         tool_id="P0-06",
-        tool_version="0.7.0",
+        tool_version=ToolRegistry.load_default().describe("P0-06").version,
         output_dir=tmp_path / output_name,
         object_inputs=list(refs.values()),
     )
@@ -453,7 +453,7 @@ def test_registry_declares_executable_v2_contract() -> None:
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert spec.method_ids == METHOD_IDS
     assert spec.result_schema_ref == (
-        "bridge://schemas/proliferation-stress-response-profile/v0.3"
+        "bridge://schemas/proliferation-stress-response-result/v0.1"
     )
 
 

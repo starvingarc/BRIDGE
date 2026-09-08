@@ -304,7 +304,7 @@ def _source_bound_request(
     *,
     all_conflict: bool = False,
 ) -> ToolRequestV2:
-    request = _method_request(tmp_path).model_copy(update={"tool_version": "0.7.0"})
+    request = _method_request(tmp_path)
     refs = {item.role: item for item in request.object_inputs}
     assignment_payload = json.loads(
         refs["biological_unit_assignment"].path.read_text(encoding="utf-8")

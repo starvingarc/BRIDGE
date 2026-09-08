@@ -777,6 +777,16 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
             _p006_method_mode(
                 "method_runtime_source_bound", "bridge://schemas/process-method-input/v0.2", V02
             ),
+            _mode(
+                "exploratory_process",
+                _role("exploratory_process_input", "bridge://schemas/exploratory-process-input/v0.1", V01, 1, 1),
+                asset_input=AssetInputContract(
+                    min_count=1, max_count=1, formats=["h5ad"],
+                    assays=["scRNA-seq", "snRNA-seq"],
+                    input_levels=["count_ready", "analysis_ready"],
+                    matrix_semantics=["raw_counts", "normalized_expression"],
+                ),
+            ),
         ],
     ),
     "P0-07": ToolInputContract(

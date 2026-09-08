@@ -115,6 +115,14 @@ scientific methods.
 | Call | Shared CLI/SDK with `tool_id=P0-06`; use the [legacy request](../examples/requests/p0_06_proliferation_stress_response.json) or [method-runtime request](../examples/requests/p0_06_process_method_runtime.json). |
 | Current evidence / status | Exact DataView and biological-unit attestation binding, raw-count normalization lineage, real-summary projection, missing-value preservation and deterministic artifacts are exercised in the engineering suite. Outputs remain `candidate/shadow`, `domain_score=null` and do not establish cell fitness, safety or potency. [Attestation validation](validation/p0_06_biological_unit_attestation_receipt_20260905.md) · [Method-measurement closeout](validation/p0_06_method_measurement_closeout_20260905.md). |
 
+P0-06 also offers the explicitly descriptive `exploratory_process` mode: one
+checksummed S/G2M input and selected H5AD produce method-separated scores and
+predicted phase counts, aggregate JSON and per-observation Parquet. It preserves
+unknown independence and pending state review, emits no gate-facing measurements,
+and does not assess purity, stress, acceptance or release. Existing product modes
+and v0.3 payloads remain supported through the versioned result union. See the
+[exact mode contract](../src/bridge/tool_packages/cards/P0-06.md#exploratory-selected-view-mode).
+
 <a id="p0-07"></a>
 ## P0-07 Product Comparison & Stability
 

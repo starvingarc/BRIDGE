@@ -173,3 +173,22 @@ intent. Any candidate remains reviewable and source-backed; confirmation is not
 scientific freezing, biological validation or public-export approval. The current
 runtime still sends intake readiness only. Implementation and acceptance of the
 new draft-specific projection belong to the existing Web integration plan.
+
+
+## 2026-09-09: Separate Descriptive Expression Measurement From Product Assessment
+
+The owner approved a bounded exploratory P0-06 route before product-state,
+role and biological-independence review is complete. Its versioned input binds
+the selected expression view and exact candidate S/G2M resource. It measures
+relative program expression and predicted phases only; it cannot manufacture
+reviewed product objects, an independence attestation or gate-facing evidence.
+
+The new result union retains the old product-profile schema and adds a distinct
+exploratory profile with pending state review, unknown independence, null
+independent n and unavailable domain scoring. Original product modes retain
+their scientific and attestation requirements. A common matrix and gene
+programs define shared evidence, not independent validation by multiple methods.
+No division-rate, quiescence, stress, purity, acceptance or release conclusion
+follows from these descriptive measurements. No new data-sharing permission or
+public-export approval is implied. Exact implementation and execution receipts
+are recorded separately in the active Web integration plan.

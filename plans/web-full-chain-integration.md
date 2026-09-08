@@ -7,7 +7,7 @@
 **Architecture:** Retain PlanBuilder, exact AnalysisPlan approval, ToolExecutionPipeline and LocalWorkflowExecutor. Materialize each stage only after its real inputs exist; retain prior plans and canonical ToolRuns.
 **Tech Stack:** Existing Python/FastAPI runtime, React/assistant-ui client and server-side Playwright.
 **Spec:** [Agent integration](../docs/agent-integration.md), [local runtime](../docs/local-agent-runtime.md), [Web preview](../docs/web-preview.md), and the user-approved design below.
-**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Measured downstream construction and a qualified/exportable report remain unfinished.
+**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK, with no preview/session mutation. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
 
 ## Current progress (2026-09-08)
 
@@ -19,7 +19,7 @@ path records absence, not post-transplant validation.
 | Area | Implemented / observed | Still open |
 |---|---|---|
 | Tool access | All 12 packages have contract-driven Web input, plan, approval and execution routes | Tool availability does not supply scientific inputs |
-| Real user execution | Prior genuine P0-01/P0-02 and separate P0-12 no-graft remain recorded; the author-data case now has separately approved missingness-only P0-08, candidate P0-09 compilation and P0-10 blocked internal-report verification | No measured P0-03–P0-06, qualified/exportable report, comparison or graft-expression chain |
+| Real user execution | Prior genuine P0-01/P0-02 and separate P0-12 no-graft remain recorded; the author-data case has separately approved missingness-only P0-08, candidate P0-09 compilation and P0-10 blocked internal-report verification. Task 27 adds genuine descriptive P0-06 expression/cycle measurement through the installed SDK | No product-assessment P0-03–P0-06 result, new-mode Web acceptance, qualified/exportable report, comparison or graft-expression chain |
 | Controls and interpretation | Stop, exact input-change confirmation, stage history, JSON/native actions and opt-in aggregate projection exist | Model interpretation quality is separate from transport tests |
 | Task 16: table preview | Installed; fresh genuine QC Parquet preview shows bounded rows; original download checksum verified | Preview is intentionally bounded, not the complete artifact |
 | Task 17: selected P0-02 | Installed; exact selected-upload reuse retains its recorded focused tests | No new P0-02 execution in the intake journey; product family was intentionally left unknown |
@@ -115,9 +115,11 @@ whitespace checks; it did not include biological tests or broad regressions.
 
 ### Remaining product and scientific gaps
 
-- P0-03–P0-06 need genuine product definitions, state roles, developmental/process
-  specifications and mode-specific measurement/attestation inputs. Existing
-  QC, cell-state and biological-unit outputs do not supply those decisions.
+- Product-assessment P0-03–P0-06 modes need genuine product definitions, state
+  roles, developmental/process specifications and mode-specific measurement/
+  attestation inputs. Existing QC, cell-state and biological-unit outputs do not
+  supply those decisions. Task 27's separately approved descriptive P0-06 mode
+  has run, but supplies no gate-facing domain MeasurementResult.
 - P0-07 needs real comparison arms, bundles and a comparison design.
 - P0-08–P0-11 still need measured upstream domain evidence and a qualified
   report/export path. The current genuine missingness-only graph and blocked
@@ -673,6 +675,171 @@ and what decision it supports, not reconstruct internal JSON.
   this curation increment. Exact notebook evidence remains private and original
   analysis receipts/runtime are unchanged. Latest-head CI is a separate gate,
   not established by the two focused tests or the previous head's Python result.
+
+### Task 27: Approved exploratory expression and cell-cycle measurement
+
+**Status:** implemented and genuinely executed through isolated installed P0-06 0.8.1; publication checkpoint below. New-mode Web acceptance and product-assessment gates remain open.
+
+**Goal:** Describe expression of the owner-selected Seurat S/G2M programs and
+predicted cell-cycle phases in the current selected DataView without pretending
+that state/role review or biological independence is resolved.
+
+**Approved intent:** On 2026-09-09 the owner approved adding this independent
+exploratory path and executing the joint measurement, with literature checked
+before further questions. This does not approve a scientific release.
+
+**Design:** Add one opt-in `exploratory_process` mode to existing P0-06.
+A checksummed `ExploratoryProcessInput` v0.1 binds the exact DataView, source
+family, gene-symbol column, versioned S/G2M resource and exact gene lists.
+The package computes Scanpy control-adjusted expression, decoupler ULM scores,
+Scanpy S/G2M/G1 predictions and descriptive phase counts for all selected
+observations. Require complete feature coverage in this first mode; retain
+explicit missing-gene reasons instead of silently substituting symbols.
+Use total-count normalization to 10,000 followed by log1p only for declared
+raw counts, fixed seed and explicit method parameters. No cell-cycle regression.
+
+A new versioned P0-06 result union preserves existing v0.3 product-profile
+payloads and adds a distinctly typed exploratory profile. Old input modes,
+review/attestation checks and public schemas remain intact. Exploratory outputs
+are checksummed aggregate JSON and per-observation Parquet, not gate-facing
+MeasurementResult records. Independence stays unknown, independent n null,
+state review pending, product purity/acceptance unavailable and domain score null.
+S/G2M methods share one expression evidence family; do not average their units,
+count methods as votes or treat cells as biological replicates.
+
+**Literature basis:** Tirosh et al. 2016 (doi:10.1126/science.aad0501);
+Badia-i-Mompel et al. 2022 (doi:10.1093/bioadv/vbac016);
+official [Scanpy scoring](https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.score_genes.html),
+[cycle](https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.score_genes_cell_cycle.html),
+[ULM](https://decoupler.readthedocs.io/en/latest/api/generated/decoupler.mt.ulm.html)
+and [Seurat](https://satijalab.org/seurat/articles/cell_cycle_vignette.html)
+method descriptions were checked live. Full-paper browser access was restricted;
+do not claim new paper-specific validation. Program scores are relative expression
+summaries; predicted phases are neither a measured division rate nor proof of
+G0/quiescence, malignancy, stress or product fitness.
+
+**Files:** new package-local `exploratory_models.py` and `exploratory.py`;
+integrate via `adapter.py`, reuse numerical loading in `method_runtime.py`;
+update `_input_contracts.py`, P0-06 spec/card/README, schema registration/export,
+affected stable documentation and `tests/test_p0_06_exploratory.py`.
+No new package, Web workflow, dependencies, review wave or unchanged QC run.
+
+**Execution (inline; existing isolated server worktree):**
+
+- [x] Add synthetic registered-tool tests: all observations retained, finite
+  method-separated scores, phase counts summing to n, null independent n and
+  no gate measurements; expect the new input to be rejected before implementation.
+  `PYTHONPATH=src python -m pytest -q tests/test_p0_06_exploratory.py`
+- [x] Add the typed mode and minimal runtime; reject changed bytes, mismatched
+  observation sets, ambiguous requested symbols, nonfinite/invalid raw counts, extra
+  product-review inputs and incomplete lists. Persist not_assessed outputs for
+  method/coverage failures without zero-valued fabricated phase counts.
+- [x] Verify new behavior and directly affected old P0-06 mode boundaries,
+  JSON Schema validity, repository policy and input immutability. Do not replay
+  the full suite or independent review pipeline.
+- [x] Execute the registered high-level tool on the existing genuine all-observation
+  D28 view in a fresh private server output directory; preserve sessions,
+  old receipts, raw inputs and live services. Record exact input/resource hashes,
+  package versions, actual execution states and descriptive results.
+- [x] Sync implemented stable facts and exact evidence to this plan and the existing
+  Draft PR using the established public-safe publication boundary; no merge.
+
+
+#### Task 27 engineering checkpoint
+
+The initial ten fixtures had a missing request ID; after correcting that setup,
+the registered new-input tests failed for the expected absent-schema/mode reason
+(9 failures, with the unchanged old-mode refusal already passing).
+The implemented descriptive route passed 16 scoped tests. A separate receipt test
+then exposed the omitted cycle-specific control-size field, which was added;
+the final new-mode run passed 17 tests with 116 existing upstream Scanpy
+deprecation warnings. Raw-count versus explicitly normalized layer equivalence,
+ignored alternate X/raw matrices, deterministic output, invalid count values,
+complete observation retention, missing genes and independent method failure
+are covered. These are synthetic engineering checks, not scientific validation.
+
+Three contract/discovery checks passed. Four old-mode checks first stopped at
+pinned v0.7 requests, then passed with current-version fixture routing. Four
+further legacy/source-bound/integration checks passed. Existing v0.3 schema
+payloads, old explicit projection specs and attestation rules are retained.
+Only fixture/example versions and current result-envelope metadata were aligned.
+
+Repository inventory checking exposed two already-committed curation files not
+in the prior named allowance. Their exact candidate/license paths and the six
+specific new exploratory implementation/schema/test files are now accounted for;
+the baseline and general allowance were not increased. Policy and whitespace
+checks passed. Formatting of the three new Python files preserved their syntax
+trees. No unchanged broad suite, independent review wave, source notebook, QC or
+cell-state computation was rerun. Genuine execution remains the next step.
+
+
+#### Task 27 genuine-input identifier correction
+
+The first isolated installed attempt stopped before measurement with
+`gene_symbols_not_unique`; its failed ToolRun and unchanged-input receipts are
+retained privately. The selected matrix has unique original feature IDs, while
+some non-program symbols annotate more than one feature. Every selected S/G2M
+symbol has one exact feature match. This is an identifier-resolution issue,
+not permission to collapse counts or revise the selected DataView.
+
+The [official Scanpy reader](https://scanpy.readthedocs.io/en/stable/generated/scanpy.read_10x_mtx.html)
+supports a gene-ID feature index, and ULM accepts matching feature IDs in its
+network. The bounded correction retains every original unique feature ID,
+resolves only exact requested symbols through the input's own symbol column,
+and records that mapping. Missing or ambiguous program symbols are separately
+`not_assessed`; no alias substitution, first-match choice, summing, symbol
+suffixing, feature removal or independent annotation service is used.
+Non-program duplicate symbols stay as distinct input features in the control/
+background universe and are reported. Existing product-bound modes retain their
+original symbol uniqueness behavior. P0-06 patch version 0.8.1 distinguishes
+this corrected execution from the failed 0.8.0 attempt.
+
+The duplicate-background and ambiguous-target regression cases both failed with
+the original blanket-symbol rejection, then passed with identity-preserving
+resolution. The complete new-mode test file passed 19 cases (136 upstream
+deprecation warnings). The final patch-version discovery, profile routing and
+two identifier cases passed four focused checks. The corrected run will use a
+new installed snapshot/output directory; the failed attempt is not overwritten.
+
+#### Task 27 genuine installed measurement and publication checkpoint
+
+The corrected P0-06 0.8.1 wheel was built from committed source and imported
+from a fresh isolated installation. The owner-approved request used the existing
+genuine selected DataView and the unchanged pinned Seurat lists, through the
+registered high-level SDK. Scanpy program scoring, decoupler ULM, Scanpy cycle
+classification and descriptive phase aggregation all returned succeeded.
+Every selected observation was retained; both gene lists had complete, unique
+feature matches. Aggregate JSON, per-observation Parquet and artifact-manifest
+hashes were rechecked against the ToolRun. Row uniqueness, missingness and phase
+count reconciliation were checked from the saved table, without rerunning methods.
+Private identities, observation scale, measured values and receipts remain in the
+private execution record, not this public plan.
+
+The result is descriptive_only: independence unknown, independent n null,
+state review pending, domain score null and score unavailable. Original QC
+readiness remains limited; QC was not reassessed. Stress was not assessed
+because no stress resource was selected. Shared-expression algorithms are not
+independent confirmations, and phase labels are not a division-rate, quiescence,
+purity, malignancy or product-acceptance result. The existing product-bound
+modes and their scientific/attestation gates were not weakened.
+
+The first failed identifier attempt is retained separately. Before/after
+checksums confirm that original input bytes, QC profile, canonical QC receipt
+and case session are unchanged. No notebook, QC or cell-state analysis was
+rerun; neither live preview was restarted. This is genuine installed SDK
+measurement, not a new Web conversation, Web result-card acceptance, automatic
+P0-08/P0-09 domain integration or report release. The live preview still uses
+its earlier snapshot.
+
+At the publication checkpoint, previous public-head CI `07750ffc`
+([run 34256051415](https://github.com/starvingarc/BRIDGE/actions/runs/34256051415))
+completed with **1 failed, 2,213 passed, 66 warnings**; subsequent Web and
+repository gates were skipped. The sole failure was an obsolete exact context-key
+expectation that omitted the existing status-only clarification context.
+That exact test was reproduced, then its explicit expected field and empty-context
+assertion were aligned without changing runtime behavior or weakening the private-
+value checks. The focused rerun passed; this is not full-suite or current-head CI
+acceptance. Publication remains Draft and unmerged, with new-head CI separate.
 
 ### Task 24: Inline question/draft cards and the real next-stage route
 

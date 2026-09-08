@@ -18,7 +18,12 @@ This directory contains the program-scoring and evidence-aggregation package.
   Program genes, weights and phases remain in the checksummed ProgramSpec; the
   method spec only selects program IDs and execution parameters. A caller-owned
   `ProgramEvidenceBundle` is refused in this mode.
-- **Output:** tool v0.7.0 emits profile v0.3. Legacy projections preserve the
+- **Exploratory mode:** one checksummed selected DataView H5AD and an explicit
+  versioned S/G2M resource input produce descriptive expression/phase summaries
+  without reviewed states or invented independence. Exact input and output limits
+  are in the [Tool Card](../cards/P0-06.md#exploratory-selected-view-mode).
+- **Output:** tool v0.8.1 emits a versioned result union: exploratory profile v0.1
+  or unchanged product profile v0.3. Legacy projections preserve the
   legacy evidence-state mapping. Method projections are created one-to-one from
   actual program-score and cell-cycle summaries: available values are `inferred`;
   `not_assessed` values remain numeric-null `unavailable`. Both use

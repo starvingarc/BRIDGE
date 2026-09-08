@@ -98,14 +98,8 @@ def _package_versions() -> dict[str, str]:
     return result
 
 
-def _load_expression(
-    *,
-    asset: InputAsset,
-    method_spec: ProcessMethodSpec,
-    method_input: ProcessMethodInput | ProcessMethodInputV2,
-    assignment: BiologicalUnitAssignmentArtifact,
-    source_observation_states: tuple[ProcessObservationStateV2, ...] | None,
-) -> _ExpressionData:
+def load_expression_matrix(*, asset: InputAsset, gene_symbol_column: str | None) -> Any:
+    """Load a declared matrix without interpreting biological units or states."""
     anndata = _require_module("anndata")
     try:
         adata = anndata.read_h5ad(asset.path)
@@ -117,13 +111,13 @@ def _load_expression(
     if len(set(observation_ids.tolist())) != len(observation_ids):
         raise ProcessMethodError("expression_observation_ids_not_unique")
 
-    if method_spec.gene_symbol_column is None:
+    if gene_symbol_column is None:
         genes = np.asarray(adata.var_names.astype(str), dtype=object)
     else:
-        if method_spec.gene_symbol_column not in adata.var:
+        if gene_symbol_column not in adata.var:
             raise ProcessMethodError("gene_symbol_column_missing")
         genes = np.asarray(
-            adata.var[method_spec.gene_symbol_column].astype(str), dtype=object
+            adata.var[gene_symbol_column].astype(str), dtype=object
         )
     if any(not gene or any(char.isspace() for char in gene) for gene in genes):
         raise ProcessMethodError("gene_symbols_invalid")
@@ -162,6 +156,23 @@ def _load_expression(
         adata.X = normalized
     else:
         adata.X = matrix.copy()
+
+    return adata
+
+
+def _load_expression(
+    *,
+    asset: InputAsset,
+    method_spec: ProcessMethodSpec,
+    method_input: ProcessMethodInput | ProcessMethodInputV2,
+    assignment: BiologicalUnitAssignmentArtifact,
+    source_observation_states: tuple[ProcessObservationStateV2, ...] | None,
+) -> _ExpressionData:
+    adata = load_expression_matrix(
+        asset=asset, gene_symbol_column=method_spec.gene_symbol_column
+    )
+    observation_ids = np.asarray(adata.obs_names.astype(str), dtype=object)
+    genes = np.asarray(adata.var_names.astype(str), dtype=object)
 
     assignment_by_id = {
         item.observation_id: item for item in assignment.assignments

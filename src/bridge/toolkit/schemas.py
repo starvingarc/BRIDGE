@@ -4,6 +4,9 @@ import json
 from importlib.resources import files
 
 SCHEMA_REFS = {
+    "bridge://schemas/exploratory-process-input/v0.1": "exploratory_process_input.schema.json",
+    "bridge://schemas/exploratory-process-profile/v0.1": "exploratory_process_profile.schema.json",
+    "bridge://schemas/proliferation-stress-response-result/v0.1": "proliferation_stress_response_result.schema.json",
     "bridge://schemas/agent-integration-profile/v0.1": "agent_integration_profile.schema.json",
     "bridge://schemas/annotation-vocabulary/v0.1": "annotation_vocabulary.schema.json",
     "bridge://schemas/artifact-manifest/v0.1": "artifact_manifest.schema.json",

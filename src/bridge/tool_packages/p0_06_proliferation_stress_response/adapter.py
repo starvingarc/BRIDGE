@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 import hashlib
+
+from bridge.tool_packages.p0_06_proliferation_stress_response.exploratory import (
+    exploratory_binding_reasons, measure_exploratory_process,
+)
+from bridge.tool_packages.p0_06_proliferation_stress_response.exploratory_models import (
+    EXPLORATORY_INPUT_SCHEMA, P006_RESULT_SCHEMA, ExploratoryProcessInput,
+)
 from dataclasses import dataclass
 
 from bridge.tool_packages._configurable_contracts import (
@@ -189,6 +196,10 @@ SOURCE_BOUND_METHOD_ROLE_MODELS: dict[
     ),
 }
 
+EXPLORATORY_ROLE_MODELS = {
+    "exploratory_process_input": (EXPLORATORY_INPUT_SCHEMA, "0.1.0", ExploratoryProcessInput),
+}
+
 OPTIONAL_ROLE_MODELS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
     "measurement_spec": (
         "bridge://schemas/measurement-spec/v0.2",
@@ -202,6 +213,7 @@ ROLE_MODELS = {
     **LEGACY_ROLE_MODELS,
     **METHOD_ROLE_MODELS,
     **SOURCE_BOUND_METHOD_ROLE_MODELS,
+    **EXPLORATORY_ROLE_MODELS,
     **OPTIONAL_ROLE_MODELS,
 }
 METHOD_MODES = {"method_runtime", "method_runtime_source_bound"}
@@ -244,6 +256,9 @@ class ProliferationStressResponseAdapter:
         loaded, reasons = _load_inputs(request.object_inputs, mode)
         if loaded is None or reasons:
             return _failed_run(request, spec, reasons)
+
+        if mode == "exploratory_process":
+            return _run_exploratory(request, spec, loaded)
 
         input_hash = _input_hash(request, spec)
         run_id = f"run-{input_hash[:16]}"
@@ -533,6 +548,8 @@ adapter = ProliferationStressResponseAdapter()
 
 
 def _request_mode(request: ToolRequestV2) -> str:
+    if any(ref.role == "exploratory_process_input" for ref in request.object_inputs):
+        return "exploratory_process"
     method_only_roles = set(METHOD_ROLE_MODELS).difference(COMMON_ROLE_MODELS)
     if request.assets or any(
         ref.role in method_only_roles for ref in request.object_inputs
@@ -553,6 +570,8 @@ def _request_mode(request: ToolRequestV2) -> str:
 def _role_models_for_mode(
     mode: str,
 ) -> dict[str, tuple[str, str, type[FrozenModel]]]:
+    if mode == "exploratory_process":
+        return EXPLORATORY_ROLE_MODELS
     if mode == "method_runtime_source_bound":
         return SOURCE_BOUND_METHOD_ROLE_MODELS
     if mode == "method_runtime":
@@ -573,7 +592,7 @@ def _envelope_reasons(
     if request.parameters:
         reasons.append("p0_06_parameters_forbidden")
     required_role_models = _role_models_for_mode(mode)
-    role_models = {**required_role_models, **OPTIONAL_ROLE_MODELS}
+    role_models = {**required_role_models, **({} if mode == "exploratory_process" else OPTIONAL_ROLE_MODELS)}
     roles = [ref.role for ref in request.object_inputs]
     for role in required_role_models:
         if roles.count(role) != 1:
@@ -584,8 +603,9 @@ def _envelope_reasons(
         reasons.append("at_most_one_measurement_spec_allowed")
     if mode in METHOD_MODES and "program_evidence_bundle" in roles:
         reasons.append("program_evidence_bundle_forbidden_in_method_runtime")
-    if spec.result_schema_ref != PROFILE_V3_SCHEMA_REF:
-        reasons.append("p0_06_profile_v3_required")
+    if (spec.result_schema_ref not in {PROFILE_V3_SCHEMA_REF, P006_RESULT_SCHEMA}
+            or (mode == "exploratory_process" and spec.result_schema_ref != P006_RESULT_SCHEMA)):
+        reasons.append("p0_06_result_schema_required")
     if any(role not in role_models for role in roles):
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
@@ -659,12 +679,67 @@ def _validate_object_version(
         raise StructuredInputError("object_input_version_mismatch")
 
 
+def _run_exploratory(request, spec, loaded):
+    input_hash = _input_hash(request, spec)
+    run_id = f"run-{input_hash[:16]}"
+    source = single_object(request, loaded, "exploratory_process_input", ExploratoryProcessInput)
+    asset = request.assets[0]
+    try:
+        result, observation_bytes = measure_exploratory_process(
+            source=source, asset=asset, tool_version=spec.version,
+            input_sha256=_input_sha(request, "exploratory_process_input"),
+            run_id=run_id, random_seed=request.random_seed,
+        )
+    except ProcessMethodError as exc:
+        return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+    payloads = {
+        "exploratory_process_profile.json": canonical_json_bytes(result.model_dump(mode="json"), indent=2),
+        "exploratory_observation_scores.parquet": observation_bytes,
+    }
+    payloads["artifact_manifest.json"] = canonical_json_bytes(
+        _artifact_manifest_payload(request=request, spec=spec, run_id=run_id,
+                                   input_hash=input_hash, artifact_payloads=payloads), indent=2,
+    )
+    try:
+        published = _publish_bundle(
+            request=request, run_id=run_id, payloads=payloads,
+            inputs_are_unchanged=lambda refs: (
+                inputs_unchanged(refs) and _expression_asset_unchanged(request.assets, asset.checksum)
+            ),
+        )
+    except PublicationError as exc:
+        return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+    artifacts = [
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:{name.rsplit('.', 1)[0]}",
+            kind=name.rsplit(".", 1)[0], path=published[name],
+            media_type=_artifact_media_type(name),
+            sha256=hashlib.sha256(content).hexdigest(), evidence_ids=[result.profile_id],
+        )
+        for name, content in payloads.items()
+    ]
+    warnings = sorted({r for execution in result.executions for r in execution.reason_codes})
+    return ToolRunV2(
+        run_id=run_id, request=request, implementation_state=ImplementationState.IMPLEMENTED,
+        execution_state=ExecutionState.PARTIAL if warnings else ExecutionState.SUCCEEDED,
+        tool_version=spec.version, environment_spec_id=spec.environment_spec_id,
+        input_hash=input_hash, created_at=result.created_at, measurements=[],
+        artifacts=artifacts, visualizations=[], result_schema_ref=spec.result_schema_ref,
+        result=result.model_dump(mode="json"), reason_codes=[], warnings=warnings,
+    )
+
+
 def _binding_reasons(
     request: ToolRequestV2,
     loaded: LoadedInputs,
     spec: ToolPackageSpecV2,
     mode: str,
 ) -> list[str]:
+    if mode == "exploratory_process":
+        return exploratory_binding_reasons(
+            single_object(request, loaded, "exploratory_process_input", ExploratoryProcessInput),
+            request.assets[0], spec,
+        )
     product_case = single_object(request, loaded, "product_case", ProductCase)
     product_definition = single_object(
         request,
@@ -1552,6 +1627,7 @@ def _artifact_media_type(filename: str) -> str:
         "png": "image/png",
         "svg": "image/svg+xml",
         "tsv": "text/tab-separated-values",
+        "parquet": "application/vnd.apache.parquet",
     }
     try:
         return media_types[suffix]

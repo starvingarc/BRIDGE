@@ -470,7 +470,7 @@ def _method_request(tmp_path: Path, *, raw_counts: bool = False) -> ToolRequestV
     return ToolRequestV2(
         request_id="request-p0-06-method-runtime",
         tool_id="P0-06",
-        tool_version="0.7.0",
+        tool_version=ToolRegistry.load_default().describe("P0-06").version,
         output_dir=tmp_path / "output",
         assets=[
             InputAsset(

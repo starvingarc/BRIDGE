@@ -750,7 +750,7 @@
     {
       "binding_id": "process-signals",
       "tool_id": "P0-06",
-      "tool_version": "0.7.0",
+      "tool_version": "0.8.1",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": ["qc-selected-expression"],
