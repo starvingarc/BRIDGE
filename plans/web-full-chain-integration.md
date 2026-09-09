@@ -7,7 +7,451 @@
 **Architecture:** Retain PlanBuilder, exact AnalysisPlan approval, ToolExecutionPipeline and LocalWorkflowExecutor. Materialize each stage only after its real inputs exist; retain prior plans and canonical ToolRuns.
 **Tech Stack:** Existing Python/FastAPI runtime, React/assistant-ui client and server-side Playwright.
 **Spec:** [Agent integration](../docs/agent-integration.md), [local runtime](../docs/local-agent-runtime.md), [Web preview](../docs/web-preview.md), and the user-approved design below.
-**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK. Task 28 adds separately approved genuine L2 marker-context evidence through installed P0-02 0.5.4 while preserving original labels, reference profiles and QC. Neither increment mutated the preview/session. Task 29 then completed explicit technical QC selection and reran the existing P0-02/P0-06 chain on the genuine filtered view, preserving original data and references; Scrublet threshold review and no-raw-droplet limitations remain. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
+**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK. Task 28 adds separately approved genuine L2 marker-context evidence through installed P0-02 0.5.4 while preserving original labels, reference profiles and QC. Neither increment mutated the preview/session. Task 29 then completed explicit technical QC selection and reran the existing P0-02/P0-06 chain on the genuine filtered view, preserving original data and references; Scrublet threshold review and no-raw-droplet limitations remain. Tasks 30–32 now add the owner-approved metadata/protocol-first intake, installed from `9499be0f` and verified against the original selected upload without new scientific execution. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
+
+## Approved metadata-first intake increment (2026-09-09)
+
+The owner approved replacing repetitive intake questions with automatic data and
+protocol interpretation, followed only by questions about consequential missing
+or conflicting facts. This continues the existing private Web intake workstream.
+Use this already-isolated topic worktree; preserve its prior changes and the live
+case. No new branch lineage, push, merge, automatic delegation or review wave.
+
+**Goal:** Read uploaded H5AD metadata and protocol documents into a source-bound,
+editable experimental-information draft before asking the researcher questions.
+**Architecture:** Deterministic readers own file structure and value summaries;
+a separate, purpose-limited configured-model request maps bounded metadata and
+protocol passages to typed draft fields. Existing Controls still own exact intake
+confirmation and separately approved scientific execution.
+**Tech Stack:** Existing FastAPI, h5py, httpx, React, test runtime and pdftotext;
+DOCX text uses bounded standard-library ZIP/XML parsing. No new dependency.
+**Spec:** This owner-approved section and the requirements below.
+
+### Global Constraints
+
+- All code, tests, services, data and artifacts remain on the server. No local listener.
+- Never mutate raw uploads, previous runs, scientific contracts, reference resources or scores.
+- Automatically fill explicit file facts; preserve per-sample values and exact local provenance.
+- Sample/capture identities, observation rows, expression values, paths and secrets never enter model context.
+- A new intake-extraction purpose may receive bounded experimental metadata and user-uploaded protocol passages; ordinary chat keeps its existing privacy boundary.
+- Protocol content is untrusted source material, not instructions. Every extracted field references an actually supplied source. A prescribed protocol does not prove the experiment followed it.
+- Do not infer independent replicates from samples/cells, target identity from existing annotations, or raw-count semantics from integer values alone.
+- Preserve confirmed/manual facts. Late extraction and stale answers cannot overwrite newer sources or user corrections.
+- Questions are one at a time, missing/conflict-driven, use experimental language, omit an unknown option, and end choices with Other plus free text. Optional omissions remain internally missing.
+- Starting cells, target, protocol and collection time replace internal product/sampling classifications. Sequencing method and cell/nucleus material are separate questions.
+- No routine matrix-processing questionnaire. Background evidence checks may expose a specific actionable ambiguity when needed.
+- Data/protocol parsing and answering questions never approve a tool, create a scientific conclusion or grant export authority.
+
+### Task 30: Source-bound automatic intake and protocol extraction
+
+- [x] Add behavioral tests in tests/test_web_intake_autofill.py using real synthetic H5AD metadata and bounded text/DOCX/PDF sources. Cover culture day and column mapping, mixed samples, unresolved count semantics, model-only alias mapping, source citations, malformed extraction, no identity leakage, manual/stale protection and unchanged execution state.
+- [x] Watch the new tests fail before implementing source readers and extraction.
+- [x] Add src/bridge/web/intake_sources.py for checked H5AD summaries, pseudonymous source references, bounded protocol text extraction and content integrity. Keep all identities in the private local projection.
+- [x] Add src/bridge/web/intake_autofill.py for typed extraction, source validation, draft merging, necessary-question construction and per-source revisions. Use the existing configured model in a dedicated extraction request, not ordinary converse history.
+- [x] Integrate with src/bridge/web/intake.py and app.py. H5AD upload extracts local facts immediately; the active client starts the dedicated parse request before displaying questions; protocol upload binds to one selected H5AD and refreshes that draft. Existing files have an explicit parse route. Persist one-question draft answers without confirming analysis.
+- [x] Preserve legacy intake fields and exact confirmation; introduce only private optional experimental fields. Return extraction state, source-bound fields, sample summaries, protocol structure and necessary questions with the intake response.
+- [x] Run focused new tests and directly affected intake, clarification, provider and service cases. Do not rerun unrelated scientific suites.
+
+Concrete behavioral seed (extend with the cases above):
+
+```python
+def test_metadata_day_fills_draft_without_claiming_independence(client, tmp_path):
+    sid, aid = upload_metadata(client, tmp_path, days=[28, 28], samples=["s1", "s1"])
+    value = client.get(f"/api/sessions/{sid}/intake", params={"upload_id": aid}).json()
+    assert value["facts"]["culture_day"] == 28
+    assert value["facts"]["sample_id_column"] == "sample_id"
+    assert value["facts"]["independent_cultures"] is None
+    assert value["facts"]["count_semantics"] == "unknown"
+    assert "culture_day" not in [q["field"] for q in value["autofill"]["questions"]]
+    assert client.get(f"/api/sessions/{sid}").json()["plan"] is None
+```
+
+### Task 31: Experimental-information cards and protocol upload
+
+- [x] Add focused browser-component tests before changing the UI: known day is shown in the summary rather than asked; one missing question at a time; Other exposes free text; no unknown radio; answers survive refresh; stale async results cannot replace edits; protocol upload and parsing states work; exact review/plan approval remains separate.
+- [x] Replace the repeated initial form in web/src/components/ProductIntake.tsx with source-labelled summary, protocol upload and a focused question card. Use a separate component for card state, not a second backend authority.
+- [x] Update web/src/types.ts, api.ts, intakeLabels.ts and styles.css for the exact backend response/operations. Retain an editable review and legacy confirmation/history flows.
+- [x] Remove unknown options from the existing ClarificationCard while keeping old stored unknown answers readable; Other remains last. Align provider wording so known extracted fields are not re-asked.
+- [x] Run only new/affected frontend tests in a private server build directory with existing pinned dependencies, then typecheck and build.
+
+### Task 32: Installed acceptance and documentation
+
+- [x] Update docs/web-preview.md and docs/privacy-and-provenance.md with implemented extraction boundaries; append the owner-approved purpose extension in docs/decision-log.md.
+- [x] Build an isolated installed package/client snapshot, then use the actual configured model and browser against fresh private acceptance storage. Verify metadata auto-fill and one real published protocol through upload, extraction, source display and remaining questions. No scientific tool execution is needed for this intake change.
+- [x] Check the current preview is idle and preserve its storage before replacing only its process with the verified snapshot. Leave other previews and old data intact. Open the existing selected session server-side and parse its existing upload; do not fill missing biological answers on the researcher's behalf.
+- [x] Record exact source/build revisions, checks, actual model/UI findings and remaining limits here. Keep implementation, installation and observed behavior separate.
+
+### Tasks 30–32 acceptance record (2026-09-09)
+
+Implemented in `56417b1c`, followed by the bounded protocol-upload envelope
+correction `a8f223a6` and source-explicit protocol-timing guard
+`9499be0fdbacd575d1d7be41bc3596079f2ea569`. The last revision is the
+installed preview source, separate from this documentation-only closeout.
+
+- The final clean-source package was installed into an isolated target; packaged
+  source files were byte-checked against that revision. Installed intake,
+  clarification and new autofill checks: **59 passed**, with two existing
+  dependency deprecation warnings. Affected frontend checks: **17 passed**;
+  typecheck and production build passed. The existing large-chunk warning remains.
+- Server-side real-browser acceptance used the actual configured model, a copy
+  of the genuine 6,247-cell / 33,538-gene D28 upload, and the published
+  [JCI protocol paper](https://www.jci.org/articles/view/156768).
+  File metadata filled D28; an Other answer survived refresh and later extraction;
+  the approximately 19 MiB PDF uploaded through the real form and produced
+  source-labelled experimental fields and six **candidate** protocol stages.
+  Desktop and 390-pixel mobile views were inspected. One unauthenticated
+  pre-login probe returned the expected 401; no post-login browser exception
+  or framework overlay remained.
+- Actual-model probing exposed unsupported day-interval inference. The final
+  installed guard was tested against those same six model-produced stages and
+  original source passages: five unsupported intervals became empty and marked
+  for confirmation; the explicitly cited days 13–21 interval was retained.
+  This bounded literal-range check is not semantic validation of every stage
+  label, operation, or experimental applicability.
+- After checking every existing case was idle, the selected preview alone was
+  updated from the verified package/client. A complete 632-file private storage
+  backup was preserved, followed by a seven-session snapshot before the final
+  guard update. Original upload and historical-artifact hashes were unchanged.
+  The original selected case was reopened in the actual browser on the final
+  revision: D28 was filled and the first remaining question was starting cells.
+  No biological answers or protocol files from acceptance were copied into it.
+- No scientific tool, new analysis plan, exact input confirmation, push or merge
+  was performed for this increment. The isolated acceptance service was retired;
+  other previews, prior receipts and reference paths were preserved.
+
+Sources and server-owned excerpts make extraction inspectable; they do not attest
+that the uploaded protocol describes this particular sample or was followed.
+Independent culture count, raw-count semantics and consequential missing facts
+remain unresolved without evidence or researcher confirmation. Scanned PDFs
+require selectable text first; bounded excerpts can be incomplete. Full downstream
+scientific product evaluation and report qualification remain outside this change.
+
+### Task 33: Do not question unused intake metadata (2026-09-09)
+
+The owner-directed live walkthrough found that a cell-line question was emitted
+only because the field was empty, although the current analysis flow did not
+consume it. This is a deterministic intake-policy issue, not a model-capability
+failure. Apply the same consumer check to the other intake questions; do not add
+a generic question engine or compensate for unrelated model errors.
+
+- Keep target cell type, target stage, cell/nucleus assay and independent culture
+  count questions, which have actual consumers in the current Web flow.
+- Preserve starting-cell, cell-line, day and detailed sequencing metadata and
+  existing user answers; stop asking for them solely because they are absent.
+- Retain unresolved optional-field source conflicts privately without forcing
+  them into the reply queue. Consequential conflicts must remain visible.
+- Run the focused regressions and installed-package checks; update only the idle
+  selected preview, preserve the ongoing iPSC answer, then resume its real UI.
+- Completed: source `4b710cfd` with context-expectation correction `29c18e0e`;
+  the latter clean revision was packaged, installed and deployed to the selected
+  preview. New policy checks first failed on unnecessary questions/conflicts;
+  the 25 focused checks then passed. Installed intake/clarification checks:
+  **61 passed**, with two existing dependency warnings. Frontend: **17 passed**;
+  typecheck and build passed. The first installed check exposed one outdated
+  provider-context expectation, corrected without loosening its privacy checks.
+- Actual server-browser observation on the final revision: the original user's
+  iPSC answer and D28 remain; no cell-line question; the next question is the
+  intended target cell type. Seven existing session snapshots were preserved
+  before replacing only the idle selected preview, and stored answers, inputs,
+  plans, messages and historical runs were compared unchanged afterward.
+- No new model/scientific execution, automatic user answer, push or merge. This
+  is a bounded question-policy correction based on current field consumers,
+  not a general dynamic-question planner or a model-capability evaluation.
+
+### Task 34: Separate therapeutic target lineage from product stage (2026-09-09)
+
+The owner corrected the target options: the treatment-oriented target is the
+midbrain dopaminergic lineage; progenitor, neuroblast and neuron terminology
+concerns developmental state, not mutually exclusive therapeutic lineages.
+Change only the default target choice to midbrain dopaminergic lineage cells
+plus Other. Do not preselect an answer or infer the sample stage, alter formal
+product/state-role criteria, or infer transplantation suitability.
+
+The [Kyoto trial](https://www.nature.com/articles/s41586-025-08700-0) reports an
+approximately 60% DA-progenitor / 40% DA-neuron final product, while the
+[bemdaneprocel trial](https://www.nature.com/articles/s41586-025-08845-y) describes
+a DA-neuron progenitor product despite the broader neuron wording in its title.
+These examples motivate separating the axes; they are not a census establishing
+which stage dominates all clinical protocols or a finding about this uploaded sample.
+
+- Add a behavioral regression: selecting the offered default stores lineage,
+  leaves stage unresolved and does not approve or run analysis.
+- Preserve existing session records; update only the verified idle preview.
+- Completed on installed source `f952e6b0338d7925c39f4f35f501c2625aff4c18`.
+  The new regression first failed because the old default stored progenitors;
+  after the change, source and installed intake/clarification checks each passed
+  **62 tests**, with two existing dependency warnings. The unchanged frontend
+  passed **17 tests**, typecheck and build in the packaged snapshot.
+- Actual server-browser observation confirmed the original session displays
+  lineage plus Other, with no radio selected and both target and stage still
+  unresolved. Seven session snapshots were preserved before replacing only the
+  idle selected preview; existing input records, answers, plans, messages and
+  historical runs were compared unchanged afterward. No scientific execution,
+  automatic answer, push, merge or formal scientific-criterion change.
+
+### Task 35: Bind culture questions to the uploaded observation columns (2026-09-09)
+
+Owner-approved bounded revision: ask whether a named data column represents
+independently cultured batches, instead of asking a detached numeric count.
+Persist the column/meaning and exact-upload binding; do not infer biology from
+sample/capture labels. Negative answers request another column or a free-text
+mapping; uncertainty, incomplete reads or missing identifiers leave counts unknown.
+A later correction retracts the derived count. No formal scientific object,
+method, replication eligibility, model change or automatic analysis is introduced.
+
+- Nine new backend regressions failed on the missing field-question behavior,
+  then passed. Three older questionnaire expectations were adjusted to the new
+  fields, without weakening privacy checks. Source intake/clarification checks:
+  **71 passed**, with two existing dependency deprecation warnings.
+- Three new frontend regressions failed on missing helper text/recheck/missingness
+  UI, then passed. One additional mapping-edit regression caught a free-text answer
+  being sent as a column name and passed after correcting that request flag.
+- Completed on installed source `1d1bec0d7da0ca3ed06f9a75c4cc790917bb326d`.
+  The exact wheel passed **71 intake/clarification tests**; packaged client passed
+  **21 tests**, typecheck and production build. Two existing Python dependency
+  warnings and the existing non-fatal client chunk warning remain.
+- Real server-browser checks on the original sample at 1440x1200 and 390x844
+  verified the named sample_id question and all three options, no numeric input,
+  interactive radios, empty selection after refresh, no automatic POST and no
+  relevant post-login console/runtime errors. The initial unauthenticated 401
+  was expected; mobile capture waited for the existing navigation transition.
+- Seven session snapshots were preserved before replacing only the idle current
+  preview. Prior answers, confirmed inputs, messages, plans and historical runs
+  were compared unchanged; only the additive column profile/revision migrated.
+  No batch answer was submitted, no scientific analysis ran, and no push or merge
+  occurred. Formal biological-unit relationships and downstream measured-input
+  acceptance remain outside this change. Do not repeat unchanged scientific suites.
+
+### Task 36: Custom answer on the named-column meaning question (2026-09-09)
+
+Owner approved adding Other directly to the named-column culture question.
+Custom text remains an editable, upload/column-bound researcher supplement,
+not a new biological role or replication count. Existing answers are not migrated
+or replayed. A later explicit role or column recheck clears the old supplement.
+
+- Six selected backend cases first failed on the missing choice/rejected answer;
+  the added frontend interaction failed because the saved explanation was absent.
+- After the bounded implementation, **75 source intake/clarification tests** and
+  **16 source client intake tests** passed; client typecheck passed. Two existing
+  Python dependency deprecation warnings remain.
+- Follow-up confirmation-card regression caught the free-text note replacing the
+  typed role in the displayed change set. The note now has a distinct private key,
+  and its removal is explicitly shown without invalidating older note-free records.
+  The expanded source backend checks pass **76 tests**.
+- Completed on exact installed revision `5264393d6ad6bac1f66cdc28886f6a5f0696afb1`:
+  **76 installed backend checks**, **22 packaged client checks**, typecheck and build
+  passed. A fresh isolated browser fixture verified desktop/mobile, empty Other
+  rejection, save/refresh/edit, correction clearing the note, and separate typed
+  confirmation. Two existing Python warnings and the client chunk warning remain.
+- On the real selected preview, all seven prior session records, user answers,
+  declarations, plans, messages and runs were compared unchanged; the original
+  case received zero answer POSTs. The previously user-declared culture mapping
+  is preserved, not independently established. No new scientific/model execution,
+  original-case confirmation, push or merge occurred.
+
+### Task 37: BPL formalization and human review design (2026-09-09)
+
+Scope approved: the existing configured LLM proposes BPL from uploaded protocols;
+use the actual upstream compiler, retain source references and ask about missing
+information, then save a human-reviewed representation. No experiment execution.
+
+The [written design](../docs/superpowers/specs/2026-09-09-protocol-bpl-design.md)
+is **approved by the user**, who also explicitly requested assessing its meaning
+for BRIDGE. Its first consumer is the protocol-review part of intake, not a
+scientific score or execution engine. It records separate
+syntax/compiler/coverage/review states, isolated compiler runtime, bounded repair,
+no fabricated parameters, immutable provenance and unchanged original-case facts.
+Actual pinned-compiler characterization reproduced default durations, generic
+HumanStep fallback, first-protocol-only selection, unhandled statement dropping,
+unverified container mapping and incorrect volume conversion. Fifteen synthetic
+cases exercised 45 real parse/validate/lower calls; this does not reproduce the
+paper's model or benchmark.
+
+Repository layout check is not green: the starting commit already contains 613
+tracked files against a budget of 606. The explicit new design adds one file;
+this pre-existing gate is recorded, not waived, and the budget is not changed.
+The source implementation adds five files (619 tracked against 606); no file-count
+allowance is expanded, and this repository-wide gate remains open.
+### Task 37 implementation plan
+
+> Execute inline in this existing server worktree, following the owner's existing
+> no-automatic-delegation/no-review-wave instruction. Keep TDD and exact installed
+> acceptance; do not repeat unrelated scientific suites.
+
+**Goal:** Turn one uploaded protocol into source-linked BPL and an honestly scoped,
+versioned human review without changing product facts or executing experiments.
+**Architecture:** Reuse intake upload, session lock, schedule/epoch and authenticated
+API boundaries. One formalization module owns versioned representation; one compiler
+adapter owns a pinned child process; one React component owns readable review.
+**Tech Stack:** Current Python 3.12/FastAPI/httpx/Pydantic/React; pinned upstream BPL
+in a separate private Python 3.13 environment; existing server Playwright.
+**Spec:** `docs/superpowers/specs/2026-09-09-protocol-bpl-design.md`.
+
+#### Global Constraints
+
+- All code, tests, services, data and artifacts remain on the server. No local listener.
+- BPL upstream commit `4e505740f5025d59ba655c6c955f83876f753007`, version 2.4.0, MIT.
+- BPL 128 KiB; at most 200 readable steps; one initial plus two repair requests.
+- Compiler 30 seconds, 512 MiB, 8 MiB total output; fixed parse/validate/lower, human target.
+- No scientific-schema/score/reference change, execution, model training, automatic
+  intake confirmation, original-case answer, push or merge.
+- Keep task, syntax, compiler, source coverage and human review states independent.
+- Uploaded text is untrusted data. No missing parameter defaults, invented
+  citations, source-step deletion, external import/path loading or arbitrary commands.
+- Preserve original relative times, previous complete versions and exact review digest.
+- Each attachment is independent; old attachments require explicit initiation.
+- Configured-model context contains only bounded sanitized protocol sources and
+  relevant user supplements; never raw H5AD rows, sample identities, paths or secrets.
+- Child process inherits no provider credentials, login token, HOME or user config.
+
+#### Task 37.1: Characterize the real pinned compiler before freezing adapter claims
+
+**Files:** Private server-only pinned upstream checkout/runtime and reproducible probe
+script/JSON; update this plan and approved design with results. No BRIDGE runtime edit.
+**Consumes:** Pinned upstream source and its public minimal example.
+**Produces:** Case receipts containing exact BPL, parse/validate/lower exit status,
+AST/plan output, elapsed time and explicitly observed unsupported/defaulted behavior.
+
+- [x] Create a fresh private directory; clone upstream and detach exactly at the
+  pinned commit. Read its CLI/import paths before running. Install Python 3.13 and
+  dependencies there without upgrading any BRIDGE environment.
+- [x] Run the official minimal example and synthetic counterexamples for 1 mL
+  transfer, absent/invalid wait, unknown call, multiple protocols, if/for/while,
+  unknown containers and HumanStep fallback. Only compilation, never simulation.
+- [x] Make each expectation executable; unexpected behavior is recorded rather
+  than edited away. Example characterization seed:
+
+```python
+case = {"source": "protocol Probe { wait() }", "stage": "lower"}
+receipt = run_fixed_stage(case)  # private script; fixed argv, clean env, timeout
+assert receipt["returncode"] in (0, 10, 11)
+# Inspect exact generated duration; a defaulted plan is NOT missingness resolution.
+```
+
+- [x] Freeze actual supported/unsupported claims and adapter shape below against
+  these receipts; if safe honest separation is impossible, report that blocker.
+- [x] Commit public-safe findings only; keep original outputs/private paths outside Git.
+
+#### Task 37.2: Source-bound formalization and isolated compiler adapter
+
+**Files:** Create `src/bridge/web/protocol_compiler.py`,
+`src/bridge/web/protocol_formalization.py`, `tests/test_web_protocol_formalization.py`.
+Modify `intake_autofill.py` (per-attachment source IDs and worker handoff),
+`app.py` (authenticated operations/settings). Check actual new source/test layout
+without expanding or waiving the already failing tracked-file budget.
+**Interfaces:** `protocol_compiler.compile_bpl(text: str, python: str) -> dict`
+returns `syntax_state, compiler_state, diagnostics, unchecked, ast, plan, compiler`.
+`protocol_formalization.public(service, state, aid) -> list[dict]` returns each
+attachment's latest version and history summary; `start(service,state,body)`,
+`answer(service,state,body)`, `review(service,state,body)` operate under the
+existing service lock. Input body binds `upload_id, protocol_id, revision`;
+answer additionally binds `question_id, value, other, unsure`; review binds digest.
+Version includes `revision, digest, state, source_binding, generation, bpl, steps,
+questions, syntax_state, compiler_state, coverage_state, unchecked, review_state`.
+The model supplies `id, label, operations, bpl_fragment, bpl_occurrence, source_ids`;
+the server derives physical `line_start, line_end` from the exact BPL fragment.
+Quotes are retrieved from checked server sources, never trusted from model text.
+
+- [x] Write failing tests for missing module/real compiler contract and generation
+  using bounded typed provider replies. Include forged citation, missing source
+  accounting, dropped AST steps, import/path, budget, stale epoch/revision,
+  independent attachments and unchanged facts/messages/plans/runs.
+```python
+def test_unsafe_source_is_not_sent_to_compiler():
+    from bridge.web.protocol_compiler import compile_bpl
+    result = compile_bpl('import "/etc/passwd"', "/missing/runtime")
+    assert result["compiler_state"] == "not_run"
+    assert result["syntax_state"] == "not_run"  # policy rejection precedes parsing
+```
+- [x] Run focused new tests and observe intended failures before implementation.
+- [x] Implement the fixed child process with clean environment/resource limits and
+  complete machine-readable outputs. Keep general calls/control flow explicitly
+  unchecked. Use AST/source-map coverage to expose lost statements and defaults.
+- [x] Implement typed LLM generation with actual configured provider protocol, three
+  request limit, source references and full extracted-passage accounting. Separate
+  source-backed values from user statements; unresolved details stay questions.
+  Errors preserve the last full version and show unavailable; never silently
+  relabel technical errors as biological failures.
+- [x] Persist each complete attempt as append-only private JSON/BPL/AST/plan/diagnostic
+  artifacts, hash-bind review, and expose authenticated download. Reuse existing
+  schedule/epoch fencing; attach workers may hand off within the same worker.
+  A stopped/superseded operation cannot publish a late version.
+- [x] Add answer/edit/retry/review routes. One question at a time, Other and unsure;
+  answer/edit creates a new unreviewed checked version without confirmation of facts.
+- [x] Run `python -m pytest -q tests/test_web_protocol_formalization.py
+  tests/test_web_intake_autofill.py tests/test_web_intake.py tests/test_web_intake_batches.py`
+  in the existing server runtime with `PYTHONPATH=src`; commit only scoped files.
+
+#### Task 37.3: Readable review, real model and exact installed acceptance
+
+**Files:** Create `web/src/components/ProtocolReview.tsx` and
+`web/tests/protocol-review.test.tsx`; modify `IntakeWizard.tsx`,
+`ProductIntake.tsx`, `types.ts`, `api.ts`, `styles.css`,
+`docs/web-preview.md`, `docs/privacy-and-provenance.md` and this plan.
+**Consumes:** Task 37.2 version contract and authenticated routes.
+**Produces:** Readable per-attachment review with independent syntax/compiler/
+coverage/review labels, source excerpts, one missingness question and version history.
+
+- [x] Write failing component tests for separate status labels, source display,
+  empty Other rejection, unsure handling, current digest review, retry and no
+  implicit scientific action. Seed assertion:
+```tsx
+render(<ProtocolReview value={versionWithUncheckedStep} busy={false}
+  onAction={onAction} />);
+assert.ok(screen.getByText("未检查"));
+assert.equal(screen.queryByText("方案验证通过"), null);
+```
+- [x] Implement source-backed readable steps and conditions; never render changed
+  plan defaults as real experimental values. BPL/raw checks stay expandable.
+  Keep errors/unknowns visible and controls independent of intake confirmation.
+- [x] Run new and affected component tests, typecheck and production build using
+  existing pinned server dependencies. Commit source and stable documentation.
+- [ ] Package exact clean revision into a fresh private release. Verify installed
+  tests plus one actual configured-LLM run on a public/authorized non-sensitive
+  protocol. Preserve all attempts and actual compiler diagnostics.
+- [ ] Server browser desktop/mobile: upload, read source, Other/unsure answer,
+  refresh, edit invalidating review, save exact version, downloads, no automatic
+  facts/plan/analysis. Inspect screenshots, console, overflow and error overlays.
+- [ ] Back up idle selected preview, install only verified release, compare all
+  original session data unchanged, retire only the isolated acceptance service.
+  Report source, installed, real-model and scientific evidence separately.
+
+**Source acceptance checkpoint (not installed acceptance):** The adapter verified
+the installed 99-file BPL source tree against SHA-256
+`7dd2a3fbd9199e57687a8a4f71df2aaecc724ba12aafe20cd7fd4566b74073c9`.
+The isolated runtime is Python 3.13.14, not an upgrade of BRIDGE's Python 3.12.
+Fixed limits and clean-environment characterization passed. Component/integration
+tests include old-attachment no-auto-generation and review access after intake
+confirmation. The affected frontend suite passed 40 tests; typecheck/build passed
+with the existing large-chunk warning. The focused backend suite passed 124 tests,
+including 48 BPL tests (10 against the real pinned compiler), with two existing
+Python deprecation warnings. This is not a repository-wide scientific-suite pass.
+
+A real configured-model probe used only the public JCI156768 in-vitro mDA methods
+subsection, four extracted passages/2,229 characters, not the whole paper or an
+attestation about the author's uploaded sample. Two exploratory generations failed
+within their three-request budgets; all drafts/diagnostics remain preserved.
+After fixing exact-fragment mapping, actual syntax examples and literal boundary
+handling, the third generation produced 11 source-mapped steps on its second
+request with real parse/validate/lower success. All 11 remain HumanStep-level
+operations with unvalidated experimental semantics; no parameters were adopted
+from compiler defaults. There were no source exclusions. This demonstrates a
+source-linked candidate representation, not full semantic fidelity or biology.
+An exact clean `90649b2e` wheel/client release passed installed backend tests,
+40 frontend tests, typecheck and build. Its first genuine browser upload used the
+same public subsection with a synthetic four-row H5AD solely to open intake.
+The real model exhausted its three-request job with `unsupported_question_option`;
+no BPL version was published and the acceptance service was stopped. Browser
+acceptance is therefore **not passed**. The normal 8770 preview remains on
+`5264393d`; no original session or experiment declaration was changed.
+At the owner's progress-report checkpoint, implementation is frozen for GitHub
+publication and evidence documentation, not promoted to an accepted live feature.
+Browser/preview-preservation gates below remain open.
+
+Self-review: spec sections 1–2 are rationale/global boundaries; sections 3–5 map
+to Tasks 37.2–37.3; section 6 maps to all three. Source/schema/interface names
+are fixed above; characterization may narrow compiler claims without widening
+scientific scope. No unimplemented capability is promoted into stable runtime docs.
 
 ## Current progress (2026-09-08)
 

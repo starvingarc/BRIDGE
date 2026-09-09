@@ -51,6 +51,88 @@ construction, not passed through a generic redaction filter. The approved initia
 implementation scope and acceptance gates are tracked in the
 [Web integration plan](../plans/web-full-chain-integration.md).
 
+## Intake Extraction Purpose
+
+The owner approved a separate `intake_extraction` purpose for uploaded
+experimental metadata and differentiation protocols. Deterministic readers
+select bounded semantic metadata; raw expression matrices, observation rows,
+gene/barcode values, sample/capture identities, filesystem paths, credentials
+and private hashes are not part of its request contract. Identifiers used for
+sample grouping stay in the authenticated local projection. Protocol passages
+are treated as untrusted data, never executable instructions. Known credential,
+email and private-path forms are redacted; this is not general anonymization
+or permission to upload arbitrary personal information.
+
+Each model field must cite a supplied source. The server, not the model, supplies
+its bounded original-text excerpt. PDF text uses reading order rather than
+interleaved columns. Whitespace/typographic normalization does not allow omitted
+words, fabricated sources or matrix-derived assay assertions.
+Nonuniform or incomplete observation summaries cannot establish a global
+culture day. Existing cell annotations do not establish intended target identity.
+Counts provenance and independent cultures are not model-inferred. The authenticated
+intake UI may show bounded candidate batch-column values and accept a researcher
+declaration of that column's meaning. These profiles, the selected column,
+relationship and upload hash remain private and are excluded from extraction and
+ordinary model context. A derived count requires explicit per-value independent
+culture confirmation, complete metadata and no missing identifiers. This is still
+a researcher declaration, not verified biological-unit relationships or formal
+replicate eligibility. Incomplete columns and free-text mappings retain an unknown
+count; older manually entered counts do not acquire an inferred column binding.
+A custom column-meaning answer is also retained verbatim in the private draft and
+exact confirmation source record, bound to the selected column and upload. It is
+not parsed into a role or count and does not enter the extraction model context.
+Changing or rechecking that mapping clears the superseded supplement. Proposed
+protocol date ranges are retained only when the cited passage explicitly contains
+that interval; sampling dates and inferred next-day starts do not establish it.
+Unsupported boundaries stay empty for review. This bounded check is not semantic
+validation of every stage label or operation. Uploaded protocol stages are
+prescribed intent, not observed execution. Failed citation
+validation or interrupted extraction retains the locally read facts.
+
+The file hash, protocol bytes, source labels and user revisions remain bound
+locally. A late model response cannot replace a newer manual answer. Newly
+attached protocols reopen the intake draft; an earlier confirmation does not
+automatically confirm a new source. Answers and extraction never approve
+analysis, authorize export or supply downstream scientific measurements.
+Ordinary conversational requests retain their prior private-intake boundary.
+
+## Protocol Formalization Purpose
+
+The owner separately approved `protocol_formalization`: the configured provider
+receives bounded, sanitized passages from one attached protocol and relevant
+versioned user supplements. It receives no H5AD expression/observation rows,
+sample identities, credentials, upload/protocol hashes or private filesystem
+paths. Old attachments are not backfilled by a GET. Each new attachment is
+handled independently; extraction hands off within the existing fenced worker
+only when the isolated compiler runtime is configured.
+
+The source module accepts model-proposed BPL plus step/source IDs, questions and
+explicitly excluded passages. The server locates exact BPL fragments, resolves
+quotes from checked sources and records source accounting and unchecked compiler
+semantics. Literal membership and source accounting are deliberately bounded
+checks, not semantic entailment or proof of complete preservation. Source day
+intervals must not acquire derived durations. At most three model requests are
+made per generation; repairs cannot reset the original source-step baseline.
+
+Original attachment bytes remain untouched. Complete representations are
+append-only BPL/AST/compiler-plan/diagnostic/version files bound to their source
+hashes, prompt/model identity and generation. All attempts remain private.
+User supplements retain superseded history and never become original-document
+statements. Editing BPL releases the old source map; a new version is unreviewed.
+Human review is a separate integrity-checked receipt for the exact current
+digest. Neither review nor compilation confirms execution, product facts,
+independent cultures, scientific inputs, a ToolRun or analysis approval.
+Authenticated downloads check session ownership and artifact integrity.
+
+BPL 2.4.0 is pinned by upstream commit and installed source-tree checksum in a
+separate Python 3.13 runtime. Its fixed parse/validate/lower entry points use a
+human target, a clean environment without provider credentials or HOME, and
+30-second/512-MiB/8-MiB resource bounds. This is not an arbitrary-code sandbox:
+uploaded code is never executed, and external imports/modules/paths are rejected
+before the compiler. There is no experiment simulation, robot export or network
+tool grant. Ordinary conversation and scientific-draft purposes do not acquire
+protocol contents or artifacts.
+
 ## Scientific Draft Purpose
 
 The private Web backend has a separate scientific-input draft request. It

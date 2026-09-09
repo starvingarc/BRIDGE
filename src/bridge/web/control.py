@@ -87,8 +87,11 @@ class Controls:
                 self.service.intake.commit(trial, body)
             except (ValueError, OSError, KeyError):
                 raise HTTPException(422, "invalid_intake_declaration") from None
-            before = self.service.intake.current_facts(state, aid).model_dump(mode="json")
-            values = payload["facts"]
+            before = self.service.intake.current_facts(state, aid, include_draft=False).model_dump(mode="json")
+            values = dict(payload["facts"])
+            sources = self.service.intake.confirmation_sources(state, aid)
+            before.update(state.get("_intakes", {}).get(aid, {}).get("source_facts", {key: "" for key in sources}))
+            values.update(sources)
         else:
             before = state["_uploads"][aid]
             values = {"source_family_id": body.source_family_id}

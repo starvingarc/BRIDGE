@@ -175,6 +175,27 @@ runtime still sends intake readiness only. Implementation and acceptance of the
 new draft-specific projection belong to the existing Web integration plan.
 
 
+## 2026-09-09: Metadata-First Experimental Intake
+
+The owner approved reading uploaded obs/var/uns metadata before asking research
+users repetitive questions, and using uploaded differentiation protocols to
+produce editable, source-cited experimental drafts. A dedicated configured-model
+purpose may receive bounded semantic metadata and protocol passages. It does not
+inherit general access to matrices, observation rows, sample/capture identities,
+private paths, credentials or provenance hashes.
+
+Direct metadata and source-backed model interpretation remain distinguishable.
+Known sample-scoped culture days are preserved without claiming independent
+replicates. Starting cells and sequencing methods use experimental language;
+internal product categories and routine matrix-processing questions are not the
+initial interview. Remaining questions appear one at a time with Other last,
+no unknown choice, and persistent private answers. Missing facts remain missing.
+
+User confirmation and tool approval remain separate gates. Prescribed protocol
+steps are not attested execution, annotations are not intended target identity,
+and file structure/integer values are not raw-count provenance. This increment
+changes intake, not the scientific measurement contracts or release criteria.
+
 ## 2026-09-09: Separate Descriptive Expression Measurement From Product Assessment
 
 The owner approved a bounded exploratory P0-06 route before product-state,

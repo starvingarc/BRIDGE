@@ -2239,6 +2239,62 @@ div.analysis-input-error {
 .scientific-draft > small { display: block; margin-top: 10px; }
 .scientific-draft [role=alert] { color: var(--danger); }
 
+.intake-wizard { min-width: 0; overflow-wrap: anywhere; }
+.intake-wizard h3 { font-size: 14px; margin: 0 0 8px; }
+.intake-wizard p { font-size: 13px; line-height: 1.6; margin: 8px 0; }
+.intake-wizard small, .intake-hint { display: block; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.intake-extracted, .intake-protocol { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.intake-extracted dl { margin: 12px 0; }
+.intake-extracted dl > div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; padding: 7px 0; }
+.intake-extracted dt { color: var(--muted); font-size: 12px; }
+.intake-extracted dd { margin: 0; font-size: 13px; }
+.intake-wizard details { font-size: 12px; margin-top: 6px; }
+.intake-wizard summary { cursor: pointer; }
+.intake-wizard blockquote { margin: 8px 0; padding-left: 8px; border-left: 2px solid var(--border); white-space: pre-wrap; }
+.intake-wizard button { border: 1px solid var(--border); border-radius: 6px; background: white; padding: 7px 10px; margin: 4px 4px 4px 0; font-size: 12px; }
+.intake-extracted dd > button { margin-left: 8px; padding: 2px 7px; }
+.intake-wizard button:disabled { opacity: .45; }
+.intake-question { padding: 18px 0; }
+.intake-question fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.intake-question legend { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.intake-choice { display: flex; align-items: center; gap: 8px; padding: 10px; margin: 6px 0; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; min-height: 44px; }
+.intake-question button[type=submit], .intake-wizard > .intake-primary { background: var(--ink); color: white; min-height: 40px; }
+.intake-protocol-upload { display: block; font-size: 13px; padding: 10px 0; }
+.intake-protocol-upload input { display: block; width: 100%; min-width: 0; font-size: 12px; margin-top: 8px; }
+.intake-protocol-stages ol { padding-left: 20px; font-size: 13px; }
+.intake-protocol-stages li { padding: 8px 0; }
+
+.protocol-panel { margin-top: 16px; min-width: 0; }
+.protocol-review { min-width: 0; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
+.protocol-review > header { padding-bottom: 10px; }
+.protocol-review h4 { margin: 0; font-size: 14px; font-weight: 600; }
+.protocol-review h5 { font-size: 13px; margin: 4px 0; }
+.protocol-review p { margin: 8px 0; }
+.protocol-review header span, .protocol-review small, .protocol-version-time { color: var(--muted); font-size: 12px; }
+.protocol-statuses { list-style: none; padding: 10px; margin: 10px 0; display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 8px; }
+.protocol-review details { margin: 10px 0; font-size: 12px; }
+.protocol-review summary { cursor: pointer; padding: 5px 0; }
+.protocol-review blockquote { margin: 8px 0; padding-left: 10px; border-left: 2px solid var(--border); white-space: pre-wrap; }
+.protocol-review blockquote footer { color: var(--muted); font-size: 11px; }
+.protocol-steps { padding-left: 22px; margin: 16px 0; }
+.protocol-steps > li { padding: 8px 0 12px; border-bottom: 1px solid var(--border); }
+.protocol-review button { min-height: 40px; padding: 8px 10px; margin: 4px 6px 4px 0; border: 1px solid var(--border); border-radius: 6px; background: white; font-size: 12px; }
+.protocol-review button:disabled { opacity: .45; }
+.protocol-review textarea { width: 100%; min-width: 0; padding: 10px; resize: vertical; border: 1px solid var(--border); border-radius: 6px; font: 12px/1.6 monospace; }
+.protocol-code pre { max-width: 100%; max-height: 360px; overflow: auto; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; white-space: pre-wrap; word-break: break-word; }
+.protocol-downloads { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 0; }
+.protocol-review a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.protocol-confirm { padding: 12px 0; }
+.protocol-confirm label { display: flex; gap: 8px; align-items: flex-start; }
+.protocol-confirm input { margin-top: 5px; flex-shrink: 0; }
+.protocol-confirm button { background: var(--ink); color: white; }
+.protocol-confirmed { padding: 10px; border-left: 2px solid var(--ink); }
+.protocol-history ol { padding-left: 20px; }
+.protocol-history li { padding: 6px 0; }
+.protocol-version-time { display: block; }
+@media (max-width: 640px) {
+  .protocol-review button { min-height: 44px; }
+}
 @media (max-width: 640px) {
   .clarification-card, .scientific-draft { padding: 12px; }
   .clarification-option { min-height: 44px; }

@@ -79,7 +79,7 @@ def test_confirmed_private_product_facts_never_enter_provider_context(client, tm
     wire = json.dumps(captured)
     assert "PRIVATE_" not in wire and "private-cell-a" not in wire and "MT-ND1" not in wire
     assert captured[0]["context"]["intake_context"] == [{"upload_id": aid, "state": "confirmed",
-                                                       "missing_fields": ["independent_cultures"]}]
+                                                       "missing_fields": ["culture_batch_column"]}]
 
 
 def test_advanced_source_edit_makes_intake_stale_without_overwriting_new_facts(client, tmp_path):

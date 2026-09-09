@@ -75,14 +75,6 @@ export function ClarificationCard({ card, busy, onAnswer, onCancel, onRevise }: 
               ))}
               <label className="clarification-option">
                 <input type={question.multiple ? "checkbox" : "radio"} name={name}
-                  checked={answer.unknown}
-                  onChange={() => update(index, (current) => ({
-                    ...current, selected: [], unknown: !current.unknown, other: false,
-                  }))} />
-                <span>未知／不确定</span>
-              </label>
-              <label className="clarification-option">
-                <input type={question.multiple ? "checkbox" : "radio"} name={name}
                   checked={answer.other}
                   onChange={() => update(index, (current) => ({
                     ...current, selected: [], unknown: false, other: !current.other,

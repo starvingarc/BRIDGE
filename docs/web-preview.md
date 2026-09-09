@@ -118,6 +118,7 @@ operator-owned private environment file, never in Git or the browser bundle.
 | `BRIDGE_WEB_TRUSTED_ANCESTORS` | Optional startup-only JSON mapping from explicitly approved ancestor paths to `[uid, device, inode]` pins |
 | `BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF` | Optional registered MeasurementSpec for P0-02; no biological default is selected |
 | `BRIDGE_WEB_SHARE_RESULT_SUMMARIES` | Optional owner-authorized aggregate interpretation: exactly `1` enables, unset or `0` disables; all other values fail startup |
+| `BRIDGE_WEB_PROTOCOL_COMPILER_PYTHON` | Optional absolute Python path for the separately installed, source-pinned BPL 2.4.0 runtime; never supplied by the model or browser |
 
 The default `json` protocol requires chat-completions JSON mode through
 `response_format: {"type": "json_object"}`. It requests one typed JSON action
@@ -173,10 +174,40 @@ private-leaf checks. See [privacy and provenance](privacy-and-provenance.md).
 1. Log in with the operator token and create an analysis.
 2. Upload an H5AD. The browser lists the accepted file; the service stores a
    checksummed copy under a generated identity.
-3. In **产品资料**, distinguish observed file shape from researcher-declared
-   product target, sampling context, assay and matrix semantics. Unknown facts
-   stay unknown. An initial chat declaration may stage a draft, never confirm it.
-4. Click **核对产品资料**, inspect the exact before/after card and click **确认资料**.
+3. In **产品资料**, the file metadata is read first. The active browser starts a
+   separate semantic-extraction request before showing missing questions. The
+   editable summary distinguishes direct metadata, model extraction and user
+   answers. Known culture days and per-sample days are not asked again.
+   Optionally upload a PDF, DOCX, TXT or Markdown differentiation protocol
+   (up to 25 MiB). Its source-cited stages describe the prescribed procedure,
+   not proof of this sample's actual execution. Scanned PDFs need extractable text.
+   Answer one consequential missing/conflicting item at a time: intended target
+   cell type, target stage, cell/nucleus assay and dataset-bound culture semantics are
+   consumed by the current scientific-intent/data flow. Other is last and accepts
+   free text. The target choice defaults to **midbrain dopaminergic lineage cells**
+   (or Other), not a forced progenitor-versus-neuron choice. Selecting a lineage
+   does not set the developmental stage; that is separate sample/protocol intent.
+   This distinction does not declare every stage clinically suitable or alter
+   scientific product/state-role criteria. Starting cells, cell-line names, culture days and detailed library
+   methods remain extractable/editable metadata, not automatic questions merely
+   because they are absent. Conflicts in those optional fields remain unresolved
+   in the private source record without forcing a reply. Answers are saved drafts,
+   not automatic confirmation.
+   The culture question names a candidate observation column and bounded example
+   values, asking whether each value represents an independently cultured batch.
+   Sample/capture aliases with identical values are not offered again after rejection.
+   A negative answer requests another actual column or a free-text mapping; an
+   uncertain answer leaves the culture count missing. Only explicit independence
+   confirmation plus a complete, nonmissing column derives a count. The selected
+   column and meaning remain bound to the checksummed upload and answer revision.
+   Rechecking a column retracts the earlier derived count until reconfirmation.
+   Free-text mappings remain unstructured drafts, not automatically parsed units.
+   The named-column meaning question also offers **其他（自定义输入）**. Its text
+   stays visible and editable as a source-bound supplement, with meaning and count
+   unknown; even text matching a predefined role is not interpreted as that role.
+   Rechecking the column or choosing a predefined meaning removes the old supplement.
+   Existing answers are unchanged until the researcher explicitly edits them.
+4. Click **核对当前资料**, inspect the exact before/after card and click **确认资料**.
    This commits facts only. Then click **生成下一阶段计划** and separately approve
    that plan's exact digest in the conversation.
 5. Inspect the six evidence questions and actual figures, tables, evidence and
@@ -209,11 +240,41 @@ The six-question roadmap is prospective and marks missing evidence explicitly;
 it is not a completed report or a plan to run all 12 tools. Comparison and
 post-transplant graft evidence are not prerequisites for beginning pre-transplant QC.
 
-The structure readout uses a checksummed registered upload and returns only
-observation/gene counts, matrix locations and bounded column names, never row
-identities, gene values or expression. Private form values and these structure
-details are not added to ordinary provider context; only per-upload confirmation
-status and missing-field names are supplied. The separate scientific-draft
+The structure readout uses a checksummed registered upload. A private intake
+projection additionally reads selected experimental metadata from obs/var/uns,
+retains bounded per-sample day summaries locally, and presents source-labelled
+draft fields. It never infers independent cultures from unconfirmed sample counts, target
+identity from cell annotations, or counts provenance from integer values.
+The new purpose-limited extraction request receives bounded semantic summaries
+and protocol passages, not expression, raw rows, sample/capture identifiers,
+gene/barcode values, private paths or provenance hashes. Ordinary conversation
+still receives only per-upload confirmation state and missing-field names, not
+private answers. Source summaries may be incomplete; failed or stopped model
+extraction retains direct metadata and offers an explicit retry.
+The source implementation also supports a separate per-attachment protocol
+review. When the optional compiler runtime is configured, new protocol uploads
+produce BPL proposals through the existing configured provider. Old attachments
+require explicit initiation. The review is accessible before or after product
+fact confirmation, with one consequential question at a time, Other/unsure
+answers, source excerpts, revision-bound editing and append-only history.
+
+Syntax, compiler exit status, source accounting and human review are separate
+labels. The pinned public compiler can return success while defaulting wait
+duration, mapping an unsupported volume incorrectly, omitting control-flow
+statements or representing a call as HumanStep. Those limitations remain visible;
+the readable UI uses source-linked steps, not altered/defaulted compiler values.
+Neither "compiler returned success" nor complete passage accounting means the
+protocol is biologically valid or actually executed. A saved review acknowledges
+this representation and its limits, not experiment completion.
+
+BPL and checked artifacts can be downloaded within the authenticated session.
+An answer/edit creates a new unreviewed version; the old review is retained only
+with its original digest. Failed generation keeps the last complete version.
+Raw code/check records stay expandable. This source capability is not evidence
+that a selected preview has been upgraded; exact installed/model/browser coverage
+is recorded in Task 37 of the integration plan.
+
+The separate scientific-draft
 request shares only the three approved confirmed product-intent fields; see
 [privacy and provenance](privacy-and-provenance.md#scientific-draft-purpose). Facts independently entered in chat remain
 ordinary conversation content. Culture counts do not generate biological-unit
@@ -341,7 +402,12 @@ not act as a second workflow engine.
 | `POST /api/login`, `POST /api/logout` | Establish or revoke the operator cookie |
 | `GET /api/sessions`, `POST /api/sessions` | List or create analyses |
 | `GET /api/sessions/{id}` | Read messages, uploads, current plan, stage history, capabilities and artifacts |
-| `POST /api/sessions/{id}/uploads` | Accept a bounded multipart upload |
+| `POST /api/sessions/{id}/uploads` | Accept a bounded H5AD and initialize local metadata drafts |
+| `POST /api/sessions/{id}/intake/parse` | Parse the selected upload in the dedicated extraction purpose |
+| `POST /api/sessions/{id}/intake/answer` | Save one revision-bound draft answer, without confirming facts |
+| `POST /api/sessions/{id}/intake/protocols?upload_id=...` | Attach a bounded protocol to that upload and refresh its extraction |
+| `POST /api/sessions/{id}/intake/protocols/formalize`, `.../answer`, `.../edit`, `.../review` | Revision-bound generation, user supplement, BPL edit or exact-digest human review; never scientific approval |
+| `GET /api/sessions/{id}/intake/protocols/{pid}/versions/{vid}/{kind}?upload_id=...` | Integrity-checked private BPL/AST/plan/diagnostic/version download |
 | `POST /api/sessions/{id}/inputs` | Stage `{upload_id, source_family_id}` for confirmation; source ID starts with an ASCII letter/digit, permits letters/digits/`.`/`_`/`:`/`-`, and is at most 160 characters |
 | `GET /api/sessions/{id}/analysis-inputs` | Read current contracts, safe object/asset options and saved selections |
 | `POST /api/sessions/{id}/analysis-inputs` | Save a tool/mode selection using registered input IDs |

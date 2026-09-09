@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api";
 import type { IntakeFacts, IntakeResponse, Session } from "../types";
 import { InputChangeCard } from "./InputChangeCard";
+import { IntakeWizard } from "./IntakeWizard";
+import { ProtocolReview } from "./ProtocolReview";
 import { intakeLabels, intakeValue, intakeValues } from "./intakeLabels";
 
 type Props = {
@@ -27,6 +29,10 @@ const blockerLabels: Record<string, string> = {
   cell_state_history_review_required: "已有细胞状态运行记录；请先查看其输入与结果，再决定是否需要新的分析。",
 };
 const errorMessage = (error: unknown) => {
+  if (error instanceof ApiError && error.message === "protocol_text_unavailable")
+    return "方案中未能提取可用文字。请上传可选中文字的 PDF、Word 或 UTF-8 文本。";
+  if (error instanceof ApiError && error.message === "protocol_too_large")
+    return "方案文件超过 25 MB，请精简后重新上传。";
   if (error instanceof ApiError && error.message === "invalid_intake_declaration")
     return "资料中有不符合文件结构的声明，请核对计数位置与元数据列。";
   if (error instanceof ApiError && error.status === 409)
@@ -71,7 +77,10 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
   const [retry, setRetry] = useState(0);
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [selectedProtocol, setSelectedProtocol] = useState<string | null>(null);
   const mounted = useRef(false);
+  const readSequence = useRef(0);
+  const autoParsed = useRef(false);
   const { session } = props;
   useEffect(() => {
     mounted.current = true;
@@ -79,9 +88,10 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
   }, []);
   useEffect(() => {
     const controller = new AbortController();
+    const sequence = ++readSequence.current;
     let active = true;
     api.getIntake(session.id, aid, controller.signal).then((next) => {
-      if (!active) return;
+      if (!active || sequence !== readSequence.current) return;
       setData(next);
       setError(null);
     }).catch((cause: unknown) => {
@@ -94,20 +104,53 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
   }, [session.id, aid, session.pending_input_change?.id, session.input_review_required,
       session.status, session.plan?.id, retry, props.onError]);
 
-  const perform = async (operation: () => Promise<Session>) => {
+  const perform = async (operation: () => Promise<Session>, closeEditing = true) => {
     setWorking(true);
     setError(null);
     try {
       const next = await operation();
-      if (!mounted.current) return;
+      if (!mounted.current) return false;
       props.onSession(next);
-      setEditing(false);
+      if (closeEditing) setEditing(false);
       setRetry((value) => value + 1);
+      return true;
     } catch (cause) {
       if (mounted.current) {
         setError(errorMessage(cause));
         if (cause instanceof ApiError && cause.status === 401) props.onError(cause);
       }
+      return false;
+    } finally {
+      if (mounted.current) setWorking(false);
+    }
+  };
+  const parse = async () => {
+    const succeeded = await perform(() => api.parseIntake(session.id, aid), false);
+    if (!succeeded && mounted.current) setData(current => current?.autofill
+      ? { ...current, autofill: { ...current.autofill, state: "unavailable" } } : current);
+  };
+  useEffect(() => {
+    if (data?.autofill?.state !== "not_started" || (data.state === "confirmed" && !editing) || autoParsed.current
+        || props.busy || working || session.input_review_required) return;
+    autoParsed.current = true;
+    void parse();
+  }, [data?.autofill?.state, data?.state, editing, props.busy, working, session.input_review_required, session.id, aid]);
+
+  const answer = async (field: keyof IntakeFacts, value: string | number, other: boolean) => {
+    if (!data?.autofill || working) return;
+    const sequence = ++readSequence.current;
+    setWorking(true);
+    setError(null);
+    try {
+      const next = await api.answerIntake(session.id, aid, data.autofill.revision, field, value, other);
+      if (mounted.current && sequence === readSequence.current) setData(next);
+    } catch (cause) {
+      if (mounted.current) {
+        setError(errorMessage(cause));
+        if (cause instanceof ApiError && cause.status === 401) props.onError(cause);
+        if (cause instanceof ApiError && cause.status === 409) setRetry(value => value + 1);
+      }
+      throw cause;
     } finally {
       if (mounted.current) setWorking(false);
     }
@@ -119,12 +162,27 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
     <p>{error ?? "正在读取文件结构…"}</p>
     {error ? <button onClick={() => setRetry((value) => value + 1)}>重新读取</button> : null}
   </div>;
+  const formalizations = data.autofill?.formalizations ?? [];
+  const protocol = formalizations.find(item => item.protocol_id === selectedProtocol) ?? formalizations.at(-1);
+  const protocolPanel = protocol ? <div className="protocol-panel">
+    {formalizations.length > 1 ? <label className="intake-field">核对的方案附件
+      <select value={protocol.protocol_id} disabled={busy} onChange={event => setSelectedProtocol(event.target.value)}>
+        {formalizations.map(item => <option key={item.protocol_id} value={item.protocol_id}>{item.name}</option>)}
+      </select>
+    </label> : null}
+    <ProtocolReview key={protocol.protocol_id} value={protocol} busy={busy || session.input_review_required}
+      onAction={async command => {
+        const succeeded = await perform(() => api.protocolAction(session.id, aid, protocol.protocol_id, protocol.revision, command), false);
+        if (!succeeded) throw new Error("protocol_action_failed");
+      }}
+      downloadUrl={(versionId, kind) => api.protocolDownload(session.id, aid, protocol.protocol_id, versionId, kind)} />
+  </div> : null;
   return (
     <>
       <div className="intake-observed">
         <strong>文件中检测到</strong>
         <p>{data.observed.n_observations ?? "未知数量"} 个观测 · {data.observed.n_genes ?? "未知数量"} 个基因</p>
-        <small>仅文件结构。实验类型、原始计数语义与产品目标需要您确认。</small>
+        <small>{data.autofill ? "先读取文件中的实验元数据，再补充缺失或冲突的信息。" : "仅文件结构。实验类型、原始计数语义与产品目标需要您确认。"}</small>
       </div>
       {error ? <p className="intake-error" role="alert">{error}</p> : null}
       {data.state === "stale" ? <p className="intake-error">高级输入已修改；请核对最新声明并重新确认产品资料。</p> : null}
@@ -135,8 +193,12 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
         <>
           {editing ? <button className="intake-cancel" onClick={() => setEditing(false)}
             disabled={busy}>取消编辑</button> : null}
-          <IntakeForm key={JSON.stringify(data.facts)} data={data} busy={busy}
-            onStage={(facts) => void perform(() => api.stageIntake(session.id, aid, facts))} />
+          {data.autofill ? <IntakeWizard data={data} busy={busy} onAnswer={answer} protocolReview={protocolPanel}
+            onProtocol={file => void perform(() => api.uploadProtocol(session.id, aid, file), false)}
+            onParse={() => void parse()}
+            onStage={facts => void perform(() => api.stageIntake(session.id, aid, facts))} />
+          : <IntakeForm key={JSON.stringify(data.facts)} data={data} busy={busy}
+            onStage={(facts) => void perform(() => api.stageIntake(session.id, aid, facts))} />}
         </>
       ) : (
         <div className="intake-confirmed">
@@ -147,6 +209,7 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
           <small>这份声明不是正式产品定义，也不证明细胞身份或生物学独立性。</small>
         </div>
       )}
+      {pending || data.state === "confirmed" && !editing ? protocolPanel : null}
       <div className="intake-roadmap">
         <h3>这次评估将回答什么？</h3>
         <p>以下是证据路线，不是已完成的结论，也不是一次批准所有分析。</p>

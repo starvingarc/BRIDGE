@@ -19,6 +19,48 @@ const response = (body: unknown) => new Response(JSON.stringify(body), {
 
 beforeEach(() => localStorage.clear());
 
+it.each(["draft", "confirmed"])("keeps per-attachment protocol review accessible in %s intake without automatic generation", async state => {
+  const writes: Array<{ path: string; body: Record<string, unknown> }> = [];
+  const protocols = [
+    { protocol_id: "1".repeat(32), name: "first-method.txt", revision: 3, state: "not_started", error: null, latest: null, versions: [] },
+    { protocol_id: "2".repeat(32), name: "second-method.txt", revision: 7, state: "not_started", error: null, latest: null, versions: [] },
+  ];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const path = String(input);
+    if (init?.method === "POST") {
+      writes.push({ path, body: JSON.parse(String(init.body)) });
+      return response(baseSession);
+    }
+    if (path === "/api/sessions") return response({ sessions: [baseSession] });
+    if (path === "/api/sessions/session-intake") return response(baseSession);
+    if (path.includes("/intake?")) return response({
+      upload_id: baseSession.uploads[0].id, facts, state, next_tool: null, missing_fields: [],
+      blockers: [], qc_state: "not_run", measurement_spec_ref: null,
+      observed: { n_observations: 4, n_genes: 3, matrix_locations: ["X"], obs_columns: [], var_columns: [] }, roadmap: [],
+      autofill: { state: "complete", revision: 4, sources: [], fields: {}, field_sources: {}, questions: [], conflicts: [],
+        other_answers: {}, samples: [], protocols: protocols.map(p => ({ id: p.protocol_id, name: p.name })),
+        protocol_stages: [], sources_truncated: false, batch_binding: null, formalizations: protocols },
+    });
+    throw new Error("Unexpected request: " + path);
+  });
+  const user = userEvent.setup();
+  render(<App />);
+  expect(await screen.findByRole("region", { name: "方案核对：second-method.txt" })).toBeInTheDocument();
+  expect(writes).toEqual([]);
+  if (state === "confirmed") expect(screen.getByRole("button", { name: "修改资料" })).toBeInTheDocument();
+  await user.selectOptions(screen.getByLabelText("核对的方案附件"), "1".repeat(32));
+  expect(screen.getByRole("region", { name: "方案核对：first-method.txt" })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "生成方案表示" }));
+  await waitFor(() => expect(writes).toHaveLength(1));
+  expect(writes[0]).toEqual({
+    path: "/api/sessions/session-intake/intake/protocols/formalize",
+    body: { upload_id: "a".repeat(32), protocol_id: "1".repeat(32), revision: 3 },
+  });
+  expect(screen.queryByRole("button", { name: "确认资料" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Confirm analysis" })).not.toBeInTheDocument();
+});
+
+
 function setupRequests() {
   const writes: Array<{ path: string; body: Record<string, unknown> }> = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {

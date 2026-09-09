@@ -35,6 +35,10 @@ from .clarification import Clarifications, AnswerBody, CardIdentity
 from .scientific_inputs import ScientificInputs, DraftIdentity, DraftRevision
 from .report_inputs import ReportInputs, ReportPreparation
 from .intake import Intake, IntakeFacts, IntakeInput, IntakePrepare
+from . import intake_autofill
+from .intake_autofill import IntakeAnswer
+from . import protocol_formalization
+from .protocol_formalization import ProtocolRequest, ProtocolAnswer, ProtocolReview, ProtocolEdit
 from .inputs import Inputs, Selection, AssetDeclaration, PrepareAnalysis, OBJECT_LIMIT, checked_bytes
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.contracts import ToolRequest, ToolRequestV2
@@ -186,6 +190,7 @@ class Settings:
     cell_state_measurement_spec_ref: str | None = None
     share_result_summaries: bool = False
     model_action_protocol: Literal["json", "deepseek_tools"] = "json"
+    protocol_compiler_python: str | None = None
 
     def __post_init__(self):
         if (
@@ -835,7 +840,7 @@ class Service:
             {"upload_id": item["id"],
              "state": "confirmed" if state.get("_intakes", {}).get(item["id"], {}).get("signature") ==
                  self.intake.signature(state, item["id"]) else "needs_confirmation",
-             "missing_fields": self.intake.missing_fields(self.intake.current_facts(state, item["id"]))}
+             "missing_fields": [q["field"] for q in intake_autofill.questions(intake_autofill.ensure(self, state, item["id"]), self.intake.current_facts(state, item["id"]))]}
             for item in state["uploads"]
         ]
         result_turn_id = None
@@ -1199,8 +1204,10 @@ def create_app(settings: Settings) -> FastAPI:
                         return JSONResponse({"detail": "origin_required"}, status_code=403)
                     length = request.headers.get("content-length")
                     limit = (settings.upload_limit + 65536 if request.url.path.endswith("/uploads") else
+                             intake_autofill.PROTOCOL_LIMIT + 65536 if request.url.path.endswith("/intake/protocols") else
                              OBJECT_LIMIT + 65536 if request.url.path.endswith("/analysis-inputs/objects") else
-                             65536 if request.url.path.endswith("/analysis-inputs/assets") else 32768)
+                             65536 if request.url.path.endswith("/analysis-inputs/assets") else
+                             6 * protocol_formalization.BPL_LIMIT + 32768 if request.url.path.endswith("/intake/protocols/edit") else 32768)
                     if length is None or not length.isdigit() or int(length) > limit:
                         return JSONResponse({"detail": "request_too_large"}, status_code=413)
                     original_receive = request._receive
@@ -1296,7 +1303,8 @@ def create_app(settings: Settings) -> FastAPI:
                                       "declaration_start": len(state["messages"])}
             service.archive_plan(state)
             state["plan"], state["_plan"], state["status"], state["error"] = None, None, "idle", None
-            service.message(state, "assistant", "文件已接收。右侧已列出文件结构，请补充产品目标与取样背景，并确认实验类型和计数来源。不确定的项目可以保留未知；系统不会据此判断产品失败。")
+            intake_autofill.ensure(service, state, aid)
+            service.message(state, "assistant", "文件已接收。右侧会先读取并解析文件中的实验元数据，再只补充缺失或冲突的信息。也可以上传分化 protocol，提取起始细胞、目标与阶段安排。自动填写仍是草稿，确认资料与批准分析是分开的。")
             service.save(state)
             return service.public(state)
 
@@ -1305,7 +1313,9 @@ def create_app(settings: Settings) -> FastAPI:
         with service.lock:
             state = service.load(sid)
             try:
-                return service.intake.public(state, upload_id)
+                result = service.intake.public(state, upload_id)
+                service.save(state)
+                return result
             except (ValueError, OSError, KeyError):
                 raise HTTPException(409, "intake_file_unavailable") from None
 
@@ -1317,6 +1327,86 @@ def create_app(settings: Settings) -> FastAPI:
             service.controls.stage(state, "intake", body)
             service.save(state)
             return service.public(state)
+
+    @app.post("/api/sessions/{sid}/intake/answer")
+    def answer_intake(sid: str, body: IntakeAnswer):
+        with service.lock:
+            state = service.load(sid)
+            intake_autofill.answer(service, state, body)
+            service.save(state)
+            return service.intake.public(state, body.upload_id)
+
+    @app.post("/api/sessions/{sid}/intake/parse")
+    def parse_intake(sid: str, body: IntakePrepare):
+        with service.lock:
+            state = service.load(sid)
+            try:
+                intake_autofill.start(service, state, body.upload_id)
+            except (ValueError, OSError, KeyError):
+                raise HTTPException(409, "intake_source_unavailable") from None
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/intake/protocols")
+    def upload_protocol(sid: str, upload_id: str, file: UploadFile = File(...)):
+        content = file.file.read(intake_autofill.PROTOCOL_LIMIT + 1)
+        if len(content) > intake_autofill.PROTOCOL_LIMIT:
+            raise HTTPException(413, "protocol_too_large")
+        with service.lock:
+            state = service.load(sid)
+            intake_autofill.attach(service, state, upload_id, file.filename or "", content)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/intake/protocols/formalize")
+    def formalize_protocol(sid: str, body: ProtocolRequest):
+        with service.lock:
+            state = service.load(sid)
+            try:
+                protocol_formalization.start(service, state, body)
+            except (ValueError, OSError):
+                raise HTTPException(409, "protocol_source_unavailable") from None
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/intake/protocols/answer")
+    def answer_protocol(sid: str, body: ProtocolAnswer):
+        with service.lock:
+            state = service.load(sid)
+            try:
+                protocol_formalization.answer(service, state, body)
+            except (ValueError, OSError):
+                raise HTTPException(409, "protocol_source_unavailable") from None
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/intake/protocols/edit")
+    def edit_protocol(sid: str, body: ProtocolEdit):
+        with service.lock:
+            state = service.load(sid)
+            try:
+                protocol_formalization.edit(service, state, body)
+            except (ValueError, OSError):
+                raise HTTPException(409, "protocol_source_unavailable") from None
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/intake/protocols/review")
+    def review_protocol(sid: str, body: ProtocolReview):
+        with service.lock:
+            state = service.load(sid)
+            try:
+                protocol_formalization.review(service, state, body)
+            except (ValueError, OSError):
+                raise HTTPException(409, "protocol_source_unavailable") from None
+            return service.public(state)
+
+    @app.get("/api/sessions/{sid}/intake/protocols/{pid}/versions/{vid}/{kind}")
+    def download_protocol(sid: str, pid: str, vid: str, kind: str, upload_id: str):
+        with service.lock:
+            state = service.load(sid)
+            try:
+                content = protocol_formalization.download(service, state, upload_id, pid, vid, kind)
+            except (ValueError, OSError, KeyError):
+                raise HTTPException(409, "protocol_artifact_unavailable") from None
+            return Response(content=content,
+                media_type="text/plain" if kind == "bpl" else "application/json",
+                headers={"Content-Disposition": 'attachment; filename="' + protocol_formalization.ARTIFACTS[kind] + '"'})
 
     @app.post("/api/sessions/{sid}/intake/prepare")
     def prepare_intake(sid: str, body: IntakePrepare):

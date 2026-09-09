@@ -92,17 +92,18 @@ it("renders inline options without selecting or submitting a biological fact", a
   expect(screen.queryByRole("button", { name: "Confirm analysis" })).not.toBeInTheDocument();
 });
 
-it("keeps unknown exclusive and retains a private supplementary answer", async () => {
+it("omits the unknown option and retains a private Other answer", async () => {
   const { writes } = setup();
   const user = userEvent.setup();
   render(<App />);
   await user.click(await screen.findByRole("radio", { name: /单细胞测序/ }));
-  await user.click(screen.getByRole("radio", { name: "未知／不确定" }));
+  expect(screen.queryByRole("radio", { name: "未知／不确定" })).not.toBeInTheDocument();
+  await user.click(screen.getByRole("radio", { name: "其他／自行填写" }));
   expect(screen.getByRole("radio", { name: /单细胞测序/ })).not.toBeChecked();
   await user.type(screen.getByLabelText("补充说明"), "文献没有说明");
   await user.click(screen.getByRole("button", { name: "提交答案" }));
   await waitFor(() => expect(writes).toHaveLength(1));
-  expect(writes[0].body.answers).toEqual([{ field: "assay", selected: [], text: "文献没有说明", unknown: true }]);
+  expect(writes[0].body.answers).toEqual([{ field: "assay", selected: [], text: "文献没有说明", unknown: false }]);
 });
 
 it("permits a free-text alternative without forcing a listed answer", async () => {

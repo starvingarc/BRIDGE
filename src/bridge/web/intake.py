@@ -12,10 +12,17 @@ from .inputs import AssetDeclaration, InputBody, Selection, checked_bytes
 class IntakeFacts(InputBody):
     product_name: str | None = Field(default=None, max_length=160)
     product_family: Literal["hpsc_mda", "other", "unknown"] = "unknown"
+    starting_cell_type: str | None = Field(default=None, max_length=240)
+    cell_line: str | None = Field(default=None, max_length=240)
+    culture_day: int | None = Field(default=None, ge=0, le=10000, strict=True)
+    sequencing_method: str | None = Field(default=None, max_length=240)
+    protocol_name: str | None = Field(default=None, max_length=240)
     target_cell_type: str | None = Field(default=None, max_length=240)
     target_stage: str | None = Field(default=None, max_length=240)
     sampling_context: Literal["pretransplant_preparation", "process_sample", "unknown"] = "unknown"
     independent_cultures: int | None = Field(default=None, ge=1, le=100000, strict=True)
+    culture_batch_column: str | None = Field(default=None, max_length=160)
+    culture_batch_role: Literal["unknown", "independent_culture", "not_culture", "unsure"] = "unknown"
     assay: Literal["scRNA-seq", "snRNA-seq", "unknown"] = "unknown"
     matrix_location: str | None = Field(default=None, max_length=100)
     count_semantics: Literal["raw_counts", "not_raw_counts", "unknown"] = "unknown"
@@ -24,8 +31,9 @@ class IntakeFacts(InputBody):
     capture_id_column: str | None = Field(default=None, max_length=160)
     gene_symbol_column: str | None = Field(default=None, max_length=160)
 
-    @field_validator("product_name", "target_cell_type", "target_stage", "matrix_location",
-                     "source_family_id", "sample_id_column", "capture_id_column", "gene_symbol_column", mode="before")
+    @field_validator("starting_cell_type", "cell_line", "sequencing_method", "protocol_name",
+                     "product_name", "target_cell_type", "target_stage", "matrix_location",
+                     "source_family_id", "sample_id_column", "capture_id_column", "gene_symbol_column", "culture_batch_column", mode="before")
     @classmethod
     def strip_blank(cls, value):
         return (value.strip() or None) if isinstance(value, str) else value
@@ -71,7 +79,7 @@ class Intake:
         declaration = state["_asset_declarations"].get(aid) or state["_qc_declarations"].get(aid)
         return json.dumps([declaration, state["_uploads"][aid].get("source_family_id")], sort_keys=True, allow_nan=False)
 
-    def current_facts(self, state, aid):
+    def current_facts(self, state, aid, *, include_draft=True):
         record = state.get("_intakes", {}).get(aid)
         values = dict(record["facts"]) if record else IntakeFacts().model_dump()
         if not record or record["signature"] != self.signature(state, aid):
@@ -84,6 +92,14 @@ class Intake:
                           source_family_id=state["_uploads"][aid].get("source_family_id"))
             for key in ("sample_id_column", "capture_id_column", "gene_symbol_column"):
                 values[key] = (declaration.get("metadata") or {}).get(key)
+        if not include_draft:
+            return IntakeFacts.model_validate(values)
+        from .intake_autofill import ensure
+        draft = ensure(self.service, state, aid)
+        for key, value in draft["values"].items():
+            # Existing researcher-confirmed declarations outrank local guesses.
+            if key in draft["manual_fields"] or draft["field_sources"].get(key, {}).get("kind") == "model" or values.get(key) in (None, "unknown"):
+                values[key] = value
         return IntakeFacts.model_validate(values)
 
     def missing_fields(self, facts):
@@ -97,9 +113,39 @@ class Intake:
             return ["supported_product_family_required"]
         return []
 
+    def confirmation_sources(self, state, aid):
+        record = state.get("_intake_autofill", {}).get(aid, {})
+        batch = record.get("batch_binding")
+        roles = {"independent_culture": "每个值对应一次独立培养", "not_culture": "只是样本或测序标识",
+                 "unsure": "不确定", "unknown": "尚未确认"}
+        role_note = record.get("other_answers", {}).get("culture_batch_role", "")
+        prior_sources = state.get("_intakes", {}).get(aid, {}).get("source_facts", {})
+        return {**({"culture_batch_binding": f"obs.{batch['column']}；{roles[batch['role']]}；"
+                    f"已读到 {batch['distinct']} 个不同值，{batch['missing']} 个缺失；完整读取：{batch['complete']}"}
+                   if batch else {}),
+                **({"culture_batch_role_note": role_note}
+                   if role_note or "culture_batch_role_note" in prior_sources else {}),
+                "protocol_documents": "\n".join(p["name"] for p in record.get("protocols", [])),
+                "protocol_stages": "\n".join(p["label"] + " (" +
+                    (f"D{p['start_day']}–D{p['end_day']}" if p["start_day"] is not None and p["end_day"] is not None else "起止时间待核对") +
+                    "): " + p["operations"]
+                    for p in record.get("protocol_stages", []))}
+
     def validate(self, state, body):
         observed = self.observed(state, body.upload_id)
         facts = body.facts
+        if facts.culture_batch_column is not None:
+            from .intake_batches import profiles, count
+            profile = profiles(self.service, state, body.upload_id, facts.culture_batch_column)[0]
+            expected = count(profile) if facts.culture_batch_role == "independent_culture" else None
+            if facts.independent_cultures != expected:
+                raise ValueError("culture_batch_count_mismatch")
+        elif facts.culture_batch_role != "unknown":
+            raise ValueError("culture_batch_column_required")
+        from .intake_sources import PROTOCOL_LIMIT
+        for protocol in state.get("_intake_autofill", {}).get(body.upload_id, {}).get("protocols", []):
+            checked_bytes(self.service, state, self.service.directory(state["id"]) / "intake-protocols" / (protocol["id"] + ".bin"),
+                          protocol["sha256"], limit=PROTOCOL_LIMIT)
         if facts.matrix_location is not None and facts.matrix_location not in observed["matrix_locations"]:
             raise ValueError("matrix_not_registered")
         for key, axis in (("sample_id_column", "obs"), ("capture_id_column", "obs"), ("gene_symbol_column", "var")):
@@ -141,13 +187,20 @@ class Intake:
         if aid in records:
             state.setdefault("_intake_history", []).append(deepcopy(records[aid]))
         records[aid] = {"upload_id": aid, "facts": facts.model_dump(mode="json"),
-                       "signature": self.signature(state, aid), "input_revision": state["_input_revision"] + 1}
+                       "signature": self.signature(state, aid), "input_revision": state["_input_revision"] + 1,
+                       "protocol_ids": [p["id"] for p in state.get("_intake_autofill", {}).get(aid, {}).get("protocols", [])],
+                       "source_facts": self.confirmation_sources(state, aid)}
 
     def public(self, state, aid):
         observed = self.observed(state, aid)
         record = state.get("_intakes", {}).get(aid)
         status = ("confirmed" if record["signature"] == self.signature(state, aid) else "stale") if record else "draft"
         facts = self.current_facts(state, aid)
+        protocol_ids = [p["id"] for p in state.get("_intake_autofill", {}).get(aid, {}).get("protocols", [])]
+        source_facts = self.confirmation_sources(state, aid)
+        if status == "confirmed" and (facts != IntakeFacts.model_validate(record["facts"]) or protocol_ids != record.get("protocol_ids", [])
+                or record.get("source_facts", {"protocol_documents": "", "protocol_stages": ""}) != source_facts):
+            status = "draft"
         missing = self.missing_fields(facts)
         next_tool, qc_state, blockers = None, ("not_run" if status == "confirmed" else "needs_confirmation"), []
         if status == "confirmed" and facts.assay != "unknown" and facts.count_semantics == "raw_counts" and facts.matrix_location:
@@ -180,7 +233,9 @@ class Intake:
             ("是否存在非目标、未知或稀有群体？", "needs_product_definition"),
             ("增殖与应激反应证据如何？", "needs_method_inputs"),
         ]
+        from .intake_autofill import public as autofill_public
         return {"upload_id": aid, "observed": observed, "facts": facts.model_dump(mode="json"),
+                "autofill": autofill_public(self.service, state, aid, facts),
                 "state": status, "missing_fields": missing, "next_tool": next_tool, "blockers": blockers,
                 "qc_state": qc_state, "measurement_spec_ref": self.service.settings.cell_state_measurement_spec_ref if next_tool == "P0-02" else None,
                 "roadmap": [{"question": question, "state": stage} for question, stage in questions]}

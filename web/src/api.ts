@@ -8,6 +8,7 @@ import {
   type ScienceCandidate,
   type IntakeFacts,
   type IntakeResponse,
+  type ProtocolAction,
   type SessionsResponse,
 } from "./types";
 
@@ -143,6 +144,27 @@ export const api = {
     }),
   getIntake: (id: string, uploadId: string, signal?: AbortSignal) =>
     request<IntakeResponse>(`/api/sessions/${encodeURIComponent(id)}/intake?upload_id=${encodeURIComponent(uploadId)}`, { signal }),
+  parseIntake: (id: string, uploadId: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/intake/parse`, {
+      method: "POST", body: JSON.stringify({ upload_id: uploadId }),
+    }),
+  answerIntake: (id: string, uploadId: string, revision: number, field: keyof IntakeFacts, value: string | number, other: boolean) =>
+    request<IntakeResponse>(`/api/sessions/${encodeURIComponent(id)}/intake/answer`, {
+      method: "POST", body: JSON.stringify({ upload_id: uploadId, revision, field, value, other }),
+    }),
+  uploadProtocol: (id: string, uploadId: string, file: File) => {
+    const body = new FormData();
+    body.set("file", file);
+    return sessionRequest(`/api/sessions/${encodeURIComponent(id)}/intake/protocols?upload_id=${encodeURIComponent(uploadId)}`, { method: "POST", body });
+  },
+  protocolAction: (id: string, uploadId: string, protocolId: string, revision: number, command: ProtocolAction) => {
+    const { action, ...payload } = command;
+    return sessionRequest(`/api/sessions/${encodeURIComponent(id)}/intake/protocols/${action}`, {
+      method: "POST", body: JSON.stringify({ upload_id: uploadId, protocol_id: protocolId, revision, ...payload }),
+    });
+  },
+  protocolDownload: (id: string, uploadId: string, protocolId: string, versionId: string, kind: string) =>
+    `/api/sessions/${encodeURIComponent(id)}/intake/protocols/${encodeURIComponent(protocolId)}/versions/${encodeURIComponent(versionId)}/${encodeURIComponent(kind)}?upload_id=${encodeURIComponent(uploadId)}`,
   stageIntake: (id: string, uploadId: string, facts: IntakeFacts) =>
     sessionRequest(`/api/sessions/${encodeURIComponent(id)}/intake`, {
       method: "POST", body: JSON.stringify({ upload_id: uploadId, facts }),

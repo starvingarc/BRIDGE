@@ -88,6 +88,7 @@ the documentation drift. Do not infer current behavior from an overview page.
 - [Agent team integration](agent-integration.md)
 - [Web preview and private deployment](web-preview.md)
 - [Privacy and provenance](privacy-and-provenance.md)
+- [Protocol BPL formalization design](superpowers/specs/2026-09-09-protocol-bpl-design.md) — approved design; implementation in progress, not delivered
 
 ### Current P0 tool layer
 

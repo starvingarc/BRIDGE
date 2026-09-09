@@ -235,12 +235,19 @@ export type SessionsResponse = {
 
 
 export type IntakeFacts = {
+  starting_cell_type?: string | null;
+  cell_line?: string | null;
+  culture_day?: number | null;
+  sequencing_method?: string | null;
+  protocol_name?: string | null;
   product_name: string | null;
   product_family: "hpsc_mda" | "other" | "unknown";
   target_cell_type: string | null;
   target_stage: string | null;
   sampling_context: "pretransplant_preparation" | "process_sample" | "unknown";
   independent_cultures: number | null;
+  culture_batch_column?: string | null;
+  culture_batch_role?: "unknown" | "independent_culture" | "not_culture" | "unsure";
   assay: "scRNA-seq" | "snRNA-seq" | "unknown";
   matrix_location: string | null;
   count_semantics: "raw_counts" | "not_raw_counts" | "unknown";
@@ -250,7 +257,69 @@ export type IntakeFacts = {
   gene_symbol_column: string | null;
 };
 
+export type IntakeQuestion = {
+  field: keyof IntakeFacts; title: string; input_type: "number" | "text"; help?: string;
+  options: Array<{ value: string; label: string }>;
+};
+
+export type ProtocolSource = { id: string; kind: string; label: string; location: string; text: string };
+export type ProtocolQuestion = {
+  id: string; title: string; step_ids: string[]; source_ids: string[]; sources: ProtocolSource[];
+  options: Array<{ value: string; label: string }>; answer_state: "unanswered" | "answered" | "unsure";
+};
+export type ProtocolSupplement = ProtocolSource & {
+  question_id: string; other: boolean; unsure: boolean; superseded?: boolean; created_at: string;
+};
+export type ProtocolVersion = {
+  id: string; digest: string; created_at: string; bpl: string;
+  steps: Array<{ id: string; label: string; operations: string; line_start: number; line_end: number;
+    source_ids: string[]; sources: ProtocolSource[]; origin: string }>;
+  questions: ProtocolQuestion[];
+  excluded_sources: Array<{ source_id: string; reason: string; source: ProtocolSource }>;
+  supplements: ProtocolSupplement[];
+  coverage_state: "complete_for_extracted_scope" | "partial" | "needs_input";
+  review_state: "unreviewed" | "reviewed"; review?: { created_at: string; scope: string } | null;
+  syntax_state: "not_run" | "passed" | "failed";
+  compiler_state: "not_run" | "passed" | "failed" | "unavailable";
+  diagnostics: Array<{ code: string; message: string; line?: number | null }>;
+  unchecked: Array<{ code: string; message: string; line?: number | null }>;
+  compiler: { commit: string; version: string; verified: boolean };
+  stages: Array<{ stage: string; exit_code: number }>;
+  source_binding: { sources_truncated: boolean; included_passages: number; extracted_passages: number };
+  generation: { number: number; request_count: number; model: string; reported_model: string | null; prompt_version: string; kind: string };
+  artifacts: Record<string, string>;
+};
+export type ProtocolFormalization = {
+  protocol_id: string; name: string; revision: number;
+  state: "not_started" | "pending" | "running" | "complete" | "unavailable" | "cancelled";
+  error: string | null; latest: ProtocolVersion | null;
+  versions: Array<{ id: string; digest: string; created_at: string; review_state: "unreviewed" | "reviewed" }>;
+};
+export type ProtocolAction =
+  | { action: "formalize" }
+  | { action: "review"; digest: string }
+  | { action: "edit"; bpl: string }
+  | { action: "answer"; question_id: string; value: string; other: boolean; unsure: boolean };
+
+export type IntakeAutofill = {
+  state: "not_started" | "parsing" | "complete" | "unavailable"; revision: number; sources_truncated?: boolean;
+  sources: Array<{ id: string; kind: string; label: string; location: string; text: string }>;
+  field_sources: Record<string, { kind: string; source_ids: string[]; quote: string }>;
+  samples: Array<{ sample_id: string; culture_days: number[]; missing_days: number;
+    n_observations: number; sample_summary_complete: boolean }>;
+  protocols: Array<{ id: string; name: string; size: number }>;
+  formalizations?: ProtocolFormalization[];
+  protocol_stages: Array<{ label: string; start_day: number | null; end_day: number | null;
+    operations: string; source_ids: string[]; quote: string; timing_state?: "source_explicit" | "needs_confirmation" | "unspecified" }>;
+  other_answers: Record<string, string>;
+  conflicts: Array<{ field: keyof IntakeFacts; observed: string | number | null; extracted: string | number;
+    source_ids: string[]; quote: string }>;
+  questions: IntakeQuestion[];
+  batch_binding?: { column: string; role: string; distinct: number; complete: boolean; missing: number } | null;
+};
+
 export type IntakeResponse = {
+  autofill?: IntakeAutofill;
   upload_id: string;
   facts: IntakeFacts;
   observed: {
