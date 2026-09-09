@@ -57,6 +57,6 @@ assert resolved_conflict.state_id is None
 
 ## Verification checkpoint
 
-Implementation and shared integration are complete. The installed-wheel check at `8f5eb9e1` passed 186 module/shared-contract tests (49 existing Scanpy deprecation warnings), 12-tool discovery, CLI describe/input-contract, knowledge and figure validation, repository policy and diff checks. The full-diff review found one malformed-source typed-refusal defect; it is fixed and scoped re-review approved the correction with no new findings. See [the validation record](../docs/validation/p0_06_source_bound_observations_20260907.md) for reproducible checks and limits.
+Implementation and shared integration are complete. The installed-wheel check at `8f5eb9e1` passed 186 module/shared-contract tests (49 existing Scanpy deprecation warnings), 12-tool discovery, CLI describe/input-contract, knowledge and figure validation, repository policy and diff checks. The full-diff review found one malformed-source typed-refusal defect; it is fixed and scoped re-review approved the correction with no new findings. See [the validation record](../docs/validation/p0_06_proliferation_stress_response.md#record-p0-06-source-bound-observations-20260907) for reproducible checks and limits.
 
 GitHub CI and publication remain separate pending gates. Genuine experimental-design confirmation, actual producer binding and real-data Web integration are follow-up work, not claims of this module change.

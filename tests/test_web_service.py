@@ -1032,8 +1032,9 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
     assert context["clarification_context"] == []
     assert context["intake_context"] == [{
         "upload_id": aid, "state": "needs_confirmation",
-        "missing_fields": ["starting_cell_type", "cell_line", "target_cell_type",
-                           "target_stage", "sequencing_method", "culture_day", "independent_cultures"],
+        # Report the current consequential questions, not the retired questionnaire.
+        # This synthetic matrix has no confirmed independent-culture column.
+        "missing_fields": ["target_cell_type", "target_stage", "culture_batch_column"],
     }]
     assert context["status"] == "idle"
     assert context["upload_ids"] == [aid]

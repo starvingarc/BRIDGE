@@ -55,6 +55,6 @@ assert accounting.mass_state == "unavailable"
 
 ## Verification checkpoint
 
-Implementation and shared integration are complete. The installed-wheel check at `f197a502` passed 186 module/shared-contract tests, 12-tool discovery, CLI describe/input-contract, knowledge and figure validation, repository policy and diff checks. The independent full-diff review requested a projection-Schema parity correction and a CLI documentation correction; both are implemented and the scoped re-review approved them with no new findings. Reproducible results and limits are in [the validation record](../docs/validation/p0_05_hard_count_accounting_20260907.md).
+Implementation and shared integration are complete. The installed-wheel check at `f197a502` passed 186 module/shared-contract tests, 12-tool discovery, CLI describe/input-contract, knowledge and figure validation, repository policy and diff checks. The independent full-diff review requested a projection-Schema parity correction and a CLI documentation correction; both are implemented and the scoped re-review approved them with no new findings. Reproducible results and limits are in [the validation record](../docs/validation/p0_05_off_target_control.md#record-p0-05-hard-count-accounting-20260907).
 
 GitHub CI and publication are separate pending gates. Genuine experimental-design confirmation, deployment binding and real-data Web integration remain follow-up work, not claims of this module change.

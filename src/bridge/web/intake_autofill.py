@@ -15,7 +15,7 @@ from pydantic import Field, StrictInt, StrictStr, model_validator
 
 from .inputs import InputBody, checked_bytes
 from .intake import IntakeFacts, IntakeInput, IntakePrepare
-from .intake_sources import clean_text, metadata, protocol_text, bounded_passages, PROTOCOL_LIMIT
+from .intake_sources import clean_text, metadata, protocol_text, bounded_passages, PROTOCOL_LIMIT, identity_values, redact_identities
 
 class ExtractedField(InputBody):
     field: str = Field(max_length=80)
@@ -132,17 +132,14 @@ def public(service, state, aid, facts):
 def model_context(service, state, aid):
     record = ensure(service, state, aid)
     upload = state["_uploads"][aid]
-    checked_bytes(service, state, service.directory(state["id"]) / "uploads" / (aid + ".h5ad"),
-                  upload["sha256"], limit=service.settings.upload_limit)
+    data = checked_bytes(service, state, service.directory(state["id"]) / "uploads" / (aid + ".h5ad"),
+                         upload["sha256"], limit=service.settings.upload_limit)
     for protocol in record["protocols"]:
         checked_bytes(service, state, service.directory(state["id"]) / "intake-protocols" / (protocol["id"] + ".bin"),
                       protocol["sha256"], limit=PROTOCOL_LIMIT)
-    identities = sorted((x for x in record["_identities"] if x), key=len, reverse=True)
+    identities = identity_values(state, aid, data)
     def safe(text):
-        text = clean_text(text)
-        for identity in identities:
-            text = re.sub(r"(?<!\\w)" + re.escape(identity) + r"(?!\\w)", "[sample identifier]", text)
-        return text
+        return redact_identities(text, identities)
     sources, remaining, truncated = [], 96000, False
     ordered = sorted(record["sources"], key=lambda s: (s["kind"] == "protocol",
         not bool(re.search(r"(?im)^\\s*(?:Methods|Supplemental methods|Differentiation of|Cell culture)\\b", s["text"]))))
@@ -321,7 +318,8 @@ def run(service, sid, epoch, aid, generation, context, formalize_pid=None):
                                       "source_ids": sorted({sid for candidate in items for sid in candidate.source_ids}),
                                       "quote": " | ".join(candidate.quote for candidate in items)})
                     continue
-                if item.field in record["manual_fields"]:
+                confirmed = state.get("_intakes", {}).get(aid, {}).get("facts", {})
+                if item.field in record["manual_fields"] or confirmed.get(item.field) not in (None, "unknown"):
                     continue
                 existing = record["values"].get(item.field)
                 origin = record["field_sources"].get(item.field, {})

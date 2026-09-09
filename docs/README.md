@@ -19,8 +19,9 @@ evidence you need.
 > in the current plan. Genuine Web coverage includes QC, cell-state evidence,
 > missingness checking/compilation, blocked internal-report verification and the
 > separate explicit no-graft path, not a complete product-evaluation chain.
-> Source implementation, installed acceptance and
-> remaining work are separated in the [current integration plan](../plans/web-full-chain-integration.md#current-progress-2026-09-08).
+> Source implementation and isolated acceptance are recorded in the
+> [engineering checkpoint](../plans/web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10);
+> remaining scientific work is tracked in [Product Evidence Validation](../plans/product-evidence-validation.md).
 > A shared
 > visualization data contract and figure registry are available. P0-01 provides four
 > `typed_candidate` figure components, alongside two compatibility

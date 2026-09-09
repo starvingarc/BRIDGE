@@ -263,6 +263,624 @@ def test_repair_receives_compiler_diagnostic_and_can_preserve_source_steps(clien
     assert item["latest"]["generation"]["request_count"] == 2
 
 
+
+def test_bounded_repair_identifies_unsupported_options_without_changing_steps(client, tmp_path, monkeypatch):
+    import bridge.web.protocol_formalization as formal
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch, text="Wait for the required period.")
+    calls = []
+    def generator(settings, context, previous=None, diagnostics=None):
+        calls.append(diagnostics)
+        draft = draft_fixture(context, missing=True)
+        guidance = next((item for item in diagnostics or []
+                         if item["code"] == "unsupported_question_option"), {})
+        if guidance.get("unsupported_options") != [{"question_id": "duration", "value": "2 h"}]:
+            draft.questions[0].options = [formal.QuestionOption(value="2 h", label="两小时")]
+        return draft
+    monkeypatch.setattr(formal, "generate", generator)
+    assert protocol_action(client, sid, aid, pid, "formalize").status_code == 200
+    settle(client, sid)
+    item = representation(client, sid, aid, pid)
+    assert item["state"] == "complete"
+    version = item["latest"]
+    assert version["generation"]["request_count"] == 2
+    assert version["coverage_state"] == "needs_input"
+    assert version["questions"][0]["id"] == "duration"
+    assert version["questions"][0]["options"] == []
+    assert len(version["steps"]) == 1
+    assert version["bpl"] == "protocol Probe {\n wait()\n}"
+    assert client.get(f"/api/sessions/{sid}").json()["plan"] is None
+    attempts = sorted((client.app.state.service.directory(sid) / "protocol-attempts" / pid).glob("*/[12].json"))
+    assert len(attempts) == 2
+    first = json.loads(attempts[0].read_text())
+    assert first["error"] == "unsupported_question_option"
+    assert first["draft"]["questions"][0]["options"][0]["value"] == "2 h"
+
+
+
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+def test_provider_generates_one_fragment_source_with_distinct_repeated_spans(monkeypatch, protocol):
+    from types import SimpleNamespace
+    import httpx
+    import bridge.web.protocol_formalization as formal
+    wire = {"steps": [
+        {"id": "first", "label": "First", "operations": "Wait for 2 h.",
+         "bpl_fragment": "wait(duration: 2 h)", "source_ids": ["S1"]},
+        {"id": "second", "label": "Second", "operations": "Wait for 2 h.",
+         "bpl_fragment": "wait(duration: 2 h)", "source_ids": ["S2"]}],
+        "questions": [], "excluded_sources": []}
+    captured = []
+    real_client = httpx.Client
+    def response(request):
+        captured.append(json.loads(request.content))
+        message = ({"content": None, "tool_calls": [{"type": "function", "function": {
+                    "name": "formalize_protocol", "arguments": json.dumps(wire)}}]}
+                   if protocol == "deepseek_tools" else {"content": json.dumps(wire)})
+        return httpx.Response(200, json={"model": "test-model", "choices": [{"message": message}]})
+    monkeypatch.setattr(formal.httpx, "Client",
+                        lambda **kwargs: real_client(transport=httpx.MockTransport(response), **kwargs))
+    settings = SimpleNamespace(model="test-model", model_action_protocol=protocol,
+                               model_base_url="https://provider.invalid/v1", model_api_key="test-key")
+    supplied = {"sources": [{"id": sid, "text": "Wait for 2 h."} for sid in ("S1", "S2")], "supplements": []}
+    result = formal.generate(settings, supplied)
+    assert result.bpl == "protocol UploadedProtocol {\n  wait(duration: 2 h)\n  wait(duration: 2 h)\n}\n"
+    assert [(s.line_start, s.line_end) for s in result.steps] == [(2, 2), (3, 3)]
+    assert [s.source_ids for s in result.steps] == [["S1"], ["S2"]]
+    schema = (captured[0]["tools"][0]["function"]["parameters"] if protocol == "deepseek_tools" else
+              json.loads(captured[0]["messages"][0]["content"].split("\nRequired JSON schema: ", 1)[1]))
+    assert set(schema["properties"]) == {"steps", "questions", "excluded_sources"}
+    instruction = captured[0]["messages"][0]["content"]
+    assert "The server normalizes formatting newlines inside call expressions" in instruction
+    for field in ("bpl", "bpl_occurrence", "line_start", "line_end"):
+        assert f'"{field}"' not in json.dumps(schema)
+
+
+def test_fragment_repair_reassembles_multiline_spans_without_changing_source_content(bpl_python):
+    import bridge.web.protocol_formalization as formal
+    wire = {"steps": [
+        {"id": "first", "label": "First", "operations": "Wait for the required period and rinse.",
+         "bpl_fragment": "wait()\nrinse()", "source_ids": ["S1"]},
+        {"id": "second", "label": "Second", "operations": "Wait for the required period.",
+         "bpl_fragment": "wait()", "source_ids": ["S2"]}],
+        "questions": [], "excluded_sources": []}
+    original = formal._assemble_draft(formal.ProtocolProposal.model_validate(wire))
+    before = original.model_dump()
+    repair = formal.ProtocolRepair(step_fragments=[
+        {"step_id": "first", "bpl_fragment": "// preserved operation\nwait()\nrinse()"}])
+    result = formal._repair_draft(original, repair, allow_fragments=True)
+    assert original.model_dump() == before
+    assert result.bpl == "protocol UploadedProtocol {\n  // preserved operation\nwait()\nrinse()\n  wait()\n}\n"
+    assert [(s.line_start, s.line_end) for s in result.steps] == [(2, 4), (5, 5)]
+    assert [(s.operations, s.source_ids) for s in result.steps] == [
+        ("Wait for the required period and rinse.", ["S1"]),
+        ("Wait for the required period.", ["S2"])]
+    supplied = {"sources": [{"id": "S1", "text": "Wait for the required period and rinse."},
+                            {"id": "S2", "text": "Wait for the required period."}], "supplements": []}
+    compiled = formal.compile_bpl(result.bpl, bpl_python)
+    assert compiled["syntax_state"] == "passed" and compiled["compiler_state"] == "passed"
+    assert formal.validate_draft(result, supplied, compiled, original)
+
+
+@pytest.mark.parametrize("fragment", ["}\nprotocol Other { wait()", "if true {\nwait()", "protocol Other { wait() }"])
+def test_generated_fragment_cannot_escape_or_split_the_server_protocol(fragment):
+    import bridge.web.protocol_formalization as formal
+    proposal = formal.ProtocolProposal(steps=[{
+        "id": "first", "label": "First", "operations": "Wait.",
+        "bpl_fragment": fragment, "source_ids": ["S1"]}])
+    with pytest.raises(ValueError, match="^invalid_protocol_fragment$"):
+        formal._assemble_draft(proposal)
+
+
+
+@pytest.mark.parametrize("fragments", [
+    ['wait(note: "', '")\n}\nprotocol Other { wait(note: "', '")'],
+    ['wait() /*', 'ignored */\nwait()'],
+    ['wait(', ')'],
+    ['culture(values: [', '])'],
+    ['culture(values: [)])'],
+], ids=["cross-string-protocol", "cross-comment", "cross-call", "cross-list", "mismatched-delimiters"])
+def test_fragment_lexical_and_delimiter_state_cannot_cross_source_boundaries(fragments):
+    import bridge.web.protocol_formalization as formal
+    proposal = formal.ProtocolProposal(steps=[{
+        "id": f"step-{index}", "label": "Wait", "operations": "Wait.",
+        "bpl_fragment": fragment, "source_ids": ["S1"]}
+        for index, fragment in enumerate(fragments)])
+    with pytest.raises(ValueError, match="^invalid_protocol_fragment$"):
+        formal._assemble_draft(proposal)
+
+
+def test_complete_multiline_string_and_comment_remain_byte_exact(bpl_python):
+    import bridge.web.protocol_formalization as formal
+    fragment = 'culture(note: "first\nsecond \\"quoted\\" {[(]}", timing: "8 days")\n/* keep } protocol Other { */\nrinse()'
+    proposal = formal.ProtocolProposal(steps=[{
+        "id": "first", "label": "Culture", "operations": "Culture for 8 days and rinse.",
+        "bpl_fragment": fragment, "source_ids": ["S1"]}])
+    draft = formal._assemble_draft(proposal)
+    assert draft.steps[0].bpl_fragment == fragment
+    assert draft.bpl == "protocol UploadedProtocol {\n  " + fragment + "\n}\n"
+    compiled = formal.compile_bpl(draft.bpl, bpl_python)
+    assert compiled["syntax_state"] == compiled["compiler_state"] == "passed"
+
+
+@pytest.mark.parametrize("prefix", [b"{partial-response", b"x" * 65536 + b"end"], ids=["short", "nonaligned"])
+def test_short_interrupted_provider_body_is_preserved_before_chunk_buffering(monkeypatch, prefix):
+    import base64
+    import httpx
+    from types import SimpleNamespace
+    import bridge.web.protocol_formalization as formal
+    class Interrupted(httpx.SyncByteStream):
+        def __iter__(self):
+            yield prefix
+            raise httpx.ReadError("controlled disconnect")
+    real_client = httpx.Client
+    monkeypatch.setattr(formal.httpx, "Client", lambda **kwargs: real_client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, stream=Interrupted())), **kwargs))
+    settings = SimpleNamespace(model="test-model", model_action_protocol="json",
+                               model_base_url="https://provider.invalid/v1", model_api_key="test-key")
+    with pytest.raises(formal.ProtocolResponseError) as caught:
+        formal.generate(settings, {"sources": [], "supplements": []})
+    assert str(caught.value) == "protocol_provider_unavailable"
+    receipt = caught.value.receipt
+    assert base64.b64decode(receipt["body_base64"]) == prefix
+    assert receipt["captured_bytes"] == len(prefix)
+    assert receipt["captured_sha256"] == hashlib.sha256(prefix).hexdigest()
+    assert receipt["truncated"] is True and receipt["status_code"] == 200
+
+
+@pytest.mark.parametrize("body", [
+    'culture(\n target: "cells", time: "8 days")',
+    'culture(factors: {\n "N2": 1%})',
+    'culture(targets: [\n "cells"])',
+])
+def test_pinned_call_expression_newline_is_not_ignored(bpl_python, body):
+    from bridge.web.protocol_formalization import compile_bpl
+    broken = compile_bpl("protocol Probe {\n " + body + "\n}", bpl_python)
+    assert broken["syntax_state"] == "failed" and broken["compiler_state"] == "not_run"
+    fixed = compile_bpl("protocol Probe {\n " + body.replace("\n", " ") + "\n}", bpl_python)
+    assert fixed["syntax_state"] == fixed["compiler_state"] == "passed"
+
+
+
+@pytest.mark.parametrize(("fragment", "expected"), [
+    ('culture(\n target: "cells", time: "8 days"\n)',
+     'culture(  target: "cells", time: "8 days" )'),
+    ('culture(factors: {\n "N2": 1%\n})',
+     'culture(factors: {  "N2": 1% })'),
+    ('culture(targets: [\n "cells"\n])',
+     'culture(targets: [  "cells" ])'),
+    ('culture(\n note: "first\nsecond", /* preserve\ncomment */ time: "8 days"\n)\nrinse()',
+     'culture(  note: "first\nsecond", /* preserve\ncomment */ time: "8 days" )\nrinse()'),
+])
+def test_call_layout_is_normalized_without_rewriting_protected_text_or_operations(bpl_python, fragment, expected):
+    import bridge.web.protocol_formalization as formal
+    proposal = formal.ProtocolProposal(steps=[{
+        "id": "first", "label": "Culture", "operations": "Culture as specified.",
+        "bpl_fragment": fragment, "source_ids": ["S1"]}])
+    before = proposal.model_dump()
+    draft = formal._assemble_draft(proposal)
+    assert proposal.model_dump() == before
+    assert draft.steps[0].bpl_fragment == expected
+    assert draft.bpl == "protocol UploadedProtocol {\n  " + expected + "\n}\n"
+    assert (draft.steps[0].id, draft.steps[0].operations, draft.steps[0].source_ids) == (
+        "first", "Culture as specified.", ["S1"])
+    assert formal._assemble_draft(draft).model_dump() == draft.model_dump()
+    compiled = formal.compile_bpl(draft.bpl, bpl_python)
+    assert compiled["syntax_state"] == compiled["compiler_state"] == "passed"
+
+
+def test_layout_normalization_does_not_swallow_a_line_comment_terminator():
+    import bridge.web.protocol_formalization as formal
+    fragment = 'culture(note: "cells", // preserve comment\n time: "8 days")'
+    proposal = formal.ProtocolProposal(steps=[{
+        "id": "first", "label": "Culture", "operations": "Culture for 8 days.",
+        "bpl_fragment": fragment, "source_ids": ["S1"]}])
+    draft = formal._assemble_draft(proposal)
+    assert draft.steps[0].bpl_fragment == fragment
+
+
+def test_assembled_fragment_size_is_bounded_for_the_complete_program():
+    import bridge.web.protocol_formalization as formal
+    fragment = 'culture(note: "' + "x" * 65536 + '")'
+    proposal = formal.ProtocolProposal(steps=[{
+        "id": sid, "label": "Culture", "operations": "Culture.",
+        "bpl_fragment": fragment, "source_ids": ["S1"]} for sid in ("first", "second")])
+    with pytest.raises(ValueError, match="^bpl_size_limit$"):
+        formal._assemble_draft(proposal)
+
+
+def test_compiled_protocol_cannot_be_rewritten_during_option_only_repair():
+    import bridge.web.protocol_formalization as formal
+    proposal = formal.ProtocolProposal(steps=[{
+        "id": "first", "label": "Wait", "operations": "Wait.",
+        "bpl_fragment": "wait()", "source_ids": ["S1"]}])
+    original = formal._assemble_draft(proposal)
+    before = original.model_dump()
+    with pytest.raises(ValueError, match="^invalid_protocol_repair$"):
+        formal._repair_draft(original, formal.ProtocolRepair(step_fragments=[
+            {"step_id": "first", "bpl_fragment": "rinse()"}]), allow_fragments=False)
+    assert original.model_dump() == before
+
+
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+def test_provider_repair_reassembles_source_fragments_without_regenerating_source_content(monkeypatch, protocol):
+    from types import SimpleNamespace
+    import httpx
+    import bridge.web.protocol_formalization as formal
+    supplied = {"sources": [{"id": "S1", "kind": "protocol", "text": "Wait for the required period."}],
+                "supplements": []}
+    original = draft_fixture(supplied, missing=True)
+    original.steps[0].bpl_fragment = "not_present()"
+    original.questions[0].options = [formal.QuestionOption(value="2 h", label="两小时")]
+    before = original.model_dump()
+    wire = {"step_fragments": [{"step_id": "step-1", "bpl_fragment": "wait()"}],
+            "question_options": [{"question_id": "duration", "options": []}]}
+    captured = []
+    real_client = httpx.Client
+    def response(request):
+        captured.append(json.loads(request.content))
+        message = ({"content": None, "tool_calls": [{"type": "function", "function": {
+                    "name": "formalize_protocol", "arguments": json.dumps(wire)}}]}
+                   if protocol == "deepseek_tools" else {"content": json.dumps(wire)})
+        return httpx.Response(200, json={"model": "test-reported-model", "choices": [{"message": message}]})
+    monkeypatch.setattr(formal.httpx, "Client",
+                        lambda **kwargs: real_client(transport=httpx.MockTransport(response), **kwargs))
+    settings = SimpleNamespace(model="test-model", model_action_protocol=protocol,
+                               model_base_url="https://provider.invalid/v1", model_api_key="test-key")
+    repaired = formal.generate(settings, supplied, previous=original,
+                               diagnostics=[{"code": "bpl_compilation_failed", "syntax_state": "failed",
+                                             "compiler_state": "not_run"}])
+    assert original.model_dump() == before
+    assert repaired.bpl == "protocol UploadedProtocol {\n  wait()\n}\n"
+    assert repaired.steps[0].bpl_fragment == "wait()"
+    assert repaired.steps[0].operations == before["steps"][0]["operations"]
+    assert repaired.steps[0].source_ids == ["S1"]
+    assert repaired.questions[0].title == before["questions"][0]["title"]
+    assert repaired.questions[0].options == []
+    assert repaired.excluded_sources == original.excluded_sources
+    assert repaired._repair_response["step_fragments"][0]["step_id"] == "step-1"
+    schema = (captured[0]["tools"][0]["function"]["parameters"] if protocol == "deepseek_tools" else
+              json.loads(captured[0]["messages"][0]["content"].split("\nRequired JSON schema: ", 1)[1]))
+    assert set(schema["properties"]) == {"step_fragments", "question_options", "source_additions",
+                                         "question_additions", "source_resolutions"}
+    assert schema["additionalProperties"] is False
+    assert '"operations"' not in json.dumps(schema)
+    assert schema["properties"]["question_additions"]["maxItems"] == 0
+    assert schema["properties"]["source_resolutions"]["maxItems"] == 0
+    assert formal.validate_draft(repaired, supplied, compiler_fixture(repaired.bpl, None), original)
+
+
+@pytest.mark.parametrize("patch", [
+    {"step_fragments": [{"step_id": "unknown", "bpl_fragment": "wait()"}]},
+    {"step_fragments": [{"step_id": "step-1", "bpl_fragment": "wait()"},
+                        {"step_id": "step-1", "bpl_fragment": "wait()"}]},
+    {"question_options": [{"question_id": "unknown", "options": []}]},
+    {"steps": [{"id": "step-1", "operations": "Change the experimental procedure."}]},
+])
+def test_protocol_repair_cannot_address_unknown_or_semantic_fields(patch):
+    import bridge.web.protocol_formalization as formal
+    supplied = {"sources": [{"id": "S1", "kind": "protocol", "text": "Wait for the required period."}],
+                "supplements": []}
+    original = draft_fixture(supplied, missing=True)
+    before = original.model_dump()
+    with pytest.raises(ValueError):
+        formal._repair_draft(original, formal.ProtocolRepair.model_validate(patch))
+    assert original.model_dump() == before
+
+
+def provider_wire(protocol, payload):
+    arguments = json.dumps(payload, ensure_ascii=False) if isinstance(payload, dict) else payload
+    message = ({"content": None, "tool_calls": [{"type": "function", "function": {
+                "name": "formalize_protocol", "arguments": arguments}}]}
+               if protocol == "deepseek_tools" else {"content": arguments})
+    return json.dumps({"model": "test-reported-model", "choices": [{"message": message}]},
+                      ensure_ascii=False).encode()
+
+
+def install_protocol_responses(monkeypatch, protocol, replies):
+    import httpx
+    import bridge.web.protocol_formalization as formal
+    captured = []
+    real_client = httpx.Client
+    def response(request):
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, content=replies[min(len(captured) - 1, len(replies) - 1)])
+    monkeypatch.setattr(formal.httpx, "Client",
+                        lambda **kwargs: real_client(transport=httpx.MockTransport(response), **kwargs))
+    return captured
+
+
+
+
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+@pytest.mark.parametrize("specified", [False, True], ids=["missing-duration", "specified-text-duration"])
+def test_unparsed_duration_requires_source_review_even_when_model_omits_questions(
+        client, tmp_path, monkeypatch, bpl_python, protocol, specified):
+    import bridge.web.protocol_formalization as formal
+    real_generate, real_compile = formal.generate, formal.compile_bpl
+    source = "Wait for 8 days." if specified else "Wait for the required period."
+    phrase = "8 days" if specified else "the required period"
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch, text=source)
+    service = client.app.state.service
+    service.settings = replace(service.settings, model_action_protocol=protocol, protocol_compiler_python=bpl_python)
+    monkeypatch.setattr(formal, "generate", real_generate)
+    monkeypatch.setattr(formal, "compile_bpl", real_compile)
+    proposal = {"steps": [{"id": "wait-stage", "label": "Wait", "operations": source,
+                           "bpl_fragment": 'wait(duration: "' + phrase + '")', "source_ids": ["S1"]}],
+                "questions": [], "excluded_sources": []}
+    question = {"id": "duration", "title": "这一步应等待多久，或达到什么结束条件？",
+                "step_ids": ["wait-stage"], "source_ids": ["S1"], "options": []}
+    patch = ({"source_resolutions": [{"step_id": "wait-stage", "line": 2, "column": 3, "quote": "8 days"}]} if specified else
+             {"question_additions": [question]})
+    captured = install_protocol_responses(monkeypatch, protocol,
+                [provider_wire(protocol, proposal), provider_wire(protocol, patch)])
+    assert protocol_action(client, sid, aid, pid, "formalize").status_code == 200
+    settle(client, sid)
+    item = representation(client, sid, aid, pid)
+    assert item["state"] == "complete" and len(captured) == 2
+    version = item["latest"]
+    assert version["syntax_state"] == version["compiler_state"] == "passed"
+    assert version["coverage_state"] == ("complete_for_extracted_scope" if specified else "needs_input")
+    assert [q["id"] for q in version["questions"]] == ([] if specified else ["duration"])
+    assert version["review_state"] == "unreviewed"
+    assert "duration_unresolved" in {i["code"] for i in version["unchecked"]}
+    attempts = [json.loads(p.read_text()) for p in sorted(
+        (service.directory(sid) / "protocol-attempts" / pid).glob("*/*.json"))]
+    assert attempts[0]["error"] == "protocol_source_review_required"
+    assert attempts[0]["draft"]["questions"] == []
+    assert attempts[0]["draft"]["steps"] == attempts[1]["draft"]["steps"]
+    assert attempts[0]["draft"]["bpl"] == attempts[1]["draft"]["bpl"] == version["bpl"]
+    diagnostic = json.loads(captured[1]["messages"][1]["content"])["diagnostics"][0]
+    assert diagnostic["source_review_required"] == [{"step_id": "wait-stage", "line": 2, "column": 3, "code": "duration_unresolved"}]
+    if specified:
+        assert attempts[1]["source_resolutions"] == {"wait-stage:2:3": "8 days"}
+    assert service.load(sid)["plan"] is None and not service.load(sid)["_tool_runs"]
+
+
+def test_omitted_duration_review_cannot_silently_publish_after_retry_budget(
+        client, tmp_path, monkeypatch, bpl_python):
+    import bridge.web.protocol_formalization as formal
+    real_generate, real_compile = formal.generate, formal.compile_bpl
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch, text="Wait for the required period.")
+    service = client.app.state.service
+    service.settings = replace(service.settings, model_action_protocol="json", protocol_compiler_python=bpl_python)
+    monkeypatch.setattr(formal, "generate", real_generate)
+    monkeypatch.setattr(formal, "compile_bpl", real_compile)
+    proposal = {"steps": [{"id": "wait-stage", "label": "Wait", "operations": "Wait for the required period.",
+                           "bpl_fragment": 'wait(duration: "the required period")', "source_ids": ["S1"]}],
+                "questions": [], "excluded_sources": []}
+    captured = install_protocol_responses(monkeypatch, "json",
+                [provider_wire("json", proposal), provider_wire("json", {})])
+    protocol_action(client, sid, aid, pid, "formalize")
+    settle(client, sid)
+    item = representation(client, sid, aid, pid)
+    assert item["state"] == "unavailable" and item["latest"] is None
+    assert item["error"] == "protocol_source_review_required" and len(captured) == 3
+
+
+
+@pytest.mark.parametrize("patch", [
+    {"source_resolutions": [{"step_id": "unknown", "line": 2, "column": 3, "quote": "8 days"}]},
+    {"source_resolutions": [{"step_id": "step-1", "line": 2, "column": 28, "quote": "8 days"}]},
+    {"source_resolutions": [{"step_id": "step-1", "line": 2, "column": 3, "quote": "2 h"}]},
+    {"source_resolutions": [{"step_id": "step-1", "line": 2, "column": 3, "quote": "8 days"},
+                            {"step_id": "step-1", "line": 2, "column": 3, "quote": "8 days"}]},
+    {"question_additions": [{"id": "duration", "title": "Replace old question", "step_ids": ["step-1"],
+                              "source_ids": ["S1"], "options": []}]},
+    {"question_additions": [{"id": "new", "title": "Unbound question", "step_ids": [],
+                              "source_ids": ["S1"], "options": []}]},
+    {"question_additions": [{"id": "new", "title": "Unknown step", "step_ids": ["unknown"],
+                              "source_ids": ["S1"], "options": []}]},
+])
+def test_source_review_patch_rejects_unbound_outcomes_and_preserves_original(patch):
+    import bridge.web.protocol_formalization as formal
+    supplied = {"sources": [{"id": "S1", "kind": "protocol", "text": "Wait for 8 days."}], "supplements": []}
+    original = draft_fixture(supplied, missing=True)
+    before = original.model_dump()
+    with pytest.raises(ValueError):
+        formal._repair_draft(original, formal.ProtocolRepair.model_validate(patch),
+            available_sources={"S1": supplied["sources"][0], "S2": {"text": "Wait for 2 h."}}, review_targets={("step-1", 2, 3)})
+    assert original.model_dump() == before and original._source_resolutions == {}
+
+
+@pytest.mark.parametrize("separator", ["\n", " "], ids=["separate-lines", "same-line"])
+def test_one_known_wait_cannot_resolve_another_unparsed_wait_in_same_source_step(
+        client, tmp_path, monkeypatch, bpl_python, separator):
+    import bridge.web.protocol_formalization as formal
+    real_generate, real_compile = formal.generate, formal.compile_bpl
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch, text="Wait for 8 days, then wait for the required period.")
+    service = client.app.state.service
+    service.settings = replace(service.settings, model_action_protocol="json", protocol_compiler_python=bpl_python)
+    monkeypatch.setattr(formal, "generate", real_generate)
+    monkeypatch.setattr(formal, "compile_bpl", real_compile)
+    proposal = {"steps": [{"id": "wait-stage", "label": "Wait", "operations": "Wait for 8 days, then wait for the required period.",
+                           "bpl_fragment": 'wait(duration: "8 days")' + separator + 'wait(duration: "the required period")',
+                           "source_ids": ["S1"]}], "questions": [], "excluded_sources": []}
+    patch = {"source_resolutions": [{"step_id": "wait-stage", "line": 2, "column": 3, "quote": "8 days"}]}
+    captured = install_protocol_responses(monkeypatch, "json",
+                [provider_wire("json", proposal), provider_wire("json", patch)])
+    protocol_action(client, sid, aid, pid, "formalize")
+    settle(client, sid)
+    item = representation(client, sid, aid, pid)
+    assert item["state"] == "unavailable" and item["latest"] is None
+    assert len(captured) == 3
+    remaining = json.loads(captured[2]["messages"][1]["content"])["diagnostics"][0]["source_review_required"]
+    assert remaining == [{"step_id": "wait-stage", "line": 3 if separator == "\n" else 2, "column": 1 if separator == "\n" else 28, "code": "duration_unresolved"}]
+
+
+def test_protocol_named_argument_is_not_a_protocol_declaration(bpl_python):
+    import bridge.web.protocol_formalization as formal
+    fragment = 'culture(protocol: "terminal differentiation")'
+    draft = formal._assemble_draft(formal.ProtocolProposal(steps=[{
+        "id": "first", "label": "Culture", "operations": "Culture.",
+        "bpl_fragment": fragment, "source_ids": ["S1"]}]))
+    assert draft.bpl == 'protocol UploadedProtocol {\n  culture(protocol: "terminal differentiation")\n}\n'
+    result = formal.compile_bpl(draft.bpl, bpl_python)
+    assert result["syntax_state"] == result["compiler_state"] == "passed"
+
+
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+def test_compiled_step_can_add_missing_source_without_changing_its_content(
+        client, tmp_path, monkeypatch, bpl_python, protocol):
+    import bridge.web.protocol_formalization as formal
+    real_generate, real_compile = formal.generate, formal.compile_bpl
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch,
+                                    text="Culture on day 36.\n\nUse basal medium.")
+    service = client.app.state.service
+    service.settings = replace(service.settings, model_action_protocol=protocol, protocol_compiler_python=bpl_python)
+    monkeypatch.setattr(formal, "generate", real_generate)
+    monkeypatch.setattr(formal, "compile_bpl", real_compile)
+    proposal = {"steps": [{"id": "stage", "label": "Culture", "operations": "Culture on day 36 using basal medium.",
+                           "bpl_fragment": 'culture(timing: "day 36", medium: "basal medium")',
+                           "source_ids": ["S2"]}], "questions": [], "excluded_sources": []}
+    patch = {"source_additions": [{"step_id": "stage", "add_source_ids": ["S1"]}]}
+    captured = install_protocol_responses(monkeypatch, protocol, [provider_wire(protocol, proposal), provider_wire(protocol, patch)])
+    assert protocol_action(client, sid, aid, pid, "formalize").status_code == 200
+    settle(client, sid)
+    item = representation(client, sid, aid, pid)
+    assert item["state"] == "complete" and len(captured) == 2
+    version = item["latest"]
+    assert version["syntax_state"] == version["compiler_state"] == "passed"
+    assert version["review_state"] == "unreviewed"
+    assert version["steps"][0]["source_ids"] == ["S2", "S1"]
+    assert [s["text"] for s in version["steps"][0]["sources"]] == ["Use basal medium.", "Culture on day 36."]
+    attempts = [json.loads(p.read_text()) for p in sorted(
+        (service.directory(sid) / "protocol-attempts" / pid).glob("*/*.json"))]
+    assert attempts[0]["error"] == "unsupported_literal"
+    assert attempts[0]["compiler_result"]["syntax_state"] == attempts[0]["compiler_result"]["compiler_state"] == "passed"
+    before = attempts[0]["draft"]
+    after = attempts[1]["draft"]
+    assert before["bpl"] == after["bpl"] == version["bpl"]
+    assert before["steps"][0]["source_ids"] == ["S2"]
+    assert {k: v for k, v in before["steps"][0].items() if k != "source_ids"} == {
+        k: v for k, v in after["steps"][0].items() if k != "source_ids"}
+    assert before["questions"] == after["questions"] and before["excluded_sources"] == after["excluded_sources"]
+    assert attempts[1]["repair_response"]["source_additions"] == patch["source_additions"]
+    data = json.loads(captured[1]["messages"][1]["content"])
+    assert data["diagnostics"][0]["unsupported_literal"] == {"step_ids": ["stage"], "value": 36.0, "unit": None}
+    schema = (captured[1]["tools"][0]["function"]["parameters"] if protocol == "deepseek_tools" else
+              json.loads(captured[1]["messages"][0]["content"].split("\nRequired JSON schema: ", 1)[1]))
+    assert schema["properties"]["step_fragments"]["maxItems"] == 0
+    source_patch = schema["properties"]["source_additions"]["items"]
+    assert source_patch["properties"]["step_id"]["enum"] == ["stage"]
+    assert source_patch["properties"]["add_source_ids"]["items"]["enum"] == ["S1", "S2"]
+    assert service.load(sid)["plan"] is None and not service.load(sid)["_tool_runs"]
+
+
+@pytest.mark.parametrize("patch", [
+    {"source_additions": [{"step_id": "unknown", "add_source_ids": ["S2"]}]},
+    {"source_additions": [{"step_id": "step-1", "add_source_ids": ["unknown"]}]},
+    {"source_additions": [{"step_id": "step-1", "add_source_ids": ["S2", "S2"]}]},
+    {"source_additions": [{"step_id": "step-1", "add_source_ids": ["S2"]},
+                          {"step_id": "step-1", "add_source_ids": ["S2"]}]},
+    {"source_additions": [{"step_id": "step-1", "add_source_ids": ["S2"], "source_ids": ["S2"]}]},
+    {"source_additions": [{"step_id": "step-1", "add_source_ids": ["S2"], "operations": "Change procedure."}]},
+])
+def test_source_additions_cannot_replace_citations_or_address_unknown_targets(patch):
+    import bridge.web.protocol_formalization as formal
+    supplied = {"sources": [{"id": "S1", "text": "Wait."}], "supplements": []}
+    original = draft_fixture(supplied, missing=True)
+    before = original.model_dump()
+    with pytest.raises(ValueError):
+        formal._repair_draft(original, formal.ProtocolRepair.model_validate(patch), available_sources={"S1", "S2"})
+    assert original.model_dump() == before
+
+
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+@pytest.mark.parametrize("invalid", [
+    {"step_fragments": [{"step_id": "unknown", "bpl_fragment": 'culture(time: "8 days")'}]},
+    {"step_fragments": [{"step_id": "step-1", "bpl_fragment": 'culture(time: "8 days")'},
+                        {"step_id": "step-1", "bpl_fragment": 'culture(time: "8 days")'}]},
+    {"steps": [{"id": "step-1", "operations": "Replace the source procedure."}]},
+    "{broken JSON",
+], ids=["unknown-target", "duplicate-target", "semantic-field", "malformed-json"])
+def test_rejected_provider_responses_are_retained_before_validation(
+        client, tmp_path, monkeypatch, bpl_python, protocol, invalid):
+    import base64
+    import bridge.web.protocol_formalization as formal
+    real_generate, real_compile = formal.generate, formal.compile_bpl
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch, text="Culture for 8 days.")
+    service = client.app.state.service
+    service.settings = replace(service.settings, model_action_protocol=protocol, protocol_compiler_python=bpl_python)
+    monkeypatch.setattr(formal, "generate", real_generate)
+    monkeypatch.setattr(formal, "compile_bpl", real_compile)
+    proposal = {"steps": [{"id": "step-1", "label": "Culture", "operations": "Culture for 8 days.",
+                           "bpl_fragment": "culture(time: 8 days)", "source_ids": ["S1"]}],
+                "questions": [], "excluded_sources": []}
+    first, rejected = provider_wire(protocol, proposal), provider_wire(protocol, invalid)
+    captured = install_protocol_responses(monkeypatch, protocol, [first, rejected])
+    assert protocol_action(client, sid, aid, pid, "formalize").status_code == 200
+    settle(client, sid)
+    item = representation(client, sid, aid, pid)
+    assert item["state"] == "unavailable" and item["latest"] is None
+    assert len(captured) == 3
+    paths = sorted((service.directory(sid) / "protocol-attempts" / pid).glob("*/*.json"))
+    assert len(paths) == 3
+    for index, path in enumerate(paths):
+        attempt = json.loads(path.read_text())
+        expected = first if index == 0 else rejected
+        receipt = attempt["provider_response"]
+        assert base64.b64decode(receipt["body_base64"]) == expected
+        assert receipt["captured_bytes"] == len(expected) and receipt["truncated"] is False
+        assert receipt["captured_sha256"] == hashlib.sha256(expected).hexdigest()
+        assert receipt["status_code"] == 200
+        assert attempt["reported_model"] == "test-reported-model"
+        if index:
+            assert attempt["draft"] is None and attempt["error"] is not None
+    assert service.load(sid)["plan"] is None and not service.load(sid)["_tool_runs"]
+
+
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+def test_invalid_repair_retains_prior_compiler_diagnostics_for_the_next_request(
+        client, tmp_path, monkeypatch, bpl_python, protocol):
+    import bridge.web.protocol_formalization as formal
+    real_generate, real_compile = formal.generate, formal.compile_bpl
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch, text="Culture for 8 days.")
+    service = client.app.state.service
+    service.settings = replace(service.settings, model_action_protocol=protocol, protocol_compiler_python=bpl_python)
+    monkeypatch.setattr(formal, "generate", real_generate)
+    monkeypatch.setattr(formal, "compile_bpl", real_compile)
+    proposal = {"steps": [{"id": "step-1", "label": "Culture", "operations": "Culture for 8 days.",
+                           "bpl_fragment": "culture(time: 8 days)", "source_ids": ["S1"]}],
+                "questions": [], "excluded_sources": []}
+    replies = [provider_wire(protocol, proposal),
+               provider_wire(protocol, {"step_fragments": [{"step_id": "unknown", "bpl_fragment": "wait()"}]}),
+               provider_wire(protocol, {"step_fragments": [{"step_id": "step-1",
+                                                              "bpl_fragment": 'culture(time: "8 days")'}]})]
+    captured = install_protocol_responses(monkeypatch, protocol, replies)
+    assert protocol_action(client, sid, aid, pid, "formalize").status_code == 200
+    settle(client, sid)
+    item = representation(client, sid, aid, pid)
+    assert item["state"] == "complete" and item["latest"]["generation"]["request_count"] == 3
+    assert item["latest"]["syntax_state"] == item["latest"]["compiler_state"] == "passed"
+    assert item["latest"]["steps"][0]["operations"] == "Culture for 8 days."
+    assert item["latest"]["steps"][0]["sources"][0]["text"] == "Culture for 8 days."
+    data = json.loads(captured[2]["messages"][1]["content"])
+    assert data["diagnostics"][0]["syntax_state"] == "failed"
+    diagnostic = next(d for d in data["diagnostics"] if d["code"] == "SYNTAX_UNEXPECTED_CHARACTER")
+    assert diagnostic["line"] == 2 and diagnostic["step_ids"] == ["step-1"]
+
+
+def test_oversized_provider_response_retains_only_an_explicit_bounded_prefix(client, tmp_path, monkeypatch):
+    import base64
+    import bridge.web.protocol_formalization as formal
+    real_generate = formal.generate
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch)
+    monkeypatch.setattr(formal, "generate", real_generate)
+    prefix = b"x" * (1024 * 1024)
+    install_protocol_responses(monkeypatch, "json", [prefix + b"overflow"])
+    assert protocol_action(client, sid, aid, pid, "formalize").status_code == 200
+    settle(client, sid)
+    item = representation(client, sid, aid, pid)
+    assert item["state"] == "unavailable" and item["latest"] is None
+    service = client.app.state.service
+    for path in (service.directory(sid) / "protocol-attempts" / pid).glob("*/*.json"):
+        attempt = json.loads(path.read_text())
+        receipt = attempt["provider_response"]
+        assert receipt["truncated"] is True and receipt["captured_bytes"] == len(prefix)
+        assert base64.b64decode(receipt["body_base64"]) == prefix
+        assert receipt["captured_sha256"] == hashlib.sha256(prefix).hexdigest()
+        assert attempt["error"] == "provider_response_too_large"
+
+
 def test_repair_cannot_reset_preservation_by_returning_an_empty_intermediate_draft(client, tmp_path, monkeypatch):
     import bridge.web.protocol_formalization as formal
     sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch)
@@ -292,6 +910,74 @@ def test_repair_cannot_reset_preservation_by_returning_an_empty_intermediate_dra
     assert item["state"] == "unavailable" and item["latest"] is None
     assert item["error"] == "repair_changed_source_steps"
 
+
+
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+@pytest.mark.parametrize("incorporated", [False, True], ids=["ignored-answer", "incorporated-answer"])
+def test_latest_user_answer_must_be_accounted_for_in_generated_steps(
+        client, tmp_path, monkeypatch, bpl_python, protocol, incorporated):
+    import bridge.web.protocol_formalization as formal
+    real_generate, real_compile = formal.generate, formal.compile_bpl
+    sid, aid, pid = prepare_protocol(client, tmp_path, monkeypatch, text="Wait for the required period.")
+    monkeypatch.setattr(formal, "generate",
+        lambda settings, context, previous=None, diagnostics=None: draft_fixture(context, missing=True))
+    protocol_action(client, sid, aid, pid, "formalize")
+    settle(client, sid)
+    before = representation(client, sid, aid, pid)
+    service = client.app.state.service
+    service.settings = replace(service.settings, model_action_protocol=protocol, protocol_compiler_python=bpl_python)
+    monkeypatch.setattr(formal, "generate", real_generate)
+    monkeypatch.setattr(formal, "compile_bpl", real_compile)
+    proposal = {"steps": [{"id": "wait-stage", "label": "Wait",
+        "operations": "Wait for 2 h." if incorporated else "Wait for the required period.",
+        "bpl_fragment": "wait(duration: 2 h)" if incorporated else 'wait(duration: "required period")',
+        "source_ids": ["S1", "U1"] if incorporated else ["S1"]}],
+        "questions": [{"id": "duration", "title": "这一步需等待多久？", "step_ids": ["wait-stage"],
+                       "source_ids": ["S1"], "options": []}], "excluded_sources": []}
+    # Replay the actual false resolution; literal source membership alone cannot
+    # make an ignored user answer participate in the generated representation.
+    patch = {"source_resolutions": [{"step_id": "wait-stage", "line": 2, "column": 3,
+                                     "quote": "Wait for the required period."}]}
+    captured = install_protocol_responses(monkeypatch, protocol,
+        [provider_wire(protocol, proposal), provider_wire(protocol, patch), provider_wire(protocol, {})])
+    assert protocol_action(client, sid, aid, pid, "answer", question_id="duration",
+        value="Wait for 2 h.", other=True, unsure=False).status_code == 200
+    settle(client, sid)
+    after = representation(client, sid, aid, pid)
+    if incorporated:
+        assert after["state"] == "complete" and len(captured) == 1
+        assert after["latest"]["bpl"] == 'protocol UploadedProtocol {\n  wait(duration: 2 h)\n}\n'
+        assert after["latest"]["steps"][0]["source_ids"] == ["S1", "U1"]
+        assert after["latest"]["steps"][0]["origin"] == "source_and_user"
+        assert after["latest"]["coverage_state"] == "complete_for_extracted_scope"
+        assert after["latest"]["review_state"] == "unreviewed"
+    else:
+        assert after["state"] == "unavailable" and len(captured) == 3
+        assert after["error"] == "source_accounting_incomplete"
+        assert after["latest"]["id"] == before["latest"]["id"]
+        assert after["latest"]["coverage_state"] == "needs_input"
+        assert len(after["versions"]) == 1
+    assert service.load(sid)["plan"] is None and not service.load(sid)["_tool_runs"]
+
+
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+def test_proposal_exclusion_choices_are_only_protocol_sources(monkeypatch, protocol):
+    from types import SimpleNamespace
+    import bridge.web.protocol_formalization as formal
+    proposal = {"steps": [{"id": "wait-stage", "label": "Wait", "operations": "Wait for 2 h.",
+                           "bpl_fragment": "wait(duration: 2 h)", "source_ids": ["S1"]}],
+                "questions": [], "excluded_sources": []}
+    captured = install_protocol_responses(monkeypatch, protocol, [provider_wire(protocol, proposal)])
+    supplied = {"sources": [{"id": "S1", "text": "Wait for 2 h."}], "supplements": [
+        {"id": "U1", "text": "", "unsure": True, "superseded": False},
+        {"id": "U2", "text": "Historical answer.", "unsure": False, "superseded": True}]}
+    settings = SimpleNamespace(model="test-model", model_action_protocol=protocol,
+                               model_base_url="https://provider.invalid/v1", model_api_key="test-key")
+    draft = formal.generate(settings, supplied)
+    assert draft.excluded_sources == []
+    schema = (captured[0]["tools"][0]["function"]["parameters"] if protocol == "deepseek_tools" else
+              json.loads(captured[0]["messages"][0]["content"].split("\nRequired JSON schema: ", 1)[1]))
+    assert schema["properties"]["excluded_sources"]["items"]["properties"]["source_id"]["enum"] == ["S1"]
 
 def test_other_and_unsure_are_versioned_user_supplements_not_source_facts(client, tmp_path, monkeypatch):
     import bridge.web.protocol_formalization as formal

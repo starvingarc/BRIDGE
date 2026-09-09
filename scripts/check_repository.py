@@ -214,7 +214,7 @@ P005_INPUT_ROUTE_FILES = (
     Path("src/bridge/resources/schemas/off_target_control_result.schema.json"),
     Path("src/bridge/resources/schemas/off_target_hard_count_profile.schema.json"),
     Path("tests/test_p0_05_hard_count_accounting.py"),
-    Path("docs/validation/p0_05_hard_count_accounting_20260907.md"),
+    Path("docs/validation/p0_05_off_target_control.md"),
 )
 P006_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/proliferation_stress_visualization_data.schema.json"),
@@ -230,7 +230,7 @@ P006_INPUT_ROUTE_FILES = (
     Path("src/bridge/resources/schemas/process_method_input_v2.schema.json"),
     Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/observation_source.py"),
     Path("tests/test_p0_06_source_bound_observations.py"),
-    Path("docs/validation/p0_06_source_bound_observations_20260907.md"),
+    Path("docs/validation/p0_06_proliferation_stress_response.md"),
     # Approved descriptive input route; only its concrete implementation/contracts.
     Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/exploratory.py"),
     Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/exploratory_models.py"),

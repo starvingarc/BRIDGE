@@ -61,7 +61,13 @@ and private hashes are not part of its request contract. Identifiers used for
 sample grouping stay in the authenticated local projection. Protocol passages
 are treated as untrusted data, never executable instructions. Known credential,
 email and private-path forms are redacted; this is not general anonymization
-or permission to upload arbitrary personal information.
+or permission to upload arbitrary personal information. Before either extraction
+or protocol formalization, the server rebuilds the local identity inventory from
+the exact checked H5AD. It includes observation IDs, recognized sample/capture/
+batch/replicate/donor aliases, and explicitly selected identity/culture columns;
+an older cached inventory is not authoritative. Incomplete or over-budget identity
+reads block model-context construction. Identity replacement uses token boundaries
+so short IDs do not corrupt unrelated scientific words.
 
 Each model field must cite a supplied source. The server, not the model, supplies
 its bounded original-text excerpt. PDF text uses reading order rather than
@@ -89,9 +95,17 @@ validation of every stage label or operation. Uploaded protocol stages are
 prescribed intent, not observed execution. Failed citation
 validation or interrupted extraction retains the locally read facts.
 
+Previously confirmed sample/capture/culture identity columns remain masked for
+the same immutable upload after a selector is changed. Both model purposes merge
+that upload's historical confirmed selectors into the fresh checked-file inventory;
+selectors belonging to another upload do not affect its masking or availability.
+
 The file hash, protocol bytes, source labels and user revisions remain bound
-locally. A late model response cannot replace a newer manual answer. Newly
-attached protocols reopen the intake draft; an earlier confirmation does not
+locally. Exact confirmation synchronizes the draft baseline, including corrected
+or explicitly cleared values, and retires prior manual overrides. A subsequent
+deliberate answer starts a new unconfirmed draft; later model extraction cannot
+replace an already confirmed non-missing fact. A late model response cannot
+replace a newer manual answer. Newly attached protocols reopen the intake draft; an earlier confirmation does not
 automatically confirm a new source. Answers and extraction never approve
 analysis, authorize export or supply downstream scientific measurements.
 Ordinary conversational requests retain their prior private-intake boundary.
@@ -106,13 +120,56 @@ paths. Old attachments are not backfilled by a GET. Each new attachment is
 handled independently; extraction hands off within the existing fenced worker
 only when the isolated compiler runtime is configured.
 
-The source module accepts model-proposed BPL plus step/source IDs, questions and
-explicitly excluded passages. The server locates exact BPL fragments, resolves
-quotes from checked sources and records source accounting and unchecked compiler
-semantics. Literal membership and source accounting are deliberately bounded
+The source module accepts ordered BPL body fragments with step/source IDs,
+questions and explicitly excluded passages. The server derives the full program
+and physical spans from that one sequence, resolves quotes from checked sources
+and records source accounting and unchecked compiler semantics. Balanced fragment
+boundaries cannot close/replace the fixed protocol wrapper: each fragment must
+end with complete strings/comments and balanced parentheses, brackets and braces.
+Complete multiline strings retain their original bytes. Formatting newlines
+inside call expressions become spaces before assembly; non-whitespace symbols,
+strings/comments and source statements remain unchanged. This idempotent layout
+normalization is not semantic validation. Repairs may replace
+existing fragments only after failed syntax/compiler checks, then regenerate all
+spans without altering the original readable source statements or their order.
+Repairs may also append missing existing source IDs to a step while retaining its
+prior citations in order. Source-only patches leave BPL and readable content
+unchanged, including after compilation passes. Unknown or duplicate additions
+and reference-limit overflow are rejected; every patched draft is revalidated.
+Unsupported numeric literals identify their owning step, value and unit for
+bounded repair, without selecting or inventing a supporting source.
+An unparsed wait duration without an outstanding question requires a separate
+source-focused model review within the same three-request budget. The model must
+either append a source-backed question or identify a verbatim cited duration/end
+condition. A valid string such as `8 days` is not an absent source value merely
+because the compiler cannot interpret it. Review cannot change existing code,
+steps or questions. Unaddressed review cannot publish a completed representation;
+explicit unsure remains unresolved without another automatic question. Decisions
+and supporting excerpts remain in the private attempt audit, bound to the owning
+step and exact server-supplied diagnostic line and column, retaining distinct
+calls on the same physical line. This is a bounded
+model check, not proof that every semantic omission has been discovered.
+Source accounting also requires every current non-unsure user supplement to be
+cited by a generated step; superseded/unsure answers remain history or missingness,
+not required condition sources. A stored answer or question-only reference cannot
+make an unreferenced supplement incorporated. Generation must represent the
+current answer in both readable content and BPL while retaining original citations.
+Literal membership and source accounting are deliberately bounded
 checks, not semantic entailment or proof of complete preservation. Source day
 intervals must not acquire derived durations. At most three model requests are
 made per generation; repairs cannot reset the original source-step baseline.
+Choice values must occur verbatim in the cited source, even when their displayed
+labels are translated. A rejection identifies the offending question/option for
+bounded repair; absent explicit alternatives, the model must retain the question
+with no suggested choices for free-text/unsure input. Unsupported alternatives
+are not accepted as facts or silently presented. Failed attempts remain preserved.
+The provider body is captured before envelope, JSON or patch validation, capped
+at 1 MiB of decoded HTTP body bytes. Private receipts store base64 bytes, captured
+byte count/SHA-256, HTTP status and an explicit truncation flag; an oversized or
+interrupted prefix is never described as a complete response. They contain no
+request headers, are not included in model repair context and have no public
+export route. A pre-response connection failure has no fabricated body receipt.
+Rejected replies do not replace the last draft or its paired compiler diagnostics.
 
 Original attachment bytes remain untouched. Complete representations are
 append-only BPL/AST/compiler-plan/diagnostic/version files bound to their source

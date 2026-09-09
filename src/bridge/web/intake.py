@@ -98,7 +98,7 @@ class Intake:
         draft = ensure(self.service, state, aid)
         for key, value in draft["values"].items():
             # Existing researcher-confirmed declarations outrank local guesses.
-            if key in draft["manual_fields"] or draft["field_sources"].get(key, {}).get("kind") == "model" or values.get(key) in (None, "unknown"):
+            if key in draft["manual_fields"] or values.get(key) in (None, "unknown"):
                 values[key] = value
         return IntakeFacts.model_validate(values)
 
@@ -186,7 +186,20 @@ class Intake:
         records = state.setdefault("_intakes", {})
         if aid in records:
             state.setdefault("_intake_history", []).append(deepcopy(records[aid]))
-        records[aid] = {"upload_id": aid, "facts": facts.model_dump(mode="json"),
+        # Exact confirmation consumes the prior draft. Later explicit answers can
+        # start a new draft, but old answers must not override this new baseline.
+        from .intake_autofill import ensure
+        draft = ensure(self.service, state, aid)
+        confirmed_values = facts.model_dump(mode="json")
+        for field, value in confirmed_values.items():
+            if draft["values"].get(field) != value:
+                draft["field_sources"][field] = {"kind": "user", "source_ids": [], "quote": ""}
+                draft["other_answers"].pop(field, None)
+        draft["values"] = dict(confirmed_values)
+        draft["manual_fields"] = []
+        draft["conflicts"] = []
+        draft["revision"] += 1
+        records[aid] = {"upload_id": aid, "facts": confirmed_values,
                        "signature": self.signature(state, aid), "input_revision": state["_input_revision"] + 1,
                        "protocol_ids": [p["id"] for p in state.get("_intake_autofill", {}).get(aid, {}).get("protocols", [])],
                        "source_facts": self.confirmation_sources(state, aid)}

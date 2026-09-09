@@ -27,8 +27,8 @@ This directory contains the target and regional evidence package.
 - [Aggregation request](../../../../examples/requests/p0_03_target_regional_evidence.json)
 - [Expression request](../../../../examples/requests/p0_03_target_regional_expression.json)
 - [Method spec example](../../../../examples/objects/p0_03_target_regional_method_spec.json)
-- [Aggregation validation](../../../../docs/validation/p0_03_target_regional_20260825.md)
-- [Expression-method validation](../../../../docs/validation/p0_03_expression_methods_20260826.md)
+- [Aggregation validation](../../../../docs/validation/p0_03_target_regional.md#record-p0-03-target-regional-20260825)
+- [Expression-method validation](../../../../docs/validation/p0_03_target_regional.md#record-p0-03-expression-methods-20260826)
 
 Use `bridge-tool describe P0-03` for the installed version, schemas, environment
 and registered method IDs.

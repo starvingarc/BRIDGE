@@ -7,7 +7,406 @@
 **Architecture:** Retain PlanBuilder, exact AnalysisPlan approval, ToolExecutionPipeline and LocalWorkflowExecutor. Materialize each stage only after its real inputs exist; retain prior plans and canonical ToolRuns.
 **Tech Stack:** Existing Python/FastAPI runtime, React/assistant-ui client and server-side Playwright.
 **Spec:** [Agent integration](../docs/agent-integration.md), [local runtime](../docs/local-agent-runtime.md), [Web preview](../docs/web-preview.md), and the user-approved design below.
-**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK. Task 28 adds separately approved genuine L2 marker-context evidence through installed P0-02 0.5.4 while preserving original labels, reference profiles and QC. Neither increment mutated the preview/session. Task 29 then completed explicit technical QC selection and reran the existing P0-02/P0-06 chain on the genuine filtered view, preserving original data and references; Scrublet threshold review and no-raw-droplet limitations remain. Tasks 30–32 now add the owner-approved metadata/protocol-first intake, installed from `9499be0f` and verified against the original selected upload without new scientific execution. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
+**Historical implementation record through Task 32:** Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK. Task 28 adds separately approved genuine L2 marker-context evidence through installed P0-02 0.5.4 while preserving original labels, reference profiles and QC. Neither increment mutated the preview/session. Task 29 then completed explicit technical QC selection and reran the existing P0-02/P0-06 chain on the genuine filtered view, preserving original data and references; Scrublet threshold review and no-raw-droplet limitations remain. Tasks 30–32 now add the owner-approved metadata/protocol-first intake, installed from `9499be0f` and verified against the original selected upload without new scientific execution. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
+
+## Engineering closeout checkpoint (2026-09-10)
+
+**Status:** implementation_and_isolated_acceptance_complete. The final public-head CI and merge are separate gates recorded in [PR #95](https://github.com/starvingarc/BRIDGE/pull/95); this publication checkpoint does not pre-claim their outcome.
+
+- Exact clean runtime source `88931364` was built into an isolated wheel/client release and installed package bytes were verified. All **209 installed backend tests**, including **119 protocol cases with the pinned compiler**, passed in 117.03 seconds. All **102 frontend tests across 11 files**, typecheck and build passed. Two existing Python deprecations and the existing large-client-chunk advisory remain.
+- The configured model completed the synthetic missing-wait journey through the real installed browser: upload/source display, empty Other rejection, unsure, refresh, corrected Other answer, a new unreviewed version, explicit version-bound review and refresh without generation. The final BPL was `wait(duration: 2 h)`; readable text explicitly identified the user-supplied two-hour duration, with both S1 and U2 references. Superseded unsure history remained. Each of these three generations used one request; the actual initial-omission -> source-review question path was separately exercised in the preserved release-17 run.
+- Desktop and settled mobile layouts were visually inspected. A layout-only reopening made no POST/model/analysis calls and preserved all persisted content except the normal session-read timestamp. Earlier mobile captures were taken during the 180 ms sidebar transition; they are not the final layout evidence.
+- The previously accepted public-JCI-protocol subset in the earlier release-15 run remains separately recorded below (source display, real compilation, review, refresh, downloads and edit invalidation). Its full run failed the synthetic omission branch; neither that run nor the later release-17/18 failures has been relabeled as a pass. The final changed answer path above uses synthetic conditions, not experimental attestations.
+- Independent bounded source reviews cleared the confirmed-fact/identity fixes, source/fragment/audit repairs, distinct-call source review, active-answer accounting and protocol-only exclusion choices. Literal source participation and model review remain bounded checks, not semantic or biological proof.
+- No scientific tool, fact confirmation, original-data edit or normal-preview upgrade was performed in this closeout. The accepted isolated release is not automatically the deployed preview.
+
+The engineering implementation and isolated acceptance are complete. All remaining product/scientific work is carried into [Product Evidence Validation](product-evidence-validation.md); the source-state review continues in its existing plan. Earlier unchecked procedural items below are historical checkpoints, not an instruction to repeat completed work. Final publication must preserve exact runtime/test/client bytes and pass current-public-head CI before normal PR merge; preserve branches and worktrees.
+
+## Owner-approved single-source BPL repair continuation (2026-09-09)
+
+The owner agreed to redesign coherent BPL generation/repair and retain failed
+responses, then complete real acceptance, final CI/review and merge. Resume
+inline in this existing server worktree; earlier implementation-delegation
+procedures do not authorize a new agent wave. Review remains separately scoped.
+The preceding syntax/mapping failures remain preserved, not retroactive passes.
+
+**Goal:** Give the researcher one source-backed representation whose code and
+line mappings cannot drift during generation or repair.
+**Architecture:** The model proposes ordered, individually source-backed BPL
+body fragments. A deterministic assembler owns the fixed protocol wrapper,
+physical lines and complete BPL. A repair patches existing fragments/options;
+the server regenerates the complete representation atomically.
+**Tech stack:** Existing Pydantic, httpx, fixed BPL compiler and FastAPI lifecycle.
+**Spec:** [Approved protocol design](../docs/superpowers/specs/2026-09-09-protocol-bpl-design.md).
+No new dependencies, scientific schemas, tool execution, data declarations,
+upstream compiler edits, preview deployment or original-session mutation.
+
+### Continuation A: One authoritative fragment representation
+
+**Files:** `src/bridge/web/protocol_formalization.py`,
+`tests/test_web_protocol_formalization.py`; synchronize the linked design,
+`docs/web-preview.md`, `docs/privacy-and-provenance.md` and decision log.
+**Consumes:** checked source passages, supplements and existing provider config.
+**Produces:** `ProtocolProposal` with steps (id, label, operations,
+bpl_fragment, source_ids), questions and exclusions; `_assemble_draft`
+derives the internal `ProtocolDraft`. Existing saved versions stay readable.
+
+- [x] Add transport and assembly regressions: no model-owned whole BPL,
+  occurrence or line counts; repeated and multiline fragments get exact distinct
+  physical spans; a changed fragment moves following spans without changing
+  source statements or order; fragments cannot escape the fixed wrapper.
+  Assert a literal result, not a duplicate implementation:
+  ```python
+  assert result.bpl == "protocol UploadedProtocol {\n  wait()\n  wait()\n}\n"
+  assert [(s.line_start, s.line_end) for s in result.steps] == [(2, 2), (3, 3)]
+  ```
+- [x] Run the new tests and observe the missing proposal/assembly contract fail.
+  Use `PYTHONPATH=src python -m pytest -q tests/test_web_protocol_formalization.py`
+  in the existing server test runtime with the explicit pinned compiler path.
+- [x] Replace the provider's duplicate full-program/fragment contract with
+  ordered fragments. Keep legacy internal draft parsing for historical reads;
+  new assembly derives all line/occurrence fields server-side, never from model values.
+  Preserve the byte/step bounds and reject unbalanced wrapper escapes.
+- [x] Restrict repairs to existing fragment IDs and question option IDs. Only
+  failed syntax/compiler checks allow code changes; option-only correction
+  cannot rewrite a successfully compiled program. Reassemble all physical spans.
+  Pass compiler state, exact diagnostics and the owning step IDs to repair.
+- [x] Re-run all formalization cases, including the pinned real compiler.
+  Commit only this tested source/contract increment.
+
+Ten new/updated behavioral cases failed against the previous contract; after
+single-source assembly all 63 formalization cases passed, including real pinned
+compilation of repeated/multiline mappings. Separately, the fixed grammar and
+actual compiler reproduce unquoted `8 days` as a syntax failure while the exact
+source string `"8 days"` compiles. No duration was inferred or converted. These
+are source checks, not installed/real-model acceptance.
+
+### Continuation B: Bounded raw-response audit
+
+**Files:** same source/test files; no new public response schema or export route.
+**Consumes:** the provider HTTP response before envelope/JSON/patch validation.
+**Produces:** a private attempt receipt containing bounded response-body bytes,
+captured byte count/hash, status and explicit truncation state. No auth headers.
+- [x] Add real service plus controlled HTTP regressions for unknown/duplicate
+  repair IDs, extra semantic fields, malformed JSON and oversized responses.
+  Decode the stored bytes and assert equality with the literal response plus
+  SHA-256; rejected responses must not publish a version.
+- [x] Observe missing receipts fail before implementation.
+- [x] Stream/cap response bodies at the existing 1 MiB response limit. Capture
+  bytes before parsing; carry bounded receipt data across a typed failure into
+  the append-only attempt record. A truncated prefix is never called a complete
+  response. Keep at most the existing three requests per generation.
+- [x] Verify both JSON/native transports, source/approval/stale-worker guards
+  and artifact integrity; update truthful docs and commit.
+
+All 11 new cases first failed for absent receipts or lost prior diagnostics;
+all 74 formalization cases now pass with the real pinned compiler. The two
+transport paths preserve exact rejected bytes and recover syntax failure after
+an invalid intermediate patch without increasing the three-request budget.
+Oversized responses retain only an explicitly truncated 1 MiB prefix. These are
+controlled service/transport checks, not the pending real-model browser receipt.
+
+### Post-review boundary fixes and preserved installed failure
+
+Exact clean source `3c9d7e08` was built and byte-verified in a new isolated
+release: 164 installed backend checks, 102 frontend checks across 11 files,
+typecheck and build passed. The real configured-model browser run then FAILED
+at the public protocol's first generation. All three replies/drafts are retained.
+The first draft split multiple call argument lists across physical newlines.
+Repairs corrected only the first failing fragment per request, so the third
+version honestly retained failed syntax/not-run compilation. Source mappings
+remained coherent; this is not a successful browser receipt.
+
+The pinned grammar and real compiler reproduce three newline failures in a call,
+map and list; their same-line equivalents pass. That checkpoint added provider guidance for
+single-line complete call expressions and correction of all affected fragments;
+the owner-directed simplification below supersedes that formatting-retry prompt.
+
+Independent review also reproduced a cross-fragment unterminated-string wrapper
+escape and lost short buffered response bytes on disconnect. New negative
+regressions failed before adding per-fragment neutral lexical/delimiter checks
+and removing additional HTTP chunk buffering. Complete multiline strings/comments
+remain byte-exact; short and non-aligned interrupted prefixes keep captured bytes.
+No upstream compiler, scientific claim or existing preview has changed.
+The full 84-case formalization suite passed; the additional short/non-aligned
+interrupt parametrization then passed both cases (85 total cases now collected).
+A fresh installation and configured-model browser run remain required.
+
+**Owner-directed first-principles simplification:** The owner then required
+minimal, mathematically grounded changes before further implementation. Separate
+source meaning (human review), BPL syntax (deterministic representation) and
+source mapping (derived from that same representation). A read-only diagnostic
+on the preserved failing first draft normalized only expression-layout newlines:
+all non-whitespace symbols and protected strings/comments remained identical;
+all nine readable steps, values, IDs and source order were preserved. The actual
+compiler and source-map check passed. This copy did not alter the original failed
+receipt and is not genuine-model/browser acceptance.
+
+The source now performs that small idempotent normalization before assembly and
+removes the added formatting-retry prompt. Four literal normalization regressions
+failed before implementation; a separate comment-terminator guard already passed.
+The tests cover call/map/list layout, exact multiline quoted/comment text,
+unchanged source statements and repeated-assembly identity. No new intermediate
+language, provider, dependency, semantic default or retry budget is introduced.
+All 90 formalization cases pass with the real pinned compiler after this minimal
+normalization; installed actual-model acceptance is still a distinct next gate.
+
+### Latest installed result and source-constraint decision (2026-09-09)
+
+Clean source `f6853354` was installed and byte-verified: 180 affected backend
+checks, 102 frontend checks, typecheck and build passed. The new actual-model
+browser run still FAILED before protocol review. All three private replies remain
+preserved; no protocol version, fact confirmation or scientific analysis was
+published by that generation.
+
+- Attempt 1 was rejected because the fragment guard treated the valid named
+  argument `protocol:` as a protocol declaration. The pinned compiler accepts
+  `culture(protocol: "terminal differentiation")`; the wrapper guard must
+  distinguish a declaration from an argument name, not reject that word globally.
+- Attempts 2 and 3 passed actual syntax and compilation. A maturation step used
+  day 36 and N2 from S2 but cited only S3, the continuation after a page/paragraph
+  boundary. Exact checked-source hashes reproduce the unsupported-literal result.
+  The closed repair response on attempt 3 was empty and could not correct it.
+
+The owner asked for first-principles minimality before further changes. The
+source text is authoritative; the model's first citation index is not. With
+source IDs immutable and syntax already passed, the permitted repair set has no
+candidate that can satisfy this missing-source constraint. Further retries do
+not resolve that contract conflict. The owner subsequently confirmed the minimal repair: permit
+only addition of missing existing source IDs to the same step, preserve original
+source bytes, existing citations, readable operations, parameters, IDs and order,
+then rerun all source checks. No broader semantic regeneration is proposed.
+Do not weaken the guard or claim this failure as accepted. Merge, final-head CI
+and preview deployment remain pending; no additional full-suite or model retry
+was started during the decision pause.
+
+Approved implementation now adds only existing source IDs to unchanged steps,
+retains prior citation order, and rejects replacement/deletion, unknown targets,
+duplicate patch targets and aggregate citation overflow. Compiler diagnostics
+identify the unsupported literal and owning step; no source is guessed by the
+server. Controlled service/transport regressions and the legitimate named
+argument regression failed first (3 failed, 6 passed). The minimal source fix
+then passed all 99 protocol tests with the actual pinned compiler in 68.48 seconds
+(two existing dependency deprecations). Both JSON/native transports complete a
+missing-citation repair in two requests with byte-identical BPL and unchanged
+readable content; failed initial attempts remain retained. The declaration guard
+now distinguishes a nested protocol declaration from its legal named argument.
+Installed genuine-model/browser acceptance and final-public-head CI remain pending.
+
+**Latest exact installed acceptance (`41c95b08`).** Package/source bytes matched;
+189 affected backend tests passed in 85.79 seconds, and all 102 frontend tests
+(11 files), typecheck and build passed. Two existing dependency deprecations and
+the existing client chunk-size warning remain. A narrow independent review found
+no actionable issues (18 focused real-compiler/transport cases passed), including
+probes of excluded/superseded sources, reference overflow and unchanged inputs.
+
+The actual configured model produced the public JCI representation in one request:
+10 mapped steps, passed syntax/compiler checks and an explicit unresolved dispase
+question. The ordinary browser completed source/diagnostic display, review,
+refresh without regeneration, checksum-verified downloads and manual-edit
+invalidation. The desktop screenshot was inspected. No product facts or analysis
+were confirmed; the accepted preview and its original sessions remained unchanged.
+
+The separate synthetic `Wait for the required period.` case stopped the remaining
+browser journey: the model retained the wording as a string with no questions.
+The compiler honestly reported `duration_unresolved`, but source accounting was
+`complete_for_extracted_scope`. Therefore Other/unsure and mobile checks were not
+reached in this run; this is NOT a full passing browser receipt. All raw responses
+and the partial positive evidence remain preserved. An earlier browser launch
+failed before model calls because the existing browser-directory environment was
+omitted; selecting that existing installation resolved the setup error without
+installing dependencies.
+
+This remaining failure is semantic question omission, not citation repair or a
+missing numeric value invented by the compiler. `duration_unresolved` also occurs
+for a source-backed duration retained as a string; automatically treating every
+such diagnostic as an absent source fact would be incorrect. Do not add that
+shortcut or silently waive the missingness acceptance gate. The owner subsequently
+asked why the omission occurred, then explicitly authorized continuing the repair
+and merging only after completion. The missingness gate is retained, not waived.
+
+**Approved bounded source review.** For a successfully compiled wait whose
+`duration_unresolved` diagnostic has no outstanding question, require a separate
+source-focused decision within the existing three-request budget. A repair either
+adds a source-backed question for the affected existing step or supplies a verbatim
+cited excerpt stating the duration/end condition. A compiler limitation alone is
+not proof that the source is missing a value. The review may not alter original
+steps, parameters, questions, source passages or compiled BPL. Missing/uncertain
+information remains a question; absence of a review is not completeness. Retain
+both the original model omission and the separate review in private attempts.
+
+Add regressions starting with an actual compiled draft with an empty question
+list, including explicit string timing, genuinely unspecified timing and exhaustion
+of the unchanged request budget. This bounded model review is not semantic proof
+or human approval, and does not guarantee discovery of all protocol omissions.
+Then verify the exact installed missingness/Other/unsure journey without rerunning
+already completed scientific work; final-head CI and merge remain subsequent gates.
+
+The five new omission/explicit-text/budget regressions failed against the old
+implementation. With source review, the 104-case protocol suite passed. A further
+multi-wait regression then reproduced a known wait incorrectly resolving another
+unparsed wait in the same source step. The initial line-bound implementation
+passed 111 protocol tests, but independent review then found two wait calls on one
+physical line were collapsed into one warning/target. The exact same-line service
+regression failed against that implementation (`complete` instead of `unavailable`).
+Resolutions now bind the compiler-derived line AND column, and compiler warnings
+retain distinct calls. Unsupported/unknown/duplicate outcomes and original-question
+replacement are covered. No initial question is prepopulated in the new omission
+tests. All 113 protocol tests passed with the actual pinned compiler in 92.97
+seconds (two existing dependency deprecations), including the same-line failure
+and wrong-column rejection. New installed acceptance and narrow review remain
+required before final publication/CI/merge.
+
+### Installed answer-participation failure and bounded repair (2026-09-10)
+
+Clean source `246d28e8` received narrow independent clearance of the same-line
+review fix. Its isolated release passed 203 installed backend tests (105.33 seconds),
+102 frontend tests, typecheck and build. The configured-model browser run first
+omitted the wait question; the new source review correctly appended it on request
+two. Other/empty-answer guards and unsure/refresh behavior then passed. The later
+custom-answer generation FAILED acceptance: the current user answer was stored,
+but the generated step omitted its U reference and retained the vague placeholder.
+A later source review quoted that vague original passage and allowed the version.
+This failed receipt and all attempts are retained; it is not an accepted release.
+
+The source-accounting rule required original passages but did not require current
+user answers. Replaying the ignored-answer response with controlled HTTP and the
+actual compiler failed both transport regressions; the explicitly incorporated
+answer passed. Extend the same set-inclusion check to current non-unsure U IDs,
+which cannot be excluded as non-protocol source. Prompt generation to represent
+the active answer in both readable operations and BPL and retain original sources.
+No new schema, request budget, semantic-repair permission or invented parameter
+is introduced. This guarantees source participation, not semantic entailment:
+actual acceptance must check the supplied condition in the representation too.
+
+Exact source `45e2bc36` then passed 207 installed backend tests, all 102 frontend
+tests, typecheck and build. Independent source-accounting review found no new
+blocking defect. Its real browser run FAILED after the unsure answer: the model
+placed U1 in `excluded_sources`, which the unchanged protocol-only exclusion guard
+correctly rejected on all three requests. The initial question was present and no
+new false-complete version was published. Preserve this failed run too. The
+minimal correction exposes that existing domain as an enum of supplied protocol
+IDs in both proposal transports and explicitly says user-answer history is not
+protocol exclusion data. Both new schema tests failed before the enum was added.
+No exclusion guard or immutable-repair rule is relaxed.
+
+### Continuation C: Installed real acceptance and engineering closeout
+
+- [x] Build a new exact clean private wheel/client release; verify installed
+  package bytes, affected backend tests, all frontend tests/typecheck/build.
+- [x] Run the existing real browser journey with four public JCI methods
+  passages and synthetic intake: upload, source display, Other/unsure,
+  edit/review invalidation, refresh, downloads and desktop/mobile checks.
+  Preserve every actual model/compiler attempt and compare real evidence only.
+- [ ] Use one immutable final-public-head CI run for full tests, discovery
+  (12 tools), knowledge/figure/policy/whitespace and frontend gates, supplemented
+  by the installed server's pinned-compiler checks. Do not duplicate the full
+  suite or count a mutable-source run as final-head evidence. Carry unfinished
+  scientific work into an explicit follow-up plan; keep deployment separate.
+- [ ] Publish the exact public-safe tree through normal fast-forward history,
+  independently review and address blocking findings; require final-head CI.
+  Only then mark PR ready and merge without force/admin overrides or cleanup.
+
+## Owner-approved review repair and merge closeout (2026-09-09)
+
+The owner explicitly authorized fixing the review blockers, then reviewing and
+merging PR #95. This supersedes the earlier no-push/no-merge checkpoint for this
+bounded closeout. Continue in the existing server worktree; keep original inputs,
+sessions, references and the accepted preview unchanged while repairing and
+verifying an isolated candidate. No scientific method, score or release gate is
+relaxed.
+
+- [x] Reproduce and repair stale draft precedence after exact intake confirmation;
+  cover both a corrected value and explicit clearing, newer manual edits, and
+  later model extraction against an already confirmed field.
+- [x] Reproduce and repair identity masking for recognized and declared columns
+  in both model purposes, including cached old intake records and incomplete
+  identity reads. Never call the real model with sensitive test material.
+- [ ] Trace the actual installed BPL option-validation failure, add its regression,
+  and complete the source-bound upload/review journey with the configured model
+  on public protocol text and synthetic intake data.
+- [x] Close the tracked-file gate through justified consolidation, not a raised
+  ceiling or deleted validation coverage; preserve all historical evidence.
+- [ ] Verify the final source, installed client/backend and actual browser flow,
+  publish the exact tree, independently re-review, and merge only after final-head
+  CI and all engineering gates pass. Keep scientific follow-ups explicit.
+
+The first P1 regression set failed in all three expected cases, then the
+confirmation repair passed 60 affected intake checks. Alias/declared-column,
+cached-inventory, incomplete-read and short-ID redaction regressions failed before
+the privacy repair; the combined affected backend suite then passed 135 tests.
+The BPL option-repair regression also failed first, then all 49 formalization/
+compiler cases passed with the pinned real compiler. Existing dependency warnings
+remain. These are source checks, not installed browser acceptance or final CI.
+
+Read-only replay of all three preserved failed installed drafts showed that each
+12-step candidate already passed real syntax/compiler and source mapping after
+removing only unsupported proposed options in the diagnostic copy. Original
+attempts were not changed. The runtime now keeps the literal-source guard and
+returns question/option-specific repair guidance; no failed candidate has been
+retroactively published or counted as browser acceptance.
+
+The next isolated real-model run exposed a different source-span failure:
+full-draft repair regenerated/reworded source-bearing steps, so the existing
+immutability guard correctly rejected it. Repair now uses a closed patch schema
+for BPL text, existing-step mappings and existing-question options only. Six new
+JSON/native-provider and invalid-target/semantic-field regressions failed first,
+then the complete formalization suite passed 55 cases with the pinned compiler.
+This change does not weaken source validation or count failed runs as acceptance.
+
+Twenty historical validation records were consolidated into six subject records,
+retaining their complete bodies, provenance and links; no test coverage was
+removed and the file-budget policy was not raised. The repository gate passed at
+605 tracked files against the existing ceiling of 606. The old standalone paths
+remain recoverable from Git history.
+
+**Current merge checkpoint (2026-09-09): blocked; not merged or deployed.**
+The exact `988e2d0e` installed backend/client passed 142 focused backend tests,
+102 frontend tests across 11 files, typecheck and production build. The fresh
+browser used the same four public methods passages plus a synthetic four-row
+intake matrix and the configured real model. Its initial draft requested a second
+occurrence of a fragment that occurred once. The closed repair retained all
+source-bearing readable steps, but its unrestricted BPL field rewrote two other
+statements without updating their mappings; the final repair still referenced
+old substrings. All three attempts also had the same actual syntax error
+(`SYNTAX_UNEXPECTED_CHARACTER`, line 2) and `compiler_state=not_run`;
+`invalid_bpl_source_span` was the final application error. These simultaneous
+failures must not be reported as compiled success. No version was published,
+no intake was confirmed and
+no scientific analysis was run. All attempts remain private and unchanged; the
+isolated browser service was stopped. The accepted preview and original sessions
+were not replaced.
+
+Repeated actual-model failures now require an explicit repair-boundary discussion
+before another generation fix: when syntax/compiler checks already passed,
+freeze BPL and permit only diagnosed existing-step mappings/options; when syntax
+fails, coordinate syntax correction with explicit source mappings and retain all
+diagnostics. Report exact invalid fragment targets/occurrence counts. Also retain
+bounded invalid raw repair responses before validation: the current implementation
+records successfully parsed/applied patches, but rejected unknown/duplicate-target
+or extra-field responses are lost before the attempt record. These are proposed
+next changes, not implemented behavior, and must not weaken source/semantic
+accounting. Keep this PR Draft and preserve the genuine browser acceptance gate.
+
+The preceding public-head CI ran 2,325 passing tests and 10 optional-compiler
+skips, with two failures: absent `pdftotext` in CI and a stale provider-context
+questionnaire expectation. Commit `79964fb1` declares the existing Poppler system
+dependency in CI and updates that exact assertion to current consequential
+questions while retaining the private-value checks. Both failing cases were
+reproduced/verified on the server and pass after the scoped correction. A fresh
+full server suite started from `79964fb1`; it cannot verify later code changes.
+Final-head GitHub CI remains unfinished.
+
+Independent read-only review confirmed the original confirmation repair and all
+20 preserved validation bodies, but found the two BPL blockers above plus one
+historical-identity gap. Three actual stage/confirm regressions reproduced the
+loss of masking after switching a custom sample/capture/culture selector. Both
+model purposes now merge only the same upload's historical confirmed selectors
+into their fresh checked H5AD inventory. The three cases failed first, then all
+126 affected intake/formalization tests passed with the pinned real compiler;
+an unrelated upload's absent column does not block this upload. This final
+privacy extension is source-verified, not part of the earlier installed release.
+No new model generation, deployment or merge followed the architecture pause.
 
 ## Approved metadata-first intake increment (2026-09-09)
 

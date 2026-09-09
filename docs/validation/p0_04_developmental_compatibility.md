@@ -1,11 +1,67 @@
-# P0-04 Developmental Compatibility v0.3 validation
+# P0-04 Developmental Compatibility: Validation History
+
+This subject-level record preserves the complete dated receipts below.
+Each receipt's inputs, source versions, test counts and scientific limits
+apply to that historical run, not to the current main branch or a newly
+qualified method/product. Consolidation changes organization and links only;
+it does not combine evidence families or create a new validation result.
+
+- [P0-04 Developmental Compatibility v0.2 validation](#record-p0-04-developmental-compatibility-v0-2)
+- [P0-04 Developmental Compatibility v0.3 validation](#record-p0-04-developmental-compatibility-v0-3)
+
+<a id="record-p0-04-developmental-compatibility-v0-2"></a>
+
+## P0-04 Developmental Compatibility v0.2 validation
+
+- Branch: `p0-04-developmental-compatibility`
+- Base: `c336a20f25c8536b3a4a42dd1f85ee91bd83d6a1`
+- Runtime: Ubuntu server, Python 3.12, `ENV-P0-CORE-v0.1`
+- Scientific status: `candidate`; methods remain `formal_eligible=false`
+- Score boundary: `domain_score=null`, `score_state=unavailable`
+
+### Implemented scope
+
+The adapter consumes six required checksummed JSON objects and one optional real
+timepoint series through `ToolRequestV2`. It validates case, product, window,
+state-map, assay, MeasurementSpec and P0-02 profile bindings. The executor selects
+one externally declared composition channel and reports five stage roles under
+whole-product and target-related denominators. No biological label, marker,
+threshold or stage conversion is embedded in code.
+
+### Verification
+
+Server verification on the branch source passed:
+
+- 14 focused P0-04 tests;
+- 1,058 complete repository tests;
+- public schema export and runtime result validation;
+- 12-tool discovery, example-version and active-method parity;
+- repository policy and `git diff --check`.
+
+The PR evidence must bind these commands to the final commit SHA; this record
+does not claim clean-wheel or scientific-release validation.
+
+### Boundaries retained
+
+Reference-stage support and inferential time-course remain unavailable. One
+timepoint is static; multiple declared timepoints are descriptive only.
+Unconfirmed windows do not produce a compatibility conclusion. Missing, unknown
+or unavailable composition is not zero. Execution does not imply scientific
+validation, clinical meaning or release authority.
+
+
+---
+
+<a id="record-p0-04-developmental-compatibility-v0-3"></a>
+
+## P0-04 Developmental Compatibility v0.3 validation
 
 - Branch: `p0-04-real-method-runtime`
 - Runtime contract: Ubuntu, Python 3.12, `ENV-DEVELOPMENT-PY-v0.1`
 - Scientific status: `candidate/shadow`; `domain_score=null`
 - Evidence source: fully synthetic fixtures only
 
-## Implemented scope
+### Implemented scope
 
 The aggregation path consumes the current checksummed P0-01 → P0-02 v0.3
 lineage plus product, window, state-map, vocabulary and reference contracts. It
@@ -26,7 +82,7 @@ view and a versioned `DevelopmentMethodSpec`. The fixture executes:
 Reference labels, roles, ranks, program cards, true timepoints and thresholds are
 fixture inputs rather than code constants.
 
-## Verification
+### Verification
 
 Server verification on the exact branch head established:
 
@@ -53,7 +109,7 @@ Server verification on the exact branch head established:
 - knowledge validation had no dangling references and no formal eligible
   methods; repository policy, diff and tracked-content privacy checks passed.
 
-## Boundary
+### Boundary
 
 These tests establish executable packaging and deterministic synthetic behavior.
 They do not validate a developmental reference, the caller-supplied held-out

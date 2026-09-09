@@ -146,6 +146,107 @@ def test_model_context_keeps_identities_and_raw_values_local(client, tmp_path):
     assert context["purpose"] == "intake_extraction"
 
 
+
+@pytest.mark.parametrize("column_name,declared", [
+    ("sample", False), ("batch", False), ("replicate", False),
+    ("culture_id", False), ("donor", False), ("study_group", True),
+])
+def test_both_model_purposes_mask_alias_and_declared_identities(client, tmp_path, monkeypatch, column_name, declared):
+    from bridge.web import intake_autofill as fill, protocol_formalization as formal
+    identifier = "PRIVATE_ALIAS_SUBJECT_71"
+    text = f"Wait for 2 h. Material {identifier}; observation PRIVATE_CELL_0."
+    sid, aid = upload_metadata(client, tmp_path, uns={"protocol": text},
+                               extra_obs={column_name: [identifier, identifier]})
+    if declared:
+        current = intake(client, sid, aid)
+        response = client.post(f"/api/sessions/{sid}/intake/answer", json={
+            "upload_id": aid, "revision": current["autofill"]["revision"],
+            "field": "sample_id_column", "value": column_name, "other": False})
+        assert response.status_code == 200
+    monkeypatch.setattr(fill, "extract_intake", lambda *args: fill.Extraction())
+    response = client.post(f"/api/sessions/{sid}/intake/protocols?upload_id={aid}",
+                          files={"file": ("method.txt", text.encode())})
+    assert response.status_code == 200
+    settle(client, sid)
+    service = client.app.state.service
+    state = service.load(sid)
+    # Old cached inventories must not bypass fresh identity discovery.
+    state["_intake_autofill"][aid]["_identities"] = ["PRIVATE_SAMPLE_A"]
+    pid = state["_intake_autofill"][aid]["protocols"][0]["id"]
+    for context in (fill.model_context(service, state, aid), formal.context(service, state, aid, pid)[0]):
+        wire = json.dumps(context)
+        assert identifier not in wire and "PRIVATE_CELL_0" not in wire
+        assert "Wait for 2 h" in wire
+        assert "[sample identifier]" in wire
+
+
+
+@pytest.mark.parametrize("selector", ["sample_id_column", "capture_id_column", "culture_batch_column"])
+def test_both_model_purposes_retain_historical_confirmed_identity_columns(client, tmp_path, monkeypatch, selector):
+    from bridge.web import intake_autofill as fill, protocol_formalization as formal
+    from test_web_intake import stage, stated_facts
+    identifier = "PRIVATE_HISTORICAL_SUBJECT_71"
+    text = f"Wait for 2 h with {identifier}."
+    sid, aid = upload_metadata(client, tmp_path, uns={"protocol": text},
+                               extra_obs={"study_group": [identifier, identifier]})
+    monkeypatch.setattr(fill, "extract_intake", lambda *args: fill.Extraction())
+    confirm_change(client, sid, stage(client, sid, aid, stated_facts(**{selector: "study_group"})))
+    response = client.post(f"/api/sessions/{sid}/intake/protocols?upload_id={aid}",
+                          files={"file": ("method.txt", text.encode())})
+    assert response.status_code == 200
+    settle(client, sid)
+    service = client.app.state.service
+    state = service.load(sid)
+    pid = state["_intake_autofill"][aid]["protocols"][0]["id"]
+    for context in (fill.model_context(service, state, aid), formal.context(service, state, aid, pid)[0]):
+        assert identifier not in json.dumps(context)
+    confirm_change(client, sid, stage(client, sid, aid, stated_facts(**{selector: "sample_id"})))
+    state = service.load(sid)
+    assert state["_intake_history"][-1]["facts"][selector] == "study_group"
+    # An unrelated upload's old selector must not block this upload's context.
+    state["_intake_history"].append({"upload_id": "unrelated-upload",
+                                    "facts": {selector: "absent_in_this_upload"}})
+    for context in (fill.model_context(service, state, aid), formal.context(service, state, aid, pid)[0]):
+        wire = json.dumps(context)
+        assert identifier not in wire
+        assert "[sample identifier]" in wire and "Wait for 2 h" in wire
+    assert state["plan"] is None and not state["_tool_runs"]
+
+
+def test_identity_redaction_preserves_parameter_words_containing_short_ids(client, tmp_path, monkeypatch):
+    from bridge.web import intake_autofill as fill, protocol_formalization as formal
+    sid, aid = upload_metadata(client, tmp_path, samples=("A", "A"))
+    monkeypatch.setattr(fill, "extract_intake", lambda *args: fill.Extraction())
+    response = client.post(f"/api/sessions/{sid}/intake/protocols?upload_id={aid}",
+        files={"file": ("method.txt", b"Add ATP for 2 h to sample A.")})
+    assert response.status_code == 200
+    settle(client, sid)
+    service = client.app.state.service
+    state = service.load(sid)
+    pid = state["_intake_autofill"][aid]["protocols"][0]["id"]
+    for context in (fill.model_context(service, state, aid), formal.context(service, state, aid, pid)[0]):
+        text = next(source["text"] for source in context["sources"] if source["kind"] == "protocol")
+        assert text == "Add ATP for 2 h to sample [sample identifier]."
+
+
+def test_incomplete_identity_reads_block_both_model_contexts(client, tmp_path, monkeypatch):
+    from bridge.web import intake_autofill as fill, intake_sources, protocol_formalization as formal
+    sid, aid = upload_metadata(client, tmp_path, extra_obs={"sample": ["PRIVATE_FIRST", "PRIVATE_LAST"]})
+    monkeypatch.setattr(fill, "extract_intake", lambda *args: fill.Extraction())
+    response = client.post(f"/api/sessions/{sid}/intake/protocols?upload_id={aid}",
+                          files={"file": ("method.txt", b"Wait for 2 h with PRIVATE_LAST.")})
+    assert response.status_code == 200
+    settle(client, sid)
+    service = client.app.state.service
+    state = service.load(sid)
+    pid = state["_intake_autofill"][aid]["protocols"][0]["id"]
+    monkeypatch.setattr(intake_sources, "ROW_LIMIT", 1)
+    with pytest.raises(ValueError, match="^intake_identity_inventory_incomplete$"):
+        fill.model_context(service, state, aid)
+    with pytest.raises(ValueError, match="^intake_identity_inventory_incomplete$"):
+        formal.context(service, state, aid, pid)
+
+
 def test_answer_persists_and_rejects_stale_revision_without_confirming(client, tmp_path):
     sid, aid = upload_metadata(client, tmp_path)
     value = intake(client, sid, aid)
@@ -159,6 +260,57 @@ def test_answer_persists_and_rejects_stale_revision_without_confirming(client, t
     assert intake(client, sid, aid)["facts"]["starting_cell_type"] == "iPSC"
     state = client.get(f"/api/sessions/{sid}").json()
     assert state["plan"] is None and not state["input_review_required"]
+
+
+
+
+@pytest.mark.parametrize("confirmed_value", ["Revised target B", None])
+def test_exact_confirmation_retires_older_draft_answer(client, tmp_path, confirmed_value):
+    from test_web_intake import stage
+    sid, aid = upload_metadata(client, tmp_path)
+    initial = intake(client, sid, aid)
+    response = client.post(f"/api/sessions/{sid}/intake/answer", json={
+        "upload_id": aid, "revision": initial["autofill"]["revision"],
+        "field": "target_cell_type", "value": "Earlier answer A", "other": False})
+    assert response.status_code == 200
+    facts = intake(client, sid, aid)["facts"]
+    facts["target_cell_type"] = confirmed_value
+    confirmed = confirm_change(client, sid, stage(client, sid, aid, facts))
+    assert confirmed["plan"] is None and not confirmed["input_review_required"]
+    current = intake(client, sid, aid)
+    assert current["facts"]["target_cell_type"] == confirmed_value
+    assert current["state"] == "confirmed"
+    # A genuinely newer deliberate answer remains editable and needs confirmation.
+    response = client.post(f"/api/sessions/{sid}/intake/answer", json={
+        "upload_id": aid, "revision": current["autofill"]["revision"],
+        "field": "target_cell_type", "value": "Later answer C", "other": False})
+    assert response.status_code == 200
+    current = intake(client, sid, aid)
+    assert current["facts"]["target_cell_type"] == "Later answer C"
+    assert current["state"] == "draft"
+    assert client.app.state.service.load(sid)["_intakes"][aid]["facts"]["target_cell_type"] == confirmed_value
+
+
+def test_later_extraction_does_not_replace_confirmed_target(client, tmp_path, monkeypatch):
+    from test_web_intake import stage
+    from bridge.web import intake_autofill as module
+    sid, aid = upload_metadata(client, tmp_path, uns={"target_cell_type": "Protocol target A"})
+    facts = intake(client, sid, aid)["facts"]
+    facts["target_cell_type"] = "Confirmed target B"
+    confirm_change(client, sid, stage(client, sid, aid, facts))
+    def extracted(settings, context):
+        source = next(item for item in context["sources"] if item["label"] == "uns.target_cell_type")
+        return module.Extraction(fields=[module.ExtractedField(
+            field="target_cell_type", value="Protocol target A", source_ids=[source["id"]])])
+    monkeypatch.setattr(module, "extract_intake", extracted)
+    response = client.post(f"/api/sessions/{sid}/intake/parse", json={"upload_id": aid})
+    assert response.status_code == 200
+    settle(client, sid)
+    current = intake(client, sid, aid)
+    assert current["autofill"]["state"] == "complete"
+    assert current["facts"]["target_cell_type"] == "Confirmed target B"
+    assert current["state"] == "confirmed"
+    assert client.app.state.service.load(sid)["_intakes"][aid]["facts"]["target_cell_type"] == "Confirmed target B"
 
 
 def test_other_answer_is_saved_without_becoming_a_false_enum(client, tmp_path):

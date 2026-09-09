@@ -20,7 +20,7 @@ package. Its output remains shadow without a signed release manifest.
 - [Tool Card — authoritative runtime contract](../cards/P0-02.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/cell_state_annotation_task_card.md)
 - [Request example](../../../../examples/requests/p0_02_cell_state.json)
-- [Pilot validation record](../../../../docs/validation/p0_02_scientific_freeze_pilot_20260811.md)
+- [Pilot validation record](../../../../docs/validation/p0_02_cell_state_evidence.md#record-p0-02-scientific-freeze-pilot-20260811)
 - [External-source preparation](../../../../docs/bridge_spec_v0.1/external_source_preparation.md)
 
 Use `bridge-tool describe P0-02` for the installed version, environment and
@@ -49,5 +49,5 @@ repeating the same request can reuse the checksummed bundle. Removing those
 volatile diagnostics does not change normalization, clustering, ARI or state
 evidence.
 
-See the [deterministic replay validation record](../../../../docs/validation/p0_02_deterministic_grouping_20260905.md)
+See the [deterministic replay validation record](../../../../docs/validation/p0_02_cell_state_evidence.md#record-p0-02-deterministic-grouping-20260905)
 for the regression, installed-wheel checks and repeated-request evidence.

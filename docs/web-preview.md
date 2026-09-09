@@ -257,6 +257,55 @@ produce BPL proposals through the existing configured provider. Old attachments
 require explicit initiation. The review is accessible before or after product
 fact confirmation, with one consequential question at a time, Other/unsure
 answers, source excerpts, revision-bound editing and append-only history.
+Suggested choices require verbatim source support; questions without explicit
+source alternatives remain free-text/unsure questions. A bounded repair identifies
+unsupported alternatives without relaxing source validation or changing steps.
+The model supplies ordered source-backed body fragments, not a full BPL program
+or independently counted lines. The server assembles the complete program and
+derives exact physical spans, including repeated and multiline fragments.
+Each fragment must be lexically closed and delimiter-balanced; source steps
+cannot share an unfinished string, comment or call. The fixed compiler requires
+call arguments/maps/lists on a single physical line, unlike complete statements
+or quoted source text. The server normalizes only expression-formatting newlines
+to spaces before deriving spans; it preserves non-whitespace symbols, protected
+strings/comments and line-comment terminators. Other invalid syntax still goes
+through the existing bounded compiler-repair path.
+Repair responses use a closed patch schema for existing fragments, question
+options and add-only source references. Failed syntax/compiler checks are required
+to permit fragment changes; after they pass, only rejected options, missing
+existing references or an explicitly requested source review may change. Source additions retain prior citations in order
+and cannot change code, readable content or source text. Numeric source failures
+identify the owning step, value and unit; patched drafts undergo all source checks.
+Unparsed wait durations without an outstanding question trigger a separate source
+review inside that same bounded generation. A review adds a source-backed question
+or supplies a verbatim cited duration/end condition; it cannot edit existing
+questions or successfully compiled BPL. Reviews bind the owning step and exact
+server-supplied diagnostic line and column; distinct calls on one physical line
+remain separate review targets. A known wait cannot resolve another wait in the
+same fragment. Unknown/duplicate targets and unsupported excerpts are rejected. An omitted review does not silently publish a
+complete version. Source accounting also requires every active non-unsure user
+answer to be cited by a step; storing an answer alone cannot complete an unchanged,
+unreferenced placeholder. Generation is instructed to represent that answer in
+readable content and BPL, but citations alone do not prove semantic incorporation.
+Explicit unsure remains unresolved without repeat questioning. The proposal schema
+lists only supplied protocol IDs as exclusion choices; user answers are retained
+separately and cannot be placed in that list.
+The compiler warning describes inability to parse, not proof of an absent source
+value; this model review remains distinct from human review and semantic proof.
+The server reassembles code and spans
+together after every fragment patch. The server retains step IDs,
+readable operations, source links, questions and exclusions from the initial draft;
+unknown/duplicate repair targets and semantic fields are rejected. Each private
+attempt retains the bounded provider response before parsing/application, including
+rejected replies, separately from any applied patch and reconstructed draft.
+The 1 MiB decoded-body cap, captured byte count/hash, HTTP status and explicit
+truncation state distinguish complete replies from partial prefixes; request
+headers are never retained. A rejected reply preserves the last draft's compiler
+diagnostics for the remaining repair request. Raw receipts are not public or
+fed back to the model. Installed actual-model acceptance remains a separate
+merge gate in the integration plan.
+Exact product-fact confirmation retires earlier draft overrides, while a newer
+manual answer still requires separate confirmation.
 
 Syntax, compiler exit status, source accounting and human review are separate
 labels. The pinned public compiler can return success while defaulting wait

@@ -213,3 +213,53 @@ No division-rate, quiescence, stress, purity, acceptance or release conclusion
 follows from these descriptive measurements. No new data-sharing permission or
 public-export approval is implied. Exact implementation and execution receipts
 are recorded separately in the active Web integration plan.
+
+
+## 2026-09-09: Derive Protocol Code And Source Spans From One Fragment Sequence
+
+The owner approved replacing the model's separate full-program and source-map
+outputs after real generation/repair failures. Ordered source-backed body
+fragments are now the sole proposed code source. BRIDGE assembles a fixed
+protocol wrapper, physical line spans and any compatibility occurrence fields.
+A syntax repair replaces named existing fragments and atomically regenerates the
+program; the initial readable statements, sources, questions and order remain
+unchanged. Option-only repair cannot edit successfully compiled code.
+
+Historical versions, user edits and source passages remain unchanged. This
+eliminates independently authored code/map copies, not semantic uncertainty:
+literal checks and passage accounting are not entailment, experimental execution
+or biological validation. Bounded raw-response retention and actual installed
+model/browser acceptance are tracked separately in the integration plan.
+
+## 2026-09-09: Permit Add-only Repair Of Missing Protocol Citations
+
+The owner approved appending missing existing source IDs to an unchanged step.
+Original source passages are authoritative; an initial model citation omission
+must not become an immutable error. Prior citations and their order remain,
+as do step IDs/order, readable operations, parameters, questions and exclusions.
+A source-only repair cannot change BPL, including after successful compilation.
+Unknown/duplicate additions and the existing per-step reference limit are checked,
+then all source accounting and literal-support checks run again. The server
+reports the unsupported numeric value and owning step, but does not guess its
+supporting passage. This repairs provenance indexing, not experimental semantics
+or human review. Installed actual-model acceptance remains a separate gate.
+
+## 2026-09-09: Review Unparsed Wait Information Separately From Compilation
+
+The owner authorized fixing a real-model omission before merging: the model
+preserved an unspecified wait as a string but returned no question. Source
+accounting and an empty question list cannot establish sufficient information.
+For unparsed wait durations with no outstanding question, require a separate
+source review within the existing three-request budget. Its closed response
+may append a source-backed question or identify a verbatim cited duration/end
+condition. Existing source text, operations, parameters, questions and compiled
+code remain unchanged. Each resolution binds its owning step and exact
+server-supplied diagnostic line and column, not every wait in a multi-operation
+fragment or on one physical line. Compiler warnings retain those distinct calls.
+Unknown/duplicate targets and unsupported excerpts are rejected; missing review
+is not a completed representation.
+
+Compiler inability to parse `8 days` does not mean that the original source omits
+the duration. Explicit unsure remains unresolved without another automatic
+question. This bounded model review and its private audit are not human approval,
+complete semantic verification, experimental execution or a scientific claim.

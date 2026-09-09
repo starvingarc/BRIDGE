@@ -32,6 +32,12 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
+      - name: Install PDF text reader
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends poppler-utils
+          pdftotext -v
+
       - name: Install exact visualization font
         env:
           FONT_SHA256: 990c807e79c25662a5a9ecf7f971baeb2bf2eab9a559e5ecf15cdfdb8561d21f

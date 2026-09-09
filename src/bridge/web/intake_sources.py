@@ -20,7 +20,7 @@ TEXT_LIMIT = 128_000
 PROTOCOL_LIMIT = 25 * 1024 * 1024
 ROW_LIMIT = 1_000_000
 SEMANTIC = re.compile(r"day|time|harvest|stage|assay|method|protocol|cell.?type|cell.?line|organism|species|treatment|starting|target", re.I)
-IDENTITY = re.compile(r"sample|capture|donor|patient|barcode|gene|subject|batch|library.?id", re.I)
+IDENTITY = re.compile(r"sample|capture|donor|patient|barcode|gene|subject|batch|replicate|culture.?id|library.?id", re.I)
 
 
 def clean_text(value):
@@ -63,6 +63,52 @@ def column(group, name):
         mask = item["mask"][:ROW_LIMIT]
         return [None if m else scalar(x) for x, m in zip(values, mask)], len(values) == item["values"].shape[0]
     return [], False
+
+
+def identity_values(state, aid, data):
+    """Build a complete local mask inventory from the checked upload, never cache it."""
+    import h5py
+    declared = set()
+    records = [
+        state.get("_asset_declarations", {}).get(aid, {}).get("metadata", {}),
+        state.get("_qc_declarations", {}).get(aid, {}).get("metadata", {}),
+        state.get("_intakes", {}).get(aid, {}).get("facts", {}),
+        state.get("_intake_autofill", {}).get(aid, {}).get("values", {}),
+    ]
+    # Changing the analysis selector does not declassify identities in the same upload.
+    records.extend(record.get("facts", {}) for record in state.get("_intake_history", [])
+                   if record.get("upload_id") == aid)
+    for record in records:
+        declared.update(record[field] for field in
+                        ("sample_id_column", "capture_id_column", "culture_batch_column") if record.get(field))
+    masks = set()
+    with h5py.File(io.BytesIO(data), "r") as handle:
+        obs = handle["obs"]
+        index = obs.attrs.get("_index", "_index")
+        if isinstance(index, bytes):
+            index = index.decode()
+        rows, complete = column(obs, index)
+        keys = declared | {index} | {key for key in obs if IDENTITY.search(key)}
+        if not complete or len(keys) > 256:
+            raise ValueError("intake_identity_inventory_incomplete")
+        for key in keys:
+            if key not in obs:
+                raise ValueError("intake_identity_inventory_incomplete")
+            values, complete = (rows, True) if key == index else column(obs, key)
+            if not complete or len(values) != len(rows):
+                raise ValueError("intake_identity_inventory_incomplete")
+            masks.update(str(value) for value in values if value is not None and str(value))
+            if len(masks) > ROW_LIMIT:
+                raise ValueError("intake_identity_inventory_incomplete")
+    return sorted(masks, key=len, reverse=True)
+
+
+def redact_identities(text, identities):
+    text = clean_text(text)
+    for identity in identities:
+        if identity in text:
+            text = re.sub(r"(?<!\w)" + re.escape(identity) + r"(?!\w)", "[sample identifier]", text)
+    return text
 
 
 def day_value(value):

@@ -12,7 +12,7 @@ import tempfile
 COMPILER_COMMIT = "4e505740f5025d59ba655c6c955f83876f753007"
 COMPILER_VERSION = "2.4.0"
 COMPILER_TREE = "7dd2a3fbd9199e57687a8a4f71df2aaecc724ba12aafe20cd7fd4566b74073c9"
-RULE_VERSION = "bridge-bpl-scope-1"
+RULE_VERSION = "bridge-bpl-scope-2"
 BPL_LIMIT = 128 * 1024
 OUTPUT_LIMIT = 8 * 1024 * 1024
 TIMEOUT = 30
@@ -86,8 +86,11 @@ def child_environment():
             "PYTHONDONTWRITEBYTECODE": "1"}
 
 
-def _issue(code, message, line=None):
-    return {"code": code, "message": message, "line": line}
+def _issue(code, message, line=None, column=None):
+    issue = {"code": code, "message": message, "line": line}
+    if column is not None:
+        issue["column"] = column
+    return issue
 
 
 def _input_problem(text):
@@ -171,7 +174,8 @@ def scope_limits(ast, plan):
             units = {"s": 1, "sec": 1, "second": 1, "seconds": 1, "min": 60, "minute": 60,
                      "minutes": 60, "h": 3600, "hr": 3600, "hour": 3600, "hours": 3600}
             if not isinstance(raw, (int, float)) or raw <= 0:
-                issues.append(_issue("duration_unresolved", "等待时长未明确；编译器的默认时长不能替代原文或用户回答。", line))
+                issues.append(_issue("duration_unresolved", "编译器未能解析等待时长；这不等于原文缺失，默认时长不能替代原文或用户回答。",
+                                     line, (node.get("span") or {}).get("start_col")))
             elif unit not in units:
                 issues.append(_issue("duration_dimension_unchecked", "等待时长的单位未经核实。", line))
             elif any(step.get("primitive", {}).get("duration_s") != raw * units[unit] for step in matched):
@@ -179,7 +183,7 @@ def scope_limits(ast, plan):
         else:
             issues.append(_issue("human_step_unchecked", "该操作仅作为人工步骤保留，参数和生物学含义未被验证。", line))
     # Preserve order but collapse duplicate annotations for one source position.
-    return list({(item["code"], item["line"]): item for item in issues}.values())
+    return list({(item["code"], item["line"], item.get("column")): item for item in issues}.values())
 
 
 def compile_bpl(text: str, python: str | None) -> dict:
