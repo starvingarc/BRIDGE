@@ -7,7 +7,7 @@
 **Architecture:** Retain PlanBuilder, exact AnalysisPlan approval, ToolExecutionPipeline and LocalWorkflowExecutor. Materialize each stage only after its real inputs exist; retain prior plans and canonical ToolRuns.
 **Tech Stack:** Existing Python/FastAPI runtime, React/assistant-ui client and server-side Playwright.
 **Spec:** [Agent integration](../docs/agent-integration.md), [local runtime](../docs/local-agent-runtime.md), [Web preview](../docs/web-preview.md), and the user-approved design below.
-**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK. Task 28 adds separately approved genuine L2 marker-context evidence through installed P0-02 0.5.4 while preserving original labels, reference profiles and QC. Neither increment mutated the preview/session. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
+**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK. Task 28 adds separately approved genuine L2 marker-context evidence through installed P0-02 0.5.4 while preserving original labels, reference profiles and QC. Neither increment mutated the preview/session. Task 29 then completed explicit technical QC selection and reran the existing P0-02/P0-06 chain on the genuine filtered view, preserving original data and references; Scrublet threshold review and no-raw-droplet limitations remain. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
 
 ## Current progress (2026-09-08)
 
@@ -19,7 +19,7 @@ path records absence, not post-transplant validation.
 | Area | Implemented / observed | Still open |
 |---|---|---|
 | Tool access | All 12 packages have contract-driven Web input, plan, approval and execution routes | Tool availability does not supply scientific inputs |
-| Real user execution | Prior genuine P0-01/P0-02 and separate P0-12 no-graft remain recorded; the author-data case has separately approved missingness-only P0-08, candidate P0-09 compilation and P0-10 blocked internal-report verification. Tasks 27–28 add genuine descriptive P0-06 expression/cycle and P0-02 L2 marker-context measurements through isolated installed SDKs | No product-assessment P0-03–P0-06 result, new-mode Web acceptance, qualified/exportable report, comparison or graft-expression chain |
+| Real user execution | Prior genuine P0-01/P0-02 and separate P0-12 no-graft remain recorded; the author-data case has separately approved missingness-only P0-08, candidate P0-09 compilation and P0-10 blocked internal-report verification. Tasks 27–28 add genuine descriptive P0-06 expression/cycle and P0-02 L2 marker-context measurements; Task 29 subsequently completes explicit QC selection and reruns both on the exact filtered view through an installed SDK | No product-assessment P0-03–P0-06 result, new-mode Web acceptance, qualified/exportable report, comparison or graft-expression chain |
 | Controls and interpretation | Stop, exact input-change confirmation, stage history, JSON/native actions and opt-in aggregate projection exist | Model interpretation quality is separate from transport tests |
 | Task 16: table preview | Installed; fresh genuine QC Parquet preview shows bounded rows; original download checksum verified | Preview is intentionally bounded, not the complete artifact |
 | Task 17: selected P0-02 | Installed; exact selected-upload reuse retains its recorded focused tests | No new P0-02 execution in the intake journey; product family was intentionally left unknown |
@@ -928,6 +928,77 @@ were not replayed. Prior public head `3366b240` completed
 [CI run 34263687243](https://github.com/starvingarc/BRIDGE/actions/runs/34263687243)
 successfully; that does not certify this new increment. Publication remains
 Draft, with new-head CI, deployment and scientific approval separate.
+
+### Task 29: Approved QC selection and downstream handoff
+
+**Owner approval (2026-09-09):** complete routine QC before the existing
+product-identity/state and expression-program analyses. Reuse the already
+packaged and installed Scrublet implementation; do not add scDblFinder, a new
+environment, new UI, another review wave or unrelated methods.
+
+The existing P0-01 computes metrics and candidate flags, but retains every
+observation in its candidate H5AD. Scrublet scores are saved without per-cell
+class calls driving selection. P0-02 binds only the original all-observation
+view. These are the exact seams to complete, not a new QC subsystem.
+
+- Retain audit-only requests and the old fixed candidate specification.
+  Add a versioned, explicitly selected robust candidate specification using
+  per-capture lower outliers of log1p counts/genes (five unscaled MADs) and
+  upper mitochondrial-fraction outliers (three unscaled MADs). Save the
+  actual thresholds and their distributions. These are reviewable technical
+  rules, not universal biological cutoffs or a product-quality gate.
+- An explicitly selected QC view preserves the original input and an annotated
+  all-observation artifact, adds per-cell Scrublet score/class, exclusion flags
+  and passes_QC, and produces a distinct filtered raw-count H5AD. Do not remove
+  genes, regress cell cycle, or filter biological identity/stress/programs.
+  Requested doublet failures must not silently produce a completed selection.
+  No raw-droplet input means ambient/cell-calling work remains not assessed.
+- Bind the filtered artifact to its original parent, selection specification,
+  producer run, exact hash and ordered observation identifiers using the
+  existing DataViewBinding. Build any genuinely declared unit lineage on that
+  same selected subset; do not invent missing independence metadata.
+- P0-02 accepts the exact producer-selected view and rejects mismatched or
+  unfiltered substitutes. Its scientific reference, candidate status and
+  algorithms remain unchanged. Preserve old audit-only compatibility and
+  clearly distinguish it from completed technical selection.
+- Run the registered, freshly installed P0-01, then the existing P0-02 L1/L2
+  candidate evidence and approved P0-06 descriptive programs on the selected
+  observations. Reuse the same reference profiles and program resources.
+  Verify the numerical denominators and every parent/producer binding.
+
+Acceptance is focused RED/GREEN coverage of actual filtering, retained counts,
+doublet failure handling, per-capture rules, immutable parents, exact selected
+view handoff and rejection of incorrect inputs. Then perform one genuine
+installed mainline execution, inspect before/after distributions and summarize
+what changed. No target purity, source/state scientific approval, domain score,
+merge, deployment or qualified report is claimed. Private identities, values,
+paths and execution receipts remain outside the public source tree.
+
+Task 29 verification checkpoint: 220 QC/state/registry/Agent-integration/Web-input
+regressions passed in 540.66 s (10 upstream warnings), including 13 focused
+selection/handoff cases. The Web test checks exact request construction and
+rejects selected-file tampering without rewriting upload declarations.
+The first fresh installed chain genuinely succeeded in all three packages.
+Every parent count and feature, original receipt, reference and session hash
+was preserved; state and program tables used the same selected observations.
+Visual inspection found a percentage/fraction legend mismatch only; its exact
+RED/GREEN check passed after correcting displayed units, with no threshold or
+method change. The final wheel from committed source also genuinely completed
+P0-01 0.1.5 -> P0-02 0.5.5 -> P0-06 0.8.1. The selected observation IDs agree
+across the physical matrix, cell-state, marker and expression-program tables;
+all features and parent counts remain unchanged. Final plots were inspected.
+Scrublet's automatic threshold and observed/simulated overlap remain explicit
+review limitations, not proof of complete doublet removal. No threshold was
+manually tuned and no substitute method was run.
+The tracked-file policy initially reported 606 files against 604 after the new
+files were staged; its existing named-file inventory now includes exactly the
+new candidate resource and selection test file, without a generic allowance.
+Final repository-policy, generated-card and whitespace checks passed.
+Private counts, observation identities, resource details and run receipts are
+not published. The original audit view remains historical exploratory evidence,
+not a retrospectively filtered denominator.
+The ordinary Web QC preparation remains audit-only; no new UI or automatic
+filtering default is introduced.
 
 ### Task 24: Inline question/draft cards and the real next-stage route
 

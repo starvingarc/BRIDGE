@@ -55,6 +55,15 @@ scientific methods.
 | Call | Shared CLI/SDK with `tool_id=P0-01`; start from the [count-ready](../examples/requests/p0_01_count_ready.json) or [analysis-ready](../examples/requests/p0_01_analysis_ready.json) request. |
 | Current evidence / status | Public scRNA-seq and snRNA-seq objects exercised reading, raw metrics, immutable-input checks and artifact checksums. This establishes QC-readiness behavior, not product quality, safety or release. [Validation](validation/p0_01_server_integration_20260810.md). |
 
+P0-01 0.1.5 adds explicit, per-capture technical selection using the existing
+Scrublet wrapper, retaining an annotated full view and a separate filtered
+raw-count artifact. Rules, exact thresholds, caller results and before/after
+plots are saved. Audit-only defaults remain unchanged; missing requested
+doublet calls cannot count as completed selection. P0-02 0.5.5 and the Web
+downstream binder accept the exact selected artifact with its parent and ordered
+observation checksums. No new environment, reference, cell-state algorithm or
+biological filter is introduced. See [selection parameters and limits](../src/bridge/tool_packages/p0_01_input_qc/README.md#explicit-selected-view-handoff).
+
 <a id="p0-02"></a>
 ## P0-02 Cell-State Evidence
 

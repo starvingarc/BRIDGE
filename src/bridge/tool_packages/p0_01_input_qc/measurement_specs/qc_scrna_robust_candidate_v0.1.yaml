@@ -1,0 +1,35 @@
+measurement_spec_id: QC-scRNA-robust-candidate-v0.1
+version: 0.1.0
+scientific_question: Which declared cell-called observations satisfy conservative, capture-aware technical QC for descriptive downstream analysis?
+assay: scRNA-seq
+status: candidate
+applicable_product_cards: []
+input_contract:
+  supported_levels: [count_ready]
+  count_semantics: nonnegative integer UMI counts
+  feature_set_policy:
+    policy_id: QC-feature-set-scRNA-human-symbol-v0.1
+    mitochondrial_symbol_prefixes: [MT-]
+    ribosomal_symbol_prefixes: [RPS, RPL]
+    mitochondrial_interpretation: capture-specific technical outlier signal; not biological identity or product quality
+analysis_unit: cell grouped by a row-complete caller-declared capture identifier
+raw_metric_definition:
+  metrics: [total_counts, detected_genes, mitochondrial_fraction, ribosomal_fraction, top_20_gene_fraction]
+  lower_tail_transform: log1p
+  mad_definition: median absolute deviation without normal-consistency scaling
+  doublet_method: existing per-capture Scrublet with explicit execution request
+numerator: cells retained after the union of selected technical exclusions
+denominator: all observations in the unchanged submitted count-ready object
+direction: technical eligibility only
+uncertainty_method: descriptive before-after distributions; reviewable thresholds and exclusions
+minimum_data:
+  min_cells_for_scrublet: 100
+missing_behavior: Missing requested doublet calls, required metrics, capture partition or degenerate robust distributions prevent a completed selection.
+tool_refs: [BRIDGE-CASE-VALIDATOR, SCANPY-QC, SCRUBLET]
+reference_refs: []
+prior_refs: [GENCODE-HUMAN, HGNC-HUMAN]
+validation_ref: null
+exclusion_rules:
+  strategy: robust_by_capture
+  lower_log_mads: 5
+  upper_mito_mads: 3

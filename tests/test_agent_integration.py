@@ -478,7 +478,7 @@ def test_materialized_measurement_ref_is_opaque_but_required(tmp_path: Path) -> 
     request = ToolRequest(
         request_id="request-qc-profile-binding",
         tool_id="P0-01",
-        tool_version="0.1.4",
+        tool_version="0.1.5",
         output_dir=tmp_path,
         assets=[
             InputAsset(

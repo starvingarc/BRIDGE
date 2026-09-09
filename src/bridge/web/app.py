@@ -35,7 +35,7 @@ from .clarification import Clarifications, AnswerBody, CardIdentity
 from .scientific_inputs import ScientificInputs, DraftIdentity, DraftRevision
 from .report_inputs import ReportInputs, ReportPreparation
 from .intake import Intake, IntakeFacts, IntakeInput, IntakePrepare
-from .inputs import Inputs, Selection, AssetDeclaration, PrepareAnalysis, OBJECT_LIMIT
+from .inputs import Inputs, Selection, AssetDeclaration, PrepareAnalysis, OBJECT_LIMIT, checked_bytes
 from bridge.toolkit.registry import ToolRegistry
 from bridge.toolkit.contracts import ToolRequest, ToolRequestV2
 
@@ -668,6 +668,22 @@ class Service:
                 if json.dumps(committed_metadata, sort_keys=True, allow_nan=False) != json.dumps(
                         receipt_metadata, sort_keys=True, allow_nan=False):
                     raise ValueError("qc_declaration_retracted")
+            selected_artifact = None
+            if view.get("view_kind") == "qc_selected_observations":
+                matches = [item for item in run["artifacts"]
+                           if item["artifact_id"] == view["artifact_id"]]
+                if (len(matches) != 1 or matches[0]["kind"] != "qc_selected_h5ad"
+                        or matches[0]["sha256"] != view["sha256"]
+                        or view["parent_asset_id"] != selected
+                        or view["parent_asset_sha256"] != payload["checksum"]):
+                    raise ValueError("qc_artifact_integrity_mismatch")
+                selected_artifact = matches[0]
+                try:
+                    checked_bytes(self, state, selected_artifact["path"], view["sha256"],
+                                  root=self.directory(state["id"]) / "runs",
+                                  limit=self.settings.upload_limit)
+                except (ValueError, OSError):
+                    raise ValueError("qc_artifact_integrity_mismatch") from None
             if register:
                 catalog_path = self.root / "qc-catalog.json"
                 with CATALOG_LOCK:
@@ -680,7 +696,14 @@ class Service:
                     write_file(catalog_path, json.dumps(catalog).encode())
             if not enrich:
                 return CaseInputAsset.model_validate(payload)
-            payload = run["request"]["assets"][0]
+            payload = dict(run["request"]["assets"][0])
+            if selected_artifact is not None:
+                payload.update(
+                    asset_id=selected_artifact["artifact_id"],
+                    path=selected_artifact["path"], checksum=view["sha256"],
+                    format="h5ad", matrix_location=view["matrix_location"],
+                    matrix_semantics=view["matrix_semantics"],
+                )
             payload["metadata"] = {**payload.get("metadata", {}),
                 "source_family_id": state["_uploads"][selected]["source_family_id"],
                 "qc_profile_ref": profile["profile_id"], "data_view_id": view["view_id"],

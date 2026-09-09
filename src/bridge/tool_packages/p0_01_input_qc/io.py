@@ -702,6 +702,7 @@ def build_declared_lineage(
     run_id: str,
     tool_version: str,
     input_level: str,
+    selected_view: DataViewBinding | None = None,
 ) -> DeclaredLineageOutput:
     """Build a declared-only lineage for the exact immutable input observation set."""
 
@@ -728,6 +729,18 @@ def build_declared_lineage(
         n_observations=len(observation_ids),
         observation_ids_sha256=observation_digest,
     )
+
+    if selected_view is not None:
+        if (
+            selected_view.view_kind != "qc_selected_observations"
+            or selected_view.parent_asset_id != asset.asset_id
+            or selected_view.parent_asset_sha256 != input_hash
+            or selected_view.n_observations != len(observation_ids)
+            or selected_view.observation_ids_sha256 != observation_digest
+        ):
+            raise InputAuditError("qc_selected_lineage_binding_mismatch")
+        base_view = selected_view
+        view_ref = selected_view.view_id
 
     raw_metadata = asset.metadata.get(LINEAGE_METADATA_KEY)
     if raw_metadata is None:
@@ -837,7 +850,7 @@ def build_declared_lineage(
             generator_tool_id="P0-01",
             generator_tool_version=tool_version,
             data_view_ref=view_ref,
-            selected_artifact_sha256=input_hash,
+            selected_artifact_sha256=base_view.sha256,
             observation_ids_sha256=observation_digest,
             n_observations=len(observation_ids),
             assignment_schema_ref=assignment_artifact.schema_ref,

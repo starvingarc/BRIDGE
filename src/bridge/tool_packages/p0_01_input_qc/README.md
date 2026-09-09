@@ -10,6 +10,28 @@ This directory contains the executable input-audit and QC package.
   biological-unit lineage artifacts, visualizations and a checksummed manifest.
 - **Boundary:** QC readiness is not a product-quality, safety or release score.
 
+## Explicit selected-view handoff
+
+P0-01 0.1.5 preserves the audit-only default. To apply reviewed candidate technical
+QC, set `select_qc_eligible_cells=true`, `run_scrublet=true` and an explicit
+MeasurementSpec. `QC-scRNA-robust-candidate-v0.1` uses five unscaled MADs below
+capture-specific log1p counts/genes and three above mitochondrial fraction.
+Zero-count observations are excluded; unavailable doublet calls or degenerate
+required distributions prevent a completed selection.
+
+The unchanged parent and annotated all-observation view remain distinct from
+`qc_selected_h5ad`. The selected view preserves raw counts and all features,
+adds `passes_QC` and explicit exclusion flags, and carries the parent checksum,
+selection specification and ordered observation checksum. Scrublet score/class,
+version, threshold and simulated-score distribution are retained per capture.
+Threshold JSON and per-capture PNG/SVG before/after plots support review.
+P0-02 0.5.5 and the Web downstream binder consume the exact selected artifact.
+
+Selection is explicit SDK/CLI behavior; the Web audit preparation default and
+UI are unchanged. Missing raw droplets leave cell calling and ambient RNA
+not assessed. Biological identity, cell-cycle and stress expression are not QC
+exclusion criteria. Candidate selection is not scientific validation or release.
+
 ## Documentation
 
 - [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-01)

@@ -562,7 +562,7 @@ def _relationship_records(
             )
         )
 
-    if measurement_spec is not None:
+    if measurement_spec is not None and measurement_spec.exclusion_rules.get("strategy") != "robust_by_capture":
         for metric_id, label, value, unit in (
             (
                 "min_detected_genes",
@@ -780,7 +780,11 @@ def _render_figures(
             metrics,
             staging_run_dir / "qc_metric_relationships",
             flags=flags,
-            candidate_rules=measurement_spec.exclusion_rules if measurement_spec else None,
+            candidate_rules=(
+                measurement_spec.exclusion_rules
+                if measurement_spec and measurement_spec.exclusion_rules.get("strategy") != "robust_by_capture"
+                else None
+            ),
             observation_unit=observation_unit,
         )
     else:

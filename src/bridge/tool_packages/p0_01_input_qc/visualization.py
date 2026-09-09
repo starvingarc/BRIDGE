@@ -86,6 +86,8 @@ METRICS = (
 
 FLAG_LABELS = {
     "flag_zero_total_counts": "Zero total counts",
+    "flag_low_total_counts": "Low total counts",
+    "flag_predicted_doublet": "Predicted doublet",
     "flag_low_detected_genes": "Low detected genes",
     "flag_high_detected_genes": "High detected genes",
     "flag_high_mitochondrial_fraction": "High mitochondrial fraction",
@@ -119,6 +121,63 @@ def render_qc_overview(
     fig.savefig(png, dpi=180, bbox_inches="tight", metadata={"Software": "BRIDGE"})
     plt.close(fig)
     return svg, png
+
+
+def render_qc_selection_review(
+    metrics: pd.DataFrame, flags: pd.DataFrame, capture_groups: pd.Series,
+    thresholds: list[dict], doublet_assessment: dict, output_dir: Path,
+) -> list[tuple[Path, Path]]:
+    """Show the applied per-capture rules and the saved caller threshold."""
+    doublets = {row["capture_id"]: row for row in doublet_assessment["per_capture"]}
+    outputs = []
+    with plt.rc_context(FIGURE_RC):
+        for index, rule in enumerate(thresholds, 1):
+            capture = rule["capture_id"]
+            rows = capture_groups.astype(str).eq(capture)
+            retained = flags.loc[rows, "passes_QC"].to_numpy(dtype=bool)
+            frame = metrics.loc[rows]
+            fig, axes = plt.subplots(2, 2, figsize=(9.6, 6.8), constrained_layout=True)
+            fig.suptitle(
+                f"Capture {index}: {len(frame):,} input / {int(retained.sum()):,} selected cells",
+                fontsize=12,
+            )
+            for axis, metric, label, field, transform in (
+                (axes[0, 0], "total_counts", "log1p total counts", "min_total_counts", np.log1p),
+                (axes[0, 1], "detected_genes", "log1p detected genes", "min_detected_genes", np.log1p),
+                (axes[1, 0], "mitochondrial_fraction", "Mitochondrial transcripts (%)", "max_mitochondrial_fraction", lambda x: x * 100),
+            ):
+                values = transform(frame[metric].to_numpy(dtype=float))
+                finite = np.isfinite(values)
+                bins = np.histogram_bin_edges(values[finite], bins=40)
+                axis.hist(values[finite], bins=bins, color=MUTED, alpha=.35, label="Before")
+                axis.hist(values[retained & finite], bins=bins, histtype="step", linewidth=1.6, color=TEAL, label="Selected")
+                if field in rule:
+                    cutoff = rule[field]
+                    label_value = f"{cutoff * 100:.4g}%" if metric == "mitochondrial_fraction" else f"{cutoff:.4g}"
+                    axis.axvline(transform(cutoff), color=VERMILION, linestyle="--", label=f"Applied: {label_value}")
+                if metric == "detected_genes" and "max_detected_genes" in rule:
+                    axis.axvline(np.log1p(rule["max_detected_genes"]), color=VERMILION, linestyle=":")
+                axis.set_xlabel(label)
+                axis.set_ylabel("Cells")
+                axis.legend(fontsize=7, frameon=False)
+            axis = axes[1, 1]
+            assessment = doublets[capture]
+            histogram = assessment["simulated_score_histogram"]
+            bins = np.asarray(histogram["bin_edges"])
+            simulation = np.asarray(histogram["counts"], dtype=float)
+            observed = frame["scrublet_score"].dropna().to_numpy(dtype=float)
+            axis.hist(observed, bins=bins, weights=np.ones(len(observed)) / len(observed),
+                      histtype="step", color=TEAL, linewidth=1.6, label="Observed cells")
+            axis.stairs(simulation / max(1, simulation.sum()), bins, color=MUTED, label="Simulated doublets")
+            axis.axvline(assessment["threshold"], color=VERMILION, linestyle="--",
+                         label=f"Caller threshold: {assessment['threshold']:.4g}")
+            axis.set_xlabel("Scrublet score (not a calibrated probability)")
+            axis.set_ylabel("Fraction per bin")
+            axis.legend(fontsize=7, frameon=False)
+            for axis in axes.ravel():
+                axis.spines[["top", "right"]].set_visible(False)
+            outputs.append(_save_figure(fig, output_dir / f"qc_selection_capture_{index:02d}"))
+    return outputs
 
 
 def render_counts_genes_scatter(metrics: pd.DataFrame, output_stem: Path) -> tuple[Path, Path]:
