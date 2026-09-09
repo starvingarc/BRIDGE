@@ -154,7 +154,7 @@ def marker_program_evidence(
     frames: list[pd.DataFrame] = []
     summaries: list[dict[str, Any]] = []
     for card in cards:
-        if card.level != "L1" or "shadow_evidence" not in card.allowed_use:
+        if card.level not in {"L1", "L2"} or "shadow_evidence" not in card.allowed_use:
             continue
         positive = [gene.upper() for gene in card.positive_markers if gene.upper() in gene_index]
         negative = [gene.upper() for gene in card.negative_markers if gene.upper() in gene_index]

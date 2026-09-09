@@ -620,3 +620,17 @@ suitability from the current annotation.
 Next: complete the source-state discriminant review, then return the concrete
 target-component and developmental-window proposal to the owner for review;
 complete the genuine experimental and process-program prerequisites separately.
+
+### Subsequent bounded measurement checkpoints
+
+The curation table above records its earlier inspection-only checkpoint.
+Task 27 subsequently completed the separately approved descriptive S/G2M
+measurement, without satisfying product-bound scientific/lineage prerequisites.
+Task 28 subsequently completed the owner-approved L2 marker-evidence extension
+and genuine candidate-context check. Regional identity, shared floor-plate
+context, neurogenic stage and later DA differentiation were kept separate.
+The candidate resource did not become a reviewed state definition or cross-atlas
+mapping. Original reference profiles, labels and L1 marker evidence were
+preserved; source-state review, product-role mapping and intended developmental
+window are still unresolved. Exact execution and remaining boundaries have one
+home in [Tasks 27–28 of the integration plan](web-full-chain-integration.md#task-28-approved-l2-descriptive-marker-evidence).

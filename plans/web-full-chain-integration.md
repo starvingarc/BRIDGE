@@ -7,7 +7,7 @@
 **Architecture:** Retain PlanBuilder, exact AnalysisPlan approval, ToolExecutionPipeline and LocalWorkflowExecutor. Materialize each stage only after its real inputs exist; retain prior plans and canonical ToolRuns.
 **Tech Stack:** Existing Python/FastAPI runtime, React/assistant-ui client and server-side Playwright.
 **Spec:** [Agent integration](../docs/agent-integration.md), [local runtime](../docs/local-agent-runtime.md), [Web preview](../docs/web-preview.md), and the user-approved design below.
-**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK, with no preview/session mutation. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
+**Status:** downstream_measured_inputs_pending. Tasks 1–20 record the earlier PR scope. Tasks 21–25 have installed, browser-exercised choice cards, canonical V2 interpretation, source-backed candidate review/revision and missingness-only P0-08. Task 23's continuation now adds candidate P0-09 missingness compilation and a P0-10 internal draft with actual blocked verification. Runtime snapshot `ea655bc6` was packaged from clean committed source and checked against the built client before isolated acceptance and preview replacement. The existing genuine case reused its prior P0-08 and separately approved only P0-09 and P0-10; original inputs and historical receipts were preserved. Documentation is reconciled afterward. Task 27 subsequently completed the owner-approved descriptive P0-06 joint measurement through a fresh installed SDK. Task 28 adds separately approved genuine L2 marker-context evidence through installed P0-02 0.5.4 while preserving original labels, reference profiles and QC. Neither increment mutated the preview/session. Product-domain measurement construction, new-mode Web acceptance and a qualified/exportable report remain unfinished.
 
 ## Current progress (2026-09-08)
 
@@ -19,7 +19,7 @@ path records absence, not post-transplant validation.
 | Area | Implemented / observed | Still open |
 |---|---|---|
 | Tool access | All 12 packages have contract-driven Web input, plan, approval and execution routes | Tool availability does not supply scientific inputs |
-| Real user execution | Prior genuine P0-01/P0-02 and separate P0-12 no-graft remain recorded; the author-data case has separately approved missingness-only P0-08, candidate P0-09 compilation and P0-10 blocked internal-report verification. Task 27 adds genuine descriptive P0-06 expression/cycle measurement through the installed SDK | No product-assessment P0-03–P0-06 result, new-mode Web acceptance, qualified/exportable report, comparison or graft-expression chain |
+| Real user execution | Prior genuine P0-01/P0-02 and separate P0-12 no-graft remain recorded; the author-data case has separately approved missingness-only P0-08, candidate P0-09 compilation and P0-10 blocked internal-report verification. Tasks 27–28 add genuine descriptive P0-06 expression/cycle and P0-02 L2 marker-context measurements through isolated installed SDKs | No product-assessment P0-03–P0-06 result, new-mode Web acceptance, qualified/exportable report, comparison or graft-expression chain |
 | Controls and interpretation | Stop, exact input-change confirmation, stage history, JSON/native actions and opt-in aggregate projection exist | Model interpretation quality is separate from transport tests |
 | Task 16: table preview | Installed; fresh genuine QC Parquet preview shows bounded rows; original download checksum verified | Preview is intentionally bounded, not the complete artifact |
 | Task 17: selected P0-02 | Installed; exact selected-upload reuse retains its recorded focused tests | No new P0-02 execution in the intake journey; product family was intentionally left unknown |
@@ -840,6 +840,94 @@ That exact test was reproduced, then its explicit expected field and empty-conte
 assertion were aligned without changing runtime behavior or weakening the private-
 value checks. The focused rerun passed; this is not full-suite or current-head CI
 acceptance. Publication remains Draft and unmerged, with new-head CI separate.
+
+### Task 28: Approved L2 descriptive marker evidence
+
+**Owner approval (2026-09-09):** extend only the existing marker-evidence path
+to L2 and check literature-derived candidate panels on the already selected
+genuine input. Stay on the product-identity mainline; no new UI, independent
+review wave, QC replay, label reassignment, purity estimate or freeze approval.
+
+The existing card contract and checksummed reference snapshot already support
+L2, but the runtime currently filters out every non-L1 card. Permit L1 and L2
+cards explicitly allowed for shadow evidence; keep L3 and other uses excluded.
+Retain existing coverage, insufficient-positive-gene and missing-negative-value
+semantics. Marker averages remain descriptive, not classifiers or coexpression
+tests, and must not change correlation-derived labels or release states.
+
+Prepare a separate versioned candidate resource using the existing checksummed
+snapshot contract in an isolated reference root. Copy the existing profile and
+vocabulary bytes unchanged, update only the marker resource and candidate
+manifest version/hash, and validate the derived snapshot. The fixed measurement
+specification retains its logical reference ID; private provenance must bind
+both the original and derived manifest hashes. Do not rebuild reference feature
+selection from the added panels. Preserve the packaged L1 cards and all prior
+reference/input bytes. Use Kee et al. (2017), DOI
+10.1016/j.stem.2016.10.003, Figure 4 and La Manno et al. (2016), DOI
+10.1016/j.cell.2016.09.027, Figures 4–5 to separate regional/context evidence
+from neurogenic stage and mature DA context. Shared floor-plate markers and
+NR4A2 are not sufficient identity evidence; mouse findings and human findings
+must remain distinguished. Candidate panel names are review questions attached
+to existing L2 states, not a claimed cross-atlas label mapping or a reviewed
+state definition. Exact selected panels, source limitations and genuine
+measurements remain in the private execution record.
+
+Acceptance: first reproduce skipped L2 cards in focused dense/sparse numerical
+and registered-tool tests, then verify the smallest implementation change.
+Build/install the updated registered tool in isolation and execute a newly
+authorized request against the unchanged selected input and existing QC lineage.
+Verify card coverage, selected-observation retention, candidate/release states,
+saved-artifact hashes and unchanged original input/session receipts. Record
+actual measured evidence separately from scientific validation. No frozen
+reference, signed gate, product-role declaration or qualified score is created.
+
+#### Task 28 engineering checkpoint
+
+Both dense/sparse numerical cases and the registered-tool case failed first
+because L2 summaries/rows were absent. All three then passed after the one-line
+L1/L2 allowlist correction; the original source-aware run and candidate-reference
+refusal also passed (five focused checks, not a full-suite run). P0-02 patch
+version 0.5.4 identifies the behavior change. Numerical assertions cover exact
+means, observation order, gene coverage, missing negative values, unavailable
+cards, excluded L3/unauthorized uses and unchanged shadow labels. Installation
+and genuine candidate measurements are separate acceptance below.
+
+#### Task 28 genuine installed acceptance
+
+A wheel built from committed source was imported from a fresh isolated
+installation. The separately owner-approved registered P0-02 0.5.4 request
+succeeded on the original selected input and genuine saved QC products. Six
+explicitly review-required L2 cards, representing four distinct gene panels,
+were added in a private derived candidate snapshot. Shared panels attached to
+two state questions are not separate independent evidence. All selected positive and regional-alternative genes were
+covered; all selected observations were retained once per assessed card.
+
+The original and derived reference manifests are version/hash-bound in private
+provenance under the existing logical reference ID. Every profile matrix,
+profile metadata file, vocabulary and packaged L1 card was preserved. The saved
+cell-state evidence table and all old L1 marker rows equal the prior results;
+the newly authorized marker measurement did not change labels. Artifact hashes
+and original input, QC/profile/receipt, reference and session hashes were checked
+after execution. No QC, source notebook, locked/OOD runner or Web service was
+rerun or restarted. Private identities, counts, values and receipts are retained
+only in the private record.
+
+Saved-table summaries examine stage and regional context separately. This is
+candidate descriptive evidence, not an independent source-state validation,
+cross-atlas mapping or product-role approval. Means do not prove coexpression;
+detection of any panel transcript is not a positive-state fraction. Alternative
+regional context is not a validated exclusion rule. State review and typed
+biological lineage remain missing, score stays shadow and domain score null.
+No target purity, new state assignment, freeze signature, product acceptance,
+Web result-card acceptance or downstream gate-facing measurement was created.
+
+The three new RED/GREEN cases and two directly affected boundaries passed
+together; two registry/version checks, generated-card validation, repository
+policy and whitespace checks are recorded separately. Unchanged broad suites
+were not replayed. Prior public head `3366b240` completed
+[CI run 34263687243](https://github.com/starvingarc/BRIDGE/actions/runs/34263687243)
+successfully; that does not certify this new increment. Publication remains
+Draft, with new-head CI, deployment and scientific approval separate.
 
 ### Task 24: Inline question/draft cards and the real next-stage route
 

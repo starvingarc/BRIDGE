@@ -26,6 +26,20 @@ package. Its output remains shadow without a signed release manifest.
 Use `bridge-tool describe P0-02` for the installed version, environment and
 registered method IDs.
 
+## Descriptive L1/L2 marker evidence
+
+Version 0.5.4 evaluates L1 and L2 cards whose allowed uses include
+`shadow_evidence`; L3 remains excluded. A custom candidate card resource can be
+supplied by the existing reference catalog's `marker_program_path` and is
+checksummed into a new snapshot. Packaged L1 cards are unchanged; this version
+does not add reviewed L2 biological definitions.
+
+Positive and negative means describe expression over the genes actually present.
+Insufficient positive-gene coverage leaves a card unavailable; absent negative
+genes yield missing values, not zero expression. Means are not coexpression,
+probabilities, state assignments, purity or product scores. Candidate review
+status, correlation-derived labels and release gates are unchanged.
+
 ## Deterministic grouping artifacts
 
 Exploratory grouping records preserve stable method parameters, grouping

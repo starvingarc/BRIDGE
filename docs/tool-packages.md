@@ -67,6 +67,14 @@ scientific methods.
 | Call | Shared CLI/SDK with `tool_id=P0-02`; start from the [request example](../examples/requests/p0_02_cell_state.json). Benchmark/freeze commands remain science-team workflows. |
 | Current evidence / status | Real-data integration established a reproducible shadow baseline; the pilot exposed forced-label/OOD and fine-state limitations. Reference correlation is similarity, not replicate-aware differential expression. The method remains unfrozen, `score_state=shadow`, `domain_score=null`. [Integration](validation/p0_02_server_integration_20260811.md) · [Pilot](validation/p0_02_scientific_freeze_pilot_20260811.md). |
 
+P0-02 0.5.4 includes authorized L1 and L2 shadow marker cards; L3 remains
+excluded. Candidate cards are explicit checksummed snapshot inputs, not approved
+biological definitions or new packaged defaults. Insufficient positive coverage
+leaves a card unavailable and absent negative genes stay missing. The resulting
+means are descriptive expression evidence, not coexpression, calibrated
+probabilities, assignments or purity; existing labels and release gates are
+unchanged. See the [package behavior](../src/bridge/tool_packages/p0_02_cell_state/README.md#descriptive-l1l2-marker-evidence).
+
 <a id="p0-03"></a>
 ## P0-03 Target Identity & Regional Fidelity
 
