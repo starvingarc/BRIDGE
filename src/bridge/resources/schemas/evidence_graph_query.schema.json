@@ -9,14 +9,16 @@
             "$ref": "#/$defs/P0DomainId"
           },
           "title": "Domain Ids",
-          "type": "array"
+          "type": "array",
+          "uniqueItems": true
         },
         "evidence_tiers": {
           "items": {
             "$ref": "#/$defs/EvidenceTier"
           },
           "title": "Evidence Tiers",
-          "type": "array"
+          "type": "array",
+          "uniqueItems": true
         },
         "max_depth": {
           "default": 4,
@@ -83,7 +85,8 @@
             "$ref": "#/$defs/EvidenceTier"
           },
           "title": "Evidence Tiers",
-          "type": "array"
+          "type": "array",
+          "uniqueItems": true
         },
         "include_inactive": {
           "default": false,
@@ -119,6 +122,37 @@
     },
     "ComparisonEvidencePathsQuery": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "claim_id": {
+              "type": "string"
+            },
+            "domain_id": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "claim_id"
+          ]
+        },
+        {
+          "properties": {
+            "claim_id": {
+              "type": "null"
+            },
+            "claim_version": {
+              "type": "null"
+            },
+            "domain_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "domain_id"
+          ]
+        }
+      ],
       "properties": {
         "claim_id": {
           "anyOf": [
@@ -355,6 +389,37 @@
     },
     "MissingRequirementsQuery": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "claim_id": {
+              "type": "string"
+            },
+            "product_case_id": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "claim_id"
+          ]
+        },
+        {
+          "properties": {
+            "claim_id": {
+              "type": "null"
+            },
+            "claim_version": {
+              "type": "null"
+            },
+            "product_case_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "product_case_id"
+          ]
+        }
+      ],
       "properties": {
         "claim_id": {
           "anyOf": [

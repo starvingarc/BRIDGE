@@ -735,7 +735,7 @@ class Inputs:
             128 * 1024 * 1024)
         model = ToolRunV2 if "object_inputs" in raw["request"] else ToolRun
         run = model.model_validate(raw)
-        self.service.registry.validate_result(run, run.request)
+        self.service.registry.validate_historical_result(run, run.request)
         if run.request.tool_id != tool_id or run.execution_state.value != receipt["state"]:
             raise ValueError("canonical_source_producer_mismatch")
         artifacts = {item.artifact_id: item for item in run.artifacts}

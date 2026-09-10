@@ -92,6 +92,31 @@ it("keeps eligible interpretation gaps separate and approves the exact finite sc
   await waitFor(()=>expect(requests).toEqual([{scope_id:"scope-exact",scope_digest:"digest-exact"}]));
 });
 
+it("explains missing intake facts before approval and keeps identifiers in collapsed details", async()=>{
+  load({...session,assessment:{...assessment,status:"proposed",scope_authorized:false,
+    candidates:[{tool_id:"P0-02",mode_id:null,runnable:false,
+      blockers:["asset_declaration_required","supported_product_family_required"],gaps:[]}]}});
+  render(<App />);
+  const conditions=await screen.findByRole("region",{name:"前提条件"});
+  expect(within(conditions).getByText(/请在产品资料中确认实验类型、原始计数语义和计数位置/)).toBeVisible();
+  expect(within(conditions).getByText(/请在完整资料中选择已知产品类别/)).toBeVisible();
+  expect(within(conditions).getByText("asset_declaration_required")).not.toBeVisible();
+  expect(within(conditions).getByText(/P0-02/)).not.toBeVisible();
+  const details=within(conditions).getByText("技术详情");
+  await userEvent.setup().click(details);
+  expect(within(conditions).getByText(/P0-02/)).toBeVisible();
+});
+
+it("keeps raw reasons collapsed inside numeric fallback tables",async()=>{
+  load({...session,assessment:{...assessment,portrait:[{...assessment.portrait[0],state:"available",reason_codes:[],
+    summary:{n_observations:4,reason_codes:["asset_declaration_required"]}}]}});
+  render(<App />);
+  const axis=await screen.findByRole("region",{name:"细胞状态"});
+  expect(within(axis).getByRole("cell",{name:"4"})).toBeVisible();
+  expect(within(axis).getByText("asset_declaration_required")).not.toBeVisible();
+  expect(within(axis).getByText(/请在产品资料中确认实验类型、原始计数语义和计数位置/)).toBeVisible();
+});
+
 it("keeps stop accessible while running without silently approving another scope",async()=>{
   const value: Session = {...session,status:"running",assessment:{...assessment,status:"running",stop_reason:null}};
   const fetcher=load(value as typeof session);
@@ -124,6 +149,22 @@ it("retains historical values and original stop reason but disables resume after
   expect(screen.getByText(/已由研究者停止/)).toBeInTheDocument();
   expect(screen.getByText(/选择受影响检查并新建范围/)).toBeInTheDocument();
   expect(within(screen.getByRole("region",{name:"发育阶段"})).getAllByRole("cell",{name:"0.5"})).toHaveLength(1);
+});
+
+it("keeps each prior stop phase inspectable after resume without resetting counters",async()=>{
+  load({...session,assessment:{...assessment,status:"running",stop_reason:null,stop_events:[
+    {reason:"no_discriminating_check",status:"stopped",stopped_at:"2026-09-11T00:00:00Z",
+      tool_runs_used:1,model_turns_used:2},
+    {reason:"necessary_fact_required",status:"blocked",stopped_at:"2026-09-11T00:01:00Z",
+      tool_runs_used:2,model_turns_used:3}]}});
+  render(<App />);
+  await userEvent.setup().click(await screen.findByText("本范围停止记录"));
+  expect(screen.getByText("停止阶段 1")).toBeVisible();
+  expect(screen.getByText("停止阶段 2")).toBeVisible();
+  expect(screen.getByText(/当时累计：工具 1 次，模型 2 轮/)).toBeVisible();
+  expect(screen.getByText(/当时累计：工具 2 次，模型 3 轮/)).toBeVisible();
+  expect(screen.getByText(/工具运行：2 \/ 5/)).toBeVisible();
+  expect(screen.getByText(/需要研究者提供必要实验事实/)).toBeVisible();
 });
 
 it("requires a new scope at exhausted budgets and labels pending correction separately",async()=>{

@@ -408,7 +408,12 @@ def test_source_join_reuses_product_case_view_and_shared_roles(
     assert state["_input_selections"] == original
     assert set(item["input_id"] for item in target_roots) <= set(typed.binding["resources"])
     service.save(state)
-    monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
+    wires = []
+    service.settings = replace(service.settings, share_result_summaries=True)
+    def capture(settings, messages, context):
+        wires.append(json.loads(json.dumps(context)))
+        return next_check_or_stop(settings, messages, context)
+    monkeypatch.setattr("bridge.web.provider.converse", capture)
     approve_scope(client, sid, scope)
     done = settle_assessment(client, sid)
     assert done["assessment"]["tool_runs_used"] == 1
@@ -424,6 +429,25 @@ def test_source_join_reuses_product_case_view_and_shared_roles(
         assert roles["target"] == 2 and roles["role_unresolved"] == 2
         assert run["result"]["accounting"]["total_soft_mass"] is None
         assert run["measurements"] == []
+        local = next(row for row in done["assessment"]["portrait"] if row["id"] == "composition")["summary"]
+        model = wires[-1]["evidence"][0]["summary"]
+        for summary in (local, model):
+            accounting = summary["accounting"]
+            assert accounting["n_observations"] == 4
+            assert {row["product_role"]: (row["consensus_supported_count"], row["fraction_of_selected_view"])
+                    for row in accounting["role_counts"]} == {
+                        "target": (2, 0.5), "known_off_target": (0, 0.0),
+                        "acceptable_adjacent": (0, 0.0), "role_unresolved": (2, 0.5)}
+            assert accounting["mass_state"] == "unavailable"
+            assert accounting["total_soft_mass"] is None
+            assert accounting["reason_codes"] == run["result"]["accounting"]["reason_codes"]
+            assert accounting["producer_composition"]["state"] == "shadow"
+            assert [{key: row[key] for key in ("view", "count", "fraction", "denominator", "state_evidence_state")}
+                    for row in accounting["producer_composition"]["records"]] == [
+                        {key: row[key] for key in ("view", "count", "fraction", "denominator", "state_evidence_state")}
+                        for row in run["result"]["accounting"]["producer_composition"]["records"]]
+        assert local["accounting"] == run["result"]["accounting"]
+        assert model["accounting"]["primary_denominator_id"] != local["accounting"]["primary_denominator_id"]
     else:
         assert run["result"]["domain_score"] is None
         assert run["result"]["score_state"] == "unavailable"
@@ -488,14 +512,21 @@ def test_source_bound_process_descriptor_uses_real_producer_without_observation_
     view = state["_assessment"]["scope"]["binding"]["data_view"]
     service.save(state)
     explicit = select_process_roots(client, sid, tmp_path, case, view)
+    before_proposal = service.load(sid)["_input_objects"]
+    original_count = len(before_proposal)
     scope = propose_scope(client, sid, aid, "P0-06", "method_runtime_source_bound")
     state = service.load(sid)
-    original_count = len(state["_input_objects"])
+    created_ids = set(state["_input_objects"]) - set(before_proposal)
+    assert len(created_ids) == 1
+    assert len(state["_input_objects"]) == original_count + 1
+    proposal_objects = dict(state["_input_objects"])
     row, = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
     assert row["blockers"] == [], row["blockers"]
     refs = {item.role: item for item in row["request"].object_inputs}
     actual_case = service.inputs.verify(state, state["_input_objects"][refs["product_case"].input_id])
     assert actual_case == case
+    assert created_ids == {refs["process_method_input"].input_id}
+    assert state["_input_objects"] == proposal_objects
     descriptor = service.inputs.verify(state, state["_input_objects"][refs["process_method_input"].input_id])
     assert descriptor["object_version"] == "0.2.0"
     assert "observation_states" not in descriptor
@@ -510,6 +541,9 @@ def test_source_bound_process_descriptor_uses_real_producer_without_observation_
     assert len(state["_input_objects"]) == original_count + 1
     again, = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
     assert again["fingerprint"] == row["fingerprint"]
+    assert [(item.role, item.input_id, item.sha256) for item in again["request"].object_inputs] == [
+        (item.role, item.input_id, item.sha256) for item in row["request"].object_inputs]
+    assert state["_input_objects"] == proposal_objects
     assert len(state["_input_objects"]) == original_count + 1
     assert refs["protocol_ir"].input_id == next(item["input_id"] for item in explicit if item["role"] == "protocol_ir")
     service.save(state)
@@ -1010,18 +1044,50 @@ def test_unattributed_explanation_cannot_claim_a_hypothesis(client, tmp_path, mo
     assert service.load(sid)["_tool_runs"] == []
 
 
-@pytest.mark.parametrize("requested_reason,expected_reason,expected_status", [
-    pytest.param("no_discriminating_check", "no_discriminating_check", "stopped", id="read_only_query"),
-    pytest.param("evidence_requirements_reached", "completion_contract_unavailable", "blocked",
+@pytest.mark.parametrize("requested_reason,expected_reason,expected_status,historical", [
+    pytest.param("no_discriminating_check", "no_discriminating_check", "stopped", False, id="read_only_query"),
+    pytest.param("no_discriminating_check", "no_discriminating_check", "stopped", True, id="baseline_receipt"),
+    pytest.param("evidence_requirements_reached", "completion_contract_unavailable", "blocked", False,
                  id="open_requirements_completion_requested"),
 ])
 def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artifacts(
-        client, tmp_path, monkeypatch, requested_reason, expected_reason, expected_status):
+        client, tmp_path, monkeypatch, requested_reason, expected_reason, expected_status, historical):
     from test_web_report_inputs import confirmed_case, run_stage
     service, sid, aid, body = confirmed_case(client, tmp_path)
     run_stage(client, sid, body, "P0-08")
-    run_stage(client, sid, body, "P0-09")
+    if historical:
+        # Real registered producer, using the exact supported pre-upgrade contract.
+        # No receipt, graph, measurement or artifact is rewritten after production.
+        module = importlib.import_module("bridge.tool_packages.p0_09_evidence_compiler.adapter")
+        legacy = service.registry.describe("P0-09").model_copy(update={
+            "version": "0.4.2", "result_schema_ref": "bridge://schemas/evidence-compiler-run-result/v0.1"})
+        with monkeypatch.context() as legacy_contract:
+            legacy_contract.setitem(service.registry._specs, "P0-09", legacy)
+            legacy_contract.setattr(module, "RESULT_SCHEMA_REF", legacy.result_schema_ref)
+            legacy_contract.setattr(type(service.registry), "load_default", classmethod(lambda cls: service.registry))
+            run_stage(client, sid, body, "P0-09")
+    else:
+        run_stage(client, sid, body, "P0-09")
     state = service.load(sid)
+    original_receipts = {row["file"]: (service.directory(sid) / "receipts" / row["file"]).read_bytes()
+                         for row in state["_tool_runs"]}
+    if historical:
+        from bridge.toolkit.contracts import ToolRunV2
+        old_run = ToolRunV2.model_validate_json(original_receipts[state["_tool_runs"][-1]["file"]])
+        assert old_run.tool_version == "0.4.2"
+        assert old_run.result_schema_ref == "bridge://schemas/evidence-compiler-run-result/v0.1"
+        with pytest.raises(ValueError, match="mismatched tool version"):
+            service.registry.validate_result(old_run, old_run.request)
+        for update in ({"tool_version": "0.4.1"}, {"environment_spec_id": "ENV-WRONG"}, {"result": {}}):
+            with pytest.raises(ValueError):
+                service.registry.validate_historical_result(old_run.model_copy(update=update), old_run.request)
+        wrong_request = old_run.request.model_copy(update={"request_id": "different-request"})
+        with pytest.raises(ValueError, match="mismatched tool or request"):
+            service.registry.validate_historical_result(old_run, wrong_request)
+    from pathlib import Path
+    original_artifacts = {item["path"]: Path(item["path"]).read_bytes()
+                          for raw_receipt in original_receipts.values()
+                          for item in json.loads(raw_receipt)["artifacts"]}
     graph_id, graph_record = next((identifier, row) for identifier, row in state["_input_objects"].items()
         if row["source"] == "tool_output" and row["schema_ref"] == "bridge://schemas/case-evidence-graph-manifest/v0.1")
     graph = service.inputs.verify(state, graph_record)
@@ -1080,6 +1146,9 @@ def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artif
     assert after["_input_objects"] == before["_input_objects"]
     assert after["_artifacts"] == before["_artifacts"]
     assert after["_assessment"]["model_turns"][-1]["decision"]["reason"] == requested_reason
+    assert all((service.directory(sid) / "receipts" / name).read_bytes() == data
+               for name, data in original_receipts.items())
+    assert all(Path(path).read_bytes() == data for path, data in original_artifacts.items())
     assert "evidence_requirements_reached" not in json.dumps(done["assessment"])
     receipt = json.loads((service.directory(sid) / "receipts" / after["_tool_runs"][-1]["file"]).read_bytes())
     assert receipt["artifacts"] == [] and receipt["measurements"] == []
@@ -1199,6 +1268,132 @@ def test_scope_data_view_and_approval_limits_are_visible_but_resources_remain_pr
     assert "PRIVATE_NAME" not in json.dumps(scope)
 
 
+def test_registered_graph_feedback_preserves_missing_domains_conflict_interval_and_private_aliases(
+        client, tmp_path, monkeypatch):
+    from hashlib import sha256
+    from test_p0_09_evidence_compiler import (
+        _request, _bundle, _candidate, _claim_registry, _reconciliation_registry,
+        _family_registry, _profile, _missing_observation)
+    from bridge.web.app import write_file
+    service, sid, aid = registered_case(client, tmp_path)
+    service.settings = replace(service.settings, share_result_summaries=True)
+    claims = _claim_registry(orthogonal_required=True)
+    claims["claims"][0]["claim_type"] = "descriptive_domain_observation"
+    claims["claims"][0]["requirement_specs"][0].update(
+        requirement_key="canonical_measurement", channel_role="canonical_measurement")
+    regional = json.loads(json.dumps(claims["claims"][0]))
+    regional.update(claim_id="claim:regional", domain_id="regional_fidelity", claim_type="private_patient_type")
+    regional["requirement_specs"] = [{
+        "requirement_key": "private_patient_requirement", "channel_role": "private_patient_channel",
+        "required_modality": "scRNA-seq", "required_experiment": None,
+        "blocking_scope": "claim", "required": True}]
+    claims["claims"].append(regional)
+    missing = _missing_observation()
+    regional_missing = {**missing, "observation_id": "missing-evidence:regional",
+        "claim_ref": {"object_id": "claim:regional", "object_version": "1.0.0"},
+        "requirement_key": "private_patient_requirement", "reason_code": "measurement_unavailable",
+        "source_contract_ref": {"object_id": "claim:regional", "object_version": "1.0.0"}}
+    reconciliations = _reconciliation_registry(orthogonal_required=True)
+    reconciliations["specs"][0]["claim_type"] = "descriptive_domain_observation"
+    candidates = [
+        _candidate(metric_id="target_identity_fraction", relation="supports"),
+        _candidate(candidate_id="evidence-candidate:opposite", metric_id="regional_fidelity_fraction",
+            relation="contradicts", family_id="evidence-family:orthogonal"),
+        {**_candidate(candidate_id="evidence-candidate:private", metric_id="private_patient_metric"),
+            "unit": "private_patient_unit"},
+    ]
+    request = _request(tmp_path / "canonical-graph",
+        bundle=_bundle(candidates=candidates, missing=[missing, regional_missing]),
+        claim_registry=claims, reconciliation_registry=reconciliations,
+        family_registry=_family_registry(second_family=True),
+        profile={**_profile(), "deduplicated_evidence_family_ids": [
+            "evidence-family:transcriptomic", "evidence-family:orthogonal"]})
+    request = request.model_copy(update={"output_dir": service.directory(sid) / "runs"})
+    compiled = service.registry.run(request)
+    assert compiled.execution_state.value == "succeeded", compiled.reason_codes
+    raw = compiled.model_dump_json().encode()
+    state = service.load(sid)
+    receipt = {"file": "synthetic-graph.json", "sha256": sha256(raw).hexdigest(),
+        "tool_id": "P0-09", "state": "succeeded", "plan_id": "synthetic-source"}
+    write_file(service.directory(sid) / "receipts" / receipt["file"], raw)
+    state["_tool_runs"].append(receipt)
+    service.inputs.register_outputs(state, compiled, receipt)
+    service.register_artifacts(state, compiled)
+    graph_id = next(identifier for identifier, record in state["_input_objects"].items()
+        if record.get("receipt_file") == receipt["file"]
+        and record["schema_ref"] == "bridge://schemas/case-evidence-graph-manifest/v0.1")
+    query = {"object_version": "0.1.0", "query_name": "get_case_evidence_subgraph",
+        "product_case_id": "product-case:synthetic-001", "evidence_tiers": ["formal", "shadow", "exploratory"],
+        "max_depth": 4, "max_nodes": 100}
+    query_id = service.inputs.add_object(state, tool_id="P0-09", mode_id="case_query",
+        role="evidence_graph_query", schema_ref="bridge://schemas/evidence-graph-query/v0.1",
+        object_version="0.1.0", data=json.dumps(query).encode())
+    service.save(state)
+    selected = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-09", "case_query", [
+        {"role": "evidence_graph_manifest", "input_id": graph_id},
+        {"role": "evidence_graph_query", "input_id": query_id}]))
+    assert selected.status_code == 200, selected.json()
+    scope = propose_scope(client, sid, aid, "P0-09", "case_query")
+    wires = []
+    def model(settings, messages, context):
+        from bridge.web.provider import Action
+        wires.append(json.loads(json.dumps(context)))
+        if context["options"]:
+            return Action.model_validate({"action": "assessment", "decision": {
+                "action": "query", "option_id": context["options"][0]["id"]}})
+        return next_check_or_stop(settings, messages, context)
+    monkeypatch.setattr("bridge.web.provider.converse", model)
+    approve_scope(client, sid, scope)
+    done = settle_assessment(client, sid)["assessment"]
+    assert done["stop_reason"] == "no_discriminating_check", done
+    summary = wires[-1]["evidence"][0]["summary"]
+    assert {(row["domain_id"], reason) for row in summary["requirements"] for reason in row["reason_codes"]} >= {
+        ("target_identity", "required_experiment_not_performed"),
+        ("regional_fidelity", "measurement_unavailable")}
+    assert any(row.get("requirement_key") == "canonical_measurement" for row in summary["requirements"])
+    assert any(row.get("claim_type") == "descriptive_domain_observation" for row in summary["claims"])
+    assert {row["relation"] for row in summary["records"]} == {"supports", "contradicts"}
+    known = next(row for row in summary["records"] if row.get("metric_name") == "target_identity_fraction")
+    assert (known["value"], known["numerator"], known["denominator"], known["unit"]) == (0.75, 75, 100, "fraction")
+    assert known["interval"] == {"lower": 0.65, "upper": 0.82, "confidence_level": 0.95}
+    assert any(row["eligibility"] == "insufficient_evidence" and row["state"] is None
+               and "lower_tier_excluded" in row["reason_codes"] for row in summary["reconciliations"])
+    assert any(row.get("metric_semantics_state") == "unavailable" for row in summary["records"])
+    wire = json.dumps(wires[-1])
+    assert "private_patient" not in wire
+    assert compiled.result["graph_id"] not in wire
+    assert receipt["sha256"] not in wire
+    assert not any("provenance" in row for row in summary["records"])
+    local = done["evidence"][0]["summary"]
+    assert any(row["requirement_key"] == "private_patient_requirement" for row in local["requirements"])
+    assert all(row["alias"] not in wire for row in local["nodes"])
+    assert (service.directory(sid) / "receipts" / receipt["file"]).read_bytes() == raw
+
+
+def test_query_only_scope_proposal_returns_blocker_without_consuming_authority(client, tmp_path, monkeypatch):
+    service, sid, aid = registered_case(client, tmp_path)
+    query = {"object_version": "0.1.0", "query_name": "get_case_evidence_subgraph",
+        "product_case_id": "product-case:synthetic", "evidence_tiers": ["shadow"]}
+    response = client.post(f"/api/sessions/{sid}/analysis-inputs/objects",
+        params={"tool_id": "P0-09", "mode_id": "case_query", "role": "evidence_graph_query",
+            "schema_ref": "bridge://schemas/evidence-graph-query/v0.1", "object_version": "0.1.0"},
+        files={"file": ("query.json", json.dumps(query).encode(), "application/json")})
+    assert response.status_code == 200, response.json()
+    query_id = next(reversed(service.load(sid)["_input_objects"]))
+    selected = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-09", "case_query", [
+        {"role": "evidence_graph_query", "input_id": query_id}]))
+    assert selected.status_code == 200
+    before = service.load(sid)
+    monkeypatch.setattr("bridge.web.provider.converse", lambda *args: pytest.fail("proposal called provider"))
+    scope = propose_scope(client, sid, aid, "P0-09", "case_query")
+    assert scope["candidates"][0]["blockers"] == ["canonical_case_graph_required"]
+    assert scope["tool_runs_used"] == scope["model_turns_used"] == 0
+    after = service.load(sid)
+    for key in ("_input_revision", "_input_objects", "_tool_runs", "_intakes"):
+        assert after[key] == before[key]
+    assert after["_assessment"]["authorization"] is None
+
+
 @pytest.mark.parametrize("mode", ["comparison_initial_v2", "invented"])
 def test_disallowed_or_unknown_mode_never_starts_scope(client, tmp_path, mode):
     service, sid, aid = registered_case(client, tmp_path)
@@ -1270,21 +1465,27 @@ def test_result_bound_hypothesis_is_stored_without_changing_scientific_objects(c
 def test_assessment_freshness_tracks_confirmed_correction_without_rewriting_stop(client, tmp_path, monkeypatch, confirm):
     from test_web_service import confirm_change
     service, sid, aid = registered_case(client, tmp_path)
+    service.settings = replace(service.settings, share_result_summaries=True)
     monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
     scope = propose_scope(client, sid, aid)
     approve_scope(client, sid, scope)
     done = settle(client, sid)
-    client.post(f"/api/sessions/{sid}/stop", json={})
+    assert done["assessment"]["stop_reason"] == "no_discriminating_check"
     before = service.load(sid)
     staged = client.post(f"/api/sessions/{sid}/inputs",
         json={"upload_id": aid, "source_family_id": "corrected-source"}).json()
     assert staged["assessment"]["freshness"]["state"] == "review_pending"
+    assert staged["assessment"]["stop_reason"] == "no_discriminating_check"
+    assert staged["assessment"]["stop_events"] == done["assessment"]["stop_events"]
     assert staged["assessment"]["freshness"]["current_input_revision"] == scope["input_revision"]
     if confirm:
         current = confirm_change(client, sid, staged)
         assert current["assessment"]["freshness"]["state"] == "historical"
         assert current["assessment"]["freshness"]["reason_code"] == "input_revision_changed"
         assert current["assessment"]["freshness"]["current_input_revision"] > scope["input_revision"]
+        refused = client.post(f"/api/sessions/{sid}/assessment/resume", json={
+            "scope_id": scope["scope_id"], "scope_digest": scope["scope_digest"]})
+        assert refused.status_code == 409
     else:
         change = staged["pending_input_change"]
         client.post(f"/api/sessions/{sid}/input-change/discard",
@@ -1294,8 +1495,18 @@ def test_assessment_freshness_tracks_confirmed_correction_without_rewriting_stop
     after = service.load(sid)
     assert after["_tool_runs"] == before["_tool_runs"]
     assert after["_assessment"]["scope"] == before["_assessment"]["scope"]
-    assert current["assessment"]["stop_reason"] == "user_stopped"
+    assert current["assessment"]["stop_reason"] == "no_discriminating_check"
+    assert current["assessment"]["stop_events"] == done["assessment"]["stop_events"]
     assert current["assessment"]["tool_runs_used"] == done["assessment"]["tool_runs_used"]
+    if not confirm:
+        resumed = client.post(f"/api/sessions/{sid}/assessment/resume", json={
+            "scope_id": scope["scope_id"], "scope_digest": scope["scope_digest"]})
+        assert resumed.status_code == 200, resumed.json()
+        settled = settle_assessment(client, sid)["assessment"]
+        assert settled["stop_events"][0] == done["assessment"]["stop_events"][0]
+        assert len(settled["stop_events"]) == 2
+        assert settled["model_turns_used"] >= done["assessment"]["model_turns_used"]
+        assert settled["tool_runs_used"] == done["assessment"]["tool_runs_used"]
 
 
 def test_reference_drift_during_model_turn_blocks_before_admission(client, tmp_path, monkeypatch):

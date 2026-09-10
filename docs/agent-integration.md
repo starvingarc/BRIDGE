@@ -116,8 +116,10 @@ be appended as new evidence.
 No whole-question completion contract is configured: a model proposal of
 completion stops as `completion_contract_unavailable`, never scientific success.
 Stopped and interrupted scopes retain evidence and used budgets; changed
-facts/resources require a new scope. The Web shows pending review separately
-from historical bindings and never silently recomputes after a correction.
+facts/resources require a new scope. Repeated correction fencing does not replace
+a terminal stop reason. Each resumed phase retains earlier stop events with the
+then-used counters; resume never refunds budgets. The Web shows pending review
+separately from historical bindings and never silently recomputes after a correction.
 
 The [Web guide](web-preview.md#cell-state-and-product-assessment) defines the
 researcher controls. The [assessment privacy projection](privacy-and-provenance.md#assessment-purpose)

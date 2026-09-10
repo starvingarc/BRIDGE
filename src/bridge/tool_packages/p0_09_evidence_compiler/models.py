@@ -1649,7 +1649,26 @@ QueryDepth = Annotated[StrictInt, Field(ge=1, le=6)]
 QueryNodes = Annotated[StrictInt, Field(ge=1, le=500)]
 
 
+def _query_schema(schema: dict[str, Any]) -> None:
+    """Publish the same selectors and filter uniqueness enforced at runtime."""
+    properties = schema["properties"]
+    for name in ("evidence_tiers", "domain_ids"):
+        if name in properties:
+            properties[name]["uniqueItems"] = True
+    alternative = ("product_case_id" if "product_case_id" in properties else
+                   "domain_id" if "domain_id" in properties else None)
+    if "claim_id" in properties and alternative is not None:
+        schema["oneOf"] = [
+            {"required": ["claim_id"], "properties": {
+                "claim_id": {"type": "string"}, alternative: {"type": "null"}}},
+            {"required": [alternative], "properties": {
+                alternative: {"type": "string"}, "claim_id": {"type": "null"},
+                "claim_version": {"type": "null"}}},
+        ]
+
+
 class _GraphQuery(FrozenModel):
+    model_config = ConfigDict(json_schema_extra=_query_schema)
     object_version: Literal["0.1.0"] = "0.1.0"
 
     @model_validator(mode="after")

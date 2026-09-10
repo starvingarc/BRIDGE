@@ -5653,6 +5653,45 @@ def test_visualization_record_contracts_reject_semantic_drift(tmp_path: Path) ->
         )
 
 
+@pytest.mark.parametrize("query", [
+    {"query_name": "get_missing_requirements"},
+    {"query_name": "get_missing_requirements", "claim_id": "claim:a", "product_case_id": "case:a"},
+    {"query_name": "get_missing_requirements", "product_case_id": "case:a", "claim_version": "1"},
+    {"query_name": "compare_evidence_paths", "comparison_id": "comparison:a"},
+    {"query_name": "compare_evidence_paths", "comparison_id": "comparison:a", "domain_id": "target_identity", "claim_version": "1"},
+    {"query_name": "get_claim_evidence", "claim_id": "claim:a", "evidence_tiers": ["shadow", "shadow"]},
+    {"query_name": "get_case_evidence_subgraph", "product_case_id": "case:a", "evidence_tiers": ["shadow"],
+        "domain_ids": ["target_identity", "target_identity"]},
+])
+def test_query_public_schema_rejects_runtime_invalid_selectors_and_duplicates(query):
+    from bridge.tool_packages.p0_09_evidence_compiler.models import EvidenceGraphQuery
+    from bridge.toolkit.schemas import load_schema
+    from jsonschema import Draft202012Validator
+    with pytest.raises(ValueError):
+        EvidenceGraphQuery.model_validate(query)
+    for schema in (EvidenceGraphQuery.model_json_schema(), load_schema("bridge://schemas/evidence-graph-query/v0.1")):
+        assert not Draft202012Validator(schema).is_valid(query)
+
+
+@pytest.mark.parametrize("query", [
+    {"query_name": "get_missing_requirements", "claim_id": "claim:a", "product_case_id": None},
+    {"query_name": "get_missing_requirements", "product_case_id": "case:a", "claim_id": None, "claim_version": None},
+    {"query_name": "compare_evidence_paths", "comparison_id": "comparison:a", "claim_id": "claim:a",
+        "claim_version": "1", "domain_id": None},
+    {"query_name": "compare_evidence_paths", "comparison_id": "comparison:a", "domain_id": "regional_fidelity",
+        "claim_id": None},
+    {"query_name": "get_case_evidence_subgraph", "product_case_id": "case:a", "evidence_tiers": ["shadow", "formal"],
+        "domain_ids": ["target_identity", "regional_fidelity"]},
+])
+def test_query_public_schema_preserves_valid_nullable_selectors(query):
+    from bridge.tool_packages.p0_09_evidence_compiler.models import EvidenceGraphQuery
+    from bridge.toolkit.schemas import load_schema
+    from jsonschema import Draft202012Validator
+    EvidenceGraphQuery.model_validate(query)
+    for schema in (EvidenceGraphQuery.model_json_schema(), load_schema("bridge://schemas/evidence-graph-query/v0.1")):
+        Draft202012Validator(schema).validate(query)
+
+
 def test_long_reference_labels_remain_distinguishable_in_render(tmp_path: Path) -> None:
     run = _run(tmp_path / "source")
     final = run.request.output_dir / run.run_id

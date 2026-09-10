@@ -113,7 +113,11 @@ The model proposes source-backed fragments; the server assembles one
 authoritative representation and runs a fixed compiler under limits. Source
 coverage, compiler status, human review and biological meaning are separate.
 Unknown or ambiguous source facts stay unresolved; a compiler default is never
-accepted as the missing experimental value.
+accepted as the missing experimental value. The complete known-facts editor stays
+accessible even when extraction supplies a question list. Researchers can enter
+known matrix semantics, product category, sampling context and source family,
+leave uncertain facts unknown, then review the exact changes and explicitly
+confirm them before preparing any analysis.
 
 ## Stop and input corrections
 
@@ -215,7 +219,11 @@ and limits: at most 32 tool runs and 64 model turns. The researcher chooses
 smaller limits in the form. Exact-plan approval remains a separate path.
 Scope-derived plans retain the original scope authorization. Stop fences the
 worker; resume explicitly rechecks current facts/resources and preserves used
-counters. Exhausted limits or changed bindings require a new scope.
+counters. Prior stop phases remain inspectable with their original reasons and
+then-used counters, including after correction staging or discard. Exhausted
+limits or changed bindings require a new scope. Biological check names and
+necessary input actions are shown first; raw tool/mode IDs and reason codes
+remain in expandable technical details.
 
 The portrait always includes cell state, target identity, regional identity,
 development, whole-product/non-target composition and proliferation/stress.
@@ -231,7 +239,12 @@ Local evidence links bind displayed artifacts to the exact receipt and original
 artifact identity/hash. A graph query follows its actual source manifest and
 graph version, not the latest output of that tool. The same artifact viewer
 provides bounded figure/table/text previews and complete authenticated downloads.
-These browser-only projections are not public-safe exports.
+These browser-only projections are not public-safe exports. The supported
+pre-query compiler receipt (0.4.2 with result contract v0.1) remains readable
+under the current compiler without rewriting its graph or original artifacts.
+Historical reads validate that recorded contract and exact integrity bindings;
+new execution still requires the current registered version. Selecting a query
+without its canonical graph produces a preapproval blocker, not execution.
 
 Model hypotheses must cite supplied per-turn aliases; validated citations are
 resolved back to canonical local evidence. See the purpose-specific

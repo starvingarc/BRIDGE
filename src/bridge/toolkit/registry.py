@@ -376,6 +376,25 @@ class ToolRegistry:
             raise ValueError("Tool Package returned a mismatched environment spec")
         return result
 
+    def validate_historical_result(
+        self, result: object, request: ToolRequestModel,
+    ) -> ToolRunModel:
+        """Read the supported immutable pre-query P009 receipt; fresh runs stay strict."""
+        if (isinstance(result, ToolRunV2) and isinstance(request, ToolRequestV2)
+                and request.tool_id == "P0-09" and result.tool_version == "0.4.2"
+                and result.result_schema_ref == "bridge://schemas/evidence-compiler-run-result/v0.1"):
+            if request.tool_version not in {None, result.tool_version}:
+                raise ValueError("Historical Tool Package request version mismatch")
+            recorded = self.describe("P0-09").model_copy(update={
+                "version": "0.4.2",
+                "implementation_state": ImplementationState.IMPLEMENTED,
+                "environment_spec_id": "ENV-EVIDENCE-v0.2",
+                "result_schema_ref": "bridge://schemas/evidence-compiler-run-result/v0.1",
+            })
+            return self._validate_adapter_result(
+                result, request, recorded, load_schema(recorded.result_schema_ref))
+        return self.validate_result(result, request)
+
     def _run_v2(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
     ) -> ToolRunV2:

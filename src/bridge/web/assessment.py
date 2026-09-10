@@ -138,7 +138,7 @@ class AssessmentCoordinator:
         state["_assessment"] = {"scope": scope.model_dump(mode="json"),
             "scope_digest": digest(scope.model_dump(mode="json")), "status": "proposed",
             "authorization": None, "tool_runs_used": 0, "model_turns_used": 0,
-            "admissions": [], "model_turns": [], "stop_reason": None, "blockers": []}
+            "admissions": [], "model_turns": [], "stop_reason": None, "stop_events": [], "blockers": []}
         self._candidate_state(state["_assessment"], self.service.inputs.assessment_candidates(state, scope))
         self.service.save(state)
 
@@ -199,9 +199,15 @@ class AssessmentCoordinator:
         self._schedule(state)
 
     def stop(self, state, reason, *, status="stopped"):
-        if state.get("_assessment") and state["_assessment"]["status"] in {"proposed", "running", "stopped", "blocked", "interrupted"}:
-            state["_assessment"]["status"] = status
-            state["_assessment"]["stop_reason"] = reason
+        assessment = state.get("_assessment")
+        if assessment and assessment["status"] in {"proposed", "running"}:
+            assessment["status"] = status
+            assessment["stop_reason"] = reason
+            assessment.setdefault("stop_events", []).append({
+                "reason": reason, "status": status,
+                "stopped_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "tool_runs_used": assessment["tool_runs_used"],
+                "model_turns_used": assessment["model_turns_used"]})
 
     def resume(self, state, body):
         assessment = self._identity(state, body)
@@ -216,6 +222,12 @@ class AssessmentCoordinator:
             raise HTTPException(409, "tool_run_budget_exhausted")
         if assessment["model_turns_used"] >= assessment["scope"]["max_model_turns"]:
             raise HTTPException(409, "model_turn_budget_exhausted")
+        if not assessment.get("stop_events") and assessment.get("stop_reason"):
+            # Preserve terminal records written before stop-event history existed.
+            assessment["stop_events"] = [{"reason": assessment["stop_reason"],
+                "status": assessment["status"], "stopped_at": None,
+                "tool_runs_used": assessment["tool_runs_used"],
+                "model_turns_used": assessment["model_turns_used"]}]
         assessment["status"], assessment["stop_reason"] = "running", None
         self._schedule(state)
 
@@ -255,13 +267,15 @@ class AssessmentCoordinator:
             "max_tool_runs": scope["max_tool_runs"], "max_model_turns": scope["max_model_turns"],
             "status": assessment["status"], "tool_runs_used": assessment["tool_runs_used"],
             "model_turns_used": assessment["model_turns_used"], "stop_reason": assessment["stop_reason"],
+            "stop_events": assessment.get("stop_events", []),
             "blockers": assessment["blockers"], "evidence": evidence,
             "candidates": assessment.get("candidates", []), "freshness": freshness,
             "portrait": assessment_portrait(evidence, assessment.get("candidates", [])),
             "result_summaries_enabled": self.service.settings.share_result_summaries,
             "history": [{"scope_id": row["scope"]["scope_id"], "question": row["scope"]["question"],
                          "input_revision": row["scope"]["input_revision"], "status": row["status"],
-                         "stop_reason": row["stop_reason"]} for row in state.get("_assessment_history", [])],
+                         "stop_reason": row["stop_reason"], "stop_events": row.get("stop_events", [])}
+                        for row in state.get("_assessment_history", [])],
             "hypotheses": assessment.get("hypotheses", []),
             "data_view": view,
             "resources": [{"alias": "R-" + identifier[:12], **{key: row[key] for key in

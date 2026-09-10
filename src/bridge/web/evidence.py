@@ -551,8 +551,11 @@ _ASSESSMENT_FIELDS = {
     "metric_name", "raw_value", "interval", "interval_confidence_level", "unknown_scope",
     "reason_codes", "composition", "reconciliation", "composition_state", "open_set_state",
     "calibration_state", "label", "count", "state_evidence_state",
+    "accounting", "role_counts", "consensus_supported_count", "fraction_of_selected_view",
+    "observation_unit", "producer_composition", "records", "state", "view", "source_id",
+    "support_basis", "accounting_basis", "accounting_state", "mass_state", "primary_denominator_id",
 }
-_ASSESSMENT_IDENTIFIERS = {"program_id", "method_id"}
+_ASSESSMENT_IDENTIFIERS = {"program_id", "method_id", "label", "source_id", "primary_denominator_id"}
 
 
 def _assessment_aggregate(value, key=""):
@@ -585,30 +588,137 @@ def _assessment_aggregate(value, key=""):
     raise ValueError("unsupported_result")
 
 
+def _assessment_hard_count(result):
+    """Keep canonical hard accounting literal; private labels are aliased for the model."""
+    from bridge.tool_packages.p0_05_off_target_control.models import OffTargetHardCountAccounting
+    summary = _assessment_aggregate({key: value for key, value in result.items() if key != "accounting"})
+    summary["accounting"] = OffTargetHardCountAccounting.model_validate(
+        result["accounting"]).model_dump(mode="json")
+    return summary
+
+
 def _assessment_query(result):
-    """Project fixed graph semantics, not unrestricted node properties/provenance."""
+    """Retain typed scientific context locally; provider labels are vetted separately."""
+    from bridge.tool_packages.p0_09_evidence_compiler.graph import node_id
+    from bridge.tool_packages.p0_09_evidence_compiler.models import GraphNodeType
     def alias(value):
         return "N-" + hashlib.sha256(value.encode()).hexdigest()[:16]
+    claims = {(row["object_id"], row["object_version"]): row.get("properties", {})
+              for row in result["nodes"] if row["node_type"] == "Claim"}
     summary = {key: result[key] for key in ("query_name", "graph_version", "returned_node_count",
         "returned_edge_count", "truncated", "omitted_node_count", "omitted_edge_count")}
     summary["graph_alias"] = alias(result["graph_id"])
-    summary["records"], summary["requirements"], summary["nodes"] = [], [], []
+    for key in ("records", "requirements", "nodes", "claims", "reconciliations"):
+        summary[key] = []
     for node in result["nodes"]:
         properties = node.get("properties", {})
         row = {"alias": alias(node["node_id"]), "node_type": node["node_type"],
                "evidence_tier": node["evidence_tier"], "lifecycle_state": node["lifecycle_state"]}
         summary["nodes"].append(row)
+        if not properties:
+            continue  # External references have no source-case semantics in this query.
+        if node["node_type"] == "Claim":
+            summary["claims"].append({**row, "domain_id": properties["domain_id"],
+                                     "claim_type": properties["claim_type"]})
+            continue
+        ref = properties.get("claim_ref")
+        if ref:
+            claim = claims.get((ref["object_id"], ref["object_version"]), {})
+            row = {**row, "claim_alias": alias(node_id(ref["object_id"], ref["object_version"], GraphNodeType.CLAIM)),
+                   "domain_id": claim.get("domain_id"),
+                   "claim_context_state": "available" if claim else "unavailable"}
         if node["node_type"] == "EvidenceRequirement":
-            summary["requirements"].append({**row, "state": properties["state"]})
+            summary["requirements"].append({**row, **{key: properties[key] for key in
+                ("state", "requirement_key", "channel_role", "reason_codes", "required_modality")},
+                "experiment_required": properties.get("required_experiment") is not None})
         elif node["node_type"] == "EvidenceRecord":
-            summary["records"].append({**row, **_assessment_aggregate({
-                key: properties.get(key) for key in ("domain_id", "evidence_state", "value", "unit",
-                                                      "numerator", "denominator", "applicability")}),
-                "relation": properties["relation"],
+            summary["records"].append({**row, **{key: properties.get(key) for key in
+                ("domain_id", "evidence_state", "value", "unit", "metric_id",
+                 "numerator", "denominator", "applicability", "relation")},
+                "interval": ({key: properties["interval"].get(key) for key in
+                    ("lower", "upper", "confidence_level")} if properties.get("interval") else None),
                 "family_alias": alias(json.dumps(properties["evidence_family_ref"], sort_keys=True))})
+        elif node["node_type"] == "ReconciliationRecord":
+            summary["reconciliations"].append({**row, **{key: properties[key] for key in
+                ("eligibility", "state", "direction", "reason_codes")},
+                "channels": [{key: channel[key] for key in ("channel_role", "direction", "eligible", "reason_codes")}
+                             for channel in properties["channel_resolutions"]]})
     summary["edges"] = [{"type": edge["edge_type"], "source": alias(edge["source_node_id"]),
                          "target": alias(edge["target_node_id"])} for edge in result["edges"]]
     return summary
+
+
+def _assessment_model_query(summary, opaque):
+    """Only source-defined enums/Literals and audited built-in policy words cross this seam."""
+    from typing import get_args
+    from bridge.tool_packages.p0_03_target_regional.models import NormalizedMetricName
+    from bridge.tool_packages.p0_04_developmental_compatibility.models import DevelopmentMeasurementMetricName
+    from bridge.tool_packages.p0_05_off_target_control.models import (
+        HardCountMetricName, OffTargetMeasurementArtifactBinding)
+    from bridge.tool_packages.p0_06_proliferation_stress_response.models import MethodMeasurementArtifactBinding
+    from bridge.tool_packages.p0_09_evidence_compiler.models import MissingEvidenceObservation
+    from bridge.tool_packages.p0_09_evidence_compiler.reconciler import RECONCILIATION_REASON_CODES
+    metrics = {item.value for enum in (NormalizedMetricName, DevelopmentMeasurementMetricName) for item in enum}
+    metrics.update(get_args(HardCountMetricName))
+    for model in (OffTargetMeasurementArtifactBinding, MethodMeasurementArtifactBinding):
+        metrics.update(get_args(model.model_fields["metric_name"].annotation))
+    missing_reasons = set(get_args(MissingEvidenceObservation.model_fields["reason_code"].annotation))
+    # These two additional reasons are emitted by compiler.build_requirements.
+    missing_reasons.update({"required_evidence_missing", "qualifying_evidence_available"})
+    # The sole built-in Web candidate policy declares these exact public words.
+    policy_words = {"claim_type": {"descriptive_domain_observation"},
+                    "requirement_key": {"canonical_measurement"}, "channel_role": {"canonical_measurement"}}
+    # Non-identifying units used by the registered numerical producers. Unknown custom
+    # units remain private, even if syntactically valid in an imported graph.
+    units = {"fraction", "cells", "observations", "count", "scanpy_control_adjusted_expression",
+             "decoupler_ulm_t_value", "scanpy_relative_expression_score"}
+
+    def base(row):
+        result = {key: row[key] for key in ("node_type", "evidence_tier", "lifecycle_state",
+                    "domain_id", "claim_context_state") if key in row}
+        result.update({key: opaque(row[key]) for key in ("alias", "claim_alias", "family_alias") if key in row})
+        return result
+
+    def label(row, key):
+        value = row[key]
+        return ({key: value, key + "_semantics_state": "available"} if value in policy_words[key] else
+                {key + "_alias": opaque(value), key + "_semantics_state": "unavailable"})
+
+    def reasons(values, allowed):
+        return {"reason_codes": [value for value in values if value in allowed],
+                "reason_semantics_state": "available" if all(value in allowed for value in values) else "unavailable",
+                "withheld_reason_count": sum(value not in allowed for value in values)}
+
+    projected = {key: summary[key] for key in ("query_name", "graph_version", "returned_node_count",
+        "returned_edge_count", "truncated", "omitted_node_count", "omitted_edge_count")}
+    projected["graph_alias"] = opaque(summary["graph_alias"])
+    projected["nodes"] = [base(row) for row in summary["nodes"]]
+    projected["claims"] = [{**base(row), **label(row, "claim_type")} for row in summary["claims"]]
+    projected["requirements"] = [{**base(row), "state": row["state"],
+        **label(row, "requirement_key"), **label(row, "channel_role"),
+        **reasons(row["reason_codes"], missing_reasons),
+        "required_modality": row["required_modality"] if row["required_modality"] in QC_ASSAYS else None,
+        "modality_semantics_state": "available" if row["required_modality"] in QC_ASSAYS else "unavailable",
+        "experiment_required": row["experiment_required"]} for row in summary["requirements"]]
+    projected["records"] = []
+    for row in summary["records"]:
+        known = row["metric_id"] in metrics
+        numeric = row["value"] is None or type(row["value"]) in {int, float}
+        projected["records"].append({**base(row), **{key: row[key] for key in
+            ("evidence_state", "numerator", "denominator", "applicability", "relation", "interval")},
+            **({"metric_name": row["metric_id"]} if known else {"metric_alias": opaque(row["metric_id"])}),
+            "metric_semantics_state": "available" if known else "unavailable",
+            "value": row["value"] if numeric else None, "value_state": "available" if numeric else "unavailable",
+            "unit": row["unit"] if row["unit"] in units else None,
+            "unit_semantics_state": "available" if row["unit"] in units else "unavailable"})
+    projected["reconciliations"] = [{**base(row), **{key: row[key] for key in ("eligibility", "state", "direction")},
+        **reasons(row["reason_codes"], RECONCILIATION_REASON_CODES),
+        "channels": [{**label(channel, "channel_role"), "direction": channel["direction"], "eligible": channel["eligible"],
+            **reasons(channel["reason_codes"], RECONCILIATION_REASON_CODES)} for channel in row["channels"]]}
+        for row in summary["reconciliations"]]
+    projected["edges"] = [{"type": row["type"], "source": opaque(row["source"]), "target": opaque(row["target"])}
+                          for row in summary["edges"]]
+    return projected
 
 
 
@@ -700,7 +810,8 @@ def assessment_model_evidence(evidence):
             "state", "tool_id", "tool_version", "execution_state", "score_state",
             "domain_score", "reason_code", "interpretation_scope") if key in row})
         if row["state"] == "available":
-            projected["summary"] = aggregate(row["summary"])
+            projected["summary"] = (_assessment_model_query(row["summary"], opaque)
+                if "query_name" in row["summary"] else aggregate(row["summary"]))
             projected["measurements"] = []
             for item in row["measurements"]:
                 measurement = aggregate({key: value for key, value in item.items()
@@ -733,7 +844,7 @@ def _assessment_display_artifacts(inputs, state, run, receipt):
             if row["file"] == record["receipt_file"] and row["sha256"] == record["receipt_sha256"])
         from bridge.toolkit.contracts import ToolRunV2
         source_run = ToolRunV2.model_validate(_verified_receipt(inputs, state, source_receipt))
-        inputs.service.registry.validate_result(source_run, source_run.request)
+        inputs.service.registry.validate_historical_result(source_run, source_run.request)
     canonical = {(item.artifact_id, item.sha256) for item in source_run.artifacts}
     ids = []
     for display in state.get("artifacts", []):
@@ -777,7 +888,7 @@ def assessment_evidence(inputs, state, assessment):
         try:
             raw = _verified_receipt(inputs, state, receipt)
             run = ToolRunV2.model_validate(raw) if "object_inputs" in raw["request"] else ToolRun.model_validate(raw)
-            inputs.service.registry.validate_result(run, run.request)
+            inputs.service.registry.validate_historical_result(run, run.request)
             root = inputs.service.directory(state["id"]) / "runs"
             for artifact in run.artifacts:
                 checked_bytes(inputs.service, state, artifact.path, artifact.sha256, root=root)
@@ -792,7 +903,9 @@ def assessment_evidence(inputs, state, assessment):
                     raise ValueError("canonical_cell_state_profile_required")
                 summary, _ = projector(inputs, state, receipt, *registered)
             else:
-                summary = _assessment_query(result) if "query_name" in result else _assessment_aggregate(result)
+                summary = (_assessment_query(result) if "query_name" in result else
+                    _assessment_hard_count(result) if "accounting" in result and receipt["tool_id"] == "P0-05"
+                    else _assessment_aggregate(result))
             measurements = []
             canonical = [artifact for artifact in run.artifacts if artifact.kind == "measurement_result_v2"]
             for artifact in canonical:

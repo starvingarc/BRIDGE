@@ -26,6 +26,10 @@ const stateNames: Record<string, string> = {
 };
 const reasons: Record<string, string> = {
   ...scientificGap,
+  asset_declaration_required: "请在产品资料中确认实验类型、原始计数语义和计数位置；不确定时保留未知。",
+  supported_product_family_required: "请在完整资料中选择已知产品类别；当前细胞状态参考仅适用于 hPSC 来源的中脑多巴胺能细胞。",
+  canonical_case_graph_required: "请先选择已生成的产品证据图，再准备查询。",
+  canonical_graph_query_required: "请先选择本范围内的图查询对象。",
   input_or_resource_change: "事实或资源变化时停止。",
   explicit_stop: "研究者可显式停止。",
   finite_budgets: "达到已批准的有限预算时停止。",
@@ -51,7 +55,8 @@ const reasons: Record<string, string> = {
 };
 function ReasonList({ codes }: { codes: string[] }) {
   return codes.length ? <ul className="assessment-reasons">{codes.map((code) =>
-    <li key={code}>{reasons[code] ?? "服务端报告的未解决条件"} <code>{code}</code></li>)}</ul> : null;
+    <li key={code}>{reasons[code] ?? "仍有前提待补齐；请核对输入资料与科学资源。"}
+      <details><summary>条件代码</summary><code>{code}</code></details></li>)}</ul> : null;
 }
 
 // This is a lossless presentation table of the bounded server projection, not a calculator.
@@ -71,7 +76,9 @@ function FieldTable({ value, label }: { value: JsonValue; label: string }) {
   return <div className="table-scroll"><table className="assessment-values" aria-label={label}>
     <thead><tr><th scope="col">字段 / 分母范围</th><th scope="col">服务端原值</th></tr></thead>
     <tbody>{rows.map(([path, item]) => <tr key={path}><th scope="row">{path || "记录"}</th>
-      <td>{item === null ? "未提供（null）" : typeof item === "object" ? JSON.stringify(item) : String(item)}</td></tr>)}</tbody>
+      <td>{typeof item === "string" && /(^|\.)reason_codes?(\[|$)/.test(path)
+        ? <ReasonList codes={[item]} />
+        : item === null ? "未提供（null）" : typeof item === "object" ? JSON.stringify(item) : String(item)}</td></tr>)}</tbody>
   </table></div>;
 }
 function EvidenceLinks({ aliases, onOpen }: { aliases: string[]; onOpen: (alias: string) => void }) {
@@ -149,9 +156,10 @@ export function AssessmentPanel({ session, busy, onSession, onError }: {
             事实修改尚待确认；当前结果仍绑定版本 {assessment.input_revision}。请使用原事实核对卡确认或放弃修改。</p>
           : <p>当前绑定：事实版本 {assessment.input_revision}。图版本与回执在各证据链中单独显示。</p>}
         {assessment.freshness.reason_code ? <ReasonList codes={[assessment.freshness.reason_code]} /> : null}
-        <ul>{assessment.allowed_modes.map((mode) => <li key={modeKey(mode)}>{modeName(mode)}
-          <small> {mode.tool_id} / {mode.mode_id ?? "asset"}</small></li>)}</ul>
+        <ul>{assessment.allowed_modes.map((mode) => <li key={modeKey(mode)}>{modeName(mode)}</li>)}</ul>
         <details><summary>绑定资源、数据视图与范围身份</summary>
+          <ul>{assessment.allowed_modes.map(mode => <li key={modeKey(mode)}>
+            {modeName(mode)}：{mode.tool_id} / {mode.mode_id ?? "asset"}</li>)}</ul>
           <FieldTable value={{scope_id:assessment.scope_id,scope_digest:assessment.scope_digest,input_revision:assessment.input_revision}}
             label="范围身份" />
           <FieldTable value={assessment.data_view} label="绑定数据视图" />
@@ -181,11 +189,18 @@ export function AssessmentPanel({ session, busy, onSession, onError }: {
       <section aria-label="停止与继续"><h3>停止与继续</h3>
         {assessment.stop_reason ? <ReasonList codes={[assessment.stop_reason]} /> : <p>尚无停止原因。</p>}
         <p>停止、解释结束或没有可用检查不代表整个科学问题已解决。</p>
+        {assessment.stop_events?.length ? <details><summary>本范围停止记录</summary>
+          {assessment.stop_events.map((event,index) => <article key={index}>
+            <h4>停止阶段 {index + 1}</h4><ReasonList codes={[event.reason]} />
+            <p>当时累计：工具 {event.tool_runs_used} 次，模型 {event.model_turns_used} 轮。</p>
+            <small>{event.stopped_at ?? "原始记录未包含停止时间"}</small>
+          </article>)}
+        </details> : null}
       </section>
       <section aria-label="前提条件"><h3>前提条件</h3>
         {assessment.candidates.map((candidate) => <article key={modeKey(candidate)}>
           <h4>{modeName(candidate)} · {candidate.already_admitted ? "同一请求已执行，不重复选择" : candidate.runnable ? "前提满足，可在范围内选择" : "前提未满足"}</h4>
-          <small>{candidate.tool_id} / {candidate.mode_id ?? "asset"}</small>
+          <details><summary>技术详情</summary><small>{candidate.tool_id} / {candidate.mode_id ?? "asset"}</small></details>
           {candidate.blockers.length ? <><p>阻塞前提</p><ReasonList codes={candidate.blockers} /></> : null}
           {candidate.gaps.length ? <><p>解释缺口（不阻止本项检查）</p><ReasonList codes={candidate.gaps} /></> : null}
         </article>)}
@@ -206,7 +221,8 @@ export function AssessmentPanel({ session, busy, onSession, onError }: {
         <p>图中的冲突、开放要求和来源关系保留在版本化证据链中。没有列出假设不等于没有冲突。</p>
         {assessment.hypotheses.map((item,index) => <article key={index}>
           <h4>待检验解释</h4><p>{item.statement}</p><h5>竞争解释</h5><p>{item.competing_explanation}</p>
-          <p>区分性检查：{modeName({tool_id:item.discriminating_check,mode_id:null})} <code>{item.discriminating_check}</code></p>
+          <p>区分性检查：{modeName({tool_id:item.discriminating_check,mode_id:null})}</p>
+          <details><summary>检查标识</summary><code>{item.discriminating_check}</code></details>
           <EvidenceLinks aliases={item.evidence_aliases} onOpen={setOpenEvidence} />
         </article>)}
       </section>
@@ -238,7 +254,8 @@ export function AssessmentPanel({ session, busy, onSession, onError }: {
       </section>
       {assessment.history.length ? <details><summary>先前范围与原始停止原因</summary>
         {assessment.history.map((item)=><article key={item.scope_id}><p>{item.question} · 事实版本 {item.input_revision}</p>
-          <p>{stateNames[item.status] ?? item.status}</p>{item.stop_reason ? <ReasonList codes={[item.stop_reason]} /> : null}</article>)}
+          <p>{stateNames[item.status] ?? item.status}</p>{item.stop_reason ? <ReasonList codes={[item.stop_reason]} /> : null}
+          {item.stop_events?.length ? <FieldTable value={item.stop_events} label="历史停止阶段与累计预算" /> : null}</article>)}
       </details> : null}
     </> : <p>完成上传、事实确认与适用的质量检查后，先准备有限评估范围。准备范围不会运行工具或模型。</p>}
     <button disabled={disabled} onClick={()=>setShowProposal(!showProposal)}>

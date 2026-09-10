@@ -233,6 +233,8 @@ export type Assessment = {
   input_revision: number; allowed_modes: AssessmentMode[];
   max_tool_runs: number; max_model_turns: number; tool_runs_used: number; model_turns_used: number;
   status: "proposed" | "running" | "stopped" | "blocked" | "interrupted"; stop_reason: string | null;
+  stop_events?: Array<{ reason: string; status: string; stopped_at: string | null;
+    tool_runs_used: number; model_turns_used: number }>;
   blockers: Array<AssessmentMode & { reason_codes: string[] }>;
   candidates: AssessmentCandidate[]; evidence: AssessmentEvidence[]; portrait: AssessmentAxis[];
   hypotheses: Array<{ statement: string; evidence_aliases: string[];
@@ -244,7 +246,8 @@ export type Assessment = {
     object_version: string; sha256: string; source: string }>;
   stop_conditions: string[]; question_sent_to_model: boolean; result_summaries_enabled: boolean;
   scope_authorized: boolean; scope_grants_scientific_approval: false;
-  history: Array<{ scope_id: string; question: string; input_revision: number; status: string; stop_reason: string | null }>;
+  history: Array<{ scope_id: string; question: string; input_revision: number; status: string; stop_reason: string | null;
+    stop_events?: Assessment["stop_events"] }>;
 };
 export type AssessmentProposal = {
   question: string; upload_id: string; allowed_modes: AssessmentMode[];

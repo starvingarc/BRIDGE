@@ -88,7 +88,12 @@ def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids():
         "nodes": [{"alias": "N-privatenodehash", "node_type": "EvidenceRecord",
                    "evidence_tier": "shadow", "lifecycle_state": "active"}],
         "records": [{"alias": "N-privatenodehash", "family_alias": "N-privatefamilyhash",
+                     "node_type": "EvidenceRecord", "evidence_tier": "shadow", "lifecycle_state": "active",
+                     "domain_id": "target_identity", "evidence_state": "inferred",
+                     "metric_id": "target_identity_fraction", "unit": "fraction",
+                     "applicability": "applicable", "relation": "supports", "interval": None,
                      "value": 0.5, "numerator": 2, "denominator": 4}],
+        "claims": [], "reconciliations": [],
         "requirements": [], "edges": [{"source": "N-privatenodehash",
                      "target": "N-privategraphhash", "type": "supports"}]}
     local = [{"alias": "E-privatehash", "state": "available", "tool_id": "P0-09",
@@ -99,6 +104,9 @@ def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids():
     assert graph["nodes"][0]["alias"] == graph["records"][0]["alias"] == graph["edges"][0]["source"]
     assert graph["edges"][0]["target"] == graph["graph_alias"]
     assert graph["records"][0]["value"] == 0.5 and graph["records"][0]["denominator"] == 4
+    assert graph["records"][0]["metric_name"] == "target_identity_fraction"
+    assert graph["records"][0]["metric_semantics_state"] == "available"
+    assert graph["records"][0]["unit"] == "fraction" and graph["records"][0]["interval"] is None
     assert "private" not in json.dumps(shared)
     assert shared[0]["alias"] != again[0]["alias"]
     assert bindings["references"][graph["graph_alias"]] == "N-privategraphhash"

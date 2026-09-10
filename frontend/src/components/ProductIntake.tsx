@@ -77,6 +77,7 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
   const [retry, setRetry] = useState(0);
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [completeFacts, setCompleteFacts] = useState(false);
   const [selectedProtocol, setSelectedProtocol] = useState<string | null>(null);
   const mounted = useRef(false);
   const readSequence = useRef(0);
@@ -193,7 +194,9 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
         <>
           {editing ? <button className="intake-cancel" onClick={() => setEditing(false)}
             disabled={busy}>取消编辑</button> : null}
-          {data.autofill ? <IntakeWizard data={data} busy={busy} onAnswer={answer} protocolReview={protocolPanel}
+          {data.autofill ? <button disabled={busy} onClick={() => setCompleteFacts(value => !value)}>
+            {completeFacts ? "返回引导核对" : "补充或修改完整资料"}</button> : null}
+          {data.autofill && !completeFacts ? <IntakeWizard data={data} busy={busy} onAnswer={answer} protocolReview={protocolPanel}
             onProtocol={file => void perform(() => api.uploadProtocol(session.id, aid, file), false)}
             onParse={() => void parse()}
             onStage={facts => void perform(() => api.stageIntake(session.id, aid, facts))} />

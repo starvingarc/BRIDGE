@@ -72,6 +72,17 @@ plan IDs, input identities, local URLs, paths, complete provenance and local
 dependency dictionaries. The ordinary intake/result purposes are unchanged;
 this is not a generic redaction or anonymization service.
 
+Graph-query summaries preserve claim domains, literal missingness, reconciliation
+eligibility/state/direction and numerical intervals. Metric names are selected
+from the existing producer enums/Literals; missingness reasons use the compiler
+contract and reconciliation reasons use its authoritative reason tuple. Only
+the built-in candidate policy words have direct claim/requirement/channel labels.
+Unrestricted custom labels and unrecognized units/metrics remain opaque or
+explicitly semantically unavailable, even when Schema-valid. Private values are
+not made provider-safe by matching a string pattern. Hard-count accounting keeps
+selected-view counts/fractions and unavailable soft mass; local denominator and
+producer labels are replaced by per-turn aliases for the model.
+
 Authenticated browser evidence retains verified program IDs/roles, exact
 receipt/artifact bindings, dependency versions and local display-artifact IDs.
 Graph-query drilldown resolves the original source manifest and graph version

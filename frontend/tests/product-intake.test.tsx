@@ -119,7 +119,7 @@ it("keeps an intake proposal visible even when it targets an older upload", asyn
 });
 
 
-it("requires separate fact confirmation before preparing an unapproved plan", async () => {
+it.each([false, true])("requires complete known facts and separate confirmation before a plan with autofill=%s", async autofill => {
   const writes: string[] = [];
   let stageState = "draft";
   let savedFacts = { ...facts };
@@ -148,6 +148,9 @@ it("requires separate fact confirmation before preparing an unapproved plan", as
     if (path.includes("/intake?")) return response({
       upload_id: baseSession.uploads[0].id, facts: savedFacts,
       state: stageState === "confirmed" ? "confirmed" : "draft", next_tool: stageState === "confirmed" ? "P0-01" : null,
+      ...(autofill ? { autofill: { state: "complete", revision: 1, sources: [], fields: {}, field_sources: {},
+        questions: [], conflicts: [], other_answers: {}, samples: [], protocols: [], protocol_stages: [],
+        sources_truncated: false, batch_binding: null, formalizations: [] } } : {}),
       missing_fields: [], blockers: [], qc_state: "not_run", measurement_spec_ref: null,
       observed: { n_observations: 4, n_genes: 3, matrix_locations: ["X"], obs_columns: [], var_columns: [] },
       roadmap: [],
@@ -156,10 +159,19 @@ it("requires separate fact confirmation before preparing an unapproved plan", as
   });
   const user = userEvent.setup();
   render(<App />);
-  await user.selectOptions(await screen.findByLabelText("实验类型"), "scRNA-seq");
+  if (autofill) await user.click(await screen.findByRole("button", { name: "补充或修改完整资料" }));
+  expect(await screen.findByLabelText("矩阵内容")).toHaveValue("unknown");
+  await user.selectOptions(screen.getByLabelText("产品类别"), "hpsc_mda");
+  await user.selectOptions(screen.getByLabelText("本次取样"), "pretransplant_preparation");
+  await user.click(screen.getByText("来源与元数据列（可后补）"));
+  await user.type(screen.getByLabelText("数据来源家族标识（可后补）"), "source:known");
+  await user.selectOptions(screen.getByLabelText("实验类型"), "scRNA-seq");
   await user.selectOptions(screen.getByLabelText("计数位置"), "X");
   await user.selectOptions(screen.getByLabelText("矩阵内容"), "raw_counts");
   await user.click(screen.getByRole("button", { name: "核对产品资料" }));
+  expect(savedFacts).toMatchObject({ count_semantics: "raw_counts", product_family: "hpsc_mda",
+    sampling_context: "pretransplant_preparation", source_family_id: "source:known" });
+  expect(writes).toHaveLength(1);
   await user.click(await screen.findByRole("button", { name: "确认资料" }));
   const prepare = await screen.findByRole("button", { name: "生成下一阶段计划" });
   expect(writes).toHaveLength(2);

@@ -280,6 +280,10 @@ class ReportInputs:
         source_selection = scope.binding["selections"].get("P0-09", {})
         roots = {row["role"]: row["input_id"] for row in source_selection.get("object_inputs", [])}
         if allowed.mode_id == "case_query" and "evidence_graph_query" in roots:
+            if roots.get("evidence_graph_manifest") not in pool:
+                raise ValueError("canonical_case_graph_required")
+            if roots["evidence_graph_query"] not in pool:
+                raise ValueError("canonical_graph_query_required")
             query = inputs.verify(state, pool[roots["evidence_graph_query"]])
             supplied_graph = inputs.verify(state, pool[roots["evidence_graph_manifest"]])
             latest = self._latest_graph(state, pool, self._identity(supplied_graph["product_case_ref"]))
