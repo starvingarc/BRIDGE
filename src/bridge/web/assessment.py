@@ -322,8 +322,15 @@ class AssessmentCoordinator:
                        for hypothesis in decision.hypotheses):
                     self._finish(state, "hypothesis_check_outside_scope", status="blocked")
                     return
-                assessment["hypotheses"] = [row.model_dump(mode="json") for row in decision.hypotheses]
                 assessment["model_turns"][-1]["decision"] = decision.model_dump(mode="json")
+                if decision.reason == "evidence_requirements_reached":
+                    # Scope consent authorizes checks, not a completion contract.
+                    # Even satisfied graph-local requirements cannot establish the
+                    # approved research question is complete; an absent contract
+                    # is unavailable, never a vacuously satisfied empty set.
+                    self._finish(state, "completion_contract_unavailable", status="blocked")
+                    return
+                assessment["hypotheses"] = [row.model_dump(mode="json") for row in decision.hypotheses]
                 if decision.action in {"stop", "question", "explain"}:
                     if decision.text:
                         self.service.message(state, "assistant", decision.text)

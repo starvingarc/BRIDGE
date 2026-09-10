@@ -45,6 +45,31 @@ def approve_scope(client, sid, scope):
     return response.json()
 
 
+def test_empty_evidence_cannot_complete_on_provider_assertion(client, tmp_path, monkeypatch):
+    service, sid, aid = registered_case(client, tmp_path)
+    scope = propose_scope(client, sid, aid)
+    before = service.load(sid)
+    def model(settings, messages, context):
+        from bridge.web.provider import Action
+        assert context["options"] and context["evidence"] == []
+        return Action.model_validate({"action": "assessment", "decision": {
+            "action": "stop", "reason": "evidence_requirements_reached"}})
+    monkeypatch.setattr("bridge.web.provider.converse", model)
+    approve_scope(client, sid, scope)
+    done = settle(client, sid)
+    assert done["assessment"]["status"] == "blocked"
+    assert done["assessment"]["stop_reason"] == "completion_contract_unavailable"
+    assert done["assessment"]["model_turns_used"] == 1
+    assert done["assessment"]["tool_runs_used"] == 0
+    assert done["assessment"]["evidence"] == []
+    after = service.load(sid)
+    assert after["_tool_runs"] == before["_tool_runs"] == []
+    assert after["_input_objects"] == before["_input_objects"]
+    assert after["_input_revision"] == before["_input_revision"]
+    assert after["_assessment"]["model_turns"][-1]["decision"]["reason"] == "evidence_requirements_reached"
+    assert "evidence_requirements_reached" not in json.dumps(done["assessment"])
+
+
 @pytest.mark.parametrize("tool", ["P0-05", "P0-06"])
 def test_scope_runs_real_registered_check_then_reads_result_without_new_human_approval(
         client, tmp_path, monkeypatch, tool):
@@ -62,14 +87,15 @@ def test_scope_runs_real_registered_check_then_reads_result_without_new_human_ap
         if not context["evidence"]:
             return Action.model_validate({"action": "assessment", "decision": {
                 "action": "check", "option_id": context["options"][0]["id"]}})
+        assert context["options"] == []
         return Action.model_validate({"action": "assessment", "decision": {
-            "action": "stop", "reason": "evidence_requirements_reached"}})
+            "action": "stop", "reason": "no_discriminating_check"}})
 
     monkeypatch.setattr("bridge.web.provider.converse", model)
     approve_scope(client, sid, scope)
     done = settle(client, sid)
     assert done["assessment"]["status"] == "stopped", done
-    assert done["assessment"]["stop_reason"] == "evidence_requirements_reached"
+    assert done["assessment"]["stop_reason"] == "no_discriminating_check"
     assert done["assessment"]["tool_runs_used"] == 1
     assert done["assessment"]["model_turns_used"] == 2
     state = service.load(sid)
@@ -284,7 +310,13 @@ def test_unattributed_explanation_cannot_claim_a_hypothesis(client, tmp_path, mo
     assert service.load(sid)["_tool_runs"] == []
 
 
-def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artifacts(client, tmp_path, monkeypatch):
+@pytest.mark.parametrize("requested_reason,expected_reason,expected_status", [
+    pytest.param("no_discriminating_check", "no_discriminating_check", "stopped", id="read_only_query"),
+    pytest.param("evidence_requirements_reached", "completion_contract_unavailable", "blocked",
+                 id="open_requirements_completion_requested"),
+])
+def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artifacts(
+        client, tmp_path, monkeypatch, requested_reason, expected_reason, expected_status):
     from test_web_report_inputs import confirmed_case, run_stage
     service, sid, aid, body = confirmed_case(client, tmp_path)
     run_stage(client, sid, body, "P0-08")
@@ -320,18 +352,23 @@ def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artif
         assert len(context["evidence"][0]["summary"]["requirements"]) == 5
         assert all(item["state"] == "open" for item in context["evidence"][0]["summary"]["requirements"])
         return Action.model_validate({"action": "assessment", "decision": {
-            "action": "stop", "reason": "no_discriminating_check"}})
+            "action": "stop", "reason": requested_reason}})
     monkeypatch.setattr("bridge.web.provider.converse", query_then_stop)
     approve_scope(client, sid, scope)
     done = settle(client, sid)
-    assert done["assessment"]["stop_reason"] == "no_discriminating_check", done["assessment"]
+    assert done["assessment"]["stop_reason"] == expected_reason, done["assessment"]
+    assert done["assessment"]["status"] == expected_status
     assert done["assessment"]["tool_runs_used"] == 1
     assert done["assessment"]["evidence"][0]["summary"]["graph_version"] == 1
+    assert len(done["assessment"]["evidence"][0]["summary"]["requirements"]) == 5
+    assert all(row["state"] == "open" for row in done["assessment"]["evidence"][0]["summary"]["requirements"])
     after = service.load(sid)
     assert after["_input_revision"] == before["_input_revision"]
     assert len(after["_tool_runs"]) == len(before["_tool_runs"]) + 1
     assert after["_input_objects"] == before["_input_objects"]
     assert after["_artifacts"] == before["_artifacts"]
+    assert after["_assessment"]["model_turns"][-1]["decision"]["reason"] == requested_reason
+    assert "evidence_requirements_reached" not in json.dumps(done["assessment"])
     receipt = json.loads((service.directory(sid) / "receipts" / after["_tool_runs"][-1]["file"]).read_bytes())
     assert receipt["artifacts"] == [] and receipt["measurements"] == []
     assert receipt["result"]["graph_id"] == graph["graph_id"]
