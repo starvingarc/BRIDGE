@@ -93,7 +93,7 @@
 
 **Deliverable:** The coordinator constructs actually derivable inputs from confirmed facts, reviewed applicable resources and verified producer outputs, then continues through the existing scientific packages. A real absent scientific prerequisite remains a blocker; missing assembly code is not presented as an absent fact.
 
-**Files:** `src/bridge/web/inputs.py`, `scientific_inputs.py`, `report_inputs.py`; only the narrow `assessment.py` integration call required by the established Task 2 entry. Tests in the existing Web input/scientific/report suites and `tests/test_web_assessment.py`. A separate focused materialization module requires a controller ruling if the existing files cannot keep responsibilities clear. No changes to package scientific contracts, review signatures, reference resources or release policies.
+**Files:** `src/bridge/web/inputs.py`, `scientific_inputs.py`, `report_inputs.py`; only the narrow `assessment.py` integration call required by the established Task 2 entry. Tests in the existing Web input/scientific/report suites and `tests/test_web_assessment.py`. A separate focused materialization module requires a controller ruling if the existing files cannot keep responsibilities clear. No changes to package scientific contracts, review signatures, scientific resource content or release policies; the byte-identical resource relocation/package-data/link edits explicitly listed below are the sole resource-file exception.
 
 **Narrow implementation rulings:**
 - `Inputs.assessment_resource_ids` may compute the explicit dependency-source resource closure; `AssessmentCoordinator.propose` and `_binding` may pin that closure and its original selections. This does not authorize execution of a dependency tool outside allowed modes.
