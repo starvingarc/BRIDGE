@@ -9,7 +9,8 @@
 | Primary output | `ClaimVerificationResult` receipt |
 | Current state | `candidate` |
 
-P0-10 `v0.4.0` implements the structured deterministic path. Its four
+P0-10 implements the structured deterministic path; its current package version
+is listed in the [Tool Card](../../src/bridge/tool_packages/cards/P0-10.md). Its four
 checksummed inputs are `ReportDraft`, a P0-09 Case graph manifest,
 `ClaimPolicySpec` and
 `StatementRegistry`. The supplied policy and statement objects must equal the
