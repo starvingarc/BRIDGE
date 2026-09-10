@@ -63,19 +63,19 @@
 - [ ] Run `python -m pytest -q tests/test_p0_09_evidence_compiler.py tests/test_registry.py` plus the actual input-contract/Schema test files, then knowledge validation, Schema/Card regeneration checks, repository policy and whitespace checks. Report existing warnings explicitly.
 - [ ] Commit only this task's reviewed files and provide RED/GREEN commands and outputs in the private report.
 
-## Task 2: Scope-bound coordinator and real input materialization
+## Task 2: Scope-bound coordinator and registered-input execution
 
-**Deliverable:** A confirmed study scope can select and execute currently eligible checks, inspect their canonical evidence, and continue without requesting redundant approvals; facts, scope or resource changes still stop execution.
+**Deliverable:** A confirmed study scope can select and execute currently eligible registered-input checks, inspect their canonical evidence, and continue without requesting redundant approvals; facts, scope or resource changes still stop execution. Deterministic assembly of missing producer-bound scientific inputs is implemented separately in Task 3, not silently replaced by blockers.
 
-**Files:** `src/bridge/web/assessment.py` (new focused coordinator), `app.py`, `provider.py`, `inputs.py`, `evidence.py`, `scientific_inputs.py`, `report_inputs.py`; narrow `control.py` additions only to invalidate/stop the assessment through the existing shared fence; narrow additions to `src/bridge/domain/models.py` and `src/bridge/runners/pipeline.py` only where exact scope-derived approval must be represented. Tests in `tests/test_web_assessment.py` and the existing Web/planner/pipeline suites.
+**Files:** `src/bridge/web/assessment.py` (new focused coordinator), `app.py`, `provider.py`, `inputs.py`, `evidence.py`; narrow `control.py` additions only to invalidate/stop the assessment through the existing shared fence; narrow additions to `src/bridge/domain/models.py` and `src/bridge/runners/pipeline.py` only where exact scope-derived approval must be represented. Tests in `tests/test_web_assessment.py` and the existing Web/planner/pipeline suites.
 
 **Interfaces and requirements:**
 - A private typed `AssessmentScope` binds the confirmed question, selected upload/DataView, input revision, exact reference/knowledge/measurement/role resources, allowed tool modes and finite maximum tool runs/model turns. These are approval-visible limits, not a promise of a hard wall-clock limit.
 - `AssessmentCoordinator` owns propose/approve/advance/stop/resume state. It consumes verified registered inputs and receipts, not model-authored scientific objects. Persist authorization and counters before dispatch; retain the original approver/scope identity without forging a fresh human approval for each derived request.
 - Preserve exact AnalysisPlan hashes and ToolExecutionPipeline checks. A concrete request is admitted only by deterministic binding rules inside the current approved scope, then checked by the package. New input versions, changed roles/references, comparison/graft, or larger budgets require new approval.
-- Reuse existing input builders and the single-product integration profile. Build missing objects only from confirmed facts, versioned resources and verified producer outputs; absence remains a named blocker. Scientific review false/pending is not changed by scope approval.
+- Reuse existing input construction for already registered selections. Keep one directly used `Inputs.assessment_candidates(state, scope)` entry for concrete requests/bundles, mode, normalized scientific-request fingerprints and blockers; Task 3 adds real producer-aware assembly there. The single-product profile describes dependencies but does not itself materialize inputs. Do not introduce unused hooks or a generic workflow layer. Scientific review false/pending is not changed by scope approval.
 - Add a purpose-limited provider action for bounded evidence query, eligible next check, explanation/necessary question, or explicit stop. Hypotheses cite validated evidence aliases; free text cannot change deterministic facts or eligibility.
-- After a successful verified tool result, append measured evidence through existing P0-08/P0-09 compilation contracts when eligible and otherwise retain the exact blocker. Reuse current graph versions and receipts. Do not feed unreviewed standalone observations into a formal compilation path.
+- After a successful verified tool result, admit eligible already-materialized P0-08/P0-09 checks and consume their canonical new graph versions/receipts; retain exact blockers when such inputs are absent. Task 3 owns measured-domain compilation-input assembly. Do not feed unreviewed standalone observations into a formal compilation path.
 - Prevent duplicate unchanged executions, unbounded query/reply loops, stale scope reuse and post-stop continuation. Preserve existing epoch fencing, single-worker execution and interruption behavior.
 - Project actual P0-03–P0-06 result summaries with exact units, denominators, state and provenance. Separate directly observed exploratory results from gate-facing measurements. Read no raw cell rows into model context.
 - Preserve the prior isolated intake/QC/protocol path; ordinary explanation-only conversations do not start assessment.
@@ -85,10 +85,32 @@
 - [ ] Implement the smallest private coordinator and scope-admission seam needed by that flow; write no generic workflow framework.
 - [ ] Test exhausted run/model budgets, repeated unchanged requests, malformed model replies, unavailable inputs, scientific-review blockers, disabled result sharing, input/reference drift, stop/resume and restart interruption.
 - [ ] Test at least two different real tool result shapes through the same coordinator, with literal expected state/value/denominator assertions and an external-model-only fake.
-- [ ] Test graph write-after-query semantics and version reuse; candidate, missing, negative and unavailable results remain distinguishable and do not become formal claims.
+- [ ] Test canonical graph/query version binding and reuse across registered selections; candidate, missing, negative and unavailable results remain distinguishable and do not become formal claims. Task 3 additionally verifies newly materialized measured write-after-query.
 - [ ] Run focused Web/planner/pipeline integration suites, then commit the smallest reviewed task.
 
-## Task 3: Version-bound Step 7 portrait and real-case acceptance
+## Task 3: Deterministic scientific input and measured-evidence assembly
+
+**Deliverable:** The coordinator constructs actually derivable inputs from confirmed facts, reviewed applicable resources and verified producer outputs, then continues through the existing scientific packages. A real absent scientific prerequisite remains a blocker; missing assembly code is not presented as an absent fact.
+
+**Files:** `src/bridge/web/inputs.py`, `scientific_inputs.py`, `report_inputs.py`; only the narrow `assessment.py` integration call required by the established Task 2 entry. Tests in the existing Web input/scientific/report suites and `tests/test_web_assessment.py`. A separate focused materialization module requires a controller ruling if the existing files cannot keep responsibilities clear. No changes to package scientific contracts, review signatures, reference resources or release policies.
+
+**Interfaces and requirements:**
+- Consume Task 2's `Inputs.assessment_candidates(state, scope)` entry, exact approved producer/resource closure, typed private scope and canonical registered input/result objects. Do not create a second coordinator or another approval path.
+- Add producer-aware P0-03–P0-06 input assembly where required objects can genuinely be derived. The single-product integration profile is the dependency source, not a claim that all prerequisite data exists. Reviewed definitions/methods/programs/windows and genuine biological-unit facts are required inputs, never generated attestations.
+- Bind P0-03/P0-04/P0-06 and downstream composition to the exact selected QC DataView when their modes consume that view; preserve parent upload, cell IDs/counts, gene metadata, lineage and denominator. No fallback to the original whole upload when selected-view binding is required.
+- Keep candidate/exploratory routes distinct from gate-facing measurements. Reuse one eligible role definition for P0-03/P0-05 and retain unresolved mass; P0-06 exploratory S/G2M does not supply the other program families or a formal measurement.
+- Construct measured P0-08 DomainGateInput and P0-09 EvidenceCompilationBundle only from verified eligible canonical producer outputs and applicable versioned policy/resources. Candidate missingness-only ReportInputs remains compatible; no model-authored MeasurementResult, evidence-family reassignment, review promotion or formal report release.
+- Register constructed objects deterministically with hashes and producer provenance. Repeated preparation reuses identical objects; changed inputs/resources create explicit new versions and respect the existing scope/fact fences.
+- After an eligible tool result, materialize the next authorized check, compile a new canonical graph version when permitted and expose it to the coordinator. Queries are read-only and cannot themselves be counted as new biological evidence.
+
+**Tests and implementation:**
+- [ ] RED: real registered producer output plus confirmed/resource inputs yields the expected downstream request without hand-authored backend request injection. Missing construction must fail before implementation.
+- [ ] Cover each implemented P0-03–P0-06 route with exact selected-view/parent/count/resource assertions and genuine missing-review/unit/program blockers. Include stale source, changed view and same-role-definition checks.
+- [ ] Verify real measured P0-08/P0-09 assembly against package contracts, with literal expected values, denominators, evidence families and candidate/formal boundaries; retain existing missingness-only behavior.
+- [ ] Prove a registered result → graph query → eligible discriminating next check → verified append/new graph version through the coordinator using synthetic engineering data and only an external-model fake. A scientific prerequisite may not be bypassed to make this test pass.
+- [ ] Verify deterministic reuse, admission/resource counters, provenance drift and no post-stop continuation. Run focused Web/coordinator integration suites, self-review and commit this task only.
+
+## Task 4: Version-bound Step 7 portrait and real-case acceptance
 
 **Deliverable:** The researcher can inspect every core assessment axis, the exact evidence behind it, and meaningful continuing/stopping state in the real Web path.
 
