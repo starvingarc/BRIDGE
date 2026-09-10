@@ -1710,18 +1710,48 @@ def test_real_exploratory_missing_gene_keeps_partial_and_all_96_cells(client, tm
     # A caller changes the registered DataView descriptor: this is a new fact/input
     # revision even when its underlying matrix checksum remains unchanged.
     next_scope = propose_scope(client, sid, aid, "P0-06", "exploratory_process")
+    before_change = service.load(sid)
+    pending = before_change["_assessment"]
+    assert pending["authorization"] is None
+    assert pending["tool_runs_used"] == pending["model_turns_used"] == 0
     payload["data_view"]["view_id"] = "view:user-selected-revision"
     changed = _with_input(request, payload)
     new_objects = upload_request(client, sid, changed, "exploratory_process")
+    after_upload = service.load(sid)
+    first_terminal = after_upload["_assessment"]
+    assert first_terminal["status"] == "blocked"
+    first_event, = first_terminal["stop_events"]
+    assert first_terminal["stop_reason"] == first_event["reason"]
+    assert first_event["reason"] and first_event["status"] == "blocked"
+    assert first_event["tool_runs_used"] == first_event["model_turns_used"] == 0
     selected = client.post(f"/api/sessions/{sid}/analysis-inputs",
         json=choice("P0-06", "exploratory_process", new_objects, [aid]))
     assert selected.status_code == 200
-    assert selected.json()["assessment"]["status"] == "blocked"
-    assert selected.json()["assessment"]["stop_reason"] == "input_revision_changed"
+    historical = selected.json()["assessment"]
+    # Freshness describes the later input revision; it cannot rewrite the first
+    # terminal reason or create another stop event for this already blocked scope.
+    assert historical["status"] == "blocked"
+    assert historical["stop_reason"] == first_terminal["stop_reason"]
+    assert historical["stop_events"] == first_terminal["stop_events"]
+    assert historical["freshness"]["state"] == "historical"
+    assert historical["freshness"]["reason_code"] == "input_revision_changed"
+    assert historical["freshness"]["scope_input_revision"] == next_scope["input_revision"]
+    assert historical["freshness"]["current_input_revision"] > next_scope["input_revision"]
+    after_selection = service.load(sid)
     rejected = client.post(f"/api/sessions/{sid}/assessment/approve", json={
         "scope_id": next_scope["scope_id"], "scope_digest": next_scope["scope_digest"]})
     assert rejected.status_code == 409
-    assert len(service.load(sid)["_tool_runs"]) == 1
+    after_rejection = service.load(sid)
+    for state in (after_upload, after_selection, after_rejection):
+        assessment = state["_assessment"]
+        assert assessment["status"] == "blocked"
+        assert assessment["stop_reason"] == first_terminal["stop_reason"]
+        assert assessment["stop_events"] == first_terminal["stop_events"]
+        for key in ("scope", "scope_digest", "authorization", "tool_runs_used",
+                    "model_turns_used", "admissions", "model_turns"):
+            assert assessment[key] == pending[key], key
+        assert state["_tool_runs"] == before_change["_tool_runs"]
+    assert len(after_rejection["_tool_runs"]) == 1
 
 
 def test_unrelated_manual_selection_is_not_opened_or_bound_to_scope(client, tmp_path):
