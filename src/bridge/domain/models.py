@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 from pydantic import Field, field_serializer, field_validator, model_validator
 
@@ -239,6 +239,18 @@ class PlanApprovalReceipt(FrozenModel):
     approver_id: str = Field(min_length=1)
     authority_ref: str = Field(min_length=1)
     approved_at: datetime
+    authorization_kind: Literal["direct_human", "scope_derived"] = "direct_human"
+    scope_id: str | None = None
+    scope_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def scope_authorization_is_explicit(self):
+        if (self.authorization_kind == "scope_derived") != (
+                self.scope_id is not None and self.scope_sha256 is not None):
+            raise ValueError("scope-derived approval requires original scope identity")
+        if self.authorization_kind == "direct_human" and (self.scope_id is not None or self.scope_sha256 is not None):
+            raise ValueError("direct approval cannot carry a scope identity")
+        return self
 
     @field_validator("plan_id", "approver_id", "authority_ref")
     @classmethod

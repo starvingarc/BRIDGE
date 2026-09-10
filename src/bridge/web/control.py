@@ -45,6 +45,7 @@ class Controls:
             raise HTTPException(409, "input_review_required")
 
     def fence(self, state):
+        self.service.assessment.stop(state, "user_stopped")
         state["_control_epoch"] += 1
         active = state["status"] in {"thinking", "running", "stopping"}
         if state.get("plan") and state["plan"]["status"] in {"proposed", "approved"}:

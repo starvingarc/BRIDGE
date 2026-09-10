@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -688,6 +689,45 @@ class Inputs:
         else:
             request = ToolRequest(**arguments)
         return bundle, request
+
+    def assessment_candidates(self, state, scope):
+        """Concrete registered selections; scientific materialization joins here."""
+        from .scientific_inputs import digest
+        candidates = []
+        for allowed in scope.allowed_modes:
+            saved = state["_input_selections"].get(allowed.tool_id)
+            row = {"tool_id": allowed.tool_id, "mode_id": allowed.mode_id,
+                   "bundle": None, "request": None, "fingerprint": None, "blockers": []}
+            if saved is None or saved["mode_id"] != allowed.mode_id:
+                row["blockers"] = ["registered_selection_required"]
+            else:
+                try:
+                    selection = Selection.model_validate(saved)
+                    if any(aid != scope.upload_id for aid in selection.asset_ids):
+                        raise ValueError("assessment_upload_mismatch")
+                    blocker = (self.service.scientific_inputs.selected_blocker(state, allowed.tool_id)
+                               or self.service.report_inputs.selected_blocker(state, allowed.tool_id))
+                    if blocker:
+                        raise ValueError(blocker)
+                    bundle, request = self.construct(state, selection)
+                    if allowed.mode_id == "case_query":
+                        from .app import uid
+                        request = request.model_copy(update={"output_dir":
+                            self.service.directory(state["id"]) / "runs" / ("query-" + uid())})
+                    eligibility = self.service.registry.check_eligibility(request)
+                    row["blockers"] = list(eligibility.reason_codes) if not eligibility.eligible else []
+                    meaning = request.model_dump(mode="json", exclude={"request_id", "output_dir"})
+                    # IDs/paths are registration details; scientific content is checksum-bound.
+                    for ref in meaning.get("object_inputs", []):
+                        ref.pop("input_id", None)
+                        ref.pop("path", None)
+                    row.update(bundle=bundle, request=request, fingerprint=digest(meaning))
+                except (ValueError, OSError) as exc:
+                    reason = str(exc)
+                    row["blockers"] = [reason if re.fullmatch(r"[a-z_]+(?::[a-z_]+)?", reason)
+                                       else "registered_input_invalid"]
+            candidates.append(row)
+        return candidates
 
     def verify_plan(self, state, plan):
         self.initialize(state)

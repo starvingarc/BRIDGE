@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import math
+import hashlib
+import re
 
 from bridge.tool_packages._configurable_contracts import parse_composition
 from bridge.tool_packages.p0_02_cell_state.reference import load_packaged_vocabulary
@@ -526,6 +528,137 @@ def _bounded(summary, binding):
     except _SummaryLimit:
         return {"state": "unavailable", "reason_code": "result_summary_limit"}, {}
     return summary, binding
+
+
+# These are aggregate result fields, never raw observations or free-text provenance.
+_ASSESSMENT_FIELDS = {
+    "result_state", "upstream_composition_state", "channels", "composition_view", "label_level",
+    "denominator_scope", "assessment_state", "target_identity_fraction", "regional_fidelity_fraction",
+    "whole_product_target_region_fraction", "numerator", "denominator", "fraction", "value", "unit",
+    "window_compatibility_state", "analysis_mode", "whole_product_profile", "target_related_profile",
+    "denominator_kind", "role_fractions", "role", "primary_denominator", "n_observations",
+    "total_soft_mass", "role_composition", "product_role", "soft_mass", "observed_count",
+    "exclusion_state", "unknown_profile", "coverage_state", "rare_state_profile",
+    "soft_fraction", "detection_state", "validated_detection_limit_fraction", "false_positive_fraction",
+    "zero_observation_upper_bound_fraction", "program_results", "gene_coverage", "minimum_gene_coverage",
+    "lod_state", "evidence_state", "analysis_scope", "applicability", "availability", "process_attribution",
+    "process_attribution_state", "measurement_projection_state", "score_state", "domain_score",
+    "runtime_mode", "interpretation_scope", "state_review_status", "independence_state",
+    "n_independent_replicates", "n_features", "program_summaries", "program_id", "method_id", "score_unit",
+    "observed_gene_count", "declared_gene_count", "mean", "median", "lower_quantile", "upper_quantile",
+    "cell_cycle", "phase_counts", "S", "G2M", "G1", "s_g2m_fraction", "mean_s_score", "mean_g2m_score",
+    "profiles", "domain_id", "evidence_sufficiency_state", "eligibility", "source_execution_state",
+    "metric_name", "raw_value", "interval", "interval_confidence_level", "unknown_scope",
+}
+_ASSESSMENT_IDENTIFIERS = {"program_id", "method_id"}
+
+
+def _assessment_aggregate(value, key=""):
+    if isinstance(value, dict):
+        return {name: _assessment_aggregate(item, name) for name, item in value.items()
+                if name in _ASSESSMENT_FIELDS}
+    if isinstance(value, list):
+        if len(value) > MAX_ROWS:
+            raise _SummaryLimit()
+        return [_assessment_aggregate(item, key) for item in value]
+    if isinstance(value, str):
+        # Keep fixed result states and units, never unrestricted paths/prose/IDs.
+        if key in _ASSESSMENT_IDENTIFIERS:
+            if key == "program_id" and value in {"S", "G2M"}:
+                return value
+            return "local-" + hashlib.sha256(value.encode()).hexdigest()[:12]
+        if not re.fullmatch(r"[A-Za-z0-9_ .%/-]{1,80}", value) or "/" in value:
+            raise ValueError("unsafe_result_text")
+        return value
+    if value is None or type(value) in {int, float, bool}:
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("nonfinite_result")
+        return value
+    raise ValueError("unsupported_result")
+
+
+def _assessment_query(result):
+    """Project fixed graph semantics, not unrestricted node properties/provenance."""
+    def alias(value):
+        return "N-" + hashlib.sha256(value.encode()).hexdigest()[:16]
+    summary = {key: result[key] for key in ("query_name", "graph_version", "returned_node_count",
+        "returned_edge_count", "truncated", "omitted_node_count", "omitted_edge_count")}
+    summary["graph_alias"] = alias(result["graph_id"])
+    summary["records"], summary["requirements"], summary["nodes"] = [], [], []
+    for node in result["nodes"]:
+        properties = node.get("properties", {})
+        row = {"alias": alias(node["node_id"]), "node_type": node["node_type"],
+               "evidence_tier": node["evidence_tier"], "lifecycle_state": node["lifecycle_state"]}
+        summary["nodes"].append(row)
+        if node["node_type"] == "EvidenceRequirement":
+            summary["requirements"].append({**row, "state": properties["state"]})
+        elif node["node_type"] == "EvidenceRecord":
+            summary["records"].append({**row, **_assessment_aggregate({
+                key: properties.get(key) for key in ("domain_id", "evidence_state", "value", "unit",
+                                                      "numerator", "denominator", "applicability")}),
+                "relation": properties["relation"],
+                "family_alias": alias(json.dumps(properties["evidence_family_ref"], sort_keys=True))})
+    summary["edges"] = [{"type": edge["edge_type"], "source": alias(edge["source_node_id"]),
+                         "target": alias(edge["target_node_id"])} for edge in result["edges"]]
+    return summary
+
+
+def assessment_evidence(inputs, state, assessment):
+    """Read canonical ToolRuns on demand; no duplicate result store and no raw cell rows."""
+    from bridge.toolkit.contracts import ToolRunV2, MeasurementResultV2
+    plans = {row["plan_id"] for row in assessment["admissions"]}
+    projected, bindings = [], {}
+    for receipt in state.get("_tool_runs", []):
+        if receipt.get("plan_id") not in plans or receipt["state"] not in {"succeeded", "partial"}:
+            continue
+        alias = "E-" + receipt["sha256"][:16]
+        try:
+            raw = _verified_receipt(inputs, state, receipt)
+            run = ToolRunV2.model_validate(raw) if "object_inputs" in raw["request"] else ToolRun.model_validate(raw)
+            inputs.service.registry.validate_result(run, run.request)
+            root = inputs.service.directory(state["id"]) / "runs"
+            for artifact in run.artifacts:
+                checked_bytes(inputs.service, state, artifact.path, artifact.sha256, root=root)
+            result = raw.get("result") or {}
+            summary = _assessment_query(result) if "query_name" in result else _assessment_aggregate(result)
+            measurements = []
+            canonical = [artifact for artifact in run.artifacts if artifact.kind == "measurement_result_v2"]
+            for artifact in canonical:
+                item = MeasurementResultV2.model_validate_json(checked_bytes(
+                    inputs.service, state, artifact.path, artifact.sha256, root=root))
+                if (item.source_run_ref != f"tool-run:{run.run_id}@{run.tool_version}"
+                        or item.source_execution_state != receipt["state"]):
+                    raise ValueError("measurement_source_mismatch")
+                payload = item.model_dump(mode="json")
+                if payload["raw_value"] is not None and type(payload["raw_value"]) not in {int, float}:
+                    raise ValueError("nonaggregate_measurement_value")
+                measurements.append({
+                    "alias": "M-" + artifact.sha256[:16], "measurement_class": "gate_input_measurement",
+                    **_assessment_aggregate({key: payload[key] for key in ("metric_name", "raw_value", "numerator", "denominator",
+                        "unit", "interval", "interval_confidence_level", "unknown_scope", "evidence_state",
+                        "score_state", "domain_score", "source_execution_state")}),
+                    "source_alias": alias, "artifact_sha256": artifact.sha256,
+                })
+            if not canonical:
+                for item in raw.get("measurements", []):
+                    measurements.append({"measurement_class": "legacy_tool_measurement",
+                        **{key: item[key] for key in ("raw_value", "numerator", "denominator",
+                                                     "evidence_state", "score_state", "domain_score")
+                           if key in item and (key != "raw_value" or item[key] is None or type(item[key]) in {int, float})}})
+            row = {"alias": alias, "state": "available", "tool_id": receipt["tool_id"],
+                "tool_version": run.tool_version, "execution_state": receipt["state"],
+                "domain_score": None, "score_state": result.get("score_state", "unavailable"),
+                "summary": summary, "measurements": measurements,
+                "interpretation_scope": "exploratory" if result.get("runtime_mode") == "exploratory_process" else "registered_tool_result",
+                "provenance": {"receipt_sha256": receipt["sha256"], "plan_id": receipt["plan_id"]}}
+            _check_summary_limit(row)
+            projected.append(row)
+            bindings[alias] = {"receipt_file": receipt["file"], "receipt_sha256": receipt["sha256"],
+                               "plan_id": receipt["plan_id"]}
+        except (ValueError, OSError, KeyError, TypeError):
+            projected.append({"alias": alias, "state": "unavailable", "tool_id": receipt["tool_id"],
+                              "reason_code": "canonical_result_invalid"})
+    return projected, bindings
 
 
 def build_result_context(inputs, state) -> tuple[dict, dict]:

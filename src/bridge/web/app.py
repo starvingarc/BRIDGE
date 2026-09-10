@@ -31,6 +31,7 @@ from bridge.storage.private_paths import ensure_private_directory, verify_privat
 from bridge.workflow import LocalWorkflowExecutor, SQLiteRunEventStore
 from .provider import converse
 from .control import Controls
+from .assessment import AssessmentCoordinator, ScopeProposal, ScopeIdentity
 from .clarification import Clarifications, AnswerBody, CardIdentity
 from .scientific_inputs import ScientificInputs, DraftIdentity, DraftRevision
 from .report_inputs import ReportInputs, ReportPreparation
@@ -320,6 +321,7 @@ class Service:
         self.registry = ToolRegistry.load_default()
         self.inputs = Inputs(self)
         self.controls = Controls(self)
+        self.assessment = AssessmentCoordinator(self)
         self.intake = Intake(self)
         self.clarifications = Clarifications(self)
         self.scientific_inputs = ScientificInputs(self)
@@ -333,6 +335,7 @@ class Service:
                 state = self.load(item.name)
                 if state["status"] in {"running", "thinking", "stopping", "awaiting_approval"}:
                     state["status"], state["error"] = "failed", "interrupted"
+                    self.assessment.stop(state, "restart_interrupted", status="interrupted")
                     if state["plan"] and state["plan"]["status"] in {"proposed", "approved", "cancelled"}:
                         state["plan"]["status"] = "cancelled"
                         for step in state["plan"]["steps"]:
@@ -371,6 +374,7 @@ class Service:
         value = {key: state.get(key, [] if key == "plan_history" else None) for key in PUBLIC}
         value["clarifications"] = self.clarifications.public(state)
         value["scientific_drafts"] = self.scientific_inputs.public(state)
+        value["assessment"] = self.assessment.public(state)
         return value
 
     def message(self, state, role, content):
@@ -738,7 +742,7 @@ class Service:
         self.propose_request(state, bundle, request, tool_id + " / " + (saved["mode_id"] or "asset_input") +
             "；使用明确选择的输入；仅研究性证据，不补造事实。请单独确认本次计划。")
 
-    def propose_request(self, state, bundle, request, summary):
+    def propose_request(self, state, bundle, request, summary, *, scope_admission=False):
         snapshot = files("bridge.resources").joinpath("knowledge_snapshot.json.gz").read_bytes()
         with self.qc_catalog():
             plan = PlanBuilder(self.registry).build(bundle, output_root=request.output_dir,
@@ -753,11 +757,13 @@ class Service:
                        "status": "pending" if item.disposition.value == "execute" else "blocked",
                        "reason": None if not item.reason_codes else "input_not_eligible"} for item in plan.steps]}
         state["status"], state["error"] = "awaiting_approval", None
-        self.message(state, "assistant", "新阶段计划已生成。请检查输入模式并单独确认；之前的审批不适用于本阶段。")
+        if not scope_admission:
+            self.message(state, "assistant", "新阶段计划已生成。请检查输入模式并单独确认；之前的审批不适用于本阶段。")
         self.save(state)
 
     def input_changed(self, state):
         state["_input_revision"] += 1
+        self.assessment.stop(state, "input_revision_changed", status="blocked")
         if state.get("plan") and state["plan"]["status"] == "proposed":
             state["plan"], state["_plan"], state["status"] = None, None, "idle"
         state["error"] = None
@@ -783,6 +789,7 @@ class Service:
                     failed = self.load(sid)
                     if failed["_control_epoch"] == epoch:
                         failed["status"] = "failed"
+                        self.assessment.stop(failed, "execution_interrupted", status="interrupted")
                         failed["error"] = ("provider_unavailable" if isinstance(exc, ProviderUnavailable) else "stage_input_construction_failed") if status == "thinking" else "execution_failed"
                         if failed["plan"] and status == "running":
                             failed["plan"]["status"] = "partial" if any(step["status"] in {"succeeded", "partial"} for step in failed["plan"]["steps"]) else "failed"
@@ -1059,6 +1066,13 @@ class Service:
             if state["_control_epoch"] != epoch or state["input_review_required"]:
                 return
             plan = AnalysisPlan.model_validate(state["_plan"])
+            if plan.approval_receipt and plan.approval_receipt.authorization_kind == "scope_derived":
+                reason = self.assessment.check(state, epoch)
+                authorization = state["_assessment"]["authorization"]
+                if reason or (plan.approval_receipt.scope_id != authorization["scope_id"]
+                              or plan.approval_receipt.scope_sha256 != authorization["scope_sha256"]):
+                    self.assessment._finish(state, reason or "scope_authorization_mismatch", status="blocked")
+                    return
             self.verify_scientific_plan(state, plan)
             self.inputs.verify_plan(state, plan)
             for upload_id, upload in state["_uploads"].items():
@@ -1075,6 +1089,11 @@ class Service:
                 state = self.load(sid)
                 if state["_control_epoch"] != epoch or state["input_review_required"]:
                     return
+                if plan.approval_receipt.authorization_kind == "scope_derived":
+                    reason = self.assessment.check(state, epoch)
+                    if reason:
+                        self.assessment._finish(state, reason, status="blocked")
+                        return
                 claim = self.executor.claim_step(run_id)
                 if claim is None:
                     break
@@ -1108,7 +1127,8 @@ class Service:
                 return
             snapshot = self.executor.get_status(run_id)
             success = snapshot.status.value == "succeeded"
-            state["status"] = "idle" if success else "failed"
+            continuing = state.get("_assessment", {}).get("status") == "running"
+            state["status"] = ("running" if continuing else "idle") if success else "failed"
             state["error"] = None if success else "execution_incomplete"
             actual = {item["status"] for item in state["plan"]["steps"]}
             state["plan"]["status"] = "completed" if success else ("partial" if "partial" in actual or "succeeded" in actual else "cancelled" if "cancelled" in actual else "failed")
@@ -1274,6 +1294,27 @@ def create_app(settings: Settings) -> FastAPI:
     def get(sid: str):
         with service.lock:
             return service.public(service.load(sid))
+
+    @app.post("/api/sessions/{sid}/assessment/propose")
+    def propose_assessment(sid: str, body: ScopeProposal):
+        with service.lock:
+            state = service.load(sid)
+            service.assessment.propose(state, body)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/assessment/approve")
+    def approve_assessment(sid: str, body: ScopeIdentity):
+        with service.lock:
+            state = service.load(sid)
+            service.assessment.approve(state, body)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/assessment/resume")
+    def resume_assessment(sid: str, body: ScopeIdentity):
+        with service.lock:
+            state = service.load(sid)
+            service.assessment.resume(state, body)
+            return service.public(state)
 
     @app.post("/api/sessions/{sid}/uploads")
     def upload(sid: str, file: UploadFile = File(...)):
