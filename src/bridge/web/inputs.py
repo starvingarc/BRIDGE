@@ -222,6 +222,11 @@ class Inputs:
         return artifacts
 
     def verify(self, state, record):
+        for identifier, sha256 in record.get("derivation_inputs", {}).items():
+            dependency = state["_input_objects"].get(identifier)
+            if dependency is None or dependency["sha256"] != sha256:
+                raise ValueError("derived_source_binding_changed")
+            self.verify(state, dependency)
         if record["source"] == "tool_output":
             self.receipt_artifacts(state, record)
         root = self.verify_system_resource(state, record) if record["source"] == "system_resource" else None
@@ -529,13 +534,31 @@ class Inputs:
         spec = load_measurement_spec(ref)
         return [] if spec is None else [{"id": spec.measurement_spec_id, "label": "Configured cell-state MeasurementSpec"}]
 
-    def selected_asset(self, state, tool_id, asset_id, *, register_qc=False):
-        if tool_id == "P0-02":
+    def selected_asset(self, state, tool_id, asset_id, *, register_qc=False, manual_exploratory=False):
+        declared_only = (tool_id == "P0-06" and manual_exploratory and not any(
+            row["tool_id"] == "P0-01" and row["state"] == "succeeded"
+            and self.service._qc_receipt_asset_id(state, row) == asset_id for row in state.get("_tool_runs", [])))
+        if tool_id in {"P0-02", "P0-03", "P0-04", "P0-06"} and not declared_only:
             if not state["_uploads"][asset_id].get("source_family_id"):
                 raise ValueError("source_family_id_required")
-            return self.service.effective_qc_asset(
-                state, asset_id, register=register_qc
-            )
+            asset = self.service.effective_qc_asset(state, asset_id, register=register_qc)
+            if tool_id == "P0-02":
+                return asset
+            views = []
+            for receipt in reversed(state.get("_tool_runs", [])):
+                if (receipt["tool_id"] != "P0-01" or receipt["state"] != "succeeded"
+                        or self.service._qc_receipt_asset_id(state, receipt) != asset_id):
+                    continue
+                _, outputs = self.producer_objects(state, receipt, "P0-01", {"qc_profile_v2"})
+                views = [payload["selected_data_view"] for _, payload in outputs.get("qc_profile_v2", [])
+                         if payload.get("selected_data_view")
+                         and payload["selected_data_view"]["view_id"] == asset.metadata.get("data_view_id")]
+                break
+            if len(views) != 1 or views[0]["sha256"] != asset.checksum or views[0]["parent_asset_id"] != asset_id:
+                raise ValueError("scientific_selected_view_mismatch")
+            view = views[0]
+            return asset.model_copy(update={"asset_id": view["artifact_id"],
+                "metadata": {**asset.metadata, "parent_asset_id": view["parent_asset_id"]}})
         declaration = state["_asset_declarations"].get(asset_id)
         if declaration is None:
             raise ValueError("asset_declaration_required")
@@ -586,6 +609,12 @@ class Inputs:
         if asset_contract and len(selection.asset_ids) < asset_contract.min_count:
             reasons.append("asset_required")
         assets = []
+        manual_exploratory = None
+        if (selection.tool_id, selection.mode_id) == ("P0-06", "exploratory_process") and len(selection.object_inputs) == 1:
+            choice = selection.object_inputs[0]
+            record = state["_input_objects"][choice.input_id]
+            if choice.role == "exploratory_process_input" and record["source"] == "user_upload":
+                manual_exploratory = self.verify(state, record)["data_view"]
         for aid in selection.asset_ids:
             if aid not in state["_uploads"]:
                 raise ValueError("unknown_input_asset")
@@ -595,6 +624,11 @@ class Inputs:
                     selection.tool_id,
                     aid,
                     register_qc=register_qc,
+                    manual_exploratory=bool(manual_exploratory
+                        and manual_exploratory["artifact_id"] == aid
+                        and manual_exploratory["parent_asset_id"] == aid
+                        and manual_exploratory["sha256"] == state["_uploads"][aid]["sha256"]
+                        and manual_exploratory["parent_asset_sha256"] == state["_uploads"][aid]["sha256"]),
                 )
             except ValueError as exc:
                 reason = str(exc)
@@ -690,6 +724,155 @@ class Inputs:
             request = ToolRequest(**arguments)
         return bundle, request
 
+
+    def producer_objects(self, state, receipt, tool_id, kinds):
+        """Read canonical objects from one verified producer, never from Schema alone."""
+        from bridge.toolkit.contracts import ToolRun, ToolRunV2
+        if receipt["tool_id"] != tool_id or receipt["state"] not in {"succeeded", "partial"}:
+            raise ValueError("canonical_source_producer_mismatch")
+        raw = strict_json(checked_bytes(self.service, state,
+            self.service.directory(state["id"]) / "receipts" / receipt["file"], receipt["sha256"]),
+            128 * 1024 * 1024)
+        model = ToolRunV2 if "object_inputs" in raw["request"] else ToolRun
+        run = model.model_validate(raw)
+        self.service.registry.validate_result(run, run.request)
+        if run.request.tool_id != tool_id or run.execution_state.value != receipt["state"]:
+            raise ValueError("canonical_source_producer_mismatch")
+        artifacts = {item.artifact_id: item for item in run.artifacts}
+        result = {}
+        for identifier, record in state["_input_objects"].items():
+            if (record.get("source") != "tool_output" or record.get("producer_tool_id") != tool_id
+                    or record.get("receipt_file") != receipt["file"]
+                    or record.get("receipt_sha256") != receipt["sha256"]):
+                continue
+            artifact = artifacts.get(record["artifact_id"])
+            if artifact is None or artifact.kind not in kinds:
+                continue
+            payload = self.verify(state, record)
+            result.setdefault(artifact.kind, []).append((identifier, payload))
+        return run, result
+
+    def assessment_selections(self, state, allowed_modes):
+        """Only explicit dependency-source selections for the fixed P0 chain."""
+        wanted = {(row.tool_id, row.mode_id) for row in allowed_modes}
+        sources = set()
+        for row in allowed_modes:
+            if row.mode_id == "legacy_aggregation":
+                continue
+            if row.tool_id in {"P0-02", "P0-03", "P0-04", "P0-05", "P0-06", "P0-08", "P0-09"}:
+                sources.update({"P0-01", "P0-02"})
+            if row.tool_id in {"P0-04", "P0-05", "P0-06", "P0-08", "P0-09"}:
+                sources.add("P0-03")
+            if row.tool_id in {"P0-06", "P0-08", "P0-09"}:
+                sources.add("P0-04")
+            if row.tool_id in {"P0-08", "P0-09"}:
+                sources.update({"P0-05", "P0-06"})
+            if row.tool_id == "P0-09":
+                sources.update({"P0-08", "P0-09"})
+        return {tool: value for tool, value in state["_input_selections"].items()
+                if (tool, value["mode_id"]) in wanted or tool in sources}
+
+    def assessment_resource_ids(self, state, upload_id, allowed_modes):
+        """Freeze roots before consent; this never authorizes a producer execution."""
+        self.initialize(state)
+        self.sync_outputs(state)
+        selections = self.assessment_selections(state, allowed_modes)
+        identifiers = {row["input_id"] for selected in selections.values()
+                       for row in selected["object_inputs"]}
+        if not any(row.mode_id != "legacy_aggregation" for row in allowed_modes):
+            return sorted(identifiers)
+        self.system_options(state)
+        identifiers.update(identifier for identifier, record in state["_input_objects"].items()
+                           if record["source"] == "system_resource")
+        view = None
+        for receipt in reversed(state.get("_tool_runs", [])):
+            if (receipt["tool_id"] != "P0-01" or receipt["state"] != "succeeded"
+                    or self.service._qc_receipt_asset_id(state, receipt) != upload_id):
+                continue
+            _, outputs = self.producer_objects(state, receipt, "P0-01",
+                {"qc_profile_v2", "biological_unit_manifest", "biological_unit_assignment"})
+            profiles = outputs.get("qc_profile_v2", [])
+            if len(profiles) != 1:
+                raise ValueError("canonical_qc_profile_required")
+            view = profiles[0][1]["selected_data_view"]
+            identifiers.update(identifier for rows in outputs.values() for identifier, _ in rows)
+            break
+        if view is not None:
+            for receipt in reversed(state.get("_tool_runs", [])):
+                if receipt["tool_id"] != "P0-02" or receipt["state"] not in {"succeeded", "partial"}:
+                    continue
+                run, outputs = self.producer_objects(state, receipt, "P0-02", {"cell_state_profile_v3"})
+                profiles = outputs.get("cell_state_profile_v3", [])
+                if len(profiles) != 1 or len(run.request.assets) != 1:
+                    continue
+                profile, asset = profiles[0][1], run.request.assets[0]
+                if (profile.get("input_data_view") != view or asset.checksum != view["sha256"]
+                        or asset.metadata.get("data_view_id") != view["view_id"]
+                        or asset.metadata.get("source_family_id") != state["_uploads"][upload_id].get("source_family_id")
+                        or run.request.measurement_spec_ref != self.service.settings.cell_state_measurement_spec_ref):
+                    continue
+                if (profile["producer_run_ref"] != run.run_id or profile["producer_tool_id"] != "P0-02"
+                        or profile["producer_tool_version"] != run.tool_version):
+                    raise ValueError("canonical_source_producer_mismatch")
+                identifiers.add(profiles[0][0])
+                break
+        return sorted(identifiers)
+
+    def assessment_pool(self, state, scope):
+        """Pinned roots plus verified results of this scope's actual admissions."""
+        pool = dict(scope.binding["resources"])
+        plans = {row["plan_id"]: row for row in state.get("_assessment", {}).get("admissions", [])}
+        for receipt in state.get("_tool_runs", []):
+            admission = plans.get(receipt.get("plan_id"))
+            if admission is None or receipt["state"] not in {"succeeded", "partial"}:
+                continue
+            if admission["tool_id"] != receipt["tool_id"]:
+                raise ValueError("assessment_producer_mismatch")
+            for identifier, record in state["_input_objects"].items():
+                if (record.get("source") == "tool_output" and record.get("receipt_file") == receipt["file"]
+                        and record.get("receipt_sha256") == receipt["sha256"]
+                        and record.get("producer_tool_id") == receipt["tool_id"]):
+                    self.verify(state, record)
+                    pool[identifier] = record
+        return pool
+
+    def add_derived_object(self, state, *, tool_id, mode_id, role, schema_ref, payload, dependencies,
+                           artifact_dependencies=()):
+        """Append content-addressed objects without pretending the researcher authored them."""
+        from .app import write_file
+        from .scientific_inputs import encoded, digest
+        self.initialize(state)
+        version = self.object_version(payload, schema_ref)
+        self.role(tool_id, mode_id, role, schema_ref, version)
+        bound = {}
+        for identifier in sorted(set(dependencies)):
+            record = state["_input_objects"][identifier]
+            self.verify(state, record)
+            bound[identifier] = record["sha256"]
+        artifacts = sorted(artifact_dependencies, key=lambda row: (row["receipt_file"], row["artifact_id"]))
+        for artifact in artifacts:
+            self.receipt_artifacts(state, artifact)
+            checked_bytes(self.service, state, artifact["path"], artifact["sha256"])
+        raw = encoded(payload)
+        identity = digest({"schema_ref": schema_ref, "object_version": version,
+                           "payload": payload, "dependencies": bound,
+                           "artifacts": artifacts})[:32]
+        record = {"path": str(self.service.directory(state["id"]) / "objects" / (identity + ".json")),
+            "sha256": hashlib.sha256(raw).hexdigest(), "schema_ref": schema_ref, "object_version": version,
+            "source": "agent_constructed", "producer_tool_id": None, "label": role,
+            "derivation_inputs": bound, "dependencies": artifacts}
+        existing = state["_input_objects"].get(identity)
+        if existing is not None:
+            if existing != record:
+                raise ValueError("derived_object_identity_collision")
+            self.verify(state, existing)
+            return identity
+        if len(state["_input_objects"]) >= 128:
+            raise ValueError("object_count_limit")
+        write_file(Path(record["path"]), raw)
+        state["_input_objects"][identity] = record
+        return identity
+
     def assessment_candidates(self, state, scope):
         """Concrete registered selections; scientific materialization joins here."""
         from .scientific_inputs import digest
@@ -698,15 +881,23 @@ class Inputs:
             saved = state["_input_selections"].get(allowed.tool_id)
             row = {"tool_id": allowed.tool_id, "mode_id": allowed.mode_id,
                    "bundle": None, "request": None, "fingerprint": None, "blockers": []}
-            if saved is None or saved["mode_id"] != allowed.mode_id:
+            automatic = (allowed.tool_id, allowed.mode_id) in {
+                ("P0-03", "default"), ("P0-04", "default"), ("P0-05", "hard_count_accounting"),
+                ("P0-06", "exploratory_process"), ("P0-06", "method_runtime_source_bound")}
+            if (saved is None or saved["mode_id"] != allowed.mode_id) and not automatic:
                 row["blockers"] = ["registered_selection_required"]
             else:
                 try:
-                    selection = Selection.model_validate(saved)
+                    selection = Selection.model_validate((saved if saved and saved["mode_id"] == allowed.mode_id else None) or dict(tool_id=allowed.tool_id, mode_id=allowed.mode_id,
+                        asset_ids=[], object_inputs=[], measurement_spec_ref=None))
                     if any(aid != scope.upload_id for aid in selection.asset_ids):
                         raise ValueError("assessment_upload_mismatch")
-                    blocker = (self.service.scientific_inputs.selected_blocker(state, allowed.tool_id)
+                    blocker = (self.service.scientific_inputs.selected_blocker(state, allowed.tool_id, selection)
                                or self.service.report_inputs.selected_blocker(state, allowed.tool_id))
+                    if blocker:
+                        raise ValueError(blocker)
+                    selection = self.service.scientific_inputs.assessment_selection(state, scope, allowed, selection)
+                    blocker = self.service.scientific_inputs.selected_blocker(state, allowed.tool_id, selection)
                     if blocker:
                         raise ValueError(blocker)
                     bundle, request = self.construct(state, selection)

@@ -18,7 +18,7 @@ from bridge.tool_packages.p0_02_cell_state.measurement_specs import load_measure
 from bridge.tool_packages.p0_02_cell_state.reference import load_packaged_vocabulary
 from bridge.tool_packages.p0_03_target_regional.models import TargetRegionalAssessmentSpec
 from bridge.tool_packages.p0_04_developmental_compatibility.models import DevelopmentStateMap
-from .inputs import InputBody, Selection, checked_bytes
+from .inputs import InputBody, ObjectChoice, Selection, checked_bytes
 
 
 class SupportedChoice(InputBody):
@@ -244,10 +244,294 @@ class ScientificInputs:
     def private_message_ids(self, state):
         return {row["message_id"] for row in state.get("_scientific_drafts", [])}
 
-    def selected_blocker(self, state, tool_id):
+
+    def exploratory_resource(self):
+        raw = files("bridge.tool_packages.p0_06_proliferation_stress_response").joinpath(
+            "resources/seurat-cell-cycle-v5.5.1-candidate.json").read_bytes()
+        value = json.loads(raw)
+        if (value["selection"]["scientific_release_approved"] is not False
+                or value["candidate_version"] != "0.1.0"
+                or value["status"] != "owner_selected_resource_candidate_not_ProgramSpec"):
+            raise ValueError("exploratory_resource_policy_mismatch")
+        return value, {"alias": "R-seurat-cell-cycle-v5.5.1", "schema_ref": None,
+            "resource_ref": "bridge://resources/seurat-cell-cycle-candidate/v5.5.1",
+            "object_version": value["candidate_version"], "sha256": hashlib.sha256(raw).hexdigest(),
+            "source": "package_resource"}
+
+    def _exploratory_selection(self, state, scope, selection):
+        if selection.object_inputs:
+            return selection
+        from bridge.tool_packages.p0_06_proliferation_stress_response.exploratory_models import ExploratoryProcessInput
+        inputs = self.service.inputs
+        self._facts(state, scope.upload_id)
+        value, resource = self.exploratory_resource()
+        if scope.binding["science"].get(resource["resource_ref"]) != resource["sha256"]:
+            raise ValueError("exploratory_resource_changed")
+        pool = inputs.assessment_pool(state, scope)
+        selected = scope.binding["data_view"]
+        candidates = []
+        for identifier, record in pool.items():
+            if record["source"] != "tool_output" or record.get("producer_tool_id") != "P0-01":
+                continue
+            if inputs.receipt_artifacts(state, record)[record["artifact_id"]]["kind"] != "qc_profile_v2":
+                continue
+            qc = inputs.verify(state, record)
+            actual = qc.get("selected_data_view")
+            if actual is not None and (selected is None or actual == selected):
+                if actual["parent_asset_id"] == scope.upload_id and actual["parent_asset_sha256"] == scope.binding["upload"]["sha256"]:
+                    candidates.append((identifier, qc))
+        if len(candidates) != 1:
+            raise ValueError("canonical_source_required:qc_readiness_profile")
+        identifier, qc = candidates[0]
+        selected = qc["selected_data_view"]
+        record = pool[identifier]
+        receipt = next(row for row in state["_tool_runs"] if row["file"] == record["receipt_file"])
+        run, _ = inputs.producer_objects(state, receipt, "P0-01", set())
+        asset = inputs.selected_asset(state, "P0-06", scope.upload_id)
+        if (asset.checksum != selected["sha256"] or selected["parent_asset_id"] != scope.upload_id
+                or selected["parent_asset_sha256"] != scope.binding["upload"]["sha256"]):
+            raise ValueError("scientific_selected_view_mismatch")
+        s, g2m = value["lists"]["s.genes"], value["lists"]["g2m.genes"]
+        payload = ExploratoryProcessInput(object_version="0.1.0",
+            input_id="exploratory-process:assessment-" + digest({"view": selected, "resource": resource,
+                "producer": record["receipt_sha256"], "gene_symbol_column": asset.metadata.get("gene_symbol_column")})[:24],
+            source_family_id=state["_uploads"][scope.upload_id]["source_family_id"], data_view=selected,
+            gene_symbol_column=asset.metadata.get("gene_symbol_column"),
+            resource_ref=resource["resource_ref"], resource_version=value["candidate_version"],
+            resource_sha256=resource["sha256"], s_genes=s["genes"], s_genes_sha256=s["sha256"],
+            g2m_genes=g2m["genes"], g2m_genes_sha256=g2m["sha256"], created_at=run.created_at)
+        object_id = inputs.add_derived_object(state, tool_id="P0-06", mode_id="exploratory_process",
+            role="exploratory_process_input", schema_ref="bridge://schemas/exploratory-process-input/v0.1",
+            payload=payload.model_dump(mode="json"), dependencies=[identifier])
+        return selection.model_copy(update={"asset_ids": [scope.upload_id],
+            "object_inputs": [ObjectChoice(role="exploratory_process_input", input_id=object_id)]})
+
+    def assessment_selection(self, state, scope, allowed, selection):
+        """Join selected reviewed roots to exact QC/P0-02 producer objects."""
+        if (allowed.tool_id, allowed.mode_id) == ("P0-06", "exploratory_process"):
+            return self._exploratory_selection(state, scope, selection)
+        routes = {("P0-03", "default"), ("P0-04", "default"),
+                  ("P0-05", "hard_count_accounting"), ("P0-06", "method_runtime_source_bound")}
+        if (allowed.tool_id, allowed.mode_id) not in routes:
+            return selection
+        inputs = self.service.inputs
+        contract, mode = inputs.contract_mode(allowed.tool_id, allowed.mode_id)
+        counts = {role.role: sum(row.role == role.role for row in selection.object_inputs) for role in mode.roles}
+        assets = mode.asset_input or contract.asset_input
+        if (all(counts[role.role] >= role.min_count for role in mode.roles)
+                and len(selection.asset_ids) >= (assets.min_count if assets else 0)):
+            # Explicit complete manual inputs retain their existing package contract.
+            # This factory fills genuine omissions; it is not a new review policy.
+            return selection
+        facts = self._facts(state, scope.upload_id)
+        pool = inputs.assessment_pool(state, scope)
+        choices = {row.role: row.input_id for row in selection.object_inputs}
+        shared = {row["role"]: row["input_id"] for row in
+                  scope.binding["selections"].get("P0-03", {}).get("object_inputs", [])}
+        for role in ("product_definition_card", "state_role_map"):
+            if role not in choices and role in shared:
+                choices[role] = shared[role]
+            elif role in choices and role in shared and choices[role] != shared[role]:
+                raise ValueError("shared_scientific_resource_mismatch")
+        if allowed.tool_id == "P0-06" and "development_window_spec" not in choices:
+            shared_window = [row["input_id"] for row in
+                scope.binding["selections"].get("P0-04", {}).get("object_inputs", [])
+                if row["role"] == "development_window_spec"]
+            if len(shared_window) == 1:
+                choices["development_window_spec"] = shared_window[0]
+        required = {
+            "P0-03": ("product_definition_card", "state_role_map", "target_regional_assessment_spec", "measurement_spec"),
+            "P0-04": ("product_definition_card", "development_state_map", "development_window_spec", "measurement_spec"),
+            "P0-05": ("product_definition_card", "state_role_map", "off_target_assessment_spec", "biological_unit_attestation_receipt"),
+            "P0-06": ("product_definition_card", "development_window_spec", "program_spec",
+                      "process_method_spec", "protocol_ir", "measurement_spec", "biological_unit_attestation_receipt"),
+        }[allowed.tool_id]
+        for role in required:
+            if role not in choices:
+                raise ValueError("scientific_resource_required:" + role)
+            if choices[role] not in pool:
+                raise ValueError("scientific_resource_outside_scope")
+        if "state_role_map" in choices:
+            role_map = inputs.verify(state, pool[choices["state_role_map"]])
+            if role_map["review_state"] not in {"reviewed", "frozen"}:
+                raise ValueError("state_role_review_required")
+        if allowed.tool_id == "P0-03":
+            assessment = inputs.verify(state, pool[choices["target_regional_assessment_spec"]])
+            if assessment["status"] != "frozen":
+                raise ValueError("regional_definition_review_required")
+        if allowed.tool_id in {"P0-04", "P0-06"}:
+            if allowed.tool_id == "P0-04":
+                mapping = inputs.verify(state, pool[choices["development_state_map"]])
+                if mapping["review_state"] not in {"reviewed", "frozen"}:
+                    raise ValueError("development_state_review_required")
+            window = inputs.verify(state, pool[choices["development_window_spec"]])
+            if window["review_state"] != "confirmed" or not window.get("reviewer_ref") or not window.get("confirmed_at"):
+                raise ValueError("development_window_review_required")
+        producer_roles = {
+            "qc_readiness_profile": ("P0-01", "qc_profile_v2"),
+            "biological_unit_manifest": ("P0-01", "biological_unit_manifest"),
+            "biological_unit_assignment": ("P0-01", "biological_unit_assignment"),
+            "cell_state_evidence_profile": ("P0-02", "cell_state_profile_v3"),
+        }
+        view = scope.binding["data_view"]
+        for role, (tool, kind) in producer_roles.items():
+            found = []
+            for identifier, record in pool.items():
+                if record["source"] != "tool_output" or record.get("producer_tool_id") != tool:
+                    continue
+                artifacts = inputs.receipt_artifacts(state, record)
+                if artifacts[record["artifact_id"]]["kind"] != kind:
+                    continue
+                payload = inputs.verify(state, record)
+                actual_view = payload.get("selected_data_view", payload.get("input_data_view"))
+                if actual_view is not None and view is not None and actual_view != view:
+                    continue
+                if role == "biological_unit_manifest" and view is not None and (
+                        payload["data_view_ref"] != view["view_id"] or payload["selected_artifact_sha256"] != view["sha256"]):
+                    continue
+                if role == "biological_unit_assignment" and view is not None and (
+                        payload["data_view_ref"] != view["view_id"]
+                        or payload["observation_ids_sha256"] != view["observation_ids_sha256"]):
+                    continue
+                found.append(identifier)
+            if role in choices:
+                if choices[role] not in found:
+                    raise ValueError("canonical_source_binding_mismatch")
+            elif len(found) == 1:
+                choices[role] = found[0]
+            elif not found:
+                raise ValueError("canonical_source_required:" + role)
+            else:
+                raise ValueError("canonical_source_ambiguous:" + role)
+        for role in ("annotation_vocabulary", "reference_manifest"):
+            if role not in choices:
+                found = [identifier for identifier, record in pool.items()
+                         if record["source"] == "system_resource" and record["label"] == role]
+                if len(found) != 1:
+                    raise ValueError("scientific_resource_required:" + role)
+                choices[role] = found[0]
+        qc = inputs.verify(state, pool[choices["qc_readiness_profile"]])
+        profile = inputs.verify(state, pool[choices["cell_state_evidence_profile"]])
+        view = qc["selected_data_view"]
+        if view is None or profile["input_data_view"] != view or view["parent_asset_id"] != scope.upload_id:
+            raise ValueError("scientific_selected_view_mismatch")
+        if view["parent_asset_sha256"] != scope.binding["upload"]["sha256"]:
+            raise ValueError("scientific_parent_binding_mismatch")
+        if "product_case" not in choices:
+            manifest_id = choices["biological_unit_manifest"]
+            manifest = inputs.verify(state, pool[manifest_id])
+            definition_id = choices["product_definition_card"]
+            definition = inputs.verify(state, pool[definition_id])
+            source_ref = view.get("sample_or_preparation_ref")
+            kind = {"pretransplant_preparation": "preparation", "process_sample": "sample"}.get(facts["sampling_context"])
+            if kind is None or not source_ref or not source_ref.startswith(kind + ":"):
+                raise ValueError("biological_source_unit_required")
+            source_id, source_version = source_ref.rsplit("@", 1)
+            groups = {row["independence_group_ref"]["object_id"] + "@" + row["independence_group_ref"]["object_version"]:
+                      row["independence_group_ref"] for row in manifest["unit_bindings"]}
+            source_record = pool[choices["cell_state_evidence_profile"]]
+            receipt = next(row for row in state["_tool_runs"] if row["file"] == source_record["receipt_file"])
+            source_run, _ = inputs.producer_objects(state, receipt, "P0-02", set())
+            content = {"upload_id": scope.upload_id, "assay": facts["assay"],
+                       "view": view, "definition_sha256": pool[definition_id]["sha256"],
+                       "source_measurement": [profile["measurement_spec_id"], profile["measurement_spec_version"]]}
+            case = ProductCase(object_version="0.1.0", product_case_id="product-case:assessment-" + scope.upload_id,
+                case_version=digest(content)[:24],
+                product_definition_ref=ref(definition["product_definition_id"], definition["definition_version"]),
+                source_unit_kind=kind, sample_or_preparation_ref=ref(source_id, source_version),
+                independence_group_refs=[groups[key] for key in sorted(groups)],
+                biological_unit_manifest_ref=ref(manifest["manifest_id"], manifest["manifest_version"]),
+                biological_unit_manifest_sha256=pool[manifest_id]["sha256"],
+                independence_scope_ref=manifest["independence_scope_ref"],
+                measurement_spec_ref=ref(profile["measurement_spec_id"], profile["measurement_spec_version"]),
+                assay=facts["assay"], provenance_refs=[
+                    ref("upload:" + scope.upload_id, scope.binding["upload"]["sha256"]),
+                    ref("tool-run:" + source_run.run_id, source_run.tool_version)],
+                created_at=source_run.created_at)
+            choices["product_case"] = inputs.add_derived_object(state, tool_id=allowed.tool_id, mode_id=allowed.mode_id,
+                role="product_case", schema_ref="bridge://schemas/product-case/v0.1", payload=case.model_dump(mode="json"),
+                dependencies=[definition_id, manifest_id, choices["qc_readiness_profile"], choices["cell_state_evidence_profile"]])
+        if allowed.tool_id == "P0-06":
+            choices = self._source_bound_process(state, allowed, choices, pool)
+        _, mode = inputs.contract_mode(allowed.tool_id, allowed.mode_id)
+        accepted = {row.role for row in mode.roles}
+        return selection.model_copy(update={
+            "asset_ids": [scope.upload_id] if allowed.tool_id == "P0-06" else selection.asset_ids,
+            "object_inputs": [ObjectChoice(role=role, input_id=identifier)
+                              for role, identifier in choices.items() if role in accepted]})
+
+    def _source_bound_process(self, state, allowed, choices, pool):
+        if "process_method_input" in choices:
+            return choices
+        from .inputs import P006_SOURCE_ARTIFACTS
+        from bridge.tool_packages.p0_06_proliferation_stress_response.method_models import ProcessMethodInputV2
+        inputs = self.service.inputs
+        profile_id = choices["cell_state_evidence_profile"]
+        profile_record = pool[profile_id]
+        profile = inputs.verify(state, profile_record)
+        case_id = choices["product_case"]
+        case = inputs.verify(state, state["_input_objects"][case_id])
+        manifest_id = choices["biological_unit_manifest"]
+        manifest = inputs.verify(state, pool[manifest_id])
+        view = profile["input_data_view"]
+        receipt = next(row for row in state["_tool_runs"] if row["file"] == profile_record["receipt_file"])
+        run, _ = inputs.producer_objects(state, receipt, "P0-02", set())
+        source_artifacts = {}
+        for identifier, artifact in state["_canonical_artifacts"].items():
+            if (artifact["receipt_file"] != receipt["file"] or artifact["receipt_sha256"] != receipt["sha256"]):
+                continue
+            kind = inputs.receipt_artifacts(state, artifact)[artifact["artifact_id"]]["kind"]
+            if kind in {"manifest", "cell_state_evidence"}:
+                prior = source_artifacts.get(kind)
+                if prior is not None and prior[1] != artifact:
+                    raise ValueError("canonical_source_artifact_ambiguous")
+                source_artifacts[kind] = (identifier, artifact)
+        if set(source_artifacts) != {"manifest", "cell_state_evidence"}:
+            raise ValueError("canonical_source_artifacts_required")
+        manifest_artifact, evidence = source_artifacts["manifest"], source_artifacts["cell_state_evidence"]
+        content = {"case": state["_input_objects"][case_id]["sha256"], "profile": profile_record["sha256"],
+                   "source_manifest": manifest_artifact[1]["sha256"], "evidence": evidence[1]["sha256"],
+                   "unit_manifest": pool[manifest_id]["sha256"],
+                   "assignment": pool[choices["biological_unit_assignment"]]["sha256"]}
+        payload = {
+            "object_version": "0.2.0", "method_input_id": "process-method-input:assessment-" + digest(content)[:24],
+            "method_input_version": digest(content)[:24],
+            "product_case_ref": case["product_case_id"] + "@" + case["case_version"],
+            "product_case_sha256": content["case"], "cell_state_profile_id": profile["profile_id"],
+            "cell_state_profile_sha256": profile_record["sha256"], "data_view_ref": view["view_id"],
+            "observation_ids_sha256": view["observation_ids_sha256"],
+            "biological_unit_manifest_ref": manifest["manifest_id"] + "@" + manifest["manifest_version"],
+            "biological_unit_manifest_sha256": pool[manifest_id]["sha256"],
+            "biological_unit_assignment_sha256": content["assignment"],
+            "source_observations": {
+                "source_format": "p0_02_cell_state_evidence_parquet_v0.1", "producer_tool_id": "P0-02",
+                "producer_run_ref": run.run_id, "producer_tool_version": run.tool_version,
+                "artifact_manifest_path": "artifact:" + manifest_artifact[0],
+                "artifact_manifest_sha256": manifest_artifact[1]["sha256"],
+                "evidence_artifact_id": evidence[1]["artifact_id"], "evidence_path": "artifact:" + evidence[0],
+                "evidence_sha256": evidence[1]["sha256"], "label_level": "L1"},
+            "created_at": run.created_at.isoformat()}
+        payload, artifacts = inputs.bind_nested(state, payload, P006_SOURCE_ARTIFACTS)
+        payload = ProcessMethodInputV2.model_validate(payload).model_dump(mode="json")
+        choices["process_method_input"] = inputs.add_derived_object(state, tool_id=allowed.tool_id,
+            mode_id=allowed.mode_id, role="process_method_input",
+            schema_ref="bridge://schemas/process-method-input/v0.2", payload=payload,
+            dependencies=[case_id, profile_id, manifest_id, choices["biological_unit_assignment"]],
+            artifact_dependencies=artifacts)
+        return choices
+
+    def selected_blocker(self, state, tool_id, selection=None):
         if tool_id not in {"P0-03", "P0-04", "P0-05", "P0-06"}:
             return None
-        selected = {row["input_id"] for row in state.get("_input_selections", {}).get(tool_id, {}).get("object_inputs", [])}
+        saved = selection.model_dump(mode="json") if selection is not None else state.get("_input_selections", {}).get(tool_id, {})
+        selected = {row["input_id"] for row in saved.get("object_inputs", [])}
+        pending = list(selected)
+        while pending:
+            identifier = pending.pop()
+            for dependency in state["_input_objects"].get(identifier, {}).get("derivation_inputs", {}):
+                if dependency not in selected:
+                    selected.add(dependency)
+                    pending.append(dependency)
         drafts = [row for row in state.get("_scientific_drafts", [])
                   if selected.intersection(row["object_ids"].values())]
         if not drafts:

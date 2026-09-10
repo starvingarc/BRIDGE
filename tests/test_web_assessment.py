@@ -37,12 +37,571 @@ def propose_scope(client, sid, aid, tool="P0-05", mode="legacy_aggregation", **l
     return response.json()["assessment"]
 
 
+def settle_assessment(client, sid):
+    import time
+    until = time.monotonic() + 90
+    while time.monotonic() < until:
+        value = client.get(f"/api/sessions/{sid}").json()
+        if value["assessment"]["status"] != "running":
+            return value
+        time.sleep(.05)
+    pytest.fail("assessment did not finish")
+
+
 def approve_scope(client, sid, scope):
     response = client.post(f"/api/sessions/{sid}/assessment/approve", json={
         "scope_id": scope["scope_id"], "scope_digest": scope["scope_digest"],
     })
     assert response.status_code == 200, response.json()
     return response.json()
+
+
+def test_completed_qc_scope_binds_exact_v2_artifact_not_legacy_schema_match(
+        client, tmp_path, monkeypatch):
+    from pathlib import Path
+    from test_web_inputs import selected_p002_context
+    from test_web_intake import stage, stated_facts
+    from test_web_service import confirm_change
+    sid, aid, _, selection = selected_p002_context(client, tmp_path, monkeypatch, panel=True)
+    confirm_change(client, sid, stage(client, sid, aid, stated_facts(
+        source_family_id="source-family:selected-input")))
+    assert client.post(f"/api/sessions/{sid}/analysis-inputs", json=selection).status_code == 200
+    scope = propose_scope(client, sid, aid, "P0-02", None)
+    state = client.app.state.service.load(sid)
+    binding = state["_assessment"]["scope"]["binding"]
+    receipt = next(row for row in state["_tool_runs"] if row["tool_id"] == "P0-01")
+    raw = json.loads((client.app.state.service.directory(sid) / "receipts" / receipt["file"]).read_bytes())
+    actual = next(row for row in raw["artifacts"] if row["kind"] == "qc_profile_v2")
+    selected_view = json.loads(Path(actual["path"]).read_bytes())["selected_data_view"]
+    assert binding["data_view"] == selected_view
+    assert scope["data_view"]["n_observations"] == 4
+    assert binding["data_view_receipt"] == {"file": receipt["file"], "sha256": receipt["sha256"]}
+    assert len(state["_tool_runs"]) == 1
+    assert client.app.state.service.assessment.check(state) is None
+
+
+
+def producer_scientific_case(client, tmp_path, monkeypatch, *, with_producers=True):
+    """One synthetic upload and real QC/cell-state producers; no backend request fixture."""
+    import anndata as ad
+    from test_cell_state import _write_query, _build_snapshot
+    from test_input_qc import _lineage_metadata, _versioned_ref
+    from test_web_service import new_session, confirm_change
+    from test_web_intake import stage, stated_facts
+    from test_web_inputs import approve
+    path = _write_query(tmp_path / "producer-query.h5ad")
+    data = ad.read_h5ad(path)
+    data.obs["sample_id"] = "sample-a"
+    data.obs["capture_id"] = "capture-a"
+    data.write_h5ad(path)
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    aid = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", path.read_bytes())}).json()["uploads"][0]["id"]
+    lineage = _lineage_metadata()
+    lineage["observation_ref_columns"] = {}
+    lineage["constant_unit_refs"] = {
+        "capture": _versioned_ref("capture:capture-a@1.0.0"),
+        "preparation": _versioned_ref("preparation:product-a@1.0.0"),
+        "donor": _versioned_ref("donor:donor-a@1.0.0"),
+    }
+    declared = client.post(url + "/analysis-inputs/assets", json={
+        "upload_id": aid, "assay": "scRNA-seq", "matrix_location": "X",
+        "matrix_semantics": "raw_counts", "input_level": "count_ready",
+        "metadata": {"sample_id_column": "sample_id", "capture_id_column": "capture_id",
+                     "biological_unit_lineage": lineage}})
+    assert declared.status_code == 200, declared.json()
+    confirm_change(client, sid, declared.json())
+    confirm_change(client, sid, stage(client, sid, aid, stated_facts(
+        source_family_id="source-family:synthetic-assessment",
+        sample_id_column="sample_id", capture_id_column="capture_id")))
+    assert client.post(url + "/analysis-inputs", json=choice("P0-01", None, assets=[aid])).status_code == 200
+    if not with_producers:
+        service = client.app.state.service
+        service.settings = replace(service.settings, share_result_summaries=True)
+        return service, sid, aid
+    plan = client.post(url + "/prepare-analysis", json={"tool_id": "P0-01"}).json()["plan"]
+    assert approve(client, sid, plan)["plan"]["status"] == "completed"
+    _build_snapshot(tmp_path, monkeypatch)
+    service = client.app.state.service
+    service.settings = replace(service.settings,
+        cell_state_measurement_spec_ref="CELLSTATE-scRNA-shadow-v0.1", share_result_summaries=True)
+    selected = {**choice("P0-02", None, assets=[aid]),
+                "measurement_spec_ref": "CELLSTATE-scRNA-shadow-v0.1"}
+    assert client.post(url + "/analysis-inputs", json=selected).status_code == 200
+    plan = client.post(url + "/prepare-analysis", json={"tool_id": "P0-02"}).json()["plan"]
+    assert approve(client, sid, plan)["plan"]["status"] == "completed"
+    state = service.load(sid)
+    refs = [record for record in state["_input_objects"].values()
+            if record["schema_ref"] == "bridge://schemas/cell-state-evidence-profile/v0.3"]
+    assert len(refs) == 1
+    profile = service.inputs.verify(state, refs[0])
+    assert profile["n_observations"] == 4
+    assert profile["input_data_view"]["parent_asset_id"] == aid
+    return service, sid, aid
+
+
+def select_target_roots(client, sid):
+    """Reviewed synthetic role/region resources, not a constructed scientific request."""
+    from test_p0_03_target_regional import _base_payloads, ROLE_SCHEMAS, ROLE_VERSIONS
+    from bridge.web.scientific_inputs import encoded, digest
+    values = _base_payloads()
+    role_map = values["state_role_map"]
+    role_map["review_state"] = "reviewed"
+    role_map["assignments"] = [
+        {"state_id": "L1:Neuron_DA", "product_role": "target", "role_evidence_class": "synthetic",
+         "evidence_direction": "supports", "source_refs": ["review:synthetic-only"]},
+        {"state_id": "L1:Astrocyte", "product_role": "role_unresolved", "role_evidence_class": "unresolved",
+         "evidence_direction": "descriptive_only", "source_refs": ["review:synthetic-only"]},
+    ]
+    assessment = values["target_regional_assessment_spec"]
+    assessment.update(status="frozen", state_role_map_sha256=digest(role_map),
+        regional_denominator_state_ids=["L1:Neuron_DA"], regional_target_numerator_state_ids=["L1:Neuron_DA"],
+        whole_product_target_region_state_ids=["L1:Neuron_DA"])
+    values["measurement_spec"].update(independence_group_kind="donor",
+        reference_refs=["REF-PD-vMB-CELLSTATE-v0.2"])
+    service = client.app.state.service
+    state = service.load(sid)
+    objects = []
+    for role in ("product_definition_card", "state_role_map", "target_regional_assessment_spec", "measurement_spec"):
+        identifier = service.inputs.add_object(state, tool_id="P0-03", mode_id="default", role=role,
+            schema_ref=ROLE_SCHEMAS[role], object_version=ROLE_VERSIONS[role], data=encoded(values[role]))
+        objects.append({"role": role, "input_id": identifier})
+    service.save(state)
+    response = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-03", "default", objects))
+    assert response.status_code == 200, response.json()
+    return objects
+
+
+def test_registered_producers_materialize_target_request_without_backend_injection(
+        client, tmp_path, monkeypatch):
+    from bridge.web.assessment import AssessmentScope
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch)
+    selected = select_target_roots(client, sid)
+    scope = propose_scope(client, sid, aid, "P0-03", "default")
+    state = service.load(sid)
+    before = json.loads(json.dumps(state))
+    typed = AssessmentScope.model_validate(state["_assessment"]["scope"])
+    row, = service.inputs.assessment_candidates(state, typed)
+    assert row["blockers"] == [], row["blockers"]
+    assert row["request"] is not None
+    inputs = {ref.role: (ref, service.inputs.verify(state, state["_input_objects"][ref.input_id]))
+              for ref in row["request"].object_inputs}
+    assert len(inputs) == 11
+    case_ref, case = inputs["product_case"]
+    assert case["source_unit_kind"] == "preparation"
+    assert case["sample_or_preparation_ref"] == {"object_id": "preparation:product-a", "object_version": "1.0.0"}
+    assert case["biological_unit_manifest_sha256"] == inputs["biological_unit_manifest"][0].sha256
+    assert case["measurement_spec_ref"]["object_id"] == "CELLSTATE-scRNA-shadow-v0.1"
+    view = inputs["cell_state_evidence_profile"][1]["input_data_view"]
+    assert view == inputs["qc_readiness_profile"][1]["selected_data_view"] == typed.binding["data_view"]
+    assert view["n_observations"] == 4 and view["parent_asset_id"] == aid
+    assert inputs["biological_unit_assignment"][1]["observation_ids_sha256"] == view["observation_ids_sha256"]
+    assert inputs["state_role_map"][0].input_id == next(item["input_id"] for item in selected if item["role"] == "state_role_map")
+    assert state["_input_objects"][case_ref.input_id]["source"] == "agent_constructed"
+    assert state["_input_selections"] == before["_input_selections"]
+    assert state["_input_revision"] == before["_input_revision"]
+    again, = service.inputs.assessment_candidates(state, typed)
+    assert again["fingerprint"] == row["fingerprint"]
+    assert next(ref.input_id for ref in again["request"].object_inputs if ref.role == "product_case") == case_ref.input_id
+    assert service.assessment.check(state) is None
+    service.save(state)
+    monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
+    approve_scope(client, sid, scope)
+    done = settle_assessment(client, sid)
+    assert done["assessment"]["tool_runs_used"] == 1
+    assert done["assessment"]["stop_reason"] == "no_discriminating_check"
+    after = service.load(sid)
+    receipt = after["_tool_runs"][-1]
+    run = json.loads((service.directory(sid) / "receipts" / receipt["file"]).read_bytes())
+    assert run["execution_state"] == "partial"
+    ratios = run["result"]["channels"][0]
+    assert ratios["reason_codes"] == ["state_role_mapping_unresolved"]
+    assert ratios["target_identity_fraction"] is None
+    assert ratios["regional_fidelity_fraction"] is None
+    assert ratios["whole_product_target_region_fraction"] is None
+    assert len(run["measurements"]) == 3
+    assert all(row["raw_value"] is None and row["evidence_state"] == "unknown"
+               for row in run["measurements"])
+
+
+
+def select_development_roots(client, sid):
+    from test_p0_04_developmental_compatibility import _base_payloads, ROLE_SCHEMAS, ROLE_VERSIONS
+    from bridge.web.scientific_inputs import encoded
+    service = client.app.state.service
+    state = service.load(sid)
+    values = _base_payloads()
+    service.inputs.system_options(state)
+    values["development_window_spec"]["label_level"] = "L1"
+    vocabulary_id = next(service.inputs.verify(state, record)["vocabulary_id"]
+                         for record in state["_input_objects"].values()
+                         if record["source"] == "system_resource" and record["label"] == "annotation_vocabulary")
+    state_map = values["development_state_map"]
+    state_map.update(annotation_vocabulary_ref=vocabulary_id, assignments=[
+        {"state_id": "L1:Neuron_DA", "label_level": "L1", "stage_role": "within_window",
+         "target_related": True, "provenance_refs": [{"object_id": "review:synthetic-development", "object_version": "1"}]},
+        {"state_id": "L1:Astrocyte", "label_level": "L1", "stage_role": "unresolved",
+         "target_related": False, "provenance_refs": [{"object_id": "review:synthetic-development", "object_version": "1"}]},
+    ])
+    values["measurement_spec"].update(independence_group_kind="donor",
+        reference_refs=["REF-PD-vMB-CELLSTATE-v0.2"])
+    objects = []
+    for role in ("development_window_spec", "development_state_map", "measurement_spec"):
+        identifier = service.inputs.add_object(state, tool_id="P0-04", mode_id="default", role=role,
+            schema_ref=ROLE_SCHEMAS[role], object_version=ROLE_VERSIONS[role], data=encoded(values[role]))
+        objects.append({"role": role, "input_id": identifier})
+    service.save(state)
+    response = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-04", "default", objects))
+    assert response.status_code == 200, response.json()
+    return objects
+
+
+def select_off_target_roots(client, sid):
+    from bridge.web.scientific_inputs import encoded
+    from test_p0_06_real_methods import _attestation_receipt
+    service = client.app.state.service
+    state = service.load(sid)
+    role_id = next(row["input_id"] for row in state["_input_selections"]["P0-03"]["object_inputs"]
+                   if row["role"] == "state_role_map")
+    role_map = service.inputs.verify(state, state["_input_objects"][role_id])
+    manifest_id, manifest = next((identifier, service.inputs.verify(state, record))
+        for identifier, record in state["_input_objects"].items()
+        if record["source"] == "tool_output" and record["schema_ref"] == "bridge://schemas/biological-unit-manifest/v0.1")
+    profile = next(service.inputs.verify(state, record) for record in state["_input_objects"].values()
+                   if record["schema_ref"] == "bridge://schemas/cell-state-evidence-profile/v0.3")
+    resources = {
+        "off_target_assessment_spec": ("off-target-assessment-spec/v0.1", {
+            "object_version": "0.1.0", "assessment_spec_id": "off-target-assessment-spec:synthetic-selected",
+            "spec_version": "1.0.0", "product_definition_ref": role_map["product_definition_ref"],
+            "state_role_map_ref": {"object_id": role_map["state_role_map_id"], "object_version": role_map["map_version"]},
+            "state_role_map_sha256": state["_input_objects"][role_id]["sha256"],
+            "primary_denominator_id": "denominator:whole-selected-view",
+            "allowed_unknown_reason_ids": ["unknown", "unresolved", "unavailable", "ood", "source_conflict"],
+            "rare_state_rules": [], "active": True}),
+        "biological_unit_attestation_receipt": ("biological-unit-attestation-receipt/v0.1",
+            _attestation_receipt(manifest, state["_input_objects"][manifest_id]["sha256"], profile["input_data_view"])),
+    }
+    objects = []
+    for role, (schema, payload) in resources.items():
+        identifier = service.inputs.add_object(state, tool_id="P0-05", mode_id="hard_count_accounting", role=role,
+            schema_ref="bridge://schemas/" + schema, object_version="0.1.0", data=encoded(payload))
+        objects.append({"role": role, "input_id": identifier})
+    service.save(state)
+    response = client.post(f"/api/sessions/{sid}/analysis-inputs",
+                           json=choice("P0-05", "hard_count_accounting", objects))
+    assert response.status_code == 200, response.json()
+    return objects
+
+
+@pytest.mark.parametrize("tool,mode,select_roots", [
+    ("P0-04", "default", select_development_roots),
+    ("P0-05", "hard_count_accounting", select_off_target_roots),
+])
+def test_source_join_reuses_product_case_view_and_shared_roles(
+        client, tmp_path, monkeypatch, tool, mode, select_roots):
+    from bridge.web.assessment import AssessmentScope
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch)
+    target_roots = select_target_roots(client, sid)
+    select_roots(client, sid)
+    scope = propose_scope(client, sid, aid, tool, mode)
+    state = service.load(sid)
+    typed = AssessmentScope.model_validate(state["_assessment"]["scope"])
+    original = json.loads(json.dumps(state["_input_selections"]))
+    row, = service.inputs.assessment_candidates(state, typed)
+    assert row["blockers"] == [], row["blockers"]
+    values = {ref.role: service.inputs.verify(state, state["_input_objects"][ref.input_id])
+              for ref in row["request"].object_inputs}
+    view = values["cell_state_evidence_profile"]["input_data_view"]
+    assert view["n_observations"] == 4 and view["parent_asset_id"] == aid
+    assert values["product_case"]["sample_or_preparation_ref"]["object_id"] == "preparation:product-a"
+    if tool == "P0-05":
+        role_id = next(item["input_id"] for item in target_roots if item["role"] == "state_role_map")
+        assert next(ref.input_id for ref in row["request"].object_inputs if ref.role == "state_role_map") == role_id
+    assert state["_input_selections"] == original
+    assert set(item["input_id"] for item in target_roots) <= set(typed.binding["resources"])
+    service.save(state)
+    monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
+    approve_scope(client, sid, scope)
+    done = settle_assessment(client, sid)
+    assert done["assessment"]["tool_runs_used"] == 1
+    assert done["assessment"]["stop_reason"] == "no_discriminating_check"
+    after = service.load(sid)
+    receipt = after["_tool_runs"][-1]
+    run = json.loads((service.directory(sid) / "receipts" / receipt["file"]).read_bytes())
+    assert run["execution_state"] == "succeeded"
+    if tool == "P0-05":
+        assert run["result"]["accounting"]["n_observations"] == 4
+        roles = {row["product_role"]: row["consensus_supported_count"]
+                 for row in run["result"]["accounting"]["role_counts"]}
+        assert roles["target"] == 2 and roles["role_unresolved"] == 2
+        assert run["result"]["accounting"]["total_soft_mass"] is None
+        assert run["measurements"] == []
+    else:
+        assert run["result"]["domain_score"] is None
+        assert run["result"]["score_state"] == "unavailable"
+        assert run["result"]["evidence_state"] == "shadow"
+        whole = run["result"]["whole_product_profile"]
+        assert whole["denominator"] == 4
+        assert {row["role"]: row["fraction"] for row in whole["role_fractions"]} == {
+            "earlier": 0.0, "within_window": 0.5, "later": 0.0, "branch_shift": 0.0, "unresolved": 0.5}
+        assert run["result"]["target_related_profile"]["denominator"] == 2
+        assert len(run["measurements"]) == 10
+
+
+
+def select_process_roots(client, sid, tmp_path, case, view):
+    """Select only caller-owned method/program/protocol roots, never a backend request."""
+    from test_p0_06_real_methods import _method_request, _attestation_receipt, ROLE_CONTRACTS
+    from bridge.web.scientific_inputs import encoded
+    root = tmp_path / "process-roots"
+    root.mkdir()
+    fixture = _method_request(root, raw_counts=True)
+    roots = {item.role: json.loads(item.path.read_bytes()) for item in fixture.object_inputs
+             if item.role in {"program_spec", "protocol_ir", "measurement_spec", "process_method_spec"}}
+    roots["protocol_ir"].update(product_case_ref={
+        "object_id": case["product_case_id"], "object_version": case["case_version"]},
+        metadata_state="not_provided", batch_confounding_state="not_assessed",
+        independent_replicate_count=0, comparable_group_count=0, declared_process_step_ids=[])
+    roots["process_method_spec"].update(expression_asset_id=view["artifact_id"], gene_symbol_column=None)
+    roots["measurement_spec"].update(independence_group_kind="donor")
+    service = client.app.state.service
+    state = service.load(sid)
+    manifest_id, manifest = next((identifier, service.inputs.verify(state, record))
+        for identifier, record in state["_input_objects"].items()
+        if record["source"] == "tool_output" and record["schema_ref"] == "bridge://schemas/biological-unit-manifest/v0.1")
+    roots["biological_unit_attestation_receipt"] = _attestation_receipt(
+        manifest, state["_input_objects"][manifest_id]["sha256"], view)
+    objects = []
+    for role, value in roots.items():
+        schema, version = ROLE_CONTRACTS[role]
+        identifier = service.inputs.add_object(state, tool_id="P0-06", mode_id="method_runtime_source_bound",
+            role=role, schema_ref=schema, object_version=version, data=encoded(value))
+        objects.append({"role": role, "input_id": identifier})
+    service.save(state)
+    response = client.post(f"/api/sessions/{sid}/analysis-inputs",
+        json=choice("P0-06", "method_runtime_source_bound", objects))
+    assert response.status_code == 200, response.json()
+    return objects
+
+
+def test_source_bound_process_descriptor_uses_real_producer_without_observation_invention(
+        client, tmp_path, monkeypatch):
+    from bridge.web.assessment import AssessmentScope
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch)
+    select_target_roots(client, sid)
+    select_development_roots(client, sid)
+    propose_scope(client, sid, aid, "P0-03", "default")
+    state = service.load(sid)
+    target, = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
+    assert target["blockers"] == []
+    refs = {item.role: item for item in target["request"].object_inputs}
+    case = service.inputs.verify(state, state["_input_objects"][refs["product_case"].input_id])
+    view = state["_assessment"]["scope"]["binding"]["data_view"]
+    service.save(state)
+    explicit = select_process_roots(client, sid, tmp_path, case, view)
+    scope = propose_scope(client, sid, aid, "P0-06", "method_runtime_source_bound")
+    state = service.load(sid)
+    original_count = len(state["_input_objects"])
+    row, = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
+    assert row["blockers"] == [], row["blockers"]
+    refs = {item.role: item for item in row["request"].object_inputs}
+    actual_case = service.inputs.verify(state, state["_input_objects"][refs["product_case"].input_id])
+    assert actual_case == case
+    descriptor = service.inputs.verify(state, state["_input_objects"][refs["process_method_input"].input_id])
+    assert descriptor["object_version"] == "0.2.0"
+    assert "observation_states" not in descriptor
+    assert descriptor["observation_ids_sha256"] == view["observation_ids_sha256"]
+    source = descriptor["source_observations"]
+    assert source["producer_tool_id"] == "P0-02"
+    assert source["label_level"] == "L1"
+    assert source["evidence_path"].endswith("cell_state_evidence.parquet")
+    assert source["artifact_manifest_path"].endswith("artifact_manifest.json")
+    assert row["request"].assets[0].checksum == view["sha256"]
+    assert row["request"].assets[0].asset_id == view["artifact_id"]
+    assert len(state["_input_objects"]) == original_count + 1
+    again, = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
+    assert again["fingerprint"] == row["fingerprint"]
+    assert len(state["_input_objects"]) == original_count + 1
+    assert refs["protocol_ir"].input_id == next(item["input_id"] for item in explicit if item["role"] == "protocol_ir")
+    service.save(state)
+    monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
+    approve_scope(client, sid, scope)
+    done = settle_assessment(client, sid)
+    assert done["assessment"]["tool_runs_used"] == 1
+    assert done["assessment"]["stop_reason"] == "no_discriminating_check"
+    after = service.load(sid)
+    receipt = after["_tool_runs"][-1]
+    run = json.loads((service.directory(sid) / "receipts" / receipt["file"]).read_bytes())
+    assert run["execution_state"] in {"succeeded", "partial"}
+    assert run["result"]["domain_score"] is None
+    assert run["result"]["score_state"] == "unavailable"
+
+
+def test_scope_admitted_qc_unlocks_exploratory_input_without_extra_authority(
+        client, tmp_path, monkeypatch):
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch, with_producers=False)
+    response = client.post(f"/api/sessions/{sid}/assessment/propose", json={
+        "question": "Describe QC and authorized exploratory cycle coverage, retaining missing genes.",
+        "upload_id": aid,
+        "allowed_modes": [{"tool_id": "P0-01", "mode_id": None},
+                          {"tool_id": "P0-06", "mode_id": "exploratory_process"}],
+        "max_tool_runs": 3, "max_model_turns": 4})
+    assert response.status_code == 200, response.json()
+    scope = response.json()["assessment"]
+    assert scope["data_view"]["state"] == "not_available"
+    monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
+    approve_scope(client, sid, scope)
+    done = settle_assessment(client, sid)
+    assert done["assessment"]["tool_runs_used"] == 2, done["assessment"]
+    assert done["assessment"]["stop_reason"] == "no_discriminating_check"
+    state = service.load(sid)
+    assert [row["tool_id"] for row in state["_tool_runs"]] == ["P0-01", "P0-06"]
+    assert state["_assessment"]["scope"]["binding"]["data_view"] is None
+    receipt = state["_tool_runs"][-1]
+    run = json.loads((service.directory(sid) / "receipts" / receipt["file"]).read_bytes())
+    view = run["result"]["input_contract"]["data_view"]
+    assert view["parent_asset_id"] == aid and view["n_observations"] == 4
+    assert run["measurements"] == []
+
+
+def test_exploratory_resource_is_packaged_and_scope_bound(client, tmp_path, monkeypatch):
+    from hashlib import sha256
+    from importlib.resources import files
+    from bridge.web.assessment import AssessmentScope
+    resource = files("bridge.tool_packages.p0_06_proliferation_stress_response").joinpath(
+        "resources/seurat-cell-cycle-v5.5.1-candidate.json")
+    raw = resource.read_bytes()
+    assert sha256(raw).hexdigest() == "0a5c8381d7fab6f2d7ab97bbf95af45953be4c8f49df6ec578bf2c70c75dff73"
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch)
+    scope = propose_scope(client, sid, aid, "P0-06", "exploratory_process")
+    resource_ref = "bridge://resources/seurat-cell-cycle-candidate/v5.5.1"
+    public_resource, = [row for row in scope["resources"] if row.get("resource_ref") == resource_ref]
+    assert public_resource["schema_ref"] is None
+    assert public_resource["source"] == "package_resource"
+    assert public_resource["object_version"] == "0.1.0"
+    assert public_resource["sha256"] == sha256(raw).hexdigest()
+    state = service.load(sid)
+    typed = AssessmentScope.model_validate(state["_assessment"]["scope"])
+    row, = service.inputs.assessment_candidates(state, typed)
+    assert row["blockers"] == [], row["blockers"]
+    request = row["request"]
+    assert len(request.assets) == 1
+    obj, = request.object_inputs
+    value = service.inputs.verify(state, state["_input_objects"][obj.input_id])
+    assert value["data_view"] == typed.binding["data_view"]
+    assert value["data_view"]["n_observations"] == 4
+    assert value["data_view"]["parent_asset_id"] == aid
+    assert value["resource_sha256"] == sha256(raw).hexdigest()
+    assert value["s_genes"] == json.loads(raw)["lists"]["s.genes"]["genes"]
+    assert value["g2m_genes"] == json.loads(raw)["lists"]["g2m.genes"]["genes"]
+    assert request.assets[0].checksum == value["data_view"]["sha256"]
+    assert request.assets[0].metadata["parent_asset_id"] == aid
+    assert request.assets[0].metadata["data_view_id"] == value["data_view"]["view_id"]
+    count = len(state["_input_objects"])
+    again, = service.inputs.assessment_candidates(state, typed)
+    assert again["fingerprint"] == row["fingerprint"]
+    assert len(state["_input_objects"]) == count
+    try:
+        resource.write_bytes(raw + b"\n")
+        assert service.assessment.check(state) == "scope_resource_changed"
+        changed, = service.inputs.assessment_candidates(state, typed)
+        assert changed["blockers"] == ["exploratory_resource_changed"]
+        assert len(state["_input_objects"]) == count
+        rejected = client.post(f"/api/sessions/{sid}/assessment/approve", json={
+            "scope_id": scope["scope_id"], "scope_digest": scope["scope_digest"]})
+        assert rejected.status_code == 409 and rejected.json()["detail"] == "scope_resource_changed"
+    finally:
+        resource.write_bytes(raw)
+    assert service.assessment.check(state) is None
+    assert len([item for item in state["_input_objects"].values() if item["source"] == "agent_constructed"]) == 1
+    service.save(state)
+    monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
+    approve_scope(client, sid, scope)
+    done = settle_assessment(client, sid)
+    assert done["assessment"]["tool_runs_used"] == 1
+    assert done["assessment"]["stop_reason"] == "no_discriminating_check"
+    after = service.load(sid)
+    receipt = after["_tool_runs"][-1]
+    run = json.loads((service.directory(sid) / "receipts" / receipt["file"]).read_bytes())
+    assert run["result"]["runtime_mode"] == "exploratory_process"
+    assert run["result"]["domain_score"] is None
+    assert run["result"]["interpretation_scope"] == "descriptive_only"
+    assert run["result"]["n_independent_replicates"] is None
+    assert run["measurements"] == []
+
+
+def test_scientific_root_review_unit_and_program_gaps_are_explicit(client, tmp_path, monkeypatch):
+    from bridge.web.assessment import AssessmentScope
+    from bridge.web.scientific_inputs import encoded
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch)
+    select_target_roots(client, sid)
+    select_development_roots(client, sid)
+    select_off_target_roots(client, sid)
+    baseline = service.load(sid)["_input_selections"]
+    cases = [
+        ("P0-03", "state_role_map", {"review_state": "draft"}, "state_role_review_required"),
+        ("P0-03", "target_regional_assessment_spec", {"status": "candidate"}, "regional_definition_review_required"),
+        ("P0-04", "development_state_map", {"review_state": "draft"}, "development_state_review_required"),
+        ("P0-04", "development_window_spec", {"review_state": "candidate", "reviewer_ref": None, "confirmed_at": None},
+         "development_window_review_required"),
+    ]
+    for tool, role, changes, reason in cases:
+        state = service.load(sid)
+        selected = json.loads(json.dumps(baseline[tool]))
+        original = next(item["input_id"] for item in selected["object_inputs"] if item["role"] == role)
+        record = state["_input_objects"][original]
+        payload = service.inputs.verify(state, record)
+        payload.update(changes)
+        identifier = service.inputs.add_object(state, tool_id=tool, mode_id="default", role=role,
+            schema_ref=record["schema_ref"], object_version=record["object_version"], data=encoded(payload))
+        selected["object_inputs"] = [{"role": item["role"], "input_id": identifier if item["role"] == role else item["input_id"]}
+                                     for item in selected["object_inputs"]]
+        service.save(state)
+        assert client.post(f"/api/sessions/{sid}/analysis-inputs", json=selected).status_code == 200
+        propose_scope(client, sid, aid, tool, "default")
+        state = service.load(sid)
+        count = len(state["_input_objects"])
+        row, = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
+        assert row["blockers"] == [reason]
+        assert row["request"] is None and len(state["_input_objects"]) == count
+        assert client.post(f"/api/sessions/{sid}/analysis-inputs", json=baseline[tool]).status_code == 200
+    selected = json.loads(json.dumps(baseline["P0-05"]))
+    selected["object_inputs"] = [item for item in selected["object_inputs"] if item["role"] != "biological_unit_attestation_receipt"]
+    assert client.post(f"/api/sessions/{sid}/analysis-inputs", json=selected).status_code == 200
+    for tool, mode, reason in [
+        ("P0-05", "hard_count_accounting", "scientific_resource_required:biological_unit_attestation_receipt"),
+        ("P0-06", "method_runtime_source_bound", "scientific_resource_required:program_spec")]:
+        propose_scope(client, sid, aid, tool, mode)
+        state = service.load(sid)
+        row, = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
+        assert row["blockers"] == [reason]
+        assert row["request"] is None
+    assert len(service.load(sid)["_tool_runs"]) == 2
+
+
+def test_canonical_source_drift_invalidates_derived_case_and_scope(client, tmp_path, monkeypatch):
+    from pathlib import Path
+    from bridge.web.assessment import AssessmentScope
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch)
+    select_target_roots(client, sid)
+    propose_scope(client, sid, aid, "P0-03", "default")
+    state = service.load(sid)
+    typed = AssessmentScope.model_validate(state["_assessment"]["scope"])
+    row, = service.inputs.assessment_candidates(state, typed)
+    case = next(item for item in row["request"].object_inputs if item.role == "product_case")
+    source = next(item for item in row["request"].object_inputs if item.role == "cell_state_evidence_profile")
+    path = Path(source.path)
+    raw = path.read_bytes()
+    try:
+        path.write_bytes(raw + b"\n")
+        assert service.assessment.check(state) == "scope_resource_changed"
+        with pytest.raises(ValueError):
+            service.inputs.verify(state, state["_input_objects"][case.input_id])
+        blocked, = service.inputs.assessment_candidates(state, typed)
+        assert blocked["blockers"] and blocked["request"] is None
+    finally:
+        path.write_bytes(raw)
+    assert service.assessment.check(state) is None
 
 
 def test_empty_evidence_cannot_complete_on_provider_assertion(client, tmp_path, monkeypatch):

@@ -79,6 +79,9 @@ class AssessmentCoordinator:
         resources = files("bridge.tool_packages.p0_02_cell_state.resources")
         science = {name: hashlib.sha256(resources.joinpath(name).read_bytes()).hexdigest()
                    for name in ("biological_review_draft.yaml", "product_context_review_draft.yaml")}
+        if any(row.tool_id == "P0-06" and row.mode_id == "exploratory_process" for row in allowed_modes):
+            _, candidate = self.service.scientific_inputs.exploratory_resource()
+            science[candidate["resource_ref"]] = candidate["sha256"]
         try:
             _, references = self.service.inputs.reference_resources(state)
             reference = {"state": "available", "resources": references}
@@ -95,7 +98,8 @@ class AssessmentCoordinator:
                 continue
             record = next((row for row in state["_input_objects"].values()
                 if row.get("receipt_file") == receipt["file"]
-                and row["schema_ref"] == "bridge://schemas/qc-readiness-profile/v0.2"), None)
+                and row["schema_ref"] == "bridge://schemas/qc-readiness-profile/v0.2"
+                and self.service.inputs.receipt_artifacts(state, row)[row["artifact_id"]]["kind"] == "qc_profile_v2"), None)
             if record:
                 view = self.service.inputs.verify(state, record)["selected_data_view"]
                 view_receipt = {"file": receipt["file"], "sha256": receipt["sha256"]}
@@ -105,8 +109,7 @@ class AssessmentCoordinator:
                 "resources": records, "reference": reference, "science": science,
                 "measurement_spec_ref": self.service.settings.cell_state_measurement_spec_ref,
                 "knowledge": hashlib.sha256(files("bridge.resources").joinpath("knowledge_snapshot.json.gz").read_bytes()).hexdigest(),
-                "selections": {tool: value for tool, value in state["_input_selections"].items()
-                               if (tool, value["mode_id"]) in {(row.tool_id, row.mode_id) for row in allowed_modes}},
+                "selections": self.service.inputs.assessment_selections(state, allowed_modes),
                 "tool_contracts": [spec.model_dump(mode="json") for spec in self.service.registry.list()
                                   if spec.tool_id in {row.tool_id for row in allowed_modes}]}
 
@@ -121,11 +124,8 @@ class AssessmentCoordinator:
                     raise ValueError("input_mode_required")
         except ValueError:
             raise HTTPException(422, "invalid_assessment_mode") from None
-        resource_ids = sorted({row["input_id"] for selected in state["_input_selections"].values()
-                               if (selected["tool_id"], selected["mode_id"]) in
-                               {(mode.tool_id, mode.mode_id) for mode in body.allowed_modes}
-                               for row in selected["object_inputs"]})
         try:
+            resource_ids = self.service.inputs.assessment_resource_ids(state, body.upload_id, body.allowed_modes)
             binding = self._binding(state, body.upload_id, resource_ids, body.allowed_modes)
         except (ValueError, OSError, KeyError) as exc:
             raise HTTPException(409, "assessment_inputs_not_confirmed_or_valid") from exc
@@ -239,7 +239,11 @@ class AssessmentCoordinator:
             "data_view": view,
             "resources": [{"alias": "R-" + identifier[:12], **{key: row[key] for key in
                 ("schema_ref", "object_version", "sha256", "source")}}
-                for identifier, row in scope["binding"]["resources"].items()],
+                for identifier, row in scope["binding"]["resources"].items()] + [
+                    {"alias": "R-seurat-cell-cycle-v5.5.1", "schema_ref": None,
+                     "resource_ref": key, "object_version": "0.1.0", "sha256": value, "source": "package_resource"}
+                    for key, value in scope["binding"]["science"].items()
+                    if key == "bridge://resources/seurat-cell-cycle-candidate/v5.5.1"],
             "stop_conditions": ["input_or_resource_change", "explicit_stop", "finite_budgets",
                                 "no_eligible_check", "necessary_fact", "result_sharing_disabled"],
             "question_sent_to_model": True,

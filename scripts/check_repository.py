@@ -148,9 +148,9 @@ WEB_PREVIEW_FILES = (
     Path("web/src/components/ScientificInputs.tsx"),
     Path("web/tests/clarification-card.test.tsx"),
     Path("web/tests/scientific-inputs.test.tsx"),
-    # Owner-selected candidate resource and required license; not runtime defaults.
-    Path("plans/resources/seurat-cell-cycle-v5.5.1-candidate.json"),
-    Path("plans/resources/seurat-cell-cycle-LICENSE.txt"),
+    # Owner-selected exploratory resource and required license; not formal runtime defaults.
+    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/resources/seurat-cell-cycle-v5.5.1-candidate.json"),
+    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/resources/seurat-cell-cycle-LICENSE.txt"),
     # Owner-approved Task 29: one candidate selection resource and its contract tests.
     Path("src/bridge/tool_packages/p0_01_input_qc/measurement_specs/qc_scrna_robust_candidate_v0.1.yaml"),
     Path("tests/test_qc_selection.py"),

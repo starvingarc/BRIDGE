@@ -201,6 +201,94 @@ def test_selected_p002_panel_declaration_uses_read_only_qc_enrichment(
     ) == before_catalog
 
 
+def test_scientific_assets_use_real_filtered_qc_not_original_upload(client, tmp_path):
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+    from scipy import sparse
+    from bridge.domain.models import CaseInputAsset, CaseInputBundle
+    from bridge.toolkit.contracts import ToolRequest
+    from test_cell_state import GENES
+    from test_web_service import new_session, declare_source, confirm_change
+    genes = GENES + ["MT-ND1"] + [f"EXTRA-{index}" for index in range(279)]
+    counts = np.random.default_rng(7301).poisson(3, size=(256, len(genes)))
+    counts[[0, 255], :] = 0
+    counts[[0, 255], 0] = 1
+    path = tmp_path / "real-filtered-parent.h5ad"
+    ad.AnnData(sparse.csr_matrix(counts), obs=pd.DataFrame(
+        {"sample_id": ["sample-a"] * 256, "capture_id": ["capture-a"] * 256},
+        index=[f"cell-{index:03d}" for index in range(256)]),
+        var=pd.DataFrame(index=genes)).write_h5ad(path)
+    original = path.read_bytes()
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    aid = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", original)}).json()["uploads"][0]["id"]
+    staged = client.post(url + "/analysis-inputs/assets", json={
+        "upload_id": aid, "assay": "scRNA-seq", "matrix_location": "X", "matrix_semantics": "raw_counts",
+        "input_level": "count_ready", "metadata": {"sample_id_column": "sample_id", "capture_id_column": "capture_id"}})
+    assert staged.status_code == 200, staged.json()
+    confirm_change(client, sid, staged.json())
+    declare_source(client, sid, aid, "source-family:real-filtered-synthetic")
+    service = client.app.state.service
+    state = service.load(sid)
+    asset = CaseInputAsset.model_validate(state["_asset_declarations"][aid])
+    request = ToolRequest(request_id="real-filtered-scientific", tool_id="P0-01",
+        output_dir=service.directory(sid) / "runs", measurement_spec_ref="QC-scRNA-candidate-v0.1",
+        parameters={"run_scrublet": True, "select_qc_eligible_cells": True},
+        assets=[asset.to_toolkit_asset()])
+    service.propose_request(state, CaseInputBundle(bundle_id="real-filtered-scientific", version="1", assets=[asset]),
+                            request, "Explicit synthetic QC filtering with real Scrublet")
+    done = approve(client, sid, state["plan"])
+    state = service.load(sid)
+    assert done["plan"]["status"] == "completed", state["_tool_runs"][-1]
+    qc = next(service.inputs.verify(state, record) for record in state["_input_objects"].values()
+              if record["source"] == "tool_output" and Path(record["path"]).name == "qc_readiness_profile_v2.json")
+    view = qc["selected_data_view"]
+    assert view["view_kind"] == "qc_selected_observations"
+    assert 0 < view["n_observations"] < 256
+    assert view["parent_asset_sha256"] == hashlib.sha256(original).hexdigest()
+    assert view["sha256"] != view["parent_asset_sha256"]
+    for tool in ("P0-03", "P0-04", "P0-06"):
+        selected = service.inputs.selected_asset(state, tool, aid)
+        assert selected.asset_id == view["artifact_id"]
+        assert selected.checksum == view["sha256"]
+        assert selected.metadata["parent_asset_id"] == aid
+        assert selected.metadata["parent_asset_sha256"] == view["parent_asset_sha256"]
+        assert selected.metadata["data_view_id"] == view["view_id"]
+        filtered = ad.read_h5ad(selected.path)
+        assert filtered.n_obs == view["n_observations"]
+        assert "cell-000" not in filtered.obs_names and "cell-255" not in filtered.obs_names
+        assert filtered.var_names.tolist() == genes
+        assert filtered.obs["sample_id"].unique().tolist() == ["sample-a"]
+        if tool == "P0-06":
+            # Explicit caller-declared compatibility cannot bypass an existing QC view.
+            assert service.inputs.selected_asset(state, tool, aid, manual_exploratory=True) == selected
+
+
+@pytest.mark.parametrize("tool_id", ["P0-03", "P0-04", "P0-06"])
+def test_scientific_asset_binding_retains_verified_qc_view_and_parent(
+        client, tmp_path, monkeypatch, tool_id):
+    sid, aid, data, _ = selected_p002_context(client, tmp_path, monkeypatch, panel=True)
+    service = client.app.state.service
+    state = service.load(sid)
+    before = json.loads(json.dumps(state))
+    asset = service.inputs.selected_asset(state, tool_id, aid)
+    qc = next(service.inputs.verify(state, record) for record in state["_input_objects"].values()
+              if record["schema_ref"] == "bridge://schemas/qc-readiness-profile/v0.2"
+              and Path(record["path"]).name == "qc_readiness_profile_v2.json"
+              and record["source"] == "tool_output")
+    view = qc["selected_data_view"]
+    assert view["n_observations"] == 4
+    assert asset.metadata["data_view_id"] == view["view_id"]
+    assert asset.metadata["parent_asset_sha256"] == hashlib.sha256(data).hexdigest()
+    assert asset.checksum == view["sha256"]
+    assert asset.metadata["sample_id"] == "panel-sample"
+    assert asset.metadata["source_family_id"] == "source-family:selected-input"
+    assert asset.matrix_location == "X"
+    assert asset.matrix_semantics == "raw_counts"
+    assert state == before
+
+
 def test_selected_p002_ignores_corrupt_qc_receipt_for_other_upload(
         client, tmp_path, monkeypatch):
     sid, earlier, _, selection = selected_p002_context(
