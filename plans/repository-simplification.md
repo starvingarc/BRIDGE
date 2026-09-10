@@ -149,14 +149,16 @@ integration gate, not required for pure documentation edits.
 Preserve the public artifact contract and all existing differences in renderer
 configuration, plot semantics and SVG security policy. Find the identical
 _render_payloads bodies in P0-07 through P0-10 and replace only those copies with
-one small shared implementation. Investigate the identical SVG sanitation in
-P0-11 and P0-12: share it only if its allowlist and helpers are also equivalent.
-Do not unify differing rendering variants via flags or create a general framework.
+one small shared implementation. The P0-11 and P0-12 SVG sanitation bodies are structurally identical, but P0-12
+additionally permits stroke-dashoffset. Their security policies are not equivalent;
+leave those implementations unchanged in this pass. Do not unify differing
+rendering variants via flags or create a general framework.
 No changes to Pydantic contracts or scientific models.
 
 Add failing behavioral tests before code changes, then verify real figure export
-formats and metadata, figure closure on success/failure, and SVG accepted/rejected
-content. Include the shared implementation in existing renderer provenance/
+formats and metadata, byte-equivalence with the pre-refactor rendering behavior,
+and figure closure on success/failure. Preserve existing SVG security regression
+coverage without changing either policy. Include the shared implementation in existing renderer provenance/
 configuration identity so changed shared logic cannot silently retain old hashes.
 Use existing test organization where possible. Run focused renderer/security
 regressions and report RED/GREEN commands/output. Keep differences explicit.
