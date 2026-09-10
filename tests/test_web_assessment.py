@@ -225,6 +225,67 @@ def test_registered_producers_materialize_target_request_without_backend_injecti
 
 
 
+def test_product_case_version_tracks_real_producer_and_manifest_content(
+        client, tmp_path, monkeypatch):
+    from bridge.web.assessment import AssessmentScope
+    from test_web_inputs import approve
+    from test_web_service import confirm_change
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch)
+    select_target_roots(client, sid)
+
+    def prepared_case():
+        propose_scope(client, sid, aid, "P0-03", "default")
+        state = service.load(sid)
+        scope = AssessmentScope.model_validate(state["_assessment"]["scope"])
+        row, = service.inputs.assessment_candidates(state, scope)
+        assert row["blockers"] == [], row["blockers"]
+        reference = next(item for item in row["request"].object_inputs if item.role == "product_case")
+        value = service.inputs.verify(state, state["_input_objects"][reference.input_id])
+        count = len(state["_input_objects"])
+        again, = service.inputs.assessment_candidates(state, scope)
+        repeated = next(item for item in again["request"].object_inputs if item.role == "product_case")
+        assert repeated == reference
+        assert service.inputs.verify(state, state["_input_objects"][repeated.input_id]) == value
+        assert len(state["_input_objects"]) == count
+        service.save(state)
+        return value, scope.binding["data_view"]
+
+    original, original_view = prepared_case()
+    url = f"/api/sessions/{sid}"
+    plan = client.post(url + "/prepare-analysis", json={"tool_id": "P0-02"}).json()["plan"]
+    assert approve(client, sid, plan)["plan"]["status"] == "completed"
+    rerun, rerun_view = prepared_case()
+    assert rerun_view == original_view
+    assert rerun["measurement_spec_ref"] == original["measurement_spec_ref"]
+    assert rerun["biological_unit_manifest_sha256"] == original["biological_unit_manifest_sha256"]
+    assert rerun["provenance_refs"] != original["provenance_refs"]
+    assert rerun["created_at"] != original["created_at"]
+    assert rerun["case_version"] != original["case_version"]
+
+    # A new explicit lineage declaration must become a real new QC manifest.
+    metadata = json.loads(json.dumps(service.load(sid)["_asset_declarations"][aid]["metadata"]))
+    metadata["biological_unit_lineage"]["independence_scope_ref"]["object_version"] = "2.0.0"
+    declared = client.post(url + "/analysis-inputs/assets", json={
+        "upload_id": aid, "assay": "scRNA-seq", "matrix_location": "X",
+        "matrix_semantics": "raw_counts", "input_level": "count_ready", "metadata": metadata})
+    assert declared.status_code == 200, declared.json()
+    confirm_change(client, sid, declared.json())
+    from test_web_intake import stage, stated_facts
+    confirm_change(client, sid, stage(client, sid, aid, stated_facts(
+        source_family_id="source-family:synthetic-assessment",
+        sample_id_column="sample_id", capture_id_column="capture_id")))
+    for tool in ("P0-01", "P0-02"):
+        plan = client.post(url + "/prepare-analysis", json={"tool_id": tool}).json()["plan"]
+        assert approve(client, sid, plan)["plan"]["status"] == "completed"
+    changed, changed_view = prepared_case()
+    assert changed_view["sha256"] == original_view["sha256"]
+    assert changed["biological_unit_manifest_sha256"] != rerun["biological_unit_manifest_sha256"]
+    assert changed["independence_scope_ref"] == {
+        "object_id": "independence-scope:study-a", "object_version": "2.0.0"}
+    assert original["product_case_id"] == rerun["product_case_id"] == changed["product_case_id"]
+    assert len({original["case_version"], rerun["case_version"], changed["case_version"]}) == 3
+
+
 def select_development_roots(client, sid):
     from test_p0_04_developmental_compatibility import _base_payloads, ROLE_SCHEMAS, ROLE_VERSIONS
     from bridge.web.scientific_inputs import encoded
@@ -432,9 +493,50 @@ def test_source_bound_process_descriptor_uses_real_producer_without_observation_
     after = service.load(sid)
     receipt = after["_tool_runs"][-1]
     run = json.loads((service.directory(sid) / "receipts" / receipt["file"]).read_bytes())
-    assert run["execution_state"] in {"succeeded", "partial"}
+    assert run["execution_state"] == "partial"
     assert run["result"]["domain_score"] is None
     assert run["result"]["score_state"] == "unavailable"
+    assert run["result"]["reason_codes"] == [
+        "cell_cycle_gene_coverage_insufficient", "process_batch_confounding_unresolved",
+        "process_metadata_incomplete", "process_replication_insufficient",
+        "program_gene_coverage_insufficient"]
+    assert run["result"]["analysis_mode"] == "descriptive_only"
+    assert run["result"]["process_attribution_state"] == "cannot_attribute"
+    assert run["result"]["untriggered_interpretation"] == "not_evidence_of_safety"
+    assert run["result"]["program_results"] == []
+    from collections import Counter
+    from pathlib import Path
+    import hashlib
+    artifacts = [item for item in run["artifacts"] if item["kind"] == "measurement_result_v2"]
+    assert len(artifacts) == 5
+    measurements = []
+    for artifact in artifacts:
+        raw = Path(artifact["path"]).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == artifact["sha256"]
+        measurements.append(json.loads(raw))
+    assert Counter(item["metric_name"] for item in measurements) == {
+        "program_score_mean": 4, "cell_cycle_cycling_fraction": 1}
+    projections = run["result"]["measurement_artifacts"]
+    assert Counter((item["source_method_id"], item["program_id"]) for item in projections) == {
+        ("PROC-SCORE-DECOUPLER", "program:proliferation"): 1,
+        ("PROC-SCORE-DECOUPLER", "program:stress"): 1,
+        ("PROC-SCORE-SCANPY", "program:proliferation"): 1,
+        ("PROC-SCORE-SCANPY", "program:stress"): 1,
+        ("PROC-CYCLE-AGG", "program:cell-cycle"): 1}
+    assert {item["artifact_id"] for item in projections} == {item["artifact_id"] for item in artifacts}
+    assert {item["measurement_id"] for item in projections} == {item["measurement_id"] for item in measurements}
+    assert all(item["n_observations"] == 4 and item["assessment_state"] == "not_assessed"
+               and item["analysis_unit_ref"] == "preparation:product-a@1.0.0"
+               and item["independence_group_ref"] == "donor:donor-a@1.0.0"
+               for item in projections)
+    for measurement in measurements:
+        assert all(measurement[field] is None for field in (
+            "raw_value", "unit", "numerator", "denominator", "interval", "domain_score"))
+        assert measurement["evidence_state"] == "unavailable"
+        assert measurement["score_state"] == "unavailable"
+        assert measurement["source_execution_state"] == "partial"
+        assert measurement["source_run_ref"] == f"tool-run:{run['run_id']}@{run['tool_version']}"
+        assert view["view_id"] in measurement["provenance_refs"]
 
 
 def test_scope_admitted_qc_unlocks_exploratory_input_without_extra_authority(

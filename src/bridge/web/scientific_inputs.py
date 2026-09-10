@@ -432,11 +432,9 @@ class ScientificInputs:
             source_record = pool[choices["cell_state_evidence_profile"]]
             receipt = next(row for row in state["_tool_runs"] if row["file"] == source_record["receipt_file"])
             source_run, _ = inputs.producer_objects(state, receipt, "P0-02", set())
-            content = {"upload_id": scope.upload_id, "assay": facts["assay"],
-                       "view": view, "definition_sha256": pool[definition_id]["sha256"],
-                       "source_measurement": [profile["measurement_spec_id"], profile["measurement_spec_version"]]}
-            case = ProductCase(object_version="0.1.0", product_case_id="product-case:assessment-" + scope.upload_id,
-                case_version=digest(content)[:24],
+            dependencies = [definition_id, manifest_id, choices["qc_readiness_profile"],
+                            choices["cell_state_evidence_profile"]]
+            content = dict(object_version="0.1.0", product_case_id="product-case:assessment-" + scope.upload_id,
                 product_definition_ref=ref(definition["product_definition_id"], definition["definition_version"]),
                 source_unit_kind=kind, sample_or_preparation_ref=ref(source_id, source_version),
                 independence_group_refs=[groups[key] for key in sorted(groups)],
@@ -447,10 +445,16 @@ class ScientificInputs:
                 assay=facts["assay"], provenance_refs=[
                     ref("upload:" + scope.upload_id, scope.binding["upload"]["sha256"]),
                     ref("tool-run:" + source_run.run_id, source_run.tool_version)],
-                created_at=source_run.created_at)
+                created_at=source_run.created_at.isoformat())
+            # Versioned references must distinguish every variable case field and source,
+            # not merely the content-addressed registration file that carries them.
+            case = ProductCase(case_version=digest({
+                "content": content, "view": view,
+                "dependencies": [{"input_id": identifier, "sha256": pool[identifier]["sha256"]}
+                                 for identifier in dependencies]})[:24], **content)
             choices["product_case"] = inputs.add_derived_object(state, tool_id=allowed.tool_id, mode_id=allowed.mode_id,
                 role="product_case", schema_ref="bridge://schemas/product-case/v0.1", payload=case.model_dump(mode="json"),
-                dependencies=[definition_id, manifest_id, choices["qc_readiness_profile"], choices["cell_state_evidence_profile"]])
+                dependencies=dependencies)
         if allowed.tool_id == "P0-06":
             choices = self._source_bound_process(state, allowed, choices, pool)
         _, mode = inputs.contract_mode(allowed.tool_id, allowed.mode_id)
