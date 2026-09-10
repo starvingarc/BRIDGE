@@ -119,4 +119,6 @@ Full Step 7 completion requires source-reviewed applicable resources, genuine sa
 ## Verification evidence
 
 - Baseline at `fa6017b3`: `python -m pytest -q tests/test_agent_domain_planner.py tests/test_p0_09_evidence_compiler.py tests/test_web_evidence.py` — **279 passed, 2 existing dependency deprecation warnings**, 212.76 s. This is engineering baseline evidence, not scientific validation.
+- Task 1 registered graph queries at `ff7aa7ec` (integrated as `b17c6c04`): **411 passed, 9 existing dependency deprecation warnings**, 371.83 s, covering compiler/registry/Web inputs/shared contracts/SDK/integration. Schema/Card regeneration was byte-identical; knowledge, repository policy and whitespace checks passed. Independent review found no blocking issue; public Schema/runtime selector-validation parity and existing dependency warnings remain nonblocking follow-up items.
+- Controller integration checks at `b17c6c04`: registered graph query selection **45 passed**, 227 deselected, 60.93 s; registry **10 passed**, 5.04 s; no warnings in either focused run. This establishes registered retrieval behavior only, not coordinator, real-case or scientific completion.
 - Further evidence is appended only after the stated run completes. Completed transient task reports stay private; stable reusable facts are promoted once.
