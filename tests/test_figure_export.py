@@ -174,7 +174,7 @@ def _run_identity(
         ("P0-10", "0.4.0", "0.4.1"),
     ),
 )
-def test_patch_version_separates_previous_bundle_and_reuses_new_identity(
+def test_patch_version_separates_run_identity_and_repeats_deterministically(
     tmp_path: Path,
     tool_id: str,
     old_version: str,
