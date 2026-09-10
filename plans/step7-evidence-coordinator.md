@@ -1,6 +1,6 @@
 # Step 7 Evidence Coordinator
 
-**Status:** in_progress — implementation integrated; final acceptance remains.
+**Status:** awaiting_scientific_inputs_and_review.
 **Goal:** Connect a real approved cell-state/product assessment to registered
 checks, canonical evidence updates and a researcher-readable, version-bound
 portrait.
@@ -9,39 +9,38 @@ portrait.
 
 ## Current evidence
 
-Registered graph queries, scope-bound execution, producer-aware scientific
-inputs, measured sufficiency/graph feedback and the assessment interface are
-integrated. The outer browser source is now `frontend/`; the installed Python
-package remains `src/bridge/web/`.
+The genuine uploaded process sample reached limited count/structure QC,
+candidate cell-state evidence and descriptive cell-cycle observations within
+one preserved approval. It stopped with explicit scientific prerequisites;
+no real measured product graph or qualified report was produced.
 
-A coherent synthetic chain retained its original developmental measurements
-while an eligible process check, sufficiency update, graph append and query
-advanced the same graph version. Unavailable measurements stayed unavailable.
-This demonstrates engineering connectivity, not completion of a real product
-assessment.
+Registered graph query/check/sufficiency/append/query connectivity is separately
+demonstrated by the retained synthetic chain. It does not satisfy the real-data
+scientific gate.
 
-The observed results, exact source revisions, warnings and intermediate failures
-are maintained in the [validation record](../docs/validation/step7_evidence_coordinator_20260911.md).
-Completed construction details remain in Git history rather than this plan.
-Stable behavior is described in [Agent integration](../docs/agent-integration.md),
+Exact source revisions, observed results, consolidated corrections and final
+engineering checks live in the
+[validation record](../docs/validation/step7_evidence_coordinator_20260911.md).
+Stable behavior lives in [Agent integration](../docs/agent-integration.md),
 [Web preview](../docs/web-preview.md) and
 [privacy and provenance](../docs/privacy-and-provenance.md).
+Completed construction and intermediate verification history remain in Git.
 
 ## Remaining acceptance
 
-- [ ] Verify the final installed wheel against its exact source; run the complete
-  backend suite including the configured protocol compiler, 12-tool discovery,
-  knowledge/figure registries, committed-file policy and whitespace checks.
-- [ ] Exercise a fresh genuine upload through fact confirmation, QC, approved
-  eligible checks and the rendered portrait. Preserve exact source, receipt,
-  DataView and graph bindings; record real scientific blockers separately.
 - [ ] Verify a genuine measured query → discriminating check → canonical graph
-  update → same-version portrait when the applicable reviewed inputs exist.
-  Synthetic evidence and a missingness-only report do not satisfy this gate.
-- [ ] Complete the consolidated whole-branch review, batch related corrections
-  and record their covering verification evidence.
-- [ ] Reconcile final observed scope and unresolved gates in the validation
-  record and this plan without presenting a blocked assessment as completion.
+  update → same-version portrait once applicable reviewed inputs exist.
+  The latest tool result, source receipt, selected DataView and graph version
+  must stay bound through the rendered result.
+- [ ] Reconcile any newly observed blockers without treating synthetic evidence,
+  exploratory observations or a missingness-only report as complete product
+  assessment.
+
+Applicable source-state, product-role, developmental-window, program and
+biological-unit work is tracked in
+[Product Evidence Validation](product-evidence-validation.md) and
+[Cell-state scientific review](p0-02-cell-state-scientific-freeze.md).
+Scope approval supplies none of these scientific decisions.
 
 ## Acceptance invariants
 
@@ -66,16 +65,6 @@ Stable behavior is described in [Agent integration](../docs/agent-integration.md
   supports cell-cycle description only; an unreviewed name mapping cannot fill
   the other axes. Local evidence bindings remain separate from provider context.
 
-## Scientific dependencies
-
-Applicable source-state, product-role, developmental-window, program and
-biological-unit inputs are still required for a real measured assessment.
-Their review work is tracked in
-[Product Evidence Validation](product-evidence-validation.md) and
-[Cell-state scientific review](p0-02-cell-state-scientific-freeze.md).
-Scope approval supplies none of these scientific decisions.
-
-Full Step 7 completion requires the genuine measured feedback gate above,
-not only an engineering suite, exploratory observation or blocked report.
-No scientific freeze, score/release qualification, publication or deployment
-is established by the current implementation.
+Full Step 7 completion requires the genuine measured-feedback gate, not only
+engineering checks. No scientific freeze, score/release qualification,
+publication or deployment is established by the current implementation.
