@@ -114,7 +114,7 @@
 
 **Deliverable:** The researcher can inspect every core assessment axis, the exact evidence behind it, and meaningful continuing/stopping state in the real Web path.
 
-**Files:** `web/src/components/ResultsPane.tsx`, `PlanCard.tsx`, `ScientificInputs.tsx`, `web/src/types.ts`, `api.ts`, necessary `App.tsx` integration; use existing test locations and add one focused assessment component only if responsibility warrants it. Update `docs/agent-integration.md`, `docs/web-preview.md`, relevant validation record, and this plan with observed evidence.
+**Files:** `web/src/components/ResultsPane.tsx`, `PlanCard.tsx`, `ScientificInputs.tsx`, `web/src/types.ts`, `api.ts`, necessary `App.tsx` integration; use existing test locations and add one focused assessment component only if responsibility warrants it. Update `docs/agent-integration.md`, `docs/web-preview.md`, `docs/decision-log.md` for the approved scope-derived execution contract, relevant validation record, and this plan with observed evidence.
 
 **Interfaces and requirements:**
 - Consume the server-owned assessment projection, scope identity and exact evidence/graph versions. UI never recalculates scientific values, thresholds or scores.
