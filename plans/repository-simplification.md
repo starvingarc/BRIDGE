@@ -1,6 +1,6 @@
 # Repository Simplification
 
-Status: `in_progress`
+Status: `awaiting_review`
 
 ## Question, scope and boundary
 
@@ -51,24 +51,27 @@ documentation findings were corrected and scoped re-review found no new breakage
 
 ## Task 2: Consolidate proven-equivalent figure code
 
-In progress. Replace the identical export bodies in P0-07 through P0-10 with one
-small shared implementation. Preserve SVG/PNG/PDF bytes, metadata, rendering
-configuration and figure closure on success/failure. Behavioral tests must first
-fail, then pass; compare real outputs against the captured pre-change baseline.
+Implementation and scoped review complete. P0-07 through P0-10 now use one
+small shared exporter. Fifteen focused tests cover payloads, metadata, rendering
+provenance, lazy import and figure closure on success/failure. The pre-change
+red run had 11 expected failures; the completed implementation passed all 15.
+All 12 captured SVG/PNG/PDF payloads remain byte-identical.
 
-Include the shared source in renderer provenance. Existing run identity uses Tool
-version and inputs, while checksummed bundles include renderer-source hashes.
-Advance only patch versions to prevent newly attributed bundles colliding with
-older ones: P0-07 0.4.0 → 0.4.1, P0-08 0.5.0 → 0.5.1,
+The shared source is included in renderer provenance. Existing run identity uses
+Tool version and inputs, while checksummed bundles include renderer-source hashes.
+Only patch versions were advanced to avoid collisions with older bundles:
+P0-07 0.4.0 → 0.4.1, P0-08 0.5.0 → 0.5.1,
 P0-09 0.4.1 → 0.4.2 and P0-10 0.4.0 → 0.4.1.
-Update current Specs, Tool Cards, examples and relevant fixtures; preserve
-historical validation versions. Verify old bundles remain intact and unchanged
-new-version runs reuse deterministically.
+Current Specs, Tool Cards, task-card pointers, examples and relevant fixtures
+are synchronized; historical validation versions are preserved. Materialized
+namespace checks preserved 16/20/24/16 prior-namespace files and reused all new
+bundle bytes. Those checks use current adapters under prior/current version
+specs, not historical binaries; P0-10 uses its existing validated-graph fixture.
 
 P0-11 and P0-12 sanitation policies differ, including stroke-dashoffset permission;
-leave both unchanged. Do not unify other differing renderer variants, introduce
-flags, or modify scientific models or public schemas. Add only the two genuine
-new shared files to existing repository accounting; keep every safeguard.
+both remain unchanged. No other variants, flags, scientific models or public
+schemas changed. Repository accounting adds only the two genuine shared files;
+every safeguard remains.
 
 ## Task 3: Verify integration and retire operational clutter
 
@@ -78,18 +81,36 @@ merged. Exact source heads and retained history are recoverable; running service
 controlled data and existing installations were not changed. Recovery maps and
 checksums remain private.
 
-After integrating Task 2, run the full pytest suite, CLI tool discovery, knowledge
-and figure-registry validation, repository policy and committed whitespace checks.
-Inspect public privacy/link safety, built-package contents and the resulting branch
-map. Complete a whole-branch review, retire task-owned temporary worktrees, and
-publish this topic as a PR against main without merging.
+Integration verification and whole-branch review are complete. Task-owned temporary
+worktrees and branches were retired after clean-state, integration and recovery
+checks. Keep the main and current PR worktrees. Deliver this topic as a Draft PR
+against main; GitHub CI/review and any eventual merge are separate gates.
 
 ## Verification and remaining gates
 
 - Baseline: 100 focused planner, registry and visualization/security tests passed.
 - Documentation: repository policy, whitespace, canonical workflow coverage and
   historical evidence-link checks passed.
-- Integrated suite, final review and PR publication: pending.
+- Exact code revision `3ec609f2`: `python -m pytest -q -ra` passed 2394 tests
+  with 43 skips in 1824.68 seconds. Every skip was the explicit pinned BPL
+  runtime dependency. With `BRIDGE_TEST_BPL_PYTHON` set to the existing verified
+  compiler environment, `python -m pytest -q tests/test_web_protocol_formalization.py`
+  passed all 119 tests in 110.65 seconds, including all 43 skipped cases.
+  The focused count overlaps the full suite; it is not 119 additional cases.
+- `python -m bridge.toolkit.cli list --json`: all 12 tools discovered with the
+  exact four new patch versions. `python -m bridge.toolkit.cli knowledge validate`
+  passed with zero formally eligible methods.
+  `python -m bridge.toolkit.cli figures validate` passed for 43 components.
+- `python scripts/check_repository.py`, `git diff --check` and committed-range
+  whitespace, public-path/privacy and historical-link checks passed.
+- A wheel built from the exact Git archive and installed into an isolated target
+  passed helper-origin/lazy-import, tool/version, knowledge and figure-registry
+  checks plus the same 12/12 byte comparison. Existing installations were untouched.
+- Independent whole-branch review of `40d352b9..3ec609f2` found no remaining
+  Critical, Important or Minor issues. Subsequent closeout changes only this plan
+  and its index; repository and committed-diff checks are repeated before publication.
+- This branch does not change Web source. Frontend tests and browser acceptance
+  were not rerun here; earlier revision-bound acceptance is preserved, not upgraded.
 
 This cleanup does not qualify reference candidates, state/role/window definitions,
 P0-03–P0-06 product evidence, the full graph feedback loop or a qualified report.
