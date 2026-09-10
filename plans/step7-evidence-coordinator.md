@@ -1,28 +1,15 @@
 # Step 7 Evidence Coordinator Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Execute one implementation task at a time, in a dedicated server worktree, with independent task review.
-
 **Status:** in_progress.
 **Goal:** Connect the approved Step 7 evidence-driven assessment loop to real registered tools and a researcher-readable, version-bound product portrait.
 **Architecture:** Reuse ToolRegistry, exact AnalysisPlan execution, canonical ToolRun receipts and the existing P0-09 graph. One coordinator selects bounded actions; scientific packages retain all measurements, denominators, eligibility and evidence states. Hypotheses remain planning statements, never measurement facts.
 **Tech Stack:** Existing Python/Pydantic/FastAPI workflow runtime, JSON/Parquet/NetworkX graph artifacts and React Web preview. No new runtime framework or graph store.
-**Spec:** [BRIDGE PRD section 6](../docs/BRIDGE_PRD.md#6-agent-功能需求), [Agent Integration](../docs/agent-integration.md), and the owner-approved implementation design of 2026-09-10.
+**Spec:** [BRIDGE PRD section 6](../docs/BRIDGE_PRD.md#6-agent-功能需求) and [Agent Integration](../docs/agent-integration.md).
 **Baseline:** main `fa6017b3924e7b99055f051898d7a5a87f572e7b`.
 
-## Global Constraints
+## Contract references
 
-- The first six intake-to-QC steps are accepted only within their stated scope; do not redesign or repeat them.
-- Agent calls remain registered high-level P0-01 through P0-12 packages; no direct Scanpy/R/model commands.
-- Existing inputs and results are immutable, versioned and checksummed. Original uploads and historical receipts remain available.
-- All active domains keep `domain_score=null` and `score_state=shadow` or `unavailable`.
-- `negative`, `missing`, `unknown`, `unavailable` and `alert` remain distinct; missing evidence never becomes zero.
-- Same-family and dependent methods are not independent votes. A cell is not a biological replicate.
-- Product roles, regional definitions, developmental windows, programs, reference applicability and biological-unit facts require their actual source/review records. Never create approval or attestation by inference.
-- Sealed/competitor-isolated inputs remain unopened and excluded. Graft never backfills pre-transplant evidence; comparison/graft execution requires separate applicable authorization.
-- Model access respects the existing result-sharing control. No raw cells, private paths, unapproved facts, or credentials are added to provider context.
-- All code, tests, previews and private evidence stay on the server. Do not modify running services, push/merge main, or deploy.
-- Public Schema semantics are versioned; keep old compilation behavior compatible. One manually maintained source per fact; generated projections are rebuilt deterministically.
-- Tests exercise registered calls, real canonical artifacts and user-observable state transitions; mocks are limited to the external model/network.
+Scientific, provenance, publication and collaboration constraints are maintained in [AGENTS.md](../AGENTS.md), [product principles](../docs/product-principles.md) and [privacy and provenance](../docs/privacy-and-provenance.md). This plan records the branch's implementation deltas and observed evidence rather than duplicating those rules.
 
 ## Mathematical and execution invariants
 
@@ -139,11 +126,13 @@
 - [ ] Prove registered result → graph query → eligible discriminating next check → verified append/new graph version through the coordinator, using one coherent synthetic case and only an external-model fake. Do not bypass a scientific prerequisite to make this pass.
 - [ ] Verify deterministic reuse, budget/dedup behavior, source-resource drift and no post-stop continuation on this feedback path. Run focused Web report/input/coordinator integration suites, self-review and commit this task only.
 
-## Task 5: Version-bound Step 7 portrait and real-case acceptance
+## Task 5: Complete user-facing assessment, repository presentation and acceptance
 
-**Deliverable:** The researcher can inspect every core assessment axis, the exact evidence behind it, and meaningful continuing/stopping state in the real Web path.
+**Deliverable:** The researcher can inspect every core assessment axis, the exact evidence behind it, and meaningful continuing/stopping state in the real Web path. Once that functional chain is connected, its repository layout and documentation are simplified together before final acceptance.
 
 **Files:** `web/src/components/ResultsPane.tsx`, `PlanCard.tsx`, `ScientificInputs.tsx`, `web/src/types.ts`, `api.ts`, necessary `App.tsx` integration; use existing test locations and add one focused assessment component only if responsibility warrants it. Also permit the narrow used `src/bridge/web/assessment.py` / `evidence.py` projection and model-context seam with `tests/test_web_assessment.py` / `tests/test_web_evidence.py`, solely to close the verified local-drilldown, missing-reason and private-provenance projection gaps below. Also allow `scripts/check_repository.py` only to account for the exact approved Step 7 files through its existing explicit-file budget mechanism; associated policy regression belongs in the existing `tests/test_structured_runtime.py` only if needed. Do not raise the global file baseline/per-tool cap or authorize arbitrary files. No new scientific computation, family classification policy, generic redactor or alternate coordinator. Update `docs/agent-integration.md`, `docs/web-preview.md`, `docs/decision-log.md` for the approved scope-derived execution contract, relevant validation record, and this plan with observed evidence.
+
+**Repository presentation scope:** The browser tree moves from `web/` to `frontend/`; the Python package stays at `src/bridge/web/`. This includes exact local path references in `.github/workflows/ci.yml`, `scripts/check_repository.py`, the relevant Web guide and repository map, but not Python import/module names, package extras, routes or unrelated upstream URLs. README becomes a concise user-facing introduction with a genuine usage entry and plain-language research limits. Duplicate overview tables and contributor/document-maintenance instructions in `CONTRIBUTING.md`, `docs/documentation-guide.md`, the root/frontend READMEs and documentation indexes are consolidated around one maintained source; unique facts and historical validation survive. Any genuine duplicate logic in the changed Web chain is consolidated at its existing interface without adding unused wrappers or changing scientific computations. Exact additional cleanup paths are identified from the integrated chain before that phase, not from a broad replacement rule.
 
 **Interfaces and requirements:**
 - Consume the server-owned assessment projection, scope identity and exact evidence/graph versions. UI never recalculates scientific values, thresholds or scores.
@@ -159,9 +148,10 @@
 - [ ] RED: show all core axes from a mixed measured/missing/unavailable projection without invented zeros or hidden blockers.
 - [ ] Implement portrait, scope controls and evidence drilldown using the existing typed artifact/result components.
 - [ ] Test exact values/denominators, source dependencies, keyboard access, pre-approval actual blockers without execution/revision/counter changes, stale-version correction, stopping and disabled actions.
-- [ ] Run browser tests/build and one isolated real-model/real-input acceptance; capture canonical receipts and page evidence on the server.
+- [ ] Complete the connected portrait, then simplify repository layout, user-facing README and duplicate documentation in the same finishing pass.
+- [ ] Run browser tests/build and one isolated real-model/real-input acceptance against the final simplified layout; capture canonical receipts and page evidence on the server.
 - [ ] Re-run the full backend suite, explicitly cover opt-in compiler tests, verify 12 registered tools, knowledge and figure registries, repository policy on the final committed/staged file inventory, whitespace and source/publication boundaries. Reconcile the six existing approved Step 7 additions with the checker's exact-file inventory, then include only actual approved Task 5 additions; do not use pre-staging policy output as proof of the committed file budget.
-- [ ] Independently review the whole branch; leave unresolved scientific prerequisites explicit. No automatic merge or deployment.
+- [ ] Review the completed end-to-end branch once, batch any related fixes, and preserve the exact remaining scientific prerequisites and final acceptance evidence.
 
 ## Scientific review and full-completion gate
 
