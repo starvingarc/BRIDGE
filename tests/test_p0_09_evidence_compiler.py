@@ -124,7 +124,7 @@ def _spec() -> ToolPackageSpecV2:
     return ToolPackageSpecV2(
         tool_id="P0-09",
         name="Evidence Compiler & Reconciler",
-        version="0.4.1",
+        version="0.4.2",
         summary="Compile atomic evidence and reconcile conflicts by versioned rules.",
         implementation_state=ImplementationState.IMPLEMENTED,
         scientific_status="candidate",
@@ -1013,7 +1013,7 @@ def _request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-09",
-        tool_version="0.4.1",
+        tool_version="0.4.2",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -1795,7 +1795,7 @@ def test_v1_adapter_invocation_has_one_stable_v2_reason(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="p0-09-v1",
         tool_id="P0-09",
-        tool_version="0.4.1",
+        tool_version="0.4.2",
         output_dir=(tmp_path / "output").resolve(),
     )
     eligibility = adapter.check_eligibility(request, _spec())  # type: ignore[arg-type]
@@ -4768,7 +4768,7 @@ def test_static_capacity_uses_complete_table_without_top_n_selection(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-capacity",
-        tool_version="0.4.1",
+        tool_version="0.4.2",
     )
 
     table = prepared.payloads["evidence_compiler_claim_interpretation.tsv"]
@@ -4801,7 +4801,7 @@ def test_static_capacity_falls_back_when_reason_text_cannot_fit(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-reason-capacity",
-        tool_version="0.4.1",
+        tool_version="0.4.2",
     )
 
     table = prepared.payloads["evidence_compiler_requirements_exclusions.tsv"]
@@ -5290,7 +5290,7 @@ def test_long_reference_labels_remain_distinguishable_in_render(tmp_path: Path) 
         profile=profile,
         output_dir=tmp_path / "render",
         run_id="run-ref-collision",
-        tool_version="0.4.1",
+        tool_version="0.4.2",
     )
     labels = [_short_ref(ref) for ref in refs]
     svg = prepared.payloads["evidence_compiler_claim_interpretation.svg"]

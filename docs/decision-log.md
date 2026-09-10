@@ -155,8 +155,10 @@ Summary values must come from verified canonical tool artifacts and preserve
 counts, denominators, evidence states and uncertainty. A private per-turn binding
 retains their exact provenance. An interpretation is not a verified report,
 scientific validation or public-export approval. Aggregate results remain
-controlled biological data even after identifiers are removed. Implementation
-and acceptance are tracked in the existing Web integration plan.
+controlled biological data even after identifiers are removed. Public-safe
+acceptance evidence is retained in the
+[Web validation history](validation/web_preview_20260905.md); private provenance
+receipts remain outside the repository.
 
 ## 2026-09-08: Bound Product-intent Sharing To Scientific-input Drafts
 
@@ -171,8 +173,10 @@ outside this new authorization. Existing aggregate-summary consent is separate.
 Draft, stale, retracted or unconfirmed values must not be promoted to confirmed
 intent. Any candidate remains reviewable and source-backed; confirmation is not
 scientific freezing, biological validation or public-export approval. The current
-runtime still sends intake readiness only. Implementation and acceptance of the
-new draft-specific projection belong to the existing Web integration plan.
+runtime still sends intake readiness only. Implementation and public-safe
+acceptance evidence for the draft-specific
+projection remain in the [Web validation history](validation/web_preview_20260905.md)
+and Git history.
 
 
 ## 2026-09-09: Metadata-First Experimental Intake
@@ -211,8 +215,9 @@ their scientific and attestation requirements. A common matrix and gene
 programs define shared evidence, not independent validation by multiple methods.
 No division-rate, quiescence, stress, purity, acceptance or release conclusion
 follows from these descriptive measurements. No new data-sharing permission or
-public-export approval is implied. Exact implementation and execution receipts
-are recorded separately in the active Web integration plan.
+public-export approval is implied. Exact public-safe evidence is retained in the
+[P0-06 validation record](validation/p0_06_proliferation_stress_response.md);
+private execution receipts remain outside the repository.
 
 
 ## 2026-09-09: Derive Protocol Code And Source Spans From One Fragment Sequence
@@ -228,8 +233,10 @@ unchanged. Option-only repair cannot edit successfully compiled code.
 Historical versions, user edits and source passages remain unchanged. This
 eliminates independently authored code/map copies, not semantic uncertainty:
 literal checks and passage accounting are not entailment, experimental execution
-or biological validation. Bounded raw-response retention and actual installed
-model/browser acceptance are tracked separately in the integration plan.
+or biological validation. Bounded raw responses remain private. Public-safe
+installed model/browser
+evidence is retained in the [Web validation history](validation/web_preview_20260905.md)
+and construction chronology remains in Git.
 
 ## 2026-09-09: Permit Add-only Repair Of Missing Protocol Citations
 
@@ -263,3 +270,25 @@ Compiler inability to parse `8 days` does not mean that the original source omit
 the duration. Explicit unsure remains unresolved without another automatic
 question. This bounded model review and its private audit are not human approval,
 complete semantic verification, experimental execution or a scientific claim.
+
+## 2026-09-10: Keep One Workflow Contract And Separate Approved Targets From Current Evidence
+
+The owner approved PRD section 6 as the single maintained product-workflow
+contract. The first six intake-to-QC steps, including source-bound protocol
+review, retain their already accepted scope. The downstream graph-driven
+feedback loop, internally selected and user-confirmed comparison cohort, and
+qualified report/export are approved target behavior, not claims about current
+end-to-end capability.
+
+The target coordinator queries evidence, maintains a small set of competing
+hypotheses and chooses discriminating registered high-level tools. Tools remain
+authoritative for values, denominators, thresholds, states, versions and
+Evidence IDs. The default target reference is one reviewed, internally aligned
+multi-source system with applicability and source/version traceability; current
+candidate references are not thereby scientifically frozen.
+
+Public documentation records stable contracts and public-safe validation
+evidence. Private runtime records and operational deployment state remain
+outside GitHub. Completed construction diaries may leave the active tree only
+after unique facts, unresolved scientific work and exact validation records are
+preserved; retirement does not upgrade scientific status.

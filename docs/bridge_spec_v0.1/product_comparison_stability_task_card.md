@@ -5,7 +5,6 @@
 | Task ID | `TASK-COMPARISON` |
 | Task document version | `v0.1` |
 | Date | 2026-08-07 |
-| Package version | `P0-07 0.4.0` |
 | Runtime / scientific state | `implemented` / `candidate` |
 | Scope | 同阶段跨方案、真实时间序列及 batch/lot/preparation 稳定性 |
 | Primary unit | 已声明的 `sample/preparation`；仅完整显式绑定时报告 independence |

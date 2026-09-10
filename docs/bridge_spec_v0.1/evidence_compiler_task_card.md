@@ -3,7 +3,8 @@
 | 字段 | 内容 |
 |---|---|
 | Task ID | `TASK-EVIDENCE-COMPILER` |
-| Tool ID / version | `P0-09` / `0.4.0` |
+| Tool ID | `P0-09` |
+| Current runtime contract | [P0-09 Tool Card](../../src/bridge/tool_packages/cards/P0-09.md) |
 | Date | 2026-08-13 |
 | Analysis unit | `metric x claim target x biological context x MeasurementSpec` |
 | Runtime state | `implemented` |

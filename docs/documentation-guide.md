@@ -1,31 +1,65 @@
 # Documentation Guide
 
-## Stable Documents
+## One fact, one maintained source
 
-`docs/` contains approved scientific and engineering facts. Update the relevant stable document in the same change when code, Schema, privacy behavior, Tool IDs or claim boundaries change.
+The [BRIDGE PRD](BRIDGE_PRD.md), especially
+[section 6](BRIDGE_PRD.md#6-agent-功能需求), is the single product-workflow
+contract. README, the documentation index, Web guide, Agent integration guide
+and plans link to it instead of copying the full workflow.
 
-Every stable document must be linked from `docs/README.md` or another indexed document. Proposed capabilities are labelled `candidate`, `proposed`, `shadow` or `not_implemented`.
+Public Schemas and package specs own machine-readable interfaces. Tool Cards own
+human runtime use and refusal behavior. Scientific task cards own biological
+questions and validation design. Exact validation records own what passed for a
+specific revision.
 
-## Plans
+## Stable documents
 
-`plans/` contains its active-plan index and branch-scoped implementation state: motivation, scope, non-goals, tasks, decisions, risks and acceptance evidence. Plan paths are idempotent task identities and appear once in `plans/README.md`. Draft PRs may retain an active plan; ready-to-merge work records final evidence and resolves or explicitly carries forward every remaining item. Plans do not override stable contracts and do not serve as user documentation.
+docs/ contains approved scientific and engineering facts. Update the relevant
+stable document when code, Schema, privacy behavior, Tool IDs, workflow contract
+or claim boundary changes. Proposed capabilities are marked candidate,
+proposed, shadow or not_implemented and are explicitly separated from current
+source, installed behavior, genuine execution and scientific qualification.
 
-## Biology-first Progress
+Every stable document is reachable from docs/README.md or another indexed page.
+If sources disagree, stop at the highest-priority versioned contract and resolve
+the drift; an overview cannot override a Tool Card, Schema or runtime evidence.
 
-README, plans, pull requests, issues and validation records lead with the biological
-question, data/reference/control set, observed findings, meaning for pre-transplant
-product evaluation, unresolved questions and next scientific action. Code, tests,
-environment and commit status follow in a short engineering record. Terms such as
-`implemented`, `frozen` or `benchmark complete` never substitute for a biological
-finding or an explicit statement of what the product assessment still cannot claim.
+## Plans and retirement
 
-Do not assign review or data-supply actions to an external collaborator unless that
-responsibility has been explicitly agreed.
+plans/ contains only active branch-scoped implementation state. Each plan path is
+a unique task identity and appears once in plans/README.md. Plans never serve as
+user documentation or override stable contracts.
 
-## Knowledge Catalog
+When implementation work is genuinely complete:
 
-Catalog curation and source-verification inputs live under `knowledge/catalog/`. Runtime retrieval uses the packaged gzip snapshot, while `knowledge/active-methods.md` is the compact human shortlist. Exploded Method Cards, Source Cards and retrieval indexes are not tracked. A missing paper, license or version is represented explicitly rather than inferred.
+1. move unique reusable facts to stable docs and exact evidence to validation;
+2. carry unresolved scientific work into the relevant active plan;
+3. remove the completed diary from the active tree and repair its links; and
+4. rely on Git history for construction chronology.
 
-## Historical Material
+Do not delete a validation record merely because it is old. A passing test,
+fixture, model output, installed package or archived diary is not scientific
+validation.
 
-Superseded implementation and documents remain in Git history. They are not linked as current contracts and cannot silently supply values to current BRIDGE tools.
+## Public/private boundary
+
+GitHub files contain code, public contracts, public-safe fixtures and
+source-qualified stable evidence. Private paths, credentials, raw provider
+responses, runtime receipts, sessions, screenshots, private sample identifiers
+and operational deployment details remain outside the repository. Public-safe
+objects are rebuilt from explicit allowlists rather than redacting arbitrary
+private records.
+
+## Biology-first progress
+
+README, plans, pull requests, issues and validation records lead with the
+biological question, data/reference/control set, observations, meaning,
+unresolved questions and next scientific action. Engineering evidence follows.
+Do not assign review or data-supply work to an external collaborator unless that
+responsibility was explicitly agreed.
+
+## Knowledge catalog
+
+Catalog curation inputs live under knowledge/catalog/. Runtime retrieval uses the
+packaged snapshot; knowledge/active-methods.md is the compact human shortlist.
+Missing paper, license or version fields stay explicit rather than inferred.

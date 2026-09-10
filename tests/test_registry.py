@@ -31,7 +31,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
     assert proliferation_stress_response.version == "0.8.1"
-    assert product_comparison.version == "0.4.0"
+    assert product_comparison.version == "0.4.1"
 
 
 def test_declared_tool_version_must_match_registry(tmp_path: Path) -> None:

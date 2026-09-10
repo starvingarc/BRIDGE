@@ -1,11 +1,68 @@
 # Private conversational Web preview — validation history
 
+## Protocol formalization closeout — 2026-09-10
+
+This closeout is bound to
+[main commit 40d352b9](https://github.com/starvingarc/BRIDGE/commit/40d352b9631310ab16785313fb5a85e8983551bc)
+and [PR #95 public head 60ae0f50](https://github.com/starvingarc/BRIDGE/commit/60ae0f505f74a3a07b1e77fec35c5096abb958e5).
+Both commits contain the exact accepted
+Git tree `e17c09d758ebbb6f26ab6be7bd5406328348cd38`.
+The immutable
+[retired-diary closeout](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10)
+is the detailed historical evidence source.
+
+| Check on that tree | Exact result |
+|---|---|
+| Installed backend | 209 tests passed, including 119 protocol cases with the pinned BPL compiler |
+| Browser client | 102 tests across 11 files passed; typecheck and production build passed |
+| Review boundary | Independent bounded reviews cleared source/fragment/audit and active-answer accounting; literal participation and compiler success remained separate from semantic or biological proof |
+
+Two accepted subsets must remain distinct:
+
+- The earlier
+  [public-JCI protocol subset](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#latest-installed-result-and-source-constraint-decision-2026-09-09)
+  covered source display, real parse/validate/lower compilation, version-bound
+  review, refresh without regeneration, checksum-verified downloads and
+  manual-edit invalidation. Its combined run stopped at the separate synthetic
+  missing-wait case, so it was never a full passing journey.
+- The final
+  [synthetic answer path](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10)
+  preserved unsure history, accepted an explicit two-hour user answer, created
+  a new unreviewed version and required version-bound human review. Its final
+  BPL used wait(duration: 2 h), and readable content retained both source and
+  user-answer references. Synthetic conditions are not experimental attestations.
+
+Earlier syntax/source-span failures and answer-participation failures remain
+failed in the immutable
+[boundary-failure record](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#post-review-boundary-fixes-and-preserved-installed-failure)
+and
+[answer-participation record](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#installed-answer-participation-failure-and-bounded-repair-2026-09-10).
+The accepted tree does not relabel them. This evidence proves bounded
+representation, compilation, review and revision behavior; it does not prove
+complete semantic omission detection, experiment execution, deployment upgrade
+or qualified downstream assessment.
+
+### Preservation pointers for current summaries
+
+The retired construction diary remains navigable at the immutable commit above:
+
+- [First product intake and QC approval evidence](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-20-genuine-product-entry-observation-2026-09-08)
+  and [its installed snapshot](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-20-engineering-evidence-2026-09-08-installed-snapshot).
+- [Metadata-first intake and protocol extraction](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#tasks-3032-acceptance-record-2026-09-09).
+- [Descriptive P0-06 installed SDK measurement](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-27-genuine-installed-measurement-and-publication-checkpoint)
+  and [P0-02 L2 marker-context installed SDK evidence](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-28-genuine-installed-acceptance).
+- [Explicit QC selection and downstream handoff](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-29-approved-qc-selection-and-downstream-handoff).
+
+The SDK observations remain descriptive candidate evidence, and ordinary Web QC
+preparation remains audit-only. None of these pointers upgrades a product domain,
+scientific review, qualified report or deployment state.
+
 ## Current closeout — 2026-09-08
 
 The sections below preserve dated validation records, not competing descriptions
 of the current preview. Current functionality and acceptance boundaries are
-summarized in the [integration progress](../../plans/web-full-chain-integration.md#current-progress-2026-09-08)
-and [Web interface contract](../web-preview.md). The current PR includes explicit
+summarized in the [Web interface contract](../web-preview.md); unresolved
+scientific gates are tracked in [Product Evidence Validation](../../plans/product-evidence-validation.md). That validated increment includes explicit
 stop/input confirmation, selectable JSON/native actions, opt-in canonical evidence
 summaries, bounded Parquet previews and privately confirmed product intake.
 
@@ -17,8 +74,7 @@ download integrity were checked. Missing product/design facts stayed unknown;
 no formal scientific objects or complete downstream product assessment were made.
 Measurements, input identities, source hashes and deployment details remain private.
 
-The [Task 20 engineering record](../../plans/web-full-chain-integration.md#task-20-engineering-evidence-2026-09-08-installed-snapshot)
-retains the exact focused-test/build scope and minor limitations. Recorded earlier
+The dated evidence below retains the tested scope and limitations. Recorded earlier
 full-suite/review results apply only to their dated revisions. No new independent
 review or unchanged-suite replay was performed for this closeout; required CI
 binds the exact public PR head. This is an installed entry-flow increment, not a

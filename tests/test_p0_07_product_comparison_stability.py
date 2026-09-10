@@ -270,7 +270,7 @@ def _write_request(
         {
             "request_id": f"request-{output_name}",
             "tool_id": "P0-07",
-            "tool_version": "0.4.0",
+            "tool_version": "0.4.1",
             "output_dir": str((tmp_path / output_name).resolve()),
             "assets": [],
             "measurement_spec_ref": None,
@@ -352,7 +352,7 @@ def _load_visualization_artifact_set(run: object) -> P007VisualizationArtifactSe
 def test_registry_exposes_p0_07_v2_runtime() -> None:
     registry = ToolRegistry.load_default()
     spec = registry.describe("P0-07")
-    assert spec.version == "0.4.0"
+    assert spec.version == "0.4.1"
     assert spec.implementation_state.value == "implemented"
     assert registry.request_model("P0-07").__name__ == "ToolRequestV2"
 
@@ -916,7 +916,7 @@ def test_direct_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="legacy-request",
         tool_id="P0-07",
-        tool_version="0.4.0",
+        tool_version="0.4.1",
         output_dir=tmp_path.resolve(),
     )
     eligibility = adapter.check_eligibility(request, spec)

@@ -2,8 +2,8 @@
 
 **Status:** awaiting_scientific_inputs_and_review.
 **Goal:** Complete genuine, source-reviewed product assessment and a verified report without promoting intake declarations, protocol intent or exploratory measurements into qualified evidence.
-**Predecessor:** [Web integration implementation and acceptance](web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10).
-This records remaining work after PR #95's engineering increment; it does not authorize new executions, deployments or scientific decisions.
+**Starting record:** [Web validation history](../docs/validation/web_preview_20260905.md) and the [approved protocol design](../docs/superpowers/specs/2026-09-09-protocol-bpl-design.md).
+Completed construction diaries remain in Git history. This plan carries the unresolved scientific work; it does not authorize new executions, deployments or scientific decisions.
 
 ## Starting evidence and boundaries
 
@@ -16,7 +16,7 @@ Protocol representation now separates original intent, user supplements, compila
 1. Finish source-state discriminants through the existing [P0-02 scientific review](p0-02-cell-state-scientific-freeze.md), then obtain explicit product-role and developmental-window decisions. Do not replace that review with clinical proportions or culture-day analogies.
 2. Establish genuine starting-cell, preparation/capture and biological-unit records, including pooling and cross-timepoint relationships where relevant. Keep test values separate and unknown independence unknown; a declared culture count is not proof of every design fact.
 3. Review the existing QC selection and measurement limits. Scrublet's automatic threshold and a small predicted count do not prove complete doublet removal. Without raw droplets, ambient RNA and cell calling remain not assessed. Reuse the exact raw/filtered source bindings; rerun only for a justified changed input or failed stage.
-4. Complete reviewed ProgramSpec/ProtocolIR, product definitions, state roles and required lineage/attestation inputs for genuine P0-03–P0-06 product-assessment modes. Existing descriptive marker/cycle/program results do not supply gate-facing domain MeasurementResults. Retain the specific P0-05/P0-06 module contracts and their separate PR histories.
+4. Complete reviewed ProgramSpec/ProtocolIR, product definitions, state roles and required lineage/attestation inputs for genuine P0-03–P0-06 product-assessment modes. Existing descriptive marker/cycle/program results do not supply gate-facing domain MeasurementResults. Retain the specific P0-05/P0-06 module contracts and their separate validation histories. The owner-selected [Seurat v5.5.1 cell-cycle resource](resources/seurat-cell-cycle-v5.5.1-candidate.json) and [license](resources/seurat-cell-cycle-LICENSE.txt) remain source/version/license-bound candidates, not packaged defaults or reviewed science.
 5. Exercise each new measured mode through real Web input review, explicit registration and separately approved execution. Verify exact selected observations, canonical results and researcher-readable interpretation before constructing measured-domain evidence.
 6. Complete reviewed product-specific compilation/report rules and the P0-09–P0-11 qualified report/export path. Preserve actual claim/renderer blockers until their independent requirements are met. A blocked internal report is not a released report.
 7. Add P0-07 comparison arms/designs and P0-12 genuine graft evidence only when supplied and separately authorized. No-graft coverage does not satisfy graft modes; graft remains independent post-transplant evidence.

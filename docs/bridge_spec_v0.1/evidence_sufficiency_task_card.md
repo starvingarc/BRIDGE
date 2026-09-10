@@ -5,7 +5,6 @@
 | Task ID | `TASK-EVIDENCE-SUFFICIENCY` |
 | Task document version | `v0.1` |
 | Date | 2026-08-07 |
-| Package version | `P0-08 0.5.0` |
 | Analysis unit | `product case x domain x MeasurementSpec` |
 | Runtime / scientific state | `implemented` / `candidate` |
 | Current result | `bridge://schemas/evidence-sufficiency-run-result/v0.2` |
@@ -15,7 +14,7 @@
 
 ## 0. 当前实现绑定（候选）
 
-P0-08 `v0.5.0` 已实现为确定性候选工具，使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同仍为 `bridge://schemas/evidence-sufficiency-run-result/v0.2`；每个域另输出一个符合 `bridge://schemas/evidence-sufficiency-profile/v0.2` 的 canonical 单对象 JSON，作为 P0-09-ready producer handoff，组合 wrapper 仅是 `noncanonical_convenience_projection`。本版本新增 checksummed ProductCase 与 QC 选中数据视图的案例边界校验，不改变 gate rule、结果状态或科学解释。候选 gate rule 与 reason-code catalog 使用 `object_version=0.2.0`，历史 v0.1 资源和 Schema 保持字节不变。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析，也不生成新的 `MeasurementResult`。
+P0-08 已实现为确定性候选工具，当前包版本以 [Tool Card](../../src/bridge/tool_packages/cards/P0-08.md) 为准。工具使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同仍为 `bridge://schemas/evidence-sufficiency-run-result/v0.2`；每个域另输出一个符合 `bridge://schemas/evidence-sufficiency-profile/v0.2` 的 canonical 单对象 JSON，作为 P0-09-ready producer handoff，组合 wrapper 仅是 `noncanonical_convenience_projection`。checksummed ProductCase 与 QC 选中数据视图的案例边界校验，不改变 gate rule、结果状态或科学解释。候选 gate rule 与 reason-code catalog 使用 `object_version=0.2.0`，历史 v0.1 资源和 Schema 保持字节不变。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析，也不生成新的 `MeasurementResult`。
 
 这是一项工程可执行性进展，不是科学确认。`ENV-EVIDENCE-v0.2` 明确声明确定性门控和 Matplotlib 静态渲染依赖；所有已选内部方法记录仍为 `formal_eligible=false`。当前没有批准的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
 

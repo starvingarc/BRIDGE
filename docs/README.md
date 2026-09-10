@@ -1,118 +1,54 @@
 # BRIDGE Documentation
 
-Use this page to find the shortest path to the contract, scientific rationale or
-evidence you need.
+Use this page as an index. The [BRIDGE PRD](BRIDGE_PRD.md), especially
+[section 6](BRIDGE_PRD.md#6-agent-功能需求), is the single product-workflow
+contract; overview pages link to it rather than restating it.
 
 > [!NOTE]
-> **Product and current stage:** BRIDGE's final product is a scientific
-> evaluation Agent. The deterministic P0 tool layer contains 12 executable
-> engineering candidates. This branch's private [Web preview](web-preview.md)
-> connects all 12 through contract-driven inputs and staged approval; it does not
-> automatically construct every required scientific object. A private product
-> intake can be confirmed before a separately approved first-stage plan. The
-> tested source backend additionally builds explicit candidate product/role
-> objects after review; inline review/revision and a separately approved
-> missingness-only evidence check are implemented. Candidate missingness-graph
-> construction, an internal research report and actual blocked claim verification
-> are also installed and browser-exercised. Measured downstream prerequisites and
-> a qualified/exportable report remain unfinished; exact acceptance is recorded
-> in the current plan. Genuine Web coverage includes QC, cell-state evidence,
-> missingness checking/compilation, blocked internal-report verification and the
-> separate explicit no-graft path, not a complete product-evaluation chain.
-> Source implementation and isolated acceptance are recorded in the
-> [engineering checkpoint](../plans/web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10);
-> remaining scientific work is tracked in [Product Evidence Validation](../plans/product-evidence-validation.md).
-> A shared
-> visualization data contract and figure registry are available. P0-01 provides four
-> `typed_candidate` figure components, alongside two compatibility
-> `legacy_untyped` components; P0-03 provides two typed candidate figures for
-> product-role/regional-state composition and source-separated reference support;
-> P0-04 provides three typed candidate views for declared-window composition,
-> uncalibrated reference similarity and categorical sampling points; P0-05
-> provides typed role accounting, rare-state detectability and supplied OOD
-> channel-state views; P0-06 provides typed stage/state-conditioned program
-> evidence, method-separated program-score summaries and cell-cycle views; P0-07
-> provides typed comparability, declared analysis-unit metric and method-specific
-> evidence views; P0-08 provides domain-axis, root-interpretation-requirement and
-> MeasurementResult evidence-state views; P0-09 provides available-reconciliation,
-> dependency-aware family-relation and requirement/exclusion views; P0-10
-> provides report/claim checks, exact value-to-evidence correspondence and
-> finding-context views; P0-11 provides claim-content projection, candidate-digest
-> state, artifact status and registered-check views; P0-12 provides declared
-> post-transplant specimen scope, uploaded-profile composition and separately
-> scaled reference-correlation/program-expression views. The registry contains
-> 43 components: 36 typed candidates and 7 legacy components. Their counts are
-> audit records, not an evidence score.
-> P0-06 does not currently provide a
-> numeric reference envelope,
-> ordered process timeline, numeric LOD/UCB or spike-in recovery curve, or CNV
-> visualization. P0-07 remains descriptive: observed ranges are not confidence
-> intervals and raw deltas have no interval. P0-02 provides typed whole-product
-> reference-correspondence and static state-definition registry views while
-> retaining five compatibility components as `legacy_untyped`.
-> No scientific method, state, threshold or score is frozen, and a target
-> capability in the PRD or a task
-> card is not current runtime behavior.
+> The private Web preview has accepted the first six intake-to-QC steps only
+> within their stated scope. Twelve deterministic packages are callable, but
+> downstream graph-driven coordination, internal comparator selection and
+> qualified report/export remain approved targets. All active domains keep
+> domain_score=null and candidate/shadow or unavailable states. See
+> [validation](validation/README.md) for exact evidence and
+> [Product Evidence Validation](../plans/product-evidence-validation.md) for
+> unresolved scientific gates.
 
-## Find what you need
+## Start here
 
-| I want to… | Start | Continue with |
-|---|---|---|
-| Review the approved result experience and figure system | [Visualization system](BRIDGE_PRD.md#66-visualization-composer-与-web-交互) | [v0.2 visualization Schema](../src/bridge/resources/schemas/visualization_artifact_v2.schema.json) · [high-level contract](tool-contract.md) |
-| Understand the Agent product | [Product requirements](BRIDGE_PRD.md) | [Agent architecture and team boundary](agent-integration.md) · [product principles](product-principles.md) |
-| Run or integrate the current tool layer | [12 P0 Tool Packages](tool-packages.md) | [Request examples](../examples/README.md) · [high-level contract](tool-contract.md) |
-| Review the biology | [Product and scientific principles](product-principles.md) | [P0 specifications](bridge_spec_v0.1/README.md) · [data/reference registry](bridge_spec_v0.1/data_reference_registry.md) |
-| Verify an exact interface | [Tool Cards](../src/bridge/tool_packages/cards/) | [Public JSON Schemas](../src/bridge/resources/schemas/) · [high-level contract](tool-contract.md) |
-| Check what was tested | [Validation records](validation/README.md) | [Quality baseline](quality-baseline.md) · [method/source knowledge](../knowledge/README.md) |
-| Contribute safely | [Contributing guide](../CONTRIBUTING.md) | [Repository handbook](../AGENTS.md) · [documentation guide](documentation-guide.md) |
-
-## What is authoritative?
-
-| Question | Source of truth |
+| Question | Source |
 |---|---|
-| What does an installed tool accept and return? | Public JSON Schema and package spec |
-| How should a person call and interpret it? | Tool Card |
-| Why does the biological assessment exist? | Scientific task card and data/reference registry |
-| What passed for a specific version? | Exact validation record |
-| What work is still proposed? | Active plan; never treated as implemented behavior |
+| What should the Agent do for a researcher? | [Product requirements](BRIDGE_PRD.md#6-agent-功能需求) |
+| What is implemented in the private interface? | [Web preview](web-preview.md) |
+| Who owns questions, values and execution? | [Agent integration](agent-integration.md) |
+| Which high-level tool answers my question? | [Question-led Tool Package index](tool-packages.md) |
+| What does a tool accept and return? | [Canonical Tool Cards](../src/bridge/tool_packages/cards/) and [public Schemas](../src/bridge/resources/schemas/) |
+| What passed for a particular revision? | [Validation records](validation/README.md) |
+| What science remains unresolved? | [Active plans](../plans/README.md) |
 
-If two layers disagree, stop at the most concrete versioned contract and resolve
-the documentation drift. Do not infer current behavior from an overview page.
+## Scientific and governance references
 
-## Browse by topic
-
-### Product architecture
-
-- [Product requirements](BRIDGE_PRD.md)
 - [Product and scientific principles](product-principles.md)
-- [Visualization system](BRIDGE_PRD.md#66-visualization-composer-与-web-交互)
-- [Agent team integration](agent-integration.md)
-- [Web preview and private deployment](web-preview.md)
-- [Privacy and provenance](privacy-and-provenance.md)
-- [Protocol BPL formalization design](superpowers/specs/2026-09-09-protocol-bpl-design.md) — approved design; implementation in progress, not delivered
-
-### Current P0 tool layer
-
-- [12 P0 Tool Packages](tool-packages.md)
-- [High-level tool contract](tool-contract.md)
-- [Request examples](../examples/README.md)
-
-### Science and methods
-
-- [P0 scientific specification index](bridge_spec_v0.1/README.md)
+- [P0 scientific specifications](bridge_spec_v0.1/README.md)
 - [Data and reference registry](bridge_spec_v0.1/data_reference_registry.md)
-- [P0-02 external-source preparation](bridge_spec_v0.1/external_source_preparation.md)
-- [Catalog-backed method shortlist](../knowledge/active-methods.md)
-- [Method and source knowledge](../knowledge/README.md)
-
-### Verification and governance
-
-- [Validation records](validation/README.md)
+- [High-level tool contract](tool-contract.md)
+- [Privacy and provenance](privacy-and-provenance.md)
 - [Quality baseline](quality-baseline.md)
 - [Decision log](decision-log.md)
 - [Documentation guide](documentation-guide.md)
-- [Active plans](../plans/README.md)
-- [Security reporting](../SECURITY.md)
+- [Approved protocol BPL design](superpowers/specs/2026-09-09-protocol-bpl-design.md)
 
-Tool Cards, Schemas, runtime output and exact validation records take precedence
-over summary pages when determining current behavior.
+## Authority and status
+
+| Question | Authority |
+|---|---|
+| Installed input/output shape | Public Schema and package spec |
+| Human runtime use and refusal behavior | Tool Card |
+| Biological rationale and validation design | Scientific task card and data/reference registry |
+| Evidence for an exact run or revision | Validation record and immutable runtime receipt |
+| Proposed or unfinished work | Active plan, never current capability |
+
+Runtime output, frozen Schemas and exact validation records take precedence over
+summaries. A task card, candidate design, graph component, tool menu, passing
+test or installed package does not by itself prove scientific validation or a
+connected autonomous workflow.

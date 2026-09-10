@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 import hashlib
-from io import BytesIO, StringIO
+from io import StringIO
 import json
 from pathlib import Path
 import textwrap
@@ -14,6 +14,10 @@ matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 
+from bridge.tool_packages._figure_export import (
+    figure_export_source_sha256,
+    render_figure_payloads as _render_payloads,
+)
 from bridge.tool_packages._structured_runtime import canonical_json_bytes
 from bridge.tool_packages.p0_09_evidence_compiler.visualization_data import (
     CLAIM_INTERPRETATION_COMPONENT_REF,
@@ -773,33 +777,6 @@ def _applicability(records, render_reason):
     return "applicable" if states == {"applicable"} else "partially_applicable"
 
 
-def _render_payloads(figure):
-    outputs = {}
-    try:
-        for extension, media_type in (
-            ("svg", "image/svg+xml"),
-            ("png", "image/png"),
-            ("pdf", "application/pdf"),
-        ):
-            buffer = BytesIO()
-            metadata = {"Creator": "BRIDGE"}
-            if extension == "svg":
-                metadata["Date"] = None
-                figure.savefig(buffer, format="svg", metadata=metadata)
-            elif extension == "png":
-                figure.savefig(
-                    buffer,
-                    format="png",
-                    dpi=220,
-                    metadata={"Software": "BRIDGE"},
-                )
-            else:
-                metadata.update({"CreationDate": None, "ModDate": None})
-                figure.savefig(buffer, format="pdf", metadata=metadata)
-            outputs[extension] = (media_type, buffer.getvalue())
-    finally:
-        plt.close(figure)
-    return outputs
 
 
 def _config_hash(ref):
@@ -809,6 +786,7 @@ def _config_hash(ref):
             "component_ref": ref,
             "renderer": [_RENDERER_ID, _RENDERER_VERSION, _EXPORT_PROFILE_ID],
             "source_sha256": source,
+            "figure_export_source_sha256": figure_export_source_sha256(),
             "matplotlib_version": matplotlib.__version__,
             "matplotlib_rc": _RC,
             "colors": _COLORS,
