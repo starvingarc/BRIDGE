@@ -54,14 +54,14 @@
 - The coordinator will use case subgraph/missingness/conflict/provenance/family queries with explicit evidence tiers; formal defaults must not hide candidate records and imply they never existed.
 
 **Tests and implementation:**
-- [ ] Extend the existing synthetic graph test helper to construct a registered query request against a real compiler-produced graph. Derive expected graph identity and node/edge assertions from the fixture, not the query implementation.
-- [ ] RED: assert public input discovery exposes both exact query modes and that `registry.run(query_request).result["graph_id"]` equals the compiler-produced graph ID. Confirm rejection on current code for the missing mode/contract.
-- [ ] Implement the typed request, additive input modes, versioned result union and dispatch to existing queries; do not duplicate traversal, integrity validation or reconciliation.
-- [ ] Verify all seven query kinds through registered calls, including an actual comparison graph for comparison paths. Test wrong graph kind, unknown query/arguments, strict numeric limits, malformed selector combinations, tier/lifecycle handling and truncation.
-- [ ] Verify altered manifest bytes, sidecar tampering, symlinks, input/output overlap and mixed roles fail closed without source changes or private payload leakage. Hash source artifacts before/after successful and refused queries.
-- [ ] Verify equivalent identical calls return equivalent bounded facts; query/compilation receipts and output directories do not collide; existing compilation tests keep passing.
-- [ ] Run `python -m pytest -q tests/test_p0_09_evidence_compiler.py tests/test_registry.py` plus the actual input-contract/Schema test files, then knowledge validation, Schema/Card regeneration checks, repository policy and whitespace checks. Report existing warnings explicitly.
-- [ ] Commit only this task's reviewed files and provide RED/GREEN commands and outputs in the private report.
+- [x] Extend the existing synthetic graph test helper to construct a registered query request against a real compiler-produced graph. Derive expected graph identity and node/edge assertions from the fixture, not the query implementation.
+- [x] RED: assert public input discovery exposes both exact query modes and that `registry.run(query_request).result["graph_id"]` equals the compiler-produced graph ID. Confirm rejection on current code for the missing mode/contract.
+- [x] Implement the typed request, additive input modes, versioned result union and dispatch to existing queries; do not duplicate traversal, integrity validation or reconciliation.
+- [x] Verify all seven query kinds through registered calls, including an actual comparison graph for comparison paths. Test wrong graph kind, unknown query/arguments, strict numeric limits, malformed selector combinations, tier/lifecycle handling and truncation.
+- [x] Verify altered manifest bytes, sidecar tampering, symlinks, input/output overlap and mixed roles fail closed without source changes or private payload leakage. Hash source artifacts before/after successful and refused queries.
+- [x] Verify equivalent identical calls return equivalent bounded facts; query/compilation receipts and output directories do not collide; existing compilation tests keep passing.
+- [x] Run `python -m pytest -q tests/test_p0_09_evidence_compiler.py tests/test_registry.py` plus the actual input-contract/Schema test files, then knowledge validation, Schema/Card regeneration checks, repository policy and whitespace checks. Report existing warnings explicitly.
+- [x] Commit only this task's reviewed files and provide RED/GREEN commands and outputs in the private report.
 
 ## Task 2: Scope-bound coordinator and registered-input execution
 
@@ -79,14 +79,15 @@
 - Prevent duplicate unchanged executions, unbounded query/reply loops, stale scope reuse and post-stop continuation. Preserve existing epoch fencing, single-worker execution and interruption behavior.
 - Project actual P0-03–P0-06 result summaries with exact units, denominators, state and provenance. Separate directly observed exploratory results from gate-facing measurements. Read no raw cell rows into model context.
 - Preserve the prior isolated intake/QC/protocol path; ordinary explanation-only conversations do not start assessment.
+- The current scope authorizes checks and resource limits, not an applicable whole-question completion contract. Model requests for `evidence_requirements_reached` remain private audit proposals and produce `blocked / completion_contract_unavailable`; graph-local satisfied requirements or empty evidence cannot establish research completion.
 
 **Tests and implementation:**
-- [ ] RED: a scope-approved real registered-tool round records one admitted request, processes its verified result and chooses the next allowed action without an extra human approval.
-- [ ] Implement the smallest private coordinator and scope-admission seam needed by that flow; write no generic workflow framework.
-- [ ] Test exhausted run/model budgets, repeated unchanged requests, malformed model replies, unavailable inputs, scientific-review blockers, disabled result sharing, input/reference drift, stop/resume and restart interruption.
-- [ ] Test at least two different real tool result shapes through the same coordinator, with literal expected state/value/denominator assertions and an external-model-only fake.
-- [ ] Test canonical graph/query version binding and reuse across registered selections; candidate, missing, negative and unavailable results remain distinguishable and do not become formal claims. Task 3 additionally verifies newly materialized measured write-after-query.
-- [ ] Run focused Web/planner/pipeline integration suites, then commit the smallest reviewed task.
+- [x] RED: a scope-approved real registered-tool round records one admitted request, processes its verified result and chooses the next allowed action without an extra human approval.
+- [x] Implement the smallest private coordinator and scope-admission seam needed by that flow; write no generic workflow framework.
+- [x] Test exhausted run/model budgets, repeated unchanged requests, malformed model replies, unavailable inputs, scientific-review blockers, disabled result sharing, input/reference drift, stop/resume and restart interruption.
+- [x] Test at least two different real tool result shapes through the same coordinator, with literal expected state/value/denominator assertions and an external-model-only fake.
+- [x] Test canonical graph/query version binding and reuse across registered selections; candidate, missing, negative and unavailable results remain distinguishable and do not become formal claims. Task 3 additionally verifies newly materialized measured write-after-query.
+- [x] Run focused Web/planner/pipeline integration suites, then commit the smallest reviewed task.
 
 ## Task 3: Deterministic scientific input and measured-evidence assembly
 
@@ -143,4 +144,6 @@ Full Step 7 completion requires source-reviewed applicable resources, genuine sa
 - Baseline at `fa6017b3`: `python -m pytest -q tests/test_agent_domain_planner.py tests/test_p0_09_evidence_compiler.py tests/test_web_evidence.py` — **279 passed, 2 existing dependency deprecation warnings**, 212.76 s. This is engineering baseline evidence, not scientific validation.
 - Task 1 registered graph queries at `ff7aa7ec` (integrated as `b17c6c04`): **411 passed, 9 existing dependency deprecation warnings**, 371.83 s, covering compiler/registry/Web inputs/shared contracts/SDK/integration. Schema/Card regeneration was byte-identical; knowledge, repository policy and whitespace checks passed. Independent review found no blocking issue; public Schema/runtime selector-validation parity and existing dependency warnings remain nonblocking follow-up items.
 - Controller integration checks at `b17c6c04`: registered graph query selection **45 passed**, 227 deselected, 60.93 s; registry **10 passed**, 5.04 s; no warnings in either focused run. This establishes registered retrieval behavior only, not coordinator, real-case or scientific completion.
+- Task 2 scope coordinator at `fb341ad2`, fix `5733f65a` (integrated as `3adc8b5c` / `17890ad0`): the original broad command produced **499 passed, 43 skipped, 17 warnings** in 574.58 s, including 27 duplicated executions; unique coverage was **472 passed and 43 skipped**. Root resolved all skipped protocol cases with the existing pinned BPL 2.4.0 runtime: **119 passed, 2 warnings, no skips**, 104.89 s. The completion-claim review finding passed two RED/GREEN regressions, then **29 passed, 6 warnings**, 111.11 s; scoped independent re-review found it addressed with no new breakage.
+- Root integration at `17890ad0`: `python -m pytest -q tests/test_web_assessment.py tests/test_agent_domain_planner.py tests/test_tool_execution_pipeline.py` with the existing runtime and pinned compiler setting — **52 passed, 6 existing warnings, no skips**, 109.81 s. These are synthetic engineering/provenance checks, not real D28 or scientific qualification. Task 3 measured assembly and Task 4 UI/real-case acceptance remain open.
 - Further evidence is appended only after the stated run completes. Completed transient task reports stay private; stable reusable facts are promoted once.
