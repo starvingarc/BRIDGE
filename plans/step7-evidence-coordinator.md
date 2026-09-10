@@ -40,6 +40,7 @@
 **Files:**
 - Modify: `src/bridge/tool_packages/p0_09_evidence_compiler/adapter.py`, `models.py`, `src/bridge/tool_packages/_input_contracts.py`, `specs/p0_09.yaml`, `cards/P0-09.md`.
 - Create: `src/bridge/tool_packages/p0_09_evidence_compiler/query_runtime.py` only if this keeps the compilation adapter focused; do not split the existing query implementation.
+- Modify: `src/bridge/toolkit/schemas.py` only to register the two new planned query-input and compiler-result Schema URIs against their deterministically generated filenames.
 - Modify: `tests/test_p0_09_evidence_compiler.py`, `tests/test_web_inputs.py` and `tests/test_registry.py` where they consume input discovery and Schema validation.
 - Deterministically regenerate affected `src/bridge/resources/schemas/` files and Tool Card projections using existing scripts. Align only P0-09 version pins in `examples/agent-integration/profiles/` and their existing tests when necessary; do not edit shared scientific contracts or unrelated package versions.
 
@@ -66,7 +67,7 @@
 
 **Deliverable:** A confirmed study scope can select and execute currently eligible checks, inspect their canonical evidence, and continue without requesting redundant approvals; facts, scope or resource changes still stop execution.
 
-**Files:** `src/bridge/web/assessment.py` (new focused coordinator), `app.py`, `provider.py`, `inputs.py`, `evidence.py`, `scientific_inputs.py`, `report_inputs.py`; narrow additions to `src/bridge/domain/models.py` and `src/bridge/runners/pipeline.py` only where exact scope-derived approval must be represented. Tests in `tests/test_web_assessment.py` and the existing Web/planner/pipeline suites.
+**Files:** `src/bridge/web/assessment.py` (new focused coordinator), `app.py`, `provider.py`, `inputs.py`, `evidence.py`, `scientific_inputs.py`, `report_inputs.py`; narrow `control.py` additions only to invalidate/stop the assessment through the existing shared fence; narrow additions to `src/bridge/domain/models.py` and `src/bridge/runners/pipeline.py` only where exact scope-derived approval must be represented. Tests in `tests/test_web_assessment.py` and the existing Web/planner/pipeline suites.
 
 **Interfaces and requirements:**
 - A private typed `AssessmentScope` binds the confirmed question, selected upload/DataView, input revision, exact reference/knowledge/measurement/role resources, allowed tool modes and finite maximum tool runs/model turns. These are approval-visible limits, not a promise of a hard wall-clock limit.
