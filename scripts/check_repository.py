@@ -86,8 +86,15 @@ WEB_PREVIEW_FILES = (
     Path("src/bridge/web/__main__.py"),
     Path("src/bridge/web/app.py"),
     Path("src/bridge/web/provider.py"),
+    Path("src/bridge/web/inputs.py"),
+    Path("src/bridge/web/control.py"),
+    Path("src/bridge/web/evidence.py"),
+    Path("src/bridge/web/intake.py"),
     Path("tests/test_private_path_trust.py"),
     Path("tests/test_web_service.py"),
+    Path("tests/test_web_inputs.py"),
+    Path("tests/test_web_evidence.py"),
+    Path("tests/test_web_intake.py"),
     Path("web/.gitignore"),
     Path("web/README.md"),
     Path("web/index.html"),
@@ -96,6 +103,10 @@ WEB_PREVIEW_FILES = (
     Path("web/src/App.tsx"),
     Path("web/src/api.ts"),
     Path("web/src/components/Conversation.tsx"),
+    Path("web/src/components/AnalysisInputs.tsx"),
+    Path("web/src/components/InputChangeCard.tsx"),
+    Path("web/src/components/ProductIntake.tsx"),
+    Path("web/src/components/intakeLabels.ts"),
     Path("web/src/components/LoginScreen.tsx"),
     Path("web/src/components/MarkdownText.tsx"),
     Path("web/src/components/MarkdownTextImpl.tsx"),
@@ -109,9 +120,11 @@ WEB_PREVIEW_FILES = (
     Path("web/src/types.ts"),
     Path("web/src/vite-env.d.ts"),
     Path("web/tests/api.test.ts"),
+    Path("web/tests/analysis-inputs.test.tsx"),
     Path("web/tests/app-polling.test.tsx"),
     Path("web/tests/markdown-security.test.tsx"),
     Path("web/tests/plan-card.test.tsx"),
+    Path("web/tests/product-intake.test.tsx"),
     Path("web/tests/results-pane.test.tsx"),
     Path("web/tests/setup.ts"),
     Path("web/tsconfig.app.json"),
@@ -120,6 +133,26 @@ WEB_PREVIEW_FILES = (
     Path("web/vite.config.ts"),
     Path("docs/web-preview.md"),
     Path("docs/validation/web_preview_20260905.md"),
+    # Owner-approved scientific-input increment; only these concrete sources.
+    Path("plans/web-scientific-input-design.md"),
+    Path("src/bridge/web/clarification.py"),
+    Path("src/bridge/web/scientific_inputs.py"),
+    Path("src/bridge/web/report_inputs.py"),
+    Path("src/bridge/tool_packages/p0_09_evidence_compiler/candidate_policy.py"),
+    Path("tests/test_web_clarification.py"),
+    Path("tests/test_web_scientific_inputs.py"),
+    Path("tests/test_web_legacy_evidence.py"),
+    Path("tests/test_web_report_inputs.py"),
+    Path("web/src/components/ClarificationCard.tsx"),
+    Path("web/src/components/ScientificInputs.tsx"),
+    Path("web/tests/clarification-card.test.tsx"),
+    Path("web/tests/scientific-inputs.test.tsx"),
+    # Owner-selected candidate resource and required license; not runtime defaults.
+    Path("plans/resources/seurat-cell-cycle-v5.5.1-candidate.json"),
+    Path("plans/resources/seurat-cell-cycle-LICENSE.txt"),
+    # Owner-approved Task 29: one candidate selection resource and its contract tests.
+    Path("src/bridge/tool_packages/p0_01_input_qc/measurement_specs/qc_scrna_robust_candidate_v0.1.yaml"),
+    Path("tests/test_qc_selection.py"),
 )
 AGENT_INTEGRATION_FILES = (
     Path("examples/agent-integration/profiles/comparison.json"),
@@ -176,6 +209,13 @@ P005_MEASUREMENT_PROJECTION_FILES = (
     Path("src/bridge/resources/schemas/off_target_control_profile_v2.schema.json"),
     Path("src/bridge/tool_packages/p0_05_off_target_control/executor.py"),
 )
+P005_INPUT_ROUTE_FILES = (
+    Path("plans/p0-05-hard-count-accounting.md"),
+    Path("src/bridge/resources/schemas/off_target_control_result.schema.json"),
+    Path("src/bridge/resources/schemas/off_target_hard_count_profile.schema.json"),
+    Path("tests/test_p0_05_hard_count_accounting.py"),
+    Path("docs/validation/p0_05_off_target_control.md"),
+)
 P006_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/proliferation_stress_visualization_data.schema.json"),
     Path("src/bridge/resources/schemas/p0_06_visualization_artifact_set.schema.json"),
@@ -184,6 +224,20 @@ P006_VISUALIZATION_FILES = (
 )
 P006_MEASUREMENT_PROJECTION_FILES = (
     Path("src/bridge/resources/schemas/proliferation_stress_response_profile_v2.schema.json"),
+)
+P006_INPUT_ROUTE_FILES = (
+    Path("plans/p0-06-unresolved-observations.md"),
+    Path("src/bridge/resources/schemas/process_method_input_v2.schema.json"),
+    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/observation_source.py"),
+    Path("tests/test_p0_06_source_bound_observations.py"),
+    Path("docs/validation/p0_06_proliferation_stress_response.md"),
+    # Approved descriptive input route; only its concrete implementation/contracts.
+    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/exploratory.py"),
+    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/exploratory_models.py"),
+    Path("src/bridge/resources/schemas/exploratory_process_input.schema.json"),
+    Path("src/bridge/resources/schemas/exploratory_process_profile.schema.json"),
+    Path("src/bridge/resources/schemas/proliferation_stress_response_result.schema.json"),
+    Path("tests/test_p0_06_exploratory.py"),
 )
 P007_VISUALIZATION_FILES = (
     Path("src/bridge/resources/schemas/product_comparison_visualization_data.schema.json"),
@@ -381,8 +435,10 @@ def _tracked_file_budget() -> int:
         + p004_visualization_files
         + p005_visualization_files
         + p005_measurement_projection_files
+        + sum((ROOT / relative).is_file() for relative in P005_INPUT_ROUTE_FILES)
         + p006_visualization_files
         + p006_measurement_projection_files
+        + sum((ROOT / relative).is_file() for relative in P006_INPUT_ROUTE_FILES)
         + p007_visualization_files
         + p008_visualization_files
         + p009_visualization_files

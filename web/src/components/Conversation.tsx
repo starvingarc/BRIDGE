@@ -4,10 +4,15 @@ import {
   ThreadPrimitive,
 } from "@assistant-ui/react";
 import { File, Menu, MoreVertical, Paperclip, Send, Square } from "lucide-react";
-import { type ChangeEvent, useRef } from "react";
-import type { Session } from "../types";
+import { type ChangeEvent, type FormEvent, type ReactNode, useRef } from "react";
+import { api } from "../api";
+import { ClarificationCard } from "./ClarificationCard";
+import { ScientificInputs } from "./ScientificInputs";
+import type { Session, Upload } from "../types";
+import { AnalysisInputs } from "./AnalysisInputs";
+import { InputChangeCard } from "./InputChangeCard";
 import { MarkdownText } from "./MarkdownText";
-import { PlanCard } from "./PlanCard";
+import { PlanCard, PlanHistory } from "./PlanCard";
 import { SessionStatusMark } from "./StatusMark";
 
 type Props = {
@@ -15,9 +20,17 @@ type Props = {
   busy: boolean;
   uploadBusy: boolean;
   approveBusy: boolean;
+  stopBusy: boolean;
   onOpenSidebar: () => void;
   onUpload: (file: File) => void;
+  onSourceInput: (uploadId: string, sourceFamilyId: string) => void;
   onApprove: () => void;
+  onStop: () => void;
+  onConfirmInputChange: () => void;
+  onDiscardInputChange: () => void;
+  onKeepCurrentInputs: () => void;
+  onSession: (session: Session) => void;
+  onError: (error: unknown) => void;
 };
 
 function UserMessage() {
@@ -30,7 +43,7 @@ function UserMessage() {
   );
 }
 
-function AssistantMessage() {
+function AssistantMessage({ children }: { children?: ReactNode }) {
   return (
     <MessagePrimitive.Root className="message message--assistant">
       <div className="assistant-mark" aria-hidden="true">
@@ -38,9 +51,59 @@ function AssistantMessage() {
       </div>
       <div className="message-bubble message-bubble--assistant">
         <MessagePrimitive.Parts components={{ Text: MarkdownText }} />
+        {children}
       </div>
     </MessagePrimitive.Root>
   );
+}
+
+export function SourceInputForms({
+  uploads,
+  disabled,
+  onSourceInput,
+}: {
+  uploads: Upload[];
+  disabled: boolean;
+  onSourceInput: (uploadId: string, sourceFamilyId: string) => void;
+}) {
+  const nameCounts = uploads.reduce<Map<string, number>>(
+    (counts, upload) => counts.set(upload.name, (counts.get(upload.name) ?? 0) + 1),
+    new Map(),
+  );
+  const submit = (event: FormEvent<HTMLFormElement>, uploadId: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const sourceFamilyId = String(form.get("source_family_id") ?? "").trim();
+    if (sourceFamilyId) onSourceInput(uploadId, sourceFamilyId);
+  };
+
+  return uploads.map((upload) => {
+    const uploadLabel = nameCounts.get(upload.name) === 1
+      ? upload.name
+      : `${upload.name} · ${upload.id.slice(0, 8)}`;
+    return (
+      <form className="source-form" key={upload.id} onSubmit={(event) => submit(event, upload.id)}>
+        <strong className="source-upload-name">{uploadLabel}</strong>
+        <label htmlFor={`source-${upload.id}`}>Data source / experiment reference</label>
+        <div>
+          <input
+            id={`source-${upload.id}`}
+            name="source_family_id"
+            key={`${upload.id}:${upload.source_family_id ?? ""}`}
+            defaultValue={upload.source_family_id ?? ""}
+            maxLength={160}
+            pattern={"[A-Za-z0-9][A-Za-z0-9_.:\\-]*"}
+            title="Start with a letter or number; use only letters, numbers, dot, underscore, colon, or hyphen."
+            required
+            disabled={disabled}
+            placeholder="e.g. source-family:study-cohort"
+          />
+          <button type="submit" disabled={disabled}>Stage change</button>
+        </div>
+        <small>The exact source change is staged for confirmation and is not sent to the model.</small>
+      </form>
+    );
+  });
 }
 
 export function Conversation({
@@ -48,9 +111,17 @@ export function Conversation({
   busy,
   uploadBusy,
   approveBusy,
+  stopBusy,
   onOpenSidebar,
   onUpload,
+  onSourceInput,
   onApprove,
+  onStop,
+  onConfirmInputChange,
+  onDiscardInputChange,
+  onKeepCurrentInputs,
+  onSession,
+  onError,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -72,21 +143,50 @@ export function Conversation({
             <span>{session.status.replace("_", " ")}</span>
           </div>
         </div>
-        <a
-          className="icon-button"
-          href={`/api/sessions/${encodeURIComponent(session.id)}/transcript`}
-          download
-          aria-label="Download transcript"
-          title="Download transcript"
-        >
-          <MoreVertical aria-hidden="true" />
-        </a>
+        <div className="conversation-header-actions">
+          {["thinking", "running", "awaiting_approval"].includes(session.status) ? (
+            <button
+              className="stop-button"
+              type="button"
+              onClick={onStop}
+              disabled={stopBusy}
+              aria-label="Stop analysis"
+            >
+              <Square aria-hidden="true" />
+              {stopBusy ? "Stopping…" : "Stop"}
+            </button>
+          ) : null}
+          <a
+            className="icon-button"
+            href={`/api/sessions/${encodeURIComponent(session.id)}/transcript`}
+            download
+            aria-label="Download transcript"
+            title="Download transcript"
+          >
+            <MoreVertical aria-hidden="true" />
+          </a>
+        </div>
       </header>
       <ThreadPrimitive.Root className="thread-root">
         <ThreadPrimitive.Viewport className="thread-viewport">
           <div className="message-stack">
             <ThreadPrimitive.Messages>
-              {({ message }) => (message.role === "user" ? <UserMessage /> : <AssistantMessage />)}
+              {({ message }) => (message.role === "user" ? <UserMessage /> : (
+                <AssistantMessage>
+                  {(session.clarifications ?? []).filter((card) => card.message_id === message.id).map((card) => (
+                    <ClarificationCard key={session.id + ":" + card.id + ":" + card.digest} card={card} busy={busy}
+                      onAnswer={async (answers) => onSession(await api.answerClarification(session.id, card.id, card.digest, answers))}
+                      onCancel={async () => onSession(await api.cancelClarification(session.id, card.id, card.digest))}
+                      onRevise={async () => onSession(await api.reviseClarification(session.id, card.id, card.digest))} />
+                  ))}
+                  {(session.scientific_drafts ?? []).filter((draft) => draft.message_id === message.id).map((draft) => (
+                    <ScientificInputs key={session.id + ":" + draft.id + ":" + draft.digest} draft={draft} busy={busy}
+                      onPrepareReport={async (toolId) => onSession(await api.prepareReportInputs(session.id, draft.id, draft.digest, toolId))}
+                      onConfirm={async () => onSession(await api.confirmScientificInputs(session.id, draft.id, draft.digest))}
+                      onRevise={async (candidate) => onSession(await api.reviseScientificInputs(session.id, draft.id, draft.digest, candidate))} />
+                  ))}
+                </AssistantMessage>
+              ))}
             </ThreadPrimitive.Messages>
             {session.messages.length === 0 ? (
               <div className="conversation-empty">
@@ -94,21 +194,53 @@ export function Conversation({
                 <p>Upload an H5AD file, then describe the question you want BRIDGE to assess.</p>
               </div>
             ) : null}
+            {session.status === "stopping" ? (
+              <div className="stopping-notice" role="status">
+                Stop acknowledged. Current in-process work may still finish; later work is stopped.
+              </div>
+            ) : null}
             {session.error ? (
               <div className="session-error" role="alert">
                 {session.error}
               </div>
             ) : null}
+            <PlanHistory plans={session.plan_history ?? []} currentPlanId={session.plan?.id} />
             {session.plan ? (
               <PlanCard
                 plan={session.plan}
                 sessionStatus={session.status}
-                busy={approveBusy}
+                busy={approveBusy || session.input_review_required}
                 onApprove={onApprove}
               />
             ) : null}
           </div>
           <ThreadPrimitive.ViewportFooter className="composer-footer">
+            {session.input_review_required && session.pending_input_change?.kind !== "intake" ? (
+              <InputChangeCard
+                pending={session.pending_input_change}
+                uploads={session.uploads}
+                busy={approveBusy}
+                onConfirm={onConfirmInputChange}
+                onDiscard={onDiscardInputChange}
+                onKeep={onKeepCurrentInputs}
+              />
+            ) : null}
+            <AnalysisInputs
+              key={`${session.id}:${session.pending_input_change?.id ?? session.input_review_required}`}
+              sessionId={session.id}
+              uploads={session.uploads}
+              capabilities={session.capabilities ?? []}
+              disabled={busy}
+              inputReviewRequired={session.input_review_required}
+              onSession={onSession}
+              onError={onError}
+            >
+              <SourceInputForms
+                uploads={session.uploads}
+                disabled={busy}
+                onSourceInput={onSourceInput}
+              />
+            </AnalysisInputs>
             {session.uploads.length ? (
               <div className="upload-list" aria-label="Uploaded files">
                 {session.uploads.map((upload) => (

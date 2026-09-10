@@ -1,0 +1,1505 @@
+{
+  "$defs": {
+    "AssessmentState": {
+      "enum": [
+        "available",
+        "not_assessed"
+      ],
+      "title": "AssessmentState",
+      "type": "string"
+    },
+    "CellStateComposition": {
+      "additionalProperties": false,
+      "properties": {
+        "records": {
+          "items": {
+            "$ref": "#/$defs/CellStateCompositionRecord"
+          },
+          "title": "Records",
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "shadow",
+            "not_assessed",
+            "unavailable",
+            "unknown",
+            "missing"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "records"
+      ],
+      "title": "CellStateComposition",
+      "type": "object"
+    },
+    "CellStateCompositionDenominatorScope": {
+      "enum": [
+        "selected_data_view"
+      ],
+      "title": "CellStateCompositionDenominatorScope",
+      "type": "string"
+    },
+    "CellStateCompositionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "denominator_scope": {
+          "$ref": "#/$defs/CellStateCompositionDenominatorScope"
+        },
+        "fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "label": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Label",
+          "type": "string"
+        },
+        "label_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Label Level",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "state_evidence_state": {
+          "$ref": "#/$defs/CellStateCompositionRecordState"
+        },
+        "view": {
+          "$ref": "#/$defs/CellStateCompositionView"
+        }
+      },
+      "required": [
+        "view",
+        "label",
+        "label_level",
+        "state_evidence_state",
+        "denominator_scope",
+        "count",
+        "fraction",
+        "denominator"
+      ],
+      "title": "CellStateCompositionRecord",
+      "type": "object"
+    },
+    "CellStateCompositionRecordState": {
+      "enum": [
+        "candidate",
+        "unknown",
+        "ood",
+        "unresolved",
+        "unavailable"
+      ],
+      "title": "CellStateCompositionRecordState",
+      "type": "string"
+    },
+    "CellStateCompositionView": {
+      "enum": [
+        "consensus_supported_only",
+        "source_specific",
+        "reconciliation_state"
+      ],
+      "title": "CellStateCompositionView",
+      "type": "string"
+    },
+    "CoverageState": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "CoverageState",
+      "type": "string"
+    },
+    "DataViewBinding": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "type": "null"
+                },
+                "biological_unit_manifest_sha256": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "biological_unit_manifest_sha256": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "biological_unit_manifest_ref",
+                "biological_unit_manifest_sha256"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Content-addressed expression view passed between scientific tools.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Ref"
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
+        "matrix_location": {
+          "minLength": 1,
+          "title": "Matrix Location",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "enum": [
+            "raw_counts",
+            "normalized_expression"
+          ],
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_ids_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Ids Sha256",
+          "type": "string"
+        },
+        "parent_asset_id": {
+          "minLength": 1,
+          "title": "Parent Asset Id",
+          "type": "string"
+        },
+        "parent_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Parent Asset Sha256",
+          "type": "string"
+        },
+        "sample_or_preparation_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Or Preparation Ref"
+        },
+        "selection_spec_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Spec Ref"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "view_id": {
+          "minLength": 1,
+          "title": "View Id",
+          "type": "string"
+        },
+        "view_kind": {
+          "enum": [
+            "all_observations",
+            "qc_selected_observations"
+          ],
+          "title": "View Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "view_kind",
+        "artifact_id",
+        "sha256",
+        "parent_asset_id",
+        "parent_asset_sha256",
+        "matrix_location",
+        "matrix_semantics",
+        "n_observations",
+        "observation_ids_sha256"
+      ],
+      "title": "DataViewBinding",
+      "type": "object"
+    },
+    "EvidenceState": {
+      "enum": [
+        "measured",
+        "inferred",
+        "prior_only",
+        "negative",
+        "missing",
+        "unknown",
+        "unavailable",
+        "alert"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ExclusionState": {
+      "enum": [
+        "observed",
+        "cannot_exclude"
+      ],
+      "title": "ExclusionState",
+      "type": "string"
+    },
+    "OffTargetControlProfileV2": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "measurement_projection_state": {
+                "const": "not_requested"
+              }
+            },
+            "required": [
+              "measurement_projection_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_artifacts": {
+                "maxItems": 0
+              },
+              "measurement_spec_ref": {
+                "type": "null"
+              },
+              "measurement_spec_sha256": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "measurement_artifacts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "measurement_projection_state": {
+                "const": "available"
+              }
+            },
+            "required": [
+              "measurement_projection_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_artifacts": {
+                "minItems": 1
+              },
+              "measurement_spec_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "measurement_spec_sha256": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            },
+            "required": [
+              "measurement_spec_ref",
+              "measurement_spec_sha256",
+              "measurement_artifacts"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "assessment_spec_ref": {
+          "title": "Assessment Spec Ref",
+          "type": "string"
+        },
+        "assessment_spec_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Assessment Spec Sha256",
+          "type": "string"
+        },
+        "cell_state_profile_id": {
+          "title": "Cell State Profile Id",
+          "type": "string"
+        },
+        "cell_state_profile_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cell State Profile Sha256",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_bundle_ref": {
+          "title": "Evidence Bundle Ref",
+          "type": "string"
+        },
+        "evidence_bundle_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Bundle Sha256",
+          "type": "string"
+        },
+        "evidence_state": {
+          "const": "shadow",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "measurement_artifacts": {
+          "items": {
+            "$ref": "#/$defs/OffTargetMeasurementArtifactBinding"
+          },
+          "title": "Measurement Artifacts",
+          "type": "array"
+        },
+        "measurement_projection_state": {
+          "enum": [
+            "not_requested",
+            "available"
+          ],
+          "title": "Measurement Projection State",
+          "type": "string"
+        },
+        "measurement_spec_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "measurement_spec_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measurement Spec Sha256"
+        },
+        "object_version": {
+          "const": "0.2.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "primary_denominator": {
+          "$ref": "#/$defs/OffTargetDenominator"
+        },
+        "product_case_ref": {
+          "title": "Product Case Ref",
+          "type": "string"
+        },
+        "product_case_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Case Sha256",
+          "type": "string"
+        },
+        "product_definition_ref": {
+          "title": "Product Definition Ref",
+          "type": "string"
+        },
+        "product_definition_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Definition Sha256",
+          "type": "string"
+        },
+        "profile_id": {
+          "pattern": "^off-target-control:[A-Za-z0-9._:-]+$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_version": {
+          "const": "0.2.0",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "rare_state_profile": {
+          "items": {
+            "$ref": "#/$defs/RareStateRecord"
+          },
+          "title": "Rare State Profile",
+          "type": "array"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "role_composition": {
+          "items": {
+            "$ref": "#/$defs/RoleCompositionRecord"
+          },
+          "title": "Role Composition",
+          "type": "array"
+        },
+        "score_state": {
+          "const": "unavailable",
+          "title": "Score State",
+          "type": "string"
+        },
+        "state_role_map_ref": {
+          "title": "State Role Map Ref",
+          "type": "string"
+        },
+        "state_role_map_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "State Role Map Sha256",
+          "type": "string"
+        },
+        "tool_id": {
+          "const": "P0-05",
+          "title": "Tool Id",
+          "type": "string"
+        },
+        "tool_version": {
+          "title": "Tool Version",
+          "type": "string"
+        },
+        "unknown_profile": {
+          "$ref": "#/$defs/UnknownProfile"
+        }
+      },
+      "required": [
+        "object_version",
+        "profile_id",
+        "profile_version",
+        "tool_id",
+        "tool_version",
+        "product_case_ref",
+        "product_case_sha256",
+        "product_definition_ref",
+        "product_definition_sha256",
+        "state_role_map_ref",
+        "state_role_map_sha256",
+        "assessment_spec_ref",
+        "assessment_spec_sha256",
+        "cell_state_profile_id",
+        "cell_state_profile_sha256",
+        "evidence_bundle_ref",
+        "evidence_bundle_sha256",
+        "primary_denominator",
+        "role_composition",
+        "unknown_profile",
+        "rare_state_profile",
+        "evidence_state",
+        "score_state",
+        "reason_codes",
+        "created_at",
+        "measurement_projection_state",
+        "measurement_artifacts"
+      ],
+      "title": "OffTargetControlProfileV2",
+      "type": "object"
+    },
+    "OffTargetDenominator": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Denominator Id",
+          "type": "string"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "total_soft_mass": {
+          "exclusiveMinimum": 0.0,
+          "title": "Total Soft Mass",
+          "type": "number"
+        },
+        "unit": {
+          "const": "cells",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "denominator_id",
+        "n_observations",
+        "total_soft_mass",
+        "unit"
+      ],
+      "title": "OffTargetDenominator",
+      "type": "object"
+    },
+    "OffTargetHardCountAccounting": {
+      "additionalProperties": false,
+      "properties": {
+        "accounting_basis": {
+          "const": "producer_reference_support_counts",
+          "title": "Accounting Basis",
+          "type": "string"
+        },
+        "accounting_state": {
+          "const": "complete",
+          "title": "Accounting State",
+          "type": "string"
+        },
+        "mass_state": {
+          "const": "unavailable",
+          "title": "Mass State",
+          "type": "string"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_unit": {
+          "enum": [
+            "cell",
+            "nucleus"
+          ],
+          "title": "Observation Unit",
+          "type": "string"
+        },
+        "primary_denominator_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Primary Denominator Id",
+          "type": "string"
+        },
+        "producer_composition": {
+          "$ref": "#/$defs/CellStateComposition"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "role_counts": {
+          "items": {
+            "$ref": "#/$defs/OffTargetHardCountRoleRecord"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Role Counts",
+          "type": "array"
+        },
+        "total_soft_mass": {
+          "default": null,
+          "title": "Total Soft Mass",
+          "type": "null"
+        }
+      },
+      "required": [
+        "primary_denominator_id",
+        "n_observations",
+        "observation_unit",
+        "producer_composition",
+        "role_counts",
+        "accounting_basis",
+        "accounting_state",
+        "mass_state",
+        "reason_codes"
+      ],
+      "title": "OffTargetHardCountAccounting",
+      "type": "object"
+    },
+    "OffTargetHardCountMeasurementArtifactBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "evidence_state": {
+          "enum": [
+            "inferred",
+            "unavailable"
+          ],
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "file_name": {
+          "pattern": "^[a-z0-9][a-z0-9_.-]*\\.json$",
+          "title": "File Name",
+          "type": "string"
+        },
+        "measurement_id": {
+          "minLength": 1,
+          "title": "Measurement Id",
+          "type": "string"
+        },
+        "metric_name": {
+          "enum": [
+            "off_target_hard_count_accounting",
+            "off_target_soft_mass_composition",
+            "off_target_identity_unknown",
+            "off_target_rare_state_detection"
+          ],
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measurement_id",
+        "metric_name",
+        "evidence_state",
+        "artifact_id",
+        "file_name",
+        "sha256"
+      ],
+      "title": "OffTargetHardCountMeasurementArtifactBinding",
+      "type": "object"
+    },
+    "OffTargetHardCountProfileV1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "measurement_projection_state": {
+                "const": "not_requested"
+              }
+            },
+            "required": [
+              "measurement_projection_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_artifacts": {
+                "maxItems": 0
+              },
+              "measurement_spec_ref": {
+                "type": "null"
+              },
+              "measurement_spec_sha256": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "measurement_artifacts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "measurement_projection_state": {
+                "const": "available"
+              }
+            },
+            "required": [
+              "measurement_projection_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "measurement_artifacts": {
+                "allOf": [
+                  {
+                    "contains": {
+                      "properties": {
+                        "evidence_state": {
+                          "const": "inferred"
+                        },
+                        "metric_name": {
+                          "const": "off_target_hard_count_accounting"
+                        }
+                      },
+                      "required": [
+                        "metric_name",
+                        "evidence_state"
+                      ],
+                      "type": "object"
+                    },
+                    "maxContains": 1,
+                    "minContains": 1
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "evidence_state": {
+                          "const": "unavailable"
+                        },
+                        "metric_name": {
+                          "const": "off_target_soft_mass_composition"
+                        }
+                      },
+                      "required": [
+                        "metric_name",
+                        "evidence_state"
+                      ],
+                      "type": "object"
+                    },
+                    "maxContains": 1,
+                    "minContains": 1
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "evidence_state": {
+                          "const": "unavailable"
+                        },
+                        "metric_name": {
+                          "const": "off_target_identity_unknown"
+                        }
+                      },
+                      "required": [
+                        "metric_name",
+                        "evidence_state"
+                      ],
+                      "type": "object"
+                    },
+                    "maxContains": 1,
+                    "minContains": 1
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "evidence_state": {
+                          "const": "unavailable"
+                        },
+                        "metric_name": {
+                          "const": "off_target_rare_state_detection"
+                        }
+                      },
+                      "required": [
+                        "metric_name",
+                        "evidence_state"
+                      ],
+                      "type": "object"
+                    },
+                    "maxContains": 1,
+                    "minContains": 1
+                  }
+                ],
+                "maxItems": 4,
+                "minItems": 4
+              },
+              "measurement_spec_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "measurement_spec_sha256": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            },
+            "required": [
+              "measurement_spec_ref",
+              "measurement_spec_sha256",
+              "measurement_artifacts"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "accounting": {
+          "$ref": "#/$defs/OffTargetHardCountAccounting"
+        },
+        "assessment_spec_ref": {
+          "minLength": 1,
+          "title": "Assessment Spec Ref",
+          "type": "string"
+        },
+        "assessment_spec_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Assessment Spec Sha256",
+          "type": "string"
+        },
+        "biological_unit_attestation_receipt_ref": {
+          "minLength": 1,
+          "title": "Biological Unit Attestation Receipt Ref",
+          "type": "string"
+        },
+        "biological_unit_attestation_receipt_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Biological Unit Attestation Receipt Sha256",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "minLength": 1,
+          "title": "Biological Unit Manifest Ref",
+          "type": "string"
+        },
+        "biological_unit_manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Biological Unit Manifest Sha256",
+          "type": "string"
+        },
+        "cell_state_profile_id": {
+          "minLength": 1,
+          "title": "Cell State Profile Id",
+          "type": "string"
+        },
+        "cell_state_profile_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cell State Profile Sha256",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "domain_score": {
+          "default": null,
+          "title": "Domain Score",
+          "type": "null"
+        },
+        "evidence_state": {
+          "const": "shadow",
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "input_data_view": {
+          "$ref": "#/$defs/DataViewBinding"
+        },
+        "measurement_artifacts": {
+          "items": {
+            "$ref": "#/$defs/OffTargetHardCountMeasurementArtifactBinding"
+          },
+          "title": "Measurement Artifacts",
+          "type": "array"
+        },
+        "measurement_projection_state": {
+          "enum": [
+            "not_requested",
+            "available"
+          ],
+          "title": "Measurement Projection State",
+          "type": "string"
+        },
+        "measurement_spec_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "measurement_spec_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measurement Spec Sha256"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "open_set_assessment_state": {
+          "const": "not_assessed",
+          "title": "Open Set Assessment State",
+          "type": "string"
+        },
+        "product_case_ref": {
+          "minLength": 1,
+          "title": "Product Case Ref",
+          "type": "string"
+        },
+        "product_case_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Case Sha256",
+          "type": "string"
+        },
+        "product_definition_ref": {
+          "minLength": 1,
+          "title": "Product Definition Ref",
+          "type": "string"
+        },
+        "product_definition_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Product Definition Sha256",
+          "type": "string"
+        },
+        "profile_id": {
+          "pattern": "^off-target-hard-count:[A-Za-z0-9._:-]+$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_version": {
+          "const": "0.1.0",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "rare_detection_state": {
+          "const": "not_assessed",
+          "title": "Rare Detection State",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "score_state": {
+          "const": "unavailable",
+          "title": "Score State",
+          "type": "string"
+        },
+        "state_role_map_ref": {
+          "minLength": 1,
+          "title": "State Role Map Ref",
+          "type": "string"
+        },
+        "state_role_map_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "State Role Map Sha256",
+          "type": "string"
+        },
+        "tool_id": {
+          "const": "P0-05",
+          "title": "Tool Id",
+          "type": "string"
+        },
+        "tool_version": {
+          "const": "0.6.0",
+          "title": "Tool Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "profile_id",
+        "profile_version",
+        "tool_id",
+        "tool_version",
+        "product_case_ref",
+        "product_case_sha256",
+        "product_definition_ref",
+        "product_definition_sha256",
+        "state_role_map_ref",
+        "state_role_map_sha256",
+        "assessment_spec_ref",
+        "assessment_spec_sha256",
+        "cell_state_profile_id",
+        "cell_state_profile_sha256",
+        "biological_unit_manifest_ref",
+        "biological_unit_manifest_sha256",
+        "biological_unit_attestation_receipt_ref",
+        "biological_unit_attestation_receipt_sha256",
+        "input_data_view",
+        "accounting",
+        "open_set_assessment_state",
+        "rare_detection_state",
+        "measurement_projection_state",
+        "measurement_artifacts",
+        "evidence_state",
+        "score_state",
+        "reason_codes",
+        "created_at"
+      ],
+      "title": "OffTargetHardCountProfileV1",
+      "type": "object"
+    },
+    "OffTargetHardCountRoleRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "consensus_supported_count": {
+          "minimum": 0,
+          "title": "Consensus Supported Count",
+          "type": "integer"
+        },
+        "exclusion_state": {
+          "const": "cannot_exclude",
+          "title": "Exclusion State",
+          "type": "string"
+        },
+        "fraction_of_selected_view": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fraction Of Selected View",
+          "type": "number"
+        },
+        "product_role": {
+          "$ref": "#/$defs/ProductRole"
+        },
+        "support_basis": {
+          "const": "consensus_supported_only",
+          "title": "Support Basis",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_role",
+        "consensus_supported_count",
+        "fraction_of_selected_view",
+        "support_basis",
+        "exclusion_state"
+      ],
+      "title": "OffTargetHardCountRoleRecord",
+      "type": "object"
+    },
+    "OffTargetMeasurementArtifactBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "file_name": {
+          "pattern": "^[a-z0-9][a-z0-9_.-]*\\.json$",
+          "title": "File Name",
+          "type": "string"
+        },
+        "measurement_id": {
+          "minLength": 1,
+          "title": "Measurement Id",
+          "type": "string"
+        },
+        "metric_name": {
+          "enum": [
+            "off_target_role_composition",
+            "off_target_identity_unknown",
+            "off_target_rare_state_detection"
+          ],
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "record_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_scope": {
+          "enum": [
+            "role",
+            "identity_unknown",
+            "rare_state"
+          ],
+          "title": "Record Scope",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measurement_id",
+        "metric_name",
+        "record_scope",
+        "record_id",
+        "evidence_state",
+        "artifact_id",
+        "file_name",
+        "sha256"
+      ],
+      "title": "OffTargetMeasurementArtifactBinding",
+      "type": "object"
+    },
+    "ProductRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved"
+      ],
+      "title": "ProductRole",
+      "type": "string"
+    },
+    "RareDetectionState": {
+      "enum": [
+        "detected",
+        "not_detected_above_lod",
+        "cannot_exclude",
+        "not_assessed"
+      ],
+      "title": "RareDetectionState",
+      "type": "string"
+    },
+    "RareStateRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "calibration_ref": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration Ref"
+        },
+        "calibration_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration Sha256"
+        },
+        "detection_state": {
+          "$ref": "#/$defs/RareDetectionState"
+        },
+        "false_positive_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "False Positive Fraction"
+        },
+        "observed_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Observed Count"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "soft_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Soft Fraction"
+        },
+        "state_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "State Id",
+          "type": "string"
+        },
+        "validated_detection_limit_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validated Detection Limit Fraction"
+        },
+        "zero_observation_upper_bound_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Zero Observation Upper Bound Fraction"
+        }
+      },
+      "required": [
+        "state_id",
+        "observed_count",
+        "soft_fraction",
+        "detection_state",
+        "reason_codes"
+      ],
+      "title": "RareStateRecord",
+      "type": "object"
+    },
+    "RoleCompositionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "$ref": "#/$defs/AssessmentState"
+        },
+        "exclusion_state": {
+          "$ref": "#/$defs/ExclusionState"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fraction"
+        },
+        "observed_count": {
+          "title": "Observed Count",
+          "type": "integer"
+        },
+        "product_role": {
+          "$ref": "#/$defs/ProductRole"
+        },
+        "soft_mass": {
+          "title": "Soft Mass",
+          "type": "number"
+        }
+      },
+      "required": [
+        "product_role",
+        "soft_mass",
+        "observed_count",
+        "fraction",
+        "assessment_state",
+        "exclusion_state"
+      ],
+      "title": "RoleCompositionRecord",
+      "type": "object"
+    },
+    "UnknownProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage_state": {
+          "$ref": "#/$defs/CoverageState"
+        },
+        "exclusion_state": {
+          "$ref": "#/$defs/ExclusionState"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fraction"
+        },
+        "observed_count": {
+          "title": "Observed Count",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/UnknownReasonRecord"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "soft_mass": {
+          "title": "Soft Mass",
+          "type": "number"
+        }
+      },
+      "required": [
+        "coverage_state",
+        "soft_mass",
+        "observed_count",
+        "fraction",
+        "exclusion_state",
+        "reasons"
+      ],
+      "title": "UnknownProfile",
+      "type": "object"
+    },
+    "UnknownReasonRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fraction"
+        },
+        "observed_count": {
+          "title": "Observed Count",
+          "type": "integer"
+        },
+        "reason_id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Reason Id",
+          "type": "string"
+        },
+        "soft_mass": {
+          "title": "Soft Mass",
+          "type": "number"
+        }
+      },
+      "required": [
+        "reason_id",
+        "soft_mass",
+        "observed_count",
+        "fraction"
+      ],
+      "title": "UnknownReasonRecord",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/off-target-control-result/v0.1",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/OffTargetControlProfileV2"
+    },
+    {
+      "$ref": "#/$defs/OffTargetHardCountProfileV1"
+    }
+  ],
+  "title": "OffTargetControlResultV1"
+}

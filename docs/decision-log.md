@@ -1,5 +1,39 @@
 # Decision Log
 
+## 2026-09-07: Separate P0-05 Counts From Assignment Mass
+
+The approved P0-05 hard_count_accounting input mode consumes the existing
+producer V3 count partition without requiring a caller-authored mass bundle.
+Consensus-supported role counts and non-consensus reconciliation buckets remain
+separate. A zero supported count cannot establish biological absence. Soft mass,
+open-set assessment and rare-state detection remain unavailable/not assessed.
+
+A distinct versioned profile and package result union preserve existing profile
+contracts. The count-only mode does not run soft-composition figures, bootstrap
+inference or detection calibration. Required manifest/receipt bindings establish
+execution ownership correspondence, not independently verified biological units.
+The branch plan tracks implementation and validation; this decision does not
+claim a completed genuine-data chain or scientific release.
+
+
+## 2026-09-07: Bind P0-06 Observations To Producer Artifacts
+
+The approved ProcessMethodInput v0.2 replaces caller-repeated state rows with a
+checksummed descriptor of the existing P0-02 evidence table and same-run artifact
+manifest. Source conflict remains unresolved; no winning identity, probability
+or biological unknown state is invented. Whole-product summaries retain every
+selected observation. Conditioned summaries use only uniquely supported states
+that match externally declared ProgramSpec rules.
+
+The existing v0.1 input remains unchanged. Exact artifact correspondence is not
+authentication of an arbitrary fabricated bundle; deployment registration owns
+that trust boundary. No new source catalog or signature framework is introduced.
+This follows [AnnData observation identity](https://anndata.readthedocs.io/en/stable/generated/anndata.AnnData.obs_names.html)
+and explicit entity/derivation binding in [W3C PROV-DM](https://www.w3.org/TR/prov-dm/)
+without adopting a separate platform stack. Implementation and validation remain
+tracked in the branch plan, independently of scientific readiness.
+
+
 ## 2026-08-10: Rebuild The Active Package
 
 The historical Step1-Step3 implementation remains available through Git history. BRIDGE uses new high-level Tool Package contracts and has no compatibility requirement with historical score or report APIs.
@@ -108,3 +142,124 @@ startup-only and pinned to its path, owner and filesystem identity. Default
 private-path ownership checks remain strict; trust does not propagate to
 descendants or relax symlink, permission or replacement checks. This is a
 single-operator deployment boundary, not a multi-tenant authorization model.
+
+## 2026-09-07: Permit Explicitly Opted-in Aggregate Interpretation
+
+The owner approved sending field-allowlisted aggregate analysis summaries to the
+configured model for research interpretation. Raw expression matrices,
+observation-level records, sample/source identities, private paths, credentials
+and private provenance hashes remain local. The default deployment remains
+status-only; the opt-in is startup-owned, not a model or HTTP permission.
+
+Summary values must come from verified canonical tool artifacts and preserve
+counts, denominators, evidence states and uncertainty. A private per-turn binding
+retains their exact provenance. An interpretation is not a verified report,
+scientific validation or public-export approval. Aggregate results remain
+controlled biological data even after identifiers are removed. Implementation
+and acceptance are tracked in the existing Web integration plan.
+
+## 2026-09-08: Bound Product-intent Sharing To Scientific-input Drafts
+
+The owner approved the configured model receiving three explicitly confirmed
+product-intent fields for scientific-input candidate drafting: `product_family`,
+`target_cell_type` and `target_stage`. This is a purpose-specific authorization,
+not permission to send the whole intake form or to expand ordinary conversation
+context. Product names, sampling and independence information, sample/source
+identities, metadata columns, raw expression, paths and private provenance remain
+outside this new authorization. Existing aggregate-summary consent is separate.
+
+Draft, stale, retracted or unconfirmed values must not be promoted to confirmed
+intent. Any candidate remains reviewable and source-backed; confirmation is not
+scientific freezing, biological validation or public-export approval. The current
+runtime still sends intake readiness only. Implementation and acceptance of the
+new draft-specific projection belong to the existing Web integration plan.
+
+
+## 2026-09-09: Metadata-First Experimental Intake
+
+The owner approved reading uploaded obs/var/uns metadata before asking research
+users repetitive questions, and using uploaded differentiation protocols to
+produce editable, source-cited experimental drafts. A dedicated configured-model
+purpose may receive bounded semantic metadata and protocol passages. It does not
+inherit general access to matrices, observation rows, sample/capture identities,
+private paths, credentials or provenance hashes.
+
+Direct metadata and source-backed model interpretation remain distinguishable.
+Known sample-scoped culture days are preserved without claiming independent
+replicates. Starting cells and sequencing methods use experimental language;
+internal product categories and routine matrix-processing questions are not the
+initial interview. Remaining questions appear one at a time with Other last,
+no unknown choice, and persistent private answers. Missing facts remain missing.
+
+User confirmation and tool approval remain separate gates. Prescribed protocol
+steps are not attested execution, annotations are not intended target identity,
+and file structure/integer values are not raw-count provenance. This increment
+changes intake, not the scientific measurement contracts or release criteria.
+
+## 2026-09-09: Separate Descriptive Expression Measurement From Product Assessment
+
+The owner approved a bounded exploratory P0-06 route before product-state,
+role and biological-independence review is complete. Its versioned input binds
+the selected expression view and exact candidate S/G2M resource. It measures
+relative program expression and predicted phases only; it cannot manufacture
+reviewed product objects, an independence attestation or gate-facing evidence.
+
+The new result union retains the old product-profile schema and adds a distinct
+exploratory profile with pending state review, unknown independence, null
+independent n and unavailable domain scoring. Original product modes retain
+their scientific and attestation requirements. A common matrix and gene
+programs define shared evidence, not independent validation by multiple methods.
+No division-rate, quiescence, stress, purity, acceptance or release conclusion
+follows from these descriptive measurements. No new data-sharing permission or
+public-export approval is implied. Exact implementation and execution receipts
+are recorded separately in the active Web integration plan.
+
+
+## 2026-09-09: Derive Protocol Code And Source Spans From One Fragment Sequence
+
+The owner approved replacing the model's separate full-program and source-map
+outputs after real generation/repair failures. Ordered source-backed body
+fragments are now the sole proposed code source. BRIDGE assembles a fixed
+protocol wrapper, physical line spans and any compatibility occurrence fields.
+A syntax repair replaces named existing fragments and atomically regenerates the
+program; the initial readable statements, sources, questions and order remain
+unchanged. Option-only repair cannot edit successfully compiled code.
+
+Historical versions, user edits and source passages remain unchanged. This
+eliminates independently authored code/map copies, not semantic uncertainty:
+literal checks and passage accounting are not entailment, experimental execution
+or biological validation. Bounded raw-response retention and actual installed
+model/browser acceptance are tracked separately in the integration plan.
+
+## 2026-09-09: Permit Add-only Repair Of Missing Protocol Citations
+
+The owner approved appending missing existing source IDs to an unchanged step.
+Original source passages are authoritative; an initial model citation omission
+must not become an immutable error. Prior citations and their order remain,
+as do step IDs/order, readable operations, parameters, questions and exclusions.
+A source-only repair cannot change BPL, including after successful compilation.
+Unknown/duplicate additions and the existing per-step reference limit are checked,
+then all source accounting and literal-support checks run again. The server
+reports the unsupported numeric value and owning step, but does not guess its
+supporting passage. This repairs provenance indexing, not experimental semantics
+or human review. Installed actual-model acceptance remains a separate gate.
+
+## 2026-09-09: Review Unparsed Wait Information Separately From Compilation
+
+The owner authorized fixing a real-model omission before merging: the model
+preserved an unspecified wait as a string but returned no question. Source
+accounting and an empty question list cannot establish sufficient information.
+For unparsed wait durations with no outstanding question, require a separate
+source review within the existing three-request budget. Its closed response
+may append a source-backed question or identify a verbatim cited duration/end
+condition. Existing source text, operations, parameters, questions and compiled
+code remain unchanged. Each resolution binds its owning step and exact
+server-supplied diagnostic line and column, not every wait in a multi-operation
+fragment or on one physical line. Compiler warnings retain those distinct calls.
+Unknown/duplicate targets and unsupported excerpts are rejected; missing review
+is not a completed representation.
+
+Compiler inability to parse `8 days` does not mean that the original source omits
+the duration. Explicit unsure remains unresolved without another automatic
+question. This bounded model review and its private audit are not human approval,
+complete semantic verification, experimental execution or a scientific claim.

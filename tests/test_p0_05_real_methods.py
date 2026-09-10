@@ -1060,7 +1060,7 @@ def test_renderer_retains_more_than_five_spike_in_states(
         profile=profile,
         output_dir=tmp_path / "rerender",
         run_id=run.run_id,
-        tool_version="0.5.2",
+        tool_version="0.6.0",
     )
     svg = rendered.payloads[
         "off_target_control_rare-state-detectability.svg"

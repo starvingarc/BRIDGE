@@ -1,5 +1,5 @@
 import { Download, FileText, Image as ImageIcon, Table2 } from "lucide-react";
-import { type KeyboardEvent, type PointerEvent, useEffect, useMemo, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import type { Artifact, ArtifactKind, Session } from "../types";
 
 const tabs: { kind: ArtifactKind; label: string }[] = [
@@ -11,6 +11,18 @@ const tabs: { kind: ArtifactKind; label: string }[] = [
 
 function artifactUrl(sessionId: string, artifactId: string) {
   return `/api/sessions/${encodeURIComponent(sessionId)}/artifacts/${encodeURIComponent(artifactId)}`;
+}
+
+function isParquet(artifact: Artifact) {
+  return artifact.media_type === "application/vnd.apache.parquet"
+    || artifact.media_type === "application/x-parquet"
+    || /\.parquet$/i.test(artifact.name);
+}
+
+function isTextPreview(artifact: Artifact) {
+  return artifact.media_type.startsWith("text/")
+    || artifact.media_type.includes("json")
+    || /\.(?:csv|tsv|json)$/i.test(artifact.name);
 }
 
 const MAX_ARTIFACT_PREVIEW_BYTES = 200_000;
@@ -107,6 +119,36 @@ function parseDelimited(value: string, delimiter: string): string[][] {
   return rows;
 }
 
+type PreviewCell = string | number | boolean | null;
+
+type ParquetPreview = {
+  columns: string[];
+  rows: PreviewCell[][];
+  total_rows: number;
+  total_columns: number;
+  truncated: boolean;
+};
+
+function RenderedTable({ columns, rows }: { columns: string[]; rows: PreviewCell[][] }) {
+  if (!columns.length) return <p className="artifact-text">Empty table (0 rows, 0 columns).</p>;
+  return (
+    <div className="table-scroll">
+      <table>
+        <thead>
+          <tr>{columns.map((cell, index) => <th key={index}>{cell}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {row.map((cell, cellIndex) => <td key={cellIndex}>{cell === null ? "" : String(cell)}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function TablePreview({ text, mediaType }: { text: string; mediaType: string }) {
   const rows = useMemo(() => {
     if (mediaType.includes("json")) {
@@ -132,20 +174,18 @@ function TablePreview({ text, mediaType }: { text: string; mediaType: string }) 
   }, [mediaType, text]);
 
   if (!rows.length) return <pre className="artifact-text">{text}</pre>;
+  return <RenderedTable columns={rows[0]} rows={rows.slice(1)} />;
+}
+
+function DownloadFallback({ sessionId, artifact, message }: {
+  sessionId: string;
+  artifact: Artifact;
+  message: string;
+}) {
   return (
-    <div className="table-scroll">
-      <table>
-        <thead>
-          <tr>{rows[0].map((cell, index) => <th key={index}>{cell}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.slice(1).map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="artifact-error">
+      <p>{message}</p>
+      <a href={artifactUrl(sessionId, artifact.id)} download={artifact.name}>Download original file</a>
     </div>
   );
 }
@@ -155,17 +195,18 @@ function TextArtifact({ sessionId, artifact }: { sessionId: string; artifact: Ar
     loading: boolean;
     text: string;
     truncated: boolean;
-    error: string | null;
+    error: boolean;
   }>({
     loading: true,
     text: "",
     truncated: false,
-    error: null,
+    error: false,
   });
 
   useEffect(() => {
     const controller = new AbortController();
-    setState({ loading: true, text: "", truncated: false, error: null });
+    let current = true;
+    setState({ loading: true, text: "", truncated: false, error: false });
     fetch(artifactUrl(sessionId, artifact.id), {
       credentials: "same-origin",
       signal: controller.signal,
@@ -173,23 +214,23 @@ function TextArtifact({ sessionId, artifact }: { sessionId: string; artifact: Ar
       .then(async (response) => {
         if (!response.ok) throw new Error();
         const { text, truncated } = await readBoundedText(response);
-        setState({ loading: false, text, truncated, error: null });
+        if (current) setState({ loading: false, text, truncated, error: false });
       })
       .catch((error: unknown) => {
-        if ((error as { name?: string }).name !== "AbortError") {
-          setState({
-            loading: false,
-            text: "",
-            truncated: false,
-            error: "This artifact could not be previewed. Download it to inspect the original.",
-          });
+        if (current && (error as { name?: string }).name !== "AbortError") {
+          setState({ loading: false, text: "", truncated: false, error: true });
         }
       });
-    return () => controller.abort();
+    return () => {
+      current = false;
+      controller.abort();
+    };
   }, [artifact.id, sessionId]);
 
   if (state.loading) return <p className="artifact-loading">Loading preview…</p>;
-  if (state.error) return <p className="artifact-error">{state.error}</p>;
+  if (state.error) {
+    return <DownloadFallback sessionId={sessionId} artifact={artifact} message="This artifact could not be previewed." />;
+  }
   return (
     <>
       {state.truncated ? (
@@ -200,6 +241,73 @@ function TextArtifact({ sessionId, artifact }: { sessionId: string; artifact: Ar
       ) : (
         <pre className="artifact-text">{state.text}</pre>
       )}
+    </>
+  );
+}
+
+function isParquetPreview(value: unknown): value is ParquetPreview {
+  if (!value || typeof value !== "object") return false;
+  const preview = value as Partial<ParquetPreview>;
+  return Array.isArray(preview.columns)
+    && preview.columns.every((column) => typeof column === "string")
+    && Array.isArray(preview.rows)
+    && preview.rows.every((row) => Array.isArray(row) && row.every(
+      (cell) => cell === null
+        || typeof cell === "string"
+        || typeof cell === "boolean"
+        || (typeof cell === "number" && Number.isFinite(cell) && (
+          !Number.isInteger(cell) || Number.isSafeInteger(cell)
+        )),
+    ))
+    && Number.isSafeInteger(preview.total_rows)
+    && Number.isSafeInteger(preview.total_columns)
+    && typeof preview.truncated === "boolean";
+}
+
+function ParquetArtifact({ sessionId, artifact }: { sessionId: string; artifact: Artifact }) {
+  const [state, setState] = useState<{
+    loading: boolean;
+    preview: ParquetPreview | null;
+    error: boolean;
+  }>({ loading: true, preview: null, error: false });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let current = true;
+    setState({ loading: true, preview: null, error: false });
+    fetch(`${artifactUrl(sessionId, artifact.id)}/preview`, {
+      credentials: "same-origin",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error();
+        const preview: unknown = await response.json();
+        if (!isParquetPreview(preview)) throw new Error();
+        if (current) setState({ loading: false, preview, error: false });
+      })
+      .catch((error: unknown) => {
+        if (current && (error as { name?: string }).name !== "AbortError") {
+          setState({ loading: false, preview: null, error: true });
+        }
+      });
+    return () => {
+      current = false;
+      controller.abort();
+    };
+  }, [artifact.id, sessionId]);
+
+  if (state.loading) return <p className="artifact-loading">Loading preview…</p>;
+  if (state.error || !state.preview) {
+    return <DownloadFallback sessionId={sessionId} artifact={artifact} message="This artifact could not be previewed." />;
+  }
+  return (
+    <>
+      {state.preview.truncated ? (
+        <p className="artifact-truncated">
+          Preview truncated. Showing {state.preview.rows.length} of {state.preview.total_rows} rows and {state.preview.columns.length} of {state.preview.total_columns} columns. Download the original artifact for complete content.
+        </p>
+      ) : null}
+      <RenderedTable columns={state.preview.columns} rows={state.preview.rows} />
     </>
   );
 }
@@ -223,16 +331,19 @@ function EmptyResults({ kind }: { kind: ArtifactKind }) {
   );
 }
 
-export function ResultsPane({ session }: { session: Session | null }) {
-  const [activeTab, setActiveTab] = useState<ArtifactKind>("figure");
-  const artifacts = useMemo(() => artifactsForTab(session, activeTab), [activeTab, session]);
+export function ResultsPane({ session, overview }: { session: Session | null; overview?: ReactNode }) {
+  const [activeTab, setActiveTab] = useState<ArtifactKind | "overview">(overview ? "overview" : "figure");
+  const artifacts = useMemo(() => activeTab === "overview" ? [] : artifactsForTab(session, activeTab), [activeTab, session]);
 
   return (
     <section className="results-pane" aria-label="Analysis results">
       <header className="results-header">
-        <h1>Results</h1>
+        <h1>{overview ? "产品评估" : "Results"}</h1>
       </header>
       <div className="result-tabs" role="tablist" aria-label="Result type">
+        {overview ? <button type="button" role="tab" aria-selected={activeTab === "overview"}
+          className={activeTab === "overview" ? "result-tab--active" : ""}
+          onClick={() => setActiveTab("overview")}>评估概览</button> : null}
         {tabs.map((tab) => {
           const count = artifactsForTab(session, tab.kind).length;
           return (
@@ -251,7 +362,7 @@ export function ResultsPane({ session }: { session: Session | null }) {
         })}
       </div>
       <div className="results-content" role="tabpanel">
-        {!session || !artifacts.length ? (
+        {activeTab === "overview" ? overview : !session || !artifacts.length ? (
           <EmptyResults kind={activeTab} />
         ) : (
           <div className={`artifact-grid artifact-grid--${activeTab}`}>
@@ -276,8 +387,16 @@ export function ResultsPane({ session }: { session: Session | null }) {
                       <span>Download original file</span>
                       <Download aria-hidden="true" />
                     </a>
-                  ) : (
+                  ) : isParquet(artifact) ? (
+                    <ParquetArtifact sessionId={session.id} artifact={artifact} />
+                  ) : isTextPreview(artifact) ? (
                     <TextArtifact sessionId={session.id} artifact={artifact} />
+                  ) : (
+                    <DownloadFallback
+                      sessionId={session.id}
+                      artifact={artifact}
+                      message="A browser preview is not available for this artifact."
+                    />
                   )}
                 </article>
               );

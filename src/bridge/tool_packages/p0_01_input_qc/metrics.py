@@ -60,6 +60,64 @@ def apply_candidate_rules(metrics: pd.DataFrame, rules: dict) -> pd.DataFrame:
     return flags
 
 
+def apply_robust_candidate_rules(
+    metrics: pd.DataFrame, groups: pd.Series, policy: dict
+) -> tuple[pd.DataFrame, list[dict]]:
+    """Apply one versioned technical rule separately to each declared capture."""
+    if not groups.index.equals(metrics.index) or groups.isna().any():
+        raise ValueError("qc_robust_capture_partition_invalid")
+    lower_mads = float(policy["lower_log_mads"])
+    upper_mads = float(policy["upper_mito_mads"])
+    if not (np.isfinite([lower_mads, upper_mads]).all() and min(lower_mads, upper_mads) > 0):
+        raise ValueError("qc_robust_mad_policy_invalid")
+    columns = ["total_counts", "detected_genes", "mitochondrial_fraction"]
+    values = metrics[columns].to_numpy(dtype=float)
+    nonempty = values[:, 0] > 0
+    if (
+        not np.isfinite(values[:, :2]).all() or (values[:, :2] < 0).any()
+        or not np.isfinite(values[nonempty]).all()
+        or (values[nonempty, 2] < 0).any() or (values[nonempty, 2] > 1).any()
+    ):
+        raise ValueError("qc_robust_metrics_unavailable")
+    flags = pd.DataFrame(False, index=metrics.index, columns=[
+        "flag_zero_total_counts", "flag_low_total_counts",
+        "flag_low_detected_genes", "flag_high_mitochondrial_fraction",
+    ])
+    flags["flag_zero_total_counts"] = metrics.total_counts <= 0
+    thresholds = []
+    for capture in sorted(groups.astype(str).unique()):
+        mask = groups.astype(str) == capture
+        frame = metrics.loc[mask]
+        record = {"capture_id": capture, "n_observations": int(mask.sum())}
+        for metric, field, flag, logarithmic in (
+            ("total_counts", "min_total_counts", "flag_low_total_counts", True),
+            ("detected_genes", "min_detected_genes", "flag_low_detected_genes", True),
+            ("mitochondrial_fraction", "max_mitochondrial_fraction", "flag_high_mitochondrial_fraction", False),
+        ):
+            raw = frame[metric].to_numpy(dtype=float)
+            assessed = raw[frame.total_counts.to_numpy() > 0]
+            if not len(assessed):
+                raise ValueError("qc_robust_degenerate_distribution")
+            transformed = np.log1p(assessed) if logarithmic else assessed
+            median = float(np.median(transformed))
+            mad = float(np.median(np.abs(transformed - median)))
+            if mad == 0:
+                raise ValueError("qc_robust_degenerate_distribution")
+            cutoff = median - lower_mads * mad if logarithmic else median + upper_mads * mad
+            if logarithmic:
+                cutoff = max(0, int(np.ceil(round(float(np.expm1(cutoff)), 10))))
+                flags.loc[mask, flag] = raw < cutoff
+            else:
+                cutoff = min(1.0, round(cutoff, 12))
+                flags.loc[mask, flag] = raw > cutoff
+            record[field] = cutoff
+            record[f"{metric}_median_transformed"] = median
+            record[f"{metric}_mad_unscaled"] = mad
+        thresholds.append(record)
+    flags["bridge_qc_candidate_eligible"] = ~flags.any(axis=1)
+    return flags, thresholds
+
+
 def summarize_by_group(metrics: pd.DataFrame, groups: pd.Series, observation_unit: str) -> list[dict]:
     table = metrics.copy()
     table["group"] = groups.astype(str).to_numpy()

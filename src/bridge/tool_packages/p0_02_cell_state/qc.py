@@ -104,14 +104,22 @@ def validate_upstream_qc_bundle(
 
     actual_hash = input_hash or sha256_path(asset.path)
     selected_view = profile_v2.selected_data_view if profile_v2 is not None else None
+    qc_selected = selected_view is not None and selected_view.view_kind == "qc_selected_observations"
     checks = {
         "profile_id": profile.profile_id == profile_ref,
-        "input_hash": profile.matrix_provenance.get("input_hash") == actual_hash,
+        "input_hash": (
+            selected_view.sha256 == actual_hash if qc_selected
+            else profile.matrix_provenance.get("input_hash") == actual_hash
+        ),
         "assay": profile.assay == asset.assay,
-        "matrix_location": profile.matrix_provenance.get("matrix_location")
-        == (asset.matrix_location or "X"),
-        "matrix_semantics": profile.matrix_provenance.get("matrix_semantics")
-        == asset.matrix_semantics,
+        "matrix_location": (
+            selected_view.matrix_location if qc_selected
+            else profile.matrix_provenance.get("matrix_location")
+        ) == (asset.matrix_location or "X"),
+        "matrix_semantics": (
+            selected_view.matrix_semantics if qc_selected
+            else profile.matrix_provenance.get("matrix_semantics")
+        ) == asset.matrix_semantics,
         "data_view": profile.data_views.get("all_cells_view", {}).get("state")
         == "available",
         "readiness": profile.readiness_state.value in {"ready", "limited"},
@@ -132,18 +140,34 @@ def validate_upstream_qc_bundle(
             "profile_id": profile_v2.profile_id == profile_ref,
             "assay": profile_v2.assay == asset.assay,
             "readiness": profile_v2.readiness_state.value in {"ready", "limited"},
-            "view_kind": selected_view.view_kind == "all_observations",
+            "view_kind": selected_view.view_kind in {"all_observations", "qc_selected_observations"},
             "artifact_id": selected_view.artifact_id
-            == f"input-asset:{asset.asset_id}",
-            "parent_asset_id": selected_view.parent_asset_id == asset.asset_id,
+            == (asset.asset_id if qc_selected else f"input-asset:{asset.asset_id}"),
+            "parent_asset_id": selected_view.parent_asset_id == (
+                profile.matrix_provenance.get("asset_id") if qc_selected else asset.asset_id
+            ),
             "input_hash": selected_view.sha256 == actual_hash,
-            "parent_input_hash": selected_view.parent_asset_sha256
-            == actual_hash,
+            "parent_input_hash": selected_view.parent_asset_sha256 == (
+                profile.matrix_provenance.get("input_hash") if qc_selected else actual_hash
+            ),
+            "parent_profile": profile_v2.matrix_provenance == profile.matrix_provenance,
             "matrix_location": selected_view.matrix_location
             == (asset.matrix_location or "X"),
             "matrix_semantics": selected_view.matrix_semantics
             == asset.matrix_semantics,
         }
+        if qc_selected:
+            eligible = profile_v2.data_views.get("eligible_cells_view", {})
+            v2_checks.update({
+                "selection_spec": selected_view.selection_spec_ref is not None
+                and selected_view.selection_spec_ref == profile.assay_spec_id,
+                "selection_applied": profile.cell_qc.get("selection_state") == "applied"
+                and profile_v2.cell_qc.get("selection_state") == "applied",
+                "selected_artifact": eligible.get("artifact_id") == selected_view.artifact_id
+                and eligible.get("sha256") == selected_view.sha256,
+                "selected_count": eligible.get("n_observations") == selected_view.n_observations
+                and profile.cell_qc.get("n_selected") == selected_view.n_observations,
+            })
         failed_v2 = [name for name, passed in v2_checks.items() if not passed]
         if failed_v2:
             raise UpstreamQCError(

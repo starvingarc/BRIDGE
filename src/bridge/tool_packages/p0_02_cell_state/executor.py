@@ -171,15 +171,14 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     query = normalize_query(query_matrix, asset.matrix_semantics or "")
     observation_ids = adata.obs_names.astype(str).to_numpy()
     selected_data_view = None
-    if (
-        upstream_qc.profile_v2 is not None
-        and upstream_qc.typed_lineage is not None
-    ):
+    if upstream_qc.profile_v2 is not None:
         try:
-            selected_data_view = validate_selected_data_view(
+            validated_view = validate_selected_data_view(
                 upstream_qc.profile_v2,
                 observation_ids.tolist(),
             )
+            if upstream_qc.typed_lineage is not None:
+                selected_data_view = validated_view
         except UpstreamQCError as exc:
             return _failed_run(request, spec, input_hash, exc.reason_code, str(exc))
     minimum_shared = int(measurement_spec.minimum_data["minimum_shared_genes"])

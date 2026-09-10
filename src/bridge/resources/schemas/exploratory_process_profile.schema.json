@@ -1,0 +1,846 @@
+{
+  "$defs": {
+    "DataViewBinding": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "type": "null"
+                },
+                "biological_unit_manifest_sha256": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "biological_unit_manifest_sha256": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "biological_unit_manifest_ref",
+                "biological_unit_manifest_sha256"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Content-addressed expression view passed between scientific tools.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Ref"
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
+        "matrix_location": {
+          "minLength": 1,
+          "title": "Matrix Location",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "enum": [
+            "raw_counts",
+            "normalized_expression"
+          ],
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_ids_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Ids Sha256",
+          "type": "string"
+        },
+        "parent_asset_id": {
+          "minLength": 1,
+          "title": "Parent Asset Id",
+          "type": "string"
+        },
+        "parent_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Parent Asset Sha256",
+          "type": "string"
+        },
+        "sample_or_preparation_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Or Preparation Ref"
+        },
+        "selection_spec_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Spec Ref"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "view_id": {
+          "minLength": 1,
+          "title": "View Id",
+          "type": "string"
+        },
+        "view_kind": {
+          "enum": [
+            "all_observations",
+            "qc_selected_observations"
+          ],
+          "title": "View Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "view_kind",
+        "artifact_id",
+        "sha256",
+        "parent_asset_id",
+        "parent_asset_sha256",
+        "matrix_location",
+        "matrix_semantics",
+        "n_observations",
+        "observation_ids_sha256"
+      ],
+      "title": "DataViewBinding",
+      "type": "object"
+    },
+    "ExploratoryCellCycleSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "g2m_ambiguous_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "G2M Ambiguous Genes",
+          "type": "array"
+        },
+        "g2m_missing_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "G2M Missing Genes",
+          "type": "array"
+        },
+        "mean_g2m_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean G2M Score"
+        },
+        "mean_s_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean S Score"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "phase_counts": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "propertyNames": {
+                "enum": [
+                  "G1",
+                  "S",
+                  "G2M"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Counts"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "s_ambiguous_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "S Ambiguous Genes",
+          "type": "array"
+        },
+        "s_g2m_fraction": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "S G2M Fraction"
+        },
+        "s_missing_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "S Missing Genes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "n_observations",
+        "s_missing_genes",
+        "g2m_missing_genes",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "ExploratoryCellCycleSummary",
+      "type": "object"
+    },
+    "ExploratoryMethodParameters": {
+      "additionalProperties": false,
+      "description": "Versioned first-mode parameters, not a product-specific decision rule.",
+      "properties": {
+        "cell_cycle_ctrl_size": {
+          "minimum": 5,
+          "title": "Cell Cycle Ctrl Size",
+          "type": "integer"
+        },
+        "decoupler_empty": {
+          "const": false,
+          "default": false,
+          "title": "Decoupler Empty",
+          "type": "boolean"
+        },
+        "decoupler_tmin": {
+          "const": 5,
+          "default": 5,
+          "title": "Decoupler Tmin",
+          "type": "integer"
+        },
+        "layer": {
+          "default": null,
+          "title": "Layer",
+          "type": "null"
+        },
+        "lower_quantile": {
+          "const": 0.1,
+          "default": 0.1,
+          "title": "Lower Quantile",
+          "type": "number"
+        },
+        "minimum_gene_coverage": {
+          "const": 1.0,
+          "default": 1.0,
+          "title": "Minimum Gene Coverage",
+          "type": "number"
+        },
+        "random_seed": {
+          "title": "Random Seed",
+          "type": "integer"
+        },
+        "scanpy_ctrl_as_ref": {
+          "const": true,
+          "default": true,
+          "title": "Scanpy Ctrl As Ref",
+          "type": "boolean"
+        },
+        "scanpy_ctrl_size": {
+          "const": 50,
+          "default": 50,
+          "title": "Scanpy Ctrl Size",
+          "type": "integer"
+        },
+        "scanpy_n_bins": {
+          "const": 25,
+          "default": 25,
+          "title": "Scanpy N Bins",
+          "type": "integer"
+        },
+        "upper_quantile": {
+          "const": 0.9,
+          "default": 0.9,
+          "title": "Upper Quantile",
+          "type": "number"
+        },
+        "use_raw": {
+          "const": false,
+          "default": false,
+          "title": "Use Raw",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cell_cycle_ctrl_size",
+        "random_seed"
+      ],
+      "title": "ExploratoryMethodParameters",
+      "type": "object"
+    },
+    "ExploratoryProcessInput": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "data_view": {
+          "$ref": "#/$defs/DataViewBinding"
+        },
+        "g2m_genes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 5,
+          "title": "G2M Genes",
+          "type": "array"
+        },
+        "g2m_genes_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "G2M Genes Sha256",
+          "type": "string"
+        },
+        "gene_symbol_column": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gene Symbol Column"
+        },
+        "input_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Input Id",
+          "type": "string"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "resource_ref": {
+          "pattern": "^[A-Za-z][A-Za-z0-9+.-]*(?::[^\\s]+)?$",
+          "title": "Resource Ref",
+          "type": "string"
+        },
+        "resource_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Resource Sha256",
+          "type": "string"
+        },
+        "resource_version": {
+          "minLength": 1,
+          "title": "Resource Version",
+          "type": "string"
+        },
+        "s_genes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 5,
+          "title": "S Genes",
+          "type": "array"
+        },
+        "s_genes_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "S Genes Sha256",
+          "type": "string"
+        },
+        "source_family_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Family Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "input_id",
+        "source_family_id",
+        "data_view",
+        "resource_ref",
+        "resource_version",
+        "resource_sha256",
+        "s_genes",
+        "s_genes_sha256",
+        "g2m_genes",
+        "g2m_genes_sha256",
+        "created_at"
+      ],
+      "title": "ExploratoryProcessInput",
+      "type": "object"
+    },
+    "ExploratoryProgramSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "ambiguous_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ambiguous Genes",
+          "type": "array"
+        },
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "declared_gene_count": {
+          "exclusiveMinimum": 0,
+          "title": "Declared Gene Count",
+          "type": "integer"
+        },
+        "lower_quantile": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Quantile"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median"
+        },
+        "method_id": {
+          "enum": [
+            "PROC-SCORE-SCANPY",
+            "PROC-SCORE-DECOUPLER"
+          ],
+          "title": "Method Id",
+          "type": "string"
+        },
+        "missing_genes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Genes",
+          "type": "array"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observed_gene_count": {
+          "minimum": 0,
+          "title": "Observed Gene Count",
+          "type": "integer"
+        },
+        "program_id": {
+          "enum": [
+            "S",
+            "G2M"
+          ],
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "score_unit": {
+          "enum": [
+            "scanpy_control_adjusted_expression",
+            "decoupler_ulm_t_value"
+          ],
+          "title": "Score Unit",
+          "type": "string"
+        },
+        "upper_quantile": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upper Quantile"
+        }
+      },
+      "required": [
+        "program_id",
+        "method_id",
+        "score_unit",
+        "n_observations",
+        "observed_gene_count",
+        "declared_gene_count",
+        "missing_genes",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "ExploratoryProgramSummary",
+      "type": "object"
+    },
+    "MethodExecutionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "execution_state": {
+          "$ref": "#/$defs/MethodExecutionState"
+        },
+        "implementation": {
+          "minLength": 1,
+          "title": "Implementation",
+          "type": "string"
+        },
+        "method_id": {
+          "$ref": "#/$defs/ProcessMethodId"
+        },
+        "method_ref": {
+          "pattern": "^METHOD-[A-Z0-9-]+$",
+          "title": "Method Ref",
+          "type": "string"
+        },
+        "package_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Package Versions",
+          "type": "object"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "method_id",
+        "method_ref",
+        "implementation",
+        "execution_state",
+        "package_versions",
+        "reason_codes"
+      ],
+      "title": "MethodExecutionRecord",
+      "type": "object"
+    },
+    "MethodExecutionState": {
+      "enum": [
+        "succeeded",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "MethodExecutionState",
+      "type": "string"
+    },
+    "ProcessMethodId": {
+      "enum": [
+        "PROC-SCORE-SCANPY",
+        "PROC-SCORE-DECOUPLER",
+        "PROC-CYCLE-SCANPY",
+        "PROC-CYCLE-AGG"
+      ],
+      "title": "ProcessMethodId",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/exploratory-process-profile/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "cell_cycle": {
+      "$ref": "#/$defs/ExploratoryCellCycleSummary"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "data_view_provenance_state": {
+      "const": "caller_declared_content_verified",
+      "default": "caller_declared_content_verified",
+      "title": "Data View Provenance State",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "duplicated_background_symbol_count": {
+      "minimum": 0,
+      "title": "Duplicated Background Symbol Count",
+      "type": "integer"
+    },
+    "evidence_family_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Evidence Family Id",
+      "type": "string"
+    },
+    "executions": {
+      "items": {
+        "$ref": "#/$defs/MethodExecutionRecord"
+      },
+      "title": "Executions",
+      "type": "array"
+    },
+    "expression_asset_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Expression Asset Sha256",
+      "type": "string"
+    },
+    "feature_resolution_policy": {
+      "const": "exact_symbols_to_unique_input_feature_ids",
+      "default": "exact_symbols_to_unique_input_feature_ids",
+      "title": "Feature Resolution Policy",
+      "type": "string"
+    },
+    "independence_state": {
+      "const": "unknown",
+      "default": "unknown",
+      "title": "Independence State",
+      "type": "string"
+    },
+    "input_contract": {
+      "$ref": "#/$defs/ExploratoryProcessInput"
+    },
+    "input_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Input Sha256",
+      "type": "string"
+    },
+    "interpretation_scope": {
+      "const": "descriptive_only",
+      "default": "descriptive_only",
+      "title": "Interpretation Scope",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "method_parameters": {
+      "$ref": "#/$defs/ExploratoryMethodParameters"
+    },
+    "n_features": {
+      "exclusiveMinimum": 0,
+      "title": "N Features",
+      "type": "integer"
+    },
+    "n_independent_replicates": {
+      "default": null,
+      "title": "N Independent Replicates",
+      "type": "null"
+    },
+    "n_observations": {
+      "exclusiveMinimum": 0,
+      "title": "N Observations",
+      "type": "integer"
+    },
+    "normalization_recipe": {
+      "enum": [
+        "normalize_total_10000_log1p",
+        "declared_normalized_expression"
+      ],
+      "title": "Normalization Recipe",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "profile_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "program_summaries": {
+      "items": {
+        "$ref": "#/$defs/ExploratoryProgramSummary"
+      },
+      "title": "Program Summaries",
+      "type": "array"
+    },
+    "runtime_mode": {
+      "const": "exploratory_process",
+      "default": "exploratory_process",
+      "title": "Runtime Mode",
+      "type": "string"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "state_review_status": {
+      "const": "pending",
+      "default": "pending",
+      "title": "State Review Status",
+      "type": "string"
+    },
+    "target_feature_ids": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Target Feature Ids",
+      "type": "object"
+    },
+    "tool_id": {
+      "const": "P0-06",
+      "default": "P0-06",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "profile_id",
+    "tool_version",
+    "input_sha256",
+    "expression_asset_sha256",
+    "input_contract",
+    "method_parameters",
+    "normalization_recipe",
+    "evidence_family_id",
+    "n_observations",
+    "n_features",
+    "target_feature_ids",
+    "duplicated_background_symbol_count",
+    "executions",
+    "program_summaries",
+    "cell_cycle",
+    "limitations",
+    "created_at"
+  ],
+  "title": "ExploratoryProcessProfile",
+  "type": "object"
+}

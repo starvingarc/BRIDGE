@@ -160,7 +160,7 @@ def test_biological_unit_attestation_routes_to_method_tools() -> None:
     assert receipt.object_version == "0.1.0"
     assert (receipt.min_count, receipt.max_count) == (1, 1)
 
-    for tool_id, version in (("P0-05", "0.5.2"), ("P0-06", "0.6.1")):
+    for tool_id, version in (("P0-05", "0.6.0"), ("P0-06", "0.8.1")):
         binding = bindings[tool_id]
         assert binding.tool_version == version
         assert {item.role: item.slot_id for item in binding.object_inputs}[
@@ -478,7 +478,7 @@ def test_materialized_measurement_ref_is_opaque_but_required(tmp_path: Path) -> 
     request = ToolRequest(
         request_id="request-qc-profile-binding",
         tool_id="P0-01",
-        tool_version="0.1.4",
+        tool_version="0.1.5",
         output_dir=tmp_path,
         assets=[
             InputAsset(

@@ -194,6 +194,11 @@ class ToolRegistry:
             )
         asset: InputAsset = request.assets[0]
         reasons: list[str] = []
+        if any(
+            parameter in request.parameters and not isinstance(request.parameters[parameter], bool)
+            for parameter in ("run_scrublet", "select_qc_eligible_cells")
+        ):
+            reasons.append("invalid_qc_boolean_parameter")
         if asset.format not in {"h5ad", "10x_h5", "10x_mtx"}:
             reasons.append("unsupported_expression_format")
         if not asset.path.exists():

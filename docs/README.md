@@ -5,10 +5,24 @@ evidence you need.
 
 > [!NOTE]
 > **Product and current stage:** BRIDGE's final product is a scientific
-> evaluation Agent. The current `main` branch provides its deterministic P0 tool
-> layer: all 12 packages are executable engineering candidates. A private
-> [Web preview](web-preview.md) supports conversational input QC and approved
-> execution; full-chain Agent construction remains in development. A shared
+> evaluation Agent. The deterministic P0 tool layer contains 12 executable
+> engineering candidates. This branch's private [Web preview](web-preview.md)
+> connects all 12 through contract-driven inputs and staged approval; it does not
+> automatically construct every required scientific object. A private product
+> intake can be confirmed before a separately approved first-stage plan. The
+> tested source backend additionally builds explicit candidate product/role
+> objects after review; inline review/revision and a separately approved
+> missingness-only evidence check are implemented. Candidate missingness-graph
+> construction, an internal research report and actual blocked claim verification
+> are also installed and browser-exercised. Measured downstream prerequisites and
+> a qualified/exportable report remain unfinished; exact acceptance is recorded
+> in the current plan. Genuine Web coverage includes QC, cell-state evidence,
+> missingness checking/compilation, blocked internal-report verification and the
+> separate explicit no-graft path, not a complete product-evaluation chain.
+> Source implementation and isolated acceptance are recorded in the
+> [engineering checkpoint](../plans/web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10);
+> remaining scientific work is tracked in [Product Evidence Validation](../plans/product-evidence-validation.md).
+> A shared
 > visualization data contract and figure registry are available. P0-01 provides four
 > `typed_candidate` figure components, alongside two compatibility
 > `legacy_untyped` components; P0-03 provides two typed candidate figures for
@@ -75,6 +89,7 @@ the documentation drift. Do not infer current behavior from an overview page.
 - [Agent team integration](agent-integration.md)
 - [Web preview and private deployment](web-preview.md)
 - [Privacy and provenance](privacy-and-provenance.md)
+- [Protocol BPL formalization design](superpowers/specs/2026-09-09-protocol-bpl-design.md) — approved design; implementation in progress, not delivered
 
 ### Current P0 tool layer
 

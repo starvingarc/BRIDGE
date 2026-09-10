@@ -47,7 +47,7 @@ candidate/shadow.
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/developmental_compatibility_task_card.md)
 - [Request example](../../../../examples/requests/p0_04_developmental_compatibility.json)
 - [Method-spec example](../../../../examples/objects/p0_04_development_method_spec.json)
-- [Validation](../../../../docs/validation/p0_04_developmental_compatibility_v0.3.md)
+- [Validation](../../../../docs/validation/p0_04_developmental_compatibility.md#record-p0-04-developmental-compatibility-v0-3)
 
 Use `bridge-tool describe P0-04` and `bridge-tool input-contract P0-04` for
 the installed contract.

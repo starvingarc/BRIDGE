@@ -659,7 +659,7 @@
     {
       "binding_id": "input-audit-qc",
       "tool_id": "P0-01",
-      "tool_version": "0.1.4",
+      "tool_version": "0.1.5",
       "request_schema_ref": "bridge://schemas/tool-request/v0.1",
       "mode_id": null,
       "asset_slot_ids": ["uploaded-expression"],
@@ -669,7 +669,7 @@
     {
       "binding_id": "cell-state-evidence",
       "tool_id": "P0-02",
-      "tool_version": "0.5.3",
+      "tool_version": "0.5.5",
       "request_schema_ref": "bridge://schemas/tool-request/v0.1",
       "mode_id": null,
       "asset_slot_ids": ["qc-selected-expression"],
@@ -725,7 +725,7 @@
     {
       "binding_id": "off-target-control",
       "tool_id": "P0-05",
-      "tool_version": "0.5.2",
+      "tool_version": "0.6.0",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": [],
@@ -750,7 +750,7 @@
     {
       "binding_id": "process-signals",
       "tool_id": "P0-06",
-      "tool_version": "0.6.1",
+      "tool_version": "0.8.1",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": ["qc-selected-expression"],

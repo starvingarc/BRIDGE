@@ -4,6 +4,9 @@ import json
 from importlib.resources import files
 
 SCHEMA_REFS = {
+    "bridge://schemas/exploratory-process-input/v0.1": "exploratory_process_input.schema.json",
+    "bridge://schemas/exploratory-process-profile/v0.1": "exploratory_process_profile.schema.json",
+    "bridge://schemas/proliferation-stress-response-result/v0.1": "proliferation_stress_response_result.schema.json",
     "bridge://schemas/agent-integration-profile/v0.1": "agent_integration_profile.schema.json",
     "bridge://schemas/annotation-vocabulary/v0.1": "annotation_vocabulary.schema.json",
     "bridge://schemas/artifact-manifest/v0.1": "artifact_manifest.schema.json",
@@ -74,6 +77,7 @@ SCHEMA_REFS = {
     "bridge://schemas/proliferation-stress-visualization-data/v0.1": "proliferation_stress_visualization_data.schema.json",
     "bridge://schemas/process-method-spec/v0.1": "process_method_spec.schema.json",
     "bridge://schemas/process-method-input/v0.1": "process_method_input.schema.json",
+    "bridge://schemas/process-method-input/v0.2": "process_method_input_v2.schema.json",
     "bridge://schemas/process-method-bundle/v0.1": "process_method_bundle.schema.json",
     "bridge://schemas/process-method-bundle/v0.2": "process_method_bundle_v2.schema.json",
     "bridge://schemas/graft-assessment-result/v0.1": "graft_assessment_result.schema.json",
@@ -100,6 +104,8 @@ SCHEMA_REFS = {
     "bridge://schemas/off-target-assessment-spec/v0.1": "off_target_assessment_spec.schema.json",
     "bridge://schemas/off-target-control-profile/v0.1": "off_target_control_profile.schema.json",
     "bridge://schemas/off-target-control-profile/v0.2": "off_target_control_profile_v2.schema.json",
+    "bridge://schemas/off-target-hard-count-profile/v0.1": "off_target_hard_count_profile.schema.json",
+    "bridge://schemas/off-target-control-result/v0.1": "off_target_control_result.schema.json",
     "bridge://schemas/off-target-control-visualization-data/v0.1": "off_target_control_visualization_data.schema.json",
     "bridge://schemas/off-target-evidence-bundle/v0.1": "off_target_evidence_bundle.schema.json",
     "bridge://schemas/off-target-method-bundle/v0.1": "off_target_method_bundle.schema.json",

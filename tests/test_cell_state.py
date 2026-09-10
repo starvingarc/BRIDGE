@@ -15,6 +15,7 @@ from scipy import sparse
 
 from bridge.tool_packages._configurable_contracts import observation_ids_sha256
 from bridge.tool_packages.p0_02_cell_state import executor as cell_state_executor
+from bridge.tool_packages.p0_02_cell_state.metrics import marker_program_evidence
 from bridge.tool_packages.p0_02_cell_state.measurement_specs import (
     load_measurement_spec,
 )
@@ -29,6 +30,7 @@ from bridge.tool_packages.p0_02_cell_state.reference import (
 from bridge.toolkit.contracts import (
     ExecutionState,
     InputAsset,
+    MarkerProgramCard,
     ReferenceManifest,
     ToolRequest,
 )
@@ -127,7 +129,10 @@ def _write_query(
     return path
 
 
-def _build_snapshot(tmp_path: Path, monkeypatch, *, conflict: bool = False, alias: bool = False) -> Path:
+def _build_snapshot(
+    tmp_path: Path, monkeypatch, *, conflict: bool = False, alias: bool = False,
+    marker_program_path: Path | None = None,
+) -> Path:
     source_a = _write_reference(tmp_path / "source-a.h5ad", assay="scRNA-seq", alias=alias)
     source_b = _write_reference(tmp_path / "source-b.h5ad", assay="scRNA-seq", swap_labels=conflict)
     source_sn = _write_reference(tmp_path / "source-sn.h5ad", assay="snRNA-seq")
@@ -161,6 +166,8 @@ def _build_snapshot(tmp_path: Path, monkeypatch, *, conflict: bool = False, alia
             },
         ],
     }
+    if marker_program_path is not None:
+        catalog["marker_program_path"] = str(marker_program_path)
     catalog_path = tmp_path / "catalog.yaml"
     catalog_path.write_text(yaml.safe_dump(catalog, sort_keys=False), encoding="utf-8")
     root = tmp_path / "references"
@@ -338,6 +345,105 @@ def test_vocabulary_has_fixed_hierarchy_alias_and_unresolved_conflict() -> None:
     assert vocabulary.alias_map["Neuron_Chat"] == "Neuron_ChAT"
     pericyte = next(label for label in vocabulary.labels if label.state_id == "L2:Pericyte_conflict")
     assert pericyte.status == "unresolved"
+
+
+def _candidate_marker_card(card_id: str, **overrides) -> MarkerProgramCard:
+    return MarkerProgramCard(
+        **{
+            "card_id": card_id,
+            "version": "0.1.0",
+            "state_id": "L2:RG_mFP",
+            "level": "L2",
+            "positive_markers": ["TH", "DDC"],
+            "negative_markers": ["TPH2"],
+            "source_ids": ["SYNTHETIC-TEST-ONLY"],
+            "review_status": "review_required",
+            "allowed_use": ["shadow_evidence"],
+            **overrides,
+        }
+    )
+
+
+@pytest.mark.parametrize("as_sparse", [False, True], ids=["dense", "sparse"])
+def test_l2_marker_evidence_preserves_numeric_coverage_and_missingness(as_sparse) -> None:
+    # Synthetic values test the evidence contract, not these genes' state specificity.
+    query = np.asarray([[2.0, 4.0, 9.0], [0.0, 6.0, 3.0]])
+    if as_sparse:
+        query = sparse.csr_matrix(query)
+    cards = [
+        _candidate_marker_card("l1", level="L1", state_id="L1:Radial_Glia"),
+        _candidate_marker_card("l2", positive_markers=["th", "DDC", "ABSENT"]),
+        _candidate_marker_card("missing-negative", negative_markers=["ABSENT"]),
+        _candidate_marker_card("missing-positive", positive_markers=["TH", "ABSENT"]),
+        _candidate_marker_card("l3", level="L3", state_id="L3:DA_immature"),
+        _candidate_marker_card("not-authorized", allowed_use=["review_only"]),
+    ]
+
+    rows, summaries = marker_program_evidence(
+        query, np.asarray(["TH", "DDC", "TPH2"]), np.asarray(["cell-b", "cell-a"]),
+        cards, minimum_marker_genes=2,
+    )
+
+    assert [item["card_id"] for item in summaries] == [
+        "l1", "l2", "missing-negative", "missing-positive"
+    ]
+    by_card = {item["card_id"]: item for item in summaries}
+    assert by_card["l2"]["positive_gene_coverage"] == pytest.approx(2 / 3)
+    assert by_card["l2"]["negative_gene_coverage"] == 1.0
+    assert by_card["l2"]["source_ids"] == ["SYNTHETIC-TEST-ONLY"]
+    assert by_card["missing-positive"]["state"] == "unavailable"
+    assert by_card["missing-positive"]["positive_gene_coverage"] == 0.5
+    assert by_card["missing-negative"]["negative_gene_coverage"] == 0.0
+    assert set(rows["card_id"]) == {"l1", "l2", "missing-negative"}
+    for card_id in ("l1", "l2", "missing-negative"):
+        selected = rows.loc[rows["card_id"] == card_id]
+        assert selected["observation_id"].tolist() == ["cell-b", "cell-a"]
+        assert selected["positive_mean_expression"].tolist() == [3.0, 3.0]
+        assert selected["review_status"].tolist() == ["review_required"] * 2
+        assert selected["evidence_state"].tolist() == ["prior_only_shadow"] * 2
+        if card_id == "missing-negative":
+            assert selected["negative_mean_expression"].isna().all()
+        else:
+            assert selected["negative_mean_expression"].tolist() == [9.0, 3.0]
+
+
+def test_registered_l2_marker_evidence_remains_shadow_without_reassignment(
+    tmp_path: Path, monkeypatch
+) -> None:
+    marker_path = tmp_path / "candidate-markers.yaml"
+    marker_path.write_text(yaml.safe_dump({
+        "snapshot_id": "SYNTHETIC-L2-TEST", "version": "0.1.0",
+        "status": "shadow_candidate",
+        "cards": [_candidate_marker_card("l2-test").model_dump(mode="json")],
+    }), encoding="utf-8")
+    _build_snapshot(tmp_path, monkeypatch, marker_program_path=marker_path)
+    query = _write_query(tmp_path / "query.h5ad")
+    _configure_qc_catalog(tmp_path, monkeypatch, query)
+    before = _sha256(query)
+
+    run = ToolRegistry.load_default().run(_request(tmp_path, query))
+
+    assert run.execution_state is ExecutionState.SUCCEEDED
+    marker = pd.read_parquet(next(
+        item.path for item in run.artifacts if item.kind == "marker_program_evidence"
+    ))
+    assert len(marker) == 4
+    assert marker["observation_id"].tolist() == [f"query-{index}" for index in range(4)]
+    assert marker["state_id"].tolist() == ["L2:RG_mFP"] * 4
+    assert marker["evidence_state"].tolist() == ["prior_only_shadow"] * 4
+    assert marker["review_status"].tolist() == ["review_required"] * 4
+    assert _sha256(query) == before
+    assert run.result["score_state"] == "shadow"
+    assert run.result["domain_score"] is None
+    assert run.result["prediction_sets"]["state_counts"] == {"consensus_supported": 4}
+    assert run.result["assignment_state"]["state"] == "candidate_prediction_set"
+    assert run.result["method_outputs"]["marker_program_evidence"] == {"release_state": "shadow"}
+    evidence = pd.read_parquet(next(
+        item.path for item in run.artifacts if item.kind == "cell_state_evidence"
+    ))
+    assert evidence["consensus_label"].tolist() == [
+        "L1:Neuron_DA", "L1:Neuron_DA", "L1:Astrocyte", "L1:Astrocyte"
+    ]
 
 
 def test_source_aware_run_emits_shadow_support_and_preserves_input(tmp_path: Path, monkeypatch) -> None:

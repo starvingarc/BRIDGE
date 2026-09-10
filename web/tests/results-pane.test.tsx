@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readBoundedText, ResultsPane, WorkbenchDivider } from "../src/components/ResultsPane";
 import type { Session } from "../src/types";
@@ -12,6 +12,8 @@ const session: Session = {
   uploads: [],
   plan: null,
   error: null,
+  input_review_required: false,
+  pending_input_change: null,
   artifacts: [
     {
       id: "figure png",
@@ -78,6 +80,308 @@ describe("ResultsPane", () => {
       "/api/sessions/session%20id/artifacts/table%20id",
       expect.objectContaining({ credentials: "same-origin" }),
     );
+  });
+
+  it("fetches a registered octet-stream Parquet preview and renders inert table cells", async () => {
+    const user = userEvent.setup();
+    const parquetSession: Session = {
+      ...session,
+      artifacts: [{
+        id: "parquet id",
+        name: "observations.parquet",
+        kind: "table",
+        media_type: "application/octet-stream",
+        url: "https://untrusted.example/PAR1",
+        tool_id: "p0-09",
+      }],
+    };
+    const maliciousCell = "<img src=x onerror=alert(1)>";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({
+        columns: ["metric", "value"],
+        rows: [[maliciousCell, 7]],
+        total_rows: 1,
+        total_columns: 2,
+        truncated: false,
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    const { container } = render(<ResultsPane session={parquetSession} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+
+    expect(await screen.findByRole("columnheader", { name: "metric" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: maliciousCell })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "7" })).toBeInTheDocument();
+    expect(container.querySelector("td img")).toBeNull();
+    expect(screen.queryByText("PAR1")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/sessions/session%20id/artifacts/parquet%20id/preview",
+      expect.objectContaining({ credentials: "same-origin" }),
+    );
+  });
+
+  it("renders exact signed and unsigned integer display strings without rounding", async () => {
+    const user = userEvent.setup();
+    const parquetSession: Session = {
+      ...session,
+      artifacts: [{
+        id: "integer parquet",
+        name: "integers.parquet",
+        kind: "table",
+        media_type: "application/octet-stream",
+        url: "/ignored",
+        tool_id: "p0-09",
+      }],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({
+        columns: ["signed", "unsigned"],
+        rows: [
+          [9007199254740991, "9007199254740992"],
+          ["-9007199254740993", "18446744073709551615"],
+        ],
+        total_rows: 2,
+        total_columns: 2,
+        truncated: false,
+      }), { status: 200 }),
+    );
+    render(<ResultsPane session={parquetSession} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+
+    expect(await screen.findByRole("cell", { name: "9007199254740991" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "9007199254740992" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "-9007199254740993" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "18446744073709551615" })).toBeInTheDocument();
+  });
+
+  it("renders finite float64 values outside the safe integer range", async () => {
+    const user = userEvent.setup();
+    const parquetSession: Session = {
+      ...session,
+      artifacts: [{
+        id: "large float parquet",
+        name: "large-floats.parquet",
+        kind: "table",
+        media_type: "application/octet-stream",
+        url: "/ignored",
+        tool_id: "p0-09",
+      }],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({
+        columns: ["float64"],
+        rows: [["1e+20"], ["-1e+20"], [1.25]],
+        total_rows: 3,
+        total_columns: 1,
+        truncated: false,
+      }), { status: 200 }),
+    );
+    render(<ResultsPane session={parquetSession} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+
+    expect(await screen.findByRole("cell", { name: "1e+20" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "-1e+20" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "1.25" })).toBeInTheDocument();
+  });
+
+  it("falls back instead of displaying a rounded unsafe JSON integer", async () => {
+    const user = userEvent.setup();
+    const parquetSession: Session = {
+      ...session,
+      artifacts: [{
+        id: "unsafe integer parquet",
+        name: "unsafe.parquet",
+        kind: "table",
+        media_type: "application/octet-stream",
+        url: "/ignored",
+        tool_id: "p0-09",
+      }],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        '{"columns":["value"],"rows":[[9007199254740993]],"total_rows":1,"total_columns":1,"truncated":false}',
+        { status: 200 },
+      ),
+    );
+    render(<ResultsPane session={parquetSession} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+
+    expect(await screen.findByText("This artifact could not be previewed.")).toBeInTheDocument();
+    expect(screen.queryByRole("cell", { name: "9007199254740992" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download original file" })).toBeInTheDocument();
+  });
+
+  it("renders a valid empty Parquet table with its registered header", async () => {
+    const user = userEvent.setup();
+    const parquetSession: Session = {
+      ...session,
+      artifacts: [{
+        id: "empty parquet",
+        name: "empty.parquet",
+        kind: "table",
+        media_type: "application/octet-stream",
+        url: "/ignored",
+        tool_id: "p0-09",
+      }],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({
+        columns: ["metric"],
+        rows: [],
+        total_rows: 0,
+        total_columns: 1,
+        truncated: false,
+      }), { status: 200 }),
+    );
+    render(<ResultsPane session={parquetSession} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+
+    expect(await screen.findByRole("columnheader", { name: "metric" })).toBeInTheDocument();
+    expect(screen.queryAllByRole("cell")).toHaveLength(0);
+    expect(screen.queryByText(/Preview truncated/)).not.toBeInTheDocument();
+  });
+
+  it("states Parquet preview truncation with displayed and total shape", async () => {
+    const user = userEvent.setup();
+    const parquetSession: Session = {
+      ...session,
+      artifacts: [{
+        id: "bounded parquet",
+        name: "bounded.parquet",
+        kind: "table",
+        media_type: "application/vnd.apache.parquet",
+        url: "/ignored",
+        tool_id: "p0-09",
+      }],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({
+        columns: ["metric"],
+        rows: [["observed"]],
+        total_rows: 101,
+        total_columns: 25,
+        truncated: true,
+      }), { status: 200 }),
+    );
+    render(<ResultsPane session={parquetSession} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+
+    expect(await screen.findByText(
+      "Preview truncated. Showing 1 of 101 rows and 1 of 25 columns. Download the original artifact for complete content.",
+    )).toBeInTheDocument();
+  });
+
+  it("aborts and ignores an obsolete Parquet preview after the session changes", async () => {
+    const user = userEvent.setup();
+    const firstSession: Session = {
+      ...session,
+      id: "first session",
+      artifacts: [{
+        id: "old parquet",
+        name: "old.parquet",
+        kind: "table",
+        media_type: "application/octet-stream",
+        url: "/ignored",
+        tool_id: "p0-09",
+      }],
+    };
+    const secondSession: Session = {
+      ...firstSession,
+      id: "second session",
+      artifacts: [{ ...firstSession.artifacts[0], id: "new parquet", name: "new.parquet" }],
+    };
+    let resolveOld: ((response: Response) => void) | undefined;
+    let oldSignal: AbortSignal | null | undefined;
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockImplementationOnce((_input, init) => {
+        oldSignal = init?.signal;
+        return new Promise<Response>((resolve) => { resolveOld = resolve; });
+      })
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        columns: ["metric"],
+        rows: [["new value"]],
+        total_rows: 1,
+        total_columns: 1,
+        truncated: false,
+      }), { status: 200 }));
+    const { rerender } = render(<ResultsPane session={firstSession} />);
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    rerender(<ResultsPane session={secondSession} />);
+
+    expect(await screen.findByRole("cell", { name: "new value" })).toBeInTheDocument();
+    expect(oldSignal?.aborted).toBe(true);
+    await act(async () => {
+      resolveOld?.(new Response(JSON.stringify({
+        columns: ["metric"],
+        rows: [["obsolete value"]],
+        total_rows: 1,
+        total_columns: 1,
+        truncated: false,
+      }), { status: 200 }));
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole("cell", { name: "obsolete value" })).not.toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "new value" })).toBeInTheDocument();
+  });
+
+  it("shows an explicit original-download fallback when a Parquet preview fails", async () => {
+    const user = userEvent.setup();
+    const parquetSession: Session = {
+      ...session,
+      artifacts: [{
+        id: "failed parquet",
+        name: "failed.parquet",
+        kind: "table",
+        media_type: "application/octet-stream",
+        url: "/ignored",
+        tool_id: "p0-09",
+      }],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ detail: "artifact_preview_too_large" }), { status: 413 }),
+    );
+    render(<ResultsPane session={parquetSession} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+
+    expect(await screen.findByText("This artifact could not be previewed.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download original file" })).toHaveAttribute(
+      "href",
+      "/api/sessions/session%20id/artifacts/failed%20parquet",
+    );
+  });
+
+  it("never decodes an unsupported binary table as text", async () => {
+    const user = userEvent.setup();
+    const binarySession: Session = {
+      ...session,
+      artifacts: [{
+        id: "binary id",
+        name: "matrix.bin",
+        kind: "table",
+        media_type: "application/octet-stream",
+        url: "/ignored",
+        tool_id: "p0-09",
+      }],
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    render(<ResultsPane session={binarySession} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tables/ }));
+
+    expect(screen.getByText("A browser preview is not available for this artifact.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download original file" })).toHaveAttribute(
+      "href",
+      "/api/sessions/session%20id/artifacts/binary%20id",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("lists all artifacts in Downloads while previewing one distinct figure view", async () => {

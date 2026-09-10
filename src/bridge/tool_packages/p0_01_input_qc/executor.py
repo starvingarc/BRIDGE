@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from importlib.metadata import version as package_version
 import json
 import os
 import shutil
@@ -12,6 +13,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from bridge.tool_packages._configurable_contracts import observation_ids_sha256
 from bridge.tool_packages.p0_01_input_qc.io import (
     InputAuditError,
     LEGACY_TWO_COLUMN_FEATURE_WARNING,
@@ -31,18 +33,21 @@ from bridge.tool_packages.p0_01_input_qc.measurement_specs import load_measureme
 from bridge.tool_packages.p0_01_input_qc.metrics import (
     DEFAULT_FEATURE_SET_POLICY,
     apply_candidate_rules,
+    apply_robust_candidate_rules,
     calculate_count_metrics,
     summarize_by_group,
 )
 from bridge.tool_packages.p0_01_input_qc.visualization import (
     render_counts_genes_scatter,
     render_qc_overview,
+    render_qc_selection_review,
 )
 from bridge.tool_packages.p0_01_input_qc.visualization_runtime import (
     write_typed_qc_visualizations,
 )
 from bridge.toolkit.contracts import (
     ArtifactManifest,
+    DataViewBinding,
     EvidenceState,
     ExecutionState,
     InputAsset,
@@ -81,6 +86,14 @@ def run_input_audit_qc(request: ToolRequest, spec: ToolPackageSpec) -> ToolRun:
         supported_levels = measurement_spec.input_contract.get("supported_levels", [])
         if asset.input_level.value not in supported_levels:
             return _failed_run(request, spec, input_hash, "measurement_spec_input_level_mismatch")
+
+    if request.parameters.get("select_qc_eligible_cells", False):
+        if measurement_spec is None:
+            return _failed_run(request, spec, input_hash, "qc_selection_requires_measurement_spec")
+        if asset.input_level.value != "count_ready":
+            return _failed_run(request, spec, input_hash, "qc_selection_requires_raw_counts")
+        if not request.parameters.get("run_scrublet", False):
+            return _failed_run(request, spec, input_hash, "qc_selection_doublets_unavailable")
 
     run_id = _run_id(request, spec, input_hash)
     workspace: Path | None = None
@@ -199,6 +212,11 @@ def _build_staged_run(
     qc_capture_context: pd.Series | None = None
     metrics: pd.DataFrame | None = None
     flags: pd.DataFrame | None = None
+    select_cells = bool(request.parameters.get("select_qc_eligible_cells", False))
+    selected_view: DataViewBinding | None = None
+    lineage_observations = adata.obs
+    lineage_capture_groups = None
+    thresholds: list[dict] = []
 
     if input_level == "count_ready":
         try:
@@ -253,6 +271,8 @@ def _build_staged_run(
             request,
         )
         warnings.extend(doublet_warnings)
+        if select_cells and doublet_assessment.get("state") != "candidate":
+            return _failed_run(request, spec, input_hash, "qc_selection_doublets_unavailable")
 
         metrics_path = staging_run_dir / "qc_metrics.parquet"
         metrics.to_parquet(metrics_path)
@@ -278,7 +298,28 @@ def _build_staged_run(
                 )
                 candidate_rules.pop("max_mitochondrial_fraction")
         if candidate_rules is not None:
-            flags = apply_candidate_rules(metrics, candidate_rules)
+            if candidate_rules.get("strategy") == "robust_by_capture":
+                if qc_capture_groups is None:
+                    return _failed_run(request, spec, input_hash, "qc_robust_capture_partition_required")
+                try:
+                    flags, thresholds = apply_robust_candidate_rules(metrics, qc_capture_groups, candidate_rules)
+                except ValueError as exc:
+                    return _failed_run(request, spec, input_hash, str(exc))
+            else:
+                flags = apply_candidate_rules(metrics, candidate_rules)
+                if qc_capture_groups is not None:
+                    thresholds = [
+                        {"capture_id": str(capture), **candidate_rules}
+                        for capture in sorted(qc_capture_groups.astype(str).unique())
+                    ]
+            if select_cells:
+                if gene_set_coverage["mitochondrial_genes"] == 0:
+                    return _failed_run(request, spec, input_hash, "qc_selection_mitochondrial_genes_unavailable")
+                flags["flag_predicted_doublet"] = metrics["scrublet_class"].eq("doublet")
+                flags["bridge_qc_candidate_eligible"] &= ~flags["flag_predicted_doublet"]
+                flags["passes_QC"] = flags["bridge_qc_candidate_eligible"]
+                if not flags["passes_QC"].any():
+                    return _failed_run(request, spec, input_hash, "qc_selection_has_no_eligible_cells")
             for column in flags.columns:
                 adata.obs[column] = flags[column].to_numpy()
             for column in metrics.columns:
@@ -302,6 +343,58 @@ def _build_staged_run(
                 "artifact_id": f"artifact:{run_id}:candidate-view",
             }
             data_views["sensitivity_views"].append("candidate_measurement_spec_flags")
+            if select_cells:
+                mask = flags["passes_QC"].to_numpy(dtype=bool)
+                selected_path = staging_run_dir / "qc_selected_view.h5ad"
+                adata[mask].write_h5ad(selected_path, compression="gzip")
+                selected_artifact = _artifact(
+                    f"artifact:{run_id}:qc-selected-view", "qc_selected_h5ad",
+                    selected_path, [f"evidence:{run_id}:candidate-flags"],
+                    logical_path=final_run_dir / selected_path.name,
+                )
+                artifacts.append(selected_artifact)
+                selected_view = DataViewBinding(
+                    view_id=f"data-view:{run_id}:qc-selected-observations@0.1.0",
+                    view_kind="qc_selected_observations",
+                    artifact_id=selected_artifact.artifact_id,
+                    sha256=selected_artifact.sha256,
+                    parent_asset_id=asset.asset_id, parent_asset_sha256=input_hash,
+                    matrix_location="X", matrix_semantics="raw_counts",
+                    n_observations=int(mask.sum()),
+                    observation_ids_sha256=observation_ids_sha256(adata.obs_names[mask].astype(str).tolist()),
+                    selection_spec_ref=measurement_spec.measurement_spec_id,
+                )
+                data_views["eligible_cells_view"].update({
+                    "artifact_id": selected_artifact.artifact_id,
+                    "sha256": selected_artifact.sha256,
+                    "selection_state": "applied",
+                })
+                cell_qc["selection_state"] = "applied"
+                cell_qc["selection_spec_version"] = measurement_spec.version
+                cell_qc["n_selected"] = int(mask.sum())
+                cell_qc["n_excluded"] = int((~mask).sum())
+                cell_qc["exclusion_counts_overlapping"] = {
+                    column: int(flags[column].sum())
+                    for column in flags if column.startswith("flag_")
+                }
+                cell_qc["thresholds_by_capture"] = thresholds
+                lineage_observations = adata.obs.loc[mask]
+                lineage_capture_groups = qc_capture_groups.loc[mask]
+                threshold_path = staging_run_dir / "qc_selection_thresholds.json"
+                _write_json(threshold_path, {
+                    "measurement_spec_ref": measurement_spec.measurement_spec_id,
+                    "measurement_spec_version": measurement_spec.version,
+                    "policy": measurement_spec.exclusion_rules,
+                    "thresholds_by_capture": thresholds,
+                    "doublet_assessment": doublet_assessment,
+                    "n_input": int(adata.n_obs), "n_selected": int(mask.sum()),
+                    "exclusion_counts_overlapping": cell_qc["exclusion_counts_overlapping"],
+                })
+                artifacts.append(_artifact(
+                    f"artifact:{run_id}:qc-selection-thresholds", "qc_selection_thresholds",
+                    threshold_path, [f"evidence:{run_id}:candidate-flags"],
+                    logical_path=final_run_dir / threshold_path.name,
+                ))
         else:
             missing_inputs.append("measurement_spec_not_selected")
 
@@ -314,6 +407,18 @@ def _build_staged_run(
         )
         artifacts.extend(visualization_artifacts)
         visualizations.extend(visualization_records)
+        if select_cells:
+            for index, paths in enumerate(render_qc_selection_review(
+                metrics, flags, qc_capture_groups, thresholds, doublet_assessment, staging_run_dir
+            ), 1):
+                for path in paths:
+                    extension = path.suffix.lstrip(".")
+                    artifacts.append(_artifact(
+                        f"artifact:{run_id}:qc-selection-review-{index}-{extension}",
+                        f"qc_selection_review_{extension}", path,
+                        [f"evidence:{run_id}:candidate-flags"],
+                        logical_path=final_run_dir / path.name,
+                    ))
     elif input_level == "analysis_ready":
         missing_inputs.extend(
             ["raw_counts_not_available", "measurement_spec_not_selected"]
@@ -395,12 +500,13 @@ def _build_staged_run(
 
     lineage = build_declared_lineage(
         asset=asset,
-        observations=adata.obs,
-        qc_capture_groups=qc_capture_groups,
+        observations=lineage_observations,
+        qc_capture_groups=lineage_capture_groups if selected_view is not None else qc_capture_groups,
         input_hash=input_hash,
         run_id=run_id,
         tool_version=spec.version,
         input_level=input_level,
+        selected_view=selected_view,
     )
     v2_data_views = deepcopy(profile.data_views)
     v2_missing_inputs = list(profile.missing_inputs)
@@ -805,7 +911,10 @@ def _assess_doublets(
     minimum = int(measurement_spec.minimum_data.get("min_cells_for_scrublet", 100)) if measurement_spec else 100
     if len(adata) < minimum:
         return {"state": "not_assessed", "reason": "insufficient_cells_for_scrublet", "minimum_cells": minimum}, []
-    group_counts = groups.astype(str).value_counts()
+    nonempty = metrics["total_counts"].to_numpy() > 0
+    group_counts = groups.loc[nonempty].astype(str).value_counts().reindex(
+        groups.astype(str).unique(), fill_value=0
+    )
     if (group_counts < minimum).any():
         return {
             "state": "not_assessed",
@@ -820,20 +929,48 @@ def _assess_doublets(
 
         scores = np.full(adata.n_obs, np.nan)
         calls = np.zeros(adata.n_obs, dtype=bool)
+        per_capture = []
         for group in sorted(groups.astype(str).unique()):
-            mask = groups.astype(str).to_numpy() == group
+            mask = (groups.astype(str).to_numpy() == group) & nonempty
             matrix = adata.X[mask]
             n_components = max(2, min(30, matrix.shape[0] - 1, matrix.shape[1] - 1))
             scrublet = scr.Scrublet(matrix, random_state=request.random_seed)
             group_scores, group_calls = scrublet.scrub_doublets(n_prin_comps=n_components, verbose=False)
+            group_scores = np.asarray(group_scores, dtype=float)
+            if (
+                group_calls is None
+                or group_scores.shape != (int(mask.sum()),)
+                or not np.isfinite(group_scores).all()
+                or np.asarray(group_calls).shape != group_scores.shape
+                or np.asarray(group_calls).dtype.kind != "b"
+                or not np.isfinite(getattr(scrublet, "threshold_", np.nan))
+            ):
+                raise ValueError("scrublet_classification_unavailable")
             scores[mask] = group_scores
             calls[mask] = group_calls
+            histogram, bin_edges = np.histogram(scrublet.doublet_scores_sim_, bins=np.linspace(0, 1, 51))
+            per_capture.append({
+                "capture_id": str(group), "n_observations": int(mask.sum()),
+                "n_predicted": int(np.asarray(group_calls).sum()),
+                "threshold": float(scrublet.threshold_),
+                "n_components": n_components,
+                "expected_doublet_rate": getattr(scrublet, "expected_doublet_rate", None),
+                "simulated_score_histogram": {"counts": histogram.tolist(), "bin_edges": bin_edges.tolist()},
+            })
         metrics["scrublet_score"] = scores
+        classes = np.full(adata.n_obs, "not_assessed_empty_counts", dtype=object)
+        classes[nonempty] = np.where(calls[nonempty], "doublet", "singlet")
+        metrics["scrublet_class"] = classes
         return {
             "state": "candidate",
             "method": "Scrublet",
+            "method_version": package_version("scrublet"),
+            "random_seed": request.random_seed,
+            "per_capture": per_capture,
             "n_predicted": int(calls.sum()),
-            "fraction_predicted": float(calls.mean()),
+            "fraction_predicted": float(calls[nonempty].mean()),
+            "n_assessed": int(nonempty.sum()),
+            "n_not_assessed_empty_counts": int((~nonempty).sum()),
         }, []
     except Exception as exc:
         return {"state": "not_assessed", "reason": "scrublet_execution_failed"}, [f"scrublet_execution_failed: {exc}"]

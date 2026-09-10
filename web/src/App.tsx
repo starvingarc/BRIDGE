@@ -1,15 +1,16 @@
 import { Menu, Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "./api";
 import { Conversation } from "./components/Conversation";
 import { LoginScreen } from "./components/LoginScreen";
 import { ResultsPane, WorkbenchDivider } from "./components/ResultsPane";
 import { Sidebar } from "./components/Sidebar";
+import { ProductIntake } from "./components/ProductIntake";
 import { BridgeRuntimeProvider } from "./runtime/BridgeRuntimeProvider";
 import type { Session, SessionSummary } from "./types";
 
 const SELECTED_SESSION_KEY = "bridge.preview.selected-session.v1";
-const busyStatuses = new Set(["thinking", "running"]);
+const busyStatuses = new Set(["thinking", "running", "stopping"]);
 const POLL_INTERVAL_MS = 1_250;
 const MAX_POLL_RETRY_MS = 8_000;
 
@@ -64,11 +65,24 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [action, setAction] = useState<"create" | "load" | "upload" | "approve" | "logout" | null>(null);
+  const [action, setAction] = useState<
+    "create" | "load" | "upload" | "source" | "approve" | "stop" | "input-review" | "logout" | null
+  >(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pollGeneration, setPollGeneration] = useState(0);
+  const sessionRef = useRef<Session | null>(null);
+  const sessionGeneration = useRef(0);
+  sessionRef.current = session;
   const [resultsWidth, setResultsWidth] = useState(() =>
     Math.max(420, Math.min(620, Math.round(window.innerWidth * 0.4))),
   );
+
+  const advanceSessionGeneration = useCallback(() => {
+    const next = sessionGeneration.current + 1;
+    sessionGeneration.current = next;
+    setPollGeneration(next);
+    return next;
+  }, []);
 
   const mergeSession = useCallback((next: Session) => {
     setSession(next);
@@ -80,6 +94,27 @@ export default function App() {
       );
     });
   }, []);
+
+  const mergeCurrentSession = useCallback(
+    (next: Session, expectedId: string, expectedGeneration: number) => {
+      if (
+        sessionGeneration.current !== expectedGeneration
+        || sessionRef.current?.id !== expectedId
+        || next.id !== expectedId
+      ) return false;
+      mergeSession(next);
+      return true;
+    },
+    [mergeSession],
+  );
+
+  const renderGeneration = sessionGeneration.current;
+  const acceptChildSession = useCallback(
+    (next: Session) => {
+      mergeCurrentSession(next, next.id, renderGeneration);
+    },
+    [mergeCurrentSession, renderGeneration],
+  );
 
   const handleAuthError = useCallback((error: unknown) => {
     if (error instanceof ApiError && error.status === 401) {
@@ -98,7 +133,9 @@ export default function App() {
   );
 
   const openWorkspace = useCallback(async () => {
+    const operationGeneration = advanceSessionGeneration();
     const response = await api.listSessions();
+    if (sessionGeneration.current !== operationGeneration) return;
     setSessions(response.sessions);
     setAuthState("signed-in");
     const saved = localStorage.getItem(SELECTED_SESSION_KEY);
@@ -108,13 +145,15 @@ export default function App() {
       return;
     }
     try {
-      mergeSession(await api.getSession(selected.id));
+      const next = await api.getSession(selected.id);
+      if (sessionGeneration.current === operationGeneration) mergeSession(next);
     } catch (error) {
+      if (sessionGeneration.current !== operationGeneration) return;
       if (error instanceof ApiError && error.status === 401) throw error;
       setSession(null);
       setNotice(publicError(error));
     }
-  }, [mergeSession]);
+  }, [advanceSessionGeneration, mergeSession]);
 
   useEffect(() => {
     let active = true;
@@ -140,6 +179,7 @@ export default function App() {
     let controller: AbortController | null = null;
     let timer: number | null = null;
     let failedAttempts = 0;
+    const operationGeneration = sessionGeneration.current;
 
     const schedule = (delay: number) => {
       timer = window.setTimeout(poll, delay);
@@ -149,12 +189,20 @@ export default function App() {
       controller = new AbortController();
       try {
         const next = await api.getSession(sessionId, controller.signal);
-        if (cancelled) return;
+        if (
+          cancelled
+          || sessionGeneration.current !== operationGeneration
+          || sessionRef.current?.id !== sessionId
+        ) return;
         failedAttempts = 0;
         mergeSession(next);
         if (busyStatuses.has(next.status)) schedule(POLL_INTERVAL_MS);
       } catch (error) {
-        if (cancelled || (error as { name?: string }).name === "AbortError") return;
+        if (
+          cancelled
+          || sessionGeneration.current !== operationGeneration
+          || (error as { name?: string }).name === "AbortError"
+        ) return;
         handleActionError(error);
         if (error instanceof ApiError && error.status === 401) return;
         failedAttempts += 1;
@@ -168,7 +216,7 @@ export default function App() {
       controller?.abort();
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [handleActionError, mergeSession, session?.id, session?.status]);
+  }, [handleActionError, mergeSession, pollGeneration, session?.id, session?.status]);
 
   const login = async (token: string) => {
     setAction("load");
@@ -185,31 +233,36 @@ export default function App() {
   };
 
   const logout = async () => {
+    const operationGeneration = advanceSessionGeneration();
     setAction("logout");
     setNotice(null);
     try {
       await api.logout();
+      if (sessionGeneration.current !== operationGeneration) return;
       localStorage.removeItem(SELECTED_SESSION_KEY);
       setAuthState("signed-out");
       setSession(null);
       setSessions([]);
     } catch (error) {
-      handleActionError(error);
+      if (sessionGeneration.current === operationGeneration) handleActionError(error);
     } finally {
-      setAction(null);
+      if (sessionGeneration.current === operationGeneration) setAction(null);
     }
   };
 
   const createSession = async () => {
+    const operationGeneration = advanceSessionGeneration();
     setAction("create");
     setNotice(null);
     try {
-      mergeSession(await api.createSession());
+      const next = await api.createSession();
+      if (sessionGeneration.current !== operationGeneration) return;
+      mergeSession(next);
       setSidebarOpen(false);
     } catch (error) {
-      handleActionError(error);
+      if (sessionGeneration.current === operationGeneration) handleActionError(error);
     } finally {
-      setAction(null);
+      if (sessionGeneration.current === operationGeneration) setAction(null);
     }
   };
 
@@ -218,41 +271,112 @@ export default function App() {
       setSidebarOpen(false);
       return;
     }
+    const operationGeneration = advanceSessionGeneration();
     setAction("load");
     setNotice(null);
     try {
-      mergeSession(await api.getSession(id));
+      const next = await api.getSession(id);
+      if (sessionGeneration.current !== operationGeneration) return;
+      mergeSession(next);
       setSidebarOpen(false);
     } catch (error) {
-      handleActionError(error);
+      if (sessionGeneration.current === operationGeneration) handleActionError(error);
     } finally {
-      setAction(null);
+      if (sessionGeneration.current === operationGeneration) setAction(null);
     }
   };
 
   const upload = async (file: File) => {
     if (!session) return;
+    const operationSession = session.id;
+    const operationGeneration = sessionGeneration.current;
     setAction("upload");
     setNotice(null);
     try {
-      mergeSession(await api.upload(session.id, file));
+      const next = await api.upload(operationSession, file);
+      mergeCurrentSession(next, operationSession, operationGeneration);
     } catch (error) {
-      handleActionError(error);
+      if (sessionGeneration.current === operationGeneration) handleActionError(error);
     } finally {
-      setAction(null);
+      if (sessionGeneration.current === operationGeneration) setAction(null);
+    }
+  };
+
+  const setSourceInput = async (uploadId: string, sourceFamilyId: string) => {
+    if (!session) return;
+    const operationSession = session.id;
+    const operationGeneration = sessionGeneration.current;
+    setAction("source");
+    setNotice(null);
+    try {
+      const next = await api.setSourceInput(operationSession, uploadId, sourceFamilyId);
+      if (mergeCurrentSession(next, operationSession, operationGeneration)) {
+        setNotice(next.pending_input_change
+          ? "Source change staged for confirmation."
+          : "Source input already matches the current declaration.");
+      }
+    } catch (error) {
+      if (sessionGeneration.current === operationGeneration) handleActionError(error);
+    } finally {
+      if (sessionGeneration.current === operationGeneration) setAction(null);
     }
   };
 
   const approve = async () => {
-    if (!session?.plan) return;
+    if (!session?.plan || session.input_review_required) return;
+    const operationSession = session.id;
+    const operationGeneration = sessionGeneration.current;
     setAction("approve");
     setNotice(null);
     try {
-      mergeSession(await api.approvePlan(session.id, session.plan.id, session.plan.digest));
+      const next = await api.approvePlan(
+        operationSession,
+        session.plan.id,
+        session.plan.digest,
+      );
+      mergeCurrentSession(next, operationSession, operationGeneration);
     } catch (error) {
-      handleActionError(error);
+      if (sessionGeneration.current === operationGeneration) handleActionError(error);
     } finally {
-      setAction(null);
+      if (sessionGeneration.current === operationGeneration) setAction(null);
+    }
+  };
+
+  const stop = async () => {
+    if (!session || session.status === "stopping") return;
+    const operationSession = session.id;
+    const operationGeneration = advanceSessionGeneration();
+    setAction("stop");
+    setNotice(null);
+    try {
+      const next = await api.stopSession(operationSession);
+      mergeCurrentSession(next, operationSession, operationGeneration);
+    } catch (error) {
+      if (sessionGeneration.current === operationGeneration) handleActionError(error);
+    } finally {
+      if (sessionGeneration.current === operationGeneration) setAction(null);
+    }
+  };
+
+  const resolveInputReview = async (resolution: "confirm" | "discard" | "keep") => {
+    if (!session) return;
+    const pending = session.pending_input_change;
+    if (resolution !== "keep" && !pending) return;
+    const operationSession = session.id;
+    const operationGeneration = advanceSessionGeneration();
+    setAction("input-review");
+    setNotice(null);
+    try {
+      const next = resolution === "confirm"
+        ? await api.confirmInputChange(operationSession, pending!.id, pending!.digest)
+        : resolution === "discard"
+          ? await api.discardInputChange(operationSession, pending!.id, pending!.digest)
+          : await api.keepCurrentInputs(operationSession);
+      mergeCurrentSession(next, operationSession, operationGeneration);
+    } catch (error) {
+      if (sessionGeneration.current === operationGeneration) handleActionError(error);
+    } finally {
+      if (sessionGeneration.current === operationGeneration) setAction(null);
     }
   };
 
@@ -280,7 +404,7 @@ export default function App() {
           <BridgeRuntimeProvider
             session={session}
             disabled={sessionBusy || action !== null}
-            onSession={mergeSession}
+            onSession={acceptChildSession}
             onError={handleActionError}
           >
             <Conversation
@@ -288,9 +412,17 @@ export default function App() {
               busy={sessionBusy || action !== null}
               uploadBusy={action === "upload"}
               approveBusy={action !== null}
+              stopBusy={action === "stop"}
               onOpenSidebar={() => setSidebarOpen(true)}
               onUpload={upload}
+              onSourceInput={setSourceInput}
               onApprove={approve}
+              onStop={stop}
+              onConfirmInputChange={() => void resolveInputReview("confirm")}
+              onDiscardInputChange={() => void resolveInputReview("discard")}
+              onKeepCurrentInputs={() => void resolveInputReview("keep")}
+              onSession={acceptChildSession}
+              onError={handleActionError}
             />
           </BridgeRuntimeProvider>
         ) : (
@@ -302,7 +434,12 @@ export default function App() {
         )}
         <WorkbenchDivider width={resultsWidth} onWidth={setResultsWidth} />
         <div className="results-wrap" style={{ width: resultsWidth }}>
-          <ResultsPane session={session} />
+          <ResultsPane key={session?.id ?? "empty"} session={session} overview={session ? (
+            <ProductIntake session={session} busy={sessionBusy || action !== null}
+              onSession={acceptChildSession} onError={handleActionError}
+              onConfirm={() => void resolveInputReview("confirm")}
+              onDiscard={() => void resolveInputReview("discard")} />
+          ) : undefined} />
         </div>
       </div>
       {notice ? (

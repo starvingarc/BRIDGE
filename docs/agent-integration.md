@@ -1,9 +1,27 @@
 # Agent Integration
 
 > [!NOTE]
-> BRIDGE currently provides deterministic P0 tools and the contracts needed to
-> orchestrate them. The conversational Agent, Web workspace and deployment
-> runtime remain separate work.
+> BRIDGE provides deterministic P0 tools and a private [Web preview](web-preview.md)
+> with contract-driven input selection, staged approval and execution for all
+> 12 tools. The profiles below describe required dependencies and ownership,
+> not an implemented automatic scientific-input builder or proof of full-chain
+> execution. See the [current integration plan](../plans/web-full-chain-integration.md#current-progress-2026-09-08)
+> for source, installed and genuine-data progress.
+
+## Private product intake
+
+The Web entry now drafts bounded researcher statements, displays observed H5AD
+structure separately, and uses exact user confirmation before materializing an
+existing asset declaration. The `propose_intake` action only stages initial facts;
+the model cannot confirm them. Product-only and source-only corrections preserve
+valid canonical QC. Intake confirmation, next-stage preparation and exact plan
+approval are three separate actions. See [Web preview](web-preview.md#a-typical-conversation).
+
+This private record does not implement the `agent_constructed` scientific-object
+slots below: a target label is not a reviewed product definition, and an
+independent-culture count is not a biological-unit mapping or attestation.
+Unsupported/unknown product targets can receive generic QC, while downstream
+reference, design and product-definition gaps remain explicit.
 
 ## Integration profile
 
@@ -48,6 +66,12 @@ live tool registry. These cross-record checks are intentionally not duplicated
 as a second static contract.
 
 ## Published profiles
+
+These are validated integration contracts. Where a profile says the Agent
+materializes an object, that describes the caller's obligation, not a current Web
+capability. Product definitions, role maps, protocols, attestations, comparison
+inputs and report drafts still require genuine supplied or explicitly confirmed
+content; their general candidate-drafting workflow is not implemented.
 
 | Profile | Tool path | Endpoint |
 |---|---|---|

@@ -77,7 +77,7 @@ holdout, stage-level description and provisional-group sensitivity only. Every
 formal `biological_unit_id` remains null and every sample remains
 `replicate_eligibility=not_estimable`. The decision cannot support donor-level
 inference or promote a method, state, threshold or product role. The evidence is
-recorded in the [external-source asset validation](../docs/validation/p0_02_external_source_asset_20260812.md).
+recorded in the [external-source asset validation](../docs/validation/p0_02_cell_state_evidence.md#record-p0-02-external-source-asset-20260812).
 
 Before state-card biological review begins—and before the FreezeGate can be
 signed or any locked runner can be implemented or run—the processed
@@ -152,7 +152,7 @@ evaluation fails, affected states remain `shadow`, `provisional` or `unavailable
   checksums, provenance, stable failure reasons, examples and scientific
   boundaries to the indexed stable documentation.
 - Full validation evidence is recorded in
-  [P0-02 external-source preparation validation](../docs/validation/p0_02_external_source_preparation_20260813.md): focused contracts `39 passed in 2.56s`; full suite `214 passed, 3 warnings in 14.31s`; 12-tool discovery with only P0-01/P0-02 implemented; knowledge validation `valid=True` with 354 methods and 396 bindings; repository policy and `git diff --check` passed.
+  [P0-02 external-source preparation validation](../docs/validation/p0_02_cell_state_evidence.md#record-p0-02-external-source-preparation-20260813): focused contracts `39 passed in 2.56s`; full suite `214 passed, 3 warnings in 14.31s`; 12-tool discovery with only P0-01/P0-02 implemented; knowledge validation `valid=True` with 354 methods and 396 bindings; repository policy and `git diff --check` passed.
 - The branch remains a Draft PR: merge is not authorized. Remaining biological
   work is review of 25 state cards, then ProductDefinitionCard and StateRoleMap;
   only a signed FreezeGate can authorize a single locked run.

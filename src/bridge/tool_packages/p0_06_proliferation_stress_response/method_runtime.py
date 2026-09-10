@@ -23,7 +23,9 @@ from bridge.tool_packages.p0_06_proliferation_stress_response.method_models impo
     ProcessMethodBundleV2,
     ProcessMethodId,
     ProcessMethodInput,
+    ProcessMethodInputV2,
     ProcessMethodSpec,
+    ProcessObservationStateV2,
     ProgramScoreSummary,
 )
 from bridge.tool_packages.p0_06_proliferation_stress_response.models import (
@@ -96,13 +98,8 @@ def _package_versions() -> dict[str, str]:
     return result
 
 
-def _load_expression(
-    *,
-    asset: InputAsset,
-    method_spec: ProcessMethodSpec,
-    method_input: ProcessMethodInput,
-    assignment: BiologicalUnitAssignmentArtifact,
-) -> _ExpressionData:
+def load_expression_matrix(*, asset: InputAsset, gene_symbol_column: str | None) -> Any:
+    """Load a declared matrix without interpreting biological units or states."""
     anndata = _require_module("anndata")
     try:
         adata = anndata.read_h5ad(asset.path)
@@ -114,13 +111,13 @@ def _load_expression(
     if len(set(observation_ids.tolist())) != len(observation_ids):
         raise ProcessMethodError("expression_observation_ids_not_unique")
 
-    if method_spec.gene_symbol_column is None:
+    if gene_symbol_column is None:
         genes = np.asarray(adata.var_names.astype(str), dtype=object)
     else:
-        if method_spec.gene_symbol_column not in adata.var:
+        if gene_symbol_column not in adata.var:
             raise ProcessMethodError("gene_symbol_column_missing")
         genes = np.asarray(
-            adata.var[method_spec.gene_symbol_column].astype(str), dtype=object
+            adata.var[gene_symbol_column].astype(str), dtype=object
         )
     if any(not gene or any(char.isspace() for char in gene) for gene in genes):
         raise ProcessMethodError("gene_symbols_invalid")
@@ -160,11 +157,34 @@ def _load_expression(
     else:
         adata.X = matrix.copy()
 
+    return adata
+
+
+def _load_expression(
+    *,
+    asset: InputAsset,
+    method_spec: ProcessMethodSpec,
+    method_input: ProcessMethodInput | ProcessMethodInputV2,
+    assignment: BiologicalUnitAssignmentArtifact,
+    source_observation_states: tuple[ProcessObservationStateV2, ...] | None,
+) -> _ExpressionData:
+    adata = load_expression_matrix(
+        asset=asset, gene_symbol_column=method_spec.gene_symbol_column
+    )
+    observation_ids = np.asarray(adata.obs_names.astype(str), dtype=object)
+    genes = np.asarray(adata.var_names.astype(str), dtype=object)
+
     assignment_by_id = {
         item.observation_id: item for item in assignment.assignments
     }
+    if isinstance(method_input, ProcessMethodInputV2):
+        if source_observation_states is None:
+            raise ProcessMethodError("source_observations_not_loaded")
+        observation_states = source_observation_states
+    else:
+        observation_states = tuple(method_input.observation_states)
     state_by_id = {
-        item.observation_id: item for item in method_input.observation_states
+        item.observation_id: item for item in observation_states
     }
     observed = set(observation_ids.tolist())
     if observed != set(assignment_by_id):
@@ -182,7 +202,7 @@ def _load_expression(
     state_ids = np.asarray(
         [
             state_by_id[item].state_id
-            if state_by_id[item].state is ObservationState.CANDIDATE
+            if state_by_id[item].state == ObservationState.CANDIDATE
             else None
             for item in observation_ids
         ],
@@ -633,8 +653,9 @@ def run_process_methods(
     method_spec: ProcessMethodSpec,
     method_spec_sha256: str,
     program_spec_sha256: str,
-    method_input: ProcessMethodInput,
+    method_input: ProcessMethodInput | ProcessMethodInputV2,
     method_input_sha256: str,
+    source_observation_states: tuple[ProcessObservationStateV2, ...] | None,
     assignment: BiologicalUnitAssignmentArtifact,
     assignment_sha256: str,
     biological_unit_manifest_sha256: str,
@@ -648,6 +669,7 @@ def run_process_methods(
         method_spec=method_spec,
         method_input=method_input,
         assignment=assignment,
+        source_observation_states=source_observation_states,
     )
     rules = {item.program_id: item for item in program_spec.program_rules}
     package_versions = _package_versions()
