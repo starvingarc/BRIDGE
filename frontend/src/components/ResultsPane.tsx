@@ -312,6 +312,23 @@ function ParquetArtifact({ sessionId, artifact }: { sessionId: string; artifact:
   );
 }
 
+export function ArtifactCard({ sessionId, artifact, view = artifact.kind }: {
+  sessionId: string; artifact: Artifact; view?: ArtifactKind;
+}) {
+  const url = artifactUrl(sessionId, artifact.id);
+  return <article className="artifact-card">
+    <header><div><h2>{artifact.name}</h2><p>{artifact.tool_id}</p></div>
+      <a href={url} download={artifact.name} aria-label={`Download ${artifact.name}`}><Download aria-hidden="true" /></a>
+    </header>
+    {view === "figure" ? <img src={url} alt={artifact.name} />
+      : view === "download" ? <a className="download-row" href={url} download={artifact.name}>
+        <FileText aria-hidden="true" /><span>Download original file</span><Download aria-hidden="true" /></a>
+      : isParquet(artifact) ? <ParquetArtifact sessionId={sessionId} artifact={artifact} />
+      : isTextPreview(artifact) ? <TextArtifact sessionId={sessionId} artifact={artifact} />
+      : <DownloadFallback sessionId={sessionId} artifact={artifact} message="A browser preview is not available for this artifact." />}
+  </article>;
+}
+
 function EmptyResults({ kind }: { kind: ArtifactKind }) {
   const Icon =
     kind === "figure" ? ImageIcon : kind === "table" ? Table2 : kind === "download" ? Download : FileText;
@@ -366,41 +383,7 @@ export function ResultsPane({ session, overview }: { session: Session | null; ov
           <EmptyResults kind={activeTab} />
         ) : (
           <div className={`artifact-grid artifact-grid--${activeTab}`}>
-            {artifacts.map((artifact) => {
-              const url = artifactUrl(session.id, artifact.id);
-              return (
-                <article className="artifact-card" key={artifact.id}>
-                  <header>
-                    <div>
-                      <h2>{artifact.name}</h2>
-                      <p>{artifact.tool_id}</p>
-                    </div>
-                    <a href={url} download={artifact.name} aria-label={`Download ${artifact.name}`}>
-                      <Download aria-hidden="true" />
-                    </a>
-                  </header>
-                  {activeTab === "figure" ? (
-                    <img src={url} alt={artifact.name} />
-                  ) : activeTab === "download" ? (
-                    <a className="download-row" href={url} download={artifact.name}>
-                      <FileText aria-hidden="true" />
-                      <span>Download original file</span>
-                      <Download aria-hidden="true" />
-                    </a>
-                  ) : isParquet(artifact) ? (
-                    <ParquetArtifact sessionId={session.id} artifact={artifact} />
-                  ) : isTextPreview(artifact) ? (
-                    <TextArtifact sessionId={session.id} artifact={artifact} />
-                  ) : (
-                    <DownloadFallback
-                      sessionId={session.id}
-                      artifact={artifact}
-                      message="A browser preview is not available for this artifact."
-                    />
-                  )}
-                </article>
-              );
-            })}
+            {artifacts.map((artifact) => <ArtifactCard key={artifact.id} sessionId={session.id} artifact={artifact} view={activeTab} />)}
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { ResultsPane, WorkbenchDivider } from "./components/ResultsPane";
 import { Sidebar } from "./components/Sidebar";
 import { ProductIntake } from "./components/ProductIntake";
+import { AssessmentPanel } from "./components/AssessmentPanel";
 import { BridgeRuntimeProvider } from "./runtime/BridgeRuntimeProvider";
 import type { Session, SessionSummary } from "./types";
 
@@ -435,10 +436,12 @@ export default function App() {
         <WorkbenchDivider width={resultsWidth} onWidth={setResultsWidth} />
         <div className="results-wrap" style={{ width: resultsWidth }}>
           <ResultsPane key={session?.id ?? "empty"} session={session} overview={session ? (
+            <><AssessmentPanel key={session.id} session={session} busy={sessionBusy || action !== null}
+              onSession={acceptChildSession} onError={handleActionError} />
             <ProductIntake session={session} busy={sessionBusy || action !== null}
               onSession={acceptChildSession} onError={handleActionError}
               onConfirm={() => void resolveInputReview("confirm")}
-              onDiscard={() => void resolveInputReview("discard")} />
+              onDiscard={() => void resolveInputReview("discard")} /></>
           ) : undefined} />
         </div>
       </div>

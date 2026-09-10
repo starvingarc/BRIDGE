@@ -859,6 +859,8 @@ def test_repeated_scientific_request_ignores_new_random_request_ids(client, tmp_
     approve_scope(client, sid, scope)
     done = settle(client, sid)["assessment"]
     assert done["stop_reason"] == "unavailable_or_repeated_action"
+    assert done["candidates"][0]["already_admitted"] is True
+    assert done["candidates"][0]["runnable"] is False
     assert done["tool_runs_used"] == 1 and done["model_turns_used"] == 2
     assert len(service.load(sid)["_tool_runs"]) == 1
 
@@ -880,7 +882,16 @@ def test_malformed_provider_turn_is_consumed_without_dispatch(client, tmp_path, 
 def test_scope_reports_actual_missing_selection_and_scientific_review_blocker(client, tmp_path):
     from test_web_report_inputs import confirmed_case
     service, sid, aid, _ = confirmed_case(client, tmp_path)
+    before = service.load(sid)
     scope = propose_scope(client, sid, aid, "P0-03", "default")
+    assert scope["candidates"] == [{"tool_id": "P0-03", "mode_id": "default", "runnable": False, "already_admitted": False,
+        "blockers": ["scientific_source_review_pending"], "gaps": []}]
+    assert scope["blockers"][0]["reason_codes"] == ["scientific_source_review_pending"]
+    after = service.load(sid)
+    for key in ("_input_revision", "_input_selections", "_intakes", "_tool_runs"):
+        assert after[key] == before[key]
+    assert after["_assessment"]["authorization"] is None
+    assert scope["tool_runs_used"] == scope["model_turns_used"] == 0
     approve_scope(client, sid, scope)
     done = settle(client, sid)["assessment"]
     assert done["stop_reason"] == "no_eligible_check"
@@ -1038,6 +1049,18 @@ def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artif
             return Action.model_validate({"action": "assessment", "decision": {
                 "action": "query", "option_id": context["options"][0]["id"]}})
         assert context["evidence"][0]["summary"]["graph_version"] == 1
+        wire = json.dumps(context)
+        from bridge.web.evidence import assessment_evidence
+        current = service.load(sid)
+        local, _ = assessment_evidence(service.inputs, current, current["_assessment"])
+        for row in local:
+            assert row["alias"] not in wire
+            assert row["summary"]["graph_alias"] not in wire
+            for node in row["summary"]["nodes"]:
+                assert node["alias"] not in wire
+            for private in row["provenance"].values():
+                if isinstance(private, str):
+                    assert private not in wire
         assert len(context["evidence"][0]["summary"]["requirements"]) == 5
         assert all(item["state"] == "open" for item in context["evidence"][0]["summary"]["requirements"])
         return Action.model_validate({"action": "assessment", "decision": {
@@ -1062,6 +1085,18 @@ def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artif
     assert receipt["artifacts"] == [] and receipt["measurements"] == []
     assert receipt["result"]["graph_id"] == graph["graph_id"]
     assert receipt["result"]["graph_version"] == 1
+    local = done["assessment"]["evidence"][0]
+    assert local["artifact_ids"]
+    assert local["provenance"]["source_receipt_sha256"] == graph_record["receipt_sha256"]
+    assert local["provenance"]["graph_version"] == 1
+    for identifier in local["artifact_ids"]:
+        assert after["_canonical_artifacts"][identifier]["receipt_sha256"] == graph_record["receipt_sha256"]
+    # A different run, even from the same tool, cannot acquire this graph version.
+    wrong_id = local["artifact_ids"][0]
+    after["_canonical_artifacts"][wrong_id]["receipt_sha256"] = "f" * 64
+    from bridge.web.evidence import assessment_evidence
+    reread, _ = assessment_evidence(service.inputs, after, after["_assessment"])
+    assert wrong_id not in reread[0]["artifact_ids"]
 
 
 @pytest.mark.parametrize("tool,module", [("P0-03", "test_p0_03_target_regional"),
@@ -1179,7 +1214,23 @@ def test_result_bound_hypothesis_is_stored_without_changing_scientific_objects(c
     service.settings = replace(service.settings, share_result_summaries=True)
     scope = propose_scope(client, sid, aid)
     objects = service.load(sid)["_input_objects"]
+    wires = []
     def model(settings, messages, context):
+        from bridge.web.assessment import AssessmentScope
+        state = service.load(sid)
+        wires.append(json.dumps(context))
+        candidates = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
+        for candidate in candidates:
+            if candidate["fingerprint"]:
+                assert candidate["fingerprint"] not in wires[-1]
+        for receipt in state["_tool_runs"]:
+            for private in (receipt["sha256"], receipt["sha256"][:16], receipt["plan_id"], receipt["file"]):
+                assert private not in wires[-1]
+        for binding in state["_canonical_artifacts"].values():
+            for private in (binding["sha256"], binding["sha256"][:16], binding["path"], binding["artifact_id"]):
+                assert private not in wires[-1]
+        assert "/api/sessions/" not in wires[-1]
+        assert "provenance" not in wires[-1]
         from bridge.web.provider import Action
         assert context["question"] == scope["question"]
         if not context["evidence"]:
@@ -1201,6 +1252,50 @@ def test_result_bound_hypothesis_is_stored_without_changing_scientific_objects(c
     assert all(current["_input_objects"][key] == value for key, value in objects.items())
     assert current["_input_revision"] == scope["input_revision"]
     assert done["assessment"]["scope_grants_scientific_approval"] is False
+    evidence = done["assessment"]["evidence"][0]
+    assert evidence["artifact_ids"]
+    assert evidence["dependencies"]
+    for dependency in evidence["dependencies"]:
+        assert dependency["role"] and dependency["object_version"] and dependency["sha256"]
+        assert dependency["sha256"] not in wires[-1]
+    assert set(evidence["artifact_ids"]) <= {row["id"] for row in done["artifacts"]}
+    turn = current["_assessment"]["model_turns"][-1]
+    assert evidence["alias"] in turn["evidence_bindings"]
+    assert turn["provider_bindings"]["evidence"]
+    assert evidence["provenance"]["receipt_sha256"] == current["_tool_runs"][-1]["sha256"]
+
+
+
+@pytest.mark.parametrize("confirm", [True, False])
+def test_assessment_freshness_tracks_confirmed_correction_without_rewriting_stop(client, tmp_path, monkeypatch, confirm):
+    from test_web_service import confirm_change
+    service, sid, aid = registered_case(client, tmp_path)
+    monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
+    scope = propose_scope(client, sid, aid)
+    approve_scope(client, sid, scope)
+    done = settle(client, sid)
+    client.post(f"/api/sessions/{sid}/stop", json={})
+    before = service.load(sid)
+    staged = client.post(f"/api/sessions/{sid}/inputs",
+        json={"upload_id": aid, "source_family_id": "corrected-source"}).json()
+    assert staged["assessment"]["freshness"]["state"] == "review_pending"
+    assert staged["assessment"]["freshness"]["current_input_revision"] == scope["input_revision"]
+    if confirm:
+        current = confirm_change(client, sid, staged)
+        assert current["assessment"]["freshness"]["state"] == "historical"
+        assert current["assessment"]["freshness"]["reason_code"] == "input_revision_changed"
+        assert current["assessment"]["freshness"]["current_input_revision"] > scope["input_revision"]
+    else:
+        change = staged["pending_input_change"]
+        client.post(f"/api/sessions/{sid}/input-change/discard",
+            json={"change_id": change["id"], "change_digest": change["digest"]})
+        current = client.post(f"/api/sessions/{sid}/input-review/keep", json={}).json()
+        assert current["assessment"]["freshness"]["state"] == "current"
+    after = service.load(sid)
+    assert after["_tool_runs"] == before["_tool_runs"]
+    assert after["_assessment"]["scope"] == before["_assessment"]["scope"]
+    assert current["assessment"]["stop_reason"] == "user_stopped"
+    assert current["assessment"]["tool_runs_used"] == done["assessment"]["tool_runs_used"]
 
 
 def test_reference_drift_during_model_turn_blocks_before_admission(client, tmp_path, monkeypatch):

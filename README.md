@@ -1,83 +1,60 @@
-<div align="center">
+# BRIDGE
 
-<h1>BRIDGE</h1>
+*Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation*
 
-<p><em>Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation</em></p>
-<p><strong>Scientific agent for cell-therapy product evaluation</strong></p>
+BRIDGE helps researchers inspect single-cell transcriptomic evidence from
+cell-therapy products: what cell states are present, how they relate to an
+intended product, and which questions the evidence still cannot answer.
+The first use case is hPSC-derived midbrain dopaminergic products for
+Parkinson's disease research.
 
-<p>
-  <a href="https://github.com/starvingarc/BRIDGE/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/starvingarc/BRIDGE/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776AB">
-  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-2E7B70.svg"></a>
-</p>
+## Questions to explore
 
-</div>
+- Which cell states are supported, uncertain or in conflict across sources?
+- How do target identity, regional identity and development differ?
+- What is the whole-product composition, including non-target and unknown cells?
+- Which proliferation or stress observations are measured, and which need
+  better inputs or scientific review?
 
-BRIDGE coordinates source-aware intake, deterministic analysis tools, evidence
-reconciliation and reviewable reporting for single-cell evaluation of
-cell-therapy products. PD hPSC-derived midbrain dopaminergic products are the
-first use case.
+Results retain their original values, denominators, limitations and source
+versions. The interface separates tool findings from proposed explanations and
+lets the researcher approve a finite analysis scope, stop it and inspect the
+local evidence chain.
 
-## Current status
+## Start with the private Web interface
 
-- Twelve P0 Tool Packages are implemented and callable as engineering
-  candidates. Their methods and outputs remain candidate/shadow;
-  domain_score=null and no P0 ScoreContract is frozen.
-- The private Web preview has accepted the first six intake-to-QC steps within
-  their stated scope: research question, materials, necessary questions,
-  source-backed fact confirmation, scoped plan and QC. Protocol formalization is
-  a reviewable representation, not an experiment record.
-- The downstream graph-driven research loop, internal comparator selection and
-  qualified report/export are approved target behavior, not current end-to-end
-  capability. Existing missingness compilation and blocked internal reports do
-  not satisfy those gates.
-
-The canonical current/target workflow is [PRD section 6](docs/BRIDGE_PRD.md#6-agent-功能需求).
-Exact tested scope is recorded in [validation](docs/validation/README.md);
-remaining scientific work is in [active plans](plans/README.md).
-
-## Architecture
-
-<img src="docs/assets/bridge-agent-architecture.svg" alt="BRIDGE Agent architecture: product data, product definition and sample metadata enter the Agent; the Agent performs intake, planning, tool orchestration and interpretation; versioned P0 tools and governed knowledge produce an evidence graph and reviewable outputs.">
-
-The Agent coordinates questions, plans and interpretation. Registered high-level
-tools own values, denominators, thresholds, statuses, versions and Evidence IDs.
-
-## Quickstart
+Use Python 3.12 and Node.js 22.12 or newer:
 
 ~~~bash
 git clone https://github.com/starvingarc/BRIDGE.git
 cd BRIDGE
-python -m pip install -e ".[qc,evidence]"
-
-bridge-tool list
-bridge-tool describe P0-02
-bridge-tool input-contract P0-02
-bridge-tool validate --request /absolute/path/to/request.json
-bridge-tool run --request /absolute/path/to/request.json
+python -m pip install -e ".[qc,web,evidence,process]"
+npm --prefix frontend ci
+npm --prefix frontend run build
 ~~~
 
-Start with the [question-led Tool Package index](docs/tool-packages.md) and
-[synthetic examples](examples/README.md).
+Follow the [private-instance configuration](docs/web-preview.md#start-a-private-instance)
+before starting `python -m bridge.web`. There is no public hosted service
+provided by this repository. In the interface, upload a sample, review and
+confirm its experimental facts, approve applicable quality checks, then prepare
+a bounded cell-state and product assessment. Missing scientific prerequisites
+remain visible; approval does not supply them.
 
-## Documentation
+For direct tool use, see the [question-led tool guide](docs/tool-packages.md)
+and [runnable examples](examples/README.md).
 
-| Need | Entry point |
-|---|---|
-| Product behavior and approved workflow | [BRIDGE PRD](docs/BRIDGE_PRD.md) |
-| Current private interface | [Web preview](docs/web-preview.md) |
-| Agent/tool ownership | [Agent integration](docs/agent-integration.md) |
-| Tool runtime contract | [Tool Cards](src/bridge/tool_packages/cards/) |
-| Scientific design | [P0 specifications](docs/bridge_spec_v0.1/README.md) |
-| Exact evidence | [Validation records](docs/validation/README.md) |
-| Contribution rules | [Contributing](CONTRIBUTING.md) |
+## Research limits
 
-## Scientific boundary
+BRIDGE is a research tool, not a clinical decision or product-release system.
+Current results do not establish safety, clinical efficacy, validated potency,
+GMP release or an absolute product ranking. Missing or unavailable evidence is
+never a zero measurement. Cell counts do not establish independent biological
+replicates, and post-transplant evidence does not replace pre-transplant
+assessment.
 
-BRIDGE provides research-use transcriptomic evidence. It does not currently
-establish clinical efficacy, safety, validated potency, GMP release or an
-absolute product ranking. Missing, unknown, unavailable, negative and alert
-states remain distinct, and graft evidence never backfills pre-transplant
-judgments.
+The connected interface and synthetic checks are engineering evidence, not
+scientific qualification. Source-state, product-role, developmental-window,
+program and biological-unit reviews remain necessary. Actual tested scope and
+unverified gates are recorded in the [validation history](docs/validation/README.md).
 
-BRIDGE is available under the [MIT License](LICENSE).
+[Documentation](docs/README.md) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)

@@ -6,8 +6,10 @@ within their accepted scope: research question, materials, necessary questions,
 source-backed fact confirmation, scoped plan/resource approval and QC. Uploaded
 protocols can be represented and reviewed under the approved BPL design.
 
-This current scope does not provide the complete downstream graph-driven
-research loop, internal comparator selection or qualified report/export.
+The current source also connects a finite, approved evidence-coordination loop
+and a researcher-facing assessment portrait. Synthetic connectivity is not
+real-input acceptance or full Step 7 scientific completion. Internal comparator
+selection and qualified report/export remain unimplemented targets.
 Twelve packages are reachable through contract-driven inputs and separate
 approval, but access is not automatic scientific-object construction or
 end-to-end product qualification. Public documentation describes source
@@ -19,7 +21,8 @@ private deployment.
 | Intake and protocol review | Source-bound draft facts, explicit user confirmation and versioned BPL review | Product identity, experiment execution or complete semantic validation |
 | P0-01 QC | Input structure, declared matrix semantics, observed QC evidence and updated eligibility | Product quality, complete filtering or downstream domain evidence |
 | P0-02 cell-state path | Candidate source-aware cell-state evidence when configured inputs are eligible | Reviewed product roles, purity or released assignment |
-| P0-03–P0-11 input panel | Contract discovery, explicit registration, plan approval and normal execution | Automatic construction of every prerequisite or a connected feedback loop |
+| Contract-driven input panel | Contract discovery, explicit registration, plan approval and normal execution | Automatic construction of every prerequisite or scientific approval |
+| Scope-bound assessment | Approved registered checks, graph retrieval/update, local evidence portrait and finite counters | Whole-question completion, reviewed seven-family program mapping or product qualification |
 | P0-12 | Explicit no-graft or supplied eligible graft modes | Graft evidence from an absence record or pre-transplant backfill |
 
 The bounded candidate card can materialize source-backed product/role and
@@ -48,12 +51,12 @@ not run analysis, send rows to the model or grant export authority.
 
 ## Start a private instance
 
-Use Python 3.12 and Node.js 22:
+Use Python 3.12 and Node.js 22.12 or newer:
 
 ~~~bash
-python -m pip install ".[qc,web]"
-npm --prefix web ci
-npm --prefix web run build
+python -m pip install ".[qc,web,evidence,process]"
+npm --prefix frontend ci
+npm --prefix frontend run build
 ~~~
 
 Configure the service outside the checkout. Credentials remain server-side and
@@ -66,7 +69,7 @@ must never enter Git, browser bundles or public evidence.
 | BRIDGE_WEB_MODEL_BASE_URL / BRIDGE_WEB_MODEL | Configured OpenAI-compatible provider |
 | BRIDGE_WEB_MODEL_API_KEY | Server-only provider credential |
 | BRIDGE_WEB_MODEL_ACTION_PROTOCOL | Explicit json or deepseek_tools protocol; other values fail startup |
-| BRIDGE_WEB_STATIC_DIR | Built web/dist directory |
+| BRIDGE_WEB_STATIC_DIR | Built frontend/dist directory |
 | BRIDGE_WEB_ORIGIN / BRIDGE_WEB_PORT | Exact browser origin and loopback port |
 | BRIDGE_WEB_TRUSTED_ANCESTORS | Optional startup-only approved ancestor identity pins |
 | BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF | Optional registered P0-02 MeasurementSpec; no scientific default |
@@ -75,30 +78,29 @@ must never enter Git, browser bundles or public evidence.
 
 The default json protocol requires one typed JSON action. deepseek_tools uses
 the same validated application actions through native function definitions.
-Malformed, mixed or unsupported responses fail closed. Model output can prepare
-an unapproved plan but cannot approve or execute it. Exact package eligibility
-is always checked locally.
+Malformed, mixed or unsupported responses fail closed. Outside an approved
+scope, model output can only prepare an unapproved plan. Within the exact scope,
+the server admits a reconstructed eligible request using its original approval;
+the model cannot create authority or supply execution parameters. Exact package
+eligibility is always checked locally.
 
-The service may be started with the documented bridge.web entry point. Operators
-must verify the installed package, built client and configured dependencies for
+After configuring the required settings, start the loopback service:
+
+~~~bash
+python -m bridge.web
+~~~
+
+Open the configured browser origin and authenticate with the operator token.
+Operators must verify the installed package, built client and configured dependencies for
 their own deployment; repository source status is not a deployment receipt.
 
 ## A typical conversation
 
-The complete ten-step product behavior is specified only in
-[PRD section 6.1](BRIDGE_PRD.md#61-agent-总体工作流). The current accepted preview
-covers:
-
-1. The researcher states the question and uploads material.
-2. Deterministic extraction records observable structure separately from claims.
-3. The Agent asks only necessary questions and can retain unknown.
-4. The researcher reviews a concise sourced fact summary, together or fact by
-   fact. Absent facts, explicit-but-unparseable facts, conflict and uncertainty
-   remain distinct.
-5. The researcher confirms question, overall scope, resource ceiling, stop
-   conditions and an exact unapproved plan; approval is a separate action.
-6. P0-01 returns actual QC observations, denominators, limitations and revised
-   eligibility. Work continues autonomously only inside unchanged approval.
+The product workflow is defined in [PRD section 6.1](BRIDGE_PRD.md#61-agent-总体工作流).
+Upload the actual material and review the extracted facts before confirming
+them. Absent information, explicit-but-unparseable information, conflicts and
+unknowns remain distinct. Approve the applicable quality-check plan separately;
+its observations and denominators establish input readiness, not product quality.
 
 Product-only or source-only corrections can preserve compatible QC. Assay,
 matrix or QC-relevant metadata changes invalidate the binding. Old versions and
@@ -131,10 +133,12 @@ changes preserve compatible QC; assay, matrix or QC-relevant metadata changes
 require fresh QC. Existing history remains versioned, but no automatic
 downstream impact analysis, evidence reuse or recomputation is implied.
 
-Showing affected dimensions, comparisons and report versions, then proposing a
-partial update plan, is an unimplemented target defined in
-[PRD section 6.8](BRIDGE_PRD.md#68-报告核验与发布). It must not be presented as
-current correction behavior.
+The assessment projection compares the scope's fact/resource binding with the
+current session. Pending review is shown separately; a confirmed revision or
+resource change labels its evidence historical without rewriting receipts or
+its original stop reason. Select the affected checks in a new finite scope for
+partial recomputation. There is no automatic impact classifier, rerun or counter
+reset, and downstream comparison/report impact remains outside this interface.
 
 ## Analysis inputs
 
@@ -168,6 +172,7 @@ engine.
 | scientific-inputs and clarification | Candidate questions and objects without execution or scientific promotion |
 | analysis-inputs, prepare-analysis and approve | Contract selection, unapproved plan and exact plan approval |
 | report-inputs | Separately prepared P0-08/P0-09/P0-10 stages |
+| assessment/propose, assessment/approve, assessment/resume | Finite scope, actual prerequisites, exact consent and explicit continuation |
 | artifacts, preview and transcript | Authenticated, integrity-checked retrieval |
 
 Execution uses PlanBuilder, immutable approved requests,
@@ -179,8 +184,8 @@ packages.
 
 - Default provider context contains conversation text and bounded status, not
   tool-owned biological measurements.
-- With explicit owner authorization, allowlisted aggregate P0-01 and supported
-  P0-02 summaries may be shared. Raw matrices, observation rows, source/sample
+- With explicit owner authorization, allowlisted aggregate QC/cell-state
+  summaries and the purpose-specific assessment projection may be shared. Raw matrices, observation rows, source/sample
   identity, private paths, credentials and provenance hashes remain local.
 - Shared summaries preserve actual values, denominators and missingness and
   remain candidate/shadow with domain_score=null. They are not anonymous-data
@@ -194,4 +199,44 @@ packages.
 
 See [privacy and provenance](privacy-and-provenance.md),
 [Agent integration](agent-integration.md), the [Tool Package index](tool-packages.md)
-and the [Web validation record](validation/web_preview_20260905.md).
+and the [Web validation history](validation/README.md).
+
+## Cell-state and product assessment
+
+The overview's assessment panel prepares an explicit question, uploaded sample,
+allowed modes and resource ceilings before any execution. Proposal calls the
+same deterministic candidate preparation used during execution; it can register
+derived objects, but does not run a tool/model, change confirmed facts or
+selections, grant authority, or consume counters. Each candidate distinguishes
+blocking prerequisites from non-disqualifying interpretation gaps.
+
+Approval binds the exact scope ID/digest, input revision, data view, resources
+and limits: at most 32 tool runs and 64 model turns. The researcher chooses
+smaller limits in the form. Exact-plan approval remains a separate path.
+Scope-derived plans retain the original scope authorization. Stop fences the
+worker; resume explicitly rechecks current facts/resources and preserves used
+counters. Exhausted limits or changed bindings require a new scope.
+
+The portrait always includes cell state, target identity, regional identity,
+development, whole-product/non-target composition and proliferation/stress.
+Values, numerator/denominator scopes, missingness and evidence versions are
+server-owned. Findings, prerequisites, competing explanations and next actions
+are separate; there is no combined score or ranking. Seven process families
+remain independently visible. The registered exploratory S/G2M route covers
+only cell cycle; without an applicable reviewed mapping, other families remain
+unavailable. Verified program IDs remain visible locally without being used to
+infer a family.
+
+Local evidence links bind displayed artifacts to the exact receipt and original
+artifact identity/hash. A graph query follows its actual source manifest and
+graph version, not the latest output of that tool. The same artifact viewer
+provides bounded figure/table/text previews and complete authenticated downloads.
+These browser-only projections are not public-safe exports.
+
+Model hypotheses must cite supplied per-turn aliases; validated citations are
+resolved back to canonical local evidence. See the purpose-specific
+[privacy contract](privacy-and-provenance.md#assessment-purpose).
+A stop such as `no_discriminating_check` or
+`completion_contract_unavailable` does not establish whole-question completion.
+Observed engineering evidence and remaining real/scientific gates are recorded
+in [Step 7 validation](validation/step7_evidence_coordinator_20260911.md).

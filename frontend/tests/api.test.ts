@@ -8,6 +8,21 @@ const jsonResponse = (body: unknown, init: ResponseInit = {}) =>
   });
 
 describe("API client", () => {
+
+  it("keeps assessment proposal and explicit resume distinct from exact-plan approval and normalizes older sessions", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse({ id: "session-1" }));
+    const proposal = { question: "Evidence question", upload_id: "upload-1",
+      allowed_modes: [{ tool_id: "P0-06", mode_id: "exploratory_process" }],
+      max_tool_runs: 2, max_model_turns: 3 };
+    const proposed = await api.proposeAssessment("session-1", proposal);
+    expect(proposed.assessment).toBeNull();
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/sessions/session-1/assessment/propose",
+      expect.objectContaining({ method: "POST", body: JSON.stringify(proposal), credentials: "same-origin" }));
+    await api.resumeAssessment("session-1", "scope-1", "digest-1");
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/sessions/session-1/assessment/resume",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({scope_id:"scope-1",scope_digest:"digest-1"}) }));
+  });
+
   it("keeps authentication in a same-origin cookie and sends the login token only in the request body", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse({ authenticated: true }),

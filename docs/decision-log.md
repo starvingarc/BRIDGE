@@ -292,3 +292,31 @@ evidence. Private runtime records and operational deployment state remain
 outside GitHub. Completed construction diaries may leave the active tree only
 after unique facts, unresolved scientific work and exact validation records are
 preserved; retirement does not upgrade scientific status.
+
+## 2026-09-11: Separate Assessment Display, Provider Projection And Scope Authority
+
+The scope coordinator admits only reconstructed registered requests inside the
+exact approved question, upload, fact/resource bindings and finite limits.
+Candidate preparation exposes actual blocking prerequisites and separate
+interpretation gaps before approval without running tools/models or changing
+scientific facts. This is execution authority, not source-state, product-role,
+window, program, biological-unit, score or release approval.
+
+The researcher-facing portrait preserves independent assessment axes, exact
+values/denominators, canonical missingness and local source/version drilldown.
+All seven process families stay explicit. The exploratory S/G2M route covers
+cell cycle only; no family is inferred from an arbitrary program name.
+Pending fact review differs from a confirmed historical binding; existing
+receipts and stop reasons remain intact and recomputation needs a fresh scope.
+
+The provider context is independently rebuilt from allowed aggregate fields
+with opaque per-turn aliases. Private fingerprints, receipt/artifact hashes,
+plan identities, dependency bindings and local links stay local; validated
+citations resolve back to canonical evidence. Existing request reconstruction
+and deduplication remain unchanged.
+
+The browser tree is named `frontend/`; the Python package stays
+`src/bridge/web/`. Contributor/document lifecycle requirements are consolidated
+in AGENTS, preserving scientific contracts and dated validation records.
+[Step 7 validation](validation/step7_evidence_coordinator_20260911.md) separates
+observed engineering checks from unverified real-input and scientific gates.

@@ -549,6 +549,8 @@ _ASSESSMENT_FIELDS = {
     "cell_cycle", "phase_counts", "S", "G2M", "G1", "s_g2m_fraction", "mean_s_score", "mean_g2m_score",
     "profiles", "domain_id", "evidence_sufficiency_state", "eligibility", "source_execution_state",
     "metric_name", "raw_value", "interval", "interval_confidence_level", "unknown_scope",
+    "reason_codes", "composition", "reconciliation", "composition_state", "open_set_state",
+    "calibration_state", "label", "count", "state_evidence_state",
 }
 _ASSESSMENT_IDENTIFIERS = {"program_id", "method_id"}
 
@@ -563,10 +565,16 @@ def _assessment_aggregate(value, key=""):
         return [_assessment_aggregate(item, key) for item in value]
     if isinstance(value, str):
         # Keep fixed result states and units, never unrestricted paths/prose/IDs.
+        if key == "reason_codes":
+            if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,200}", value):
+                raise ValueError("unsafe_reason_code")
+            return value
         if key in _ASSESSMENT_IDENTIFIERS:
-            if key == "program_id" and value in {"S", "G2M"}:
-                return value
-            return "local-" + hashlib.sha256(value.encode()).hexdigest()[:12]
+            # Verified names are interpretation metadata for the authenticated browser.
+            # The provider receives only ephemeral aliases, never these local IDs.
+            if len(value) > 200:
+                raise _SummaryLimit()
+            return value
         if not re.fullmatch(r"[A-Za-z0-9_ .%/-]{1,80}", value) or "/" in value:
             raise ValueError("unsafe_result_text")
         return value
@@ -603,6 +611,160 @@ def _assessment_query(result):
     return summary
 
 
+
+
+
+def assessment_portrait(evidence, candidates):
+    """Arrange verified values by their producer contract; never rescore or classify programs."""
+    axes = []
+    definitions = (
+        ("cell_state", "细胞状态", "P0-02"),
+        ("target_identity", "目标身份", "P0-03"),
+        ("regional_identity", "区域身份", "P0-03"),
+        ("development", "发育阶段", "P0-04"),
+        ("composition", "全产品与非目标组成", "P0-05"),
+        ("process", "增殖与应激", "P0-06"),
+    )
+    for identifier, title, tool in definitions:
+        row = next((item for item in reversed(evidence) if item["tool_id"] == tool), None)
+        reasons = sorted({reason for item in candidates if item["tool_id"] == tool
+                          for reason in item["blockers"]})
+        summary = row.get("summary", {}) if row else {}
+        if identifier in {"target_identity", "regional_identity"}:
+            fields = {"target_identity_fraction"} if identifier == "target_identity" else {
+                "regional_fidelity_fraction", "whole_product_target_region_fraction"}
+            summary = {**{key: value for key, value in summary.items() if key != "channels"},
+                "channels": [{key: value for key, value in channel.items()
+                              if key in fields | {"assessment_state", "reason_codes", "label_level",
+                                                  "composition_view", "denominator_scope"}}
+                             for channel in summary.get("channels", [])]}
+        axis = {"id": identifier, "title": title,
+            "state": row["state"] if row else "unavailable" if reasons else "missing",
+            "reason_codes": (row.get("summary", {}).get("reason_codes", [])
+                            if row and row["state"] == "available" else
+                            [row["reason_code"]] if row else reasons or ["no_scope_evidence"]),
+            "evidence_aliases": [row["alias"]] if row else [], "summary": summary}
+        if identifier == "process":
+            cycle = next((item for item in reversed(evidence) if item["tool_id"] == "P0-06"
+                          and item["state"] == "available"
+                          and item["summary"].get("runtime_mode") == "exploratory_process"
+                          and item["summary"].get("cell_cycle")), None)
+            axis["families"] = []
+            for family_id, family_title in (
+                ("pluripotency_like", "多能性样程序"), ("cell_cycle", "细胞周期"),
+                ("dissociation_heat_shock", "解离 / 热休克"), ("oxidative_stress", "氧化应激"),
+                ("hypoxia", "缺氧"), ("unfolded_protein_response", "未折叠蛋白反应"),
+                ("apoptosis_related", "凋亡相关程序")):
+                family = {"id": family_id, "title": family_title, "state": "unavailable",
+                    "reason_codes": ["reviewed_family_mapping_unavailable"],
+                    "summary": {}, "evidence_aliases": []}
+                if family_id == "cell_cycle" and cycle:
+                    measured = cycle["summary"]["cell_cycle"]
+                    family.update(state="measured" if measured["assessment_state"] == "available" else "unavailable",
+                        reason_codes=measured["reason_codes"], summary=measured, evidence_aliases=[cycle["alias"]])
+                axis["families"].append(family)
+        axes.append(axis)
+    return axes
+
+
+def assessment_model_evidence(evidence):
+    """Rebuild this provider purpose from explicit fields and ephemeral join aliases."""
+    import secrets
+    bindings = {"evidence": {}, "references": {}}
+    aliases = {}
+    def opaque(value, kind="references"):
+        key = (kind, value)
+        if key not in aliases:
+            aliases[key] = ("E-" if kind == "evidence" else "R-") + secrets.token_hex(16)
+            bindings[kind][aliases[key]] = value
+        return aliases[key]
+    join_fields = {"alias", "source_alias", "graph_alias", "family_alias", "source", "target"}
+    summary_fields = _ASSESSMENT_FIELDS | {
+        "query_name", "graph_version", "returned_node_count", "returned_edge_count",
+        "truncated", "omitted_node_count", "omitted_edge_count", "graph_alias",
+        "records", "requirements", "nodes", "edges", "alias", "node_type",
+        "evidence_tier", "lifecycle_state", "state", "relation", "family_alias",
+        "type", "source", "target"}
+    def aggregate(value, key=""):
+        if isinstance(value, dict):
+            return {name: aggregate(item, name) for name, item in value.items() if name in summary_fields}
+        if isinstance(value, list):
+            return [aggregate(item, key) for item in value]
+        if isinstance(value, str) and (key in join_fields or key in _ASSESSMENT_IDENTIFIERS):
+            return opaque(value)
+        return value
+    result = []
+    for row in evidence:
+        projected = {"alias": opaque(row["alias"], "evidence")}
+        projected.update({key: row[key] for key in (
+            "state", "tool_id", "tool_version", "execution_state", "score_state",
+            "domain_score", "reason_code", "interpretation_scope") if key in row})
+        if row["state"] == "available":
+            projected["summary"] = aggregate(row["summary"])
+            projected["measurements"] = []
+            for item in row["measurements"]:
+                measurement = aggregate({key: value for key, value in item.items()
+                    if key in _ASSESSMENT_FIELDS})
+                if "alias" in item:
+                    measurement["alias"] = opaque(item["alias"])
+                if "source_alias" in item:
+                    measurement["source_alias"] = opaque(item["source_alias"], "evidence")
+                if "measurement_class" in item:
+                    measurement["measurement_class"] = item["measurement_class"]
+                projected["measurements"].append(measurement)
+        result.append(projected)
+    return result, bindings
+
+
+def _assessment_display_artifacts(inputs, state, run, receipt):
+    """Resolve only display IDs bound to this checked receipt or query source graph."""
+    source_receipt, source_run = receipt, run
+    graph = None
+    if "query_name" in (run.result or {}):
+        ref = next(ref for ref in run.request.object_inputs if ref.role == "evidence_graph_manifest")
+        record = state["_input_objects"].get(ref.input_id)
+        if not record or record["sha256"] != ref.sha256 or record["path"] != str(ref.path):
+            raise ValueError("query_source_binding_invalid")
+        graph = inputs.verify(state, record)
+        if (graph["graph_id"] != run.result["graph_id"]
+                or graph["graph_version"] != run.result["graph_version"]):
+            raise ValueError("query_source_version_invalid")
+        source_receipt = next(row for row in state["_tool_runs"]
+            if row["file"] == record["receipt_file"] and row["sha256"] == record["receipt_sha256"])
+        from bridge.toolkit.contracts import ToolRunV2
+        source_run = ToolRunV2.model_validate(_verified_receipt(inputs, state, source_receipt))
+        inputs.service.registry.validate_result(source_run, source_run.request)
+    canonical = {(item.artifact_id, item.sha256) for item in source_run.artifacts}
+    ids = []
+    for display in state.get("artifacts", []):
+        binding = state.get("_canonical_artifacts", {}).get(display["id"], {})
+        exposed = state.get("_artifacts", {}).get(display["id"], {})
+        if (binding.get("receipt_file") == source_receipt["file"]
+                and binding.get("receipt_sha256") == source_receipt["sha256"]
+                and (binding.get("artifact_id"), binding.get("sha256")) in canonical
+                and exposed.get("source_artifact_id") == binding["artifact_id"]
+                and exposed.get("source_sha256") == binding["sha256"]):
+            ids.append(display["id"])
+    dependencies = []
+    for ref in getattr(run.request, "object_inputs", []):
+        record = state.get("_input_objects", {}).get(ref.input_id, {})
+        links = []
+        if record.get("sha256") == ref.sha256:
+            for display in state.get("artifacts", []):
+                binding = state.get("_canonical_artifacts", {}).get(display["id"], {})
+                exposed = state.get("_artifacts", {}).get(display["id"], {})
+                if (record.get("receipt_sha256") is not None
+                        and all(binding.get(key) == record.get(key) for key in
+                                ("receipt_sha256", "receipt_file", "sha256", "artifact_id"))
+                        and exposed.get("source_artifact_id") == record.get("artifact_id")
+                        and exposed.get("source_sha256") == ref.sha256):
+                    links.append(display["id"])
+        dependencies.append({"role": ref.role, "schema_ref": ref.schema_ref,
+            "object_version": ref.object_version, "sha256": ref.sha256, "artifact_ids": links})
+    return ids, {"source_receipt_sha256": source_receipt["sha256"],
+                 **({"graph_id": graph["graph_id"], "graph_version": graph["graph_version"]} if graph else {})}, dependencies
+
+
 def assessment_evidence(inputs, state, assessment):
     """Read canonical ToolRuns on demand; no duplicate result store and no raw cell rows."""
     from bridge.toolkit.contracts import ToolRunV2, MeasurementResultV2
@@ -620,7 +782,17 @@ def assessment_evidence(inputs, state, assessment):
             for artifact in run.artifacts:
                 checked_bytes(inputs.service, state, artifact.path, artifact.sha256, root=root)
             result = raw.get("result") or {}
-            summary = _assessment_query(result) if "query_name" in result else _assessment_aggregate(result)
+            if receipt["tool_id"] == "P0-02":
+                registered = _registered_profile(state, receipt)
+                projector = _project
+                if registered is None:
+                    registered = _registered_profile(state, receipt, LEGACY_PROFILE_SCHEMA)
+                    projector = _project_legacy
+                if registered is None:
+                    raise ValueError("canonical_cell_state_profile_required")
+                summary, _ = projector(inputs, state, receipt, *registered)
+            else:
+                summary = _assessment_query(result) if "query_name" in result else _assessment_aggregate(result)
             measurements = []
             canonical = [artifact for artifact in run.artifacts if artifact.kind == "measurement_result_v2"]
             for artifact in canonical:
@@ -645,12 +817,14 @@ def assessment_evidence(inputs, state, assessment):
                         **{key: item[key] for key in ("raw_value", "numerator", "denominator",
                                                      "evidence_state", "score_state", "domain_score")
                            if key in item and (key != "raw_value" or item[key] is None or type(item[key]) in {int, float})}})
+            artifact_ids, source, dependencies = _assessment_display_artifacts(inputs, state, run, receipt)
             row = {"alias": alias, "state": "available", "tool_id": receipt["tool_id"],
                 "tool_version": run.tool_version, "execution_state": receipt["state"],
                 "domain_score": None, "score_state": result.get("score_state", "unavailable"),
                 "summary": summary, "measurements": measurements,
                 "interpretation_scope": "exploratory" if result.get("runtime_mode") == "exploratory_process" else "registered_tool_result",
-                "provenance": {"receipt_sha256": receipt["sha256"], "plan_id": receipt["plan_id"]}}
+                "artifact_ids": artifact_ids, "dependencies": dependencies,
+                "provenance": {"receipt_sha256": receipt["sha256"], "plan_id": receipt["plan_id"], **source}}
             _check_summary_limit(row)
             projected.append(row)
             bindings[alias] = {"receipt_file": receipt["file"], "receipt_sha256": receipt["sha256"],

@@ -27,6 +27,8 @@ lineage checks do not sign the biological FreezeGate.
 
 ## Shared Runtime and Repository Evidence
 
+- [Scope-bound assessment and privacy, 2026-09-11](step7_evidence_coordinator_20260911.md)
+
 - [Repository simplification, 2026-09-10](https://github.com/starvingarc/BRIDGE/blob/e338be7505b8b8ee97a81d9146f416af73017d8d/plans/repository-simplification.md#verification-and-remaining-gates): revision-bound engineering checks; [PR #98](https://github.com/starvingarc/BRIDGE/pull/98) tracks final CI and integration. No new scientific validation.
 - [Private conversational Web preview, 2026-09-05](web_preview_20260905.md)
 - [Visualization data contract, 2026-08-28](visualization_data_contract_20260828.md)

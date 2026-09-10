@@ -1,6 +1,7 @@
 import {
   normalizeSession,
   type AnalysisAssetRegistration,
+  type AssessmentProposal,
   type AnalysisInputsResponse,
   type AnalysisSelection,
   type Session,
@@ -88,6 +89,18 @@ export const api = {
     sessionRequest(`/api/sessions/${encodeURIComponent(id)}/messages`, {
       method: "POST",
       body: JSON.stringify({ text }),
+    }),
+  proposeAssessment: (id: string, proposal: AssessmentProposal) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/assessment/propose`, {
+      method: "POST", body: JSON.stringify(proposal),
+    }),
+  approveAssessment: (id: string, scopeId: string, scopeDigest: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/assessment/approve`, {
+      method: "POST", body: JSON.stringify({ scope_id: scopeId, scope_digest: scopeDigest }),
+    }),
+  resumeAssessment: (id: string, scopeId: string, scopeDigest: string) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/assessment/resume`, {
+      method: "POST", body: JSON.stringify({ scope_id: scopeId, scope_digest: scopeDigest }),
     }),
   approvePlan: (id: string, planId: string, planDigest: string) =>
     sessionRequest(`/api/sessions/${encodeURIComponent(id)}/approve`, {

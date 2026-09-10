@@ -70,10 +70,10 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Check Web preview
-        working-directory: web
+        working-directory: frontend
         run: |
           npm ci
           npm test

@@ -209,7 +209,50 @@ export type ScientificDraft = {
   stages: Array<{ tool_id: string; state: string; reason_codes: string[] }>;
 };
 
+
+export type AssessmentMode = { tool_id: string; mode_id: string | null };
+export type AssessmentCandidate = AssessmentMode & {
+  runnable: boolean; already_admitted?: boolean; blockers: string[]; gaps: string[];
+};
+export type AssessmentEvidence = {
+  alias: string; state: "available" | "unavailable"; tool_id: string;
+  tool_version?: string; execution_state?: string; score_state?: string;
+  domain_score?: null; reason_code?: string; interpretation_scope?: string;
+  summary?: Record<string, JsonValue>; measurements?: Array<Record<string, JsonValue>>;
+  artifact_ids?: string[]; provenance?: Record<string, JsonValue>;
+  dependencies?: Array<{ role: string; schema_ref: string; object_version: string; sha256: string; artifact_ids: string[] }>;
+
+};
+export type AssessmentAxis = {
+  id: string; title: string; state: "available" | "measured" | "missing" | "unavailable";
+  reason_codes: string[]; evidence_aliases: string[]; summary: Record<string, JsonValue>;
+  families?: AssessmentAxis[];
+};
+export type Assessment = {
+  scope_id: string; scope_digest: string; question: string; upload_id: string;
+  input_revision: number; allowed_modes: AssessmentMode[];
+  max_tool_runs: number; max_model_turns: number; tool_runs_used: number; model_turns_used: number;
+  status: "proposed" | "running" | "stopped" | "blocked" | "interrupted"; stop_reason: string | null;
+  blockers: Array<AssessmentMode & { reason_codes: string[] }>;
+  candidates: AssessmentCandidate[]; evidence: AssessmentEvidence[]; portrait: AssessmentAxis[];
+  hypotheses: Array<{ statement: string; evidence_aliases: string[];
+    competing_explanation: string; discriminating_check: string }>;
+  freshness: { state: "current" | "historical" | "review_pending"; reason_code: string | null;
+    current_input_revision: number; scope_input_revision: number; pending_review: boolean };
+  data_view: Record<string, JsonValue>;
+  resources: Array<{ alias: string; schema_ref: string | null; resource_ref?: string;
+    object_version: string; sha256: string; source: string }>;
+  stop_conditions: string[]; question_sent_to_model: boolean; result_summaries_enabled: boolean;
+  scope_authorized: boolean; scope_grants_scientific_approval: false;
+  history: Array<{ scope_id: string; question: string; input_revision: number; status: string; stop_reason: string | null }>;
+};
+export type AssessmentProposal = {
+  question: string; upload_id: string; allowed_modes: AssessmentMode[];
+  max_tool_runs: number; max_model_turns: number;
+};
+
 export type Session = {
+  assessment?: Assessment | null;
   scientific_drafts?: ScientificDraft[];
   clarifications?: Clarification[];
   id: string;
@@ -346,6 +389,7 @@ export type NormalizedSession = Session & {
 export function normalizeSession(session: Session): NormalizedSession {
   return {
     ...session,
+    assessment: session.assessment ?? null,
     plan_history: session.plan_history ?? [],
     capabilities: session.capabilities ?? [],
     input_review_required: session.input_review_required ?? false,

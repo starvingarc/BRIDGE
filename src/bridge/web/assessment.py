@@ -139,7 +139,21 @@ class AssessmentCoordinator:
             "scope_digest": digest(scope.model_dump(mode="json")), "status": "proposed",
             "authorization": None, "tool_runs_used": 0, "model_turns_used": 0,
             "admissions": [], "model_turns": [], "stop_reason": None, "blockers": []}
+        self._candidate_state(state["_assessment"], self.service.inputs.assessment_candidates(state, scope))
         self.service.save(state)
+
+    @staticmethod
+    def _candidate_state(assessment, candidates):
+        admitted = {row["fingerprint"] for row in assessment["admissions"]}
+        assessment["candidates"] = [{
+            "tool_id": row["tool_id"], "mode_id": row["mode_id"],
+            "runnable": row["request"] is not None and not row["blockers"] and row["fingerprint"] not in admitted,
+            "already_admitted": row["fingerprint"] in admitted,
+            "blockers": sorted(set(row["blockers"])), "gaps": sorted(set(row.get("gaps", [])))}
+            for row in candidates]
+        assessment["blockers"] = [{"tool_id": row["tool_id"], "mode_id": row["mode_id"],
+            "reason_codes": sorted(set(row["blockers"] + row["gaps"]))}
+            for row in assessment["candidates"] if row["blockers"] or row["gaps"]]
 
     def _identity(self, state, body):
         assessment = state.get("_assessment")
@@ -221,9 +235,16 @@ class AssessmentCoordinator:
         assessment = state.get("_assessment")
         if assessment is None:
             return None
-        from .evidence import assessment_evidence
+        from .evidence import assessment_evidence, assessment_portrait
         scope = assessment["scope"]
         evidence, _ = assessment_evidence(self.service.inputs, state, assessment)
+        reason = ("input_revision_changed" if state["_input_revision"] != scope["input_revision"]
+                  else self.check(state))
+        freshness = {"state": "current" if reason is None else
+                     "review_pending" if reason == "input_review_required" else "historical",
+                     "reason_code": reason, "current_input_revision": state["_input_revision"],
+                     "scope_input_revision": scope["input_revision"],
+                     "pending_review": state["input_review_required"]}
         bound_view = scope["binding"].get("data_view")
         view = {"state": "not_available"} if not bound_view else {
             "state": "available", **{key: bound_view[key] for key in
@@ -235,6 +256,12 @@ class AssessmentCoordinator:
             "status": assessment["status"], "tool_runs_used": assessment["tool_runs_used"],
             "model_turns_used": assessment["model_turns_used"], "stop_reason": assessment["stop_reason"],
             "blockers": assessment["blockers"], "evidence": evidence,
+            "candidates": assessment.get("candidates", []), "freshness": freshness,
+            "portrait": assessment_portrait(evidence, assessment.get("candidates", [])),
+            "result_summaries_enabled": self.service.settings.share_result_summaries,
+            "history": [{"scope_id": row["scope"]["scope_id"], "question": row["scope"]["question"],
+                         "input_revision": row["scope"]["input_revision"], "status": row["status"],
+                         "stop_reason": row["stop_reason"]} for row in state.get("_assessment_history", [])],
             "hypotheses": assessment.get("hypotheses", []),
             "data_view": view,
             "resources": [{"alias": "R-" + identifier[:12], **{key: row[key] for key in
@@ -252,7 +279,7 @@ class AssessmentCoordinator:
 
     def advance(self, sid, epoch):
         from . import provider
-        from .evidence import assessment_evidence
+        from .evidence import assessment_evidence, assessment_model_evidence
         while True:
             with self.service.qc_catalog(), self.service.lock:
                 state = self.service.load(sid)
@@ -271,20 +298,20 @@ class AssessmentCoordinator:
                     return
                 candidates = self.service.inputs.assessment_candidates(state, scope)
                 used = {row["fingerprint"] for row in assessment["admissions"]}
-                options = {row["fingerprint"]: row for row in candidates
+                options = {secrets.token_hex(32): row for row in candidates
                            if row["request"] is not None and not row["blockers"] and row["fingerprint"] not in used}
-                assessment["blockers"] = [{"tool_id": row["tool_id"], "mode_id": row["mode_id"],
-                    "reason_codes": sorted(set(row["blockers"] + row.get("gaps", [])))}
-                    for row in candidates if row["blockers"] or row.get("gaps")]
+                self._candidate_state(assessment, candidates)
                 evidence, bindings = assessment_evidence(self.service.inputs, state, assessment)
                 if not options and not any(row["state"] == "available" for row in evidence):
                     self._finish(state, "no_eligible_check", status="blocked")
                     return
                 shared = self.service.settings.share_result_summaries
+                model_evidence, provider_bindings = assessment_model_evidence(evidence if shared else [])
+                provider_bindings["options"] = {key: row["fingerprint"] for key, row in options.items()}
                 context = {"purpose": "assessment", "question": scope.question,
                     "options": [{"id": key, "tool_id": row["tool_id"], "mode_id": row["mode_id"],
                                  "kind": "query" if row["mode_id"] == "case_query" else "check"} for key, row in options.items()],
-                    "evidence": evidence if shared else [], "results_sent_to_model": shared and bool(evidence),
+                    "evidence": model_evidence, "results_sent_to_model": shared and bool(evidence),
                     "blockers": assessment["blockers"]}
                 if len(json.dumps(context, ensure_ascii=False).encode()) > 128 * 1024:
                     self._finish(state, "evidence_context_limit", status="blocked")
@@ -294,7 +321,8 @@ class AssessmentCoordinator:
                     return
                 assessment["model_turns_used"] += 1
                 assessment["model_turns"].append({"number": assessment["model_turns_used"],
-                    "state": "dispatched", "evidence_bindings": bindings if shared else {}})
+                    "state": "dispatched", "evidence_bindings": bindings if shared else {},
+                    "provider_bindings": provider_bindings})
                 self.service.save(state)
             try:
                 action = provider.converse(self.service.settings,
@@ -335,7 +363,9 @@ class AssessmentCoordinator:
                     # is unavailable, never a vacuously satisfied empty set.
                     self._finish(state, "completion_contract_unavailable", status="blocked")
                     return
-                assessment["hypotheses"] = [row.model_dump(mode="json") for row in decision.hypotheses]
+                assessment["hypotheses"] = [{**row.model_dump(mode="json"),
+                    "evidence_aliases": [provider_bindings["evidence"][alias] for alias in row.evidence_aliases]}
+                    for row in decision.hypotheses]
                 if decision.action in {"stop", "question", "explain"}:
                     if decision.text:
                         self.service.message(state, "assistant", decision.text)
@@ -347,7 +377,8 @@ class AssessmentCoordinator:
                     return
                 # Reconstruct/recheck after the provider boundary. It cannot supply a request.
                 current = self.service.inputs.assessment_candidates(state, scope)
-                candidate = next((row for row in current if row["fingerprint"] == decision.option_id and not row["blockers"]), None)
+                candidate = next((row for row in current
+                    if row["fingerprint"] == provider_bindings["options"][decision.option_id] and not row["blockers"]), None)
                 if candidate is None:
                     self._finish(state, "candidate_changed", status="blocked")
                     return
@@ -367,6 +398,9 @@ class AssessmentCoordinator:
                 assessment["admissions"].append({"fingerprint": candidate["fingerprint"], "plan_id": plan.plan_id,
                     "plan_sha256": plan.approval_sha256(), "tool_id": candidate["tool_id"],
                     "mode_id": candidate["mode_id"], "state": "dispatched"})
+                for row in assessment["candidates"]:
+                    if (row["tool_id"], row["mode_id"]) == (candidate["tool_id"], candidate["mode_id"]):
+                        row.update(runnable=False, already_admitted=True)
                 state["status"] = "running"
                 self.service.save(state)
             self.service.execute(sid, epoch)
