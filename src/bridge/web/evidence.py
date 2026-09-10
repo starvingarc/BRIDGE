@@ -592,8 +592,8 @@ def _assessment_hard_count(result):
     """Keep canonical hard accounting literal; private labels are aliased for the model."""
     from bridge.tool_packages.p0_05_off_target_control.models import OffTargetHardCountAccounting
     summary = _assessment_aggregate({key: value for key, value in result.items() if key != "accounting"})
-    summary["accounting"] = OffTargetHardCountAccounting.model_validate(
-        result["accounting"]).model_dump(mode="json")
+    summary["accounting"] = _assessment_aggregate(OffTargetHardCountAccounting.model_validate(
+        result["accounting"]).model_dump(mode="json"))
     return summary
 
 
@@ -703,12 +703,14 @@ def _assessment_model_query(summary, opaque):
     projected["records"] = []
     for row in summary["records"]:
         known = row["metric_id"] in metrics
-        numeric = row["value"] is None or type(row["value"]) in {int, float}
+        projection_state = ("literal_null" if row["value"] is None else
+                            "numeric" if type(row["value"]) in {int, float} else "withheld")
         projected["records"].append({**base(row), **{key: row[key] for key in
             ("evidence_state", "numerator", "denominator", "applicability", "relation", "interval")},
             **({"metric_name": row["metric_id"]} if known else {"metric_alias": opaque(row["metric_id"])}),
             "metric_semantics_state": "available" if known else "unavailable",
-            "value": row["value"] if numeric else None, "value_state": "available" if numeric else "unavailable",
+            "value": row["value"] if projection_state != "withheld" else None,
+            "value_projection_state": projection_state,
             "unit": row["unit"] if row["unit"] in units else None,
             "unit_semantics_state": "available" if row["unit"] in units else "unavailable"})
     projected["reconciliations"] = [{**base(row), **{key: row[key] for key in ("eligibility", "state", "direction")},

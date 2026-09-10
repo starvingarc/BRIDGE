@@ -80,7 +80,13 @@ def test_assessment_local_projection_retains_canonical_missingness_and_program_i
     assert binding["evidence"][shared[0]["alias"]] == "E-privatehashprefix"
 
 
-def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids():
+@pytest.mark.parametrize("value,evidence_state,projected_value,projection_state", [
+    (0.5, "inferred", 0.5, "numeric"),
+    (None, "unavailable", None, "literal_null"),
+    ("private_unstructured_value", "inferred", None, "withheld"),
+])
+def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids(
+        value, evidence_state, projected_value, projection_state):
     from bridge.web.evidence import assessment_model_evidence
     summary = {"graph_alias": "N-privategraphhash", "graph_version": 2,
         "query_name": "get_case_evidence_subgraph", "returned_node_count": 2,
@@ -89,10 +95,10 @@ def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids():
                    "evidence_tier": "shadow", "lifecycle_state": "active"}],
         "records": [{"alias": "N-privatenodehash", "family_alias": "N-privatefamilyhash",
                      "node_type": "EvidenceRecord", "evidence_tier": "shadow", "lifecycle_state": "active",
-                     "domain_id": "target_identity", "evidence_state": "inferred",
+                     "domain_id": "target_identity", "evidence_state": evidence_state,
                      "metric_id": "target_identity_fraction", "unit": "fraction",
                      "applicability": "applicable", "relation": "supports", "interval": None,
-                     "value": 0.5, "numerator": 2, "denominator": 4}],
+                     "value": value, "numerator": 2, "denominator": 4}],
         "claims": [], "reconciliations": [],
         "requirements": [], "edges": [{"source": "N-privatenodehash",
                      "target": "N-privategraphhash", "type": "supports"}]}
@@ -103,13 +109,40 @@ def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids():
     graph = shared[0]["summary"]
     assert graph["nodes"][0]["alias"] == graph["records"][0]["alias"] == graph["edges"][0]["source"]
     assert graph["edges"][0]["target"] == graph["graph_alias"]
-    assert graph["records"][0]["value"] == 0.5 and graph["records"][0]["denominator"] == 4
+    assert graph["records"][0]["value"] == projected_value and graph["records"][0]["denominator"] == 4
+    assert graph["records"][0]["value_projection_state"] == projection_state
+    assert "value_state" not in graph["records"][0]
+    assert graph["records"][0]["evidence_state"] == evidence_state
     assert graph["records"][0]["metric_name"] == "target_identity_fraction"
     assert graph["records"][0]["metric_semantics_state"] == "available"
     assert graph["records"][0]["unit"] == "fraction" and graph["records"][0]["interval"] is None
     assert "private" not in json.dumps(shared)
     assert shared[0]["alias"] != again[0]["alias"]
     assert bindings["references"][graph["graph_alias"]] == "N-privategraphhash"
+
+
+@pytest.mark.parametrize("oversized", ["composition", "reasons"])
+def test_assessment_hard_count_keeps_existing_summary_row_bounds(tmp_path, oversized):
+    from test_p0_05_hard_count_accounting import _hard_count_request, _run
+    from bridge.tool_packages.p0_05_off_target_control.models import OffTargetHardCountAccounting
+    from bridge.web.evidence import _assessment_hard_count, _SummaryLimit, MAX_ROWS
+    run = _run(_hard_count_request(tmp_path))
+    assert run.execution_state.value == "succeeded"
+    assert _assessment_hard_count(run.result)["accounting"] == run.result["accounting"]
+    result = json.loads(json.dumps(run.result))
+    accounting = result["accounting"]
+    if oversized == "composition":
+        accounting["producer_composition"]["records"].extend([
+            {"view": "source_specific", "source_id": f"source:extra-{index}", "label": "state:extra",
+             "label_level": "L1", "state_evidence_state": "candidate", "denominator_scope": "selected_data_view",
+             "count": 0, "fraction": 0.0, "denominator": accounting["n_observations"]}
+            for index in range(MAX_ROWS + 1)])
+    else:
+        accounting["reason_codes"] = [f"source_reason_{index}" for index in range(MAX_ROWS + 1)]
+    # The canonical contract accepts these unbounded lists; Web projection must refuse, not truncate.
+    OffTargetHardCountAccounting.model_validate(accounting)
+    with pytest.raises(_SummaryLimit):
+        _assessment_hard_count(result)
 
 
 SCHEMA = "bridge://schemas/cell-state-evidence-profile/v0.3"

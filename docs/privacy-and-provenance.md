@@ -79,9 +79,12 @@ contract and reconciliation reasons use its authoritative reason tuple. Only
 the built-in candidate policy words have direct claim/requirement/channel labels.
 Unrestricted custom labels and unrecognized units/metrics remain opaque or
 explicitly semantically unavailable, even when Schema-valid. Private values are
-not made provider-safe by matching a string pattern. Hard-count accounting keeps
-selected-view counts/fractions and unavailable soft mass; local denominator and
-producer labels are replaced by per-turn aliases for the model.
+not made provider-safe by matching a string pattern. Value projection distinguishes
+numeric values, literal null and withheld text independently of the unchanged
+canonical evidence state. Hard-count accounting keeps selected-view counts/fractions
+and unavailable soft mass; the existing summary row/byte limits still refuse oversized
+projections without truncation. Local denominator and producer labels are replaced
+by per-turn aliases for the model.
 
 Authenticated browser evidence retains verified program IDs/roles, exact
 receipt/artifact bindings, dependency versions and local display-artifact IDs.
