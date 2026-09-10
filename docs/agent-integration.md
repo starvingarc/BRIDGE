@@ -104,7 +104,13 @@ option. The server reconstructs the normalized registered request, rechecks
 eligibility and deduplication, and derives the exact-plan approval from the
 original scope receipt. It records genuine tool outcomes, retrieves the graph,
 and rebuilds the same-version portrait. The model cannot supply a ToolRequest,
-upgrade a review, create a measurement or reset a limit.
+upgrade a review, create a measurement or reset a limit. Each option describes an
+unexecuted exact action whose current prerequisites have passed, using the packaged
+registry name, summary and scientific status rather than implying an existing result.
+Blocking reasons belong only to their exact tool/mode pair; interpretation gaps are
+separate and do not suppress an otherwise eligible action. These descriptions grant
+no additional authority, and an explanation may end the phase with options remaining
+without establishing scientific completion.
 
 Automatic scope modes use existing QC/cell-state and source-bound producer
 seams, measured sufficiency, canonical initial/append and registered queries.

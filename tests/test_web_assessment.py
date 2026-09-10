@@ -628,6 +628,104 @@ def test_scope_admitted_qc_unlocks_exploratory_input_without_extra_authority(
     assert run["measurements"] == []
 
 
+@pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
+def test_assessment_http_options_after_qc_describe_unexecuted_actions_and_exact_mode_blockers(
+        client, tmp_path, monkeypatch, protocol):
+    import httpx
+    from test_cell_state import _build_snapshot
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch, with_producers=False)
+    _build_snapshot(tmp_path, monkeypatch)
+    service.settings = replace(service.settings, model_action_protocol=protocol,
+        cell_state_measurement_spec_ref="CELLSTATE-scRNA-shadow-v0.1")
+    response = client.post(f"/api/sessions/{sid}/assessment/propose", json={
+        "question": "Inspect the authorized cell-state and exploratory process evidence, keeping unresolved science explicit.",
+        "upload_id": aid, "allowed_modes": [
+            {"tool_id": "P0-01", "mode_id": None}, {"tool_id": "P0-02", "mode_id": None},
+            {"tool_id": "P0-06", "mode_id": "method_runtime_source_bound"},
+            {"tool_id": "P0-06", "mode_id": "exploratory_process"}],
+        "max_tool_runs": 4, "max_model_turns": 5})
+    assert response.status_code == 200, response.json()
+    scope = response.json()["assessment"]
+    before = service.load(sid)
+    payloads, contexts = [], []
+    original_client = httpx.Client
+    def provider_response(request):
+        payload = json.loads(request.content)
+        context = json.loads(payload["messages"][0]["content"].split("Safe execution context: ", 1)[1])
+        payloads.append(payload)
+        contexts.append(context)
+        # Only the external HTTP response is fake; actual eligibility, QC, tools and consent remain real.
+        selected = next((row for row in context["options"] if row["tool_id"] == "P0-01"), None)
+        selected = selected or next((row for row in context["options"]
+            if (row["tool_id"], row["mode_id"]) == ("P0-06", "exploratory_process")), None)
+        decision = ({"action": "check", "option_id": selected["id"]} if selected else
+                    {"action": "explain", "text": "This bounded explanation leaves the cell-state check unexecuted; scientific completion is not established."})
+        if protocol == "json":
+            message = {"content": json.dumps({"action": "assessment", "decision": decision})}
+        else:
+            message = {"content": None, "tool_calls": [{"id": "call-scoped", "type": "function",
+                "function": {"name": "assessment", "arguments": json.dumps({"decision": decision})}}]}
+        return httpx.Response(200, json={"choices": [{"message": message}]})
+    monkeypatch.setattr("bridge.web.provider.httpx.Client",
+        lambda **kwargs: original_client(**({"transport": httpx.MockTransport(provider_response)} | kwargs)))
+    approve_scope(client, sid, scope)
+    done = settle_assessment(client, sid, timeout=180)["assessment"]
+    state = service.load(sid)
+    assert [row["tool_id"] for row in state["_tool_runs"]] == ["P0-01", "P0-06"]
+    assert done["tool_runs_used"] == 2 and done["model_turns_used"] == 3
+    assert done["max_tool_runs"] == 4 and done["max_model_turns"] == 5
+    assert done["status"] == "stopped" and done["stop_reason"] == "explanation_complete"
+    assert done["scope_grants_scientific_approval"] is False
+    assert state["_assessment"]["scope"] == before["_assessment"]["scope"]
+    assert state["_input_revision"] == before["_input_revision"]
+    approval = state["_plan"]["approval_receipt"]
+    assert approval["authorization_kind"] == "scope_derived"
+    assert approval["scope_id"] == scope["scope_id"] and approval["scope_sha256"] == scope["scope_digest"]
+    assert approval["approved_at"] == state["_assessment"]["authorization"]["approved_at"]
+    assert len(contexts) == 3
+    assert {(row["tool_id"], row["mode_id"]) for row in contexts[0]["options"]} == {("P0-01", None)}
+    post_qc = contexts[1]
+    assert {(row["tool_id"], row["mode_id"]) for row in post_qc["options"]} == {
+        ("P0-02", None), ("P0-06", "exploratory_process")}
+    assert post_qc["blockers"] == [{"tool_id": "P0-06", "mode_id": "method_runtime_source_bound",
+                                  "reason_codes": ["scientific_resource_required:product_definition_card"]}]
+    assert post_qc["interpretation_gaps"] == []
+    assert {(row["tool_id"], row["mode_id"]) for row in contexts[-1]["options"]} == {("P0-02", None)}
+    assert any(row["tool_id"] == "P0-02" and row["runnable"] for row in done["candidates"])
+    qc, = post_qc["evidence"]
+    assert qc["tool_id"] == "P0-01" and qc["score_state"] == "unavailable"
+    assert any(type(row["raw_value"]) in {int, float} for row in qc["measurements"])
+    for context, payload in zip(contexts, payloads):
+        assert set(context) == {"purpose", "question", "options", "evidence", "results_sent_to_model",
+                                "blockers", "interpretation_gaps"}
+        for option in context["options"]:
+            spec = service.registry.describe(option["tool_id"])
+            assert set(option) == {"id", "tool_id", "mode_id", "kind", "name", "summary", "scientific_status",
+                                   "execution_state", "prerequisites_state"}
+            assert (option["name"], option["summary"], option["scientific_status"]) == (
+                spec.name, spec.summary, spec.scientific_status)
+            assert option["execution_state"] == "not_executed_in_scope"
+            assert option["prerequisites_state"] == "satisfied_this_turn"
+        system = payload["messages"][0]["content"]
+        assert system.startswith("You coordinate one approved, bounded BRIDGE research assessment.")
+        assert "not existing results" in system and "(tool_id, mode_id)" in system
+        assert "interpretation_gaps" in system and "not required to execute every option" in system
+        assert "Every conversational answer uses the JSON reply envelope." not in system
+        if protocol == "json":
+            assert payload["response_format"] == {"type": "json_object"}
+            assert "tools" not in payload and "tool_choice" not in payload
+        else:
+            assert [tool["function"]["name"] for tool in payload["tools"]] == ["assessment"]
+            assert payload["tool_choice"] == "required" and "response_format" not in payload
+        wire = json.dumps(payload)
+        for private in (sid, aid, str(tmp_path), "private-key", "source-family:synthetic-assessment",
+                        before["_uploads"][aid]["sha256"], scope["scope_id"], scope["scope_digest"]):
+            assert private not in wire
+        for turn in state["_assessment"]["model_turns"]:
+            assert all(fingerprint not in wire for fingerprint in turn["provider_bindings"]["options"].values())
+        assert all(receipt["sha256"] not in wire and receipt["file"] not in wire for receipt in state["_tool_runs"])
+
+
 def test_exploratory_resource_is_packaged_and_scope_bound(client, tmp_path, monkeypatch):
     from hashlib import sha256
     from importlib.resources import files

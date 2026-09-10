@@ -322,11 +322,19 @@ class AssessmentCoordinator:
                 shared = self.service.settings.share_result_summaries
                 model_evidence, provider_bindings = assessment_model_evidence(evidence if shared else [])
                 provider_bindings["options"] = {key: row["fingerprint"] for key, row in options.items()}
-                context = {"purpose": "assessment", "question": scope.question,
-                    "options": [{"id": key, "tool_id": row["tool_id"], "mode_id": row["mode_id"],
-                                 "kind": "query" if row["mode_id"] == "case_query" else "check"} for key, row in options.items()],
+                model_options = []
+                for key, row in options.items():
+                    spec = self.service.registry.describe(row["tool_id"])
+                    model_options.append({"id": key, "tool_id": row["tool_id"], "mode_id": row["mode_id"],
+                        "kind": "query" if row["mode_id"] == "case_query" else "check",
+                        "name": spec.name, "summary": spec.summary, "scientific_status": spec.scientific_status,
+                        "execution_state": "not_executed_in_scope", "prerequisites_state": "satisfied_this_turn"})
+                context = {"purpose": "assessment", "question": scope.question, "options": model_options,
                     "evidence": model_evidence, "results_sent_to_model": shared and bool(evidence),
-                    "blockers": assessment["blockers"]}
+                    "blockers": [{"tool_id": row["tool_id"], "mode_id": row["mode_id"], "reason_codes": row["blockers"]}
+                        for row in assessment["candidates"] if row["blockers"]],
+                    "interpretation_gaps": [{"tool_id": row["tool_id"], "mode_id": row["mode_id"], "reason_codes": row["gaps"]}
+                        for row in assessment["candidates"] if row["gaps"]]}
                 if len(json.dumps(context, ensure_ascii=False).encode()) > 128 * 1024:
                     self._finish(state, "evidence_context_limit", status="blocked")
                     return
