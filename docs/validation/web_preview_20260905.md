@@ -1,11 +1,32 @@
 # Private conversational Web preview — validation history
 
+## Protocol formalization closeout — 2026-09-10
+
+The source implementation and isolated installed acceptance for source-backed
+protocol formalization completed without changing scientific tools, facts,
+original inputs or deployment state.
+
+| Check | Exact result |
+|---|---|
+| Installed backend | 209 tests passed, including 119 protocol cases with the pinned BPL compiler |
+| Browser client | 102 tests across 11 files passed; typecheck and production build passed |
+| Configured-model browser path | A synthetic missing-wait case preserved unsure history, accepted an explicit two-hour user answer, created a new unreviewed version and required version-bound human review |
+| Representation | The final BPL used wait(duration: 2 h); readable content identified the user-supplied duration and retained both source and user-answer references |
+| Review boundary | Independent bounded reviews cleared source/fragment/audit and active-answer accounting; literal participation and compiler success remained separate from semantic or biological proof |
+
+The tested path establishes one authoritative fragment representation, bounded
+repair, source accounting and review-version invalidation. It does not prove that
+all protocol omissions were detected, that the experiment was executed, that a
+normal private deployment was upgraded or that downstream product assessment is
+qualified. Failed earlier attempts remain failures in history rather than being
+relabeled by this closeout.
+
 ## Current closeout — 2026-09-08
 
 The sections below preserve dated validation records, not competing descriptions
 of the current preview. Current functionality and acceptance boundaries are
-summarized in the [integration progress](../../plans/web-full-chain-integration.md#current-progress-2026-09-08)
-and [Web interface contract](../web-preview.md). The current PR includes explicit
+summarized in the [Web interface contract](../web-preview.md); unresolved
+scientific gates are tracked in [Product Evidence Validation](../../plans/product-evidence-validation.md). That validated increment includes explicit
 stop/input confirmation, selectable JSON/native actions, opt-in canonical evidence
 summaries, bounded Parquet previews and privately confirmed product intake.
 
@@ -17,8 +38,7 @@ download integrity were checked. Missing product/design facts stayed unknown;
 no formal scientific objects or complete downstream product assessment were made.
 Measurements, input identities, source hashes and deployment details remain private.
 
-The [Task 20 engineering record](../../plans/web-full-chain-integration.md#task-20-engineering-evidence-2026-09-08-installed-snapshot)
-retains the exact focused-test/build scope and minor limitations. Recorded earlier
+The dated evidence below retains the tested scope and limitations. Recorded earlier
 full-suite/review results apply only to their dated revisions. No new independent
 review or unchanged-suite replay was performed for this closeout; required CI
 binds the exact public PR head. This is an installed entry-flow increment, not a

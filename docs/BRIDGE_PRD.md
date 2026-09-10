@@ -5,12 +5,12 @@
 | 项目全称 | Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation |
 | 产品形态 | 科学评估智能体（Scientific Agent） |
 | 文档版本 | `v0.1` |
-| 修订日期 | 2026-09-09 |
+| 修订日期 | 2026-09-10 |
 | 状态 | `current_primary_specification` |
 | 适用范围 | 研究用途的细胞治疗产品转录组评估；PD hPSC-mDA 为首个实例 |
 | 文档权威性 | 本文档是 BRIDGE 当前唯一主规范；Registry 和 Task Card 是受其约束的实施附件 |
 
-> **当前实现边界：** BRIDGE 已有 12 个确定性 P0 工具包；私有 Web preview 已接通上传、产品事实确认、分阶段计划与审批、结果导航、候选科学输入审阅及修订。已记录的真实 Web 路径包含 QC、细胞状态、缺失性证据检查、候选缺失证据归组、内部研究报告及其实际声明核验，以及单独的无 graft 路径。当前缺失性内部报告保留五域未评估和发布受阻；工具运行成功不等于声明通过核验，不代表五域测量完成或报告可公开导出。下游候选规则已获实施授权，来源科学审阅、实验关系、真实测量与报告发布门禁仍分别保留。源代码、安装、真实运行和未完成事项以[活动计划](../plans/web-full-chain-integration.md#current-progress-2026-09-08)为唯一施工记录，不据此推断已合并或正式部署。本文正式 `domain_score` 仍是独立验证后的目标合同；目前尚无 P0 `ScoreContract` 冻结，所有活动模块保持 `domain_score=null`。
+> **当前实现边界：** BRIDGE 已有 12 个确定性 P0 工具包。私有 Web 在既定范围内已验收研究问题、资料、必要追问、来源事实确认、范围/资源审批与 QC，并提供可核对的 protocol 表示。下游图驱动研究闭环、内部 comparator 选择和 qualified report/export 是已批准目标，不是当前完整能力；现有候选缺失图与 blocked 内部报告不等于产品评估完成。当前没有冻结 P0 ScoreContract，所有活动模块保持 domain_score=null。精确证据见[验证记录](validation/README.md)，剩余科学工作见[活动计划](../plans/product-evidence-validation.md)。
 
 ## 目录
 
@@ -517,417 +517,265 @@ BRIDGE 不依赖特定主机或固定硬件。每次工具运行必须绑定版�
 
 ## 6. Agent 功能需求
 
-BRIDGE 以 Web 作为主要交互界面。Agent 负责确认案例、规划分析、调用工具、检索知识、整合证据、组织可视化、解释结果和生成建议；确定性工具负责计算 raw metrics、分域评估分数和状态。
+BRIDGE 以 Web 作为主要交互界面。LLM 是主动的、证据驱动的研究协调者；
+注册的高层工具拥有数值、分母、阈值、状态、版本和 Evidence ID。系统可以采用
+单 Agent 或多 Agent 实现，但不得让模型文本取代确定性工具合同。
 
-系统以能力合同约束实现，不限定单 Agent、多 Agent 或具体框架。
+> **当前与目标必须分开：** 现有私有 Web 在既定范围内已验收下述主线第 1–6
+> 步，包括 protocol 的可核对表示；这些步骤不重新设计或重做。第 7–10 步的
+> 图驱动反馈循环、内部 comparator 推荐与确认、合格报告和导出是已批准目标。
+> 当前已有的工具菜单、图组件、候选缺失图和 blocked 内部报告不能证明该闭环已接通。
+> 精确现状见[验证记录](validation/README.md)，未完成科学工作见
+> [Product Evidence Validation](../plans/product-evidence-validation.md)。
 
 ### 6.1 Agent 总体工作流
 
-系统支持三类入口：
+主线保持十步，不因内部对象或工具编号改变：
 
-- 评估一个新产品。
-- 比较数据库中的多个产品。
-- 为已有产品补充新数据或验证结果。
+1. **Research question / 研究问题**：明确评估对象、要回答的问题和用途边界。
+2. **Materials / 资料与数据**：登记不可变数据、protocol、metadata、reference
+   与来源。
+3. **Agent understanding and necessary questions / Agent 理解与必要追问**：
+   只追问会改变资格、分析设计或解释的问题。
+4. **Sourced fact confirmation / 有来源的事实确认**：研究者核对一份简洁的
+   实验背景摘要，可整体确认或逐项修改。
+5. **Scoped plan / 有边界的计划**：确认问题、总体范围、资源上限、停止条件和
+   独立审批。
+6. **QC / 输入质控**：运行注册 QC，显示实际观察、分母、限制和更新后的资格。
+7. **Cell-state and product assessment / 细胞状态与产品评估**：逐域推进，
+   每域标记 runnable、missing input 或 unavailable。
+8. **Interpretation / 解释**：围绕证据图维护竞争假设、冲突、缺口和下一动作。
+9. **Report delivery / 报告交付**：同一分析版本的结果页、简洁结论和完整报告。
+10. **Corrections / 修正**：记录事实变化、影响范围和经确认的局部重算新版本。
 
-```mermaid
-flowchart TD
-    U["Web：新产品评估、多产品比较或已有产品补充证据"] --> I["Coordinator：Intake"]
-    I --> C["构造待确认的案例、产品定义与实验流程候选"]
-    C --> G1{"确认点 1：产品定义、样本层级和任务范围"}
-    G1 -->|修改| I
-    G1 -->|确认| P["生成 AnalysisPlan"]
-    P --> G2{"确认点 2：任务、资源、权限和替代路径"}
-    G2 -->|修改| P
-    G2 -->|确认| X["Coordinator 构建任务图"]
+第 1–6 步的当前验收只证明其既定输入、确认、审批、QC 和 protocol 表示流程；
+不证明下游产品域已测量或报告可发布。第 7–10 步是产品目标合同；其中已有的
+独立组件仍按各自验证记录报告，不把局部实现写成完整闭环。
 
-    X --> T["注册分析工具"]
-    X --> K["读取适用的版本化 Reference 与本地知识快照"]
-    X --> M["绑定现有测量合同；正式评分仅在已有冻结 ScoreContract 时可用"]
-    T --> E["增量生成 Evidence Records"]
-    K --> E
-    M --> E
-    E --> EG["Case / Comparison Evidence Graph"]
-    EG --> V["Visualization Composer"]
-    V --> W["Web 多维证据画像与交互式图表"]
-    W --> S["Scientific Interpreter 与 Recommendation Planner"]
-    S --> Q["Claim Verifier"]
-    Q --> G3{"确认点 3：正式发布或导出"}
-    G3 -->|退回修改| S
-    G3 -->|确认| R["版本化报告与数据库记录"]
-```
-
-Agent 默认显示当前阶段、已完成任务、阻塞原因和受影响结果；工具参数、日志和产物可按需展开。
-
+在既定授权、范围和资源上限内，Agent 可自主继续已批准任务。QC 后必须重新计算
+并展示实际 eligibility。扩大问题范围、资源上限、联网权限、比较队列或运行
+未批准工具时，必须先申请新批准。
 
 #### 6.1.1 主线逐步合同：用户动作与开发责任
 
-以下是产品要求，不意味着各步骤已全部实现。确切源代码、安装和真实运行状态
-只在[活动计划](../plans/web-full-chain-integration.md#current-progress-2026-09-08)
-维护；PRD 保存稳定的用户行为合同。
-
-| 步骤 | 研究人员看到什么、做什么 | Agent / 开发侧必须完成什么 | 失败、未知和下一步 |
+| 步骤 | 研究人员看到什么、做什么 | Agent 与工具责任 | 停止或继续条件 |
 |---|---|---|---|
-| 1. 描述问题 | “这是分化到 D28 的制剂，想了解目标身份与非目标组成”，选择新评估、比较或补充证据 | 识别研究问题、评估对象与需要回答的域；不把用途推断成临床资格 | 信息不足只追问会改变下一步的问题 |
-| 2. 上传与定位数据 | 上传 H5AD，看到文件、矩阵位置、观测数和识别到的字段 | 登记不可变原件、checksum 和可用字段；区分检测所得事实与用户声明 | 文件损坏、矩阵语义不明或不支持时说明具体原因；不猜 counts |
-| 3. 确认产品与实验事实 | 用普通语言确认目标、采样位置、时间点及样本/制备/capture 关系；允许“不知道” | 保存逐项声明与版本，只把已确认的事实写入案例；四项 biological-unit attestation 单独确认 | 文件数、细胞数、同一论文的重复数不自动成为当前案例的独立重复数 |
-| 4. 审阅科学候选 | 看到建议定义、来源、限制、候选角色/窗口及影响哪些结果；可修订 | 从已版本化本地来源构造候选对象；分别记录产品意图确认、科学来源审阅与执行资格 | 候选确认不升级来源；暂缺状态定义时保留 unresolved 并允许其他合格步骤继续 |
-| 5. 审批本阶段分析 | 看到“会分析什么、复用什么、为何跳过什么、预计消耗及停止条件” | 绑定精确输入版本和 canonical ToolRun，准备未批准的 AnalysisPlan | 提供信息或确认草稿都不自动执行；已有有效 QC 不因一般追问重跑 |
-| 6. 读取输入质量与细胞状态 | 先读主要观察、完整分母和限制，再展开图表、表格与来源 | 调用注册工具，继承 candidate/shadow、冲突与不可评估状态；解释使用实际产物 | 映射成功不等于目标身份成立；旧 V2 结果不伪装为具备 V3 lineage |
-| 7. 逐域推进产品评估 | 分别查看身份/区域、发育、非目标、增殖/应激的进展与下一动作 | 按各工具真实合同构造输入并独立检查资格；身份、区域和发育映射分开 | 未知不补零、不计为非目标；某域阻塞不会使其他域或部分报告消失 |
-| 8. 可选比较或 graft | 有新批次才讨论可比性；有移植后数据才进入独立 graft 分支 | 产品比较与 graft 是不同路径；确认分析单位、混杂与 preparation-graft 关联 | 单批次不产生方案优劣结论；无 graft 不阻塞移植前评估或合格的产品比较 |
-| 9. 查看证据与缺口 | 看到“哪些观察有支持、哪些冲突、还缺什么、缺项影响哪个结论” | P0-08 保留实际充分性，P0-09 编译真实证据与缺失要求并去重同源家族 | 未执行域只形成缺项，不造 MeasurementResult；候选规则不产生正式一致性结论 |
-| 10. 阅读内部报告 | 依次阅读声明范围、实际发现、当前不可回答项、下一步建议；原始结果仍可下钻 | 从精确证据绑定构造版本化草稿，清楚区分报告已生成与声明已核验 | 空域写未评估；禁止把 QC 或细胞状态参考对应改写为五域正式测量 |
-| 11. 核验与导出 | 看到声明核验结果和具体阻塞；只有满足条件才出现单独导出审批 | 调用 P0-10；P0-11 只按现有白名单和独立批准处理候选导出 | 现有核验策略不支持的声明保留 blocked/review-required；不得自动改策略或称作已验证 |
-| 12. 追问、补充与修订 | 围绕具体观察追问，或补充新批次、时间点、实验结果 | 定位受影响依赖，生成新版本并复用未变化的有效证据 | 旧结果可追溯；只重跑受影响任务，计划和发布批准不跨版本继承 |
+| 1–2 | 描述问题并提供资料；可声明不知道 | Agent 登记原件、来源和声明，不从文件名猜 counts、样本关系或用途 | 损坏、不可读或矩阵语义不明时说明具体原因 |
+| 3–4 | 审阅一份简洁、带来源的实验背景摘要；整体确认或逐项编辑 | Agent 区分 source fact absent 与 explicit-but-unparseable，标出冲突、不确定性和来源；只保留已确认事实 | 以后只追问新近变得 consequential 的信息；已知未知不反复追问 |
+| 5 | 确认问题、总体分析范围、资源上限、复用项、停止条件和未批准计划 | Agent 绑定精确输入版本、reference、方法与资源；确认不等于执行 | 范围或资源扩大必须重新批准 |
+| 6 | 查看 QC 观察、完整分母、限制及资格更新 | 工具计算 QC；Agent 显示 QC 前后 eligibility 的变化 | 不可填的输入或资源缺口明确停止；技术不足不解释为产品失败 |
+| 7 | 看到全部 P0 核心维度及 runnable、missing input、unavailable 状态 | 分别评估 cell state、target identity、regional identity、developmental compatibility、whole-product/non-target composition、proliferation and stress；comparison 与 graft 有条件进入 | 五个 knowledge-enhancement dimensions 不替代本验收门 |
+| 8 | 持续查看多维画像、关键发现、冲突和必要问题 | Agent 从 Evidence Graph 检索证据，维护小型竞争假设集，选择可区分假设的注册工具，把经验证输出写回图并更新解释 | 不按 LLM confidence 停止，不把同源方法数当独立票数 |
+| 9 | 获得同一版本的结果页、简洁结论和可下载完整报告 | 报告绑定图、方法、来源、限制、下一动作及不完整/不可评估项 | 默认不发布、不分享；不满足声明或导出条件时保持 blocked |
+| 10 | 先看到事实改动及受影响维度、比较和报告版本，再审阅局部更新计划 | 用户确认后才重算；旧版本保留，未受影响证据复用 | 事实或范围改变后的重算不同于既定事实/范围内的自主检查 |
 
-每个阻塞说明同时包含：已知事实、缺少什么、影响哪项结论、用户可以补充什么、
-Agent 仍能继续什么。不要把内部 Schema 名或“输入不足”作为唯一说明，也不要在
-用户已回答未知后反复提出同一问题。来源审阅、产品用途、实验事实与运行故障
-分别解释，不能都归咎于“用户没有准备好文件”。
+每个停止说明都包括已知、未知、缺口、受影响结论、停止原因和可行下一步。预定义
+evidence requirements、无法补齐的证据缺口或资源上限可以触发停止；LLM 自信度
+不能。工具故障只允许合同中已批准的重试或替代路径。
 
 #### 6.1.2 两个贯穿示例与验收方式
 
-**示例 A：一个 D28 产品样本，独立培养关系未知。**
-研究者上传数据并确认目标是中脑多巴胺能祖细胞。Agent 首先核对 counts 与采样
-含义，复用已有效完成的 QC，再展示真实参考对应。若 mFP 亚型仍缺科学审阅，
-页面说明“当前只能报告候选对应，不能换算目标细胞纯度”，而不是要求用户填写
-StateRoleMap。用户可以保留独立性未知、查看已完成结果并生成带缺项的内部草稿；
-这不意味着五个科学域已经运行或报告已经通过核验。能由实验记录回答的问题用
-选择卡确认；科学定义缺口由来源策展和审阅流程处理。
+**单产品：** 研究者上传一个 D28 产品。独立培养关系未知时保留 unknown。
+Agent 可完成已批准 QC 并展示候选 cell-state 对应，但在状态/角色审阅完成前，
+不能把它换算成产品纯度或五域正式测量。验收检查原件、来源、分母、审批、实际
+ToolRun、页面和报告版本是否一致。
 
-开发者沿同一示例检查：未经单独审批是否创建了 ToolRun；是否保持原始分母；
-候选确认是否错误生成 reviewed/frozen 或 attestation；缺项是否变成了零；
-报告是否绑定同一次案例版本和真正的图/表。用损坏来源、过期草稿及缺失测量的
-定向测试验证这些具体边界，而不是重复已通过的完整 QC 测试。
-
-**示例 B：后来补充一个新批次，希望比较工艺。**
-研究者选择“补充证据/比较产品”，Agent 先核对产品目标、目标窗口、采样位置、
-assay、制备与独立关系。两个文件不等于两个独立批次；实验关系不能识别时只给
-明确范围内的描述或说明不可比较，不要求提供 graft 才能继续。增加一个时间点
-不覆盖旧病例，也不把两个采样点自动变成可信的连续轨迹。
-
-开发者检查新增输入只使相应比较、证据和报告版本失效，旧单产品证据仍可读取；
-同一来源的重复处理不增加独立样本或 evidence-family 票数。科学含义一致的
-desktop/mobile 呈现、刷新恢复、错误后重试和下一步操作都属于该步骤的验收。
-
-每完成一段用户可见功能，都回看第 1 节定位、本表对应步骤和第 3 节的声明边界：
-从用户角度走一遍，再从输入、版本、审批、工具输出和页面绑定反向核对。
-确认的新行为同步更新 PRD，施工状态与证据同步更新活动计划；Agent 的模拟走查
-不能冒充外部湿实验用户的实际验收。
+**后续比较：** 研究者希望把新产品与已登记公开产品比较。Agent 先推荐 eligible
+comparators、background-only objects 和 excluded objects 及原因，由用户确认
+cohort。论文公开本身不等于登记、可比或获准使用；两个文件也不等于两个独立批次。
 
 ### 6.2 ProductCase 建立
 
-新产品至少提供：
+QC 前必须确认 research question、overall analysis scope 和 resource ceiling。
+ProductCase 保留产品目标、采样语境、assay/矩阵语义、sample/preparation/capture
+关系、来源与访问策略；不知道的关系保持 unknown，cell 不能充当 biological replicate。
 
-- scRNA-seq 数据或已登记的数据资产。
-- donor/cell line、sample、preparation、lot、batch、timepoint、biological replicate 和 technical replicate 对应关系。
-- `data_role`、evaluation eligibility、sampling context 和访问策略。
-- 产品类型、目标细胞、分化阶段和预期用途。
-- assay、表达矩阵和已知预处理说明。
-- source accession、asset version、checksum、source family 和 leakage group。
-- reference policy、prior snapshot 和拟使用的 ProductDefinitionCard 版本。
-- 可选的 SOP、分化流程或实验记录。
+Agent 默认提供一份简洁的 sourced experimental-background summary，分别标记：
 
-Agent 检查输入结构和样本层级，并从实验记录中提取 `Protocol IR` 草稿。系统优先推荐已版本化的 `ProductDefinitionCard`；没有适用模板时，可以生成候选草稿，但必须由研究者确认后才能进入正式评估。
+- 原文未提供的 source fact；
+- 原文明示但当前 explicit-but-unparseable 的 fact；
+- 多来源冲突、不确定或只适用于特定条件的 fact；
+- 用户补充、系统观察和来源文本各自的身份。
 
-Agent 只追问会改变分析设计的问题，不根据文件名推断数据角色、样本关系或 graft linkage。缺失信息只影响相关任务，不自动解释为产品异常。
+研究者可以一次确认整份摘要，也可以逐项编辑。确认只记录事实版本，不自动批准
+分析。后续只在信息新近影响 eligibility、方法、解释或资源时再问；保留 unknown
+而不重复提问。
 
-Studer/Bocchi 2026 预印本相关资源必须拆成四个独立 artifact 管理：fetal atlas reference、使用 93 个 programs 的 CapybaraBrain method、汇集 19 项研究和 641,539 个体外细胞的 HDNA atlas，以及单独的 PCA/kNN mapping notebook。四者均 checksum-bound、competitor-isolated，不得合并为一个独立验证来源，也不得计入 BRIDGE 的 external-validation 分母。官方预印本为 [bioRxiv v1](https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1)，数据入口为 [dopamine development portal](https://developmental.cellatlas.io/dopamine)。
+Protocol BPL 是来源绑定、可版本化和人工核对的计划过程表示。它不是本批执行记录、
+产品身份、实验独立性或生物学验证；固定编译器通过也不证明语义完整。具体合同见
+[已批准 BPL 设计](superpowers/specs/2026-09-09-protocol-bpl-design.md)。
 
-BRIDGE 设置两条隔离轨道：其一按原论文、代码、reference、marker 和参数进行版本化复现，仅用于外部比较；其二使用 BRIDGE 自有标签、reference、marker、独立实现和 source/donor holdout 校准，评测相同或相关的方法类型。BRIDGE 的独立重点是 source-aware open-world 产品评估和 exact-to-parent-to-unknown 拒答，而不是再次构建同一 fetal-atlas mapping workflow。
-
-竞争轨中的代码、atlas、标签、marker、lineage hierarchy、阈值、模型输出及派生产物不得进入 BRIDGE 的 RAG、prior、训练、校准、调参或正式 Evidence Graph。只有在 BRIDGE 方法和评测合同冻结后，竞争轨结果才可作为明确标注的 baseline 展示，不得反向修改当次评分或建议。`E-MTAB-14729` 仅在同一冻结条件下作为 sealed competitor test 运行。
+如缺少 role rules，Agent 结合 P0-02 证据、已确认产品目标和可追溯材料，提出
+role candidates 及其后果。用户核对不会提升候选科学等级。P0-03 与 P0-05 必须
+消费同一个 eligible、reviewed role definition，不能各自循环发明角色。
 
 ### 6.3 分析计划与任务执行
 
-`AnalysisPlan` 需要说明：
+AnalysisPlan 说明运行/跳过项、输入与版本、reference、MeasurementSpec、
+分析单位、资源、联网与权限、复用、停止条件和允许的替代路径。QC 后的 eligibility
+变化形成显式计划更新；未改变授权与资源时可自主继续，扩大范围则重新批准。
 
-- 运行和跳过哪些任务，以及相应原因。
-- 使用哪些工具、reference、知识快照、`MeasurementSpec` 和 `ScoreContract`。
-- 分析单位、比较对象和执行顺序。
-- 预计资源、联网需求和运行权限。
-- 失败条件、停止条件和允许的替代路径。
+批准后的目标执行是反馈循环：
 
-P0 核心任务默认进入计划。P1/P2 任务由 Agent 根据数据条件和当前科学问题推荐，用户确认后运行；P0 发现异常时也可以追加补充计划。
+1. 从当前 Evidence Graph 检索支持、反对、缺失与冲突；
+2. 识别缺口并维护少量相互竞争、可反驳的假设；
+3. 选择最能区分假设的已注册高层工具；
+4. 由工具验证输入并生成数值、分母、状态、版本和 Evidence ID；
+5. 验证产物后写回图，更新画像、解释和下一动作。
 
-用户确认 AnalysisPlan 后，批准范围内的任务自动执行。计划外联网、高资源任务、未注册工具或探索性代码需要再次确认。
+存在图组件、工具菜单或一次编译不证明循环已连接。不得让 Agent 直接拼装底层
+Scanpy/R 命令、修改工具值或把未执行域伪造成 MeasurementResult。
 
-工具失败时：
+Step 7 总是提出现有 P0 核心维度：cell state；target 与 regional identity；
+developmental compatibility；whole-product/non-target composition；
+proliferation and stress。每项显示 runnable、missing input 或 unavailable。
+Comparison 与 graft 仅在适用且获准时进入。状态描述覆盖所有 major cell classes，
+只随证据细化；regional、developmental、proliferation 和 stress 轴保持分开，
+upper-level 与 unresolved identity 不得被强制归入 target/non-target。
 
-- 只有执行故障可以触发自动替代；替代工具必须预先注册、写入计划，并共享相同输入合同、`MeasurementSpec`、`ScoreContract` 和验证范围。
-- 输入不满足分析合同的任务直接返回 `unavailable`，不得通过更换方法绕过。
-- 其他替代工具需要用户确认，结果统一标记为 `exploratory`。
-- 未受影响的任务继续运行并保留部分结果。
-
-正式运行优先使用冻结的本地知识快照。实时联网结果只能用于解释、发现冲突或进入知识策展队列，不能修改当次分域评估分数。
-
-私有 preview 已有模型配置、认证和分阶段审批，模型上下文默认仅传状态与缺项；另行批准的聚合解释和科学草稿用途保持独立边界。科学草稿只允许投影已确认的产品家族、目标细胞和目标阶段，不因此开放原始矩阵、样本身份、私有路径或全部实验记录。正式部署的身份、访问和数据出境安排仍需独立审定；私有预览的已实现控制不等于正式部署获准。
+P0-06 对七个核心 program families 分别报告 measured 或 unavailable：
+pluripotency-like、cell cycle、dissociation/heat-shock、oxidative stress、
+hypoxia、unfolded-protein response、apoptosis-related。S/G2M 不能代表全部评估，
+也不能证明真实增殖、安全性或 potency。
 
 ### 6.4 产品数据库与多产品比较
 
-原始文件进入统一数据存储；数据库保存数据索引、hash、ProductCase、证据对象和不可变合同快照，包括 ProductDefinitionCard、reference、prior、tool、algorithm、`MeasurementSpec`、`ScoreContract`、分析及报告版本。新产品完成独立评估后写入 Product Evidence Database。
+默认比较是 new product 与 eligible、internally registered published products，
+不是要求用户同时上传多个产品。Agent 推荐：
 
-```mermaid
-flowchart TD
-    N["新产品"] --> A["独立产品评估"]
-    A --> C["Case Evidence Graph"]
-    C --> P["ProductEvidenceObject"]
-    P --> DB["Product Evidence Database"]
+- usable comparators；
+- 仅作背景的 background-only objects；
+- excluded objects 及逐项原因。
 
-    DB --> R["Comparability Retriever"]
-    R --> Q["推荐三级可比队列"]
-    Q --> U["用户确认多个比较产品"]
-    U --> D["实验设计、共同合同与可比性检查"]
+用户确认 cohort 后才执行。Publication alone is not registration,
+comparability or permission。用户指定 reference/comparator 与系统默认对象分开
+记录。sealed 与 competitor-isolated 数据始终排除在 reference、prior、校准、
+正式 Evidence Graph 和比较队列之外。
 
-    D --> I["独立证据对象横向比较"]
-    D --> J["多产品联合分析"]
-    I --> G["Comparison Evidence Graph"]
-    J --> G
-    G --> E["证据协调与冲突检查"]
-    E --> CR["版本化 ComparisonRecord"]
+默认 reference selection 使用一个经过审阅、内部对齐的 multi-source reference
+system：共同定义与 decision rules、逐对象 applicability checks、source/version
+traceability，以及无法消解的 genuine conflicts。它是已批准目标，不表示当前
+candidate references 已 scientifically frozen。Agent 在获批范围内检查方法分歧，
+展示实质差异，而不以多数票消解。
 
-    N2["新增产品或证据"] --> DB
-    DB -.旧比较记录保持不变.-> CR
-```
-
-可比队列分为：
-
-| 等级 | 用途 |
-| --- | --- |
-| `strictly_comparable` | ProductDefinitionCard、目标阶段、assay、sampling context、reference、prior、MeasurementSpec、ScoreContract 和算法版本一致，mandatory P0 域可用 |
-| `contextual_comparator` | 存在时间、方案或模态差异，只进行条件化解释 |
-| `reference_or_OOD` | 用于定位、特异性和拒答验证，不作为产品优劣对照 |
-
-独立评估使用冻结 reference 和方法，不受数据库中其他产品影响。联合分析可以同时包含多个可比产品，用于共享状态对齐、差异发现和稳定性检查，不改写已有产品的独立结果。
-
-不同合同版本产生的产品结果不能直接进入正式比较。选定产品必须按同一冻结合同重跑；旧 ProductEvidenceObject 和 ComparisonRecord 保持不变。
-
-比较模式包括：
-
-| `comparison_mode` | 发布条件 |
-| --- | --- |
-| `descriptive_only` | 每组只有一个独立 preparation，报告分域分数差异、效应大小和稳定性，不生成显著性或方案层面推广结论 |
-| `inferential` | 满足对应 MeasurementSpec 预注册的最小独立重复、设计和模型假设后，才发布推断统计 |
-
-正式统计以 sample/preparation 为单位。合同不一致时返回 `not_comparable`；产品、实验室、protocol 或 batch 无法区分时返回 `not_estimable`，不得将混杂效应解释为产品差异。
-
-方法在开发期完成 benchmark 和冻结；新产品运行期只检查输入适用性、数据质量和 OOD。每次比较生成新的 ComparisonRecord，旧结果不被覆盖。
+相同且适用的 measurement contract 下复用有效证据。版本或 measurement
+definition 不同则提出 alignment/recomputation 方案，说明资源并取得批准；旧结果
+保留，新结果另建版本。比较不替代 query product 的独立评估，也不形成绝对排名。
 
 ### 6.5 Evidence Graph 与冲突协调
 
-每个产品保存独立的 `CaseEvidenceGraph`，每次多产品比较生成 `ComparisonEvidenceGraph`。分析结果通过 Evidence Record 增量写入图中。
+Case/Comparison Evidence Graph 记录实体、MeasurementResult、来源、方法、
+版本、证据家族、支持、反对、missingness、uncertainty、conflict 与 reconciliation。
+同一 Evidence Family 去重；相关方法不计作独立投票。
 
-主要关系包括：
+Agent 主动查询图、识别缺口并推动 6.3 的反馈循环。停止只由预定义证据要求、
+无法补齐的 evidence gap、资格或 resource limit 触发，并说明已知、未知与原因。
+任何一项都不能由 LLM confidence 替代。
 
-- `derived_from`：结果来自哪个样本、工具、reference 或知识快照。
-- `supports` / `contradicts`：证据支持或反对哪个结论。
-- `depends_on`：结果依赖哪些上游数据或分析。
-- `same_evidence_family`：识别同源或相关证据，避免重复计数。
-- `applicable_to`：证据适用于哪些产品、状态和比较问题。
-- `missing_for`：当前结论仍缺少哪些证据。
-
-证据协调状态包括：
-
-| 状态 | 含义 |
-| --- | --- |
-| `stable` | 独立与联合结果均通过输入资格、方法适用性和校准检查，完成 evidence-family 去重后方向一致 |
-| `consensus_supported` | 初始结果存在差异，经预注册且证据家族独立的冻结方法校验后获得支持 |
-| `integration_sensitive` | 结论对联合分析或整合方法敏感 |
-| `unstable` | 冲突无法解决，停止定向比较结论 |
-
-Evidence Reconciler 根据冻结规则完成证据去重、适用性检查和冲突判断。不同方法家族的结果不能进行简单多数投票。Evidence Sufficiency Evaluator 以确定性规则整合 Data Readiness、Model Robustness 和 Prior Applicability；当前只允许 `score_state=shadow/unavailable`，未来冻结 ScoreContract 后才可引入 `available`。LLM 负责解释图中的支持、反对和缺失证据，无权修改数值、阈值或协调状态。
+默认 reference 中的真实冲突继续保留；无法协调时降级解释范围或返回
+unavailable/not_assessed。科学工具负责事实和数值，Agent 只组织问题、选择和解释。
 
 ### 6.6 Visualization Composer 与 Web 交互
 
-BRIDGE 已批准大屏和手机竖屏的结果阅读方向，并实现独立的
-`VisualizationArtifact` v0.2 数据绑定合同与 figure registry v0.1。私有 Web
-已有实际工具图表、表格预览、下载和结果导航；完整的六行产品证据概览、所有
-交互图族与 Visualization Composer 尚未全部实现。输入质量、产品目标与区域支持、发育
-阶段、非目标组成、增殖与应激信号、产品比较、证据解释、结构化报告核对和公开
-候选审阅已有 typed 静态图形；移植后样本也已有范围、上传 profile 组成及
-reference/program 两类数值分开的 typed 静态图形；细胞状态兼容图仍为
-`legacy_untyped`，并新增层级参考对应和静态状态定义证据登记两项 typed 图形。
-figure registry 当前登记 43 个组件，其中 36 个为 `typed_candidate`，7 个为
-`legacy_untyped`。以下内容是各图族后续实现必须遵守的设计合同；已存在的部分页面不代表全部交互和科学验收均已完成。
-
 #### 用户问题与默认阅读顺序
 
-使用者不需要先理解 P0 编号。默认结果页依次回答：
-
-1. 上传的数据能否支持所请求的分析；
-2. 整个细胞产品由哪些细胞和细胞状态组成；
-3. 这些身份得到多少独立来源和不同方法的支持；
-4. 目标谱系、中脑区域特征和发育阶段是否符合已审核的产品定义；
-5. 是否存在需要复核的非目标、未知、稀有、增殖或应激信号；
-6. 在可比较的前提下，不同产品、批次或时间点有何差异；
-7. 哪些解释有支持、存在冲突或仍缺证据；
-8. 下一步最值得补充什么测量或人工审核。
-
-首页使用六行“产品证据概览”：数据可用性、细胞组成与身份、目标谱系与区域支持、发育阶段相容性、非目标/未知/稀有状态，以及增殖与应激信号。每行显示文字状态、一个关键观察、分母、独立来源家族数、主要限制和证据下钻入口。不得使用综合总分、总体排名、雷达图或红绿灯式产品等级；缺失或技术上不可评估的证据显示为 `missing` 或 `unavailable`，不得画成 0。
+结果页是持续更新的 multidimensional portrait。每个维度都显示 state、
+observation、limitations 和 next action。默认先回答数据能否分析和产品包含
+什么，再回答身份/区域、发育、whole-product、proliferation/stress、证据缺口、
+条件化 comparison/graft 和下一动作。Chat 只突出 consequential findings、
+conflicts 和 necessary questions；不把技术日志重复成叙述。
 
 #### 核心图表体系
 
-下表第一列是使用者的阅读需求，只用于组织分析路径，不作为图题。正式图题必须直接描述
-所示变量、比较对象和分析范围，避免把技术质量评估表述为对整项分析的笼统可信度判断。
-
-| 使用者关注点（非图题） | 默认主图 | 需要时展开 | 证据来源 | 当前不足 |
-|---|---|---|---|---|
-| 输入数据是否满足后续分析条件 | **数据质量与分析资格评估**：声明观测数 → 结构与矩阵语义有效 → 候选 QC 状态 → 下游视图可用性 | **各 capture 的质量指标分布**；**文库复杂度与线粒体转录本比例**；**质量标记组合及细胞数量**；不同 QC view 的结果敏感性 | Input Audit & QC（P0-01） | 目前只有汇总直方图和散点图，缺逐 capture、阈值、观测流向和敏感性 |
-| 产品里有什么？ | L1/L2/L3 层级组成图，明确分开已支持、prediction set、unknown/OOD 和 unresolved，并显示区间与分母 | 可展开至每个状态、来源和观测；UMAP 只作探索，不作为身份依据 | Cell-State Evidence（P0-02） | 当前组成图缺 prediction set、区间和层级交互 |
-| 这些状态可靠吗？ | 来源 × 细胞状态证据矩阵：分别显示内部参考、Birtele、La Manno 等来源的支持、反对、冲突或不可评估 | 方法一致性矩阵、marker dot plot、校准曲线、prediction-set coverage、OOD 分布、unknown 原因 | Cell-State Evidence（P0-02） | 当前 forced-label/OOD 问题尚未被直观展示 |
-| 目标细胞和区域身份符合预期吗？ | target / acceptable adjacent / off-target / unresolved 组成图，并列具名区域状态 | 区域证据热图、reference correlation、program activity、连续身份权重、NNLS residual；空间投射仅在具备合格数据时出现 | Target Identity & Regional Fidelity（P0-03） | 已有 typed 产品组成和分来源 reference-support 图；program、residual、方法敏感性与合格空间投射仍待补充 |
-| 发育阶段合适吗？ | 申明窗口下的双分母阶段画像：完整产品和目标相关子集分开显示 | 分来源、分 assay 的 top-stage similarity summary；按实际采样点显示聚合组成 | Developmental Compatibility（P0-04） | 当前不能给单一“发育年龄”、完整阶段支持分布或连续轨迹；无数值时间轴时动态趋势必须明确为不可评估 |
-| 有没有不想要或无法解释的细胞？ | 声明分母下的产品角色与 identity-unknown 账本 | rare-state 观测与分开命名的检测边界；spike-in 检出命中率；按声明来源族展示的 OOD channel 状态 | Off-target Control（P0-05） | 已有 typed 数据、精确表格及三组确定性静态图；后续 Web 只消费这些记录，不重算科学结果 |
-| 是否存在增殖、细胞周期或应激信号？ | 按阶段和细胞状态呈现的 program 证据与复核状态矩阵，同时显示 gene coverage、适用性和证据状态 | 按方法和声明分析单位分开的 program score 摘要；G1/S/G2M phase composition 与 S/G2M score evidence | Proliferation & Stress Response（P0-06） | 已有 typed 数据、精确表格及三组确定性静态图。P0-06 的独立 exploratory_process 模式另可对选定表达视图的明确 S/G2M 基因集输出描述性分数、预测周期比例和逐细胞表；状态审阅保持 pending，独立性保持 unknown，不生成产品评估 MeasurementResult，也未增加专用 Web 构造入口或图组。当前无数值 reference envelope、ProtocolIR 时间线、数值 LOD/UCB 或 spike-in recovery curve，也无 CNV 图。表达分数与预测周期不能解释为真实增殖速率、安全性或 potency 结论 |
-| 多个批次或工艺有什么差别？ | 比较资格与混杂结构图：先显示哪些差异可以解释；再按指标展示 declared sample/preparation values、observed range、raw delta、单位和分母 | 各方法的 effect、distance、similarity 和 dispersion 分开显示；composition、program、batch/lot 距离及敏感性矩阵仅在上游提供相应记录时出现 | Product Comparison & Stability（P0-07） | 已有 typed 数据、精确表格及三组确定性静态图；observed range 不是置信区间，raw delta 暂无区间，单个 preparation 只能作描述性比较，不能排名 |
-| 为什么能得出这个判断？ | 分析域的输入、方法、参考与解释条件矩阵；当前可用的已协调结论及其证据状态 | EvidenceFamily 支持/反对/冲突关系；尚缺证据、协调排除和输入拒绝分开下钻 | Evidence Sufficiency / Compiler & Reconciler（P0-08/P0-09） | 已有 typed 图形与完整表格回退；未产生行不代表零或缺失，计数仅用于审计，不作为独立证据或证据总分 |
-| 报告能否使用或分享？ | 当前规则下的报告与结构化主张核对矩阵；报告值与引用证据对应图 | claim-content 字段投影、candidate digest 与本地文件状态、候选 artifact 状态及 artifact × 已登记检查矩阵 | Claim Verifier / Public-safe Export（P0-10/P0-11） | P0-10 有三组 typed 核对图；P0-11 有四组 typed 本地审阅图。哈希相符不验证审核者，未被已登记规则阻断也不是全面去标识化或发布许可 |
-| 有移植后数据吗？ | 移植后样本范围与当前可解释内容；上传的移植物来源转录组细胞状态组成 | 逐技术样本的参考表达谱 Spearman 相关，以及登记基因程序的平均表达与基因覆盖 | Optional Graft Assessment（P0-12） | 已有三组 typed 图与完整表格；组成分母为全部上传行，技术样本不是生物学重复，相关性不是身份概率，程序均值不代表成熟度或功能，结果不能反向改变移植前产品结论 |
-
-移植后视图始终与移植前产品证据分开，不得反向改变移植前结论。
+| 维度 | 默认问题 |
+|---|---|
+| 输入与 cell state | 数据能否分析；主要 cell classes、状态、unknown/OOD 与 unresolved 是什么 |
+| Target / regional | 目标谱系和区域证据是否符合 reviewed definition |
+| Development | 与 reviewed developmental window 是否相容 |
+| Whole product | 非目标、未知、稀有状态的完整分母是什么 |
+| Proliferation / stress | 七个 program families 哪些 measured、conflicted 或 unavailable |
+| Evidence / report | 结论有何支持、反对、缺口、声明与导出阻塞 |
+| Conditional branches | 已确认 comparison cohort 或 linked graft 能回答什么 |
 
 #### 阅读、交互与证据状态
 
-大屏采用一张主科学图、紧凑导航/筛选区和证据检查器；手机竖屏一次只显示一张主图，筛选变成 chips 或 bottom sheet，证据详情变成可恢复的 bottom drawer。必要时可为密集矩阵或证据图提供手机横屏检查模式，但竖屏本身仍必须说清主要观察。
+从任一维度都能沿本地 evidence chain 下钻：support、opposition、missingness、
+uncertainty、actual values 与 denominators、figures、methods、sources 和
+versions。页面标明 same-family dependence，并允许进入相关 Evidence Graph
+节点。关键值不能只放在 hover 中；键盘、触控与可下载表格应能获得同一信息。
 
-选择任一图形元素时必须能看到：
-
-- 精确值、numerator、denominator、单位和区间；
-- evidence state 与 scientific status；
-- 数据、reference、method、Card 和环境版本；
-- Evidence IDs 与来源家族依赖；
-- missing、conflict 和 applicability 原因；
-- 对应的结构化记录或表格行；
-- 只针对该证据的 Agent 追问入口。
-
-关键数值和限制不能只依赖 hover；tap、focus 和键盘选择必须等价。URL 只允许保存公开的 selection、tab、filter 和 drill-down ID，不得包含私有路径、sample ID 或原始 payload。
-
-颜色只能辅助文字、形状和纹理，不能独自承担状态含义：
-
-| 含义 | 视觉约定 |
-|---|---|
-| measured 或与独立来源一致的支持证据 | 低饱和 teal，并显示状态文字 |
-| 冲突或需要复核 | amber，并配冲突符号或轮廓 |
-| unknown 或 OOD | purple，并明确写出 unknown/OOD |
-| alert | vermilion，仅用于已定义的复核信号 |
-| missing 或 unavailable | cool gray；unavailable 可使用纹理 |
-| 背景或未选中内容 | neutral gray/navy |
-
-`negative`、`missing`、`unknown`、`unavailable` 和 `alert` 必须保持不同。没有触发转录组复核信号不能画成绿色“安全通过”。candidate、shadow 和 exploratory 结果在 Web 和导出中持续显示文字标记。所有 active domain 继续保持 `domain_score=null`。
+不得使用综合总分、绝对排名、雷达图或红绿灯式产品等级。missing/unavailable
+不画成 0；negative、missing、unknown、unavailable 与 alert 分开。candidate、
+shadow 和 exploratory 始终显示文字状态，所有 active domain 保持
+domain_score=null。
 
 #### 正式图形的数据绑定
 
-正式图必须由 typed、checksummed 的 visualization data artifact 生成。P0-01
-和 P0-02 当前 `ToolRun` 仍使用 byte-compatible 的 `VisualizationArtifact`
-v0.1。独立的 v0.2 合同已经实现下列追加字段，但尚未嵌入 `ToolRun`；只有在
-各图族的后续 PR 提供 package-owned data Schema、表格回退和渲染验证后，figure
-registry 才能从 `legacy_untyped` 升为 `typed_candidate`：
-
-- component 和 component-version；
-- visualization-data Schema URI、object version 和 SHA-256；
-- Evidence IDs 与 mark-to-record lookup key；
-- numerator、denominator、denominator scope、unit 和 interval semantics；
-- evidence state、scientific status、missingness 和 applicability；
-- ProductCase、ProductDefinitionCard、MeasurementSpec 和所选 DataView；
-- reference、method、environment 和 source-family 绑定；
-- 允许的 filter、selection 和 drill-down 状态；
-- 静态 render、表格 fallback、alt text 和 long description；
-- 每个 renderer 使用的 export profile、数据 hash 和配置 hash。
-
-Web/Agent 可通过 `bridge-tool figures list/show/validate` 或 Python interface
-查询组件及其迁移状态。注册本身不提升图、方法、状态或结论的科学等级。
-
-科学工具负责数值和科学状态；Visualization Composer 只负责视图变换和与 renderer 无关的 figure brief；Web 只负责布局、选择和导航，不得重算科学指标。静态 SVG/PDF/PNG 和交互 Web 必须消费同一份绑定数据并表达同一条观察和限制。在至少两个真实图族需要同一接口之前，不建立庞大的通用 chart grammar。
+正式图形消费 typed、checksummed visualization data artifact；Web 与静态导出
+使用同一数据。当前 registry 的 43 个组件（36 typed_candidate、7
+legacy_untyped）是审计记录，不是证据得分或完整交互验收。完整数据绑定和图族
+验收见[Visualization Data Contract](../plans/visualization-data-contract.md)及其
+[验证记录](validation/visualization_data_contract_20260828.md)。
 
 #### 出版、无障碍与实现顺序
 
-正式导出优先使用可编辑 SVG/PDF，PNG 只作为栅格衍生物；采用一致的 Arial/Helvetica-compatible 字体、直接标签和色盲友好配色，不使用 rainbow scale 或仅靠红绿区分。图中必须写明分母、独立实验单位数和区间定义，并同时提供机器可读表格和文字替代。固定字体、排序、尺寸和 metadata，用于确定性图像回归。
-
-组件选择按以下顺序进行：
-
-1. 优先调用当前 Tool Package Card 已声明、可绑定 `VisualizationArtifact` 的组件；
-2. 缺少组件时，查看分析工具的官方绘图接口、官方源码示例和可视化 skill；
-3. 在隔离可复现环境中检查数据绑定、尺度、标签、缺失状态、移动端和视觉质量；
-4. 未登记图形只能以 `exploratory` 展示，通过审核前不得进入正式报告。
-
-可参考 [Scanpy plotting](https://scanpy.readthedocs.io/en/latest/tutorials/plotting/core.html)、[CellRank plotting](https://cellrank.readthedocs.io/en/stable/api/plotting.html)、[LIANA](https://liana-py.readthedocs.io/en/latest/api.html)、[Squidpy](https://squidpy.readthedocs.io/en/stable/api.html)、[Vitessce](https://vitessce.io/docs/) 和 [Cytoscape.js](https://js.cytoscape.org/)，但是否采用仍取决于真实数据绑定、可复现性和任务适用性。
-
-共享 visualization data binding 和 figure registry 已先行完成。后续实现不按
-P0 编号机械排序，而按上表的使用者问题和完整图表族分别提交 PR：
-
-1. 输入数据是否满足后续分析条件；
-2. 产品里有什么；
-3. 这些状态可靠吗；
-4. 目标细胞和区域身份符合预期吗；
-5. 发育阶段合适吗；
-6. 有没有不想要或无法解释的细胞；
-7. 是否存在增殖、细胞周期或应激信号；
-8. 多个批次或工艺有什么差别；
-9. 为什么能得出这个判断；
-10. 报告能否使用或分享；
-11. 有移植后数据吗。
-
-一个图表族可以消费一个或多个 Tool Package 的结构化结果；PR 边界由用户问题、
-数据合同和完整阅读路径决定，而不是由 P0 编号决定。Web 结果页只消费已经登记
-并通过该图表族验收的组件。
-
-当前阶段先完成可独立审阅的科学分析图：确定数据编码、分母、区间、缺失状态、
-静态 SVG/PNG 和表格回退。Web 页面布局、响应式适配、交互控件与前端 renderer
-在分析图通过审核后另行实现；后续 UI 不得改变已经审核的数据语义。
-
-P0-02 继续使用现有科学工作线，不新开第二条 P0-02 分支。图形只能继承 producing tool 的证据状态，不得提升 method、state 或 claim。
-
-一个图族只有同时满足以下条件才算完成：科学问题和默认阅读路径已记录；数据 artifact 有 typed Schema、version 和 hash；missing、unknown、unavailable、conflict、alert fixture 完整；每个 mark 可追溯到结构化记录和 Evidence ID；desktop、mobile、静态导出和表格 fallback 表达同一条观察；语义断言和确定性图像检查通过；发布 artifact 仅含逻辑 ID 和批准字段；精确 Git SHA 完成可复现验证；结论不超出 producing tool 的证据。
+先验收科学问题、数据绑定、分母、区间、缺失状态、表格 fallback 和确定性静态
+SVG/PDF/PNG，再实现 Web 布局和交互。颜色不能单独表达状态；desktop、mobile、
+静态导出和机器可读表格必须表达同一观察与限制。未登记组件只作 exploratory，
+不得进入正式报告。
 
 ### 6.7 解释、建议与迭代
 
-Agent 先展示多维证据画像、主要差异、冲突和证据缺口，再收集用户可用预算、剩余样本、实验平台和时间限制。
+Agent 保持少量 competing hypotheses，并为每个假设记录支持、反对、缺失、
+区分性下一工具、预期观察和反驳条件。建议优先补足会改变决策的事实或测量，
+最多展示三项可执行 next actions；不提供未经验证的小分子剂量或处理时序。
 
-用户可以围绕任一评估域、细胞状态、图表或 Evidence Graph 节点持续追问。回答必须引用相应 Evidence ID，并区分 `measured`、`inferred`、`prior_only`、`missing` 和 `unknown`。
+方法不一致时，先确认是否属于相同定义、输入、分母和适用范围，再分别展示结果
+及其实质差异。共同输入或同源 reference 必须标注依赖，不能把方法数量当置信度。
 
-系统最多生成三项 `RecommendationCard`，覆盖：
-
-- 补全 metadata、时间点或测量。
-- 验证异常细胞状态、marker 或生物程序。
-- 提出需要减少、增强或调整的状态与过程，以及可验证的工艺假设。
-
-每项建议记录依据、反对证据、预期结果、反驳条件、可能影响的评估域和所需资源。P0 不直接提供未经验证的小分子剂量或处理时序。
-
-新结果进入系统后创建新的 Case 版本，只重跑受影响任务，并重新执行证据整合、可视化和 Claim 核验。Recommendation-Outcome Records 用于后续离线 benchmark、人工审核和版本升级，不在线自动修改评分合同。
+Agent 应主动检查可用 linked post-transplant data 的 relevance 与 eligibility，
+提出它能回答的问题和所需资源；只有用户把它纳入批准范围后才执行。graft 是独立
+后验证据，永不回填移植前评分、阈值、训练、校准或判断。
 
 ### 6.8 报告核验与发布
 
-Claim Verifier 检查：
+默认交付同时包含：
 
-- 数字、图表和结论能否追溯到 Evidence ID。
-- `negative`、`missing`、`unknown`、`unavailable` 和 `alert` 是否正确区分。
-- 产品是否满足正式比较条件。
-- `comparison_mode` 是否与独立 preparation 数量和 MeasurementSpec 一致。
-- exploratory 结果是否被错误写入正式结论。
-- 分域评估分数是否被错误表述为产品质量、临床效度或综合排名。
-- 是否包含疗效、安全性、potency、GMP 放行或其他禁止主张。
-- public-safe 输出是否包含私有路径、内部编号或受限 metadata。
+- 可下钻的 result page；
+- concise conclusion；
+- 与同一 analysis version 绑定的 downloadable full report；
+- figures、methods、sources、limitations、next actions；
+- 明确的 incomplete 和 unassessable parts。
 
-核验失败时返回 `release_blocked`。内部报告草稿可以自动生成；正式发布仍需系统外的受控授权。P0-11 只生成或核查本地候选，并记录调用方提供的 candidate digest 是否相符；它不验证授权者身份，也不执行发布。
+默认不自动 publish 或 share。Claim Verifier 检查数值/单位/状态与 Evidence ID
+对应、比较资格、exploratory 越界、禁止主张和 public-safe 字段。失败保持
+release_blocked；P0-11 只生成或审计本地候选，不验证授权身份，也不执行发布。
 
-`ProductCase`、`AnalysisPlan`、`MeasurementSpec`、`ScoreContract`、`MeasurementResult`、`ProductEvidenceObject`、`CaseEvidenceGraph`、`ComparisonEvidenceGraph`、`ComparisonRecord`、`VisualizationArtifact`、`RecommendationCard` 和 `ClaimVerificationResult` 均采用追加式版本管理；当前对外字段以 [公开 JSON Schema](../src/bridge/resources/schemas/) 为准，尚未实现的对象保持候选设计。
+事实修正先记录 change，列出受影响 dimensions、comparisons 与 report versions，
+然后提出 partial update plan。用户确认后才重算；旧版本保留，未受影响证据复用。
+这与 unchanged facts/scope 下 Agent 的自主检查明确分开。
 
 ### 6.9 P0 验收要求
 
-研究性 Web 流程交付与最终科学资格分别验收。当前流程可交付有真实来源、明确缺项和核验状态的内部草稿，但不得宣称达到下列最终科学资格。每个已实施步骤都应按 6.1.1 的用户动作与开发责任检查，报告已实现、实际运行、科学审阅和可导出的范围；缺项路径走通不等于五域测量完成。
+**当前流程验收：** 第 1–6 步在既定范围内已接受；验证记录分别说明源代码、
+安装、真实运行和科学含义。不得由此声称第 7–10 步闭环、内部 comparator 选择或
+qualified export 已完成。
 
-以下保留 P0 最终科学资格与完整产品验收要求：
+**下游目标验收：**
 
-- 至少一张 PD ProductDefinitionCard 完成湿实验专家审核，并冻结 mandatory P0 域。
-- 五个 P0 域均冻结 raw metric、分母、方向、missing behavior、`MeasurementSpec` 和 `ScoreContract`；输入充分时生成正式 `domain_score`。
-- source holdout、OOD、稀有状态 spike-in/LOD、下采样和 reference/preprocessing swap 达到预注册的分析验证标准。
-- 同一产品独立运行和进入多产品联合分析时，核心结果满足预注册稳定性要求。
-- 缺失 metadata、工具失败和 OOD 不会被解释为产品失败；不满足条件的域正确返回 `shadow` 或 `unavailable`。
-- 单 preparation 比较进入 `descriptive_only`；只有满足独立重复要求的比较进入 `inferential`。
-- Evidence Graph 能追踪来源、同源证据、冲突和缺失，多产品比较不会修改既有产品证据对象。
-- Claim Verifier 的数字复制正确率为 100%，禁止主张出现次数为 0；正式图表和结论均可追溯到 Evidence ID。
-- 三类用户入口均能完成案例确认、分析、可视化和报告流程，新证据能够触发增量重算和新的报告版本。
-- 至少一名湿实验用户和一名 Agent 实现者完成真实文档与报告走查。
+- 真实上传案例能从 reviewed facts/QC 进入完整 Step 7 核心维度，并逐项呈现
+  runnable、missing input、unavailable、measured 与限制；
+- Evidence Graph 反馈循环真实连接，工具输出经验证写回，竞争假设和解释随证据更新；
+- 默认内部 reference/comparator 系统经过审阅、对齐、适用性检查和来源版本绑定；
+- 报告页、结论与下载报告绑定同一版本，事实修正只重算受影响依赖；
+- 至少一名湿实验用户和一名 Agent 实现者完成真实 Web、证据与报告走查。
+
+**科学资格仍独立：** ProductDefinitionCard、role/window 定义、五个 domain 的
+MeasurementSpec/ScoreContract、source/modality holdout、OOD、下采样、
+reference/preprocessing sensitivity 和预注册阈值必须分别冻结并验证。重复不足
+保持 descriptive_only/not_estimable；正式 domain_score 仅在上述资格满足后
+可产生。系统不输出临床疗效、安全性、validated potency、GMP 放行或跨场景
+绝对产品排名。
 
 ## 7. 附录
 

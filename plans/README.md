@@ -4,18 +4,19 @@
 
 | Workstream | Biological goal | Current finding | Next scientific action | Status |
 |---|---|---|---|---|
-| [Repository Simplification](repository-simplification.md) | Keep the approved evidence-driven product workflow legible without changing scientific judgments | Public source and historical records are being consolidated; no new biological validation is claimed | Preserve unresolved scientific gates while retiring redundant construction records | `in_progress` |
-| [Product Evidence Validation](product-evidence-validation.md) | Complete genuine source-reviewed product assessment and a verified report | Web/protocol engineering and isolated acceptance are complete; reviewed scientific inputs and qualified report/export remain open | Finish source-state/role/window review and genuine design records, then bind measured P0-03–P0-06 inputs and accept the resulting Web/report chain | `awaiting_scientific_inputs_and_review` |
-| [P0-02 External-Source Freeze Candidate](p0-02-cell-state-scientific-freeze.md) | Determine whether reviewed fetal ventral-midbrain states can support source-aware product annotation and reject off-axis cells | Birtele is conditionally approved for source/stage-level holdout with provisional groups; all samples remain `not_estimable` as biological replicates | Review the 25 state cards one at a time, then ProductDefinitionCard and StateRoleMap | `biological_review_in_progress` |
-| [Visualization Data Contract](visualization-data-contract.md) | Let researchers inspect product composition, uncertainty and evidence provenance without turning missing evidence into zero | The shared binding and registry are complete; visualization PRs now follow researcher questions rather than P0 numeric order | Apply the contract to each complete question-led figure family | `shared_contract_active` |
-| [Tool Runtime Contract Cleanup](tool-runtime-contract-cleanup.md) | Make every packaged tool input discoverable without changing biological decisions | All 12 packages expose a versioned input contract; exact runtime helpers and shared product-context types are consolidated with compatibility preserved | Review the Draft PR and retain current scientific states | `implementation_complete_review_pending` |
-| [P0-05 Hard-count Accounting](p0-05-hard-count-accounting.md) | Preserve whole-view reference-support counts when assignment mass is unavailable | Count-only route and installed-wheel checks complete; existing modes remain supported | Review the module PR and genuine design records; do not interpret counts as probabilities | `implementation_complete_review_pending` |
-| [P0-06 Source-bound Observations](p0-06-unresolved-observations.md) | Preserve unresolved producer observations in whole-product expression summaries | Source-bound route and installed-wheel checks complete; existing modes remain supported | Review the module PR and bind genuine source artifacts and design records | `implementation_complete_review_pending` |
+| [Repository Simplification](repository-simplification.md) | Keep the approved evidence-driven workflow legible without changing scientific judgments | Public documentation and completed construction records are being consolidated; no biological validation is claimed | Preserve the canonical workflow and unresolved scientific gates while retiring redundant diaries | `in_progress` |
+| [Product Evidence Validation](product-evidence-validation.md) | Complete genuine source-reviewed product assessment and a verified report | Intake/QC/protocol engineering is accepted in its bounded scope; qualified downstream product evidence and export remain open | Finish state/role/window review, bind measured P0-03–P0-06 inputs and accept the graph/report chain | `awaiting_scientific_inputs_and_review` |
+| [P0-02 External-Source Freeze Candidate](p0-02-cell-state-scientific-freeze.md) | Determine whether reviewed fetal ventral-midbrain states support source-aware annotation and off-axis rejection | Birtele is conditionally approved for source/stage holdout; all samples remain not_estimable as biological replicates | Review the 25 state cards, then ProductDefinitionCard and StateRoleMap | `biological_review_in_progress` |
+| [Visualization Data Contract](visualization-data-contract.md) | Inspect composition, uncertainty and provenance without turning missing evidence into zero | Shared binding and registry are complete; figure families remain question-led | Apply the contract to each complete researcher-question figure family | `shared_contract_active` |
 
 ## Rules
 
-Complex changes use one branch-scoped plan under `plans/`. The plan path is the stable identity for that task and appears only once in this index; an existing plan is resumed or handed off rather than overwritten.
+Complex changes use one branch-scoped plan under plans/. The plan path is its
+stable identity and appears once in this index. Stable facts belong in docs/;
+plans describe only unfinished work and must not claim proposed behavior is
+implemented.
 
-Each plan records motivation, scope, non-goals, frozen interfaces, tasks, validation, decisions and unresolved risks. Stable facts belong in `docs/`; plans must not claim that proposed work is already implemented.
-
-A Draft PR may keep an `in_progress` plan when real-data or human-review gates remain open. Before a PR becomes ready to merge, record final evidence and either complete the plan or split every remaining item into an explicit follow-up plan. Completed plans are removed from this index; their implementation and verification history remains in Git.
+A Draft PR may keep an in-progress plan. Before work is ready to merge, record
+final evidence and carry every unresolved item into an explicit active plan.
+Completed construction diaries leave this index and active tree after unique
+facts and validation evidence are retained; their chronology remains in Git.

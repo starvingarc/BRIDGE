@@ -1,99 +1,54 @@
 # Web preview
 
-BRIDGE has a private, single-operator conversational preview. Upload an H5AD,
-review a readable product-intake draft, confirm its facts, then prepare and
-separately approve the next eligible analysis stage. The right-hand **评估概览**
-presents product facts and evidence questions; actual figures, tables and
-downloads remain in adjacent tabs.
+BRIDGE has a private, single-operator conversational preview. It supports the
+first six steps of the canonical [PRD workflow](BRIDGE_PRD.md#61-agent-总体工作流)
+within their accepted scope: research question, materials, necessary questions,
+source-backed fact confirmation, scoped plan/resource approval and QC. Uploaded
+protocols can be represented and reviewed under the approved BPL design.
 
-This page describes the current source implementation, not a guarantee that an
-already running instance includes every repair. The [integration plan](../plans/web-full-chain-integration.md#current-progress-2026-09-08)
-separates implemented changes, installed acceptance and genuine execution coverage.
+This current scope does not provide the complete downstream graph-driven
+research loop, internal comparator selection or qualified report/export.
+Twelve packages are reachable through contract-driven inputs and separate
+approval, but access is not automatic scientific-object construction or
+end-to-end product qualification. Public documentation describes source
+behavior and public-safe evidence; it does not disclose or certify a particular
+private deployment.
 
-| Web stage | Required context | Current scope |
+| Current path | What it establishes | What it does not establish |
 |---|---|---|
-| P0-01 input QC | Uploaded H5AD and explicit assay/raw-count declarations | Input quality and readiness evidence |
-| P0-02 cell-state evidence | Completed canonical QC, a privately supplied source-family reference and configured candidate reference resources | Existing raw-count-compatible candidate analysis; not guaranteed to produce a V3 result |
-| P0-03–P0-11 | A selected current tool mode and its required scientific objects; compatible results from this conversation can be reused | Contract-driven input selection, eligibility, separate approval and normal tool execution |
-| P0-12 graft assessment | Explicit no-graft declaration, or the selected mode's supplied graft metadata/resources | Independent no-graft, supplied-evidence or expression path; no backfill into product evidence |
+| Intake and protocol review | Source-bound draft facts, explicit user confirmation and versioned BPL review | Product identity, experiment execution or complete semantic validation |
+| P0-01 QC | Input structure, declared matrix semantics, observed QC evidence and updated eligibility | Product quality, complete filtering or downstream domain evidence |
+| P0-02 cell-state path | Candidate source-aware cell-state evidence when configured inputs are eligible | Reviewed product roles, purity or released assignment |
+| P0-03–P0-11 input panel | Contract discovery, explicit registration, plan approval and normal execution | Automatic construction of every prerequisite or a connected feedback loop |
+| P0-12 | Explicit no-graft or supplied eligible graft modes | Graft evidence from an absence record or pre-transplant backfill |
 
-All 12 P0 packages share the Web input, planning and approval route as well as
-their CLI/SDK. This is tool access, not automatic authorship of every scientific
-input or proof that a complete product-evaluation chain has run. The source
-backend now supports reviewable, source-backed product-definition/role candidates
-and optional regional/development candidates. Exact confirmation creates draft
-objects through the existing registration route. Inline cards expose candidate
-sources, unknowns, editable choices and exact confirmation. A revision creates a
-new pending draft and cannot approve analysis. Superseded and confirmed cards
-always display their recorded server candidate, not local edits from a newer
-version. The confirmed card lists later
-stages and offers a separately approved P0-08 missingness check. This narrow
-check supplies the confirmed ProductCase and five unmeasured domains to the
-package-owned gate; it does not reinterpret old QC/cell-state outputs as matched
-domain measurements. If measured domain runs exist, it refuses this shortcut.
-From that same verified missingness result, the card can separately prepare
-candidate evidence compilation and an internal research report for actual claim
-verification. The current report retains five unassessed domains and a blocked
-release result; see the evidence/report construction boundary below.
-Draft requests enforce one label level, one matching source per choice and
-consistent regional numerator/denominator sets. Shape/source validation permits
-one purpose-scoped correction with an error code; invalid values are not accepted
-or repeated as conversation history. Two invalid responses leave no draft, and
-network/provider failures are not retried by this correction path.
-Full measured prerequisite, protocol, comparison and qualified-report construction remain open;
-installed acceptance is recorded separately in the active plan. The advanced
-panel still accepts supplied scientific objects and reuses compatible results.
-Missing sample design, reference contracts and composition weights are not invented. A connected tool can remain `needs_input` until its named roles are supplied.
-Choosing a mode does not mean its remaining inputs exist: model context includes
-package-owned mode IDs and required role names, without selected values or
-scientific payloads. Actual eligibility is still checked before approval.
+The bounded candidate card can materialize source-backed product/role and
+optional regional/development candidates after exact confirmation. A separate
+missingness-only P0-08 path can compile candidate missing requirements through
+P0-09 and build an internal P0-10 draft whose actual release state remains
+blocked. It creates no domain MeasurementResult and offers no qualified export.
 
-Inline questions add application-owned unknown and free-text answers. A single
-model-supplied option with reserved ID `unknown` is shape-validated and deduplicated;
-there must still be two to four valid substantive choices. Other invalid factual
-IDs remain errors, and submitting answers only stages a private fact draft.
-
-H5AD uploads are limited to 128 MiB per file and eight files per conversation.
-The HDF5 structure is checked before planning. Initial chat facts use a typed
-`propose_intake` action and the same exact confirmation card as the private
-product form; chat text is never parsed into committed counts or assay facts.
-**Analysis inputs** also accepts an explicit compatible
-matrix/input-level declaration and bounded metadata. The advanced metadata JSON
-accepts `sample_id_column` and `capture_id_column` for existing `obs` columns,
-and `gene_symbol_column` for an existing `var` column. These selectors reach
-P0-01/P0-02 unchanged after confirmation; they do not infer sample relationships
-or generate gene annotations. Selecting normalized input never normalizes or
-rewrites the matrix. Scientific JSON objects are limited to
-2 MiB each and 128 registrations per conversation. No metadata table is
-automatically joined or treated as verified sample design.
+Uploads are limited to eight H5AD files per conversation and 128 MiB per file.
+Scientific JSON objects are limited to 2 MiB each and 128 registrations per
+conversation. The server checks HDF5 structure and uses explicit assay, matrix
+and metadata declarations; it does not infer sample relationships, join an
+unreviewed metadata table or rewrite normalized input.
 
 ## Table previews and downloads
 
-Registered Parquet tables have a read-only preview in **Tables**, including older
-artifacts labeled `application/octet-stream` with a `.parquet` filename. The
-server verifies the same session, private file and checksum as the original
-download before decoding an immutable snapshot.
+Registered Parquet tables have a checksum-verified, read-only preview. It shows
+at most 100 rows and 24 columns, accepts at most 8 MiB of stored Parquet bytes
+and 32 MiB of declared uncompressed row-group data, and emits at most 200,000
+bytes of preview JSON. Text cells are visibly truncated after 1,000 characters.
 
-A preview shows at most 100 rows and 24 columns. It accepts at most 8 MiB of
-stored Parquet bytes, at most 32 MiB of declared uncompressed data in the row
-groups read, and at most 200,000 bytes of encoded preview JSON. Text cells are
-limited to 1,000 characters with a visible truncation marker. Table shape and
-truncation are displayed explicitly; a preview is not the complete dataset.
-
-CSV, TSV and JSON retain bounded text previews. Invalid, unsupported or
-over-limit binary content, including unsupported Parquet cell types or an
-unavailable optional PyArrow runtime, shows a download fallback rather than
-binary text. Null and non-finite values are not replaced with zero. Integers and
-integral-valued floats outside JavaScript's safe integer range use exact,
-round-trippable display strings so browser parsing cannot silently change them.
-Original downloads keep their exact registered bytes and checksum. Previewing does not
-run analysis, alter scientific evidence, send rows to the model or grant export
-authority.
+Unsupported or over-limit content falls back to download. Null and non-finite
+values are not replaced with zero; large integers use exact display strings.
+The original download keeps its registered bytes and checksum. Previewing does
+not run analysis, send rows to the model or grant export authority.
 
 ## Start a private instance
 
-Use Python 3.12 and Node.js 22. Install the optional service dependencies and
-build the client:
+Use Python 3.12 and Node.js 22:
 
 ~~~bash
 python -m pip install ".[qc,web]"
@@ -101,444 +56,137 @@ npm --prefix web ci
 npm --prefix web run build
 ~~~
 
-Configure the service outside the checkout. Keep credentials in an
-operator-owned private environment file, never in Git or the browser bundle.
+Configure the service outside the checkout. Credentials remain server-side and
+must never enter Git, browser bundles or public evidence.
 
 | Setting | Meaning |
 |---|---|
-| `BRIDGE_WEB_STORAGE` | Absolute private directory for sessions, uploads, plans and workflow evidence |
-| `BRIDGE_WEB_TOKEN` | Random operator login secret, at least 24 characters |
-| `BRIDGE_WEB_MODEL_BASE_URL` | OpenAI-compatible provider base URL; use HTTPS for external providers |
-| `BRIDGE_WEB_MODEL` | Provider model identifier |
-| `BRIDGE_WEB_MODEL_API_KEY` | Server-only provider credential |
-| `BRIDGE_WEB_MODEL_ACTION_PROTOCOL` | Explicit action protocol: `json` (default) or `deepseek_tools`; other values fail startup |
-| `BRIDGE_WEB_STATIC_DIR` | Absolute path to the built `web/dist` directory |
-| `BRIDGE_WEB_ORIGIN` | Exact browser origin; defaults to `http://127.0.0.1:8765` |
-| `BRIDGE_WEB_PORT` | Loopback port; defaults to `8765` |
-| `BRIDGE_WEB_TRUSTED_ANCESTORS` | Optional startup-only JSON mapping from explicitly approved ancestor paths to `[uid, device, inode]` pins |
-| `BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF` | Optional registered MeasurementSpec for P0-02; no biological default is selected |
-| `BRIDGE_WEB_SHARE_RESULT_SUMMARIES` | Optional owner-authorized aggregate interpretation: exactly `1` enables, unset or `0` disables; all other values fail startup |
-| `BRIDGE_WEB_PROTOCOL_COMPILER_PYTHON` | Optional absolute Python path for the separately installed, source-pinned BPL 2.4.0 runtime; never supplied by the model or browser |
+| BRIDGE_WEB_STORAGE | Absolute private session, upload and workflow storage |
+| BRIDGE_WEB_TOKEN | Operator login secret of at least 24 characters |
+| BRIDGE_WEB_MODEL_BASE_URL / BRIDGE_WEB_MODEL | Configured OpenAI-compatible provider |
+| BRIDGE_WEB_MODEL_API_KEY | Server-only provider credential |
+| BRIDGE_WEB_MODEL_ACTION_PROTOCOL | Explicit json or deepseek_tools protocol; other values fail startup |
+| BRIDGE_WEB_STATIC_DIR | Built web/dist directory |
+| BRIDGE_WEB_ORIGIN / BRIDGE_WEB_PORT | Exact browser origin and loopback port |
+| BRIDGE_WEB_TRUSTED_ANCESTORS | Optional startup-only approved ancestor identity pins |
+| BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF | Optional registered P0-02 MeasurementSpec; no scientific default |
+| BRIDGE_WEB_SHARE_RESULT_SUMMARIES | Exactly 1 enables owner-authorized bounded summaries; unset/0 disables |
+| BRIDGE_WEB_PROTOCOL_COMPILER_PYTHON | Optional source-pinned BPL 2.4.0 runtime |
 
-The default `json` protocol requires chat-completions JSON mode through
-`response_format: {"type": "json_object"}`. It requests one typed JSON action
-without native tool definitions; ordinary explanations use `reply.text`.
-Malformed prose, XML/DSML, empty content and incomplete actions fail closed. See
-the [DeepSeek JSON Output guide](https://api-docs.deepseek.com/guides/json_mode/).
+The default json protocol requires one typed JSON action. deepseek_tools uses
+the same validated application actions through native function definitions.
+Malformed, mixed or unsupported responses fail closed. Model output can prepare
+an unapproved plan but cannot approve or execute it. Exact package eligibility
+is always checked locally.
 
-Operators may explicitly select `deepseek_tools` for a compatible configured
-provider. This sends eight actions (`reply`, `review_inputs`,
-`prepare_qc`, `propose_intake`, `prepare_analysis`, `ask_user_input`,
-`draft_scientific_inputs`, `propose_scientific_inputs`) as native function definitions,
-requires one function call, disables thinking and omits JSON response mode.
-Both protocols retain the same Action validation, guidance and sharing boundary.
-Ordinary replies have an 1,800-token limit; the separate bounded scientific
-candidate request allows 6,000 tokens. Native responses must have exactly the required
-arguments and no non-whitespace text outside the call. The service does not guess
-a protocol, retry with another parser or execute functions from model text:
-preparation actions still create unapproved plans and require exact user approval.
-
-P0-02 also requires the toolkit's existing reference configuration and permitted
-candidate resources. A nonblank MeasurementSpec ID is insufficient: capability
-checks inspect the registered spec, reference artifacts and canonical QC receipt.
-The service maintains its private QC catalog; operators do not copy presentation
-JSON into that catalog. Missing configuration is shown as `needs_input`.
-
-For a saved P0-02 selection, the server reuses verified canonical QC from the
-exact selected upload and the upload's separately confirmed source field. It
-preserves the original matrix declaration and derives internal QC profile,
-DataView and parent-checksum bindings without asking the user to enter them.
-Readiness checks do not register or alter QC catalog entries. The selected
-MeasurementSpec remains explicit; an omitted selection is not replaced by the
-configured default. Missing, stale or altered QC remains an input blocker.
-
-With these variables supplied by the deployment environment:
-
-~~~bash
-python -m bridge.web
-~~~
-
-The service binds to loopback. Access it through an authenticated encrypted
-tunnel or an operator-managed HTTPS reverse proxy. Do not expose it as an
-unauthenticated public service. It is not a multi-user authorization system.
-
-The default private-path policy accepts root-owned or operator-owned safe
-ancestors and requires operator-owned private leaves. A shared mount owned by
-another administrator requires explicit trust approval and exact identity
-pins. Configure this before private I/O; changing trust requires a restart.
-The setting does not relax symlink, replacement, writable-ancestor or
-private-leaf checks. See [privacy and provenance](privacy-and-provenance.md).
+The service may be started with the documented bridge.web entry point. Operators
+must verify the installed package, built client and configured dependencies for
+their own deployment; repository source status is not a deployment receipt.
 
 ## A typical conversation
 
-1. Log in with the operator token and create an analysis.
-2. Upload an H5AD. The browser lists the accepted file; the service stores a
-   checksummed copy under a generated identity.
-3. In **产品资料**, the file metadata is read first. The active browser starts a
-   separate semantic-extraction request before showing missing questions. The
-   editable summary distinguishes direct metadata, model extraction and user
-   answers. Known culture days and per-sample days are not asked again.
-   Optionally upload a PDF, DOCX, TXT or Markdown differentiation protocol
-   (up to 25 MiB). Its source-cited stages describe the prescribed procedure,
-   not proof of this sample's actual execution. Scanned PDFs need extractable text.
-   Answer one consequential missing/conflicting item at a time: intended target
-   cell type, target stage, cell/nucleus assay and dataset-bound culture semantics are
-   consumed by the current scientific-intent/data flow. Other is last and accepts
-   free text. The target choice defaults to **midbrain dopaminergic lineage cells**
-   (or Other), not a forced progenitor-versus-neuron choice. Selecting a lineage
-   does not set the developmental stage; that is separate sample/protocol intent.
-   This distinction does not declare every stage clinically suitable or alter
-   scientific product/state-role criteria. Starting cells, cell-line names, culture days and detailed library
-   methods remain extractable/editable metadata, not automatic questions merely
-   because they are absent. Conflicts in those optional fields remain unresolved
-   in the private source record without forcing a reply. Answers are saved drafts,
-   not automatic confirmation.
-   The culture question names a candidate observation column and bounded example
-   values, asking whether each value represents an independently cultured batch.
-   Sample/capture aliases with identical values are not offered again after rejection.
-   A negative answer requests another actual column or a free-text mapping; an
-   uncertain answer leaves the culture count missing. Only explicit independence
-   confirmation plus a complete, nonmissing column derives a count. The selected
-   column and meaning remain bound to the checksummed upload and answer revision.
-   Rechecking a column retracts the earlier derived count until reconfirmation.
-   Free-text mappings remain unstructured drafts, not automatically parsed units.
-   The named-column meaning question also offers **其他（自定义输入）**. Its text
-   stays visible and editable as a source-bound supplement, with meaning and count
-   unknown; even text matching a predefined role is not interpreted as that role.
-   Rechecking the column or choosing a predefined meaning removes the old supplement.
-   Existing answers are unchanged until the researcher explicitly edits them.
-4. Click **核对当前资料**, inspect the exact before/after card and click **确认资料**.
-   This commits facts only. Then click **生成下一阶段计划** and separately approve
-   that plan's exact digest in the conversation.
-5. Inspect the six evidence questions and actual figures, tables, evidence and
-   downloads. Refreshing restores the session; valid canonical QC is reused for
-   ordinary follow-up conversation without a duplicate proposal.
-6. To continue with supported hPSC-mDA cell-state analysis, supply the actual
-   source-family reference in the private product form (or advanced input form).
-   The intake route displays and uses the configured analysis specification for
-   the exact selected upload. Confirm source/product changes before preparing
-   and separately approving this new stage. Existing cell-state history prompts
-   an input/result review instead of automatically rerunning it.
-7. If no graft data are available, explicitly say so and request that this be
-   recorded. P0-12 receives no expression assets or structured inputs in this
-   mode; the original upload supplies product planning context only.
-8. Open **Stage history** to inspect previous plans and per-step outcomes. Ask
-   follow-up questions or refresh the page; prior results are retained.
+The complete ten-step product behavior is specified only in
+[PRD section 6.1](BRIDGE_PRD.md#61-agent-总体工作流). The current accepted preview
+covers:
 
-Each proposed stage has its own exact approval. Changing source information or
-sending another message invalidates an unapproved proposal. Completed evidence
-is retained, not rewritten. `partial`, `blocked` and `cancelled` are displayed
-separately from successful execution. Older sessions without canonical QC
-receipts must run QC again before proceeding to P0-02.
+1. The researcher states the question and uploads material.
+2. Deterministic extraction records observable structure separately from claims.
+3. The Agent asks only necessary questions and can retain unknown.
+4. The researcher reviews a concise sourced fact summary, together or fact by
+   fact. Absent facts, explicit-but-unparseable facts, conflict and uncertainty
+   remain distinct.
+5. The researcher confirms question, overall scope, resource ceiling, stop
+   conditions and an exact unapproved plan; approval is a separate action.
+6. P0-01 returns actual QC observations, denominators, limitations and revised
+   eligibility. Work continues autonomously only inside unchanged approval.
 
-The product-intake draft is private Web context, not a formal
-`ProductDefinitionCard`, reviewed state-role map or `ProductCase`. It materializes
-only compatible existing asset declarations after exact confirmation. General
-candidate authoring is limited to the separate source-backed scientific-draft flow
-described above. It does not supply every downstream prerequisite or report rule.
-The six-question roadmap is prospective and marks missing evidence explicitly;
-it is not a completed report or a plan to run all 12 tools. Comparison and
-post-transplant graft evidence are not prerequisites for beginning pre-transplant QC.
+Product-only or source-only corrections can preserve compatible QC. Assay,
+matrix or QC-relevant metadata changes invalidate the binding. Old versions and
+receipts remain traceable; the server never rehabilitates corrupt historical
+evidence by silently substituting a newer run.
 
-The structure readout uses a checksummed registered upload. A private intake
-projection additionally reads selected experimental metadata from obs/var/uns,
-retains bounded per-sample day summaries locally, and presents source-labelled
-draft fields. It never infers independent cultures from unconfirmed sample counts, target
-identity from cell annotations, or counts provenance from integer values.
-The new purpose-limited extraction request receives bounded semantic summaries
-and protocol passages, not expression, raw rows, sample/capture identifiers,
-gene/barcode values, private paths or provenance hashes. Ordinary conversation
-still receives only per-upload confirmation state and missing-field names, not
-private answers. Source summaries may be incomplete; failed or stopped model
-extraction retains direct metadata and offers an explicit retry.
-The source implementation also supports a separate per-attachment protocol
-review. When the optional compiler runtime is configured, new protocol uploads
-produce BPL proposals through the existing configured provider. Old attachments
-require explicit initiation. The review is accessible before or after product
-fact confirmation, with one consequential question at a time, Other/unsure
-answers, source excerpts, revision-bound editing and append-only history.
-Suggested choices require verbatim source support; questions without explicit
-source alternatives remain free-text/unsure questions. A bounded repair identifies
-unsupported alternatives without relaxing source validation or changing steps.
-The model supplies ordered source-backed body fragments, not a full BPL program
-or independently counted lines. The server assembles the complete program and
-derives exact physical spans, including repeated and multiline fragments.
-Each fragment must be lexically closed and delimiter-balanced; source steps
-cannot share an unfinished string, comment or call. The fixed compiler requires
-call arguments/maps/lists on a single physical line, unlike complete statements
-or quoted source text. The server normalizes only expression-formatting newlines
-to spaces before deriving spans; it preserves non-whitespace symbols, protected
-strings/comments and line-comment terminators. Other invalid syntax still goes
-through the existing bounded compiler-repair path.
-Repair responses use a closed patch schema for existing fragments, question
-options and add-only source references. Failed syntax/compiler checks are required
-to permit fragment changes; after they pass, only rejected options, missing
-existing references or an explicitly requested source review may change. Source additions retain prior citations in order
-and cannot change code, readable content or source text. Numeric source failures
-identify the owning step, value and unit; patched drafts undergo all source checks.
-Unparsed wait durations without an outstanding question trigger a separate source
-review inside that same bounded generation. A review adds a source-backed question
-or supplies a verbatim cited duration/end condition; it cannot edit existing
-questions or successfully compiled BPL. Reviews bind the owning step and exact
-server-supplied diagnostic line and column; distinct calls on one physical line
-remain separate review targets. A known wait cannot resolve another wait in the
-same fragment. Unknown/duplicate targets and unsupported excerpts are rejected. An omitted review does not silently publish a
-complete version. Source accounting also requires every active non-unsure user
-answer to be cited by a step; storing an answer alone cannot complete an unchanged,
-unreferenced placeholder. Generation is instructed to represent that answer in
-readable content and BPL, but citations alone do not prove semantic incorporation.
-Explicit unsure remains unresolved without repeat questioning. The proposal schema
-lists only supplied protocol IDs as exclusion choices; user answers are retained
-separately and cannot be placed in that list.
-The compiler warning describes inability to parse, not proof of an absent source
-value; this model review remains distinct from human review and semantic proof.
-The server reassembles code and spans
-together after every fragment patch. The server retains step IDs,
-readable operations, source links, questions and exclusions from the initial draft;
-unknown/duplicate repair targets and semantic fields are rejected. Each private
-attempt retains the bounded provider response before parsing/application, including
-rejected replies, separately from any applied patch and reconstructed draft.
-The 1 MiB decoded-body cap, captured byte count/hash, HTTP status and explicit
-truncation state distinguish complete replies from partial prefixes; request
-headers are never retained. A rejected reply preserves the last draft's compiler
-diagnostics for the remaining repair request. Raw receipts are not public or
-fed back to the model. Installed actual-model acceptance remains a separate
-merge gate in the integration plan.
-Exact product-fact confirmation retires earlier draft overrides, while a newer
-manual answer still requires separate confirmation.
-
-Syntax, compiler exit status, source accounting and human review are separate
-labels. The pinned public compiler can return success while defaulting wait
-duration, mapping an unsupported volume incorrectly, omitting control-flow
-statements or representing a call as HumanStep. Those limitations remain visible;
-the readable UI uses source-linked steps, not altered/defaulted compiler values.
-Neither "compiler returned success" nor complete passage accounting means the
-protocol is biologically valid or actually executed. A saved review acknowledges
-this representation and its limits, not experiment completion.
-
-BPL and checked artifacts can be downloaded within the authenticated session.
-An answer/edit creates a new unreviewed version; the old review is retained only
-with its original digest. Failed generation keeps the last complete version.
-Raw code/check records stay expandable. This source capability is not evidence
-that a selected preview has been upgraded; exact installed/model/browser coverage
-is recorded in Task 37 of the integration plan.
-
-The separate scientific-draft
-request shares only the three approved confirmed product-intent fields; see
-[privacy and provenance](privacy-and-provenance.md#scientific-draft-purpose). Facts independently entered in chat remain
-ordinary conversation content. Culture counts do not generate biological-unit
-mappings or attestations. Confirmed intake with an unknown or unsupported product
-family permits generic QC, but does not authorize the hPSC-mDA-specific P0-02
-reference path.
-
-Confirmed product-only or source-only edits preserve otherwise valid QC.
-Assay, matrix or QC-relevant metadata changes invalidate its binding; retracting
-raw-count semantics removes the executable raw-count declaration. Advanced input
-edits make the product record stale, and its next display merges the newer
-confirmed asset/source facts for explicit reconfirmation. History is retained.
-Corrupt or missing historical QC blocks chat reuse rather than being repaired
-or silently replaced. Deliberate advanced-panel reruns remain available.
+Protocol review follows the
+[approved BPL design](superpowers/specs/2026-09-09-protocol-bpl-design.md).
+The model proposes source-backed fragments; the server assembles one
+authoritative representation and runs a fixed compiler under limits. Source
+coverage, compiler status, human review and biological meaning are separate.
+Unknown or ambiguous source facts stay unresolved; a compiler default is never
+accepted as the missing experimental value.
 
 ## Stop and input corrections
 
-Use **Stop** while the Agent is thinking, an analysis is running or a plan awaits
-approval. The stop is acknowledged immediately and fences subsequent work. A
-non-interruptible tool step already in progress may finish; **Stopping…** remains
-visible while it settles. Its actual outcome and artifacts are retained. A late
-model reply cannot recreate a stopped plan. Stopping does not retract inputs.
+Stop fences subsequent model/planning work. A non-interruptible tool step may
+finish; its actual outcome remains recorded. Stopping does not retract inputs.
 
-Ordinary chat does not edit committed declarations. A requested correction
-pauses subsequent planning and approval and asks the operator to review inputs.
-Use the existing private forms to **Stage declaration** or **Stage change**.
-The confirmation card shows exact before/after values:
+Ordinary chat does not edit committed declarations. A correction opens an exact
+before/after review:
 
-- **Confirm change** applies only the displayed ID/digest-bound change.
-- **Discard change** drops that proposal. A separate unresolved chat correction
-  still requires review.
-- **Keep current inputs** explicitly resolves a review with no proposed edit.
+- Confirm change applies only the displayed ID/digest-bound proposal.
+- Discard change drops that proposal.
+- Keep current inputs explicitly resolves review without an edit.
 
-None of these actions approves or starts analysis. Stale confirmations are
-rejected, and old plan approvals do not revive. A confirmed matrix/assay or
-QC-relevant metadata change requires fresh QC; a source-family-only update
-preserves otherwise valid canonical QC. Old sessions use saved exact declarations,
-not reinterpretations of later chat. Ambiguous legacy state asks for review;
-keeping current declarations cannot rehabilitate an invalid historical QC receipt.
-
-Counts declarations do not establish sample, capture, preparation or batch
-relationships. Unknown biological design remains unknown. A successful tool
-run can still have limited readiness or unavailable measurements.
+None approves analysis. Fact corrections first expose affected dimensions,
+comparisons and report versions, then propose a partial update. Recompute occurs
+only after confirmation; unaffected evidence is reused and previous versions
+remain available. This is separate from autonomous checks under unchanged facts,
+scope and resources.
 
 ## Analysis inputs
 
-Expand **Analysis inputs** when a stage needs additional context:
+When a stage needs more context, the operator:
 
-1. Select a tool and one of its current modes. Required roles, accepted Schemas,
-   versions and cardinalities come from its packaged input contract.
-2. Select compatible objects already supplied, package-owned resources, configured
-   reference objects or canonical results produced in this conversation.
-3. Upload missing scientific objects into the named roles. These are versioned
-   scientific inputs, not executable requests. Stage any selected H5AD's assay,
-   matrix semantics and factual metadata, then confirm the displayed changes.
-4. Save the selection, then prepare a plan. Review and approve its exact digest
-   before execution. A chat request for that tool uses the same saved selection.
+1. selects a registered tool and current mode;
+2. selects compatible supplied, system-owned or canonical prior objects;
+3. registers missing scientific objects in their named roles;
+4. saves the selection, prepares a plan and separately approves its digest.
 
-Schema and object version belong to the input wrapper; a scientific payload
-need not repeat them. Choose the accepted Schema/version without adding fields
-to the object. Some scientific objects also contain request-local input IDs:
-register their dependencies first, then use the returned opaque IDs in the
-supplied binding fields. The Web layer does not guess these links from filenames.
+Schemas, role cardinality and eligibility come from the installed package. The
+server owns request IDs, versions, paths, checksums and output directories.
+The panel accepts no command, arbitrary parameter or raw ToolRequest, and it
+does not invent role rules, soft mass, comparison design or report claims.
 
-The server owns request IDs, tool versions, paths, checksums and output directories.
-The panel does not accept commands, arbitrary parameters or a raw ToolRequest.
-Scientific objects retain their supplied content and state. Existing package
-eligibility and release-authority checks still apply.
-
-Ordinary JSON uploads cannot point at server files. Supported file descriptors use
-opaque `upload:<id>` or `artifact:<id>` references to this conversation; the server
-resolves and checks the actual dependency. Case/comparison graph manifests must
-come from a verified canonical tool run, with their backing artifact bundle intact.
-Unsupported file-bearing resources remain explicitly blocked.
-
-P0-06 `method_runtime_source_bound` accepts one additional descriptor in
-`process_method_input` v0.2 (object version `0.2.0`):
-
-| Direct field under `source_observations` | Paired checksum | Canonical artifact kind |
-|---|---|---|
-| `artifact_manifest_path` | `artifact_manifest_sha256` | `manifest` |
-| `evidence_path` | `evidence_sha256` | `cell_state_evidence` |
-
-Both locators must use `artifact:<id>` from the same conversation and P0-02
-receipt. The checksum key is required; a null or empty value asks the server to
-bind the actual digest, while an incorrect or non-string value is rejected.
-The server rechecks both files and their receipt before use. Other provenance
-fields remain caller-supplied and are checked by normal P0-06 eligibility.
-These named locators are not accepted in other roles or Schemas; raw paths,
-URLs, upload IDs and mixed producer receipts are rejected. The existing plain
-`path` convention for graft uploads and export audit remains unchanged.
-
-The P0-08 gate rule and P0-10 policy/statement registry are package-owned options.
-Reference objects may be drawn from the already configured P0-02 snapshot;
-availability does not establish scientific validation. No new reference catalog
-or scientific default is selected by the Web layer.
-
-This panel does not invent P0-05 soft mass, domain-gate requirements, comparison
-design or report claims. Supplied ReportDrafts remain subject to P0-10's exact
-renderer/authority/content checks. Graft and comparison are independent branches.
-A P0-11 local candidate export is not a network upload or publication approval.
-The source-backed card can now prepare P0-09 from its own verified missingness-only
-P0-08 receipt. A versioned tool-package factory constructs five descriptive
-candidate claims, one unreviewed shared-source family and candidate reconciliation
-rules from the confirmed case and definition. It creates five open requirements,
-not MeasurementResults or independence evidence; it uses no test-fixture policy.
-P0-10 preparation builds a case-bound internal draft and binds the genuine graph
-manifest plus the existing approved policy/statement registry. The current release
-contract does not support availability claims and does not approve this renderer:
-the actual verifier therefore returns release_blocked, which the card displays
-with next steps. No release policy is relaxed and no export control is offered.
-Preparation, approval and display recheck the owned inputs and upstream receipts;
-corruption/source changes invalidate use without rewriting completed evidence.
-The bounded private report projection contains plain text and actual verification
-states, not raw matrices, paths or hashes. It is not added to model context.
+Canonical graph manifests must come from verified tool runs. P0-08 and P0-10
+policies use package-owned options. Comparison and graft are independent
+branches. P0-11 creates or audits a local candidate; it is not a network upload,
+publication action or approval.
 
 ## Interface and ownership
 
-The React client uses [assistant-ui's external store runtime](https://www.assistant-ui.com/docs/runtimes/custom/external-store).
-The server owns session state, approvals and tool execution; assistant-ui does
-not act as a second workflow engine.
+The server owns authentication, session state, exact approvals, artifacts and
+tool execution. The React client renders that state; it is not a second workflow
+engine.
 
-| Route | Purpose |
+| Route group | Responsibility |
 |---|---|
-| `POST /api/login`, `POST /api/logout` | Establish or revoke the operator cookie |
-| `GET /api/sessions`, `POST /api/sessions` | List or create analyses |
-| `GET /api/sessions/{id}` | Read messages, uploads, current plan, stage history, capabilities and artifacts |
-| `POST /api/sessions/{id}/uploads` | Accept a bounded H5AD and initialize local metadata drafts |
-| `POST /api/sessions/{id}/intake/parse` | Parse the selected upload in the dedicated extraction purpose |
-| `POST /api/sessions/{id}/intake/answer` | Save one revision-bound draft answer, without confirming facts |
-| `POST /api/sessions/{id}/intake/protocols?upload_id=...` | Attach a bounded protocol to that upload and refresh its extraction |
-| `POST /api/sessions/{id}/intake/protocols/formalize`, `.../answer`, `.../edit`, `.../review` | Revision-bound generation, user supplement, BPL edit or exact-digest human review; never scientific approval |
-| `GET /api/sessions/{id}/intake/protocols/{pid}/versions/{vid}/{kind}?upload_id=...` | Integrity-checked private BPL/AST/plan/diagnostic/version download |
-| `POST /api/sessions/{id}/inputs` | Stage `{upload_id, source_family_id}` for confirmation; source ID starts with an ASCII letter/digit, permits letters/digits/`.`/`_`/`:`/`-`, and is at most 160 characters |
-| `GET /api/sessions/{id}/analysis-inputs` | Read current contracts, safe object/asset options and saved selections |
-| `POST /api/sessions/{id}/analysis-inputs` | Save a tool/mode selection using registered input IDs |
-| `POST /api/sessions/{id}/analysis-inputs/objects` | Register a bounded scientific JSON file for a current mode/role/Schema/version |
-| `POST /api/sessions/{id}/analysis-inputs/assets` | Stage one registered H5AD's assay, matrix and factual metadata |
-| `POST /api/sessions/{id}/input-change/confirm`, `.../discard` | Confirm or discard the exact `{change_id, change_digest}` proposal |
-| `POST /api/sessions/{id}/input-review/keep` | Explicitly keep current declarations after a chat-triggered review |
-| `POST /api/sessions/{id}/scientific-inputs/draft` | Request constrained candidates from confirmed intent and local state-review sources |
-| `POST /api/sessions/{id}/scientific-inputs/confirm` | Confirm the exact draft ID/digest; register candidate objects without running tools |
-| `POST /api/sessions/{id}/scientific-inputs/revise` | Validate the current source binding and save choices as a new pending version |
-| `POST /api/sessions/{id}/report-inputs/prepare` | Prepare the confirmed draft's selected P0-08, P0-09 or P0-10 stage; tool_id defaults to P0-08, and each plan needs separate approval |
-| `POST /api/sessions/{id}/clarification/answer`, `.../cancel`, `.../revise` | Persist exact private choice responses without automatically confirming facts |
-| `POST /api/sessions/{id}/stop` | Stop future work without waiting for the current provider/tool call |
-| `POST /api/sessions/{id}/prepare-analysis` | Propose the selected tool stage; never approve it |
-| `POST /api/sessions/{id}/messages` | Submit one conversation turn |
-| `POST /api/sessions/{id}/approve` | Approve the exact proposed plan ID and digest |
-| `GET /api/sessions/{id}/artifacts/{artifact_id}` | Retrieve a registered artifact under authentication |
-| `GET /api/sessions/{id}/artifacts/{artifact_id}/preview` | Read a bounded, checksum-verified Parquet display projection |
-| `GET /api/sessions/{id}/transcript` | Download the conversation |
+| login, sessions, messages and stop | Authenticated conversation lifecycle and cancellation fence |
+| uploads, intake, protocols and input changes | Bounded source extraction, versioned review and exact confirmation |
+| scientific-inputs and clarification | Candidate questions and objects without execution or scientific promotion |
+| analysis-inputs, prepare-analysis and approve | Contract selection, unapproved plan and exact plan approval |
+| report-inputs | Separately prepared P0-08/P0-09/P0-10 stages |
+| artifacts, preview and transcript | Authenticated, integrity-checked retrieval |
 
-The Web layer uses `PlanBuilder`, immutable approved requests,
-`ToolExecutionPipeline` and `LocalWorkflowExecutor` with SQLite events.
-It does not execute model-generated commands or invoke scientific libraries
-outside the registered package.
+Execution uses PlanBuilder, immutable approved requests,
+ToolExecutionPipeline and LocalWorkflowExecutor. The service does not execute
+model-generated commands or invoke scientific libraries outside registered
+packages.
 
 ## Privacy and interpretation
 
-- By default, provider requests contain conversation text and a small status
-  context, not tool-owned biological measurements. Avoid entering confidential
-  identifiers or secrets into chat text.
-- With explicit owner authorization and `BRIDGE_WEB_SHARE_RESULT_SUMMARIES=1`,
-  the model can receive canonical P0-01 aggregate QC evidence as `E0` and the
-  supported P0-02 V3 or separately identified V2 composition/reconciliation summary as `E1`. QC includes only
-  allowed schema counts, tool-owned median measurements, their denominators and
-  evidence states, four assessment states and the minimal historical DataView.
-  Cell-state labels come only from the packaged public vocabulary. Both preserve
-  declared states and `domain_score=null`. Raw matrices, observation-level
-  records, source-specific rows, sample/source identities, private paths and
-  provenance hashes remain local. Summary construction does not decode Parquet
-  tables or expression matrices. V2 verifies the original upload bytes and
-  preserves its historical per-level denominators without manufacturing V3
-  lineage, downstream readiness or QC filtering. This is not anonymous-data certification or
-  public-export permission.
-- Each alias refers to its own historical producer and selected data view, not
-  to a later upload or changed declaration. V2 uses its original historical
-  input scope, not a claimed V3 selected view. QC and cell-state evidence may come
-  from different runs; their uploads or denominators must not be conflated.
-  The latest succeeded/partial producer is checked independently before selecting
-  its supported artifact; invalid evidence does not fall back to an older result.
-  Invalid or unsupported evidence contributes no result values; valid evidence
-  for the other alias may still be shared. Oversized combined summaries supply
-  no biological data, and input review suspends result sharing.
-- The shared model instructions use status-only language when no summary is
-  supplied, and request supplied counts/fractions with the corresponding alias
-  when authorized evidence is available. Missing or `not_assessed` QC assessments
-  are not successful checks; execution alone does not establish filtering,
-  doublet removal or biological QC passage. Instructions prohibit inventing
-  absent intervals or scores and direct explanation-only requests to a reply
-  rather than a new proposal. These instructions do not guarantee model accuracy;
-  actual replies still need comparison with the canonical evidence.
-- Each evidence-bearing turn retains independent bounded private `E0`/`E1`
-  bindings to the exact verified receipts and artifacts. These mappings are not
-  exposed in public session state or sent to the model. When sharing is disabled
-  or input review is active, prior evidence-bearing assistant content is withheld
-  from the model history while remaining visible in the private conversation.
-- The model can reply, request input review or propose a registered tool using
-  the saved input selection. It can propose constrained candidates only in the
-  scientific-draft request; it cannot approve a plan, author arbitrary scientific objects,
-  change scientific values or select arbitrary filesystem paths. Privately entered source-family values
-  are excluded from its status context. Model replies
-  are not P0-10-verified reports; numerical evidence belongs to the tool artifacts.
-- Artifacts are private downloads. Downloading them is not P0-11 public-safe
-  export, release approval or an assertion that they contain no private data.
-- JSON downloads labeled `.display-redacted.json` are presentation copies
-  with private paths removed. They are not byte-identical canonical tool
-  inputs; the private receipt retains the original artifact ID and digest.
-  Use the original server-owned contracts for downstream execution.
-- `candidate/shadow` methods and `domain_score=null` are unchanged.
-  No clinical, safety, potency or GMP conclusions are authorized.
-- Provider errors and interrupted work are explicit. Restarting the service
-  must not silently replay a previously running analysis.
+- Default provider context contains conversation text and bounded status, not
+  tool-owned biological measurements.
+- With explicit owner authorization, allowlisted aggregate P0-01 and supported
+  P0-02 summaries may be shared. Raw matrices, observation rows, source/sample
+  identity, private paths, credentials and provenance hashes remain local.
+- Shared summaries preserve actual values, denominators and missingness and
+  remain candidate/shadow with domain_score=null. They are not anonymous-data
+  certification or public-export permission.
+- Model replies are not P0-10-verified reports. Candidate drafting cannot
+  approve plans, change tool values or select arbitrary paths.
+- Downloads remain private artifacts. A display-redacted copy is not the
+  canonical tool input or proof of publication eligibility.
+- Missing, unknown, unavailable, negative and alert remain distinct. No
+  clinical, safety, potency, GMP or absolute-ranking claim is authorized.
 
-See [tool packages](tool-packages.md) for scientific interfaces,
-[Agent integration](agent-integration.md) for full-chain ownership, and the
-[validation record](validation/web_preview_20260905.md) for the tested preview scope.
+See [privacy and provenance](privacy-and-provenance.md),
+[Agent integration](agent-integration.md), the [Tool Package index](tool-packages.md)
+and the [Web validation record](validation/web_preview_20260905.md).

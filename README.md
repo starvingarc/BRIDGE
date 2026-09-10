@@ -11,43 +11,39 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-2E7B70.svg"></a>
 </p>
 
-<p>
-  <a href="#architecture">Architecture</a> ·
-  <a href="#development-status">Status</a> ·
-  <a href="#quickstart">Quickstart</a> ·
-  <a href="#documentation">Documentation</a>
-</p>
-
 </div>
 
-BRIDGE coordinates product definition, analysis planning, scientific tools,
-evidence reconciliation and report generation for single-cell evaluation of
+BRIDGE coordinates source-aware intake, deterministic analysis tools, evidence
+reconciliation and reviewable reporting for single-cell evaluation of
 cell-therapy products. PD hPSC-derived midbrain dopaminergic products are the
 first use case.
+
+## Current status
+
+- Twelve P0 Tool Packages are implemented and callable as engineering
+  candidates. Their methods and outputs remain candidate/shadow;
+  domain_score=null and no P0 ScoreContract is frozen.
+- The private Web preview has accepted the first six intake-to-QC steps within
+  their stated scope: research question, materials, necessary questions,
+  source-backed fact confirmation, scoped plan and QC. Protocol formalization is
+  a reviewable representation, not an experiment record.
+- The downstream graph-driven research loop, internal comparator selection and
+  qualified report/export are approved target behavior, not current end-to-end
+  capability. Existing missingness compilation and blocked internal reports do
+  not satisfy those gates.
+
+The canonical current/target workflow is [PRD section 6](docs/BRIDGE_PRD.md#6-agent-功能需求).
+Exact tested scope is recorded in [validation](docs/validation/README.md);
+remaining scientific work is in [active plans](plans/README.md).
 
 ## Architecture
 
 <img src="docs/assets/bridge-agent-architecture.svg" alt="BRIDGE Agent architecture: product data, product definition and sample metadata enter the Agent; the Agent performs intake, planning, tool orchestration and interpretation; versioned P0 tools and governed knowledge produce an evidence graph and reviewable outputs.">
 
-The Agent manages intake, planning, tool orchestration and interpretation.
-Registered P0 tools produce versioned measurements and evidence records.
-
-## Development status
-
-| Area | Current status |
-|---|---|
-| P0 tool packages | 12/12 implemented and callable |
-| Agent orchestration | Staged approval and contract-driven access to all 12 tools; scientific input drafting remains incomplete |
-| Web interface | [Private preview](docs/web-preview.md) with product draft, exact fact confirmation and separate stage approval; installed acceptance is tracked explicitly |
-| Genuine Web coverage | Input QC, cell-state evidence and explicit no-graft path; not a complete product-evaluation chain |
-| Scientific validation | Candidate/shadow; no validated product score or release conclusion |
-
-See the [current integration plan](plans/web-full-chain-integration.md#current-progress-2026-09-08) for completed work, installed acceptance and remaining user-flow gaps.
+The Agent coordinates questions, plans and interpretation. Registered high-level
+tools own values, denominators, thresholds, statuses, versions and Evidence IDs.
 
 ## Quickstart
-
-The current release exposes the P0 tool layer through one CLI and Python
-interface.
 
 ~~~bash
 git clone https://github.com/starvingarc/BRIDGE.git
@@ -61,38 +57,27 @@ bridge-tool validate --request /absolute/path/to/request.json
 bridge-tool run --request /absolute/path/to/request.json
 ~~~
 
-See the [Tool Package guide](docs/tool-packages.md) for all 12 tools, their
-inputs, outputs and refusal behavior. Example requests and a fully synthetic
-scRNA-seq upload fixture are available under [examples](examples/README.md).
-
-## Scientific scope
-
-BRIDGE currently covers target and regional identity, developmental
-compatibility, complete product composition, proliferation and stress response,
-product comparison, evidence sufficiency, claim verification and public-safe
-export.
-
-Current methods remain `candidate` or `shadow`. P0 ScoreContracts are not
-frozen and `domain_score` remains `null`. Clinical efficacy, safety,
-validated potency, GMP release and absolute product ranking are outside the
-current scope.
+Start with the [question-led Tool Package index](docs/tool-packages.md) and
+[synthetic examples](examples/README.md).
 
 ## Documentation
 
-- [Product requirements](docs/BRIDGE_PRD.md)
-- [Web preview](docs/web-preview.md)
-- [Agent integration](docs/agent-integration.md)
-- [P0 Tool Packages](docs/tool-packages.md)
-- [Scientific specifications](docs/bridge_spec_v0.1/README.md)
-- [Examples](examples/README.md)
-- [Contributing](CONTRIBUTING.md)
+| Need | Entry point |
+|---|---|
+| Product behavior and approved workflow | [BRIDGE PRD](docs/BRIDGE_PRD.md) |
+| Current private interface | [Web preview](docs/web-preview.md) |
+| Agent/tool ownership | [Agent integration](docs/agent-integration.md) |
+| Tool runtime contract | [Tool Cards](src/bridge/tool_packages/cards/) |
+| Scientific design | [P0 specifications](docs/bridge_spec_v0.1/README.md) |
+| Exact evidence | [Validation records](docs/validation/README.md) |
+| Contribution rules | [Contributing](CONTRIBUTING.md) |
 
-## References
+## Scientific boundary
 
-The first use case is informed by human fetal-midbrain and hPSC-mDA studies
-([La Manno et al., *Cell* 2016](https://doi.org/10.1016/j.cell.2016.09.027);
-[Xu et al., *JCI* 2022](https://doi.org/10.1172/JCI156768)) and established
-single-cell analysis and validation practices. These sources guide the design
-and do not validate BRIDGE's internal methods or product conclusions.
+BRIDGE provides research-use transcriptomic evidence. It does not currently
+establish clinical efficacy, safety, validated potency, GMP release or an
+absolute product ranking. Missing, unknown, unavailable, negative and alert
+states remain distinct, and graft evidence never backfills pre-transplant
+judgments.
 
 BRIDGE is available under the [MIT License](LICENSE).

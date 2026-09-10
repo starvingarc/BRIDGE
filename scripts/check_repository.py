@@ -134,7 +134,6 @@ WEB_PREVIEW_FILES = (
     Path("docs/web-preview.md"),
     Path("docs/validation/web_preview_20260905.md"),
     # Owner-approved scientific-input increment; only these concrete sources.
-    Path("plans/web-scientific-input-design.md"),
     Path("src/bridge/web/clarification.py"),
     Path("src/bridge/web/scientific_inputs.py"),
     Path("src/bridge/web/report_inputs.py"),
@@ -210,7 +209,6 @@ P005_MEASUREMENT_PROJECTION_FILES = (
     Path("src/bridge/tool_packages/p0_05_off_target_control/executor.py"),
 )
 P005_INPUT_ROUTE_FILES = (
-    Path("plans/p0-05-hard-count-accounting.md"),
     Path("src/bridge/resources/schemas/off_target_control_result.schema.json"),
     Path("src/bridge/resources/schemas/off_target_hard_count_profile.schema.json"),
     Path("tests/test_p0_05_hard_count_accounting.py"),
@@ -226,7 +224,6 @@ P006_MEASUREMENT_PROJECTION_FILES = (
     Path("src/bridge/resources/schemas/proliferation_stress_response_profile_v2.schema.json"),
 )
 P006_INPUT_ROUTE_FILES = (
-    Path("plans/p0-06-unresolved-observations.md"),
     Path("src/bridge/resources/schemas/process_method_input_v2.schema.json"),
     Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/observation_source.py"),
     Path("tests/test_p0_06_source_bound_observations.py"),

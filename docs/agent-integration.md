@@ -1,140 +1,78 @@
 # Agent Integration
 
 > [!NOTE]
-> BRIDGE provides deterministic P0 tools and a private [Web preview](web-preview.md)
-> with contract-driven input selection, staged approval and execution for all
-> 12 tools. The profiles below describe required dependencies and ownership,
-> not an implemented automatic scientific-input builder or proof of full-chain
-> execution. See the [current integration plan](../plans/web-full-chain-integration.md#current-progress-2026-09-08)
-> for source, installed and genuine-data progress.
+> The [PRD workflow](BRIDGE_PRD.md#6-agent-功能需求) is the single product
+> contract. This page defines Agent/tool ownership and the existing integration
+> seam. The private Web preview has accepted steps 1–6 within their stated
+> scope; the downstream graph-driven loop, internal comparator selection and
+> qualified export remain approved targets.
 
-## Private product intake
+## Ownership
 
-The Web entry now drafts bounded researcher statements, displays observed H5AD
-structure separately, and uses exact user confirmation before materializing an
-existing asset declaration. The `propose_intake` action only stages initial facts;
-the model cannot confirm them. Product-only and source-only corrections preserve
-valid canonical QC. Intake confirmation, next-stage preparation and exact plan
-approval are three separate actions. See [Web preview](web-preview.md#a-typical-conversation).
+The LLM coordinates research questions, necessary clarification, plans, graph
+queries, competing hypotheses and interpretation. Registered high-level tools
+own values, denominators, thresholds, states, versions and Evidence IDs. The Web
+owns authenticated display, exact confirmation and approval; it does not
+recalculate scientific results.
 
-This private record does not implement the `agent_constructed` scientific-object
-slots below: a target label is not a reviewed product definition, and an
-independent-culture count is not a biological-unit mapping or attestation.
-Unsupported/unknown product targets can receive generic QC, while downstream
-reference, design and product-definition gaps remain explicit.
+Current bounded intake can draft source-backed product-definition and role
+candidates for explicit review. Confirmation materializes candidate objects; it
+does not make them reviewed/frozen science, create biological-unit attestation
+or approve execution. The current missingness-only graph and blocked internal
+report are partial paths, not the target autonomous feedback loop.
 
 ## Integration profile
 
-`AgentIntegrationProfile` is a logical, machine-readable workflow description.
-It declares which resources each tool step needs and how tool outputs feed later
-steps. It is validated against the live `ToolRegistry` and
-`ToolInputContract`, so a profile cannot silently drift from the packaged tool
-version, request envelope, mode, role, Schema or cardinality.
+AgentIntegrationProfile is a public, machine-readable dependency graph for one
+tool path. It is checked against the installed ToolRegistry and
+ToolInputContract so package version, request envelope, mode, role, Schema and
+cardinality cannot silently drift.
 
-- Python model: `bridge.toolkit.AgentIntegrationProfile`
-- Public Schema:
-  [`agent_integration_profile.schema.json`](../src/bridge/resources/schemas/agent_integration_profile.schema.json)
-- Schema reference: `bridge://schemas/agent-integration-profile/v0.1`
+- Python model: bridge.toolkit.AgentIntegrationProfile
+- [Public Schema](../src/bridge/resources/schemas/agent_integration_profile.schema.json)
+- Schema reference: bridge://schemas/agent-integration-profile/v0.1
 
-A resource slot records ownership and logical compatibility:
+A slot declares logical ownership and compatibility:
 
-| Source | Owner and use |
+| Source | Meaning |
 |---|---|
-| `user_upload` | Data or structured information supplied through the user workflow |
-| `system_resource` | Versioned reference, method, rule or policy selected by the deployment |
-| `derived_output` | A named artifact from an earlier `producer_binding_id` |
-| `agent_constructed` | A published BRIDGE object materialized from declared `depends_on_slots` and user-confirmed facts |
-
-Slots use `resource_type=asset` or `structured_object`. An asset slot's
-`asset_contract` only declares compatibility with the current tool input
-contract: format, assay, input level, matrix semantics and required metadata
-keys. It is not an asset locator. Structured-object slots declare a public
-Schema and object version.
+| user_upload | Data or structured facts supplied through the user workflow |
+| system_resource | Versioned reference, method, rule or policy selected by the deployment |
+| derived_output | Checksummed artifact from an earlier producer binding |
+| agent_constructed | BRIDGE object built only from declared dependencies and confirmed facts |
 
 Profiles contain no runtime path, filename, checksum value, asset identifier,
-catalog identifier, host or credential. At execution time, request-bound slots
-are materialized with the existing `InputAsset` and `StructuredInputRef`
-models, including absolute paths and checksums. A dependency-only derived asset
-is read from its producer `ToolRun` and artifact manifest; it does not create a
-second request or asset-resolution API.
-
-The public JSON Schema enforces resource-type and ownership shape, plus direct
-list-item uniqueness. Run `validate_agent_integration_profile` for invariants
-that span records: unique slot and binding IDs, closed references, an acyclic
-dependency graph, relative minimum/maximum cardinality and alignment with the
-live tool registry. These cross-record checks are intentionally not duplicated
-as a second static contract.
+host or credential. Runtime materialization uses the existing InputAsset and
+StructuredInputRef contracts. A profile states what a caller must supply; it
+does not prove that the Web can author every object or that the path has run on
+qualified scientific inputs.
 
 ## Published profiles
 
-These are validated integration contracts. Where a profile says the Agent
-materializes an object, that describes the caller's obligation, not a current Web
-capability. Product definitions, role maps, protocols, attestations, comparison
-inputs and report drafts still require genuine supplied or explicitly confirmed
-content; their general candidate-drafting workflow is not implemented.
-
-| Profile | Tool path | Endpoint |
+| Profile | Registered path | Boundary |
 |---|---|---|
-| [Single product](../examples/agent-integration/profiles/single-product.json) | P0-01 → P0-02 → P0-03/P0-04/P0-05/P0-06 → P0-08 → P0-09 → P0-10 → P0-11 | Local candidate export |
-| [Comparison](../examples/agent-integration/profiles/comparison.json) | Two product-evidence bundles → P0-07 `method_runtime` | Descriptive comparison result |
-| [Graft](../examples/agent-integration/profiles/graft.json) | P0-12 `not_provided` or `expression_analysis` | Independent graft result |
+| [Single product](../examples/agent-integration/profiles/single-product.json) | P0-01 → P0-02 → P0-03/P0-04/P0-05/P0-06 → P0-08 → P0-09 → P0-10 → P0-11 | Five assessment domains; local candidate export only |
+| [Comparison](../examples/agent-integration/profiles/comparison.json) | Eligible product-evidence bundles → P0-07 | Descriptive; cohort and comparability must be confirmed |
+| [Graft](../examples/agent-integration/profiles/graft.json) | P0-12 not_provided or expression_analysis | Independent post-transplant branch |
 
-P0-03 contributes separate `target_identity` and `regional_fidelity`
-DomainGateInputs to P0-08. They share the P0-03 MeasurementSpec and measurement
-output set, so the single-product path uses five domain inputs and four
-MeasurementSpecs. Because P0-03 and P0-04 receive the selected expression asset,
-the profile also binds each tool's deployment-owned method specification; the
-asset and method specification are treated as one executable input pair.
+The single-product profile keeps target identity and regional fidelity as
+separate P0-08 domain inputs. P0-01 emits selected-view and biological-unit
+lineage artifacts; P0-02 emits aggregate and observation-level evidence.
+P0-05 and P0-06 must consume the same checksummed attestation and reviewed role
+definition where applicable. P0-09 record sets remain distinct from graph
+manifests so reports bind the evidence actually read.
 
-For the single-product profile, the user upload declares
-`biological_unit_lineage` so P0-01 can emit the biological-unit manifest and
-assignment required downstream. P0-01 does not rewrite an
-`analysis_ready` matrix. After its QC result is available, the Agent constructs
-the `qc-selected-expression` `InputAsset` wrapper around the exact same file and
-checksum, adding only the published QC profile and selected DataView metadata.
-P0-02 then emits two distinct artifacts used by later steps: the V3 aggregate
-cell-state profile and the observation-level `cell_state_evidence` table. The
-Agent uses that table when materializing P0-05 and P0-06 method inputs; it does
-not infer observation states from the aggregate profile.
-
-After the P0-01 manifest and assignment and the P0-02 V3 DataView are available,
-the Agent materializes one `BiologicalUnitAttestationReceipt` from those declared
-dependencies and an explicit caller/data-owner assertion for this
-`analysis_execution`. P0-05 and P0-06 consume the same checksummed receipt. The
-deployment maps its authenticated conversation or workflow record to the
-receipt's attestation reference and checksum. Tool runtimes validate only the
-receipt structure and exact content bindings; the receipt does not authenticate
-identity, establish biological truth or independent scientific review, grant
-publication or release authority, or change the P0-01 manifest from `declared`.
-
-P0-09's `evidence_records` artifact is declared separately from the case graph
-manifest so `ReportDraft.evidence_record_set_ref` is bound to the compiled
-record set that the Agent actually reads.
-
-The comparison profile selects P0-07's executable `method_runtime` and binds
-its case-specific method input plus a deployment-owned method specification.
-Its result remains descriptive and does not enter the single-product
-claim/export chain. The graft path does not backfill pre-transplant evidence.
-
-`GraftCase` is user-supplied specimen, animal, timepoint and linkage metadata;
-the Agent does not infer it from the graft expression matrix.
-
-`measurement_spec_slot_id` is a top-level request binding, distinct from
-`object_inputs`. The single-product profile opts into it for P0-01 and binds
-the required P0-02 measurement specification explicitly. The live tool input
-contract remains authoritative for whether this field is optional, required or
-forbidden. The profile validates the supported MeasurementSpec Schema and
-version. The current request envelope carries only an opaque
-`measurement_spec_ref`, so step validation can require its presence but cannot
-bind that deployment identifier to a logical slot without a deployment-owned
-resolver; tool eligibility remains authoritative for the resolved object.
+Comparison never modifies the query product's independent evidence. Graft
+metadata are user-supplied and graft results never backfill pre-transplant
+scoring, calibration or judgments.
 
 ## Validate and run one step
 
-The reference runner is deliberately not installed as a product CLI. It has two
-commands:
+The reference runner validates already materialized requests; it does not
+resolve catalogs, create scientific objects, call a model, fill missing fields
+or alter evidence states.
 
-```bash
+~~~bash
 python examples/agent-integration/reference_runner.py \
   validate-profile \
   --profile examples/agent-integration/profiles/single-product.json
@@ -144,36 +82,23 @@ python examples/agent-integration/reference_runner.py \
   --profile examples/agent-integration/profiles/single-product.json \
   --binding claim-verifier \
   --request <materialized-request.json>
-```
+~~~
 
-`run-step` accepts an already materialized `ToolRequest` or
-`ToolRequestV2`. It checks the selected profile binding, calls the existing
-eligibility check, and then calls the existing tool runtime. It does not resolve
-catalogs, create scientific objects, call a model, fill missing fields or alter
-evidence states. Missing system or Agent-constructed resources fail with
-`unresolved_input_slot`.
+For each step, the caller validates the profile binding, runs package
+eligibility and then invokes the registered tool. Missing resources fail with a
+named blocker. The ToolRun, result Schema, artifact manifest and checksum remain
+the execution record.
 
-The profile's `artifact_kind` names the producer's checksummed artifact for
-connecting steps. The actual `ToolRun`, result Schema, artifact manifest and
-checksum remain the execution record.
+## Target coordinator loop
 
-## Agent responsibilities
-
-1. Select a published profile and validate it against the installed package.
-2. Ask for missing user facts and resolve deployment-owned system resources.
-3. Materialize every Agent-constructed object against its published Schema,
-   preserving its declared dependencies and provenance.
-4. Build the exact request, then call `validate_profile_request`,
-   `validate_request` and `run_tool` in that order.
-5. Preserve `not_assessed`, `unavailable`, `unknown`, `negative`,
-   `alert`, units, denominators and evidence references without reinterpretation.
-
-See the [Tool Package guide](tool-packages.md) for module-specific contracts and
-the [local runtime guide](local-agent-runtime.md) for upload, approval and
-workflow-event boundaries.
+The graph-driven hypothesis/update loop and its approval boundaries are defined
+once in [PRD sections 6.1–6.8](BRIDGE_PRD.md#61-agent-总体工作流). A valid
+profile, tool menu or graph component alone does not establish that loop.
 
 ## Scientific boundary
 
-The profiles describe engineering connectivity only. P0 methods retain their
-published `candidate` or `shadow` status; `domain_score` remains `null`
-until a separate ScoreContract and scientific release process are complete.
+Profiles and successful runs are engineering connectivity evidence. Methods and
+outputs retain candidate/shadow or unavailable states, domain_score=null, until
+their independent scientific contracts and release gates pass. See the
+[question-led package index](tool-packages.md), [Web preview](web-preview.md) and
+[validation records](validation/README.md).

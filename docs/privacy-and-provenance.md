@@ -47,9 +47,9 @@ or public-export permission.
 A summary must preserve verified tool values, denominators, uncertainty and
 missingness. Its local per-turn provenance binding must remain available without
 being transmitted. Unknown fields or unsupported result shapes are excluded by
-construction, not passed through a generic redaction filter. The approved initial
-implementation scope and acceptance gates are tracked in the
-[Web integration plan](../plans/web-full-chain-integration.md).
+construction, not passed through a generic redaction filter. The approved behavior is bounded by the
+[canonical PRD workflow](BRIDGE_PRD.md#6-agent-功能需求); actual tested scope is
+recorded in the [Web validation history](validation/web_preview_20260905.md).
 
 ## Intake Extraction Purpose
 
