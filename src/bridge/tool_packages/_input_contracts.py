@@ -990,6 +990,22 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 append=True,
                 canonical_run=True,
             ),
+            *[
+                _mode(
+                    f"{kind}_query",
+                    _role(
+                        "evidence_graph_manifest",
+                        f"bridge://schemas/{kind}-evidence-graph-manifest/v0.1",
+                        None, 1, 1,
+                    ),
+                    _role(
+                        "evidence_graph_query",
+                        "bridge://schemas/evidence-graph-query/v0.1",
+                        V01, 1, 1,
+                    ),
+                )
+                for kind in ("case", "comparison")
+            ],
         ],
     ),
     "P0-10": ToolInputContract(

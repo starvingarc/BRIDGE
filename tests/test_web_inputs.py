@@ -791,6 +791,39 @@ def test_nested_files_bind_only_opaque_session_ids(client, tmp_path):
         service.inputs.bind_nested(state, {"matrix_file": "relative.npy"})
 
 
+
+
+def test_p009_query_input_discovery_and_schema_enforce_read_only_roles(client, tmp_path):
+    sid = new_session(client)["id"]
+    service = client.app.state.service
+    state = service.load(sid)
+    catalog = client.get(f"/api/sessions/{sid}/analysis-inputs").json()
+    tool = next(item for item in catalog["tools"] if item["tool_id"] == "P0-09")
+    modes = {mode["mode_id"]: mode for mode in tool["input_contract"]["object_input_modes"]}
+    for kind in ("case", "comparison"):
+        mode = f"{kind}_query"
+        assert [role["role"] for role in modes[mode]["roles"]] == ["evidence_graph_manifest", "evidence_graph_query"]
+        with pytest.raises(ValueError, match="canonical_graph"):
+            service.inputs.add_object(
+                state, tool_id="P0-09", mode_id=mode, role="evidence_graph_manifest",
+                schema_ref=f"bridge://schemas/{kind}-evidence-graph-manifest/v0.1",
+                object_version="1", data=b"{}",
+            )
+        with pytest.raises(ValueError):
+            service.inputs.role("P0-09", mode, "compilation_bundle",
+                                "bridge://schemas/evidence-compilation-bundle/v0.1", "0.1.0")
+    params = dict(tool_id="P0-09", mode_id="case_query", role="evidence_graph_query",
+                  schema_ref="bridge://schemas/evidence-graph-query/v0.1", object_version="0.1.0")
+    payload = dict(object_version="0.1.0", query_name="get_claim_evidence",
+                   claim_id="claim:target-identity", evidence_tiers=["formal", "shadow", "exploratory"])
+    url = f"/api/sessions/{sid}/analysis-inputs/objects"
+    response = client.post(url, params=params, files={"file": ("query.json", json.dumps(payload).encode(), "application/json")})
+    assert response.status_code == 200, response.json()
+    invalid = client.post(url, params=params, files={"file": ("query.json", json.dumps({**payload, "limit": "1"}).encode(), "application/json")})
+    assert invalid.status_code == 422
+    assert str(tmp_path) not in json.dumps(response.json())
+
+
 def test_graph_upload_and_wrong_role_schema_version_rejected(client, tmp_path):
     sid, _ = context_upload(client, tmp_path)
     service = client.app.state.service

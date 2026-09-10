@@ -87,8 +87,13 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
+from bridge.tool_packages.p0_09_evidence_compiler.query_runtime import (
+    RESULT_SCHEMA_REF,
+    check_query_eligibility,
+    is_query_request,
+    run_query,
+)
 
-RESULT_SCHEMA_REF = "bridge://schemas/evidence-compiler-run-result/v0.1"
 ROLE_SCHEMAS = {
     "compilation_bundle": {"bridge://schemas/evidence-compilation-bundle/v0.1"},
     "evidence_sufficiency_profile": {
@@ -157,6 +162,8 @@ class EvidenceCompilerAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
+        if is_query_request(request):
+            return check_query_eligibility(request, spec)
         reasons = self._envelope_reasons(request, spec)
         loaded, loading_reasons = _load_structured_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
@@ -175,6 +182,8 @@ class EvidenceCompilerAdapter:
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         if not isinstance(request, ToolRequestV2):
             return _failed_v1_request(request, spec)
+        if is_query_request(request):
+            return run_query(request, spec)
         eligibility = self.check_eligibility(request, spec)
         if not eligibility.eligible:
             return _failed_run(request, spec, eligibility.reason_codes)

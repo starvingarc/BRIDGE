@@ -49,6 +49,8 @@ SCHEMA_REFS = {
     "bridge://schemas/evidence-compiler-run-result/v0.1": "evidence_compiler_run_result.schema.json",
     "bridge://schemas/evidence-family-registry/v0.1": "evidence_family_registry.schema.json",
     "bridge://schemas/evidence-graph-query-result/v0.1": "evidence_graph_query_result.schema.json",
+    "bridge://schemas/evidence-graph-query/v0.1": "evidence_graph_query.schema.json",
+    "bridge://schemas/evidence-compiler-result/v0.2": "evidence_compiler_result_v2.schema.json",
     "bridge://schemas/evidence-record/v0.1": "evidence_record.schema.json",
     "bridge://schemas/evidence-record-set/v0.1": "evidence_record_set.schema.json",
     "bridge://schemas/evidence-rejected-record-list/v0.1": "evidence_rejected_record_list.schema.json",

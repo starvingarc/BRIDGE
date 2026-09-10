@@ -124,7 +124,7 @@ def _spec() -> ToolPackageSpecV2:
     return ToolPackageSpecV2(
         tool_id="P0-09",
         name="Evidence Compiler & Reconciler",
-        version="0.4.2",
+        version="0.5.0",
         summary="Compile atomic evidence and reconcile conflicts by versioned rules.",
         implementation_state=ImplementationState.IMPLEMENTED,
         scientific_status="candidate",
@@ -1013,7 +1013,7 @@ def _request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-09",
-        tool_version="0.4.2",
+        tool_version="0.5.0",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -1032,7 +1032,11 @@ def _run(tmp_path: Path, **kwargs: Any):
 def test_public_models_export_valid_draft_2020_12_schema(schema_ref: str, model: type[Any]) -> None:
     schema = model.model_json_schema()
     Draft202012Validator.check_schema(schema)
-    assert schema["additionalProperties"] is False
+    branches = schema.get("oneOf", schema.get("anyOf"))
+    if branches is None:
+        assert schema["additionalProperties"] is False
+    else:
+        assert all(schema["$defs"][branch["$ref"].rsplit("/", 1)[1]]["additionalProperties"] is False for branch in branches)
     assert schema_ref.startswith("bridge://schemas/")
 
 
@@ -1493,6 +1497,305 @@ def test_unsafe_top_level_registry_references_fail_without_echo_or_artifacts(
     assert unsafe not in json.dumps(run.model_dump(mode="json"))
 
 
+
+
+def _registered_query_request(
+    tmp_path: Path, compiler_run: Any, query_name: str, **arguments: Any
+) -> ToolRequestV2:
+    """Use the compiler's canonical manifest, never a synthesized query graph."""
+    result = compiler_run.result
+    manifest_path = (
+        compiler_run.request.output_dir / compiler_run.run_id / result["graph_manifest_ref"]
+    )
+    query_path = tmp_path / "query-inputs" / f"{query_name}.json"
+    query_hash = _write(query_path, {
+        "object_version": "0.1.0", "query_name": query_name, **arguments,
+    })
+    return ToolRequestV2(
+        request_id=f"request-{query_name}", tool_id="P0-09",
+        output_dir=tmp_path / "query-output", assets=[], parameters={},
+        measurement_spec_ref=None, random_seed=0,
+        object_inputs=[
+            dict(input_id="graph", role="evidence_graph_manifest",
+                 schema_ref=result["graph_manifest_schema_ref"],
+                 object_version=str(result["graph_version"]), path=manifest_path,
+                 sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+                 media_type="application/json"),
+            dict(input_id="query", role="evidence_graph_query",
+                 schema_ref="bridge://schemas/evidence-graph-query/v0.1",
+                 object_version="0.1.0", path=query_path, sha256=query_hash,
+                 media_type="application/json"),
+        ],
+    )
+
+
+def test_registered_query_returns_exact_compiled_graph_without_new_measurements(tmp_path: Path) -> None:
+    compiled = _run(tmp_path)
+    request = _registered_query_request(
+        tmp_path, compiled, "get_case_evidence_subgraph",
+        product_case_id="product-case:synthetic-001",
+        evidence_tiers=["formal", "shadow", "exploratory"],
+    )
+    run = ToolRegistry.load_default().run(request)
+    assert run.execution_state is ExecutionState.SUCCEEDED, run.reason_codes
+    assert run.result["graph_id"] == compiled.result["graph_id"]
+    assert run.result["graph_version"] == compiled.result["graph_version"]
+    assert run.measurements == []
+    assert run.result_schema_ref == "bridge://schemas/evidence-compiler-result/v0.2"
+    assert any(node["object_id"] == "product-case:synthetic-001" for node in run.result["nodes"])
+
+
+
+
+def test_registered_query_modes_bind_only_the_matching_manifest_and_query() -> None:
+    modes = {mode.mode_id: mode for mode in ToolRegistry.load_default().describe_input("P0-09").object_input_modes}
+    for kind in ("case", "comparison"):
+        mode = modes[f"{kind}_query"]
+        assert [role.role for role in mode.roles] == ["evidence_graph_manifest", "evidence_graph_query"]
+        manifest, query = mode.roles
+        assert manifest.schema_refs == [f"bridge://schemas/{kind}-evidence-graph-manifest/v0.1"]
+        assert query.schema_refs == ["bridge://schemas/evidence-graph-query/v0.1"]
+        assert query.object_versions == ["0.1.0"]
+        assert all((role.min_count, role.max_count) == (1, 1) for role in mode.roles)
+
+
+def _source_hashes(run: Any) -> dict[str, str]:
+    root = run.request.output_dir / run.run_id
+    return {item.name: hashlib.sha256(item.read_bytes()).hexdigest() for item in root.iterdir()}
+
+
+def test_registered_case_queries_preserve_facts_tiers_bounds_and_source_bytes(tmp_path: Path) -> None:
+    compiled = _run(tmp_path)
+    root = compiled.request.output_dir / compiled.run_id
+    record = json.loads((root / "evidence_records.json").read_text())["records"][0]
+    evidence_ref = f"{record['evidence_id']}@{record['evidence_version']}"
+    before = _source_hashes(compiled)
+    calls = [
+        ("get_claim_evidence", dict(claim_id="claim:target-identity", evidence_tiers=["formal", "shadow", "exploratory"])),
+        ("trace_evidence_provenance", dict(evidence_ref=evidence_ref)),
+        ("get_conflicting_evidence", dict(claim_id="claim:target-identity")),
+        ("get_missing_requirements", dict(product_case_id="product-case:synthetic-001")),
+        ("get_evidence_family_members", dict(evidence_family_id="evidence-family:transcriptomic")),
+        ("get_case_evidence_subgraph", dict(product_case_id="product-case:synthetic-001", evidence_tiers=["formal", "shadow", "exploratory"])),
+    ]
+    registry = ToolRegistry.load_default()
+    for name, arguments in calls:
+        request = _registered_query_request(tmp_path, compiled, name, **arguments)
+        first = registry.run(request)
+        second = registry.run(request.model_copy(update={"request_id": "equivalent", "output_dir": tmp_path / "other-output"}))
+        assert first.execution_state is ExecutionState.SUCCEEDED, first.reason_codes
+        assert first.result == second.result
+        assert first.input_hash == second.input_hash
+        assert first.run_id == second.run_id != compiled.run_id
+        assert first.result["query_name"] == name
+        assert first.result["graph_id"] == compiled.result["graph_id"]
+        assert first.measurements == first.visualizations == []
+        assert first.result["returned_node_count"] == len(first.result["nodes"])
+        assert first.result["returned_edge_count"] == len(first.result["edges"])
+        if name in {"get_claim_evidence", "trace_evidence_provenance", "get_evidence_family_members", "get_case_evidence_subgraph"}:
+            assert any(node["object_id"] == record["evidence_id"] for node in first.result["nodes"])
+        if name == "trace_evidence_provenance":
+            assert any(node["object_id"] == "measurement-result:target" for node in first.result["nodes"])
+            assert any(edge["edge_type"] == "derived_from" for edge in first.result["edges"])
+    bounded = registry.run(_registered_query_request(
+        tmp_path, compiled, "get_case_evidence_subgraph",
+        product_case_id="product-case:synthetic-001",
+        evidence_tiers=["formal", "shadow", "exploratory"], max_nodes=1,
+    ))
+    assert bounded.result["truncated"] is True
+    assert bounded.result["returned_node_count"] == 1
+    assert bounded.result["omitted_node_count"] > 0
+    assert _source_hashes(compiled) == before
+
+
+def test_registered_comparison_query_preserves_external_case_boundary(tmp_path: Path) -> None:
+    compiled = _run(tmp_path, bundle=_comparison_bundle(), profiles=_comparison_profiles(),
+                    claim_registry=_comparison_claim_registry())
+    assert compiled.execution_state is ExecutionState.SUCCEEDED
+    before = _source_hashes(compiled)
+    request = _registered_query_request(tmp_path, compiled, "compare_evidence_paths",
+                                         comparison_id="comparison:case-a-vs-b", claim_id="claim:comparison")
+    result = ToolRegistry.load_default().run(request).result
+    assert result["graph_id"] == compiled.result["graph_id"]
+    external = [node for node in result["nodes"] if node["node_type"] == "EvidenceRecord"]
+    assert len(external) == 2
+    assert all(node["record_mode"] == "external_ref" and node["properties"] == {} for node in external)
+    assert result["reason_codes"] == ["source_case_graph_required"]
+    assert _source_hashes(compiled) == before
+
+
+@pytest.mark.parametrize("query", [
+    {"query_name": "execute_sql", "sql": "SELECT *"},
+    {"query_name": "get_claim_evidence", "claim_id": "claim:target-identity", "evidence_tiers": ["formal"], "max_nodes": 2},
+    {"query_name": "get_claim_evidence", "claim_id": "claim:target-identity"},
+    *[{"query_name": "get_claim_evidence", "claim_id": "claim:target-identity", "evidence_tiers": ["formal"], "limit": value}
+      for value in [True, "2", 1.5, 0, 201]],
+    *[{"query_name": "trace_evidence_provenance", "evidence_ref": "evidence:aaaaaaaaaaaaaaaaaaaaaaaa@1", "max_depth": value}
+      for value in [True, "2", 0, 7]],
+    *[{"query_name": "trace_evidence_provenance", "evidence_ref": "evidence:aaaaaaaaaaaaaaaaaaaaaaaa@1", "max_nodes": value}
+      for value in [True, "2", 0, 501]],
+    {"query_name": "get_missing_requirements"},
+    {"query_name": "get_missing_requirements", "claim_id": "claim:target-identity", "product_case_id": "product-case:synthetic-001"},
+    {"query_name": "get_missing_requirements", "product_case_id": "product-case:synthetic-001", "claim_version": "1"},
+    {"query_name": "compare_evidence_paths", "comparison_id": "comparison:x"},
+    {"query_name": "compare_evidence_paths", "comparison_id": "comparison:x", "claim_id": "claim:x", "domain_id": "target_identity"},
+    {"query_name": "get_claim_evidence", "claim_id": "MATCH (n) DELETE n", "evidence_tiers": ["formal"]},
+    {"query_name": "get_claim_evidence", "claim_id": "/private/secret", "evidence_tiers": ["formal"]},
+    {"query_name": "get_claim_evidence", "claim_id": "claim:target-identity", "evidence_tiers": ["formal", "formal"]},
+    {"query_name": "get_evidence_family_members", "evidence_family_id": "evidence-family:transcriptomic", "include_inactive": "false"},
+])
+def test_registered_query_rejects_invalid_named_arguments(tmp_path: Path, query: dict[str, Any]) -> None:
+    compiled = _run(tmp_path)
+    before = _source_hashes(compiled)
+    name = query["query_name"]
+    request = _registered_query_request(tmp_path, compiled, name, **{key: value for key, value in query.items() if key != "query_name"})
+    run = ToolRegistry.load_default().run(request)
+    assert run.execution_state is ExecutionState.FAILED
+    assert run.result is None and run.artifacts == [] and run.measurements == []
+    assert "/private/secret" not in json.dumps(run.reason_codes)
+    assert _source_hashes(compiled) == before
+
+
+@pytest.mark.parametrize("failure", ["manifest_bytes", "sidecar", "sidecar_symlink", "manifest_symlink", "parent_symlink",
+                                    "output_symlink", "output_inside_graph", "output_contains_graph", "mixed_roles",
+                                    "parameters", "measurement_spec", "graph_schema", "wrong_graph_kind"])
+def test_registered_query_fails_closed_without_source_changes(tmp_path: Path, failure: str) -> None:
+    compiled = _run(tmp_path)
+    request = _registered_query_request(tmp_path, compiled, "get_case_evidence_subgraph",
+                                         product_case_id="product-case:synthetic-001",
+                                         evidence_tiers=["formal", "shadow", "exploratory"])
+    root = compiled.request.output_dir / compiled.run_id
+    manifest, query = request.object_inputs
+    if failure == "manifest_bytes":
+        manifest.path.write_bytes(manifest.path.read_bytes() + b" ")
+    elif failure == "sidecar":
+        (root / "evidence_records.json").write_text('{"private":"/private/secret"}')
+    elif failure == "sidecar_symlink":
+        source = root / "evidence_records.json"
+        backup = tmp_path / "sidecar-copy.json"
+        backup.write_bytes(source.read_bytes())
+        source.unlink()
+        source.symlink_to(backup)
+    elif failure in {"manifest_symlink", "parent_symlink"}:
+        link = tmp_path / "linked-input"
+        link.symlink_to(manifest.path if failure == "manifest_symlink" else root)
+        manifest = manifest.model_copy(update={"path": link if failure == "manifest_symlink" else link / manifest.path.name})
+        request = request.model_copy(update={"object_inputs": [manifest, query]})
+    elif failure == "output_symlink":
+        link = tmp_path / "linked-output"
+        link.symlink_to(tmp_path / "real-output")
+        request = request.model_copy(update={"output_dir": link})
+    elif failure == "output_inside_graph":
+        request = request.model_copy(update={"output_dir": root / "nested"})
+    elif failure == "output_contains_graph":
+        request = request.model_copy(update={"output_dir": compiled.request.output_dir})
+    elif failure == "mixed_roles":
+        request = request.model_copy(update={"object_inputs": request.object_inputs + [compiled.request.object_inputs[0]]})
+    elif failure == "parameters":
+        request = request.model_copy(update={"parameters": {"limit": 1}})
+    elif failure == "measurement_spec":
+        request = request.model_copy(update={"measurement_spec_ref": "measurement-spec:target"})
+    elif failure == "graph_schema":
+        request = request.model_copy(update={"object_inputs": [
+            manifest.model_copy(update={"schema_ref": "bridge://schemas/comparison-evidence-graph-manifest/v0.1"}), query]})
+    elif failure == "wrong_graph_kind":
+        request = _registered_query_request(tmp_path, compiled, "compare_evidence_paths",
+                                              comparison_id="comparison:x", domain_id="target_identity")
+    before = _source_hashes(compiled)
+    run = ToolRegistry.load_default().run(request)
+    assert run.execution_state is ExecutionState.FAILED, run.reason_codes
+    assert run.result is None and run.artifacts == [] and run.measurements == []
+    assert "/private/secret" not in json.dumps(run.reason_codes)
+    assert _source_hashes(compiled) == before
+
+
+
+
+def test_registered_queries_keep_shadow_and_historical_evidence_visible_when_requested(tmp_path: Path) -> None:
+    first = _run(tmp_path / "first", bundle=_bundle(candidates=[_candidate(tier="shadow")]))
+    first_root = first.request.output_dir / first.run_id
+    manifest_path = first_root / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    records = json.loads((first_root / "evidence_records.json").read_text())["records"]
+    requirements = json.loads((first_root / "evidence_requirements.json").read_text())["requirements"]
+    evidence_ref = f"{records[0]['evidence_id']}@1"
+    second = _run(
+        tmp_path / "second",
+        bundle=_bundle(candidates=[_candidate(value=0.8, tier="shadow",
+                                               revision_action="supersede", predecessor_ref=evidence_ref)],
+                       prior_records=records, prior_requirements=requirements,
+                       base_graph_ref={"graph_id": manifest["graph_id"], "graph_version": 1,
+                                       "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest()}),
+        base_manifest_path=manifest_path,
+    )
+    assert second.execution_state is ExecutionState.SUCCEEDED
+    registry = ToolRegistry.load_default()
+    before = _source_hashes(second)
+    for tiers, count in [(["formal"], 0), (["shadow"], 1), (["formal", "shadow", "exploratory"], 1)]:
+        result = registry.run(_registered_query_request(tmp_path, second, "get_claim_evidence",
+                                                       claim_id="claim:target-identity",
+                                                       evidence_tiers=tiers)).result
+        assert len([node for node in result["nodes"] if node["node_type"] == "EvidenceRecord"]) == count
+    for inactive, versions in [(False, ["2"]), (True, ["1", "2"])]:
+        result = registry.run(_registered_query_request(tmp_path, second, "get_evidence_family_members",
+                                                       evidence_family_id="evidence-family:transcriptomic",
+                                                       include_inactive=inactive)).result
+        nodes = [node for node in result["nodes"] if node["node_type"] == "EvidenceRecord"]
+        assert sorted(node["object_version"] for node in nodes) == versions
+        if inactive:
+            assert {node["lifecycle_state"] for node in nodes} == {"superseded", "active"}
+    result = registry.run(_registered_query_request(tmp_path, second, "trace_evidence_provenance",
+                                                   evidence_ref=evidence_ref)).result
+    assert any(node["object_id"] == "measurement-result:target" for node in result["nodes"])
+    assert _source_hashes(second) == before
+
+
+def test_registered_result_union_accepts_old_compilation_and_new_query_without_hybrid_shapes(tmp_path: Path) -> None:
+    from bridge.toolkit.schemas import load_schema
+    compiled = ToolRegistry.load_default().run(_request(tmp_path))
+    assert compiled.execution_state is ExecutionState.SUCCEEDED
+    old = Draft202012Validator(load_schema("bridge://schemas/evidence-compiler-run-result/v0.1"))
+    union = Draft202012Validator(load_schema("bridge://schemas/evidence-compiler-result/v0.2"))
+    assert old.is_valid(compiled.result)
+    assert union.is_valid(compiled.result)
+    query = ToolRegistry.load_default().run(_registered_query_request(
+        tmp_path, compiled, "get_claim_evidence", claim_id="claim:target-identity",
+        evidence_tiers=["formal", "shadow", "exploratory"],
+    ))
+    assert union.is_valid(query.result)
+    assert not old.is_valid(query.result)
+    assert not union.is_valid({**compiled.result, **query.result})
+    assert query.artifacts == [] and not query.request.output_dir.exists()
+
+
+
+
+def test_registered_conflict_and_missing_queries_preserve_both_relations_and_open_gaps(tmp_path: Path) -> None:
+    compiled = _run(tmp_path, bundle=_bundle(candidates=[
+        _candidate(metric_id="support", relation="supports"),
+        _candidate(candidate_id="evidence-candidate:opposite", metric_id="opposition", relation="contradicts"),
+    ]))
+    assert compiled.execution_state is ExecutionState.SUCCEEDED
+    registry = ToolRegistry.load_default()
+    conflict = registry.run(_registered_query_request(tmp_path, compiled, "get_conflicting_evidence",
+                                                      claim_id="claim:target-identity")).result
+    assert {edge["edge_type"] for edge in conflict["edges"]} == {"supports", "contradicts"}
+    assert len([node for node in conflict["nodes"] if node["node_type"] == "EvidenceRecord"]) == 2
+    bounded = registry.run(_registered_query_request(
+        tmp_path, compiled, "get_claim_evidence", claim_id="claim:target-identity",
+        evidence_tiers=["formal", "shadow", "exploratory"], limit=1,
+    )).result
+    assert bounded["truncated"] is True and bounded["omitted_node_count"] == 1
+    root = compiled.request.output_dir / compiled.run_id
+    requirements = json.loads((root / "evidence_requirements.json").read_text())["requirements"]
+    missing = registry.run(_registered_query_request(tmp_path, compiled, "get_missing_requirements",
+                                                     claim_id="claim:target-identity", state="open")).result
+    assert {node["object_id"] for node in missing["nodes"] if node["node_type"] == "EvidenceRequirement"} == {
+        requirement["requirement_id"] for requirement in requirements if requirement["state"] == "open"
+    }
+    assert requirements
+
+
 def test_all_seven_queries_are_bounded_deterministic_and_read_only(tmp_path: Path) -> None:
     run = _run(tmp_path)
     final = run.request.output_dir / run.run_id
@@ -1795,7 +2098,7 @@ def test_v1_adapter_invocation_has_one_stable_v2_reason(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="p0-09-v1",
         tool_id="P0-09",
-        tool_version="0.4.2",
+        tool_version="0.5.0",
         output_dir=(tmp_path / "output").resolve(),
     )
     eligibility = adapter.check_eligibility(request, _spec())  # type: ignore[arg-type]
@@ -4768,7 +5071,7 @@ def test_static_capacity_uses_complete_table_without_top_n_selection(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-capacity",
-        tool_version="0.4.2",
+        tool_version="0.5.0",
     )
 
     table = prepared.payloads["evidence_compiler_claim_interpretation.tsv"]
@@ -4801,7 +5104,7 @@ def test_static_capacity_falls_back_when_reason_text_cannot_fit(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-reason-capacity",
-        tool_version="0.4.2",
+        tool_version="0.5.0",
     )
 
     table = prepared.payloads["evidence_compiler_requirements_exclusions.tsv"]
@@ -5290,7 +5593,7 @@ def test_long_reference_labels_remain_distinguishable_in_render(tmp_path: Path) 
         profile=profile,
         output_dir=tmp_path / "render",
         run_id="run-ref-collision",
-        tool_version="0.4.2",
+        tool_version="0.5.0",
     )
     labels = [_short_ref(ref) for ref in refs]
     svg = prepared.payloads["evidence_compiler_claim_interpretation.svg"]

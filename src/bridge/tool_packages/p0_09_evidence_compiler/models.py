@@ -13,6 +13,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PlainValidator,
+    RootModel,
     StrictBool,
     StrictFloat,
     StrictInt,
@@ -1642,6 +1643,112 @@ class EvidenceGraphQueryResult(FrozenModel):
     reason_codes: list[str]
 
 
+QueryText = Annotated[str, Field(strict=True, min_length=1)]
+QueryLimit = Annotated[StrictInt, Field(ge=1, le=200)]
+QueryDepth = Annotated[StrictInt, Field(ge=1, le=6)]
+QueryNodes = Annotated[StrictInt, Field(ge=1, le=500)]
+
+
+class _GraphQuery(FrozenModel):
+    object_version: Literal["0.1.0"] = "0.1.0"
+
+    @model_validator(mode="after")
+    def unique_filters(self) -> Self:
+        for field in ("evidence_tiers", "domain_ids"):
+            values = getattr(self, field, ())
+            if len(values) != len(set(values)):
+                raise ValueError("query filters must be unique")
+        return self
+
+
+class ClaimEvidenceQuery(_GraphQuery):
+    query_name: Literal["get_claim_evidence"]
+    claim_id: QueryText
+    claim_version: QueryText | None = None
+    evidence_tiers: tuple[EvidenceTier, ...]
+    include_inactive: StrictBool = False
+    limit: QueryLimit = 100
+
+
+class EvidenceProvenanceQuery(_GraphQuery):
+    query_name: Literal["trace_evidence_provenance"]
+    evidence_ref: QueryText
+    max_depth: QueryDepth = 4
+    max_nodes: QueryNodes = 200
+
+
+class ConflictingEvidenceQuery(_GraphQuery):
+    query_name: Literal["get_conflicting_evidence"]
+    claim_id: QueryText
+    claim_version: QueryText | None = None
+    reconciliation_version: PositiveStrictInt | None = None
+    limit: QueryLimit = 100
+
+
+class MissingRequirementsQuery(_GraphQuery):
+    query_name: Literal["get_missing_requirements"]
+    claim_id: QueryText | None = None
+    claim_version: QueryText | None = None
+    product_case_id: QueryText | None = None
+    state: EvidenceRequirementState = EvidenceRequirementState.OPEN
+    limit: QueryLimit = 100
+
+    @model_validator(mode="after")
+    def exactly_one_selector(self) -> Self:
+        if (self.claim_id is None) == (self.product_case_id is None):
+            raise ValueError("exactly one claim or product case required")
+        if self.claim_version is not None and self.claim_id is None:
+            raise ValueError("claim_version requires claim_id")
+        return self
+
+
+class EvidenceFamilyMembersQuery(_GraphQuery):
+    query_name: Literal["get_evidence_family_members"]
+    evidence_family_id: QueryText
+    include_inactive: StrictBool = False
+    limit: QueryLimit = 100
+
+
+class CaseEvidenceSubgraphQuery(_GraphQuery):
+    query_name: Literal["get_case_evidence_subgraph"]
+    product_case_id: QueryText
+    domain_ids: tuple[P0DomainId, ...] = ()
+    evidence_tiers: tuple[EvidenceTier, ...]
+    max_depth: QueryDepth = 4
+    max_nodes: QueryNodes = 300
+
+
+class ComparisonEvidencePathsQuery(_GraphQuery):
+    query_name: Literal["compare_evidence_paths"]
+    comparison_id: QueryText
+    claim_id: QueryText | None = None
+    claim_version: QueryText | None = None
+    domain_id: P0DomainId | None = None
+    max_depth: QueryDepth = 4
+    max_nodes: QueryNodes = 300
+
+    @model_validator(mode="after")
+    def exactly_one_selector(self) -> Self:
+        if (self.claim_id is None) == (self.domain_id is None):
+            raise ValueError("exactly one claim or domain required")
+        if self.claim_version is not None and self.claim_id is None:
+            raise ValueError("claim_version requires claim_id")
+        return self
+
+
+class EvidenceGraphQuery(RootModel[Annotated[
+    ClaimEvidenceQuery | EvidenceProvenanceQuery | ConflictingEvidenceQuery
+    | MissingRequirementsQuery | EvidenceFamilyMembersQuery
+    | CaseEvidenceSubgraphQuery | ComparisonEvidencePathsQuery,
+    Field(discriminator="query_name"),
+]]):
+    model_config = ConfigDict(frozen=True)
+
+
+class EvidenceCompilerResult(RootModel[EvidenceCompilerRunResult | EvidenceGraphQueryResult]):
+    model_config = ConfigDict(frozen=True)
+
+
 class GraphNodeRow(FrozenModel):
     graph_id: str
     graph_version: StrictInt
@@ -1687,6 +1794,8 @@ class CompiledEvidenceGraph(FrozenModel):
 
 
 PUBLIC_SCHEMA_MODELS = {
+    "bridge://schemas/evidence-graph-query/v0.1": EvidenceGraphQuery,
+    "bridge://schemas/evidence-compiler-result/v0.2": EvidenceCompilerResult,
     "bridge://schemas/evidence-compilation-bundle/v0.1": EvidenceCompilationBundle,
     "bridge://schemas/evidence-family-registry/v0.1": EvidenceFamilyRegistry,
     "bridge://schemas/claim-registry/v0.1": ClaimRegistry,

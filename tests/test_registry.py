@@ -99,6 +99,8 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
         "case_append_v2",
         "comparison_initial_v2",
         "comparison_append_v2",
+        "case_query",
+        "comparison_query",
     ]
     legacy_profile = next(
         role
@@ -203,7 +205,14 @@ def test_input_contract_roles_match_runtime_adapters() -> None:
             for mode in registry.describe_input(tool_id).object_input_modes
             for role in mode.roles
         }
-        assert declared_roles == set(runtime_contract)
+        runtime_roles = set(runtime_contract)
+        if tool_id == "P0-09":
+            # Compilation and read-only query dispatch have separate loaders.
+            query_runtime = import_module(
+                "bridge.tool_packages.p0_09_evidence_compiler.query_runtime"
+            )
+            runtime_roles.update(query_runtime.QUERY_ROLES)
+        assert declared_roles == runtime_roles
 
 
 def test_shared_product_context_imports_remain_compatible() -> None:

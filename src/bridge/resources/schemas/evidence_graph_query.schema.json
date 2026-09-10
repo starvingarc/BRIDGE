@@ -1,0 +1,476 @@
+{
+  "$defs": {
+    "CaseEvidenceSubgraphQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "domain_ids": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/P0DomainId"
+          },
+          "title": "Domain Ids",
+          "type": "array"
+        },
+        "evidence_tiers": {
+          "items": {
+            "$ref": "#/$defs/EvidenceTier"
+          },
+          "title": "Evidence Tiers",
+          "type": "array"
+        },
+        "max_depth": {
+          "default": 4,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Max Depth",
+          "type": "integer"
+        },
+        "max_nodes": {
+          "default": 300,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Max Nodes",
+          "type": "integer"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "product_case_id": {
+          "minLength": 1,
+          "title": "Product Case Id",
+          "type": "string"
+        },
+        "query_name": {
+          "const": "get_case_evidence_subgraph",
+          "title": "Query Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query_name",
+        "product_case_id",
+        "evidence_tiers"
+      ],
+      "title": "CaseEvidenceSubgraphQuery",
+      "type": "object"
+    },
+    "ClaimEvidenceQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "minLength": 1,
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "claim_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Version"
+        },
+        "evidence_tiers": {
+          "items": {
+            "$ref": "#/$defs/EvidenceTier"
+          },
+          "title": "Evidence Tiers",
+          "type": "array"
+        },
+        "include_inactive": {
+          "default": false,
+          "title": "Include Inactive",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 100,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "query_name": {
+          "const": "get_claim_evidence",
+          "title": "Query Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query_name",
+        "claim_id",
+        "evidence_tiers"
+      ],
+      "title": "ClaimEvidenceQuery",
+      "type": "object"
+    },
+    "ComparisonEvidencePathsQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Id"
+        },
+        "claim_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Version"
+        },
+        "comparison_id": {
+          "minLength": 1,
+          "title": "Comparison Id",
+          "type": "string"
+        },
+        "domain_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/P0DomainId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "max_depth": {
+          "default": 4,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Max Depth",
+          "type": "integer"
+        },
+        "max_nodes": {
+          "default": 300,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Max Nodes",
+          "type": "integer"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "query_name": {
+          "const": "compare_evidence_paths",
+          "title": "Query Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query_name",
+        "comparison_id"
+      ],
+      "title": "ComparisonEvidencePathsQuery",
+      "type": "object"
+    },
+    "ConflictingEvidenceQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "minLength": 1,
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "claim_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Version"
+        },
+        "limit": {
+          "default": 100,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "query_name": {
+          "const": "get_conflicting_evidence",
+          "title": "Query Name",
+          "type": "string"
+        },
+        "reconciliation_version": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reconciliation Version"
+        }
+      },
+      "required": [
+        "query_name",
+        "claim_id"
+      ],
+      "title": "ConflictingEvidenceQuery",
+      "type": "object"
+    },
+    "EvidenceFamilyMembersQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_family_id": {
+          "minLength": 1,
+          "title": "Evidence Family Id",
+          "type": "string"
+        },
+        "include_inactive": {
+          "default": false,
+          "title": "Include Inactive",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 100,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "query_name": {
+          "const": "get_evidence_family_members",
+          "title": "Query Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query_name",
+        "evidence_family_id"
+      ],
+      "title": "EvidenceFamilyMembersQuery",
+      "type": "object"
+    },
+    "EvidenceProvenanceQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_ref": {
+          "minLength": 1,
+          "title": "Evidence Ref",
+          "type": "string"
+        },
+        "max_depth": {
+          "default": 4,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Max Depth",
+          "type": "integer"
+        },
+        "max_nodes": {
+          "default": 200,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Max Nodes",
+          "type": "integer"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "query_name": {
+          "const": "trace_evidence_provenance",
+          "title": "Query Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query_name",
+        "evidence_ref"
+      ],
+      "title": "EvidenceProvenanceQuery",
+      "type": "object"
+    },
+    "EvidenceRequirementState": {
+      "enum": [
+        "open",
+        "satisfied",
+        "not_applicable"
+      ],
+      "title": "EvidenceRequirementState",
+      "type": "string"
+    },
+    "EvidenceTier": {
+      "enum": [
+        "formal",
+        "shadow",
+        "exploratory"
+      ],
+      "title": "EvidenceTier",
+      "type": "string"
+    },
+    "MissingRequirementsQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Id"
+        },
+        "claim_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Version"
+        },
+        "limit": {
+          "default": 100,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "object_version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "product_case_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product Case Id"
+        },
+        "query_name": {
+          "const": "get_missing_requirements",
+          "title": "Query Name",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/EvidenceRequirementState",
+          "default": "open"
+        }
+      },
+      "required": [
+        "query_name"
+      ],
+      "title": "MissingRequirementsQuery",
+      "type": "object"
+    },
+    "P0DomainId": {
+      "enum": [
+        "target_identity",
+        "regional_fidelity",
+        "developmental_compatibility",
+        "off_target_control",
+        "proliferation_stress_response"
+      ],
+      "title": "P0DomainId",
+      "type": "string"
+    }
+  },
+  "$id": "bridge://schemas/evidence-graph-query/v0.1",
+  "discriminator": {
+    "mapping": {
+      "compare_evidence_paths": "#/$defs/ComparisonEvidencePathsQuery",
+      "get_case_evidence_subgraph": "#/$defs/CaseEvidenceSubgraphQuery",
+      "get_claim_evidence": "#/$defs/ClaimEvidenceQuery",
+      "get_conflicting_evidence": "#/$defs/ConflictingEvidenceQuery",
+      "get_evidence_family_members": "#/$defs/EvidenceFamilyMembersQuery",
+      "get_missing_requirements": "#/$defs/MissingRequirementsQuery",
+      "trace_evidence_provenance": "#/$defs/EvidenceProvenanceQuery"
+    },
+    "propertyName": "query_name"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ClaimEvidenceQuery"
+    },
+    {
+      "$ref": "#/$defs/EvidenceProvenanceQuery"
+    },
+    {
+      "$ref": "#/$defs/ConflictingEvidenceQuery"
+    },
+    {
+      "$ref": "#/$defs/MissingRequirementsQuery"
+    },
+    {
+      "$ref": "#/$defs/EvidenceFamilyMembersQuery"
+    },
+    {
+      "$ref": "#/$defs/CaseEvidenceSubgraphQuery"
+    },
+    {
+      "$ref": "#/$defs/ComparisonEvidencePathsQuery"
+    }
+  ],
+  "title": "EvidenceGraphQuery"
+}
