@@ -125,11 +125,16 @@ before/after review:
 - Discard change drops that proposal.
 - Keep current inputs explicitly resolves review without an edit.
 
-None approves analysis. Fact corrections first expose affected dimensions,
-comparisons and report versions, then propose a partial update. Recompute occurs
-only after confirmation; unaffected evidence is reused and previous versions
-remain available. This is separate from autonomous checks under unchanged facts,
-scope and resources.
+None approves analysis. Current controls record the exact field-level
+before/after change and its review/revision update. Product-only or source-only
+changes preserve compatible QC; assay, matrix or QC-relevant metadata changes
+require fresh QC. Existing history remains versioned, but no automatic
+downstream impact analysis, evidence reuse or recomputation is implied.
+
+Showing affected dimensions, comparisons and report versions, then proposing a
+partial update plan, is an unimplemented target defined in
+[PRD section 6.8](BRIDGE_PRD.md#68-报告核验与发布). It must not be presented as
+current correction behavior.
 
 ## Analysis inputs
 

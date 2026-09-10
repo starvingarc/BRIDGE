@@ -2,24 +2,60 @@
 
 ## Protocol formalization closeout — 2026-09-10
 
-The source implementation and isolated installed acceptance for source-backed
-protocol formalization completed without changing scientific tools, facts,
-original inputs or deployment state.
+This closeout is bound to
+[main commit 40d352b9](https://github.com/starvingarc/BRIDGE/commit/40d352b9631310ab16785313fb5a85e8983551bc)
+and [PR #95 public head 60ae0f50](https://github.com/starvingarc/BRIDGE/commit/60ae0f505f74a3a07b1e77fec35c5096abb958e5).
+Both commits contain the exact accepted
+[Git tree e17c09d7](https://github.com/starvingarc/BRIDGE/tree/e17c09d758ebbb6f26ab6be7bd5406328348cd38).
+The immutable
+[retired-diary closeout](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10)
+is the detailed historical evidence source.
 
-| Check | Exact result |
+| Check on that tree | Exact result |
 |---|---|
 | Installed backend | 209 tests passed, including 119 protocol cases with the pinned BPL compiler |
 | Browser client | 102 tests across 11 files passed; typecheck and production build passed |
-| Configured-model browser path | A synthetic missing-wait case preserved unsure history, accepted an explicit two-hour user answer, created a new unreviewed version and required version-bound human review |
-| Representation | The final BPL used wait(duration: 2 h); readable content identified the user-supplied duration and retained both source and user-answer references |
 | Review boundary | Independent bounded reviews cleared source/fragment/audit and active-answer accounting; literal participation and compiler success remained separate from semantic or biological proof |
 
-The tested path establishes one authoritative fragment representation, bounded
-repair, source accounting and review-version invalidation. It does not prove that
-all protocol omissions were detected, that the experiment was executed, that a
-normal private deployment was upgraded or that downstream product assessment is
-qualified. Failed earlier attempts remain failures in history rather than being
-relabeled by this closeout.
+Two accepted subsets must remain distinct:
+
+- The earlier
+  [public-JCI protocol subset](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#latest-installed-result-and-source-constraint-decision-2026-09-09)
+  covered source display, real parse/validate/lower compilation, version-bound
+  review, refresh without regeneration, checksum-verified downloads and
+  manual-edit invalidation. Its combined run stopped at the separate synthetic
+  missing-wait case, so it was never a full passing journey.
+- The final
+  [synthetic answer path](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10)
+  preserved unsure history, accepted an explicit two-hour user answer, created
+  a new unreviewed version and required version-bound human review. Its final
+  BPL used wait(duration: 2 h), and readable content retained both source and
+  user-answer references. Synthetic conditions are not experimental attestations.
+
+Earlier syntax/source-span failures and answer-participation failures remain
+failed in the immutable
+[boundary-failure record](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#post-review-boundary-fixes-and-preserved-installed-failure)
+and
+[answer-participation record](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#installed-answer-participation-failure-and-bounded-repair-2026-09-10).
+The accepted tree does not relabel them. This evidence proves bounded
+representation, compilation, review and revision behavior; it does not prove
+complete semantic omission detection, experiment execution, deployment upgrade
+or qualified downstream assessment.
+
+### Preservation pointers for current summaries
+
+The retired construction diary remains navigable at the immutable commit above:
+
+- [First product intake and QC approval evidence](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-20-genuine-product-entry-observation-2026-09-08)
+  and [its installed snapshot](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-20-engineering-evidence-2026-09-08-installed-snapshot).
+- [Metadata-first intake and protocol extraction](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#tasks-3032-acceptance-record-2026-09-09).
+- [Descriptive P0-06 installed SDK measurement](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-27-genuine-installed-measurement-and-publication-checkpoint)
+  and [P0-02 L2 marker-context installed SDK evidence](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-28-genuine-installed-acceptance).
+- [Explicit QC selection and downstream handoff](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#task-29-approved-qc-selection-and-downstream-handoff).
+
+The SDK observations remain descriptive candidate evidence, and ordinary Web QC
+preparation remains audit-only. None of these pointers upgrades a product domain,
+scientific review, qualified report or deployment state.
 
 ## Current closeout — 2026-09-08
 
