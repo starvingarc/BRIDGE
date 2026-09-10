@@ -816,6 +816,7 @@ class Inputs:
                     raise ValueError("canonical_source_producer_mismatch")
                 identifiers.add(profiles[0][0])
                 break
+        identifiers.update(self.service.report_inputs.assessment_resource_ids(state, upload_id, selections, view))
         return sorted(identifiers)
 
     def assessment_pool(self, state, scope):
@@ -828,6 +829,11 @@ class Inputs:
                 continue
             if admission["tool_id"] != receipt["tool_id"]:
                 raise ValueError("assessment_producer_mismatch")
+            run, _ = self.producer_objects(state, receipt, receipt["tool_id"], set())
+            for ref in getattr(run.request, "object_inputs", []):
+                record = state["_input_objects"][ref.input_id]
+                self.verify(state, record)
+                pool[ref.input_id] = record
             for identifier, record in state["_input_objects"].items():
                 if (record.get("source") == "tool_output" and record.get("receipt_file") == receipt["file"]
                         and record.get("receipt_sha256") == receipt["sha256"]
@@ -882,6 +888,8 @@ class Inputs:
             row = {"tool_id": allowed.tool_id, "mode_id": allowed.mode_id,
                    "bundle": None, "request": None, "fingerprint": None, "blockers": []}
             automatic = (allowed.tool_id, allowed.mode_id) in {
+                ("P0-01", None), ("P0-02", None), ("P0-08", "default"),
+                ("P0-09", "case_initial_v2"), ("P0-09", "case_append_v2"), ("P0-09", "case_query"),
                 ("P0-03", "default"), ("P0-04", "default"), ("P0-05", "hard_count_accounting"),
                 ("P0-06", "exploratory_process"), ("P0-06", "method_runtime_source_bound")}
             if (saved is None or saved["mode_id"] != allowed.mode_id) and not automatic:
@@ -890,6 +898,14 @@ class Inputs:
                 try:
                     selection = Selection.model_validate((saved if saved and saved["mode_id"] == allowed.mode_id else None) or dict(tool_id=allowed.tool_id, mode_id=allowed.mode_id,
                         asset_ids=[], object_inputs=[], measurement_spec_ref=None))
+                    if saved is None and allowed.tool_id in {"P0-01", "P0-02"} and allowed.mode_id is None:
+                        selection = selection.model_copy(update={"asset_ids": [scope.upload_id],
+                            "measurement_spec_ref": scope.binding["measurement_spec_ref"] if allowed.tool_id == "P0-02" else None})
+                        if allowed.tool_id == "P0-02":
+                            reasons = (self.service.intake.cell_state_reasons(state, scope.upload_id)
+                                       or self.service.cell_state_config_reasons())
+                            if reasons:
+                                raise ValueError(reasons[0])
                     if any(aid != scope.upload_id for aid in selection.asset_ids):
                         raise ValueError("assessment_upload_mismatch")
                     blocker = (self.service.scientific_inputs.selected_blocker(state, allowed.tool_id, selection)
@@ -897,14 +913,17 @@ class Inputs:
                     if blocker:
                         raise ValueError(blocker)
                     selection = self.service.scientific_inputs.assessment_selection(state, scope, allowed, selection)
+                    selection = self.service.report_inputs.assessment_selection(state, scope, allowed, selection)
                     blocker = self.service.scientific_inputs.selected_blocker(state, allowed.tool_id, selection)
                     if blocker:
                         raise ValueError(blocker)
                     bundle, request = self.construct(state, selection)
-                    if allowed.mode_id == "case_query":
+                    if allowed.tool_id in {"P0-08", "P0-09"}:
                         from .app import uid
+                        # Canonical producer artifacts stay at their original paths.
+                        # Each consumer writes to a sibling, never above an input.
                         request = request.model_copy(update={"output_dir":
-                            self.service.directory(state["id"]) / "runs" / ("query-" + uid())})
+                            self.service.directory(state["id"]) / "runs" / ("assessment-" + uid())})
                     eligibility = self.service.registry.check_eligibility(request)
                     row["blockers"] = list(eligibility.reason_codes) if not eligibility.eligible else []
                     meaning = request.model_dump(mode="json", exclude={"request_id", "output_dir"})
@@ -917,6 +936,10 @@ class Inputs:
                     reason = str(exc)
                     row["blockers"] = [reason if re.fullmatch(r"[a-z_]+(?::[a-z_]+)?", reason)
                                        else "registered_input_invalid"]
+            try:
+                row["gaps"] = self.service.report_inputs.assessment_gaps(state, scope, allowed)
+            except (ValueError, OSError, KeyError):
+                row["gaps"] = []
             candidates.append(row)
         return candidates
 

@@ -124,7 +124,7 @@ def _spec() -> ToolPackageSpecV2:
     return ToolPackageSpecV2(
         tool_id="P0-09",
         name="Evidence Compiler & Reconciler",
-        version="0.5.0",
+        version="0.5.1",
         summary="Compile atomic evidence and reconcile conflicts by versioned rules.",
         implementation_state=ImplementationState.IMPLEMENTED,
         scientific_status="candidate",
@@ -1013,7 +1013,7 @@ def _request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-09",
-        tool_version="0.5.0",
+        tool_version="0.5.1",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -2098,7 +2098,7 @@ def test_v1_adapter_invocation_has_one_stable_v2_reason(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="p0-09-v1",
         tool_id="P0-09",
-        tool_version="0.5.0",
+        tool_version="0.5.1",
         output_dir=(tmp_path / "output").resolve(),
     )
     eligibility = adapter.check_eligibility(request, _spec())  # type: ignore[arg-type]
@@ -4265,6 +4265,105 @@ def _case_v2_request(
     )
 
 
+
+def _append_with_new_sufficiency_run(tmp_path):
+    first = _run_request(_case_v2_request(tmp_path / "first"))
+    assert first.execution_state is ExecutionState.SUCCEEDED
+    directory = first.request.output_dir / first.run_id
+    manifest_path = directory / "case_evidence_graph_manifest.json"
+    manifest = json.loads(manifest_path.read_bytes())
+    prior_records = json.loads((directory / "evidence_records.json").read_bytes())["records"]
+    prior_requirements = json.loads((directory / "evidence_requirements.json").read_bytes())["requirements"]
+    current_profile = {**_profile(), "profile_id": "evidence-sufficiency-profile:bbbbbbbbbbbbbbbb:target_identity",
+                       "deterministic_run_ref": "run-bbbbbbbbbbbbbbbb"}
+    bundle = _bundle(candidates=[], prior_records=prior_records, prior_requirements=prior_requirements,
+        base_graph_ref={"graph_id": manifest["graph_id"], "graph_version": manifest["graph_version"],
+                        "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest()},
+        missing=[{**_missing_observation(), "requirement_key": "transcriptomic_channel",
+                  "reason_code": "required_channel_not_provided"}])
+    request = _request(tmp_path / "second", bundle=bundle, base_manifest_path=manifest_path,
+        sufficiency_runs=[("current-sufficiency", _v2_run(current_profile))])
+    return first, request, prior_records
+
+
+def test_canonical_append_restores_only_prior_records_historical_profiles(tmp_path):
+    first, request, prior_records = _append_with_new_sufficiency_run(tmp_path)
+    eligibility = adapter.check_eligibility(request, _spec())
+    assert eligibility.eligible, eligibility.reason_codes
+    second = _run_request(request)
+    assert second.execution_state is ExecutionState.SUCCEEDED, second.reason_codes
+    directory = second.request.output_dir / second.run_id
+    manifest = json.loads((directory / "case_evidence_graph_manifest.json").read_bytes())
+    assert manifest["graph_version"] == 2
+    records = json.loads((directory / "evidence_records.json").read_bytes())["records"]
+    assert records == prior_records
+    from bridge.tool_packages.p0_09_evidence_compiler.graph import read_parquet_rows
+    nodes, _ = read_parquet_rows(directory / "graph_nodes.parquet", directory / "graph_edges.parquet")
+    assert any(row.object_id == prior_records[0]["sufficiency_profile_ref"]["object_id"] for row in nodes)
+    assert records[0]["sufficiency_profile_ref"]["object_id"] != "evidence-sufficiency-profile:bbbbbbbbbbbbbbbb:target_identity"
+
+
+
+@pytest.mark.parametrize("tamper", ["artifact", "missing_profile", "cross_case", "current_identity_collision", "historical_as_current"])
+def test_canonical_history_profiles_reject_tampering_and_current_reuse(tmp_path, tamper):
+    first, request, _ = _append_with_new_sufficiency_run(tmp_path)
+    refs = {ref.role: ref for ref in request.object_inputs}
+    bundle = json.loads(refs["compilation_bundle"].path.read_bytes())
+    if tamper in {"current_identity_collision", "historical_as_current"}:
+        if tamper == "current_identity_collision":
+            current = _profile()
+            current["evidence_refs"] = ["upstream-evidence:changed-but-same-identity"]
+            ref = refs["evidence_sufficiency_run_result"]
+            payload = _v2_run(current)
+        else:
+            ref = refs["compilation_bundle"]
+            candidate = _candidate()
+            candidate["sufficiency_profile_input_id"] = "historical-sufficiency-profile:" + hashlib.sha256(
+                (bundle["prior_evidence_records"][0]["sufficiency_profile_ref"]["object_id"] + "@0.2.0").encode()
+            ).hexdigest()[:24]
+            payload = {**bundle, "candidate_records": [candidate]}
+        checksum = _write(ref.path, payload)
+        request = request.model_copy(update={"object_inputs": [
+            item.model_copy(update={"sha256": checksum}) if item.input_id == ref.input_id else item
+            for item in request.object_inputs]})
+    else:
+        manifest_ref = refs["base_graph_manifest"]
+        manifest = json.loads(manifest_ref.path.read_bytes())
+        directory = manifest_ref.path.parent
+        nodes_path, edges_path = directory / "graph_nodes.parquet", directory / "graph_edges.parquet"
+        if tamper == "artifact":
+            nodes_path.write_bytes(nodes_path.read_bytes() + b"tampered")
+        else:
+            nodes, edges = read_parquet_rows(nodes_path, edges_path)
+            index = next(index for index, row in enumerate(nodes) if row.node_type is GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE)
+            node = nodes[index]
+            if tamper == "missing_profile":
+                nodes.pop(index)
+                edges = [edge for edge in edges if node.node_id not in {edge.source_node_id, edge.target_node_id}]
+                manifest["object_counts"].pop("EvidenceSufficiencyProfile")
+            else:
+                properties = json.loads(node.properties_json)
+                properties["product_case_ref"]["object_id"] = "product-case:another"
+                from bridge.tool_packages.p0_09_evidence_compiler.compiler import canonical_json_bytes, canonical_hash
+                nodes[index] = node.model_copy(update={"properties_json": canonical_json_bytes(properties).decode(),
+                                                     "content_hash": canonical_hash(properties)})
+            write_parquet(nodes_path, edges_path, nodes, edges)
+            manifest["node_count"] = manifest["graph_nodes"]["row_count"] = len(nodes)
+            manifest["edge_count"] = manifest["graph_edges"]["row_count"] = len(edges)
+            manifest["graph_nodes"]["sha256"] = hashlib.sha256(nodes_path.read_bytes()).hexdigest()
+            manifest["graph_edges"]["sha256"] = hashlib.sha256(edges_path.read_bytes()).hexdigest()
+            manifest_sha = _write(manifest_ref.path, manifest)
+            bundle["base_graph_ref"]["manifest_sha256"] = manifest_sha
+            bundle_sha = _write(refs["compilation_bundle"].path, bundle)
+            request = request.model_copy(update={"object_inputs": [
+                ref.model_copy(update={"sha256": manifest_sha if ref.role == "base_graph_manifest" else bundle_sha})
+                if ref.role in {"base_graph_manifest", "compilation_bundle"} else ref for ref in request.object_inputs]})
+    eligibility = adapter.check_eligibility(request, _spec())
+    assert not eligibility.eligible
+    assert ("sufficiency_run_profile_binding_invalid" if tamper == "historical_as_current" else "prior_history_invalid") in eligibility.reason_codes
+    assert not request.output_dir.exists()
+
+
 def _comparison_v2_inputs(
     bundle: dict[str, Any],
 ) -> tuple[dict[str, Any], list[tuple[str, dict[str, Any]]]]:
@@ -5071,7 +5170,7 @@ def test_static_capacity_uses_complete_table_without_top_n_selection(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-capacity",
-        tool_version="0.5.0",
+        tool_version="0.5.1",
     )
 
     table = prepared.payloads["evidence_compiler_claim_interpretation.tsv"]
@@ -5104,7 +5203,7 @@ def test_static_capacity_falls_back_when_reason_text_cannot_fit(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-reason-capacity",
-        tool_version="0.5.0",
+        tool_version="0.5.1",
     )
 
     table = prepared.payloads["evidence_compiler_requirements_exclusions.tsv"]
@@ -5593,7 +5692,7 @@ def test_long_reference_labels_remain_distinguishable_in_render(tmp_path: Path) 
         profile=profile,
         output_dir=tmp_path / "render",
         run_id="run-ref-collision",
-        tool_version="0.5.0",
+        tool_version="0.5.1",
     )
     labels = [_short_ref(ref) for ref in refs]
     svg = prepared.payloads["evidence_compiler_claim_interpretation.svg"]

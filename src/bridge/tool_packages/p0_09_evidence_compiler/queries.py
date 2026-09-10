@@ -715,6 +715,22 @@ class EvidenceGraphQueries:
         self._edges = {item.edge_id: item for item in edges}
         self._graph = graph
 
+    def _retained_sufficiency_profile_payloads(
+        self, profile_refs: set[tuple[str, str]]
+    ) -> dict[tuple[str, str], dict[str, Any]]:
+        """Expose only requested owned profiles from this fully verified graph."""
+        selected = {
+            (node.object_id, node.object_version): json.loads(node.properties_json)
+            for node in self._nodes.values()
+            if node.node_type is GraphNodeType.EVIDENCE_SUFFICIENCY_PROFILE
+            and node.record_mode is GraphRecordMode.OWNED
+            and node.properties_json is not None
+            and (node.object_id, node.object_version) in profile_refs
+        }
+        if set(selected) != profile_refs:
+            raise ValueError("manifest_integrity_failed")
+        return selected
+
     @classmethod
     def open(cls, manifest_path: Path) -> "EvidenceGraphQueries":
         """Open an untrusted graph without exposing nested validation details."""

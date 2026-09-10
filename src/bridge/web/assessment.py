@@ -274,7 +274,8 @@ class AssessmentCoordinator:
                 options = {row["fingerprint"]: row for row in candidates
                            if row["request"] is not None and not row["blockers"] and row["fingerprint"] not in used}
                 assessment["blockers"] = [{"tool_id": row["tool_id"], "mode_id": row["mode_id"],
-                    "reason_codes": row["blockers"]} for row in candidates if row["blockers"]]
+                    "reason_codes": sorted(set(row["blockers"] + row.get("gaps", [])))}
+                    for row in candidates if row["blockers"] or row.get("gaps")]
                 evidence, bindings = assessment_evidence(self.service.inputs, state, assessment)
                 if not options and not any(row["state"] == "available" for row in evidence):
                     self._finish(state, "no_eligible_check", status="blocked")

@@ -37,9 +37,9 @@ def propose_scope(client, sid, aid, tool="P0-05", mode="legacy_aggregation", **l
     return response.json()["assessment"]
 
 
-def settle_assessment(client, sid):
+def settle_assessment(client, sid, *, timeout=90):
     import time
-    until = time.monotonic() + 90
+    until = time.monotonic() + timeout
     while time.monotonic() < until:
         value = client.get(f"/api/sessions/{sid}").json()
         if value["assessment"]["status"] != "running":
@@ -54,6 +54,33 @@ def approve_scope(client, sid, scope):
     })
     assert response.status_code == 200, response.json()
     return response.json()
+
+
+def test_scope_cell_state_uses_confirmed_upload_without_manual_selection(client, tmp_path, monkeypatch):
+    from test_cell_state import _build_snapshot
+    from test_web_inputs import approve
+    from bridge.web.assessment import AssessmentScope
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch, with_producers=False)
+    plan = client.post(f"/api/sessions/{sid}/prepare-analysis", json={"tool_id": "P0-01"}).json()["plan"]
+    assert approve(client, sid, plan)["plan"]["status"] == "completed"
+    _build_snapshot(tmp_path, monkeypatch)
+    service.settings = replace(service.settings, cell_state_measurement_spec_ref="CELLSTATE-scRNA-shadow-v0.1")
+    scope = propose_scope(client, sid, aid, "P0-02", None)
+    state = service.load(sid)
+    before = state["_input_revision"]
+    assert "P0-02" not in state["_input_selections"]
+    with service.qc_catalog():
+        row, = service.inputs.assessment_candidates(state, AssessmentScope.model_validate(state["_assessment"]["scope"]))
+    assert row["blockers"] == []
+    assert row["request"].measurement_spec_ref == "CELLSTATE-scRNA-shadow-v0.1"
+    assert row["request"].assets[0].asset_id == aid
+    assert row["request"].assets[0].metadata["parent_asset_sha256"] == state["_uploads"][aid]["sha256"]
+    assert state["_input_revision"] == before
+    monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
+    approve_scope(client, sid, scope)
+    settle_assessment(client, sid)
+    runs = [row for row in service.load(sid)["_tool_runs"] if row["tool_id"] == "P0-02"]
+    assert len(runs) == 1 and runs[0]["state"] == "succeeded"
 
 
 def test_completed_qc_scope_binds_exact_v2_artifact_not_legacy_schema_match(
@@ -424,7 +451,8 @@ def select_process_roots(client, sid, tmp_path, case, view):
         metadata_state="not_provided", batch_confounding_state="not_assessed",
         independent_replicate_count=0, comparable_group_count=0, declared_process_step_ids=[])
     roots["process_method_spec"].update(expression_asset_id=view["artifact_id"], gene_symbol_column=None)
-    roots["measurement_spec"].update(independence_group_kind="donor")
+    roots["measurement_spec"].update(independence_group_kind="donor",
+        applicable_product_cards=[case["product_definition_ref"]["object_id"]])
     service = client.app.state.service
     state = service.load(sid)
     manifest_id, manifest = next((identifier, service.inputs.verify(state, record))

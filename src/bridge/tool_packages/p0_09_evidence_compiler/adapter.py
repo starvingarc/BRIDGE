@@ -31,6 +31,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     canonical_input_hash,
     compile_evidence_graph,
     semantic_input_projection,
+    normalize_identity_payload,
     evidence_record_content_hash,
     logical_key_hash,
     validate_prior_history,
@@ -136,6 +137,7 @@ ARTIFACT_FILENAME = re.compile(r"^[a-z0-9_]+(?:\.[a-z0-9]+)+$")
 @dataclass(frozen=True)
 class VerifiedGraphInputs:
     base_manifest: CaseEvidenceGraphManifest | ComparisonEvidenceGraphManifest | None
+    historical_profiles: dict[tuple[str, str], EvidenceSufficiencyProfileV2]
     source_manifests: dict[str, CaseEvidenceGraphManifest]
     source_record_sets: dict[str, EvidenceRecordSet]
     source_effective_lifecycle: dict[
@@ -734,6 +736,23 @@ def _resolve_sufficiency_inputs(
             {**raw, "sufficiency_profile_input_id": profile_key}
         )
 
+    # Historical material validates/renders immutable old records only. It never
+    # enters profiles_by_run, so a current candidate cannot select it as current.
+    current_by_ref = {(profile.profile_id, profile.profile_version): key
+                      for key, profile in profiles_by_key.items()}
+    for profile_ref, historical in verified_graph_inputs.historical_profiles.items():
+        if profile_ref in current_by_ref:
+            current = profiles_by_key[current_by_ref[profile_ref]]
+            if normalize_identity_payload(current) != normalize_identity_payload(historical):
+                raise CompilationInvariantError("prior_history_invalid", "historical profile identity collision")
+            continue
+        key = "historical-sufficiency-profile:" + hashlib.sha256(
+            (profile_ref[0] + "@" + profile_ref[1]).encode("utf-8")
+        ).hexdigest()[:24]
+        if key in loaded.objects_by_input_id or key in profiles_by_key:
+            raise CompilationInvariantError("prior_history_invalid", "historical profile binding collision")
+        profiles_by_key[key] = historical
+
     for record in bundle.prior_evidence_records:
         profile_key, _ = _select_embedded_profile(
             list(profiles_by_key.items()),
@@ -896,6 +915,7 @@ def _verify_graph_inputs(
     for ref in request.object_inputs:
         refs_by_role.setdefault(ref.role, []).append(ref)
 
+    historical_profiles: dict[tuple[str, str], EvidenceSufficiencyProfileV2] = {}
     base_manifests = refs_by_role.get("base_graph_manifest", [])
     base_record_sets = refs_by_role.get("base_evidence_record_set", [])
     base_requirement_sets = refs_by_role.get("base_evidence_requirement_set", [])
@@ -952,7 +972,24 @@ def _verify_graph_inputs(
             or requirement_set.requirements != bundle.prior_requirements
         ):
             raise CompilationInvariantError("prior_history_invalid", "base graph mismatch")
-        _preflight_graph_manifest(manifest_ref.path)
+        verified_graph = _preflight_graph_manifest(manifest_ref.path)
+        # Recovery is restricted to canonical v2 case appends. Legacy/manual
+        # profile inputs retain their existing cardinality and binding contract.
+        if isinstance(manifest, CaseEvidenceGraphManifest) and any(
+            ref.role == "evidence_sufficiency_run_result" for ref in request.object_inputs
+        ):
+            required = {(record.sufficiency_profile_ref.object_id, record.sufficiency_profile_ref.object_version)
+                        for record in bundle.prior_evidence_records}
+            try:
+                payloads = verified_graph._retained_sufficiency_profile_payloads(required)
+                for profile_ref, payload in payloads.items():
+                    profile = EvidenceSufficiencyProfileV2.model_validate(payload)
+                    if ((profile.profile_id, profile.profile_version) != profile_ref
+                            or _object_ref_key(profile.product_case_ref) != _object_ref_key(manifest.product_case_ref)):
+                        raise ValueError("historical profile case or identity mismatch")
+                    historical_profiles[profile_ref] = profile
+            except (ValueError, TypeError) as exc:
+                raise CompilationInvariantError("prior_history_invalid", "historical profile invalid") from exc
         base_manifest = manifest
 
     source_manifests: dict[str, CaseEvidenceGraphManifest] = {}
@@ -1010,6 +1047,7 @@ def _verify_graph_inputs(
             raise CompilationInvariantError("prior_history_invalid", "source graph set mismatch")
     return VerifiedGraphInputs(
         base_manifest=base_manifest,
+        historical_profiles=historical_profiles,
         source_manifests=source_manifests,
         source_record_sets=source_record_sets,
         source_effective_lifecycle=source_effective_lifecycle,
@@ -1071,13 +1109,13 @@ def graph_identity_for_product_case(product_case_ref: Any) -> str:
     )
 
 
-def _preflight_graph_manifest(path: Path) -> None:
+def _preflight_graph_manifest(path: Path):
     try:
         from bridge.tool_packages.p0_09_evidence_compiler.queries import (
             EvidenceGraphQueries,
         )
 
-        EvidenceGraphQueries.open(path)
+        return EvidenceGraphQueries.open(path)
     except (OSError, ValueError) as exc:
         raise CompilationInvariantError(
             "prior_history_invalid", "graph manifest preflight failed"
