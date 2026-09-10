@@ -6,7 +6,7 @@ This closeout is bound to
 [main commit 40d352b9](https://github.com/starvingarc/BRIDGE/commit/40d352b9631310ab16785313fb5a85e8983551bc)
 and [PR #95 public head 60ae0f50](https://github.com/starvingarc/BRIDGE/commit/60ae0f505f74a3a07b1e77fec35c5096abb958e5).
 Both commits contain the exact accepted
-[Git tree e17c09d7](https://github.com/starvingarc/BRIDGE/tree/e17c09d758ebbb6f26ab6be7bd5406328348cd38).
+Git tree `e17c09d758ebbb6f26ab6be7bd5406328348cd38`.
 The immutable
 [retired-diary closeout](https://github.com/starvingarc/BRIDGE/blob/40d352b9631310ab16785313fb5a85e8983551bc/plans/web-full-chain-integration.md#engineering-closeout-checkpoint-2026-09-10)
 is the detailed historical evidence source.
