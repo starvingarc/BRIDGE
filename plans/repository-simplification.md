@@ -163,6 +163,17 @@ configuration identity so changed shared logic cannot silently retain old hashes
 Use existing test organization where possible. Run focused renderer/security
 regressions and report RED/GREEN commands/output. Keep differences explicit.
 
+Renderer configuration is stored in checksummed artifact bundles, but the existing
+run identity uses Tool version and inputs rather than renderer-source bytes.
+Therefore advance only patch versions to distinguish newly attributed bundles:
+P0-07 0.4.0 -> 0.4.1, P0-08 0.5.0 -> 0.5.1,
+P0-09 0.4.1 -> 0.4.2, P0-10 0.4.0 -> 0.4.1.
+Update each package Spec, current Tool Card and current request/profile examples
+and test fixtures that pin its version. Do not rewrite historical validation
+versions, public schemas, scientific algorithms or model object versions.
+Verify new versioned runs do not overwrite old bundles and repeated unchanged
+new-version runs reuse deterministically. This is a provenance-only patch release.
+
 ## Task 3: Verify integration and retire archived operational clutter
 
 Controller-owned. Verify old PR changes are absorbed rather than merge them.
