@@ -63,6 +63,11 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 from bridge.toolkit.schemas import load_schema
+from bridge.tool_packages.p0_10_claim_verifier.research import (
+    ResearchStatementRegistry, ResearchReleaseContract, RESEARCH_STATEMENT_SCHEMA_REF,
+    RESEARCH_RESULT_SCHEMA_REF, APPROVED_RESEARCH_CONTRACT_SHA256,
+    load_research_release_contract, build_research_snapshot, render_research_snapshot,
+)
 
 RESULT_SCHEMA_REF = "bridge://schemas/claim-verification-result/v0.1"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
@@ -103,7 +108,7 @@ class ClaimVerifierAdapter:
                 reason_codes=["tool_request_v2_required"],
             )
         reasons = _envelope_reasons(request, spec)
-        release_contract, contract_reasons = _release_contract()
+        release_contract, contract_reasons = _release_contract(request)
         reasons.extend(contract_reasons)
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
@@ -125,7 +130,7 @@ class ClaimVerifierAdapter:
         loaded, reasons = _load_inputs(request.object_inputs)
         if loaded is None or reasons:
             return _failed_run(request, spec, reasons)
-        release_contract, contract_reasons = _release_contract()
+        release_contract, contract_reasons = _release_contract(request)
         if release_contract is None:
             return _failed_run(request, spec, contract_reasons)
 
@@ -140,6 +145,8 @@ class ClaimVerifierAdapter:
         statements = single_object(
             request, loaded, "statement_registry", StatementRegistry
         )
+        if isinstance(release_contract, ResearchReleaseContract):
+            return _run_research(request, spec, loaded, evidence_graph, report, policy, statements, release_contract)
         contract_hash = release_contract_sha256()
         input_hash = _input_hash(request, spec, contract_hash)
         run_id = f"run-{input_hash[:16]}"
@@ -301,9 +308,11 @@ def _envelope_reasons(
         reasons.append("unsupported_object_input_role")
     for ref in request.object_inputs:
         contract = ROLE_MODELS.get(ref.role)
-        if contract is not None and ref.schema_ref != contract[0]:
+        research_statements = ref.role == "statement_registry" and ref.schema_ref == RESEARCH_STATEMENT_SCHEMA_REF
+        if contract is not None and ref.schema_ref != contract[0] and not research_statements:
             reasons.append("object_input_schema_mismatch")
-        if ref.role != "evidence_graph_manifest" and ref.object_version != "0.1.0":
+        expected_version = "0.2.0" if research_statements else "0.1.0"
+        if ref.role != "evidence_graph_manifest" and ref.object_version != expected_version:
             reasons.append("object_input_version_mismatch")
     if directory_state(request.output_dir) == "other":
         reasons.append("output_dir_not_regular_directory")
@@ -315,7 +324,7 @@ def _load_inputs(
 ) -> tuple[LoadedInputs | None, list[str]]:
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: ROLE_MODELS.get(ref.role, ("", None))[1],
+        model_for=lambda ref: ResearchStatementRegistry if ref.role == "statement_registry" and ref.schema_ref == RESEARCH_STATEMENT_SCHEMA_REF else ROLE_MODELS.get(ref.role, ("", None))[1],
         validate_payload=_validate_json_schema,
         validate_model=_validate_object_version,
     )
@@ -323,7 +332,7 @@ def _load_inputs(
 
 def _validate_json_schema(ref: StructuredInputRef, payload: Any) -> None:
     try:
-        schema = load_schema(ref.schema_ref)
+        schema = ResearchStatementRegistry.model_json_schema() if ref.schema_ref == RESEARCH_STATEMENT_SCHEMA_REF else load_schema(ref.schema_ref)
         Draft202012Validator.check_schema(schema)
         Draft202012Validator(schema).validate(payload)
     except (KeyError, FileNotFoundError, SchemaError, ValidationError):
@@ -340,8 +349,10 @@ def _validate_object_version(ref: StructuredInputRef, value: FrozenModel) -> Non
         raise StructuredInputError("object_input_version_mismatch")
 
 
-def _release_contract() -> tuple[ClaimVerifierReleaseContract | None, list[str]]:
+def _release_contract(request: ToolRequestV2 | None = None) -> tuple[ClaimVerifierReleaseContract | None, list[str]]:
     try:
+        if request is not None and any(ref.role == "statement_registry" and ref.schema_ref == RESEARCH_STATEMENT_SCHEMA_REF for ref in request.object_inputs):
+            return load_research_release_contract(), []
         return load_release_contract(), []
     except (OSError, ValueError):
         return None, ["release_contract_invalid"]
@@ -441,8 +452,8 @@ def _input_hash(
         "tool_id": spec.tool_id,
         "tool_version": spec.version,
         "environment_spec_id": spec.environment_spec_id,
-        "external_benchmark_id": EXTERNAL_BENCHMARK_ID,
-        "external_benchmark_sha256": EXTERNAL_BENCHMARK_SHA256,
+        "external_benchmark_id": None if release_contract_hash == APPROVED_RESEARCH_CONTRACT_SHA256 else EXTERNAL_BENCHMARK_ID,
+        "external_benchmark_sha256": None if release_contract_hash == APPROVED_RESEARCH_CONTRACT_SHA256 else EXTERNAL_BENCHMARK_SHA256,
         "release_contract_sha256": release_contract_hash,
         "structured_inputs": [
             {
@@ -536,6 +547,89 @@ def _runtime_artifacts(
         )
     )
     return artifacts
+
+
+
+def _run_research(
+    request, spec, loaded, evidence_graph, report, policy, statements, release_contract,
+) -> ToolRunV2:
+    """Use canonical validation, the shared verifier and atomic publication."""
+    contract_hash = APPROVED_RESEARCH_CONTRACT_SHA256
+    input_hash = _input_hash(request, spec, contract_hash)
+    run_id = f"run-{input_hash[:16]}"
+    graph_ref = next(ref for ref in request.object_inputs if ref.role == "evidence_graph_manifest")
+    try:
+        snapshot = build_research_snapshot(graph_manifest_path=graph_ref.path, report=report)
+        if (snapshot.graph_manifest_sha256 != evidence_graph.manifest_sha256
+                or snapshot.graph_id != evidence_graph.manifest.graph_id
+                or snapshot.graph_version != evidence_graph.manifest.graph_version):
+            raise ValueError("snapshot_graph_mismatch")
+        result = verify_report(
+            report=report, evidence_set=evidence_graph.evidence_set,
+            policy=policy, statements=statements, release_contract=release_contract,
+            release_contract_hash=contract_hash, run_id=run_id,
+            evidence_graph_id=evidence_graph.manifest.graph_id,
+            evidence_graph_version=evidence_graph.manifest.graph_version,
+            evidence_graph_manifest_sha256=evidence_graph.manifest_sha256,
+            research_snapshot=snapshot,
+        )
+        payloads = {
+            "claim_verification_result.json": canonical_json_bytes(result.model_dump(mode="json"), indent=2),
+            "report_draft.json": canonical_json_bytes(report.model_dump(mode="json"), indent=2),
+        }
+        if result.release_state.value in {"verified", "verified_with_warnings"}:
+            payloads["research_snapshot.json"] = canonical_json_bytes(snapshot.model_dump(mode="json"), indent=2)
+            payloads.update(render_research_snapshot(snapshot=snapshot, result=result))
+    except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+        return _failed_run(request, spec, ["research_snapshot_invalid"], input_hash=input_hash)
+    evidence_ids = sorted({r.evidence_id for r in evidence_graph.evidence_set.records})
+    media = {".json": "application/json", ".html": "text/html",
+             ".csv": "text/csv", ".svg": "image/svg+xml"}
+    artifact_specs = [
+        dict(filename=name, kind=name.rsplit(".", 1)[0], media_type=media[Path(name).suffix],
+             sha256=hashlib.sha256(payload).hexdigest(), evidence_ids=evidence_ids)
+        for name, payload in payloads.items()
+    ]
+    manifest = _manifest_payload(
+        request=request, spec=spec, run_id=run_id, input_hash=input_hash,
+        artifact_specs=artifact_specs,
+    )
+    manifest.update(result_schema_ref=RESEARCH_RESULT_SCHEMA_REF,
+                    snapshot_sha256=snapshot.snapshot_sha256,
+                    audience="internal_research", public_export_eligibility="ineligible")
+    payloads["artifact_manifest.json"] = canonical_json_bytes(manifest, indent=2)
+    try:
+        published = _publish_bundle(
+            request=request, run_id=run_id, payloads=payloads,
+            inputs_are_unchanged=lambda refs: _inputs_unchanged(refs)
+            and _backing_artifacts_unchanged(evidence_graph.backing_artifacts),
+        )
+    except PublicationError as exc:
+        return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+    try:
+        matches = set(published) == set(payloads) and all(
+            _read_regular_bytes(published[name]) == payload for name, payload in payloads.items()
+        )
+    except (OSError, RuntimeError):
+        matches = False
+    if not matches:
+        return _failed_run(request, spec, ["published_bundle_hash_mismatch"], input_hash=input_hash)
+    artifacts = [
+        ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:{name.replace('.', '-')}",
+            kind=name.rsplit(".", 1)[0], path=published[name].resolve(),
+            media_type=media[Path(name).suffix], sha256=hashlib.sha256(payload).hexdigest(),
+            evidence_ids=evidence_ids,
+        ) for name, payload in payloads.items()
+    ]
+    return ToolRunV2(
+        run_id=run_id, request=request, implementation_state=ImplementationState.IMPLEMENTED,
+        execution_state=ExecutionState.SUCCEEDED, tool_version=spec.version,
+        environment_spec_id=spec.environment_spec_id, input_hash=input_hash,
+        created_at=report.created_at, measurements=[], artifacts=artifacts, visualizations=[],
+        result_schema_ref=RESEARCH_RESULT_SCHEMA_REF, result=result.model_dump(mode="json"),
+        reason_codes=[], warnings=[],
+    )
 
 
 def _failed_run(
