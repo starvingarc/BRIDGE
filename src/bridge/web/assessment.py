@@ -343,9 +343,12 @@ class AssessmentCoordinator:
                         for row in assessment["candidates"] if row["blockers"]],
                     "interpretation_gaps": [{"tool_id": row["tool_id"], "mode_id": row["mode_id"], "reason_codes": row["gaps"]}
                         for row in assessment["candidates"] if row["gaps"]]}
-                previous = assessment["model_turns"][-1] if assessment["model_turns"] else {}
-                if previous.get("provider_error_code") == "provider_explanation_too_long":
-                    context["previous_action_error"] = previous["provider_error_code"]
+                previous_stop = (assessment.get("stop_events") or [{}])[-1]
+                if (previous_stop.get("model_turns_used") == assessment["model_turns_used"]
+                        and previous_stop.get("reason") in {
+                            "provider_explanation_too_long", "provider_action_invalid_or_unavailable",
+                            "invalid_evidence_alias"}):
+                    context["previous_action_error"] = previous_stop["reason"]
                 if len(json.dumps(context, ensure_ascii=False).encode()) > 128 * 1024:
                     self._finish(state, "evidence_context_limit", status="blocked")
                     return

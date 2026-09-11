@@ -1056,6 +1056,48 @@ def test_long_native_explanation_is_rejected_and_resume_gets_safe_feedback(clien
     assert service.load(sid)["_tool_runs"] == []
 
 
+
+@pytest.mark.parametrize("failure", ["provider_action_invalid_or_unavailable", "invalid_evidence_alias"])
+def test_explicit_resume_reports_safe_last_rejection_without_repeating_raw_output(client, tmp_path, monkeypatch, failure):
+    from bridge.web.provider import Action, parse_action
+    service, sid, aid = registered_case(client, tmp_path)
+    scope = propose_scope(client, sid, aid)
+    def rejected(*args):
+        if failure == "provider_action_invalid_or_unavailable":
+            return parse_action({"content": "PRIVATE_REJECTED_RESPONSE"})
+        return Action.model_validate({"action": "assessment", "decision": {
+            "action": "explain", "text": "Unaccepted explanation.",
+            "hypotheses": [{"statement": "Unaccepted interpretation",
+                "evidence_aliases": ["PRIVATE_REJECTED_RESPONSE"],
+                "competing_explanation": "Unresolved alternative", "discriminating_check": "P0-05"}]}})
+    monkeypatch.setattr("bridge.web.provider.converse", rejected)
+    approve_scope(client, sid, scope)
+    first = settle_assessment(client, sid)["assessment"]
+    assert first["stop_reason"] == failure
+    assert first["model_turns_used"] == 1 and first["tool_runs_used"] == 0
+    assert "PRIVATE_REJECTED_RESPONSE" not in json.dumps(service.load(sid))
+    contexts = []
+    def corrected(settings, messages, context):
+        contexts.append(context)
+        return Action.model_validate({"action": "assessment", "decision": {
+            "action": "explain", "text": "Evidence remains unresolved; no checks executed."}})
+    monkeypatch.setattr("bridge.web.provider.converse", corrected)
+    response = client.post(f"/api/sessions/{sid}/assessment/resume",
+        json={"scope_id": scope["scope_id"], "scope_digest": scope["scope_digest"]})
+    assert response.status_code == 200
+    done = settle_assessment(client, sid)["assessment"]
+    assert contexts[0].get("previous_action_error") == failure
+    assert "PRIVATE_REJECTED_RESPONSE" not in json.dumps(contexts)
+    assert done["stop_reason"] == "explanation_complete"
+    assert done["model_turns_used"] == 2 and done["tool_runs_used"] == 0
+    assert service.load(sid)["_tool_runs"] == []
+    response = client.post(f"/api/sessions/{sid}/assessment/resume",
+        json={"scope_id": scope["scope_id"], "scope_digest": scope["scope_digest"]})
+    assert response.status_code == 200
+    done = settle_assessment(client, sid)["assessment"]
+    assert "previous_action_error" not in contexts[-1]
+    assert done["model_turns_used"] == 3 and done["tool_runs_used"] == 0
+
 def test_malformed_provider_turn_is_consumed_without_dispatch(client, tmp_path, monkeypatch):
     service, sid, aid = registered_case(client, tmp_path)
     scope = propose_scope(client, sid, aid)

@@ -126,6 +126,10 @@ facts/resources require a new scope. Repeated correction fencing does not replac
 a terminal stop reason. Each resumed phase retains earlier stop events with the
 then-used counters; resume never refunds budgets. The Web shows pending review
 separately from historical bindings and never silently recomputes after a correction.
+Explicit resume supplies only the immediately preceding allowlisted format,
+explanation-length or evidence-citation rejection code to the model, never the
+rejected response. Hypothesis citations use current-turn top-level evidence
+aliases; nested measurement and graph aliases are join references, not citations.
 
 The [Web guide](web-preview.md#cell-state-and-product-assessment) defines the
 researcher controls. The [assessment privacy projection](privacy-and-provenance.md#assessment-purpose)
