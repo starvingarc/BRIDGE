@@ -786,8 +786,9 @@ def _friendly_state_name(value: str) -> str:
         "Neuron_ChAT": "Cholinergic neuron",
         "Neuron_Sero": "Serotonergic neuron",
     }
-    if value.startswith("Developmental gliogenic progenitor"):
-        return "Gliogenic progenitor*"
+    if value.startswith(("Progenitor-like source group (Glioblast", "Developmental gliogenic progenitor")):
+        # Legacy labels remain readable without reproducing an unproven identity.
+        return "Glioblast (unresolved)*"
     return names.get(value, value.replace("_", " "))
 
 

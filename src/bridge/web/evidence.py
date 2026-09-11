@@ -110,6 +110,8 @@ def _registered_profile(state, receipt, schema=PROFILE_SCHEMA):
 
 
 def _verified_receipt(inputs, state, receipt):
+    if receipt["file"] in state.get("_invalidated_receipts", {}):
+        raise ValueError("input_revision_invalidated_output")
     root = inputs.service.directory(state["id"])
     raw = checked_bytes(
         inputs.service,
@@ -532,6 +534,7 @@ def _bounded(summary, binding):
 
 # These are aggregate result fields, never raw observations or free-text provenance.
 _ASSESSMENT_FIELDS = {
+    "release_state", "public_export_eligibility", "scientific_validation", "input_revision",
     "result_state", "upstream_composition_state", "channels", "composition_view", "label_level",
     "denominator_scope", "assessment_state", "target_identity_fraction", "regional_fidelity_fraction",
     "whole_product_target_region_fraction", "numerator", "denominator", "fraction", "value", "unit",
@@ -691,6 +694,7 @@ def _assessment_model_query(summary, opaque):
 
     projected = {key: summary[key] for key in ("query_name", "graph_version", "returned_node_count",
         "returned_edge_count", "truncated", "omitted_node_count", "omitted_edge_count")}
+    projected.update({key: summary[key] for key in ("display_omitted_edges", "display_omitted_nodes") if key in summary})
     projected["graph_alias"] = opaque(summary["graph_alias"])
     projected["nodes"] = [base(row) for row in summary["nodes"]]
     projected["claims"] = [{**base(row), **label(row, "claim_type")} for row in summary["claims"]]
@@ -878,6 +882,31 @@ def _assessment_display_artifacts(inputs, state, run, receipt):
                  **({"graph_id": graph["graph_id"], "graph_version": graph["graph_version"]} if graph else {})}, dependencies
 
 
+def _project_candidate(inputs, state, receipt, input_id, record):
+    from bridge.tool_packages.p0_02_cell_state.candidate_runtime import CellStateCandidateProfile
+    profile = CellStateCandidateProfile.model_validate(inputs.verify(state, record))
+    run = _verified_receipt(inputs, state, receipt)
+    if (record.get("producer_tool_id") != "P0-02" or profile.producer_run_ref != run["run_id"]
+            or profile.producer_tool_version != run["tool_version"]
+            or profile.input_sha256 != run["input_hash"]
+            or run["result"] != profile.model_dump(mode="json")):
+        raise ValueError("candidate_profile_producer_mismatch")
+    summary = {
+        "analysis_scope": "candidate_method_observation", "method_id": profile.primary_method,
+        "state_review_status": profile.scientific_qualification,
+        "n_observations": profile.n_observations, "n_features": profile.n_genes,
+        "gene_coverage": profile.feature_coverage,
+        "independence_state": profile.biological_unit_state, "n_independent_replicates": None,
+        "score_state": "unavailable", "domain_score": None,
+        "reason_codes": profile.development_reason_codes,
+        "composition": [{"label": row["label"], "state": row["assignment_state"],
+            "count": row["count"], "denominator": row["denominator"], "fraction": row["fraction"],
+            "denominator_scope": row["denominator_scope"], "evidence_state": "inferred"}
+            for row in profile.candidate_composition],
+    }
+    return _assessment_aggregate(summary), {"profile_input_id": input_id, "profile_sha256": record["sha256"]}
+
+
 def assessment_evidence(inputs, state, assessment):
     """Read canonical ToolRuns on demand; no duplicate result store and no raw cell rows."""
     from bridge.toolkit.contracts import ToolRunV2, MeasurementResultV2
@@ -901,6 +930,9 @@ def assessment_evidence(inputs, state, assessment):
                 if registered is None:
                     registered = _registered_profile(state, receipt, LEGACY_PROFILE_SCHEMA)
                     projector = _project_legacy
+                if registered is None:
+                    registered = _registered_profile(state, receipt, "bridge://schemas/cell-state-candidate-profile/v1.0")
+                    projector = _project_candidate
                 if registered is None:
                     raise ValueError("canonical_cell_state_profile_required")
                 summary, _ = projector(inputs, state, receipt, *registered)
@@ -940,6 +972,16 @@ def assessment_evidence(inputs, state, assessment):
                 "interpretation_scope": "exploratory" if result.get("runtime_mode") == "exploratory_process" else "registered_tool_result",
                 "artifact_ids": artifact_ids, "dependencies": dependencies,
                 "provenance": {"receipt_sha256": receipt["sha256"], "plan_id": receipt["plan_id"], **source}}
+            if "query_name" in summary:
+                # Keep literal records/requirements; large topology remains in the
+                # source graph artifact instead of invalidating valid evidence.
+                for field in ("edges", "nodes"):
+                    try:
+                        _check_summary_limit(row)
+                        break
+                    except _SummaryLimit:
+                        summary["display_omitted_" + field] = len(summary[field])
+                        summary[field] = []
             _check_summary_limit(row)
             projected.append(row)
             bindings[alias] = {"receipt_file": receipt["file"], "receipt_sha256": receipt["sha256"],

@@ -14,7 +14,7 @@ from typing import Any
 import yaml
 
 
-SNAPSHOT_ID = "BRIDGE-KNOWLEDGE-20260810-v0.1"
+SNAPSHOT_ID = "BRIDGE-KNOWLEDGE-20260911-v0.2"
 CATALOG_BACKED_MODULE_IDS = (
     "P0-01",
     "P0-02",
@@ -154,7 +154,8 @@ def _normalize_methods(rows: list[dict[str, Any]]) -> tuple[list[dict], list[dic
                 "source_status": "internal_no_public_source" if internal and not public_urls else ("not_registered" if not public_urls else "registered"),
                 "primary_paper_status": "unresolved",
                 "critical_boundaries": sorted({str(row["key_boundary"]).strip() for row in group_rows}),
-                "retrieval_policy": "competitor_isolated" if competitor_isolated else "registered_local_snapshot",
+                "retrieval_policy": _single_curated_value(group_rows, "curated_retrieval_policy")
+                    or ("competitor_isolated" if competitor_isolated else "registered_local_snapshot"),
                 "formal_eligible": False,
                 "card_ref": f"bridge://knowledge/methods/{method_id}",
                 "provenance_refs": [f"MASTER-20260810:Tools:R{excel_row}" for excel_row, _ in group],
@@ -489,6 +490,13 @@ def _apply_overrides(rows: list[dict[str, Any]], payload: dict) -> list[dict[str
             row["curated_version"] = override["version"]
         if "maintenance_status" in override:
             row["curated_maintenance_status"] = override["maintenance_status"]
+        if "retrieval_policy" in override:
+            if override["retrieval_policy"] != "public_method_metadata":
+                raise ValueError("Only public method metadata can override source isolation")
+            if not override.get("key_boundary"):
+                raise ValueError("A metadata policy requires explicit use boundaries")
+            row["curated_retrieval_policy"] = override["retrieval_policy"]
+            row["key_boundary"] = override["key_boundary"]
         if "note" in override:
             row["curation_note"] = override["note"]
         row["official_url"] = " | ".join(_normalize_source_token(token) for token in _split(row["official_url"]))

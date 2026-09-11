@@ -45,6 +45,7 @@ from bridge.tool_packages.p0_02_cell_state.visualization_data import (
     _visualization_id,
 )
 from bridge.toolkit.contracts import ArtifactManifest, EvidenceState, FrozenModel
+from .scientific_review import load_development_review
 from bridge.toolkit.visualization import (
     FigureRegistry,
     VisualizationAccessibility,
@@ -819,10 +820,8 @@ def _candidate_anchor(kind: str, digest: str) -> str:
 
 def _state_display_name(state_id: str, display_name: str) -> str:
     if state_id == "L1:Glioblast":
-        return (
-            "Developmental gliogenic progenitor "
-            "(internal label: Glioblast; naming review pending)"
-        )
+        return next(row.display_name for row in load_development_review().state_reviews
+                    if row.state_id == state_id)
     return display_name
 
 

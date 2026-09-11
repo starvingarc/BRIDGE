@@ -1034,8 +1034,9 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 ),
                 _role(
                     "statement_registry",
-                    "bridge://schemas/statement-registry/v0.1",
-                    V01,
+                    ("bridge://schemas/statement-registry/v0.1",
+                     "bridge://schemas/research-statement-registry/v0.2"),
+                    (V01, "0.2.0"),
                     1,
                     1,
                 ),

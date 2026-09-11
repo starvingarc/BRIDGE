@@ -1,6 +1,6 @@
 # Step 7 Evidence Coordinator
 
-**Status:** awaiting_scientific_inputs_and_review.
+**Status:** in_progress_scientific_definition_and_validation.
 **Goal:** Connect a real approved cell-state/product assessment to registered
 checks, canonical evidence updates and a researcher-readable, version-bound
 portrait.
@@ -68,3 +68,37 @@ Scope approval supplies none of these scientific decisions.
 Full Step 7 completion requires the genuine measured-feedback gate, not only
 engineering checks. No scientific freeze, score/release qualification,
 publication or deployment is established by the current implementation.
+
+## Approved Step 7–10 implementation
+
+The current branch continues from its preserved Step 7 engineering baseline.
+Scientific definition and method validation precede further product-flow work.
+The development target includes confirmed VM/mDA progenitors and early
+neuroblasts, with lineage identity and developmental compatibility kept separate.
+No new scientific approval page or fixed two-person signing ceremony is part of
+the development workflow. Versioned decisions and actual validation evidence
+remain mandatory; legacy signed records are not relabeled or weakened.
+
+- [ ] Complete evidence-bounded decisions for 18 L1 and seven L2 states,
+  product roles, stage windows, programs and biological-unit semantics.
+- [ ] Align the registered CellTypist / energy-OOD runtime and development
+  validation, then freeze exact bindings and criteria before locked evaluation.
+- [ ] Replace only the obsolete scientific-decision authorization policy through
+  a new versioned contract, retaining integrity, source isolation and per-state
+  validation gates and unchanged legacy readers.
+- [ ] Complete real measured graph feedback and versioned competing explanations.
+- [ ] Bind results, Chinese private offline HTML and JSON/CSV/SVG attachments
+  to the same immutable analysis version and claim checks.
+- [ ] Add input-change impact preview and dependency-based partial recomputation,
+  preserving original evidence receipts and previous report versions.
+- [ ] Connect a minimal registered comparison cohort and conditional graft input
+  without treating post-transplant evidence as pre-transplant validation.
+- [ ] Complete focused regressions, one consolidated installed/backend/frontend
+  verification and genuine browser upload-to-correction acceptance.
+
+Research-level reports may be released only with exact statement verification
+and explicit limits. Full scientific qualification remains a separate claim.
+No domain score, clinical claim, publication, merge or deployment is authorized
+by this plan. Existing services, raw data, sessions and historical artifacts are
+preserved. A scientific decision may conclude unavailable; it must not merely
+rename pending work or substitute a missingness-only flow for measured feedback.

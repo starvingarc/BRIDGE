@@ -14,6 +14,7 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 - 默认选择满足当前合同的最小实现；先删重复，再加抽象。
 - 没有两个真实调用方时，不新增通用层、包装类或配置字段。
 - 同一事实只保留一个人工维护源，其余内容必须确定性生成。
+- 仓库检查直接读取 Git 跟踪文件和注册合同；不再维护第二套逐文件配额清单。结构检查继续拒绝重复根目录、嵌套 Agent 指令、依赖与私有施工文件；新增文件仍须有真实职责和调用方。
 - 不提交未调用代码、提前设计的扩展点或仅为“以后可能需要”的依赖。
 
 ## 用户文档与协作指令
@@ -39,7 +40,8 @@ python -m pip install -e ".[qc,test,freeze,evidence]"
 - 公开 Schema 和知识投影按其维护源重新生成；不能只修改生成物。工具卡按实际来源区分：P0-01、P0-02、P0-08 由 `scripts/render_tool_cards.py` 生成；P0-03–P0-07、P0-09–P0-12 的详细卡本身是人工维护源，脚本只校验、不覆盖。
 - 机器接口由 Schema/package spec 定义，运行使用与拒绝由 Tool Card 定义，生物学问题与验证设计由科学任务卡定义，特定版本的实际证据由验证记录定义。
 - 产品工作流仅在 PRD 第 6 节维护；概览链接到合同，不重复完整流程。稳定文档须从文档索引或其已索引页面可达。
-- 知识策展输入位于 `knowledge/catalog/`；运行时读取打包快照，`knowledge/active-methods.md` 为人工短名单。缺少论文、许可或版本时保留缺失，不凭推测补齐。
+- 知识快照和短名单只从策展输入、package spec 与生成脚本重建；保留原始 capability bindings 和 alias ambiguity，不按名称猜测合并。保留静态导航，不存储受限全文或展开的重复 Method/Source 树。重建必须确定性通过来源、隐私和悬空引用检查。
+- 知识策展输入位于 `knowledge/catalog/`；运行时读取打包快照，`knowledge/active-methods.md` 为生成短名单。缺少论文、许可或版本时保留缺失，不凭推测补齐。
 
 ## 实现、审查与验证节奏
 
@@ -125,7 +127,7 @@ python -m pip install -e ".[qc,test,freeze,evidence]"
 - `negative`、`missing`、`unknown`、`unavailable` 与 `alert` 不得互换，缺失证据不得补零。
 - cell 不能充当 biological replicate；重复不足时只能是 `descriptive_only` 或 `not_estimable`。
 - graft 是独立后验证据，不回填移植前评分、阈值、训练或校准。
-- sealed competitor 数据和 competitor reproduction 不得流入 BRIDGE 的 reference、marker、prior、RAG、阈值或正式证据。
+- sealed competitor 数据继续隔离；公开方法 metadata 与经过验证的授权 query 输出可以分别进入检索和 evidence graph。图中记录不授予训练、校准、独立验证或科学资格，外部 reproduction 不反向修改当轮模型、reference、marker、prior 或阈值。
 - 同一 Evidence Family 必须去重，工具数量不能成为多数投票。
 
 ## 工具与知识规则

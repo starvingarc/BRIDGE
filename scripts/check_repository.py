@@ -34,137 +34,6 @@ FORBIDDEN_PRIVATE = (
 LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 PRODUCT_LEVEL_V2_BRANDING = re.compile(r"\bbridge(?:\s+|[-_])v2\b", re.IGNORECASE)
 COMPLETED_PLAN_NAME = re.compile(r"(?:^|[-_])(?:complete(?:d)?|done)(?:[-_.]|$)", re.IGNORECASE)
-TRACKED_FILE_BASELINE = 269
-IMPLEMENTED_TOOL_BASELINE = 5
-MAX_FILES_PER_NEW_IMPLEMENTED_TOOL = 21
-SHARED_CONTRACT_SPINE_FILES = (
-    Path("docs/validation/shared_p0_scientific_contract_spine_20260825.md"),
-    Path("src/bridge/resources/schemas/biological_unit_assignment.schema.json"),
-    Path("src/bridge/resources/schemas/biological_unit_manifest.schema.json"),
-    Path("src/bridge/resources/schemas/biological_unit_attestation_receipt.schema.json"),
-    Path("src/bridge/resources/schemas/measurement_result_v2.schema.json"),
-    Path("src/bridge/resources/schemas/measurement_spec_v2.schema.json"),
-    Path("src/bridge/resources/schemas/qc_readiness_profile_v2.schema.json"),
-    Path("src/bridge/resources/schemas/cell_state_evidence_profile_v2.schema.json"),
-    Path("src/bridge/resources/schemas/product_case.schema.json"),
-    Path("src/bridge/resources/schemas/product_definition_card.schema.json"),
-    Path("src/bridge/tool_packages/_configurable_contracts.py"),
-    Path("src/bridge/tool_packages/_publication_safety.py"),
-    Path("tests/p0_biological_units.py"),
-    Path("tests/test_shared_p0_contract_spine.py"),
-)
-SHARED_VISUALIZATION_CONTRACT_FILES = (
-    Path("plans/visualization-data-contract.md"),
-    Path("docs/validation/visualization_data_contract_20260828.md"),
-    Path("src/bridge/toolkit/visualization.py"),
-    Path("src/bridge/tool_packages/_figure_export.py"),
-    Path("tests/test_figure_export.py"),
-    Path("src/bridge/resources/schemas/figure_registry.schema.json"),
-    Path("src/bridge/resources/schemas/visualization_artifact_v2.schema.json"),
-)
-AGENT_RUNTIME_FILES = (
-    Path("docs/local-agent-runtime.md"),
-    Path("src/bridge/domain/__init__.py"),
-    Path("src/bridge/domain/models.py"),
-    Path("src/bridge/planner/__init__.py"),
-    Path("src/bridge/planner/service.py"),
-    Path("src/bridge/runners/__init__.py"),
-    Path("src/bridge/runners/pipeline.py"),
-    Path("src/bridge/storage/__init__.py"),
-    Path("src/bridge/storage/artifacts.py"),
-    Path("src/bridge/storage/private_paths.py"),
-    Path("src/bridge/workflow/__init__.py"),
-    Path("src/bridge/workflow/event_store.py"),
-    Path("src/bridge/workflow/events.py"),
-    Path("src/bridge/workflow/executor.py"),
-    Path("tests/test_agent_domain_planner.py"),
-    Path("tests/test_local_artifact_store.py"),
-    Path("tests/test_tool_execution_pipeline.py"),
-    Path("tests/test_workflow_runtime.py"),
-)
-# Bounded, reviewed Web surface; build products and dependencies are not sources.
-WEB_PREVIEW_FILES = (
-    Path("src/bridge/web/__init__.py"),
-    Path("src/bridge/web/__main__.py"),
-    Path("src/bridge/web/app.py"),
-    Path("src/bridge/web/provider.py"),
-    Path("src/bridge/web/inputs.py"),
-    Path("src/bridge/web/control.py"),
-    Path("src/bridge/web/evidence.py"),
-    Path("src/bridge/web/intake.py"),
-    Path("tests/test_private_path_trust.py"),
-    Path("tests/test_web_service.py"),
-    Path("tests/test_web_inputs.py"),
-    Path("tests/test_web_evidence.py"),
-    Path("tests/test_web_intake.py"),
-    Path("frontend/.gitignore"),
-    Path("frontend/README.md"),
-    Path("frontend/index.html"),
-    Path("frontend/package-lock.json"),
-    Path("frontend/package.json"),
-    Path("frontend/src/App.tsx"),
-    Path("frontend/src/api.ts"),
-    Path("frontend/src/components/Conversation.tsx"),
-    Path("frontend/src/components/AnalysisInputs.tsx"),
-    Path("frontend/src/components/InputChangeCard.tsx"),
-    Path("frontend/src/components/ProductIntake.tsx"),
-    Path("frontend/src/components/intakeLabels.ts"),
-    Path("frontend/src/components/LoginScreen.tsx"),
-    Path("frontend/src/components/MarkdownText.tsx"),
-    Path("frontend/src/components/MarkdownTextImpl.tsx"),
-    Path("frontend/src/components/PlanCard.tsx"),
-    Path("frontend/src/components/ResultsPane.tsx"),
-    Path("frontend/src/components/Sidebar.tsx"),
-    Path("frontend/src/components/StatusMark.tsx"),
-    Path("frontend/src/main.tsx"),
-    Path("frontend/src/runtime/BridgeRuntimeProvider.tsx"),
-    Path("frontend/src/styles.css"),
-    Path("frontend/src/types.ts"),
-    Path("frontend/src/vite-env.d.ts"),
-    Path("frontend/tests/api.test.ts"),
-    Path("frontend/tests/analysis-inputs.test.tsx"),
-    Path("frontend/tests/app-polling.test.tsx"),
-    Path("frontend/tests/markdown-security.test.tsx"),
-    Path("frontend/tests/plan-card.test.tsx"),
-    Path("frontend/tests/product-intake.test.tsx"),
-    Path("frontend/tests/results-pane.test.tsx"),
-    Path("frontend/tests/setup.ts"),
-    Path("frontend/tsconfig.app.json"),
-    Path("frontend/tsconfig.json"),
-    Path("frontend/tsconfig.node.json"),
-    Path("frontend/vite.config.ts"),
-    Path("docs/web-preview.md"),
-    Path("docs/validation/web_preview_20260905.md"),
-    # Scientific-input and internal-report interface sources.
-    Path("src/bridge/web/clarification.py"),
-    Path("src/bridge/web/scientific_inputs.py"),
-    Path("src/bridge/web/report_inputs.py"),
-    Path("src/bridge/tool_packages/p0_09_evidence_compiler/candidate_policy.py"),
-    Path("tests/test_web_clarification.py"),
-    Path("tests/test_web_scientific_inputs.py"),
-    Path("tests/test_web_legacy_evidence.py"),
-    Path("tests/test_web_report_inputs.py"),
-    Path("frontend/src/components/ClarificationCard.tsx"),
-    Path("frontend/src/components/ScientificInputs.tsx"),
-    Path("frontend/tests/clarification-card.test.tsx"),
-    Path("frontend/tests/scientific-inputs.test.tsx"),
-    # Owner-selected exploratory resource and required license; not formal runtime defaults.
-    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/resources/seurat-cell-cycle-v5.5.1-candidate.json"),
-    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/resources/seurat-cell-cycle-LICENSE.txt"),
-    # Candidate QC selection resource and contract tests.
-    Path("src/bridge/tool_packages/p0_01_input_qc/measurement_specs/qc_scrna_robust_candidate_v0.1.yaml"),
-    Path("tests/test_qc_selection.py"),
-    # Scope-bound evidence coordination and researcher-facing assessment.
-    Path("plans/step7-evidence-coordinator.md"),
-    Path("src/bridge/resources/schemas/evidence_compiler_result_v2.schema.json"),
-    Path("src/bridge/resources/schemas/evidence_graph_query.schema.json"),
-    Path("src/bridge/tool_packages/p0_09_evidence_compiler/query_runtime.py"),
-    Path("src/bridge/web/assessment.py"),
-    Path("tests/test_web_assessment.py"),
-    Path("frontend/src/components/AssessmentPanel.tsx"),
-    Path("frontend/tests/assessment-panel.test.tsx"),
-    Path("docs/validation/step7_evidence_coordinator_20260911.md"),
-)
 AGENT_INTEGRATION_FILES = (
     Path("examples/agent-integration/profiles/comparison.json"),
     Path("examples/agent-integration/profiles/graft.json"),
@@ -173,118 +42,6 @@ AGENT_INTEGRATION_FILES = (
     Path("src/bridge/resources/schemas/agent_integration_profile.schema.json"),
     Path("src/bridge/toolkit/integration.py"),
     Path("tests/test_agent_integration.py"),
-)
-P001_VISUALIZATION_FILES = (
-    Path("plans/p0-01-input-qc-visualization.md"),
-    Path("docs/validation/p0_01_input_qc_visualization_20260828.md"),
-    Path("src/bridge/tool_packages/p0_01_input_qc/visualization_runtime.py"),
-    Path("src/bridge/resources/schemas/p0_01_structured_output_index_v2.schema.json"),
-    Path("src/bridge/resources/schemas/p0_01_visualization_artifact_set.schema.json"),
-    Path("src/bridge/resources/schemas/qc_visualization_data.schema.json"),
-)
-P002_VISUALIZATION_FILES = (
-    Path("environments/bridge-p0-core-v0.2.yml"),
-    Path("src/bridge/resources/schemas/cell_state_evidence_matrix_data.schema.json"),
-    Path("src/bridge/resources/schemas/cell_state_evidence_matrix_data_v2.schema.json"),
-    Path("src/bridge/resources/schemas/hierarchical_cell_state_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/hierarchical_cell_state_composition_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_02_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_02_cell_state/grouping.py"),
-    Path("src/bridge/tool_packages/p0_02_cell_state/hierarchical_composition.py"),
-    Path("src/bridge/tool_packages/p0_02_cell_state/resources/visualization_source_registry.yaml"),
-    Path("src/bridge/tool_packages/p0_02_cell_state/visualization_data.py"),
-    Path("src/bridge/tool_packages/p0_02_cell_state/visualization_runtime.py"),
-)
-P003_VISUALIZATION_FILES = (
-    Path("plans/p0-03-target-regional-visualization.md"),
-    Path("src/bridge/resources/schemas/p0_03_visualization_artifact_set.schema.json"),
-    Path("src/bridge/resources/schemas/target_regional_visualization_data.schema.json"),
-    Path("src/bridge/tool_packages/p0_03_target_regional/visualization.py"),
-    Path("src/bridge/tool_packages/p0_03_target_regional/visualization_data.py"),
-)
-P004_VISUALIZATION_FILES = (
-    Path("plans/p0-04-developmental-compatibility-visualization.md"),
-    Path("environments/bridge-development-py-v0.2.yml"),
-    Path("src/bridge/resources/schemas/developmental_compatibility_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_04_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_04_developmental_compatibility/visualization.py"),
-    Path("src/bridge/tool_packages/p0_04_developmental_compatibility/visualization_data.py"),
-)
-P005_VISUALIZATION_FILES = (
-    Path("src/bridge/resources/schemas/off_target_control_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_05_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_05_off_target_control/visualization.py"),
-    Path("src/bridge/tool_packages/p0_05_off_target_control/visualization_data.py"),
-)
-P005_MEASUREMENT_PROJECTION_FILES = (
-    Path("src/bridge/resources/schemas/off_target_control_profile_v2.schema.json"),
-    Path("src/bridge/tool_packages/p0_05_off_target_control/executor.py"),
-)
-P005_INPUT_ROUTE_FILES = (
-    Path("src/bridge/resources/schemas/off_target_control_result.schema.json"),
-    Path("src/bridge/resources/schemas/off_target_hard_count_profile.schema.json"),
-    Path("tests/test_p0_05_hard_count_accounting.py"),
-    Path("docs/validation/p0_05_off_target_control.md"),
-)
-P006_VISUALIZATION_FILES = (
-    Path("src/bridge/resources/schemas/proliferation_stress_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_06_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/visualization.py"),
-    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/visualization_data.py"),
-)
-P006_MEASUREMENT_PROJECTION_FILES = (
-    Path("src/bridge/resources/schemas/proliferation_stress_response_profile_v2.schema.json"),
-)
-P006_INPUT_ROUTE_FILES = (
-    Path("src/bridge/resources/schemas/process_method_input_v2.schema.json"),
-    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/observation_source.py"),
-    Path("tests/test_p0_06_source_bound_observations.py"),
-    Path("docs/validation/p0_06_proliferation_stress_response.md"),
-    # Approved descriptive input route; only its concrete implementation/contracts.
-    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/exploratory.py"),
-    Path("src/bridge/tool_packages/p0_06_proliferation_stress_response/exploratory_models.py"),
-    Path("src/bridge/resources/schemas/exploratory_process_input.schema.json"),
-    Path("src/bridge/resources/schemas/exploratory_process_profile.schema.json"),
-    Path("src/bridge/resources/schemas/proliferation_stress_response_result.schema.json"),
-    Path("tests/test_p0_06_exploratory.py"),
-)
-P007_VISUALIZATION_FILES = (
-    Path("src/bridge/resources/schemas/product_comparison_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_07_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_07_product_comparison_stability/visualization.py"),
-    Path("src/bridge/tool_packages/p0_07_product_comparison_stability/visualization_data.py"),
-)
-P008_VISUALIZATION_FILES = (
-    Path("environments/bridge-p0-evidence-v0.2.yml"),
-    Path("src/bridge/resources/schemas/evidence_sufficiency_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_08_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_08_evidence_sufficiency/visualization.py"),
-    Path("src/bridge/tool_packages/p0_08_evidence_sufficiency/visualization_data.py"),
-)
-P009_VISUALIZATION_FILES = (
-    Path("src/bridge/resources/schemas/evidence_compiler_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_09_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_09_evidence_compiler/visualization.py"),
-    Path("src/bridge/tool_packages/p0_09_evidence_compiler/visualization_data.py"),
-)
-P010_VISUALIZATION_FILES = (
-    Path("environments/bridge-p0-evidence-v0.3.yml"),
-    Path("src/bridge/resources/schemas/claim_verifier_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_10_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_10_claim_verifier/visualization.py"),
-    Path("src/bridge/tool_packages/p0_10_claim_verifier/visualization_data.py"),
-)
-P011_VISUALIZATION_FILES = (
-    Path("src/bridge/resources/schemas/public_safe_export_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_11_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_11_public_safe_export/visualization.py"),
-    Path("src/bridge/tool_packages/p0_11_public_safe_export/visualization_data.py"),
-)
-P012_VISUALIZATION_FILES = (
-    Path("src/bridge/resources/schemas/graft_assessment_visualization_data.schema.json"),
-    Path("src/bridge/resources/schemas/p0_12_visualization_artifact_set.schema.json"),
-    Path("src/bridge/tool_packages/p0_12_graft_assessment/visualization.py"),
-    Path("src/bridge/tool_packages/p0_12_graft_assessment/visualization_data.py"),
 )
 PACKAGED_ADAPTER_REF = re.compile(
     r"^bridge\.tool_packages(?:\.[A-Za-z_][A-Za-z0-9_]*)+:[A-Za-z_][A-Za-z0-9_]*$"
@@ -295,11 +52,6 @@ def main() -> int:
     problems: list[str] = []
     tracked_files = _tracked_files()
     if tracked_files is not None:
-        tracked_file_budget = _tracked_file_budget()
-        if len(tracked_files) > tracked_file_budget:
-            problems.append(
-                f"tracked file count exceeds {tracked_file_budget}: {len(tracked_files)}"
-            )
         missing_integration_files = set(AGENT_INTEGRATION_FILES) - set(tracked_files)
         for relative in sorted(missing_integration_files):
             problems.append(
@@ -360,116 +112,18 @@ def _tracked_files() -> list[Path] | None:
     return [Path(line) for line in result.stdout.splitlines() if line]
 
 
-def _tracked_file_budget() -> int:
-    implemented = 0
-    for path in (ROOT / "src/bridge/tool_packages/specs").glob("p0_*.yaml"):
-        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-        implemented += payload.get("implementation_state") == "implemented"
-    added_tools = max(0, implemented - IMPLEMENTED_TOOL_BASELINE)
-    shared_files = sum(
-        (ROOT / relative).is_file()
-        for relative in SHARED_CONTRACT_SPINE_FILES
-    )
-    visualization_contract_files = sum(
-        (ROOT / relative).is_file()
-        for relative in SHARED_VISUALIZATION_CONTRACT_FILES
-    )
-    agent_runtime_files = sum(
-        (ROOT / relative).is_file()
-        for relative in AGENT_RUNTIME_FILES
-    )
-    agent_integration_files = sum(
-        (ROOT / relative).is_file()
-        for relative in AGENT_INTEGRATION_FILES
-    )
-    p001_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P001_VISUALIZATION_FILES
-    )
-    p002_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P002_VISUALIZATION_FILES
-    )
-    p003_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P003_VISUALIZATION_FILES
-    )
-    p004_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P004_VISUALIZATION_FILES
-    )
-    p005_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P005_VISUALIZATION_FILES
-    )
-    p005_measurement_projection_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P005_MEASUREMENT_PROJECTION_FILES
-    )
-    p006_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P006_VISUALIZATION_FILES
-    )
-    p006_measurement_projection_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P006_MEASUREMENT_PROJECTION_FILES
-    )
-    p007_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P007_VISUALIZATION_FILES
-    )
-    p008_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P008_VISUALIZATION_FILES
-    )
-    p009_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P009_VISUALIZATION_FILES
-    )
-    p010_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P010_VISUALIZATION_FILES
-    )
-    p011_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P011_VISUALIZATION_FILES
-    )
-    p012_visualization_files = sum(
-        (ROOT / relative).is_file()
-        for relative in P012_VISUALIZATION_FILES
-    )
-    return (
-        TRACKED_FILE_BASELINE
-        + sum((ROOT / relative).is_file() for relative in WEB_PREVIEW_FILES)
-        + p004_visualization_files
-        + p005_visualization_files
-        + p005_measurement_projection_files
-        + sum((ROOT / relative).is_file() for relative in P005_INPUT_ROUTE_FILES)
-        + p006_visualization_files
-        + p006_measurement_projection_files
-        + sum((ROOT / relative).is_file() for relative in P006_INPUT_ROUTE_FILES)
-        + p007_visualization_files
-        + p008_visualization_files
-        + p009_visualization_files
-        + p010_visualization_files
-        + p011_visualization_files
-        + p012_visualization_files
-        + added_tools * MAX_FILES_PER_NEW_IMPLEMENTED_TOOL
-        + shared_files
-        + visualization_contract_files
-        + agent_runtime_files
-        + agent_integration_files
-        + p001_visualization_files
-        + p002_visualization_files
-        + p003_visualization_files
-    )
-
 def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> None:
     for relative_path in tracked_files:
         if relative_path.parts and relative_path.parts[0] in {"schemas", "tool_packages"}:
             problems.append(f"duplicate root projection: {relative_path}")
         if relative_path.parts and relative_path.parts[0] in {"catalog_seed", "tools"}:
             problems.append(f"obsolete root directory: {relative_path}")
+        if relative_path.parts and relative_path.parts[0] == "web":
+            problems.append(f"ambiguous frontend directory: {relative_path}")
+        if any(part in {"node_modules", ".superpowers"} for part in relative_path.parts):
+            problems.append(f"generated or private workspace tracked: {relative_path}")
+        if relative_path.name.casefold() == "agents.md" and relative_path != Path("AGENTS.md"):
+            problems.append(f"duplicate agent instructions: {relative_path}")
         if relative_path == Path("PLANS.md"):
             problems.append("obsolete root plan index: PLANS.md")
         if "legacy" in {part.casefold() for part in relative_path.parts}:

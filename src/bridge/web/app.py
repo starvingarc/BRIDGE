@@ -35,6 +35,7 @@ from .assessment import AssessmentCoordinator, ScopeProposal, ScopeIdentity
 from .clarification import Clarifications, AnswerBody, CardIdentity
 from .scientific_inputs import ScientificInputs, DraftIdentity, DraftRevision
 from .report_inputs import ReportInputs, ReportPreparation
+from .conditional_inputs import ConditionalInputs, ConditionalProposal, ConditionalDecision
 from .intake import Intake, IntakeFacts, IntakeInput, IntakePrepare
 from . import intake_autofill
 from .intake_autofill import IntakeAnswer
@@ -189,6 +190,7 @@ class Settings:
     upload_limit: int = 128 * 1024 * 1024
     cookie_ttl: int = 12 * 3600
     cell_state_measurement_spec_ref: str | None = None
+    cell_state_candidate_runtime_ref: str | None = None
     share_result_summaries: bool = False
     model_action_protocol: Literal["json", "deepseek_tools"] = "json"
     protocol_compiler_python: str | None = None
@@ -326,6 +328,7 @@ class Service:
         self.clarifications = Clarifications(self)
         self.scientific_inputs = ScientificInputs(self)
         self.report_inputs = ReportInputs(self)
+        self.conditional_inputs = ConditionalInputs(self)
         self.cookies: dict[str, float] = {}
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bridge-web")
         self.capacity = BoundedSemaphore(2)
@@ -374,6 +377,7 @@ class Service:
         value = {key: state.get(key, [] if key == "plan_history" else None) for key in PUBLIC}
         value["clarifications"] = self.clarifications.public(state)
         value["scientific_drafts"] = self.scientific_inputs.public(state)
+        value["conditional_inputs"] = self.conditional_inputs.public(state)
         value["assessment"] = self.assessment.public(state)
         return value
 
@@ -416,6 +420,13 @@ class Service:
         state["plan"], state["_plan"] = None, None
         state.pop("_run_id", None)
 
+    def cell_state_runtime_parameters(self):
+        from bridge.tool_packages.p0_02_cell_state.candidate_runtime import CANDIDATE_SPEC, candidate_runtime_binding
+        if self.settings.cell_state_measurement_spec_ref != CANDIDATE_SPEC:
+            return {}
+        binding, fingerprint = candidate_runtime_binding(self.settings.cell_state_candidate_runtime_ref)
+        return {"candidate_runtime_ref": binding.runtime_id, "candidate_binding_sha256": fingerprint}
+
     def cell_state_config_reasons(self):
         if not self.settings.cell_state_measurement_spec_ref:
             return ["measurement_spec_not_configured"]
@@ -428,7 +439,10 @@ class Service:
                 return ["measurement_spec_not_found"]
             manifest = validate_reference_snapshot(resolve_reference_snapshot(spec.reference_refs[0]))
             validate_runtime_reference(manifest)
-            if spec.measurement_spec_id not in manifest.measurement_spec_ids:
+            from bridge.tool_packages.p0_02_cell_state.candidate_runtime import CANDIDATE_SPEC, AUXILIARY_SPEC
+            self.cell_state_runtime_parameters()
+            reference_spec = AUXILIARY_SPEC if spec.measurement_spec_id == CANDIDATE_SPEC else spec.measurement_spec_id
+            if reference_spec not in manifest.measurement_spec_ids:
                 return ["measurement_spec_not_supported_by_reference"]
         except Exception as exc:
             return [getattr(exc, "reason_code", "reference_configuration_invalid")]
@@ -555,7 +569,8 @@ class Service:
                              output_dir=self.directory(state["id"]) / "runs")
             if tool_id == "P0-02":
                 request = ToolRequest(**arguments, assets=[asset.to_toolkit_asset()],
-                                      measurement_spec_ref=self.settings.cell_state_measurement_spec_ref)
+                                      measurement_spec_ref=self.settings.cell_state_measurement_spec_ref,
+                                      parameters=self.cell_state_runtime_parameters())
             else:
                 request = ToolRequestV2(**arguments, assets=[], object_inputs=[])
             self.propose_request(state, bundle, request, tool_id +
@@ -720,9 +735,20 @@ class Service:
             return CaseInputAsset.model_validate(payload)
         raise ValueError("completed_qc_required")
 
+    def conditional_blocker(self, state, tool_id):
+        # Explicit absence remains a non-assessment outcome, not graft authorization.
+        selected = state.get("_input_selections", {}).get(tool_id)
+        if tool_id == "P0-12" and (
+                selected and selected.get("mode_id") == "not_provided"
+                or selected is None and self.no_graft_declared(state)):
+            return None
+        return self.conditional_inputs.selected_blocker(state, tool_id)
+
     def prepare_selected(self, state, tool_id):
         self.inputs.initialize(state)
-        blocker = self.scientific_inputs.selected_blocker(state, tool_id) or self.report_inputs.selected_blocker(state, tool_id)
+        blocker = (self.scientific_inputs.selected_blocker(state, tool_id)
+                   or self.report_inputs.selected_blocker(state, tool_id)
+                   or self.conditional_blocker(state, tool_id))
         if blocker:
             self.stage_blocked(state, blocker)
             return
@@ -1052,7 +1078,8 @@ class Service:
     def verify_scientific_plan(self, state, plan):
         for step in plan.steps:
             blocker = (self.scientific_inputs.selected_blocker(state, step.tool_id)
-                       or self.report_inputs.selected_blocker(state, step.tool_id))
+                       or self.report_inputs.selected_blocker(state, step.tool_id)
+                       or self.conditional_blocker(state, step.tool_id))
             if blocker:
                 raise ValueError(blocker)
 
@@ -1150,6 +1177,26 @@ class Service:
 
     def register_artifacts(self, state, outcome):
         root = self.directory(state["id"])
+        verified_reports = {}
+        report_metadata = {}
+        if (outcome.request.tool_id == "P0-10"
+                and getattr(outcome, "result_schema_ref", None) == "bridge://schemas/research-claim-verification-result/v0.2"):
+            from .inputs import checked_bytes
+            from bridge.tool_packages.p0_10_claim_verifier.research import (
+                ResearchAnalysisSnapshot, ResearchClaimVerificationResult, render_research_snapshot,
+            )
+            snapshots = [item for item in outcome.artifacts if item.path.name == "research_snapshot.json"]
+            if snapshots:
+                if len(snapshots) != 1:
+                    raise ValueError("research_snapshot_binding_invalid")
+                source = snapshots[0]
+                snapshot = ResearchAnalysisSnapshot.model_validate_json(checked_bytes(
+                    self, state, source.path, source.sha256, root=root / "runs"))
+                verification = ResearchClaimVerificationResult.model_validate(outcome.result)
+                verified_reports = render_research_snapshot(snapshot=snapshot, result=verification)
+                report_metadata = {"input_revision": snapshot.input_revision,
+                    "graph_version": snapshot.graph_version, "snapshot_sha256": snapshot.snapshot_sha256}
+
         for artifact in outcome.artifacts:
             path = artifact.path
             try:
@@ -1164,13 +1211,16 @@ class Service:
             suffix = path.suffix.lower()
             media = {".png": "image/png", ".svg": "image/svg+xml", ".json": "application/json",
                      ".csv": "text/csv", ".tsv": "text/tab-separated-values",
-                     ".parquet": "application/octet-stream"}.get(suffix)
-            if not media:
+                     ".parquet": "application/octet-stream", ".html": "text/html"}.get(suffix)
+            if not media or (suffix == ".html" and path.name not in verified_reports):
                 continue
             data = read_file(path, 128 * 1024 * 1024)
             if hashlib.sha256(data).hexdigest() != artifact.sha256:
                 raise ValueError("artifact_integrity_mismatch")
-            if suffix == ".json":
+            is_research_report = path.name in verified_reports
+            if is_research_report and data != verified_reports[path.name]:
+                raise ValueError("research_report_content_mismatch")
+            if suffix == ".json" and not is_research_report:
                 def redact(value):
                     if isinstance(value, dict):
                         return {key: redact(item) for key, item in value.items() if "path" not in key.lower() and key not in {"output_dir"}}
@@ -1180,19 +1230,20 @@ class Service:
                 data = json.dumps(redact(json.loads(data)), ensure_ascii=False).encode()
             aid = uid()
             write_file(root / "artifacts" / (aid + suffix), data)
-            kind = "figure" if suffix in {".png", ".svg"} else "evidence" if suffix == ".json" else "table"
+            kind = "download" if is_research_report else "figure" if suffix in {".png", ".svg"} else "evidence" if suffix == ".json" else "table"
             name = re.sub(r"[^A-Za-z0-9_.-]", "_", path.name)[:100]
-            if suffix == ".json":
+            if suffix == ".json" and not is_research_report:
                 name = name.removesuffix(".json") + ".display-redacted.json"
             state["artifacts"].append({"id": aid, "name": name, "kind": kind, "media_type": media,
-                                       "url": f"/api/sessions/{state['id']}/artifacts/{aid}", "tool_id": outcome.request.tool_id})
+                                       "url": f"/api/sessions/{state['id']}/artifacts/{aid}", "tool_id": outcome.request.tool_id,
+                                       **({"research_report": report_metadata} if is_research_report else {})})
             self.inputs.initialize(state)
             state["_canonical_artifacts"][aid] = {"path": str(artifact.path), "sha256": artifact.sha256,
                 "artifact_id": artifact.artifact_id, "receipt_file": state["_tool_runs"][-1]["file"],
                 "receipt_sha256": state["_tool_runs"][-1]["sha256"]}
             state["_artifacts"][aid] = {"file": aid + suffix, "sha256": hashlib.sha256(data).hexdigest(),
                                        "source_artifact_id": artifact.artifact_id, "source_sha256": artifact.sha256,
-                                       "projection": "path_redacted_display" if suffix == ".json" else "identity"}
+                                       "projection": "path_redacted_display" if suffix == ".json" and not is_research_report else "identity"}
             self.save(state)
 
 
@@ -1477,6 +1528,23 @@ def create_app(settings: Settings) -> FastAPI:
             service.busy(state)
             service.scientific_inputs.confirm(state, body.draft_id, body.draft_digest)
             service.save(state)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/conditional-inputs/propose")
+    def propose_conditional_inputs(sid: str, body: ConditionalProposal):
+        with service.lock:
+            state = service.load(sid)
+            service.conditional_inputs.propose(state, body.selection, body.expected_revision)
+            return service.public(state)
+
+    @app.post("/api/sessions/{sid}/conditional-inputs/{action}")
+    def decide_conditional_inputs(sid: str, action: str, body: ConditionalDecision):
+        if action not in {"confirm", "cancel", "prepare"}:
+            raise HTTPException(404, "not_found")
+        with service.lock:
+            state = service.load(sid)
+            getattr(service.conditional_inputs, action)(
+                state, body.draft_id, body.draft_digest, body.expected_revision)
             return service.public(state)
 
     @app.post("/api/sessions/{sid}/report-inputs/prepare")

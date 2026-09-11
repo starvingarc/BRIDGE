@@ -10,6 +10,7 @@ import { ClarificationCard } from "./ClarificationCard";
 import { ScientificInputs } from "./ScientificInputs";
 import type { Session, Upload } from "../types";
 import { AnalysisInputs } from "./AnalysisInputs";
+import { ConditionalInputs } from "./ConditionalInputs";
 import { InputChangeCard } from "./InputChangeCard";
 import { MarkdownText } from "./MarkdownText";
 import { PlanCard, PlanHistory } from "./PlanCard";
@@ -224,6 +225,10 @@ export function Conversation({
                 onDiscard={onDiscardInputChange}
                 onKeep={onKeepCurrentInputs}
               />
+            ) : null}
+            {session.conditional_inputs && session.uploads.length > 0 ? (
+              <ConditionalInputs key={session.id} session={session} busy={busy}
+                onSession={onSession} onError={onError} />
             ) : null}
             <AnalysisInputs
               key={`${session.id}:${session.pending_input_change?.id ?? session.input_review_required}`}

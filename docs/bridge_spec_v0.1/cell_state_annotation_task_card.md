@@ -99,13 +99,13 @@ flowchart LR
 
 本次 External-Source Freeze Candidate 将 CellTypist 作为唯一 inductive base classifier，correlation/marker 作为 sensitivity，energy score 作为 primary OOD、kNN distance 作为 sensitivity，scANVI 仅作为 transductive benchmark，scConform 仅作为 coverage layer。scConform 不构成独立 standalone OOD detector，也不增加一个独立生物 evidence family。Lopez-De-Castro 等人的 conformal annotator 是另一项方法，不得与 scConform 合并引用。复杂模型必须与透明基线比较；Agent 不能在看到待评产品结果后临时选择最有利的方法。
 
-## 6. Studer/CapybaraBrain/HDNA artifact 隔离
+## 6. Studer/CapybaraBrain/HDNA evidence admission（v0.2）
 
 ### Track A：as-published competitor reproduction
 
 - 固定 bioRxiv v1、官方仓库 commit、环境、输入和 checksum。
 - 分别登记 fetal atlas reference、使用 93 个 programs 的 CapybaraBrain method、包含 19 项研究和 641,539 个体外细胞的 HDNA atlas，以及单独的 PCA/kNN mapping notebook；不得把这些 artifact 合并为一个来源或一个方法。
-- 原始 reference、marker、标签、lineage map、阈值和输出仅进入 `competitor_reproduction` namespace。
+- 原始 reference、marker、标签、lineage map 和阈值保留独立来源及使用范围；经验证的 query 输出可以作为 external method observation 进入 Evidence Graph，保留 native weights、hybrid/transitioning/unknown 状态、程序覆盖率及全部依赖。
 - 缺失 CellTypist model、integration embedding 或完整配置时标记 `blocked_by_missing_artifact`。
 
 ### Track B：BRIDGE independent adaptation
@@ -113,9 +113,9 @@ flowchart LR
 - 可以评测 CellHint、CellTypist、NNLS、连续程序分解等公开的方法类型。
 - 必须使用 BRIDGE 自有标签、reference、独立 marker、独立实现及 source/donor holdout calibration。
 - 连续身份输出增加 reconstruction residual、reference distance、prediction set、unknown reason 和 bootstrap interval。
-- Track A 的代码、atlas、marker、标签、lineage map、阈值和结果不得进入 BRIDGE 的 RAG、prior、训练、校准、调参或正式 Evidence Graph。
+- 公共方法 metadata 可用于检索、规划和解释；这不自动授权 atlas、marker、标签、lineage map 或阈值成为 BRIDGE 的 prior、训练、校准或调参材料。sealed 数据继续隔离。graph admission 与训练用途、独立验证、科学资格分别判断。
 
-BRIDGE 的方法和评测合同冻结后，Track A 才能作为署名的外部 baseline 展示；sealed competitor test 不能反向修改当轮算法。fetal atlas、CapybaraBrain、HDNA 和 mapping notebook 互相存在方法与数据血缘，不计作 BRIDGE 的独立 external validation。BRIDGE 的独立方向是 source-aware open-world 产品评估及 exact-to-parent-to-unknown rejection。
+外部方法输出以署名的 research observation 展示；未完成执行的条目不产生测量。正式比较须先冻结方法和评测合同；sealed competitor test 不能反向修改当轮算法。fetal atlas、CapybaraBrain、HDNA 和 mapping notebook 互相存在方法与数据血缘，不计作 BRIDGE 的独立 external validation。BRIDGE 的独立方向是 source-aware open-world 产品评估及 exact-to-parent-to-unknown rejection。
 
 ## 7. 输入与输出合同
 

@@ -18,7 +18,7 @@ from .scientific_inputs import digest
 
 
 class AllowedMode(InputBody):
-    tool_id: Literal["P0-01", "P0-02", "P0-03", "P0-04", "P0-05", "P0-06", "P0-08", "P0-09"]
+    tool_id: Literal["P0-01", "P0-02", "P0-03", "P0-04", "P0-05", "P0-06", "P0-08", "P0-09", "P0-10"]
     mode_id: str | None = Field(max_length=100)
 
 
@@ -79,6 +79,12 @@ class AssessmentCoordinator:
         resources = files("bridge.tool_packages.p0_02_cell_state.resources")
         science = {name: hashlib.sha256(resources.joinpath(name).read_bytes()).hexdigest()
                    for name in ("biological_review_draft.yaml", "product_context_review_draft.yaml")}
+        from bridge.tool_packages.p0_02_cell_state.candidate_runtime import CANDIDATE_SPEC
+        if self.service.settings.cell_state_measurement_spec_ref == CANDIDATE_SPEC:
+            parameters = self.service.cell_state_runtime_parameters()
+            science["cell-state-candidate-binding"] = parameters["candidate_binding_sha256"]
+            science["development-review-v1.1"] = hashlib.sha256(
+                resources.joinpath("development_review_v1_1.json").read_bytes()).hexdigest()
         if any(row.tool_id == "P0-06" and row.mode_id == "exploratory_process" for row in allowed_modes):
             _, candidate = self.service.scientific_inputs.exploratory_resource()
             science[candidate["resource_ref"]] = candidate["sha256"]
@@ -277,6 +283,7 @@ class AssessmentCoordinator:
                          "stop_reason": row["stop_reason"], "stop_events": row.get("stop_events", [])}
                         for row in state.get("_assessment_history", [])],
             "hypotheses": assessment.get("hypotheses", []),
+            "interpretation_versions": assessment.get("interpretation_versions", []),
             "data_view": view,
             "resources": [{"alias": "R-" + identifier[:12], **{key: row[key] for key in
                 ("schema_ref", "object_version", "sha256", "source")}}
@@ -369,8 +376,14 @@ class AssessmentCoordinator:
                 assessment["model_turns"][-1]["state"] = "received"
                 decision = action.decision
                 valid_aliases = {row["alias"] for row in context["evidence"] if row["state"] == "available"}
-                if any(not set(hypothesis.evidence_aliases) <= valid_aliases
+                if any(not (set(hypothesis.evidence_aliases) | set(hypothesis.opposing_evidence_aliases)) <= valid_aliases
                        for hypothesis in decision.hypotheses):
+                    self._finish(state, "invalid_evidence_alias", status="blocked")
+                    return
+                missing_aliases = {row["alias"] for row in context["evidence"] if row["state"] != "available"}
+                if any(not set(row.missing_evidence_aliases) <= missing_aliases
+                       or set(row.evidence_aliases) & set(row.opposing_evidence_aliases)
+                       for row in decision.hypotheses):
                     self._finish(state, "invalid_evidence_alias", status="blocked")
                     return
                 if any(hypothesis.discriminating_check not in {mode.tool_id for mode in scope.allowed_modes}
@@ -385,9 +398,26 @@ class AssessmentCoordinator:
                     # is unavailable, never a vacuously satisfied empty set.
                     self._finish(state, "completion_contract_unavailable", status="blocked")
                     return
-                assessment["hypotheses"] = [{**row.model_dump(mode="json"),
-                    "evidence_aliases": [provider_bindings["evidence"][alias] for alias in row.evidence_aliases]}
+                hypotheses = [{**row.model_dump(mode="json"),
+                    **{field: [provider_bindings["evidence"][alias] for alias in getattr(row, field)]
+                       for field in ("evidence_aliases", "opposing_evidence_aliases", "missing_evidence_aliases")}}
                     for row in decision.hypotheses]
+                # Interpretations are proposals over an immutable evidence snapshot,
+                # not a replacement for prior explanations or a new measurement.
+                interpretation = {
+                    "object_version": "1.0.0", "scope_digest": assessment["scope_digest"],
+                    "input_revision": scope.input_revision, "hypotheses": hypotheses,
+                    "evidence_snapshot_sha256": digest(evidence),
+                    "qualification": "proposed_explanation",
+                }
+                signature = digest(interpretation)
+                versions = assessment.setdefault("interpretation_versions", [])
+                if not versions or versions[-1]["content_sha256"] != signature:
+                    versions.append({**interpretation, "version": len(versions) + 1,
+                        "content_sha256": signature,
+                        "predecessor_sha256": versions[-1]["content_sha256"] if versions else None,
+                        "created_at": datetime.now(timezone.utc).isoformat()})
+                assessment["hypotheses"] = hypotheses
                 if decision.action in {"stop", "question", "explain"}:
                     if decision.text:
                         self.service.message(state, "assistant", decision.text)

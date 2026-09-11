@@ -15,6 +15,9 @@ class AssessmentHypothesis(BaseModel):
     model_config = ConfigDict(extra="forbid")
     statement: str = Field(min_length=1, max_length=600)
     evidence_aliases: list[str] = Field(min_length=1, max_length=8)
+    opposing_evidence_aliases: list[str] = Field(default_factory=list, max_length=8)
+    missing_evidence_aliases: list[str] = Field(default_factory=list, max_length=8)
+    expected_observation: str | None = Field(default=None, min_length=1, max_length=600)
     competing_explanation: str = Field(min_length=1, max_length=600)
     discriminating_check: str = Field(pattern=r"^P0-(0[1-9]|1[0-2])$")
 
@@ -374,7 +377,10 @@ Successful execution does not imply all QC checks ran, a filtered view, or scien
 Describe filtering, doublet detection, ambient correction or cell calling only when supplied tool-owned states confirm them.
 No raw rows or private source values are available. Same-family methods are dependent, not extra votes.
 Hypotheses, when useful, contain statement, evidence_aliases from supplied evidence, competing_explanation,
-and discriminating_check (an allowed tool ID). Never cite unavailable receipts or invent an alias.
+opposing_evidence_aliases from available evidence, missing_evidence_aliases from unavailable evidence,
+expected_observation describing what each competing explanation predicts qualitatively,
+and discriminating_check (an allowed tool ID). Do not invent aliases. Missing evidence is never opposition.
+Use empty lists when no opposing or missing evidence has been supplied; do not manufacture either.
 An unavailable method is a gap, not evidence against a hypothesis. No confidence/probability or numerical claim fields.
 Stop for evidence_requirements_reached or no_discriminating_check; question only for a consequential missing fact.
 An explanation ends this phase, not the scientific question; it may leave useful options unexecuted and is not a verified report.

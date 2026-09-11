@@ -48,6 +48,7 @@ export type Plan = {
 export type ArtifactKind = "figure" | "table" | "evidence" | "download";
 
 export type Artifact = {
+  research_report?: { input_revision: string; graph_version: number; snapshot_sha256: string };
   id: string;
   name: string;
   kind: ArtifactKind;
@@ -159,6 +160,10 @@ export type PendingInputChange = {
   id: string;
   digest: string;
   kind: "asset" | "source" | "intake";
+  impact?: { version: string; input_revision: number;
+    affected: Array<{ receipt_sha256: string; tool_id: string; label?: string }>;
+    reusable: Array<{ receipt_sha256: string; tool_id: string; label?: string }>;
+    new_approval_required: boolean; historical_artifacts_preserved: boolean };
   upload_id: string;
   changes: Array<{ field: string; before: JsonValue; after: JsonValue }>;
 };
@@ -238,7 +243,12 @@ export type Assessment = {
   blockers: Array<AssessmentMode & { reason_codes: string[] }>;
   candidates: AssessmentCandidate[]; evidence: AssessmentEvidence[]; portrait: AssessmentAxis[];
   hypotheses: Array<{ statement: string; evidence_aliases: string[];
+    opposing_evidence_aliases?: string[]; missing_evidence_aliases?: string[]; expected_observation?: string | null;
     competing_explanation: string; discriminating_check: string }>;
+  interpretation_versions?: Array<{ version: number; content_sha256: string;
+    predecessor_sha256: string | null; input_revision: number; created_at: string;
+    qualification: "proposed_explanation"; hypotheses: Assessment["hypotheses"];
+    scope_digest: string; evidence_snapshot_sha256: string }>;
   freshness: { state: "current" | "historical" | "review_pending"; reason_code: string | null;
     current_input_revision: number; scope_input_revision: number; pending_review: boolean };
   data_view: Record<string, JsonValue>;
@@ -254,7 +264,23 @@ export type AssessmentProposal = {
   max_tool_runs: number; max_model_turns: number;
 };
 
+export type ConditionalEntry = {
+  id: string; label: string; category_label: string; execution_available: boolean; reasons: string[];
+  diagnostics: { selection: AnalysisSelection; reason_codes: string[] };
+};
+export type ConditionalDraft = ConditionalEntry & {
+  digest: string; status: "pending" | "confirmed" | "cancelled" | "stale";
+  status_label: string; input_revision: number;
+};
+export type ConditionalDirectory = {
+  input_revision: number; access_boundary: string; scientific_boundary: string;
+  comparison: { label: string; entries: ConditionalEntry[]; reasons: string[] };
+  graft: { label: string; entries: ConditionalEntry[]; reasons: string[] };
+  selections: ConditionalDraft[];
+};
+
 export type Session = {
+  conditional_inputs?: ConditionalDirectory;
   assessment?: Assessment | null;
   scientific_drafts?: ScientificDraft[];
   clarifications?: Clarification[];

@@ -312,15 +312,61 @@ function ParquetArtifact({ sessionId, artifact }: { sessionId: string; artifact:
   );
 }
 
+function ResearchSnapshotView({ sessionId, artifact }: { sessionId: string; artifact: Artifact }) {
+  const [content, setContent] = useState<{ texts: string[]; missing: number; error: boolean } | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    let current = true;
+    setContent(null);
+    fetch(artifactUrl(sessionId, artifact.id), { credentials: "same-origin", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("report_unavailable");
+        const { text, truncated } = await readBoundedText(response, 8_000_000);
+        if (truncated) throw new Error("report_too_large");
+        const snapshot = JSON.parse(text);
+        const binding = artifact.research_report;
+        if (!binding || snapshot.snapshot_sha256 !== binding.snapshot_sha256
+            || snapshot.input_revision !== binding.input_revision || snapshot.graph_version !== binding.graph_version
+            || snapshot.audience !== "internal_research" || snapshot.scientific_validation !== "not_qualified"
+            || typeof snapshot.report_draft_json !== "string") throw new Error("report_binding_invalid");
+        const draft = JSON.parse(snapshot.report_draft_json);
+        const requirements = JSON.parse(snapshot.evidence_requirement_set_json);
+        if (!Array.isArray(draft.claim_blocks) || draft.claim_blocks.length > 5000
+            || !draft.claim_blocks.every((row: { text?: unknown }) => typeof row.text === "string")
+            || !Array.isArray(requirements.requirements)) throw new Error("report_shape_invalid");
+        if (current) setContent({
+          texts: draft.claim_blocks.map((row: { text: string }) => row.text),
+          missing: requirements.requirements.filter((row: { state?: string }) => row.state === "open").length,
+          error: false,
+        });
+      }).catch((error: unknown) => {
+        if (current && (error as { name?: string }).name !== "AbortError") {
+          setContent({ texts: [], missing: 0, error: true });
+        }
+      });
+    return () => { current = false; controller.abort(); };
+  }, [sessionId, artifact.id, artifact.research_report?.snapshot_sha256]);
+  if (!content) return <p>正在读取已核验报告…</p>;
+  if (content.error) return <p>无法确认报告快照，请下载原始附件核对；当前不展示未绑定的内容。</p>;
+  return <section aria-label="同版本研究报告">
+    <p>以下文字与离线报告读取同一份证据快照。尚有 {content.missing} 项开放证据要求。</p>
+    {content.texts.map((text, index) => <p key={index}>{text}</p>)}
+  </section>;
+}
+
 export function ArtifactCard({ sessionId, artifact, view = artifact.kind }: {
   sessionId: string; artifact: Artifact; view?: ArtifactKind;
 }) {
   const url = artifactUrl(sessionId, artifact.id);
   return <article className="artifact-card">
-    <header><div><h2>{artifact.name}</h2><p>{artifact.tool_id}</p></div>
+    <header><div><h2>{artifact.name}</h2><p>{artifact.research_report
+      ? `研究报告 · 输入修订 ${artifact.research_report.input_revision} · 证据图版本 ${artifact.research_report.graph_version}`
+      : artifact.tool_id}</p></div>
       <a href={url} download={artifact.name} aria-label={`Download ${artifact.name}`}><Download aria-hidden="true" /></a>
     </header>
-    {view === "figure" ? <img src={url} alt={artifact.name} />
+    {artifact.research_report && artifact.media_type === "application/json"
+      ? <ResearchSnapshotView sessionId={sessionId} artifact={artifact} />
+      : view === "figure" ? <img src={url} alt={artifact.name} />
       : view === "download" ? <a className="download-row" href={url} download={artifact.name}>
         <FileText aria-hidden="true" /><span>Download original file</span><Download aria-hidden="true" /></a>
       : isParquet(artifact) ? <ParquetArtifact sessionId={sessionId} artifact={artifact} />

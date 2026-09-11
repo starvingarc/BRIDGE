@@ -4,6 +4,11 @@ import json
 from importlib.resources import files
 
 SCHEMA_REFS = {
+    "bridge://schemas/cell-state-development-review/v1.1": "cell_state_development_review_v1_1.schema.json",
+    "bridge://schemas/cell-state-development-review/v1.0": "cell_state_development_review.schema.json",
+    "bridge://schemas/cell-state-ood-calibration/v1.0": "cell_state_ood_calibration.schema.json",
+    "bridge://schemas/cell-state-candidate-runtime/v1.0": "cell_state_candidate_runtime.schema.json",
+    "bridge://schemas/cell-state-candidate-profile/v1.0": "cell_state_candidate_profile.schema.json",
     "bridge://schemas/exploratory-process-input/v0.1": "exploratory_process_input.schema.json",
     "bridge://schemas/exploratory-process-profile/v0.1": "exploratory_process_profile.schema.json",
     "bridge://schemas/proliferation-stress-response-result/v0.1": "proliferation_stress_response_result.schema.json",
@@ -29,6 +34,9 @@ SCHEMA_REFS = {
     "bridge://schemas/case-evidence-graph-manifest/v0.1": "case_evidence_graph_manifest.schema.json",
     "bridge://schemas/claim-registry/v0.1": "claim_registry.schema.json",
     "bridge://schemas/claim-policy-spec/v0.1": "claim_policy_spec.schema.json",
+    "bridge://schemas/research-claim-verification-result/v0.2": "research_claim_verification_result_v2.schema.json",
+    "bridge://schemas/research-statement-registry/v0.2": "research_statement_registry_v2.schema.json",
+    "bridge://schemas/research-analysis-snapshot/v0.2": "research_analysis_snapshot_v2.schema.json",
     "bridge://schemas/claim-verification-result/v0.1": "claim_verification_result.schema.json",
     "bridge://schemas/claim-verifier-visualization-data/v0.1": "claim_verifier_visualization_data.schema.json",
     "bridge://schemas/comparison-evidence-graph-manifest/v0.1": "comparison_evidence_graph_manifest.schema.json",

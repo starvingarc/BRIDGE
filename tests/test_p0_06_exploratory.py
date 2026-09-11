@@ -123,7 +123,13 @@ def test_registered_exploratory_run_preserves_cells_without_invented_review(tmp_
     assert result["interpretation_scope"] == "descriptive_only"
     assert result["domain_score"] is None
     assert result["score_state"] == "unavailable"
-    assert run.measurements == []
+    assert len(run.measurements) == 5
+    cycle = run.measurements[0]
+    assert cycle.raw_value == run.result["cell_cycle"]["s_g2m_fraction"]
+    assert cycle.denominator == run.result["n_observations"]
+    assert cycle.numerator == sum(run.result["cell_cycle"]["phase_counts"][phase] for phase in ("S", "G2M"))
+    assert all(value.domain_score is None and value.source_run_ref == f"tool-run:{run.run_id}@{run.tool_version}"
+               for value in run.measurements)
     assert len(result["program_summaries"]) == 4
     assert {x["score_unit"] for x in result["program_summaries"]} == {
         "scanpy_control_adjusted_expression",

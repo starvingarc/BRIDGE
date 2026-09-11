@@ -43,6 +43,18 @@ export function InputChangeCard({ pending, uploads, busy, onConfirm, onDiscard, 
               </div>
             ))}
           </dl>
+          {pending.impact ? (
+            <section aria-label="修订影响">
+              <strong>修订影响</strong>
+              <p>{pending.impact.affected.length} 项已有分析需要更新，{pending.impact.reusable.length} 项分析的输入依赖不受影响。</p>
+              {pending.impact.affected.length ? <ul>{pending.impact.affected.map((run) =>
+                <li key={run.receipt_sha256}>{run.label ?? "专项分析"}：需要更新</li>)}</ul> : null}
+              {pending.impact.reusable.length ? <details><summary>输入依赖未改变的分析</summary>
+                <ul>{pending.impact.reusable.map((run) => <li key={run.receipt_sha256}>{run.label ?? "专项分析"}</li>)}</ul>
+              </details> : null}
+              <p>原始文件、历史回执和旧版报告保留。更新分析需要另行确认，不会自动开始。</p>
+            </section>
+          ) : null}
           <div className="input-change-actions">
             <button type="button" onClick={onConfirm} disabled={busy}>{intake ? "确认资料" : "Confirm change"}</button>
             <button type="button" onClick={onDiscard} disabled={busy}>{intake ? "放弃这次修改" : "Discard change"}</button>

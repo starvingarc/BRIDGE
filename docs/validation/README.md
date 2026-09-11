@@ -18,6 +18,8 @@ threshold, score or product conclusion.
 
 ## P0-02 Scientific and Source Preparation
 
+- [Development decisions and rejection assessment, 2026-09-11](cell_state_development_20260911.md)
+
 - [Scientific-freeze pilot, 2026-08-11](p0_02_cell_state_evidence.md#record-p0-02-scientific-freeze-pilot-20260811)
 - [External-source asset validation, 2026-08-12](p0_02_cell_state_evidence.md#record-p0-02-external-source-asset-20260812)
 - [External-source preparation validation, 2026-08-13](p0_02_cell_state_evidence.md#record-p0-02-external-source-preparation-20260813)

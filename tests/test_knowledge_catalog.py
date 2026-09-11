@@ -73,15 +73,20 @@ def test_chinese_search_finds_ambient_rna_methods() -> None:
     assert any("SoupX" in hit.title or "CellBender" in hit.title for hit in hits)
 
 
-def test_competitor_isolated_methods_are_not_retrievable() -> None:
+def test_external_method_metadata_is_retrievable_without_qualification() -> None:
     registry = KnowledgeRegistry.load_default()
 
     hits = registry.search("CapybaraBrain competitor", limit=20)
 
-    assert all("CapybaraBrain" not in hit.title for hit in hits)
+    hit = next(hit for hit in hits if "CapybaraBrain" in hit.title)
+    method = next(method for method in registry.methods if method["display_name"] == hit.title)
+    assert method["retrieval_policy"] == "public_method_metadata"
+    assert method["formal_eligible"] is False
+    assert "Sealed materials remain excluded" in " ".join(method["critical_boundaries"])
+    assert hit.source_ids
 
 
-def test_clean_room_methods_are_retrievable_without_competitor_baseline() -> None:
+def test_independent_methods_remain_retrievable() -> None:
     registry = KnowledgeRegistry.load_default()
 
     independent = registry.search("independent continuous identity", module_id="P0-02", limit=20)
@@ -89,7 +94,6 @@ def test_clean_room_methods_are_retrievable_without_competitor_baseline() -> Non
 
     assert any("BRIDGE independent continuous identity" in hit.title for hit in independent)
     assert any("scConform" in hit.title for hit in conformal)
-    assert all("CapybaraBrain" not in hit.title for hit in [*independent, *conformal])
 
 
 def test_search_supports_status_source_and_use_filters() -> None:
@@ -173,7 +177,7 @@ def test_get_record_rejects_unknown_knowledge_id() -> None:
         raise AssertionError("unknown knowledge ID must raise KeyError")
 
 
-def test_get_record_hides_known_competitor_isolated_method_and_sources() -> None:
+def test_get_record_exposes_only_public_external_method_metadata() -> None:
     registry = KnowledgeRegistry.load_default()
     competitor_method_id = "METHOD-CAPYBARABRAIN-AS-PUBLISHED"
     methods = {item["method_id"]: item for item in registry.methods}
@@ -182,7 +186,7 @@ def test_get_record_hides_known_competitor_isolated_method_and_sources() -> None
     competitor_source_ids = set(competitor_method["source_ids"])
     competitor_sources = [sources[source_id] for source_id in competitor_source_ids]
 
-    assert competitor_method["retrieval_policy"] == "competitor_isolated"
+    assert competitor_method["retrieval_policy"] == "public_method_metadata"
     assert {source["url"] for source in competitor_sources} == {
         "https://developmental.cellatlas.io/dopamine",
         "https://github.com/VittoriaDBocchi/CapybaraBrain",
@@ -200,12 +204,9 @@ def test_get_record_hides_known_competitor_isolated_method_and_sources() -> None
     )
 
     for knowledge_id in {competitor_method_id, *competitor_source_ids}:
-        try:
-            registry.get_record(knowledge_id)
-        except KeyError as exc:
-            assert exc.args == (knowledge_id,)
-        else:
-            raise AssertionError(f"competitor-isolated record was exposed: {knowledge_id}")
+        record = registry.get_record(knowledge_id)
+        assert record
+        assert "full_text" not in record and "expression_matrix" not in record
 
 
 def test_active_shortlist_matches_specs_and_packaged_snapshot() -> None:

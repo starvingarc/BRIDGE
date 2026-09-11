@@ -1,0 +1,32 @@
+measurement_spec_id: CELLSTATE-scRNA-celltypist-candidate-v0.1
+version: 0.1.0
+scientific_question: What candidate assignments and rejection diagnostics does the fixed development CellTypist model produce in a typed post-QC view?
+assay: scRNA-seq
+status: development_diagnostics_only
+input_contract:
+  formats: [h5ad]
+  supported_levels: [count_ready, analysis_ready]
+  requires_qc_profile_ref: true
+  requires_typed_selected_data_view: true
+  requires_candidate_runtime_ref: true
+  matrix_semantics: raw_counts
+analysis_unit: cell
+raw_metric_definition:
+  primary: CellTypist raw OvR decisions with energy rejection and classwise margin calibration
+  sensitivity: kNN distance in training-only PCA geometry; not an independent vote
+  auxiliary_measurement_spec_ref: CELLSTATE-scRNA-shadow-v0.1
+  graph_metrics: native assigned-state composition and retention, exact counts over the selected view; not target identity
+  marker_evidence: development_review_v1.1 per-gene detection; not identity or coexpression
+denominator: all observations in the typed selected DataView including unknown and unavailable
+uncertainty_method: fixed development calibration; no validated posterior or biological identity
+minimum_data:
+  minimum_shared_genes: 100
+  minimum_marker_genes: 2
+missing_behavior: missing genes remain missing; unvalidated states remain unavailable for scientific release
+tool_refs: [P0-02, METHOD-CELLTYPIST-CUSTOM-CLASSIFIER]
+reference_refs: [REF-PD-vMB-CELLSTATE-v0.2]
+prior_refs: [CELLSTATE-DEVELOPMENT-DECISIONS-v1.1]
+validation_ref: CELLSTATE-DEVELOPMENT-ENTRY-v1
+exclusion_rules:
+  training_source_family_query_overlap: forbidden
+  locked_and_sealed_tuning: forbidden

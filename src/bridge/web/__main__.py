@@ -24,6 +24,7 @@ def main():
         model_api_key=os.environ["BRIDGE_WEB_MODEL_API_KEY"],
         origin=os.environ.get("BRIDGE_WEB_ORIGIN", "http://127.0.0.1:8765"),
         cell_state_measurement_spec_ref=os.environ.get("BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF") or None,
+        cell_state_candidate_runtime_ref=os.environ.get("BRIDGE_WEB_CELL_STATE_CANDIDATE_RUNTIME_REF") or None,
         static_dir=Path(os.environ["BRIDGE_WEB_STATIC_DIR"]) if os.environ.get("BRIDGE_WEB_STATIC_DIR") else None,
         share_result_summaries=share_result_summaries == "1",
         protocol_compiler_python=os.environ.get("BRIDGE_WEB_PROTOCOL_COMPILER_PYTHON") or None,

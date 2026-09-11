@@ -31,6 +31,8 @@ class ReportInputs:
 
     def _producer(self, state, receipt):
         """Return an actual source-bound producer; Schema resemblance is insufficient."""
+        if receipt["file"] in state.get("_invalidated_receipts", {}):
+            return None
         inputs = self.service.inputs
         run, outputs = inputs.producer_objects(state, receipt, receipt["tool_id"], {"measurement_result_v2"})
         refs = {ref.role: ref for ref in getattr(run.request, "object_inputs", [])}
@@ -129,6 +131,10 @@ class ReportInputs:
         return pool, sources
 
     def assessment_selection(self, state, scope, allowed, selection):
+        if (not selection.object_inputs and self.service.settings.cell_state_candidate_runtime_ref
+                and allowed.tool_id in {"P0-08", "P0-09", "P0-10"}):
+            from .native_evidence import selection as native_selection
+            return native_selection(self, state, scope, allowed)
         if allowed.tool_id == "P0-09" and allowed.mode_id in {"case_initial_v2", "case_append_v2", "case_query"}:
             # Existing explicitly prepared missingness stages keep their release path.
             if any(row.role == "evidence_sufficiency_run_result" for row in selection.object_inputs):
@@ -477,6 +483,33 @@ class ReportInputs:
         choices.append(("compilation_bundle", identifier))
         return selection.model_copy(update={"object_inputs": [ObjectChoice(role=role, input_id=identifier)
                                      for role, identifier in choices]})
+
+    def research_selection(self, state, scope, pool, latest):
+        """Bind a private research draft to the current approved canonical graph."""
+        from pathlib import Path
+        from bridge.tool_packages.p0_10_claim_verifier.research import (
+            build_research_draft, load_research_release_contract,
+        )
+        from .inputs import ObjectChoice
+        if latest is None:
+            raise ValueError("canonical_case_graph_required")
+        graph_id, graph, run = latest
+        record = pool[graph_id]
+        self.service.inputs.verify(state, record)
+        report = build_research_draft(graph_manifest_path=Path(record["path"]),
+            input_revision=str(scope.input_revision), created_at=run.created_at)
+        contract = load_research_release_contract()
+        choices = [ObjectChoice(role="evidence_graph_manifest", input_id=graph_id)]
+        for role, schema, value in (
+            ("report_draft", "report-draft/v0.1", report),
+            ("claim_policy_spec", "claim-policy-spec/v0.1", contract.claim_policy),
+            ("statement_registry", "research-statement-registry/v0.2", contract.statement_registry)):
+            identifier = self.service.inputs.add_derived_object(state, tool_id="P0-10", mode_id="default",
+                role=role, schema_ref="bridge://schemas/" + schema, payload=value.model_dump(mode="json"),
+                dependencies=[graph_id])
+            choices.append(ObjectChoice(role=role, input_id=identifier))
+        return Selection(tool_id="P0-10", mode_id="default", asset_ids=[], measurement_spec_ref=None,
+                         object_inputs=choices)
 
     def _draft(self, state, body):
         draft = next((row for row in state.get("_scientific_drafts", []) if row["id"] == body.draft_id), None)

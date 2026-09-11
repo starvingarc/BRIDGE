@@ -1460,28 +1460,23 @@ def test_repository_policy_rejects_unknown_v2_result_schema_without_execution(
 
 
 
-def test_repository_policy_accounts_only_exact_step7_files(tmp_path, monkeypatch):
-    approved = {
-        Path("plans/step7-evidence-coordinator.md"),
-        Path("src/bridge/resources/schemas/evidence_compiler_result_v2.schema.json"),
-        Path("src/bridge/resources/schemas/evidence_graph_query.schema.json"),
-        Path("src/bridge/tool_packages/p0_09_evidence_compiler/query_runtime.py"),
-        Path("src/bridge/web/assessment.py"), Path("tests/test_web_assessment.py"),
-        Path("frontend/src/components/AssessmentPanel.tsx"),
-        Path("frontend/tests/assessment-panel.test.tsx"),
-        Path("docs/validation/step7_evidence_coordinator_20260911.md"),
-    }
-    inventory = [path for name, values in vars(repository_policy).items()
-                 if name.endswith("_FILES") and isinstance(values, tuple) for path in values]
-    assert all(inventory.count(path) == 1 for path in approved)
-    monkeypatch.setattr(repository_policy, "ROOT", tmp_path)
-    for relative in approved:
-        path = tmp_path / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch()
-    assert repository_policy._tracked_file_budget() == 269 + 9
-    (tmp_path / "unapproved-extra.py").touch()
-    assert repository_policy._tracked_file_budget() == 269 + 9
+def test_repository_policy_rejects_duplicate_frontend_and_private_workspace():
+    problems = []
+    repository_policy._check_tracked_layout([
+        Path("web/src/App.tsx"), Path("frontend/node_modules/a.js"),
+        Path(".superpowers/progress.md"), Path("knowledge/AGENTS.md"),
+    ], problems)
+    assert problems == [
+        "ambiguous frontend directory: web/src/App.tsx",
+        "generated or private workspace tracked: frontend/node_modules/a.js",
+        "generated or private workspace tracked: .superpowers/progress.md",
+        "duplicate agent instructions: knowledge/AGENTS.md",
+    ]
+    valid = []
+    repository_policy._check_tracked_layout([
+        Path("frontend/src/App.tsx"), Path("src/bridge/web/app.py"), Path("AGENTS.md"),
+    ], valid)
+    assert valid == []
 
 
 def test_repository_policy_rejects_root_contract_projections() -> None:

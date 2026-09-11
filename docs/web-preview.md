@@ -8,8 +8,8 @@ protocols can be represented and reviewed under the approved BPL design.
 
 The current source also connects a finite, approved evidence-coordination loop
 and a researcher-facing assessment portrait. Synthetic connectivity is not
-real-input acceptance or full Step 7 scientific completion. Internal comparator
-selection and qualified report/export remain unimplemented targets.
+real-input acceptance or full Step 7 scientific completion. Conditional comparison selection and private research report delivery are
+connected; qualified product conclusions and public export remain separate gates.
 Twelve packages are reachable through contract-driven inputs and separate
 approval, but access is not automatic scientific-object construction or
 end-to-end product qualification. Public documentation describes source
@@ -23,7 +23,8 @@ private deployment.
 | P0-02 cell-state path | Candidate source-aware cell-state evidence when configured inputs are eligible | Reviewed product roles, purity or released assignment |
 | Contract-driven input panel | Contract discovery, explicit registration, plan approval and normal execution | Automatic construction of every prerequisite or scientific approval |
 | Scope-bound assessment | Approved registered checks, graph retrieval/update, local evidence portrait and finite counters | Whole-question completion, reviewed seven-family program mapping or product qualification |
-| P0-12 | Explicit no-graft or supplied eligible graft modes | Graft evidence from an absence record or pre-transplant backfill |
+| Conditional comparison and graft | Verified registered inputs, comparability reasons, explicit selection and separate plan approval | New data access permission, inferred comparability or pre-transplant backfill |
+| Private research report | Same-version Chinese HTML, JSON snapshot, CSV statements and SVG, with exact claim verification | Qualified biological conclusions or public export authorization |
 
 The bounded candidate card can materialize source-backed product/role and
 optional regional/development candidates after exact confirmation. A separate
@@ -72,7 +73,9 @@ must never enter Git, browser bundles or public evidence.
 | BRIDGE_WEB_STATIC_DIR | Built frontend/dist directory |
 | BRIDGE_WEB_ORIGIN / BRIDGE_WEB_PORT | Exact browser origin and loopback port |
 | BRIDGE_WEB_TRUSTED_ANCESTORS | Optional startup-only approved ancestor identity pins |
-| BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF | Optional registered P0-02 MeasurementSpec; no scientific default |
+| BRIDGE_WEB_CELL_STATE_MEASUREMENT_SPEC_REF | Optional registered cell-state measurement definition; no scientific default |
+| BRIDGE_WEB_CELL_STATE_CANDIDATE_RUNTIME_REF | Optional exact controlled candidate model binding |
+| BRIDGE_CELLSTATE_CANDIDATE_CATALOG | Private candidate model and development-receipt catalog |
 | BRIDGE_WEB_SHARE_RESULT_SUMMARIES | Exactly 1 enables owner-authorized bounded summaries; unset/0 disables |
 | BRIDGE_WEB_PROTOCOL_COMPILER_PYTHON | Optional source-pinned BPL 2.4.0 runtime |
 
@@ -131,18 +134,54 @@ before/after review:
 - Discard change drops that proposal.
 - Keep current inputs explicitly resolves review without an edit.
 
-None approves analysis. Current controls record the exact field-level
-before/after change and its review/revision update. Product-only or source-only
-changes preserve compatible QC; assay, matrix or QC-relevant metadata changes
-require fresh QC. Existing history remains versioned, but no automatic
-downstream impact analysis, evidence reuse or recomputation is implied.
+None approves analysis. Each proposal includes a checksummed impact preview
+computed from saved requests and their transitive artifact dependencies.
+A product-name-only edit affects report presentation; other product-context edits
+preserve compatible QC and native observations but invalidate dependent product
+interpretations. Source, assay, matrix and QC-relevant metadata changes invalidate
+the linked chain. Unrelated uploads remain reusable. Confirmed changes mark
+affected receipts historical without deleting them or their downloads.
 
 The assessment projection compares the scope's fact/resource binding with the
 current session. Pending review is shown separately; a confirmed revision or
 resource change labels its evidence historical without rewriting receipts or
 its original stop reason. Select the affected checks in a new finite scope for
-partial recomputation. There is no automatic impact classifier, rerun or counter
-reset, and downstream comparison/report impact remains outside this interface.
+partial recomputation. No correction automatically executes tools or grants a
+new budget. A revised report receives a new immutable snapshot while previous
+report bytes remain downloadable.
+
+## Research evidence and reports
+
+Native candidate cell-state observations and exploratory process measurements
+can enter the existing evidence compiler through genuine sufficiency checks.
+The graph retains exact source receipts, measurement definitions, denominators,
+evidence state and family dependencies. Repeated observations from the same
+RNA source are not independent votes. Graph append preserves prior records;
+large query summaries omit only topology with explicit omission counts and
+retain the underlying graph artifact.
+
+A research report binds one graph version, input revision, data view, product
+context, interpretation history and statement registry. The existing claim
+verifier checks these exact bindings before exposing private Chinese offline
+HTML and JSON/CSV/SVG attachments. Reports distinguish observations, proposed
+explanations and unresolved scientific qualification. Unavailable measurements
+remain null, and failed model development remains visible rather than being
+promoted to a validated product result.
+
+## Conditional comparison and graft
+
+The comparison directory uses only objects already registered in the current
+private session. It shows descriptive-comparison, background-only and excluded
+entries with deterministic reasons. A frozen comparison specification and
+matching measured product evidence are required. Selection confirmation binds
+the exact input revision and source checksums; preparing the plan still requires
+ordinary separate approval.
+
+Actual graft entry additionally requires explicit preparation linkage, animal,
+post-transplant timepoint and biological-replicate identifiers. The linked
+pre-transplant ProductCase is pinned without modifying its receipts. Missing,
+ambiguous or changed sources block this entry. An explicit no-graft declaration
+is a separate absence record, never an authorized graft assessment.
 
 ## Analysis inputs
 

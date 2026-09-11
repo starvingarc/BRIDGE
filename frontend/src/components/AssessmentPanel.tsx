@@ -16,6 +16,7 @@ const modes: Array<AssessmentMode & { label: string }> = [
   { tool_id: "P0-09", mode_id: "case_initial_v2", label: "建立产品证据图" },
   { tool_id: "P0-09", mode_id: "case_append_v2", label: "追加产品证据" },
   { tool_id: "P0-09", mode_id: "case_query", label: "查询产品证据图" },
+  { tool_id: "P0-10", mode_id: "default", label: "核验并生成私有研究报告" },
 ];
 const modeKey = (mode: AssessmentMode) => mode.tool_id + "/" + (mode.mode_id ?? "");
 const modeName = (mode: AssessmentMode) => modes.find((item) => modeKey(item) === modeKey(mode))?.label
@@ -219,8 +220,24 @@ export function AssessmentPanel({ session, busy, onSession, onError }: {
       </section>
       <section aria-label="冲突与待检验解释"><h3>冲突与待检验解释</h3>
         <p>图中的冲突、开放要求和来源关系保留在版本化证据链中。没有列出假设不等于没有冲突。</p>
+        {(assessment.interpretation_versions?.length ?? 0) > 1 ? <details>
+          <summary>查看解释历史（{assessment.interpretation_versions!.length} 版）</summary>
+          {assessment.interpretation_versions!.map((version) => <article key={version.content_sha256}>
+            <h4>第 {version.version} 版 · 输入版本 {version.input_revision}</h4>
+            {version.hypotheses.length ? version.hypotheses.map((item, index) => <div key={index}>
+              <p>{item.statement}</p><p>竞争解释：{item.competing_explanation}</p>
+              <EvidenceLinks aliases={item.evidence_aliases} onOpen={setOpenEvidence} />
+            </div>) : <p>此版未提出待检验解释。</p>}
+            <small>{version.created_at} · 候选解释，不是测量结果</small>
+          </article>)}
+        </details> : null}
         {assessment.hypotheses.map((item,index) => <article key={index}>
           <h4>待检验解释</h4><p>{item.statement}</p><h5>竞争解释</h5><p>{item.competing_explanation}</p>
+          <h5>反对证据</h5>
+          {item.opposing_evidence_aliases?.length ? <EvidenceLinks aliases={item.opposing_evidence_aliases} onOpen={setOpenEvidence} /> : <p>尚未引用反对证据，不代表不存在。</p>}
+          <h5>缺失证据</h5>
+          {item.missing_evidence_aliases?.length ? <EvidenceLinks aliases={item.missing_evidence_aliases} onOpen={setOpenEvidence} /> : <p>此解释未列出额外缺失证据。</p>}
+          <p>预期观察：{item.expected_observation ?? "尚未提出"}</p>
           <p>区分性检查：{modeName({tool_id:item.discriminating_check,mode_id:null})}</p>
           <details><summary>检查标识</summary><code>{item.discriminating_check}</code></details>
           <EvidenceLinks aliases={item.evidence_aliases} onOpen={setOpenEvidence} />

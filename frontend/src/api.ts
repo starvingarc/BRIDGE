@@ -127,6 +127,14 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
+  proposeConditionalInputs: (id: string, selection: AnalysisSelection, revision: number) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/conditional-inputs/propose`, {
+      method: "POST", body: JSON.stringify({ selection, expected_revision: revision }),
+    }),
+  decideConditionalInputs: (id: string, action: "confirm" | "cancel" | "prepare", draftId: string, digest: string, revision: number) =>
+    sessionRequest(`/api/sessions/${encodeURIComponent(id)}/conditional-inputs/${action}`, {
+      method: "POST", body: JSON.stringify({ draft_id: draftId, draft_digest: digest, expected_revision: revision }),
+    }),
   prepareReportInputs: (id: string, draftId: string, draftDigest: string, toolId: "P0-08" | "P0-09" | "P0-10" = "P0-08") =>
     sessionRequest(`/api/sessions/${encodeURIComponent(id)}/report-inputs/prepare`, {
       method: "POST", body: JSON.stringify({ draft_id: draftId, draft_digest: draftDigest, tool_id: toolId }),

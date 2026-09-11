@@ -203,6 +203,8 @@ class Inputs:
             raise ValueError("input_version_mismatch")
 
     def receipt_artifacts(self, state, record):
+        if record["receipt_file"] in state.get("_invalidated_receipts", {}):
+            raise ValueError("input_revision_invalidated_output")
         root = self.service.directory(state["id"])
         receipt = next((item for item in state["_tool_runs"] if item["file"] == record["receipt_file"]
                         and item["sha256"] == record["receipt_sha256"]), None)
@@ -277,7 +279,9 @@ class Inputs:
                     dependencies.append({"path": str(path), "sha256": checksum})
         manifest = validate_reference_snapshot(root)
         validate_runtime_reference(manifest)
-        if spec.measurement_spec_id not in manifest.measurement_spec_ids:
+        from bridge.tool_packages.p0_02_cell_state.candidate_runtime import CANDIDATE_SPEC, AUXILIARY_SPEC
+        reference_spec = AUXILIARY_SPEC if spec.measurement_spec_id == CANDIDATE_SPEC else spec.measurement_spec_id
+        if reference_spec not in manifest.measurement_spec_ids:
             raise ValueError("measurement_spec_not_supported_by_reference")
         vocabulary_path = root / manifest.vocabulary_file
         vocabulary_data = checked_bytes(self.service, state, vocabulary_path, manifest.vocabulary_sha256, root=root, limit=OBJECT_LIMIT)
@@ -477,6 +481,10 @@ class Inputs:
         schemas = {schema for spec in self.service.registry.list()
                    for mode in self.service.registry.describe_input(spec.tool_id).object_input_modes
                    for role in mode.roles for schema in role.schema_refs}
+        schemas.update({"bridge://schemas/cell-state-candidate-profile/v1.0",
+                        "bridge://schemas/exploratory-process-profile/v0.1",
+                        "bridge://schemas/research-claim-verification-result/v0.2",
+                        "bridge://schemas/research-analysis-snapshot/v0.2"})
         verified = False
         for artifact in outcome.artifacts:
             base = {"path": str(artifact.path), "sha256": artifact.sha256, "artifact_id": artifact.artifact_id,
@@ -546,6 +554,8 @@ class Inputs:
                 return asset
             views = []
             for receipt in reversed(state.get("_tool_runs", [])):
+                if receipt["file"] in state.get("_invalidated_receipts", {}):
+                    continue
                 if (receipt["tool_id"] != "P0-01" or receipt["state"] != "succeeded"
                         or self.service._qc_receipt_asset_id(state, receipt) != asset_id):
                     continue
@@ -715,6 +725,8 @@ class Inputs:
             tool_version=self.service.registry.describe(selection.tool_id).version,
             assets=[item.to_toolkit_asset() for item in assets], measurement_spec_ref=selection.measurement_spec_ref,
             output_dir=self.service.directory(state["id"]) / "runs", parameters={}, random_seed=0)
+        if selection.tool_id == "P0-02":
+            arguments["parameters"] = self.service.cell_state_runtime_parameters()
         if contract.request_schema_ref.endswith("/v0.2"):
             objects = [StructuredInputRef(input_id=choice.input_id, role=choice.role,
                 **{key: state["_input_objects"][choice.input_id][key] for key in
@@ -786,6 +798,8 @@ class Inputs:
                            if record["source"] == "system_resource")
         view = None
         for receipt in reversed(state.get("_tool_runs", [])):
+            if receipt["file"] in state.get("_invalidated_receipts", {}):
+                continue
             if (receipt["tool_id"] != "P0-01" or receipt["state"] != "succeeded"
                     or self.service._qc_receipt_asset_id(state, receipt) != upload_id):
                 continue
@@ -799,10 +813,12 @@ class Inputs:
             break
         if view is not None:
             for receipt in reversed(state.get("_tool_runs", [])):
+                if receipt["file"] in state.get("_invalidated_receipts", {}):
+                    continue
                 if receipt["tool_id"] != "P0-02" or receipt["state"] not in {"succeeded", "partial"}:
                     continue
-                run, outputs = self.producer_objects(state, receipt, "P0-02", {"cell_state_profile_v3"})
-                profiles = outputs.get("cell_state_profile_v3", [])
+                run, outputs = self.producer_objects(state, receipt, "P0-02", {"cell_state_profile_v3", "cell_state_candidate_profile"})
+                profiles = outputs.get("cell_state_profile_v3", []) + outputs.get("cell_state_candidate_profile", [])
                 if len(profiles) != 1 or len(run.request.assets) != 1:
                     continue
                 profile, asset = profiles[0][1], run.request.assets[0]
@@ -814,8 +830,35 @@ class Inputs:
                 if (profile["producer_run_ref"] != run.run_id or profile["producer_tool_id"] != "P0-02"
                         or profile["producer_tool_version"] != run.tool_version):
                     raise ValueError("canonical_source_producer_mismatch")
-                identifiers.add(profiles[0][0])
+                identifiers.update(identifier for identifier, record in state["_input_objects"].items()
+                    if record.get("receipt_file") == receipt["file"] and record.get("receipt_sha256") == receipt["sha256"])
                 break
+        if view is not None and self.service.settings.cell_state_candidate_runtime_ref:
+            from .native_evidence import case_context_key
+            facts = self.service.intake.current_facts(state, upload_id, include_draft=False).model_dump(mode="json")
+            case_id = "product-case:native-" + case_context_key(view, facts)[:24]
+            pinned_kinds = set()
+            for receipt in reversed(state.get("_tool_runs", [])):
+                if (receipt["file"] in state.get("_invalidated_receipts", {})
+                        or receipt["state"] not in {"succeeded", "partial"}
+                        or receipt["tool_id"] not in {"P0-06", "P0-09"}):
+                    continue
+                rows = [(key, row) for key, row in state["_input_objects"].items()
+                        if row.get("receipt_file") == receipt["file"]]
+                eligible = False
+                kind = receipt["tool_id"]
+                if kind in pinned_kinds:
+                    continue
+                for _, row in rows:
+                    if row["schema_ref"] == "bridge://schemas/exploratory-process-profile/v0.1":
+                        eligible = self.verify(state, row)["input_contract"]["data_view"] == view
+                    elif row["schema_ref"] == "bridge://schemas/case-evidence-graph-manifest/v0.1":
+                        eligible = self.verify(state, row)["product_case_ref"] == {"object_id": case_id, "object_version": "0.1.0"}
+                    if eligible:
+                        break
+                if eligible:
+                    identifiers.update(key for key, _ in rows)
+                    pinned_kinds.add(kind)
         identifiers.update(self.service.report_inputs.assessment_resource_ids(state, upload_id, selections, view))
         return sorted(identifiers)
 
@@ -824,6 +867,8 @@ class Inputs:
         pool = dict(scope.binding["resources"])
         plans = {row["plan_id"]: row for row in state.get("_assessment", {}).get("admissions", [])}
         for receipt in state.get("_tool_runs", []):
+            if receipt["file"] in state.get("_invalidated_receipts", {}):
+                continue
             admission = plans.get(receipt.get("plan_id"))
             if admission is None or receipt["state"] not in {"succeeded", "partial"}:
                 continue
@@ -888,7 +933,7 @@ class Inputs:
             row = {"tool_id": allowed.tool_id, "mode_id": allowed.mode_id,
                    "bundle": None, "request": None, "fingerprint": None, "blockers": []}
             automatic = (allowed.tool_id, allowed.mode_id) in {
-                ("P0-01", None), ("P0-02", None), ("P0-08", "default"),
+                ("P0-01", None), ("P0-02", None), ("P0-08", "default"), ("P0-10", "default"),
                 ("P0-09", "case_initial_v2"), ("P0-09", "case_append_v2"), ("P0-09", "case_query"),
                 ("P0-03", "default"), ("P0-04", "default"), ("P0-05", "hard_count_accounting"),
                 ("P0-06", "exploratory_process"), ("P0-06", "method_runtime_source_bound")}
@@ -909,7 +954,8 @@ class Inputs:
                     if any(aid != scope.upload_id for aid in selection.asset_ids):
                         raise ValueError("assessment_upload_mismatch")
                     blocker = (self.service.scientific_inputs.selected_blocker(state, allowed.tool_id, selection)
-                               or self.service.report_inputs.selected_blocker(state, allowed.tool_id))
+                               or self.service.report_inputs.selected_blocker(state, allowed.tool_id)
+                               or self.service.conditional_blocker(state, allowed.tool_id))
                     if blocker:
                         raise ValueError(blocker)
                     selection = self.service.scientific_inputs.assessment_selection(state, scope, allowed, selection)
@@ -968,7 +1014,8 @@ class Inputs:
                     for spec in self.service.registry.list()],
                 "objects": [{"id": identifier, **{key: item[key] for key in
                     ("label", "schema_ref", "object_version", "source", "producer_tool_id")}}
-                    for identifier, item in state["_input_objects"].items()],
+                    for identifier, item in state["_input_objects"].items()
+                    if item.get("receipt_file") not in state.get("_invalidated_receipts", {})],
                 "assets": [{"id": item["id"], "label": item["name"],
                     "declaration": {key: value for key, value in state["_asset_declarations"][item["id"]].items()
                         if key in {"assay", "matrix_location", "matrix_semantics", "input_level"}} if item["id"] in state["_asset_declarations"] else None}
