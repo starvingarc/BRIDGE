@@ -22,7 +22,7 @@ from pydantic import Field, model_validator
 from bridge.tool_packages._structured_runtime import canonical_json_bytes, read_regular_bytes
 from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CaseEvidenceGraphManifest, EvidenceRecord, EvidenceRecordSet,
-    contains_unsafe_reference,
+    contains_unsafe_reference, VersionedObjectRef,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
 from bridge.tool_packages.p0_10_claim_verifier.models import (
@@ -30,7 +30,7 @@ from bridge.tool_packages.p0_10_claim_verifier.models import (
     ClaimVerifierReleaseContract, ReportDraft, StatementRegistry, ReleaseState,
     ReportAudience, PublicExportEligibility, report_content_hash,
 )
-from bridge.toolkit.contracts import FrozenModel
+from bridge.toolkit.contracts import FrozenModel, DataViewBinding
 
 RESEARCH_RESULT_SCHEMA_REF = "bridge://schemas/research-claim-verification-result/v0.2"
 RESEARCH_STATEMENT_SCHEMA_REF = "bridge://schemas/research-statement-registry/v0.2"
@@ -104,6 +104,187 @@ def _safe_content(value: Any) -> None:
             _safe_content(item)
 
 
+RESEARCH_CONTEXT_SCHEMA_REF = "bridge://schemas/research-report-context/v0.3"
+RESEARCH_CONTEXT_SNAPSHOT_SCHEMA_REF = "bridge://schemas/research-analysis-snapshot/v0.3"
+
+
+class ResearchProductFacts(FrozenModel):
+    # Explicit allowlist: no protocol bodies, filenames, paths or free metadata.
+    product_name: str | None = Field(default=None, max_length=160)
+    product_family: str = "unknown"
+    starting_cell_type: str | None = None
+    cell_line: str | None = None
+    culture_day: int | None = Field(default=None, ge=0, strict=True)
+    sequencing_method: str | None = None
+    protocol_name: str | None = None
+    target_cell_type: str | None = None
+    target_stage: str | None = None
+    sampling_context: str = "unknown"
+    independent_cultures: int | None = Field(default=None, ge=1, strict=True)
+    culture_batch_column: str | None = None
+    culture_batch_role: str = "unknown"
+    assay: str = "unknown"
+    matrix_location: str | None = None
+    count_semantics: str = "unknown"
+    source_family_id: str | None = None
+    sample_id_column: str | None = None
+    capture_id_column: str | None = None
+    gene_symbol_column: str | None = None
+
+
+class ResearchContextSource(FrozenModel):
+    source_ref: str
+    schema_ref: str
+    sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    receipt_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+
+
+class ResearchExplanation(FrozenModel):
+    statement: str = Field(min_length=1, max_length=600)
+    evidence_aliases: list[str]
+    opposing_evidence_aliases: list[str] = Field(default_factory=list)
+    missing_evidence_aliases: list[str] = Field(default_factory=list)
+    expected_observation: str | None = None
+    competing_explanation: str
+    discriminating_check: str
+
+
+class ResearchExplanationVersion(FrozenModel):
+    object_version: Literal["1.0.0"] = "1.0.0"
+    scope_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    input_revision: int = Field(ge=0, strict=True)
+    hypotheses: list[ResearchExplanation]
+    evidence_snapshot_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    qualification: Literal["proposed_explanation"] = "proposed_explanation"
+    version: int = Field(ge=1, strict=True)
+    content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    predecessor_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    created_at: str
+
+    @model_validator(mode="after")
+    def content_binding(self) -> Self:
+        payload = self.model_dump(mode="json", exclude={"version", "content_sha256", "predecessor_sha256", "created_at"})
+        if self.content_sha256 != _digest(payload):
+            raise ValueError("report_explanation_hash_mismatch")
+        return self
+
+
+class ResearchCandidateDevelopment(FrozenModel):
+    source_ref: str
+    producer_run_ref: str
+    development_gate_state: Literal["passed", "failed"]
+    development_reason_codes: list[str]
+    development_summary_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    development_review_version: str
+    development_review_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    scientific_qualification: Literal["not_established"] = "not_established"
+
+
+class ResearchCompositionMapping(FrozenModel):
+    source_ref: str
+    measurement_ref: str
+    metric_id: str
+    label: str
+    assignment_state: str
+    count: int = Field(ge=0, strict=True)
+    denominator: int = Field(gt=0, strict=True)
+    fraction: float = Field(ge=0, le=1)
+    interpretation: Literal["candidate_method_output_only"] = "candidate_method_output_only"
+
+    @model_validator(mode="after")
+    def ratio_binding(self) -> Self:
+        expected_metric = "candidate_composition_fraction_" + _digest({"label": self.label, "assignment_state": self.assignment_state})[:16]
+        if self.metric_id != expected_metric:
+            raise ValueError("report_composition_label_mapping_mismatch")
+        if self.count > self.denominator or abs(self.fraction - self.count / self.denominator) > 1e-12:
+            raise ValueError("report_composition_ratio_mismatch")
+        return self
+
+
+class ResearchProcessMean(FrozenModel):
+    source_ref: str
+    measurement_ref: str
+    metric_id: str
+    method_id: str
+    program_id: str
+    mean: float | None
+    score_unit: str
+    n_observations: int = Field(gt=0, strict=True)
+    assessment_state: Literal["available", "not_assessed"]
+    reason_codes: list[str]
+    count_semantics: Literal["selected_observations_not_independent_replicates"] = "selected_observations_not_independent_replicates"
+
+    @model_validator(mode="after")
+    def availability_binding(self) -> Self:
+        expected_metric = "native_mean_" + self.method_id.lower().replace("-", "_") + "_" + self.program_id.lower()
+        if self.metric_id != expected_metric:
+            raise ValueError("report_process_program_mapping_mismatch")
+        if (self.assessment_state == "available") != (self.mean is not None):
+            raise ValueError("report_process_mean_state_mismatch")
+        return self
+
+
+class _ResearchReportContextContent(FrozenModel):
+    object_version: Literal["0.3.0"] = "0.3.0"
+    context_id: str
+    audience: Literal["internal_research"] = "internal_research"
+    scientific_validation: Literal["not_qualified"] = "not_qualified"
+    public_export_eligibility: Literal["ineligible"] = "ineligible"
+    input_revision: str
+    graph_id: str
+    graph_version: int = Field(ge=1)
+    graph_manifest_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    product_case_ref: VersionedObjectRef
+    confirmed_product_facts: ResearchProductFacts
+    facts_qualification: Literal["researcher_confirmed_not_scientific_validation"] = "researcher_confirmed_not_scientific_validation"
+    intake_source_ref: str
+    data_view: DataViewBinding
+    data_view_source_ref: str
+    sources: list[ResearchContextSource] = Field(min_length=2)
+    explanation_versions: list[ResearchExplanationVersion] = Field(default_factory=list)
+    explanation_qualification: Literal["unverified"] = "unverified"
+    candidate_development: list[ResearchCandidateDevelopment] = Field(default_factory=list)
+    composition_mapping: list[ResearchCompositionMapping] = Field(default_factory=list)
+    process_means: list[ResearchProcessMean] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def source_bindings(self) -> Self:
+        _safe_content(self.model_dump(mode="json"))
+        sources = {row.source_ref for row in self.sources}
+        if len(sources) != len(self.sources):
+            raise ValueError("duplicate_report_context_source")
+        required = {self.intake_source_ref, self.data_view_source_ref}
+        required.update(row.source_ref for row in [*self.candidate_development, *self.composition_mapping, *self.process_means])
+        if not required <= sources:
+            raise ValueError("report_context_source_missing")
+        histories = {}
+        for row in self.explanation_versions:
+            previous = histories.get(row.scope_digest)
+            if (row.version != (previous.version + 1 if previous else 1)
+                    or row.predecessor_sha256 != (previous.content_sha256 if previous else None)):
+                raise ValueError("report_explanation_history_broken")
+            histories[row.scope_digest] = row
+        identities = [row.measurement_ref for row in [*self.composition_mapping, *self.process_means]]
+        if len(identities) != len(set(identities)):
+            raise ValueError("duplicate_report_context_measurement")
+        return self
+
+
+class ResearchReportContext(_ResearchReportContextContent):
+    context_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def context_binding(self) -> Self:
+        if self.context_sha256 != _digest(self.model_dump(mode="json", exclude={"context_sha256"})):
+            raise ValueError("report_context_hash_mismatch")
+        return self
+
+
+def seal_research_context(payload: dict) -> ResearchReportContext:
+    value = _ResearchReportContextContent.model_validate(payload).model_dump(mode="json")
+    return ResearchReportContext.model_validate({**value, "context_sha256": _digest(value)})
+
+
 class ResearchAnalysisSnapshot(FrozenModel):
     """Immutable canonical JSON strings retain source types and exact values."""
 
@@ -174,6 +355,75 @@ class ResearchAnalysisSnapshot(FrozenModel):
         return _json(json.loads(self.reconciliation_record_set_json)["records"])
 
 
+class ResearchAnalysisSnapshotV03(ResearchAnalysisSnapshot):
+    """Additive private context; the approved numeric-claim contract stays v0.2."""
+
+    object_version: Literal["0.3.0"] = "0.3.0"
+    context_renderer_id: Literal["BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.3"] = "BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.3"
+    report_context_json: str
+    report_context_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def bound_context(self) -> Self:
+        context = ResearchReportContext.model_validate_json(self.report_context_json)
+        if hashlib.sha256(self.report_context_json.encode()).hexdigest() != self.report_context_sha256:
+            raise ValueError("snapshot_context_hash_mismatch")
+        manifest = CaseEvidenceGraphManifest.model_validate_json(self.graph_manifest_json)
+        evidence = EvidenceRecordSet.model_validate_json(self.source_evidence_record_set_json)
+        _check_context_graph(context, manifest, self.graph_manifest_sha256, self.input_revision, evidence)
+        draft = ReportDraft.model_validate_json(self.report_draft_json)
+        if draft.report_id != _report_id(self.graph_manifest_sha256, self.input_revision, context):
+            raise ValueError("snapshot_context_report_mismatch")
+        return self
+
+
+def _check_context_graph(context, manifest, manifest_sha256, revision, evidence):
+    context = ResearchReportContext.model_validate(context.model_dump(mode="json"))
+    if (context.graph_id != manifest.graph_id or context.graph_version != manifest.graph_version
+            or context.graph_manifest_sha256 != manifest_sha256
+            or context.product_case_ref != manifest.product_case_ref
+            or context.input_revision != revision):
+        raise ValueError("report_context_graph_binding_mismatch")
+    records = {}
+    for row in evidence.records:
+        if (context.data_view.sample_or_preparation_ref is not None
+                and row.sample_or_preparation_ref.ref != context.data_view.sample_or_preparation_ref):
+            raise ValueError("report_context_specimen_mismatch")
+        records.setdefault(row.measurement_result_ref.ref, []).append(row)
+    for item in [*context.composition_mapping, *context.process_means]:
+        matching = records.get(item.measurement_ref, [])
+        if not matching or any(row.metric_id != item.metric_id for row in matching):
+            raise ValueError("report_context_measurement_missing")
+        for row in matching:
+            if isinstance(item, ResearchCompositionMapping):
+                if row.value != item.fraction or row.numerator != item.count or row.denominator != item.denominator:
+                    raise ValueError("report_context_composition_value_mismatch")
+            elif row.value != item.mean or row.unit != item.score_unit:
+                raise ValueError("report_context_process_value_mismatch")
+        if isinstance(item, ResearchProcessMean) and item.n_observations != context.data_view.n_observations:
+            raise ValueError("report_context_process_count_mismatch")
+    return context
+
+
+def _context_sections(context):
+    """Everything outside numeric claims is marked by provenance and status."""
+    facts = context.confirmed_product_facts
+    header = "产品事实（研究者确认，不等于科学验证）：产品名称=" + (facts.product_name or "未提供")
+    development = [
+        ("候选开发门槛失败" if row.development_gate_state == "failed" else "候选开发门槛通过（未科学合格）")
+        + "；原因=" + ("、".join(row.development_reason_codes) or "未提供")
+        for row in context.candidate_development]
+    return [
+        (header, facts.model_dump(mode="json")),
+        ("具体数据视图（细胞数不等于独立培养数）", context.data_view.model_dump(mode="json")),
+        ("候选开发状态：" + ("；".join(development) or "未提供"), [r.model_dump(mode="json") for r in context.candidate_development]),
+        ("版本化解释历史（解释未验证；不得作为已验证结论）", [r.model_dump(mode="json") for r in context.explanation_versions]),
+        ("组成标签对应（候选方法输出，不是合格身份或产品角色）", [r.model_dump(mode="json") for r in context.composition_mapping]),
+        ("过程程序均值与实际观测数（非比例分母、非独立重复数）", [r.model_dump(mode="json") for r in context.process_means]),
+        ("私有上下文来源与校验和", [r.model_dump(mode="json") for r in context.sources]),
+    ]
+
+
 def research_release_contract_bytes() -> bytes:
     payload = files("bridge.tool_packages.p0_10_claim_verifier.resources").joinpath(
         RESEARCH_CONTRACT_FILENAME).read_bytes()
@@ -190,8 +440,11 @@ def _json(value: Any) -> str:
     return canonical_json_bytes(value).decode("utf-8")
 
 
-def _report_id(manifest_sha256: str, input_revision: str) -> str:
-    return "report:research-" + _digest([manifest_sha256, input_revision])[:24]
+def _report_id(manifest_sha256: str, input_revision: str, report_context=None) -> str:
+    identity = [manifest_sha256, input_revision]
+    if report_context is not None:
+        identity.append(report_context.context_sha256)
+    return "report:research-" + _digest(identity)[:24]
 
 
 def research_record_claim(record: EvidenceRecord) -> ClaimBlock:
@@ -238,7 +491,8 @@ def research_record_claim(record: EvidenceRecord) -> ClaimBlock:
 
 
 def _make_draft(*, manifest: CaseEvidenceGraphManifest, manifest_sha256: str,
-                evidence_set: EvidenceRecordSet, input_revision: str, created_at: Any) -> ReportDraft:
+                evidence_set: EvidenceRecordSet, input_revision: str, created_at: Any,
+                report_context: ResearchReportContext | None = None) -> ReportDraft:
     contract = load_research_release_contract()
     blocks = [
         research_record_claim(record) for record in evidence_set.records
@@ -252,7 +506,7 @@ def _make_draft(*, manifest: CaseEvidenceGraphManifest, manifest_sha256: str,
         language="zh", statement_refs=[statement.ref], authoring_channel="deterministic_renderer",
     ))
     payload = dict(
-        object_version="0.1.0", report_id=_report_id(manifest_sha256, input_revision),
+        object_version="0.1.0", report_id=_report_id(manifest_sha256, input_revision, report_context),
         report_version=input_revision, audience="internal_research", language="zh",
         evidence_record_set_ref=f"{evidence_set.record_set_id}@{evidence_set.record_set_version}",
         claim_policy_ref=contract.claim_policy.ref, statement_registry_ref=contract.statement_registry.ref,
@@ -290,14 +544,18 @@ def _read_graph(graph_manifest_path: Path):
 
 
 def build_research_draft(*, graph_manifest_path: Path, input_revision: str,
-                         created_at: datetime | str) -> ReportDraft:
+                         created_at: datetime | str, report_context: ResearchReportContext | None = None) -> ReportDraft:
     manifest, digest, evidence_set, _ = _read_graph(graph_manifest_path)
     _safe_content(evidence_set.model_dump(mode="json"))
+    if report_context is not None:
+        report_context = _check_context_graph(report_context, manifest, digest, input_revision, evidence_set)
     return _make_draft(manifest=manifest, manifest_sha256=digest,
-                       evidence_set=evidence_set, input_revision=input_revision, created_at=created_at)
+                       evidence_set=evidence_set, input_revision=input_revision, created_at=created_at,
+                       report_context=report_context)
 
 
-def build_research_snapshot(*, graph_manifest_path: Path, report: ReportDraft) -> ResearchAnalysisSnapshot:
+def build_research_snapshot(*, graph_manifest_path: Path, report: ReportDraft,
+                            report_context: ResearchReportContext | None = None) -> ResearchAnalysisSnapshot:
     manifest, digest, evidence_set, backing = _read_graph(graph_manifest_path)
     payload = dict(
         object_version="0.2.0", renderer_id=RESEARCH_RENDERER_ID,
@@ -311,8 +569,15 @@ def build_research_snapshot(*, graph_manifest_path: Path, report: ReportDraft) -
         reconciliation_record_set_json=backing["reconciliation_records"].decode("utf-8"),
         report_draft_json=_json(report.model_dump(mode="json")),
     )
+    model = ResearchAnalysisSnapshot
+    if report_context is not None:
+        report_context = _check_context_graph(report_context, manifest, digest, report.report_version, evidence_set)
+        raw = _json(report_context.model_dump(mode="json"))
+        payload.update(object_version="0.3.0", context_renderer_id="BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.3",
+                       report_context_json=raw, report_context_sha256=hashlib.sha256(raw.encode()).hexdigest())
+        model = ResearchAnalysisSnapshotV03
     payload["snapshot_sha256"] = _digest(payload)
-    return ResearchAnalysisSnapshot.model_validate(payload)
+    return model.model_validate(payload)
 
 
 def research_draft_matches_graph(report: ReportDraft, snapshot: ResearchAnalysisSnapshot) -> bool:
@@ -331,7 +596,9 @@ def research_draft_matches_graph(report: ReportDraft, snapshot: ResearchAnalysis
         statement_refs=[statement.ref], authoring_channel="deterministic_renderer",
     ))
     return (
-        report.report_id == _report_id(snapshot.graph_manifest_sha256, snapshot.input_revision)
+        report.report_id == _report_id(snapshot.graph_manifest_sha256, snapshot.input_revision,
+            ResearchReportContext.model_validate_json(snapshot.report_context_json)
+            if isinstance(snapshot, ResearchAnalysisSnapshotV03) else None)
         and report.audience is ReportAudience.INTERNAL_RESEARCH
         and report.language.value == "zh"
         and report.authoring_channel is AuthoringChannel.DETERMINISTIC_RENDERER
@@ -349,7 +616,8 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
                              result: ResearchClaimVerificationResult) -> dict[str, bytes]:
     # Revalidation also rejects callers using Pydantic model_copy/model_construct
     # to circumvent frozen model validators.
-    snapshot = ResearchAnalysisSnapshot.model_validate(snapshot.model_dump(mode="json"))
+    model = ResearchAnalysisSnapshotV03 if snapshot.object_version == "0.3.0" else ResearchAnalysisSnapshot
+    snapshot = model.model_validate(snapshot.model_dump(mode="json"))
     result = ResearchClaimVerificationResult.model_validate(result.model_dump(mode="json"))
     draft = ReportDraft.model_validate_json(snapshot.report_draft_json)
     if (
@@ -364,6 +632,9 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
         raise ValueError("unverified_or_mismatched_research_snapshot")
     records = json.loads(snapshot.source_evidence_records_json)
     payload = snapshot.model_dump(mode="json")
+    context = (ResearchReportContext.model_validate_json(snapshot.report_context_json)
+               if isinstance(snapshot, ResearchAnalysisSnapshotV03) else None)
+    context_sections = [] if context is None else _context_sections(context)
     rows = []
     for record in records:
         row = {field: record.get(field) for field in (
@@ -377,6 +648,8 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
                           ("reconciliation", snapshot.reconciliation_records_json)):
         for item in json.loads(raw):
             rows.append({"row_type": row_type, "source_json": _json(item)})
+    for title, value in context_sections:
+        rows.append({"row_type": "private_context", "source_json": _json({"section": title, "value": value})})
     if not rows:
         rows.append({"row_type": "metadata"})
     for row in rows:
@@ -405,6 +678,8 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
         ("缺失证据要求", snapshot.missing_requirements_json),
         ("协调记录（不等于候选解释验证）", snapshot.reconciliation_records_json),
     ))
+    sections = "".join("<h2>" + escape(title) + "</h2><pre>" + escape(json.dumps(value,
+        ensure_ascii=False, sort_keys=True, indent=2)) + "</pre>" for title, value in context_sections) + sections
     html = (
         '<!doctype html><html lang="zh"><meta charset="utf-8">'
         '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">'
@@ -414,7 +689,8 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
         '<body><h1>内部研究证据报告</h1><p>' + escape(metadata) + "</p>"
         + paragraphs + sections + "</body></html>"
     )
-    svg_lines = [metadata, *[block.text for block in draft.claim_blocks],
+    svg_lines = [metadata, *[title + "：" + _json(value) for title, value in context_sections],
+                 *[block.text for block in draft.claim_blocks],
                  "完整来源、缺失要求与协调记录见同一快照 JSON；未验证候选解释不得作为已验证结论。"]
     # SVG consists only of text, metadata and a root; no foreignObject, links,
     # scripts, animation, external fonts, images or computed evidence geometry.

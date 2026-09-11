@@ -270,3 +270,185 @@ def test_html_and_svg_have_only_inert_self_contained_content(graph_path, tmp_pat
     manifest = json.loads(paths["artifact_manifest.json"].read_bytes())
     for artifact in manifest["artifacts"]:
         assert hashlib.sha256(paths[artifact["filename"]].read_bytes()).hexdigest() == artifact["sha256"]
+
+
+
+def context_for(graph_path, *, name="修订后的产品名称", revision="7"):
+    r = research()
+    manifest = json.loads(graph_path.read_bytes())
+    payload = {
+        "context_id": "research-context:test", "input_revision": revision,
+        "graph_id": manifest["graph_id"], "graph_version": manifest["graph_version"],
+        "graph_manifest_sha256": hashlib.sha256(graph_path.read_bytes()).hexdigest(),
+        "product_case_ref": manifest["product_case_ref"],
+        "confirmed_product_facts": {"product_name": name},
+        "intake_source_ref": "confirmed-intake:test@7",
+        "data_view_source_ref": "qc-profile:test@1",
+        "data_view": {"view_id": "data-view:test", "view_kind": "qc_selected_observations",
+            "artifact_id": "artifact:qc:selected", "sha256": "a" * 64,
+            "parent_asset_id": "upload-test", "parent_asset_sha256": "b" * 64,
+            "matrix_location": "layers/counts", "matrix_semantics": "raw_counts",
+            "n_observations": 100, "observation_ids_sha256": "c" * 64},
+        "sources": [
+            {"source_ref": "confirmed-intake:test@7", "sha256": "d" * 64, "schema_ref": "bridge://schemas/confirmed-intake/v0.1"},
+            {"source_ref": "qc-profile:test@1", "sha256": "e" * 64, "schema_ref": "bridge://schemas/qc-readiness-profile/v0.2"},
+            {"source_ref": "candidate-profile:test@1", "sha256": "f" * 64, "schema_ref": "bridge://schemas/cell-state-candidate-profile/v1.0"}],
+        "candidate_development": [{"source_ref": "candidate-profile:test@1",
+            "producer_run_ref": "tool-run:test@1", "development_gate_state": "failed",
+            "development_reason_codes": ["heldout_gate_failed"],
+            "development_summary_sha256": "1" * 64, "development_review_version": "1.1.0",
+            "development_review_sha256": "2" * 64}],
+    }
+    return r.seal_research_context(payload)
+
+
+def context_request(root, graph_path, context):
+    r = research()
+    draft = r.build_research_draft(graph_manifest_path=graph_path, input_revision=context.input_revision,
+        created_at="2026-09-11T00:00:00Z", report_context=context)
+    request = request_for(root, graph_path, draft)
+    path = root / "research_context.json"
+    path.write_bytes(canonical_json_bytes(context.model_dump(mode="json"), indent=2))
+    ref = StructuredInputRef(input_id="context", role="research_report_context",
+        schema_ref=r.RESEARCH_CONTEXT_SCHEMA_REF, object_version="0.3.0",
+        path=path, sha256=hashlib.sha256(path.read_bytes()).hexdigest(), media_type="application/json")
+    return request.model_copy(update={"object_inputs": [*request.object_inputs, ref]})
+
+
+def test_private_context_corrected_name_failure_and_legacy_bytes(graph_path, tmp_path):
+    r = research()
+    legacy = execute(request_for(tmp_path / "legacy", graph_path, make_draft(graph_path)))
+    original = {a.path: a.path.read_bytes() for a in legacy.artifacts}
+    context = context_for(graph_path)
+    run = execute(context_request(tmp_path / "current", graph_path, context))
+    assert run.execution_state.value == "succeeded", run.reason_codes
+    assert run.result["release_state"] == "verified"
+    paths = {a.path.name: a.path for a in run.artifacts}
+    snapshot = r.ResearchAnalysisSnapshotV03.model_validate_json(paths["research_snapshot.json"].read_bytes())
+    assert snapshot.object_version == "0.3.0"
+    assert json.loads(snapshot.report_context_json)["context_sha256"] == context.context_sha256
+    for extension in ("html", "json", "csv", "svg"):
+        text = paths["research_report." + extension].read_text()
+        assert "修订后的产品名称" in text
+        assert "heldout_gate_failed" in text
+    assert "开发门槛失败" in paths["research_report.html"].read_text()
+    assert "解释未验证" in paths["research_report.html"].read_text()
+    assert all(path.read_bytes() == value for path, value in original.items())
+    assert run.result["benchmark_id"] is None and run.result["public_export_eligibility"] == "ineligible"
+    assert json.loads(snapshot.source_evidence_records_json)[0]["numerator"] == 75
+
+
+def test_context_revision_graph_and_content_are_bound(graph_path, tmp_path):
+    r = research()
+    context = context_for(graph_path)
+    renamed = context_for(graph_path, name="另一个名称")
+    a = r.build_research_draft(graph_manifest_path=graph_path, input_revision="7",
+        created_at="2026-09-11T00:00:00Z", report_context=context)
+    b = r.build_research_draft(graph_manifest_path=graph_path, input_revision="7",
+        created_at="2026-09-11T00:00:00Z", report_context=renamed)
+    assert a.content_hash != b.content_hash
+    with pytest.raises(ValueError):
+        r.build_research_snapshot(graph_manifest_path=graph_path, report=a, report_context=renamed)
+    with pytest.raises(ValueError):
+        r.build_research_draft(graph_manifest_path=graph_path, input_revision="8",
+            created_at="2026-09-11T00:00:00Z", report_context=context)
+    with pytest.raises(ValueError):
+        r.ResearchReportContext.model_validate(context.model_copy(update={"context_sha256": "0" * 64}).model_dump(mode="json"))
+
+
+@pytest.mark.parametrize("text", ["<script>alert(1)</script>", "/home/private/data.csv", "token=secret", "person@example.com"])
+def test_context_private_allowlist_refuses_active_or_private_data(graph_path, text):
+    with pytest.raises(ValueError):
+        context_for(graph_path, name=text)
+
+
+@pytest.mark.parametrize("kind", ["composition", "process"])
+def test_context_builder_binds_native_labels_and_actual_mean_counts(tmp_path, kind):
+    from types import SimpleNamespace
+    from bridge.web.research_context import build_research_context
+    r = research()
+    label = {"label": "L1:source-family", "assignment_state": "candidate"}
+    metric = ("candidate_composition_fraction_" + r._digest(label)[:16] if kind == "composition"
+              else "native_mean_proc_score_scanpy_s")
+    candidate = _candidate(metric_id=metric)
+    if kind == "process":
+        candidate.update(value=0.125, numerator=None, denominator=None, unit="scanpy_control_adjusted_expression", interval=None)
+    compilation = _run(tmp_path / "graph", bundle=_bundle(candidates=[candidate]))
+    assert compilation.execution_state.value == "succeeded", compilation.reason_codes
+    graph = compilation.request.output_dir / compilation.run_id / "case_evidence_graph_manifest.json"
+    view = context_for(graph).data_view.model_dump(mode="json")
+    facts = {"product_name": "当前确认产品"}
+    intake = {"facts": facts, "signature": "confirmed"}
+    scope = SimpleNamespace(upload_id="upload-test", input_revision=7,
+        binding={"intake": intake, "data_view": view, "upload": {"sha256": "b" * 64}})
+    state = {"_intakes": {"upload-test": intake}, "_input_revision": 7}
+    values = {"qc": {"selected_data_view": view}, "graph": json.loads(graph.read_bytes())}
+    measurement = {
+        "measurement_id": "measurement-result:target", "metric_name": metric, "raw_value": candidate["value"],
+        "unit": candidate["unit"], "numerator": candidate["numerator"], "denominator": candidate["denominator"],
+        "source_run_ref": "tool-run:target@1.0.0"}
+    values["measurement"] = measurement
+    run = SimpleNamespace(run_id="target", tool_version="1.0.0",
+        measurements=[SimpleNamespace(measurement_id=measurement["measurement_id"], model_dump=lambda **kwargs: measurement)])
+    if kind == "composition":
+        profile = {"input_data_view": view, "candidate_composition": [
+            {**label, "fraction": 0.75, "count": 75, "denominator": 100}],
+            "development_gate_state": "failed", "development_reason_codes": ["heldout_gate_failed"],
+            "development_summary_sha256": "1" * 64, "development_review_version": "1.1.0",
+            "development_review_sha256": "2" * 64, "scientific_qualification": "not_established"}
+        profile_schema = "bridge://schemas/cell-state-candidate-profile/v1.0"
+    else:
+        profile = {"input_contract": {"data_view": view}, "program_summaries": [
+            {"method_id": "PROC-SCORE-SCANPY", "program_id": "S", "mean": 0.125,
+             "score_unit": candidate["unit"], "n_observations": 100, "assessment_state": "available", "reason_codes": []}]}
+        profile_schema = "bridge://schemas/exploratory-process-profile/v0.1"
+    run.result = values["profile"] = profile
+    schemas = {"graph": "bridge://schemas/case-evidence-graph-manifest/v0.1",
+        "measurement": "bridge://schemas/measurement-result/v0.2", "profile": profile_schema,
+        "qc": "bridge://schemas/qc-readiness-profile/v0.2"}
+    pool = {key: {"schema_ref": schema, "object_version": "1.0.0", "sha256": r._digest(values[key]),
+        "receipt_file": "native" if key in {"profile", "measurement"} else key,
+        "receipt_sha256": "f" * 64, "value_key": key} for key, schema in schemas.items()}
+    pool["graph"].update(path=str(graph), sha256=hashlib.sha256(graph.read_bytes()).hexdigest())
+    reports = SimpleNamespace(service=SimpleNamespace(inputs=SimpleNamespace(
+        verify=lambda state, record: values[record["value_key"]])),
+        _canonical_outputs=lambda state, pool, tool, schema: (
+            [("qc", values["qc"], None)] if tool == "P0-01" else
+            [("profile", profile, run)] if schema == profile_schema else []))
+    context, dependencies = build_research_context(reports, state, scope, pool, graph_manifest_input_id="graph")
+    assert {"graph", "qc", "profile", "measurement"} <= set(dependencies)
+    if kind == "composition":
+        assert context.composition_mapping[0].label == label["label"]
+        assert context.composition_mapping[0].count == 75
+        profile["candidate_composition"][0]["label"] = "wrong-label"
+        reason = "composition_measurement_missing"
+    else:
+        assert context.process_means[0].n_observations == 100
+        assert measurement["numerator"] is None and measurement["denominator"] is None
+        profile["program_summaries"][0]["n_observations"] = 99
+        reason = "process_count_mismatch"
+    with pytest.raises(ValueError, match=reason):
+        build_research_context(reports, state, scope, pool, graph_manifest_input_id="graph")
+
+
+def test_context_preserves_unverified_explanation_hash_history(graph_path):
+    r = research()
+    content = {
+        "object_version": "1.0.0", "scope_digest": "a" * 64, "input_revision": 7,
+        "hypotheses": [{"statement": "可能存在另一解释", "evidence_aliases": ["evidence:first"],
+            "opposing_evidence_aliases": ["evidence:opposing"], "missing_evidence_aliases": [],
+            "expected_observation": None, "competing_explanation": "替代解释", "discriminating_check": "P0-06"}],
+        "evidence_snapshot_sha256": "b" * 64, "qualification": "proposed_explanation"}
+    first = {**content, "version": 1, "content_sha256": r._digest(content),
+        "predecessor_sha256": None, "created_at": "2026-09-11T00:00:00Z"}
+    content2 = {**content, "evidence_snapshot_sha256": "c" * 64}
+    second = {**content2, "version": 2, "content_sha256": r._digest(content2),
+        "predecessor_sha256": first["content_sha256"], "created_at": "2026-09-11T01:00:00Z"}
+    payload = context_for(graph_path).model_dump(mode="json", exclude={"context_sha256"})
+    payload["explanation_versions"] = [first, second]
+    context = r.seal_research_context(payload)
+    assert context.explanation_versions[0].hypotheses[0].opposing_evidence_aliases == ["evidence:opposing"]
+    assert context.explanation_versions[1].predecessor_sha256 == first["content_sha256"]
+    second["hypotheses"] = []
+    with pytest.raises(ValueError, match="explanation_hash_mismatch"):
+        r.seal_research_context(payload)
