@@ -53,12 +53,51 @@ def chain(tmp_path):
     return controls, state, directory
 
 
+@pytest.mark.parametrize("mode", ["case_query", "case_append_v2"])
+def test_graph_continuation_keeps_existing_graph_and_report_sources(tmp_path, mode):
+    controls, state, directory = chain(tmp_path)
+    state["_input_objects"]["old-assertions"] = {"path": str(directory / "runs" / "measured.json")}
+    before = {"tool_id": "P0-09", "mode_id": "case_initial_v2",
+              "object_inputs": [{"input_id": "old-assertions", "role": "compilation_bundle"}]}
+    after = {"tool_id": "P0-09", "mode_id": mode,
+             "object_inputs": [{"input_id": "base-graph", "role": "evidence_graph_manifest"}]}
+    impact = controls.selection_impact(state, before, after)
+    assert impact["affected"] == []
+    assert len(impact["reusable"]) == 6
+    assert impact["new_approval_required"] is True
+
+
+def test_adding_an_evidence_requirement_does_not_retract_existing_results(tmp_path):
+    controls, state, _ = chain(tmp_path)
+    before = {"tool_id": "P0-09", "mode_id": "case_initial_v2", "asset_ids": [],
+              "measurement_spec_ref": None,
+              "object_inputs": [{"input_id": "retained", "role": "claim_registry"}]}
+    after = {**before, "object_inputs": [*before["object_inputs"],
+             {"input_id": "additional", "role": "measurement_result"}]}
+    impact = controls.selection_impact(state, before, after)
+    assert impact["affected"] == []
+    assert len(impact["reusable"]) == 6
+
+
 def test_matrix_change_invalidates_transitive_outputs_not_other_upload(tmp_path):
     controls, state, _ = chain(tmp_path)
     impact = controls.impact(state, "query", "asset", [{"field": "matrix_location"}])
     assert [row["tool_id"] for row in impact["affected"]] == ["P0-01", "P0-02", "P0-04", "P0-09", "P0-10"]
     assert len(impact["reusable"]) == 1
     assert impact["new_approval_required"] is True
+    assert state["_invalidated_receipts"] == {}
+
+
+
+@pytest.mark.parametrize(("kind", "changes"), [
+    ("source", [{"field": "source_family_id"}]),
+    ("intake", [{"field": "source_family_id"}]),
+])
+def test_source_correction_reuses_qc_but_invalidates_source_dependent_analysis(tmp_path, kind, changes):
+    controls, state, _ = chain(tmp_path)
+    impact = controls.impact(state, "query", kind, changes)
+    assert [row["tool_id"] for row in impact["affected"]] == ["P0-02", "P0-04", "P0-09", "P0-10"]
+    assert [row["tool_id"] for row in impact["reusable"]] == ["P0-01", "P0-01"]
     assert state["_invalidated_receipts"] == {}
 
 

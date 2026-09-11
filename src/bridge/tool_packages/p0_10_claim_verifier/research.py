@@ -616,6 +616,78 @@ def _csv_cell(value: Any) -> str:
     return "'" + text if text.lstrip().startswith(("=", "+", "-", "@")) else text
 
 
+
+def _context_report_html(context, records, paragraphs, sections, metadata):
+    """Readable, inert presentation of the same verified private snapshot."""
+    def text(value):
+        return escape("未提供" if value is None else str(value))
+
+    def table(headers, rows):
+        return ("<table><thead><tr>" + "".join("<th scope=\"col\">" + text(v) + "</th>" for v in headers)
+                + "</tr></thead><tbody>" + "".join("<tr>" + "".join("<td>" + text(v) + "</td>" for v in row)
+                    + "</tr>" for row in rows) + "</tbody></table>")
+
+    facts = context.confirmed_product_facts
+    sampling = {"process_sample": "分化过程中的样本", "final_preparation": "最终制备物",
+                "unknown": "尚未明确"}.get(facts.sampling_context, facts.sampling_context)
+    body = '<p class="eyebrow">BRIDGE · 私有研究证据</p><h1>' + text(facts.product_name or "产品研究报告") + "</h1>"
+    body += "<p class=\"boundary\">本报告保留测量、候选解释与缺失证据；不建立细胞产品的临床疗效、安全性或放行资格。</p>"
+    body += "<h2>产品背景与数据范围</h2><p>以下产品目标来自已确认资料，不等于已验证的细胞身份。</p>"
+    body += table(("项目", "已确认资料 / 工具记录"), [
+        ("目标细胞", facts.target_cell_type), ("预期阶段", facts.target_stage),
+        ("取样性质", sampling), ("实验类型", facts.assay),
+        ("本次数据视图中的观测数", context.data_view.n_observations),
+        ("独立培养次数", facts.independent_cultures)])
+    body += "<p>观测数不等于独立生物学重复数；培养天数不换算为体内发育年龄。</p>"
+    if any(row.development_gate_state == "failed" for row in context.candidate_development):
+        body += "<p class=\"boundary\">候选开发门槛失败：下列细胞标签是候选方法输出，不能作为已确立身份、目标组成或发育匹配结论。</p>"
+    if context.composition_mapping:
+        states = {"candidate": "候选", "unknown": "未知", "unavailable": "不可用"}
+        body += "<h2>候选细胞组成</h2>"
+        body += table(("候选标签", "状态", "观测数", "分母", "比例（工具原值）"), [
+            (row.label, states.get(row.assignment_state, row.assignment_state), row.count, row.denominator, row.fraction)
+            for row in context.composition_mapping])
+    native = {"native_s_g2m_fraction": "S/G2M 周期预测比例",
+              "candidate_assignment_fraction": "候选分配保留比例"}
+    numeric = [row for row in records if row.get("metric_id") in native]
+    if numeric:
+        body += "<h2>测量摘要</h2>"
+        body += table(("测量", "原值", "分子", "分母", "单位"), [
+            (native[row["metric_id"]], row.get("value"), row.get("numerator"), row.get("denominator"), row.get("unit"))
+            for row in numeric])
+        body += "<p>周期预测比例不等于实际分裂速率，也不能单独证明静息或产品安全性。缺失数值不补零。</p>"
+    if context.process_means:
+        body += "<h2>过程程序观测</h2>"
+        body += table(("方法 / 程序", "均值（工具原值）", "原始单位", "观测数"), [
+            (row.method_id + " / " + row.program_id, row.mean, row.score_unit, row.n_observations)
+            for row in context.process_means])
+        body += "<p>不同方法的单位分别保留，不合并为一个分数或独立投票；这里的观测数不是比例分母或独立重复数。</p>"
+    body += "<h2>当前解释与局限</h2><p>解释未验证；支持、反对及缺失证据的版本化引用保留在下方完整记录中。</p>"
+    latest = context.explanation_versions[-1].hypotheses if context.explanation_versions else []
+    for row in latest:
+        body += ("<article><h3>待检验解释</h3><p>" + text(row.statement)
+                 + "</p><p>竞争解释：" + text(row.competing_explanation)
+                 + "</p><p>预期观察：" + text(row.expected_observation) + "</p></article>")
+    if not latest:
+        body += "<p>当前版本未列出竞争解释；这不代表证据充分、没有冲突或科学问题已完成。</p>"
+    body += "<p>目标角色、发育窗口或程序缺少适用依据时仍不可用。本报告不授予方法或产品科学资格，未验证的分数保持为空。</p>"
+    body += '<details><summary>逐项核验声明、完整来源与解释历史</summary>' + paragraphs + sections + "</details>"
+    body += '<footer><h2>报告版本</h2><p>' + text(metadata) + "</p></footer>"
+    return ('<!doctype html><html lang="zh"><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">'
+            '<title>内部研究证据报告</title><style>'
+            '*{box-sizing:border-box}body{font-family:system-ui,sans-serif;max-width:72rem;margin:0 auto;padding:2rem;line-height:1.65;color:#17302b;overflow-wrap:anywhere}'
+            'h1{font-size:2rem;line-height:1.3}h2{margin-top:2rem;font-size:1.25rem}.eyebrow{color:#45665c;letter-spacing:.08em}'
+            '.boundary{background:#f1f5f3;border-left:3px solid #45665c;padding:1rem}'
+            'table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;vertical-align:top;padding:.65rem;border-bottom:1px solid #dce5df;overflow-wrap:anywhere}'
+            'th{background:#f5f7f5}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem}details{margin-top:2rem}summary{cursor:pointer;font-weight:600}'
+            'footer{margin-top:2rem;border-top:1px solid #dce5df;font-size:.75rem;color:#52645c}'
+            '@media(max-width:600px){body{padding:1rem}h1{font-size:1.6rem}th,td{padding:.4rem;font-size:.8rem}}'
+            '@media print{body{max-width:none;padding:0;color:#000}h2{break-after:avoid}tr{break-inside:avoid}}'
+            '</style><body data-layout-version="1">' + body + '</body></html>')
+
+
 def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
                              result: ResearchClaimVerificationResult) -> dict[str, bytes]:
     # Revalidation also rejects callers using Pydantic model_copy/model_construct
@@ -693,6 +765,8 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
         '<body><h1>内部研究证据报告</h1><p>' + escape(metadata) + "</p>"
         + paragraphs + sections + "</body></html>"
     )
+    if context is not None:
+        html = _context_report_html(context, records, paragraphs, sections, metadata)
     svg_lines = [metadata, *[title + "：" + _json(value) for title, value in context_sections],
                  *[block.text for block in draft.claim_blocks],
                  "完整来源、缺失要求与协调记录见同一快照 JSON；未验证候选解释不得作为已验证结论。"]

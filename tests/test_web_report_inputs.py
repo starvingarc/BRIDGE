@@ -73,6 +73,8 @@ def select_measured_requirements(client, sid, run, *, explicit=None, domain="dev
     from test_web_inputs import choice
     response = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-08", "default", choices))
     assert response.status_code == 200, response.json()
+    if response.json()["pending_input_change"]:
+        confirm_change(client, sid, response.json())
     return tid
 
 
@@ -142,7 +144,8 @@ def test_measured_domain_candidate_binds_real_values_and_preserves_requirements(
 
 
 
-def select_measured_graph_assertions(client, sid, run, measurements, *, numerical=True, domains=("developmental_compatibility",)):
+def select_measured_graph_assertions(client, sid, run, measurements, *, numerical=True,
+        domains=("developmental_compatibility",), select=True):
     """Explicit synthetic assertions/registries; no Web-owned metric-to-claim rule."""
     from bridge.web.scientific_inputs import encoded
     from bridge.tool_packages.p0_09_evidence_compiler.models import (
@@ -238,8 +241,12 @@ def select_measured_graph_assertions(client, sid, run, measurements, *, numerica
             data=encoded(model.model_dump(mode="json")))
         choices.append({"role": role, "input_id": identifier})
     service.save(state)
+    if not select:
+        return choices
     response = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-09", "case_initial_v2", choices))
     assert response.status_code == 200, response.json()
+    if response.json()["pending_input_change"]:
+        confirm_change(client, sid, response.json())
     return choices
 
 
@@ -382,9 +389,11 @@ def test_measured_graph_feedback_appends_after_real_discriminating_check(client,
     domains = [*state["_input_selections"]["P0-08"]["object_inputs"],
                {"role": "domain_gate_input", "input_id": domain_id}, {"role": "measurement_spec", "input_id": spec_id}]
     service.save(state)
-    assert client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-08", "default", domains)).status_code == 200
+    changed = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-08", "default", domains))
+    assert changed.status_code == 200
+    confirm_change(client, sid, changed.json())
     roots = select_measured_graph_assertions(client, sid, source_run, measurements,
-        domains=("developmental_compatibility", "proliferation_stress_response"))
+        domains=("developmental_compatibility", "proliferation_stress_response"), select=False)
     state = service.load(sid)
     for role, schema in (("base_graph_manifest", "case-evidence-graph-manifest"),
                         ("base_evidence_record_set", "evidence-record-set"),
@@ -392,7 +401,9 @@ def test_measured_graph_feedback_appends_after_real_discriminating_check(client,
         identifier = next(identifier for identifier, record in state["_input_objects"].items()
             if record["source"] == "tool_output" and record["schema_ref"] == "bridge://schemas/" + schema + "/v0.1")
         roots.append({"role": role, "input_id": identifier})
-    assert client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-09", "case_append_v2", roots)).status_code == 200
+    changed = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-09", "case_append_v2", roots))
+    assert changed.status_code == 200
+    confirm_change(client, sid, changed.json())
     scope = propose_scope(client, sid, aid, allowed_modes=[
         {"tool_id": "P0-09", "mode_id": "case_query"},
         {"tool_id": "P0-06", "mode_id": "method_runtime_source_bound"},

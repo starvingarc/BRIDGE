@@ -528,6 +528,13 @@ def test_real_fixture_request_plan_approval_execution(client, tmp_path, tool, mo
     saved = client.post(url + "/analysis-inputs", json=choice(tool, mode, objects))
     assert saved.status_code == 200, saved.json()
     prepared = client.post(url + "/prepare-analysis", json={"tool_id": tool}).json()
+    if tool in {"P0-07", "P0-12"}:
+        # Unconfirmed legacy inputs cannot bypass the conditional entry.
+        assert prepared["status"] == "idle"
+        assert prepared["error"] == "conditional_selection_not_confirmed"
+        assert prepared["plan"] is None
+        assert client.app.state.service.load(sid)["_tool_runs"] == []
+        return
     assert prepared["status"] == "awaiting_approval", prepared
     state = client.app.state.service.load(sid)
     assert prepared["plan"]["steps"][0]["status"] == "pending", state["_plan"]["steps"][0]["reason_codes"]
@@ -929,14 +936,14 @@ def test_graph_upload_and_wrong_role_schema_version_rejected(client, tmp_path):
 
 
 def test_object_mutation_before_execute_is_rejected(client, tmp_path):
-    from test_p0_12_graft_assessment import _request
+    from test_p0_05_off_target_control import _request
     root = tmp_path / "supplied"
     root.mkdir()
     sid, _ = context_upload(client, tmp_path)
-    objects = upload_request(client, sid, _request(root), "graft_assessment")
+    objects = upload_request(client, sid, _request(root), "legacy_aggregation")
     url = f"/api/sessions/{sid}"
-    client.post(url + "/analysis-inputs", json=choice("P0-12", "graft_assessment", objects))
-    plan = client.post(url + "/prepare-analysis", json={"tool_id": "P0-12"}).json()["plan"]
+    client.post(url + "/analysis-inputs", json=choice("P0-05", "legacy_aggregation", objects))
+    plan = client.post(url + "/prepare-analysis", json={"tool_id": "P0-05"}).json()["plan"]
     state = client.app.state.service.load(sid)
     path = Path(state["_input_objects"][objects[0]["input_id"]]["path"])
     write_file(path, path.read_bytes() + b" ")
@@ -947,7 +954,10 @@ def test_object_mutation_before_execute_is_rejected(client, tmp_path):
 def test_real_expression_graft_opaque_h5ad_binding(client, tmp_path):
     from test_p0_12_expression_analysis import _request
     request, path = _request(tmp_path / "graft")
-    sid, _ = context_upload(client, tmp_path)
+    from test_web_conditional_inputs import comparison, helper, decision
+    from bridge.web.inputs import Selection
+    service, state, _, _ = comparison(client, tmp_path)
+    sid = state["id"]
     url = f"/api/sessions/{sid}"
     uploaded = client.post(url + "/uploads", files={"file": ("graft.h5ad", path.read_bytes())}).json()["uploads"][-1]["id"]
     objects = []
@@ -955,6 +965,9 @@ def test_real_expression_graft_opaque_h5ad_binding(client, tmp_path):
         payload = json.loads(ref.path.read_bytes())
         if ref.role == "graft_expression_asset":
             payload["path"] = "upload:" + uploaded
+        if ref.role == "graft_case":
+            payload["originating_preparation_id"] = "preparation:baseline-1"
+            payload["linkage_evidence_refs"] = ["provenance:explicit-synthetic-linkage"]
         response = client.post(url + "/analysis-inputs/objects", params={
             "tool_id": "P0-12", "mode_id": "expression_analysis", "role": ref.role,
             "schema_ref": ref.schema_ref, "object_version": ref.object_version,
@@ -962,7 +975,13 @@ def test_real_expression_graft_opaque_h5ad_binding(client, tmp_path):
         assert response.status_code == 200, (ref.role, response.json())
         state = client.app.state.service.load(sid)
         objects.append({"role": ref.role, "input_id": next(reversed(state["_input_objects"]))})
-    assert client.post(url + "/analysis-inputs", json=choice("P0-12", "expression_analysis", objects)).status_code == 200
+    state = service.load(sid)
+    selection = Selection.model_validate(choice("P0-12", "expression_analysis", objects))
+    h = helper(service)
+    pending = h.propose(state, selection, state["_input_revision"])
+    assert pending["execution_available"], pending
+    decision(h, state, pending)
+    service.save(state)
     proposal = client.post(url + "/prepare-analysis", json={"tool_id": "P0-12"}).json()
     assert proposal["status"] == "awaiting_approval", proposal
     result = approve(client, sid, proposal["plan"])
@@ -1180,7 +1199,11 @@ def test_real_canonical_sufficiency_to_compiler_v2_and_append(client, tmp_path):
             {"evidence_sufficiency_run_result", "base_graph_manifest", "base_evidence_record_set", "base_evidence_requirement_set"}]})
         selected = upload_request(client, sid, supplied_only, mode)
         selected.extend([{"role": "evidence_sufficiency_run_result", "input_id": output8["id"]}, *base_choices])
-        assert client.post(url + "/analysis-inputs", json=choice("P0-09", mode, selected)).status_code == 200
+        changed = client.post(url + "/analysis-inputs", json=choice("P0-09", mode, selected))
+        assert changed.status_code == 200
+        if changed.json()["pending_input_change"]:
+            from test_web_service import confirm_change
+            confirm_change(client, sid, changed.json())
         proposed = client.post(url + "/prepare-analysis", json={"tool_id": "P0-09"}).json()
         assert proposed["plan"]["steps"][0]["status"] == "pending", service.load(sid)["_plan"]["steps"][0]["reason_codes"]
         planned = json.loads(service.load(sid)["_plan"]["steps"][0]["approved_request_json"])

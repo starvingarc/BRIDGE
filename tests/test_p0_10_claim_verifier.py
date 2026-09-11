@@ -364,7 +364,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-10",
         tool_id="P0-10",
-        tool_version="0.4.3",
+        tool_version="0.4.4",
         output_dir=tmp_path / "output",
         object_inputs=refs,
     )
@@ -408,12 +408,11 @@ def test_runtime_validates_each_raw_input_with_jsonschema(
         TrackingValidator,
     )
 
-    eligibility = adapter.check_eligibility(_request(tmp_path), _spec())
+    request = _request(tmp_path)
+    eligibility = adapter.check_eligibility(request, _spec())
 
     assert eligibility.eligible
-    assert sorted(calls) == sorted(
-        schema_ref for schema_ref, _model in adapter_module.ROLE_MODELS.values()
-    )
+    assert sorted(calls) == sorted(ref.schema_ref for ref in request.object_inputs)
 
 
 def test_receipt_binds_authority_and_matches_the_published_bytes(

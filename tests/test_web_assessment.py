@@ -625,7 +625,9 @@ def test_scope_admitted_qc_unlocks_exploratory_input_without_extra_authority(
     run = json.loads((service.directory(sid) / "receipts" / receipt["file"]).read_bytes())
     view = run["result"]["input_contract"]["data_view"]
     assert view["parent_asset_id"] == aid and view["n_observations"] == 4
-    assert run["measurements"] == []
+    assert len(run["measurements"]) == 5
+    assert all(row["raw_value"] is None and row["evidence_state"] == "unavailable"
+               and row["domain_score"] is None for row in run["measurements"])
 
 
 @pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
@@ -789,7 +791,9 @@ def test_exploratory_resource_is_packaged_and_scope_bound(client, tmp_path, monk
     assert run["result"]["domain_score"] is None
     assert run["result"]["interpretation_scope"] == "descriptive_only"
     assert run["result"]["n_independent_replicates"] is None
-    assert run["measurements"] == []
+    assert len(run["measurements"]) == 5
+    assert all(row["raw_value"] is None and row["evidence_state"] == "unavailable"
+               and row["domain_score"] is None for row in run["measurements"])
 
 
 def test_scientific_root_review_unit_and_program_gaps_are_explicit(client, tmp_path, monkeypatch):
@@ -995,6 +999,61 @@ def test_repeated_scientific_request_ignores_new_random_request_ids(client, tmp_
     assert done["candidates"][0]["runnable"] is False
     assert done["tool_runs_used"] == 1 and done["model_turns_used"] == 2
     assert len(service.load(sid)["_tool_runs"]) == 1
+
+
+def test_new_scope_reads_only_pinned_valid_prior_measurement(client, tmp_path, monkeypatch):
+    from copy import deepcopy
+    from bridge.web.evidence import assessment_evidence
+    from test_web_inputs import approve
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch, with_producers=False)
+    plan = client.post(f"/api/sessions/{sid}/prepare-analysis", json={"tool_id": "P0-01"}).json()["plan"]
+    assert approve(client, sid, plan)["plan"]["status"] == "completed"
+    propose_scope(client, sid, aid, "P0-02", None)
+    state = service.load(sid)
+    assessment = state["_assessment"]
+    assert assessment["admissions"] == []
+    rows, bindings = assessment_evidence(service.inputs, state, assessment)
+    assert [(row["tool_id"], row["state"]) for row in rows] == [("P0-01", "available")]
+    assert len(bindings) == 1
+    assert len(state["_tool_runs"]) == 1
+    unbound = deepcopy(assessment)
+    unbound["scope"]["binding"]["resources"] = {}
+    assert assessment_evidence(service.inputs, state, unbound) == ([], {})
+    receipt = state["_tool_runs"][0]
+    state["_invalidated_receipts"] = {receipt["file"]: {"reason": "input_changed"}}
+    assert assessment_evidence(service.inputs, state, assessment) == ([], {})
+    service.save(state)
+    fresh = propose_scope(client, sid, aid, "P0-01", None)
+    assert fresh["data_view"]["state"] == "not_available"
+
+
+def test_long_native_explanation_is_rejected_and_resume_gets_safe_feedback(client, tmp_path, monkeypatch):
+    import json
+    from bridge.web.provider import parse_action, Action
+    service, sid, aid = registered_case(client, tmp_path)
+    scope = propose_scope(client, sid, aid)
+    rejected = "DO_NOT_STORE" + "字" * 2401
+    def too_long(*args):
+        return parse_action({"content": None, "tool_calls": [{"type": "function", "function": {
+            "name": "assessment", "arguments": json.dumps({"decision": {"action": "explain", "text": rejected}})}}]},
+            protocol="deepseek_tools")
+    monkeypatch.setattr("bridge.web.provider.converse", too_long)
+    approve_scope(client, sid, scope)
+    first = settle_assessment(client, sid)["assessment"]
+    assert first["stop_reason"] == "provider_explanation_too_long"
+    assert first["model_turns_used"] == 1 and first["tool_runs_used"] == 0
+    assert "DO_NOT_STORE" not in json.dumps(service.load(sid))
+    def shortened(settings, messages, context):
+        assert context["previous_action_error"] == "provider_explanation_too_long"
+        return Action.model_validate({"action":"assessment","decision":{"action":"explain","text":"解释过长，已缩短；尚未运行检查。"}})
+    monkeypatch.setattr("bridge.web.provider.converse", shortened)
+    response = client.post(f"/api/sessions/{sid}/assessment/resume",
+        json={"scope_id": scope["scope_id"], "scope_digest": scope["scope_digest"]})
+    assert response.status_code == 200
+    done = settle_assessment(client, sid)["assessment"]
+    assert done["stop_reason"] == "explanation_complete"
+    assert done["model_turns_used"] == 2 and done["tool_runs_used"] == 0
+    assert service.load(sid)["_tool_runs"] == []
 
 
 def test_malformed_provider_turn_is_consumed_without_dispatch(client, tmp_path, monkeypatch):
@@ -1203,6 +1262,9 @@ def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artif
         {"role": "evidence_graph_manifest", "input_id": graph_id},
         {"role": "evidence_graph_query", "input_id": query_id}]))
     assert selected.status_code == 200
+    from test_web_service import confirm_change
+    if selected.json()["pending_input_change"]:
+        confirm_change(client, sid, selected.json())
     service.settings = replace(service.settings, share_result_summaries=True)
     scope = propose_scope(client, sid, aid, "P0-09", "case_query")
     before = service.load(sid)
@@ -1219,6 +1281,8 @@ def test_registered_graph_query_reuses_version_and_has_receipt_without_new_artif
         local, _ = assessment_evidence(service.inputs, current, current["_assessment"])
         for row in local:
             assert row["alias"] not in wire
+            if "query_name" not in row["summary"]:
+                continue
             assert row["summary"]["graph_alias"] not in wire
             for node in row["summary"]["nodes"]:
                 assert node["alias"] not in wire
@@ -1693,7 +1757,10 @@ def test_real_exploratory_missing_gene_keeps_partial_and_all_96_cells(client, tm
     assert evidence["state"] == "available", evidence
     assert evidence["execution_state"] == "partial"
     assert evidence["interpretation_scope"] == "exploratory"
-    assert evidence["measurements"] == []
+    assert len(evidence["measurements"]) == 5
+    assert all(row["domain_score"] is None for row in evidence["measurements"])
+    assert evidence["measurements"][0]["raw_value"] is None
+    assert evidence["measurements"][0]["evidence_state"] == "unavailable"
     result = evidence["summary"]
     assert result["runtime_mode"] == "exploratory_process"
     assert result["n_observations"] == 96

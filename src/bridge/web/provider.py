@@ -384,6 +384,8 @@ Use empty lists when no opposing or missing evidence has been supplied; do not m
 An unavailable method is a gap, not evidence against a hypothesis. No confidence/probability or numerical claim fields.
 Stop for evidence_requirements_reached or no_discriminating_check; question only for a consequential missing fact.
 An explanation ends this phase, not the scientific question; it may leave useful options unexecuted and is not a verified report.
+Keep explanation text concise: prefer at most 1200 characters; the hard limit is 2400 characters.
+If previous_action_error is provider_explanation_too_long, produce a shorter valid action without dropping uncertainty.
 No clinical efficacy, safety, release or ranking claims.
 Return one assessment(decision) action with no other action.
 decision is {action: check|query, option_id: supplied ID}, {action: explain|question, text: string},

@@ -138,9 +138,13 @@ None approves analysis. Each proposal includes a checksummed impact preview
 computed from saved requests and their transitive artifact dependencies.
 A product-name-only edit affects report presentation; other product-context edits
 preserve compatible QC and native observations but invalidate dependent product
-interpretations. Source, assay, matrix and QC-relevant metadata changes invalidate
-the linked chain. Unrelated uploads remain reusable. Confirmed changes mark
-affected receipts historical without deleting them or their downloads.
+interpretations. A source-family-only correction preserves compatible raw QC but
+invalidates source-dependent analysis. Assay, matrix and QC-relevant metadata
+changes invalidate the linked chain. Unrelated uploads remain reusable.
+Confirmed changes mark affected receipts historical without deleting them or
+their downloads. Additional requirements, graph queries and graph append requests
+retain their existing sources; replacing source inputs still follows the actual
+dependency chain. All new executions require approval.
 
 The assessment projection compares the scope's fact/resource binding with the
 current session. Pending review is shown separately; a confirmed revision or

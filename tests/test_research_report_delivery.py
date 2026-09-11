@@ -338,6 +338,15 @@ def test_private_context_corrected_name_failure_and_legacy_bytes(graph_path, tmp
     assert json.loads(snapshot.source_evidence_records_json)[0]["numerator"] == 75
 
 
+def test_context_report_opens_with_product_before_technical_identifiers(graph_path, tmp_path):
+    context = context_for(graph_path)
+    result = ToolRegistry.load_default().run(context_request(tmp_path, graph_path, context))
+    assert result.execution_state.value == "succeeded"
+    report = next(a.path for a in result.artifacts if a.path.name == "research_report.html").read_text()
+    assert report.index(context.confirmed_product_facts.product_name) < report.index("快照 SHA-256")
+
+
+
 def test_context_revision_graph_and_content_are_bound(graph_path, tmp_path):
     r = research()
     context = context_for(graph_path)

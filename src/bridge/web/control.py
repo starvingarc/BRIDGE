@@ -135,6 +135,8 @@ class Controls:
             runs.append((receipt, paths, identifiers, {a["path"] for a in payload["artifacts"]}))
         affected, affected_paths = set(), set()
         display_only = kind == "intake" and bool(changes) and all(row["field"] == "product_name" for row in changes)
+        source_only = kind == "source" or (kind == "intake" and bool(changes)
+            and all(row["field"] == "source_family_id" for row in changes))
         product_only = kind == "intake" and not any(
             change["field"] in {"assay", "matrix_location", "count_semantics", "source_family_id",
                                "sample_id_column", "capture_id_column", "gene_symbol_column"}
@@ -156,6 +158,7 @@ class Controls:
         for receipt, paths, identifiers, outputs in runs:
             touches = receipt["file"] in linked_runs
             affected_by_change = (receipt["tool_id"] == "P0-10" if display_only else
+                                  receipt["tool_id"] != "P0-01" if source_only else
                                   not product_only or receipt["file"] not in reusable_native)
             if touches and affected_by_change and not (kind == "intake" and not changes):
                 affected.add(receipt["file"])
@@ -182,13 +185,19 @@ class Controls:
 
 
     def selection_impact(self, state, before, after):
+        # Querying or appending consumes an existing graph; it does not revise
+        # the source assertions that produced that immutable graph.
+        if after["tool_id"] == "P0-09" and after["mode_id"] in {"case_query", "case_append_v2"}:
+            return self.impact(state, "", "selection", [], root_input_ids=[])
         old_inputs = {row["input_id"] for row in before["object_inputs"]}
         new_inputs = {row["input_id"] for row in after["object_inputs"]}
         changed_inputs = sorted(old_inputs - new_inputs)
         # Object revisions follow exact consumers; mode/asset/spec replacements
         # without an old object also invalidate the selected tool's prior runs.
+        request_replaced = any(before.get(key) != after.get(key)
+            for key in ("mode_id", "asset_ids", "measurement_spec_ref"))
         return self.impact(state, "", "selection", [], root_input_ids=changed_inputs,
-            selected_tool=before["tool_id"] if not changed_inputs else None)
+            selected_tool=before["tool_id"] if not changed_inputs and request_replaced else None)
 
     def stage_selection(self, state, body):
         after = body.model_dump(mode="json")

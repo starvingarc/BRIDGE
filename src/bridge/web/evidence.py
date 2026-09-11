@@ -911,12 +911,26 @@ def assessment_evidence(inputs, state, assessment):
     """Read canonical ToolRuns on demand; no duplicate result store and no raw cell rows."""
     from bridge.toolkit.contracts import ToolRunV2, MeasurementResultV2
     plans = {row["plan_id"] for row in assessment["admissions"]}
+    pinned = {}
+    for record in assessment.get("scope", {}).get("binding", {}).get("resources", {}).values():
+        if record.get("source") == "tool_output":
+            key = (record.get("receipt_file"), record.get("receipt_sha256"), record.get("producer_tool_id"))
+            pinned.setdefault(key, []).append(record)
+    receipts = state.get("_tool_runs", [])
+    # Current admissions stay first. Reused evidence is explicitly scope-bound,
+    # never every old result in the session, and never a new execution or vote.
+    admitted = [row for row in receipts if row.get("plan_id") in plans]
+    reused = [row for row in receipts if row.get("plan_id") not in plans
+              and row["file"] not in state.get("_invalidated_receipts", {})
+              and (row["file"], row["sha256"], row["tool_id"]) in pinned]
     projected, bindings = [], {}
-    for receipt in state.get("_tool_runs", []):
-        if receipt.get("plan_id") not in plans or receipt["state"] not in {"succeeded", "partial"}:
+    for receipt in [*admitted, *reused]:
+        if receipt["state"] not in {"succeeded", "partial"}:
             continue
         alias = "E-" + receipt["sha256"][:16]
         try:
+            for record in pinned.get((receipt["file"], receipt["sha256"], receipt["tool_id"]), []):
+                inputs.verify(state, record)
             raw = _verified_receipt(inputs, state, receipt)
             run = ToolRunV2.model_validate(raw) if "object_inputs" in raw["request"] else ToolRun.model_validate(raw)
             inputs.service.registry.validate_historical_result(run, run.request)

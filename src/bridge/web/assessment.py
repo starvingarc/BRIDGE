@@ -9,7 +9,7 @@ import secrets
 from typing import Literal
 
 from fastapi import HTTPException
-from pydantic import Field, StrictInt, model_validator
+from pydantic import Field, StrictInt, ValidationError, model_validator
 
 from bridge.domain.models import AnalysisPlan, PlanApprovalReceipt
 from bridge.toolkit.contracts import FrozenModel
@@ -99,7 +99,8 @@ class AssessmentCoordinator:
             row for row in state.get("_tool_runs", []) if pinned and
             row["file"] == pinned["file"] and row["sha256"] == pinned["sha256"]]
         for receipt in reversed(receipts):
-            if (receipt["tool_id"] != "P0-01" or receipt["state"] != "succeeded"
+            if (receipt["file"] in state.get("_invalidated_receipts", {})
+                    or receipt["tool_id"] != "P0-01" or receipt["state"] != "succeeded"
                     or self.service._qc_receipt_asset_id(state, receipt) != upload_id):
                 continue
             record = next((row for row in state["_input_objects"].values()
@@ -342,6 +343,9 @@ class AssessmentCoordinator:
                         for row in assessment["candidates"] if row["blockers"]],
                     "interpretation_gaps": [{"tool_id": row["tool_id"], "mode_id": row["mode_id"], "reason_codes": row["gaps"]}
                         for row in assessment["candidates"] if row["gaps"]]}
+                previous = assessment["model_turns"][-1] if assessment["model_turns"] else {}
+                if previous.get("provider_error_code") == "provider_explanation_too_long":
+                    context["previous_action_error"] = previous["provider_error_code"]
                 if len(json.dumps(context, ensure_ascii=False).encode()) > 128 * 1024:
                     self._finish(state, "evidence_context_limit", status="blocked")
                     return
@@ -359,11 +363,19 @@ class AssessmentCoordinator:
                 action = provider.Action.model_validate(action.model_dump(mode="json"))
                 if action.action != "assessment":
                     raise ValueError("model_action_purpose_mismatch")
-            except Exception:
+            except Exception as error:
+                reason = "provider_action_invalid_or_unavailable"
+                cause = error.__cause__ or error
+                if isinstance(cause, ValidationError):
+                    errors = cause.errors(include_url=False, include_context=False, include_input=False)
+                    if (len(errors) == 1 and errors[0]["loc"] == ("decision", "text")
+                            and errors[0]["type"] == "string_too_long"):
+                        reason = "provider_explanation_too_long"
                 with self.service.lock:
                     state = self.service.load(sid)
                     if state["_control_epoch"] == epoch:
-                        self._finish(state, "provider_action_invalid_or_unavailable", status="blocked")
+                        state["_assessment"]["model_turns"][-1]["provider_error_code"] = reason
+                        self._finish(state, reason, status="blocked")
                 return
             with self.service.qc_catalog(), self.service.lock:
                 state = self.service.load(sid)

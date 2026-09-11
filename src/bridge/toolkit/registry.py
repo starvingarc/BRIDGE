@@ -419,6 +419,7 @@ class ToolRegistry:
             ("P0-10", "0.4.1"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
             ("P0-06", "0.8.1"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/proliferation-stress-response-result/v0.1"),
             ("P0-10", "0.4.2"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.4.3"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
         }
         # Historical receipts are immutable; only explicitly supported releases are admitted.
         key = (request.tool_id, getattr(result, "tool_version", None))
@@ -724,7 +725,7 @@ class ToolRegistry:
     ) -> ToolRunV2:
         # The versioned research statement contract selects the research result;
         # it cannot be selected by an adapter's self-reported schema alone.
-        if (spec.tool_id == "P0-10" and spec.version in {"0.4.2", "0.4.3"}
+        if (spec.tool_id == "P0-10" and spec.version in {"0.4.2", "0.4.3", "0.4.4"}
                 and any(ref.role == "statement_registry"
                         and ref.schema_ref == "bridge://schemas/research-statement-registry/v0.2"
                         for ref in request.object_inputs)
