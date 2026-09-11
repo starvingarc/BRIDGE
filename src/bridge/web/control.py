@@ -13,7 +13,7 @@ from .inputs import checked_bytes, strict_json
 
 from fastapi import HTTPException
 
-from .inputs import AssetDeclaration
+from .inputs import AssetDeclaration, Selection
 from .intake import IntakeInput
 
 
@@ -74,7 +74,7 @@ class Controls:
         state["input_review_required"] = True
 
 
-    def impact(self, state, upload_id, kind, changes):
+    def impact(self, state, upload_id, kind, changes, *, root_input_ids=None, selected_tool=None):
         """Trace persisted request/artifact dependencies; never infer biological validity."""
         root = self.service.directory(state["id"])
         upload_path = str(root / "uploads" / (upload_id + ".h5ad"))
@@ -140,11 +140,14 @@ class Controls:
                                "sample_id_column", "capture_id_column", "gene_symbol_column"}
             for change in changes
         )
-        linked_paths, linked_runs = {upload_path}, set()
+        linked_paths = ({state["_input_objects"][key]["path"] for key in root_input_ids}
+                        if root_input_ids is not None else {upload_path})
+        linked_runs = set()
         while True:
             previous = len(linked_runs)
             for receipt, paths, identifiers, outputs in runs:
-                if upload_id in identifiers or paths & linked_paths:
+                if (upload_id in identifiers or paths & linked_paths
+                        or selected_tool is not None and receipt["tool_id"] == selected_tool):
                     linked_runs.add(receipt["file"])
                     linked_paths.update(outputs)
             if len(linked_runs) == previous:
@@ -176,6 +179,39 @@ class Controls:
             "new_approval_required": True,
             "historical_artifacts_preserved": True,
         }
+
+
+    def selection_impact(self, state, before, after):
+        old_inputs = {row["input_id"] for row in before["object_inputs"]}
+        new_inputs = {row["input_id"] for row in after["object_inputs"]}
+        changed_inputs = sorted(old_inputs - new_inputs)
+        # Object revisions follow exact consumers; mode/asset/spec replacements
+        # without an old object also invalidate the selected tool's prior runs.
+        return self.impact(state, "", "selection", [], root_input_ids=changed_inputs,
+            selected_tool=before["tool_id"] if not changed_inputs else None)
+
+    def stage_selection(self, state, body):
+        after = body.model_dump(mode="json")
+        before = state["_input_selections"].get(body.tool_id)
+        if before is None or not any(row["tool_id"] == body.tool_id for row in state["_tool_runs"]):
+            return False
+        if before == after:
+            return True
+        self.require_ready(state)
+        changes = [{"field": key, "before": before.get(key), "after": value}
+                   for key, value in after.items() if before.get(key) != value]
+        impact = self.selection_impact(state, before, after)
+        self.fence(state)
+        pending = {"id": secrets.token_hex(16), "kind": "selection", "upload_id": "",
+                   "changes": changes, "impact": impact}
+        pending["digest"] = hashlib.sha256(json.dumps(
+            [state["id"], state["_input_revision"], pending], sort_keys=True,
+            separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+        state["pending_input_change"] = pending
+        state["_pending_input_payload"] = {"before": before, "after": after}
+        state["_pending_input_revision"] = state["_input_revision"]
+        state["input_review_required"] = True
+        return True
 
     def stage(self, state, kind, body):
         payload = body.model_dump(mode="json")
@@ -226,11 +262,24 @@ class Controls:
                 or state.get("_pending_input_revision") != state["_input_revision"]):
             raise HTTPException(409, "input_change_mismatch")
         if commit:
-            if pending.get("impact") != self.impact(state, pending["upload_id"], pending["kind"], pending["changes"]):
+            payload = state["_pending_input_payload"]
+            impact = (self.selection_impact(state, payload["before"], payload["after"])
+                      if pending["kind"] == "selection" else
+                      self.impact(state, pending["upload_id"], pending["kind"], pending["changes"]))
+            if pending.get("impact") != impact:
                 raise HTTPException(409, "input_change_impact_changed")
             payload = state["_pending_input_payload"]
             aid = pending["upload_id"]
-            if pending["kind"] == "asset":
+            if pending["kind"] == "selection":
+                selection = Selection.model_validate(payload["after"])
+                if state["_input_selections"].get(selection.tool_id) != payload["before"]:
+                    raise HTTPException(409, "input_selection_changed")
+                try:
+                    self.service.inputs.selection_reasons(state, selection, verify=True)
+                except (ValueError, OSError):
+                    raise HTTPException(409, "input_change_invalid") from None
+                state["_input_selections"][selection.tool_id] = selection.model_dump(mode="json")
+            elif pending["kind"] == "asset":
                 try:
                     self.service.inputs.declare_asset(state, AssetDeclaration.model_validate(payload))
                 except (ValueError, OSError):

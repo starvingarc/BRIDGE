@@ -1,3 +1,34 @@
+import { ArtifactCard } from "../src/components/ResultsPane";
+
+describe("shared research snapshot", () => {
+  it.each(["0.2.0", "0.3.0"])("renders the bound %s snapshot without reinterpreting facts", async (version) => {
+    const snapshot = {
+      object_version: version,
+      snapshot_sha256: "a".repeat(64), input_revision: "2", graph_version: 3,
+      audience: "internal_research", scientific_validation: "not_qualified",
+      report_draft_json: JSON.stringify({ claim_blocks: [{ text: "受限研究结果" }] }),
+      evidence_requirement_set_json: JSON.stringify({ requirements: [{ state: "open" }] }),
+      ...(version === "0.3.0" ? {
+        context_sections_json: JSON.stringify([["产品资料", { name: "修订产品 <img src=x onerror=alert(1)>" }]]),
+      } : {}),
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(snapshot)));
+    const { container } = render(<ArtifactCard sessionId="case" artifact={{
+      id: "snapshot", name: "研究快照", kind: "download", media_type: "application/json",
+      url: "/ignored", tool_id: "P0-10",
+      research_report: { snapshot_sha256: snapshot.snapshot_sha256, input_revision: "2", graph_version: 3 },
+    }} />);
+    expect(await screen.findByText("受限研究结果")).toBeInTheDocument();
+    expect(screen.getByText(/尚有 1 项/)).toBeInTheDocument();
+    if (version === "0.3.0") {
+      expect(screen.getByText("产品资料")).toBeInTheDocument();
+      expect(screen.getByText(/修订产品/)).toBeInTheDocument();
+      expect(container.querySelector("pre img")).toBeNull();
+    } else {
+      expect(screen.queryByText("产品资料")).not.toBeInTheDocument();
+    }
+  });
+});
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readBoundedText, ResultsPane, WorkbenchDivider } from "../src/components/ResultsPane";

@@ -95,3 +95,63 @@ def test_invalidated_receipt_cannot_be_selected_as_current_but_file_remains(tmp_
     assert (directory / "receipts" / row["file"]).is_file()
     impact = controls.impact(state, "query", "source", [])
     assert row["sha256"] not in {item["receipt_sha256"] for item in impact["affected"]}
+
+
+@pytest.mark.parametrize(("role", "tool"), [
+    ("program_spec", "P0-06"), ("state_role_map", "P0-03"),
+    ("development_window_spec", "P0-04"), ("cohort_manifest", "P0-07"),
+])
+def test_object_revision_only_invalidates_its_consumers_and_descendants(tmp_path, role, tool):
+    controls, state, directory = setup_state(tmp_path)
+    changed = directory / "objects" / (role + ".json")
+    unrelated = directory / "objects" / "other.json"
+    state["_input_objects"]["old"] = {"path": str(changed)}
+    derived = directory / "runs" / "changed.json"
+    graph = directory / "runs" / "graph.json"
+    receipt(state, directory, "P0-02", "native", [], [unrelated], assets=["query"])
+    receipt(state, directory, tool, "changed", [changed, unrelated], [derived])
+    receipt(state, directory, "P0-09", "graph", [derived], [graph])
+    receipt(state, directory, "P0-10", "report", [graph], [])
+    receipt(state, directory, tool, "unrelated", [unrelated], [])
+    impact = controls.impact(state, "", "selection", [], root_input_ids=["old"])
+    assert [row["tool_id"] for row in impact["affected"]] == [tool, "P0-09", "P0-10"]
+    assert [row["tool_id"] for row in impact["reusable"]] == ["P0-02", tool]
+    assert state["_invalidated_receipts"] == {}
+
+
+from test_web_service import client, confirm_change
+from test_web_inputs import context_upload, choice, approve
+
+
+def test_replacing_completed_selection_requires_confirmation_and_preserves_history(client, tmp_path):
+    sid, _ = context_upload(client, tmp_path)
+    url = f"/api/sessions/{sid}"
+    old = choice("P0-12", "not_provided")
+    assert client.post(url + "/analysis-inputs", json=old).status_code == 200
+    plan = client.post(url + "/prepare-analysis", json={"tool_id": "P0-12"}).json()["plan"]
+    assert approve(client, sid, plan)["plan"]["status"] == "completed"
+    service = client.app.state.service
+    before = service.load(sid)
+    receipts = list(before["_tool_runs"])
+    old_bytes = {row["file"]: (service.directory(sid) / "receipts" / row["file"]).read_bytes()
+                 for row in receipts}
+    changed = choice("P0-12", "graft_assessment")
+    response = client.post(url + "/analysis-inputs", json=changed)
+    assert response.status_code == 200, response.json()
+    pending = response.json()["pending_input_change"]
+    assert pending["kind"] == "selection"
+    assert [item["tool_id"] for item in pending["impact"]["affected"]] == ["P0-12"]
+    assert service.load(sid)["_input_selections"]["P0-12"] == old
+    assert client.post(url + "/input-change/discard", json={
+        "change_id": pending["id"], "change_digest": pending["digest"]}).status_code == 200
+    assert service.load(sid)["_input_selections"]["P0-12"] == old
+    response = client.post(url + "/analysis-inputs", json=changed)
+    confirm_change(client, sid, response.json())
+    after = service.load(sid)
+    assert after["_input_selections"]["P0-12"] == changed
+    assert after["_tool_runs"] == receipts
+    assert set(after["_invalidated_receipts"]) == set(old_bytes)
+    assert all((service.directory(sid) / "receipts" / name).read_bytes() == data
+               for name, data in old_bytes.items())
+    assert client.post(url + "/input-change/confirm", json={
+        "change_id": pending["id"], "change_digest": pending["digest"]}).status_code == 409

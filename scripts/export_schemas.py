@@ -132,6 +132,7 @@ from bridge.toolkit.visualization import (
 
 from bridge.tool_packages.p0_10_claim_verifier.research import (
     ResearchClaimVerificationResult, ResearchStatementRegistry, ResearchAnalysisSnapshot,
+    ResearchAnalysisSnapshotV03, ResearchReportContext,
 )
 
 MODELS = {
@@ -206,6 +207,8 @@ MODELS = {
     "research_claim_verification_result_v2": ("bridge://schemas/research-claim-verification-result/v0.2", ResearchClaimVerificationResult),
     "research_statement_registry_v2": ("bridge://schemas/research-statement-registry/v0.2", ResearchStatementRegistry),
     "research_analysis_snapshot_v2": ("bridge://schemas/research-analysis-snapshot/v0.2", ResearchAnalysisSnapshot),
+    "research_analysis_snapshot_v3": ("bridge://schemas/research-analysis-snapshot/v0.3", ResearchAnalysisSnapshotV03),
+    "research_report_context_v3": ("bridge://schemas/research-report-context/v0.3", ResearchReportContext),
     "reference_manifest": ("bridge://schemas/reference-manifest/v0.1", ReferenceManifest),
     "reference_profile": ("bridge://schemas/reference-profile/v0.1", ReferenceProfile),
     "structured_input_ref": ("bridge://schemas/structured-input-ref/v0.1", StructuredInputRef),

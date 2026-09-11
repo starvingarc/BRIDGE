@@ -108,7 +108,7 @@ def test_completed_qc_scope_binds_exact_v2_artifact_not_legacy_schema_match(
 
 
 
-def producer_scientific_case(client, tmp_path, monkeypatch, *, with_producers=True):
+def producer_scientific_case(client, tmp_path, monkeypatch, *, with_producers=True, with_lineage=True):
     """One synthetic upload and real QC/cell-state producers; no backend request fixture."""
     import anndata as ad
     from test_cell_state import _write_query, _build_snapshot
@@ -135,7 +135,7 @@ def producer_scientific_case(client, tmp_path, monkeypatch, *, with_producers=Tr
         "upload_id": aid, "assay": "scRNA-seq", "matrix_location": "X",
         "matrix_semantics": "raw_counts", "input_level": "count_ready",
         "metadata": {"sample_id_column": "sample_id", "capture_id_column": "capture_id",
-                     "biological_unit_lineage": lineage}})
+                     **({"biological_unit_lineage": lineage} if with_lineage else {})}})
     assert declared.status_code == 200, declared.json()
     confirm_change(client, sid, declared.json())
     confirm_change(client, sid, stage(client, sid, aid, stated_facts(

@@ -484,7 +484,8 @@ class Inputs:
         schemas.update({"bridge://schemas/cell-state-candidate-profile/v1.0",
                         "bridge://schemas/exploratory-process-profile/v0.1",
                         "bridge://schemas/research-claim-verification-result/v0.2",
-                        "bridge://schemas/research-analysis-snapshot/v0.2"})
+                        "bridge://schemas/research-analysis-snapshot/v0.2",
+                        "bridge://schemas/research-analysis-snapshot/v0.3"})
         verified = False
         for artifact in outcome.artifacts:
             base = {"path": str(artifact.path), "sha256": artifact.sha256, "artifact_id": artifact.artifact_id,

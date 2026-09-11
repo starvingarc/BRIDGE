@@ -1017,6 +1017,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         object_input_modes=[
             _mode(
                 "default",
+                _role("research_report_context", "bridge://schemas/research-report-context/v0.3", "0.3.0", 0, 1),
                 _role("report_draft", "bridge://schemas/report-draft/v0.1", V01, 1, 1),
                 _role(
                     "evidence_graph_manifest",

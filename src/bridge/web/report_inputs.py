@@ -496,17 +496,32 @@ class ReportInputs:
         graph_id, graph, run = latest
         record = pool[graph_id]
         self.service.inputs.verify(state, record)
+        from .research_context import build_research_context
+        from .scientific_inputs import digest
+        from bridge.tool_packages.p0_10_claim_verifier.research import ResearchReportContext
+        key = digest([scope.scope_id, scope.input_revision, record["sha256"]])
+        context_id = state.get("_selected_report_contexts", {}).get(key)
+        if context_id:
+            context = ResearchReportContext.model_validate(
+                self.service.inputs.verify(state, state["_input_objects"][context_id]))
+        else:
+            context, dependencies = build_research_context(self, state, scope, pool,
+                graph_manifest_input_id=graph_id)
+            context_id = self.service.inputs.add_derived_object(state, tool_id="P0-10", mode_id="default",
+                role="research_report_context", schema_ref="bridge://schemas/research-report-context/v0.3",
+                payload=context.model_dump(mode="json"), dependencies=dependencies)
         report = build_research_draft(graph_manifest_path=Path(record["path"]),
-            input_revision=str(scope.input_revision), created_at=run.created_at)
+            input_revision=str(scope.input_revision), created_at=run.created_at, report_context=context)
         contract = load_research_release_contract()
-        choices = [ObjectChoice(role="evidence_graph_manifest", input_id=graph_id)]
+        choices = [ObjectChoice(role="evidence_graph_manifest", input_id=graph_id),
+                   ObjectChoice(role="research_report_context", input_id=context_id)]
         for role, schema, value in (
             ("report_draft", "report-draft/v0.1", report),
             ("claim_policy_spec", "claim-policy-spec/v0.1", contract.claim_policy),
             ("statement_registry", "research-statement-registry/v0.2", contract.statement_registry)):
             identifier = self.service.inputs.add_derived_object(state, tool_id="P0-10", mode_id="default",
                 role=role, schema_ref="bridge://schemas/" + schema, payload=value.model_dump(mode="json"),
-                dependencies=[graph_id])
+                dependencies=[graph_id, context_id])
             choices.append(ObjectChoice(role=role, input_id=identifier))
         return Selection(tool_id="P0-10", mode_id="default", asset_ids=[], measurement_spec_ref=None,
                          object_inputs=choices)

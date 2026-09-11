@@ -361,11 +361,14 @@ class ResearchAnalysisSnapshotV03(ResearchAnalysisSnapshot):
     object_version: Literal["0.3.0"] = "0.3.0"
     context_renderer_id: Literal["BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.3"] = "BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.3"
     report_context_json: str
+    context_sections_json: str
     report_context_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
 
     @model_validator(mode="after")
     def bound_context(self) -> Self:
         context = ResearchReportContext.model_validate_json(self.report_context_json)
+        if self.context_sections_json != _json(_context_sections(context)):
+            raise ValueError("report_context_presentation_mismatch")
         if hashlib.sha256(self.report_context_json.encode()).hexdigest() != self.report_context_sha256:
             raise ValueError("snapshot_context_hash_mismatch")
         manifest = CaseEvidenceGraphManifest.model_validate_json(self.graph_manifest_json)
@@ -574,7 +577,8 @@ def build_research_snapshot(*, graph_manifest_path: Path, report: ReportDraft,
         report_context = _check_context_graph(report_context, manifest, digest, report.report_version, evidence_set)
         raw = _json(report_context.model_dump(mode="json"))
         payload.update(object_version="0.3.0", context_renderer_id="BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.3",
-                       report_context_json=raw, report_context_sha256=hashlib.sha256(raw.encode()).hexdigest())
+                       report_context_json=raw, context_sections_json=_json(_context_sections(report_context)),
+                       report_context_sha256=hashlib.sha256(raw.encode()).hexdigest())
         model = ResearchAnalysisSnapshotV03
     payload["snapshot_sha256"] = _digest(payload)
     return model.model_validate(payload)

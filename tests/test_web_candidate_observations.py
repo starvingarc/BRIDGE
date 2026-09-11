@@ -15,7 +15,7 @@ from test_web_assessment import (
 
 def test_candidate_runtime_is_bound_and_visible_as_research_evidence(client, tmp_path, monkeypatch):
     _, catalog, _ = _rig(tmp_path, monkeypatch)
-    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch, with_producers=False)
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch, with_producers=False, with_lineage=False)
     service.settings = replace(service.settings,
         cell_state_measurement_spec_ref="CELLSTATE-scRNA-celltypist-candidate-v0.1",
         cell_state_candidate_runtime_ref="fixture-celltypist-v1")
@@ -78,7 +78,7 @@ def _next_check_or_query(settings, messages, context):
 @pytest.mark.parametrize("with_feedback", [False, True])
 def test_candidate_measurements_reach_the_canonical_graph_and_query(client, tmp_path, monkeypatch, with_feedback):
     _rig(tmp_path, monkeypatch)
-    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch, with_producers=False)
+    service, sid, aid = producer_scientific_case(client, tmp_path, monkeypatch, with_producers=False, with_lineage=False)
     service.settings = replace(service.settings,
         cell_state_measurement_spec_ref="CELLSTATE-scRNA-celltypist-candidate-v0.1",
         cell_state_candidate_runtime_ref="fixture-celltypist-v1")
@@ -126,7 +126,7 @@ def test_candidate_measurements_reach_the_canonical_graph_and_query(client, tmp_
         assert len(records[1]["records"]) == len(records[0]["records"]) + 5
         assert len({row["evidence_family_ref"]["object_id"] for row in records[1]["records"]}) == 1
         from hashlib import sha256
-        from bridge.tool_packages.p0_10_claim_verifier.research import ResearchAnalysisSnapshot
+        from bridge.tool_packages.p0_10_claim_verifier.research import ResearchAnalysisSnapshotV03 as ResearchAnalysisSnapshot
         reports = [row for row in state["artifacts"] if row.get("research_report")]
         assert len(reports) == 8
         assert {row["research_report"]["graph_version"] for row in reports} == {1, 2}
@@ -172,5 +172,10 @@ def test_candidate_measurements_reach_the_canonical_graph_and_query(client, tmp_
             assert sha256(response.content).hexdigest() == state["_canonical_artifacts"][artifact["id"]]["sha256"]
         newest = next(row for row in reversed(new_reports) if row["name"].endswith(".json"))
         snapshot = ResearchAnalysisSnapshot.model_validate_json(client.get(newest["url"]).content)
+        context = json.loads(snapshot.report_context_json)
+        assert context["confirmed_product_facts"]["product_name"] == "Corrected research product"
+        assert context["candidate_development"][0]["development_gate_state"] == "failed"
+        assert context["composition_mapping"][0]["label"]
+        assert all(row["n_observations"] == 4 for row in context["process_means"])
         assert snapshot.graph_version == 2
         assert snapshot.snapshot_sha256 not in {item.snapshot_sha256 for item in snapshots}

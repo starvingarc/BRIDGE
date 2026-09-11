@@ -1,0 +1,128 @@
+{
+  "$id": "bridge://schemas/research-analysis-snapshot/v0.3",
+  "additionalProperties": false,
+  "description": "Additive private context; the approved numeric-claim contract stays v0.2.",
+  "properties": {
+    "audience": {
+      "const": "internal_research",
+      "default": "internal_research",
+      "title": "Audience",
+      "type": "string"
+    },
+    "context_renderer_id": {
+      "const": "BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.3",
+      "default": "BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.3",
+      "title": "Context Renderer Id",
+      "type": "string"
+    },
+    "context_sections_json": {
+      "title": "Context Sections Json",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_requirement_set_json": {
+      "title": "Evidence Requirement Set Json",
+      "type": "string"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_manifest_json": {
+      "title": "Graph Manifest Json",
+      "type": "string"
+    },
+    "graph_manifest_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Graph Manifest Sha256",
+      "type": "string"
+    },
+    "graph_version": {
+      "minimum": 1,
+      "title": "Graph Version",
+      "type": "integer"
+    },
+    "input_revision": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "title": "Input Revision",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.3.0",
+      "default": "0.3.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "reconciliation_record_set_json": {
+      "title": "Reconciliation Record Set Json",
+      "type": "string"
+    },
+    "release_contract_sha256": {
+      "const": "af41cccfdcc9810e3a73dc71bd5c18428d833d42cee68d40e09935c87baae7a3",
+      "title": "Release Contract Sha256",
+      "type": "string"
+    },
+    "renderer_id": {
+      "const": "BRIDGE-RESEARCH-REPORT-RENDERER-v0.2",
+      "default": "BRIDGE-RESEARCH-REPORT-RENDERER-v0.2",
+      "title": "Renderer Id",
+      "type": "string"
+    },
+    "report_content_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Report Content Hash",
+      "type": "string"
+    },
+    "report_context_json": {
+      "title": "Report Context Json",
+      "type": "string"
+    },
+    "report_context_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Report Context Sha256",
+      "type": "string"
+    },
+    "report_draft_json": {
+      "title": "Report Draft Json",
+      "type": "string"
+    },
+    "scientific_validation": {
+      "const": "not_qualified",
+      "default": "not_qualified",
+      "title": "Scientific Validation",
+      "type": "string"
+    },
+    "snapshot_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Snapshot Sha256",
+      "type": "string"
+    },
+    "source_evidence_record_set_json": {
+      "title": "Source Evidence Record Set Json",
+      "type": "string"
+    }
+  },
+  "required": [
+    "release_contract_sha256",
+    "input_revision",
+    "graph_id",
+    "graph_version",
+    "graph_manifest_sha256",
+    "report_content_hash",
+    "graph_manifest_json",
+    "source_evidence_record_set_json",
+    "evidence_requirement_set_json",
+    "reconciliation_record_set_json",
+    "report_draft_json",
+    "snapshot_sha256",
+    "report_context_json",
+    "context_sections_json",
+    "report_context_sha256"
+  ],
+  "title": "ResearchAnalysisSnapshotV03",
+  "type": "object"
+}

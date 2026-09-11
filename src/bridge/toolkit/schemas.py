@@ -37,6 +37,8 @@ SCHEMA_REFS = {
     "bridge://schemas/research-claim-verification-result/v0.2": "research_claim_verification_result_v2.schema.json",
     "bridge://schemas/research-statement-registry/v0.2": "research_statement_registry_v2.schema.json",
     "bridge://schemas/research-analysis-snapshot/v0.2": "research_analysis_snapshot_v2.schema.json",
+    "bridge://schemas/research-analysis-snapshot/v0.3": "research_analysis_snapshot_v3.schema.json",
+    "bridge://schemas/research-report-context/v0.3": "research_report_context_v3.schema.json",
     "bridge://schemas/claim-verification-result/v0.1": "claim_verification_result.schema.json",
     "bridge://schemas/claim-verifier-visualization-data/v0.1": "claim_verifier_visualization_data.schema.json",
     "bridge://schemas/comparison-evidence-graph-manifest/v0.1": "comparison_evidence_graph_manifest.schema.json",

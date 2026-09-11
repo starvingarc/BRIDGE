@@ -320,7 +320,7 @@ def test_private_context_corrected_name_failure_and_legacy_bytes(graph_path, tmp
     legacy = execute(request_for(tmp_path / "legacy", graph_path, make_draft(graph_path)))
     original = {a.path: a.path.read_bytes() for a in legacy.artifacts}
     context = context_for(graph_path)
-    run = execute(context_request(tmp_path / "current", graph_path, context))
+    run = ToolRegistry.load_default().run(context_request(tmp_path / "current", graph_path, context))
     assert run.execution_state.value == "succeeded", run.reason_codes
     assert run.result["release_state"] == "verified"
     paths = {a.path.name: a.path for a in run.artifacts}

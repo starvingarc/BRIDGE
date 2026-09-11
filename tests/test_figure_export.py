@@ -119,7 +119,7 @@ def test_caller_config_identity_includes_shared_export_source(
         ("P0-07", "0.4.1"),
         ("P0-08", "0.5.1"),
         ("P0-09", "0.5.1"),
-        ("P0-10", "0.4.1"),
+        ("P0-10", "0.4.3"),
     ),
 )
 def test_figure_export_patch_versions_are_registered(

@@ -118,3 +118,13 @@ def test_initial_development_decision_remains_readable_after_semantic_revision()
     assert current.object_version == "1.1.0"
     assert old.policy_ref != current.policy_ref
     assert current.legacy_review_sha256 == old.legacy_review_sha256
+
+
+@pytest.mark.parametrize("state_id", ["L1:Astrocyte", "L1:Endothelial_Cell", "L1:Oligo"])
+def test_conditional_off_target_policy_does_not_assign_a_candidate_product_role(state_id):
+    review = freeze.load_development_review()
+    card = next(row for row in review.state_reviews if row.state_id == state_id)
+    assert card.default_product_role == "known_off_target"
+    assignment = freeze.resolve_development_state(review, state_id)
+    assert assignment.state_id == state_id
+    assert assignment.product_role == "role_unresolved"

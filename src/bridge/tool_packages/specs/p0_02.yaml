@@ -1,6 +1,6 @@
 tool_id: P0-02
 name: Cell-State Evidence
-version: 0.6.0
+version: 0.6.1
 summary: Measure candidate CellTypist assignments, rejection diagnostics and source-aware auxiliary evidence without conferring scientific qualification.
 implementation_state: implemented
 scientific_status: candidate

@@ -160,7 +160,7 @@ def test_biological_unit_attestation_routes_to_method_tools() -> None:
     assert receipt.object_version == "0.1.0"
     assert (receipt.min_count, receipt.max_count) == (1, 1)
 
-    for tool_id, version in (("P0-05", "0.6.0"), ("P0-06", "0.8.1")):
+    for tool_id, version in (("P0-05", "0.6.0"), ("P0-06", "0.8.2")):
         binding = bindings[tool_id]
         assert binding.tool_version == version
         assert {item.role: item.slot_id for item in binding.object_inputs}[
@@ -521,7 +521,7 @@ def test_materialized_request_fails_closed_when_slots_are_missing(
     request = ToolRequestV2(
         request_id="request-missing-slots",
         tool_id="P0-10",
-        tool_version="0.4.1",
+        tool_version="0.4.3",
         output_dir=tmp_path,
     )
 
@@ -735,7 +735,7 @@ def test_reference_runner_reports_an_unresolved_slot(tmp_path: Path) -> None:
             {
                 "request_id": "reference-missing-inputs",
                 "tool_id": "P0-10",
-                "tool_version": "0.4.1",
+                "tool_version": "0.4.3",
                 "output_dir": str(tmp_path / "output"),
             }
         ),

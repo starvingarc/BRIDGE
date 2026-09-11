@@ -2,13 +2,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConditionalInputs } from "../src/components/ConditionalInputs";
 import { api } from "../src/api";
-import type { ConditionalDraft, Session } from "../src/types";
+import type { ConditionalDraft } from "../src/types";
 
 const selection = { tool_id: "P0-07", mode_id: "legacy_comparison", asset_ids: [],
   object_inputs: [], measurement_spec_ref: null };
 const entry = { id: "entry", label: "已登记比较方案 1", category_label: "可作描述性比较",
   execution_available: true, reasons: [], diagnostics: { selection, reason_codes: [] } };
-const initial = (): Session => ({
+const initial = (): Awaited<ReturnType<typeof api.proposeConditionalInputs>> => ({
+  plan_history: [], capabilities: [],
   id: "session", title: "研究", updated_at: "", status: "idle", messages: [], uploads: [],
   plan: null, artifacts: [], error: null, input_review_required: false, pending_input_change: null,
   conditional_inputs: { input_revision: 3, access_boundary: "仅当前会话来源", scientific_boundary: "不回填移植前结果",

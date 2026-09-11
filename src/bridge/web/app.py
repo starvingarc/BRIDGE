@@ -1183,15 +1183,18 @@ class Service:
                 and getattr(outcome, "result_schema_ref", None) == "bridge://schemas/research-claim-verification-result/v0.2"):
             from .inputs import checked_bytes
             from bridge.tool_packages.p0_10_claim_verifier.research import (
-                ResearchAnalysisSnapshot, ResearchClaimVerificationResult, render_research_snapshot,
+                ResearchAnalysisSnapshot, ResearchAnalysisSnapshotV03,
+                ResearchClaimVerificationResult, render_research_snapshot,
             )
             snapshots = [item for item in outcome.artifacts if item.path.name == "research_snapshot.json"]
             if snapshots:
                 if len(snapshots) != 1:
                     raise ValueError("research_snapshot_binding_invalid")
                 source = snapshots[0]
-                snapshot = ResearchAnalysisSnapshot.model_validate_json(checked_bytes(
-                    self, state, source.path, source.sha256, root=root / "runs"))
+                raw_snapshot = checked_bytes(self, state, source.path, source.sha256, root=root / "runs")
+                snapshot_model = (ResearchAnalysisSnapshotV03 if json.loads(raw_snapshot).get("object_version") == "0.3.0"
+                                  else ResearchAnalysisSnapshot)
+                snapshot = snapshot_model.model_validate_json(raw_snapshot)
                 verification = ResearchClaimVerificationResult.model_validate(outcome.result)
                 verified_reports = render_research_snapshot(snapshot=snapshot, result=verification)
                 report_metadata = {"input_revision": snapshot.input_revision,
@@ -1649,8 +1652,11 @@ def create_app(settings: Settings) -> FastAPI:
                 service.inputs.selection_reasons(state, body, verify=True)
             except (ValueError, OSError):
                 raise HTTPException(422, "invalid_input_selection") from None
-            state["_input_selections"][body.tool_id] = body.model_dump(mode="json")
-            service.input_changed(state)
+            if service.controls.stage_selection(state, body):
+                service.save(state)
+            else:
+                state["_input_selections"][body.tool_id] = body.model_dump(mode="json")
+                service.input_changed(state)
             return service.public(state)
 
     @app.post("/api/sessions/{sid}/analysis-inputs/objects")

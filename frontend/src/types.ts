@@ -159,7 +159,7 @@ export type JsonValue =
 export type PendingInputChange = {
   id: string;
   digest: string;
-  kind: "asset" | "source" | "intake";
+  kind: "asset" | "source" | "intake" | "selection";
   impact?: { version: string; input_revision: number;
     affected: Array<{ receipt_sha256: string; tool_id: string; label?: string }>;
     reusable: Array<{ receipt_sha256: string; tool_id: string; label?: string }>;

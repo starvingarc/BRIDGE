@@ -427,6 +427,14 @@ class AssessmentCoordinator:
                 if candidate is None or (decision.action == "query") != (candidate["mode_id"] == "case_query"):
                     self._finish(state, "unavailable_or_repeated_action", status="blocked")
                     return
+                # Preserve the exact offered private report context. This decision
+                # may append an interpretation, but cannot rewrite that snapshot or
+                # make each report trigger another report from its own history.
+                if candidate["tool_id"] == "P0-10":
+                    refs = {ref.role: ref for ref in candidate["request"].object_inputs}
+                    if "research_report_context" in refs:
+                        key = digest([scope.scope_id, scope.input_revision, refs["evidence_graph_manifest"].sha256])
+                        state.setdefault("_selected_report_contexts", {})[key] = refs["research_report_context"].input_id
                 # Reconstruct/recheck after the provider boundary. It cannot supply a request.
                 current = self.service.inputs.assessment_candidates(state, scope)
                 candidate = next((row for row in current

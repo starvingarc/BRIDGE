@@ -204,7 +204,7 @@ def run_candidate_cell_state(request, spec, upstream_qc, input_hash, measurement
 
     try:
         binding, model, calibration, receipt = load_candidate_runtime(request)
-        if upstream_qc.profile_v2 is None or upstream_qc.typed_lineage is None:
+        if upstream_qc.profile_v2 is None:
             raise ValueError("candidate_typed_qc_data_view_required")
         asset = request.assets[0]
         if asset.matrix_semantics != "raw_counts":

@@ -153,10 +153,10 @@ def resolve_development_state(
     if row.decision == "parent_only":
         parent = rows[row.parent_state_id]
         return ReviewedAssignment(
-            parent.state_id, "parent_candidate", parent.default_product_role,
+            parent.state_id, "parent_candidate", "role_unresolved",
             "regional_source_label_not_validated",
         )
-    return ReviewedAssignment(row.state_id, "candidate", row.default_product_role, "development_candidate_only")
+    return ReviewedAssignment(row.state_id, "candidate", "role_unresolved", "development_candidate_only")
 
 
 def development_review_sha256(version: str = "1.1.0") -> str:

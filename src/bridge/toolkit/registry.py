@@ -403,16 +403,22 @@ class ToolRegistry:
             })
             return self._validate_adapter_result(
                 result, request, recorded, load_schema(recorded.result_schema_ref))
-        if (type(result) is ToolRun and type(request) is ToolRequest
-                and request.tool_id == "P0-02" and result.tool_version == "0.5.5"):
-            if (result.request != request or request.tool_version not in {None, "0.5.5"}
-                    or result.environment_spec_id != "ENV-P0-CORE-v0.2"
+        legacy_native = {
+            ("P0-01", "0.1.5"): "ENV-P0-CORE-v0.1",
+            ("P0-02", "0.5.5"): "ENV-P0-CORE-v0.2",
+            ("P0-02", "0.6.0"): "ENV-P0-CORE-v0.2",
+        }
+        native_key = (request.tool_id, getattr(result, "tool_version", None))
+        if type(result) is ToolRun and type(request) is ToolRequest and native_key in legacy_native:
+            if (result.request != request or request.tool_version not in {None, result.tool_version}
+                    or result.environment_spec_id != legacy_native[native_key]
                     or result.implementation_state is not ImplementationState.IMPLEMENTED):
                 raise ValueError("Historical Tool Package receipt mismatch")
             return result
         legacy = {
             ("P0-10", "0.4.1"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
             ("P0-06", "0.8.1"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/proliferation-stress-response-result/v0.1"),
+            ("P0-10", "0.4.2"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
         }
         # Historical receipts are immutable; only explicitly supported releases are admitted.
         key = (request.tool_id, getattr(result, "tool_version", None))
@@ -718,7 +724,7 @@ class ToolRegistry:
     ) -> ToolRunV2:
         # The versioned research statement contract selects the research result;
         # it cannot be selected by an adapter's self-reported schema alone.
-        if (spec.tool_id == "P0-10" and spec.version == "0.4.2"
+        if (spec.tool_id == "P0-10" and spec.version in {"0.4.2", "0.4.3"}
                 and any(ref.role == "statement_registry"
                         and ref.schema_ref == "bridge://schemas/research-statement-registry/v0.2"
                         for ref in request.object_inputs)

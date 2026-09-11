@@ -15,6 +15,8 @@ const exactValue = (value: PendingInputChange["changes"][number]["before"]) =>
 
 export function InputChangeCard({ pending, uploads, busy, onConfirm, onDiscard, onKeep }: Props) {
   const intake = pending?.kind === "intake";
+  const selection = pending?.kind === "selection";
+  const selectionLabels: Record<string, string> = { object_inputs: "分析对象", asset_ids: "数据文件", mode_id: "分析方式", measurement_spec_ref: "测量定义" };
   const targetUpload = pending
     ? uploads.find((upload) => upload.id === pending.upload_id)
     : undefined;
@@ -22,20 +24,20 @@ export function InputChangeCard({ pending, uploads, busy, onConfirm, onDiscard, 
   return (
     <section className="input-change-card" role="region" aria-label="Input change review">
       <header>
-        <strong>{intake ? "请核对产品资料" : "Input review required"}</strong>
-        {pending ? <span>{intake ? "待您确认" : `${pending.kind} change`}</span> : null}
+        <strong>{intake ? "请核对产品资料" : selection ? "请核对分析输入" : "Input review required"}</strong>
+        {pending ? <span>{intake || selection ? "待您确认" : `${pending.kind} change`}</span> : null}
       </header>
       {pending ? (
         <>
-          <p>
+          {!selection ? <p>
             {intake ? "本次文件 " : "Target file "}<strong>{targetUpload?.name ?? "Unavailable upload"}</strong>{" "}
             {intake ? null : <code>{pending.upload_id}</code>}
-          </p>
-          <p>{intake ? "以下是待确认的精确变更。确认资料不等于批准运行，不确定的项目可以保留未知。" : "This exact change is staged. Current inputs remain unchanged until confirmation."}</p>
+          </p> : null}
+          <p>{selection ? "以下分析输入将在确认后更新；已有分析和报告的影响见下方清单。" : intake ? "以下是待确认的精确变更。确认资料不等于批准运行，不确定的项目可以保留未知。" : "This exact change is staged. Current inputs remain unchanged until confirmation."}</p>
           <dl>
             {pending.changes.map((change) => (
               <div key={change.field}>
-                <dt>{intake ? intakeLabels[change.field] ?? change.field : <code>{change.field}</code>}</dt>
+                <dt>{intake ? intakeLabels[change.field] ?? change.field : selection ? selectionLabels[change.field] ?? change.field : <code>{change.field}</code>}</dt>
                 <dd>
                   <span>{intake ? "原来：" : "Before "}{intake ? intakeValue(change.before) : <code>{exactValue(change.before)}</code>}</span>
                   <span>{intake ? "确认后：" : "After "}{intake ? intakeValue(change.after) : <code>{exactValue(change.after)}</code>}</span>
@@ -56,8 +58,8 @@ export function InputChangeCard({ pending, uploads, busy, onConfirm, onDiscard, 
             </section>
           ) : null}
           <div className="input-change-actions">
-            <button type="button" onClick={onConfirm} disabled={busy}>{intake ? "确认资料" : "Confirm change"}</button>
-            <button type="button" onClick={onDiscard} disabled={busy}>{intake ? "放弃这次修改" : "Discard change"}</button>
+            <button type="button" onClick={onConfirm} disabled={busy}>{intake ? "确认资料" : selection ? "确认修改" : "Confirm change"}</button>
+            <button type="button" onClick={onDiscard} disabled={busy}>{intake || selection ? "放弃这次修改" : "Discard change"}</button>
           </div>
         </>
       ) : (

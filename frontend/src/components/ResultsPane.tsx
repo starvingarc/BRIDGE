@@ -313,7 +313,8 @@ function ParquetArtifact({ sessionId, artifact }: { sessionId: string; artifact:
 }
 
 function ResearchSnapshotView({ sessionId, artifact }: { sessionId: string; artifact: Artifact }) {
-  const [content, setContent] = useState<{ texts: string[]; missing: number; error: boolean } | null>(null);
+  type Section = [string, unknown];
+  const [content, setContent] = useState<{ texts: string[]; sections: Section[]; missing: number; error: boolean } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     let current = true;
@@ -334,14 +335,20 @@ function ResearchSnapshotView({ sessionId, artifact }: { sessionId: string; arti
         if (!Array.isArray(draft.claim_blocks) || draft.claim_blocks.length > 5000
             || !draft.claim_blocks.every((row: { text?: unknown }) => typeof row.text === "string")
             || !Array.isArray(requirements.requirements)) throw new Error("report_shape_invalid");
+        const sections: unknown = snapshot.object_version === "0.3.0"
+          ? JSON.parse(snapshot.context_sections_json) : [];
+        if (!Array.isArray(sections) || sections.length > 20
+            || !sections.every((row) => Array.isArray(row) && row.length === 2
+              && typeof row[0] === "string")) throw new Error("report_context_invalid");
         if (current) setContent({
+          sections: sections as Section[],
           texts: draft.claim_blocks.map((row: { text: string }) => row.text),
           missing: requirements.requirements.filter((row: { state?: string }) => row.state === "open").length,
           error: false,
         });
       }).catch((error: unknown) => {
         if (current && (error as { name?: string }).name !== "AbortError") {
-          setContent({ texts: [], missing: 0, error: true });
+          setContent({ texts: [], sections: [], missing: 0, error: true });
         }
       });
     return () => { current = false; controller.abort(); };
@@ -351,6 +358,9 @@ function ResearchSnapshotView({ sessionId, artifact }: { sessionId: string; arti
   return <section aria-label="同版本研究报告">
     <p>以下文字与离线报告读取同一份证据快照。尚有 {content.missing} 项开放证据要求。</p>
     {content.texts.map((text, index) => <p key={index}>{text}</p>)}
+    {content.sections.map(([title, value], index) => <details key={index}>
+      <summary>{title}</summary><pre>{JSON.stringify(value, null, 2)}</pre>
+    </details>)}
   </section>;
 }
 
