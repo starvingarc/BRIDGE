@@ -10,7 +10,8 @@ from copy import deepcopy
 from pathlib import Path
 
 from bridge.tool_packages.p0_10_claim_verifier.research import (
-    ResearchReportContext, _check_context_graph, _read_graph, seal_research_context,
+    ResearchReportContext, _check_context_graph, _read_graph, active_research_records,
+    seal_research_context,
 )
 from .scientific_inputs import digest
 
@@ -32,10 +33,11 @@ def build_research_context(reports, state, scope, pool, *, graph_manifest_input_
     if (state.get("_intakes", {}).get(scope.upload_id) != intake
             or state["_input_revision"] != scope.input_revision):
         raise ValueError("report_context_confirmed_intake_changed")
+    current = active_research_records(manifest, evidence)
     records = {}
-    for row in evidence.records:
+    for row in current:
         records.setdefault(row.measurement_result_ref.object_id, []).append(row)
-    graph_runs = {row.tool_run_ref.object_id for row in evidence.records}
+    graph_runs = {row.tool_run_ref.object_id for row in current}
     dependencies = {graph_manifest_input_id}
     sources = {}
     def register(identifier, *, logical_ref=None):
@@ -147,7 +149,7 @@ def build_research_context(reports, state, scope, pool, *, graph_manifest_input_
                 **{key: row[key] for key in ("method_id", "program_id", "mean", "score_unit",
                     "n_observations", "assessment_state", "reason_codes")}})
 
-    native_runs = {row.tool_run_ref.object_id for row in evidence.records
+    native_runs = {row.tool_run_ref.object_id for row in current
                    if row.metric_id.startswith(("candidate_composition_fraction_", "native_mean_"))}
     if not native_runs <= {"tool-run:" + run.run_id for _, _, run in [*candidates, *processes]}:
         raise ValueError("report_context_native_profile_missing")

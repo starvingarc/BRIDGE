@@ -170,7 +170,11 @@ verifier checks these exact bindings before exposing private Chinese offline
 HTML and JSON/CSV/SVG attachments. Reports distinguish observations, proposed
 explanations and unresolved scientific qualification. Unavailable measurements
 remain null, and failed model development remains visible rather than being
-promoted to a validated product result.
+promoted to a validated product result. Current claims, measurement summaries and
+native context use the graph's effective version state, not the historical
+`active` flag in an immutable source record. Superseded, invalidated and
+inapplicable records remain in the source history but cannot become current
+report findings.
 
 ## Conditional comparison and graft
 

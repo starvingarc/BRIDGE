@@ -25,6 +25,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     contains_unsafe_reference, VersionedObjectRef,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
+from bridge.tool_packages.p0_09_evidence_compiler.adapter import _validate_source_record_set
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     AuthoringChannel, ClaimBlock, ClaimPolicySpec, ClaimVerificationResult,
     ClaimVerifierReleaseContract, ReportDraft, StatementRegistry, ReleaseState,
@@ -380,6 +381,13 @@ class ResearchAnalysisSnapshotV03(ResearchAnalysisSnapshot):
         return self
 
 
+def active_research_records(manifest, evidence):
+    """Resolve append-only history before selecting current report evidence."""
+    effective = _validate_source_record_set(evidence, manifest)
+    return [row for row in evidence.records
+            if effective[row.ref].value == "active" and row.applicability.value == "applicable"]
+
+
 def _check_context_graph(context, manifest, manifest_sha256, revision, evidence):
     context = ResearchReportContext.model_validate(context.model_dump(mode="json"))
     if (context.graph_id != manifest.graph_id or context.graph_version != manifest.graph_version
@@ -388,7 +396,7 @@ def _check_context_graph(context, manifest, manifest_sha256, revision, evidence)
             or context.input_revision != revision):
         raise ValueError("report_context_graph_binding_mismatch")
     records = {}
-    for row in evidence.records:
+    for row in active_research_records(manifest, evidence):
         if (context.data_view.sample_or_preparation_ref is not None
                 and row.sample_or_preparation_ref.ref != context.data_view.sample_or_preparation_ref):
             raise ValueError("report_context_specimen_mismatch")
@@ -498,8 +506,7 @@ def _make_draft(*, manifest: CaseEvidenceGraphManifest, manifest_sha256: str,
                 report_context: ResearchReportContext | None = None) -> ReportDraft:
     contract = load_research_release_contract()
     blocks = [
-        research_record_claim(record) for record in evidence_set.records
-        if record.lifecycle_state.value == "active" and record.applicability.value == "applicable"
+        research_record_claim(record) for record in active_research_records(manifest, evidence_set)
     ]
     statement = contract.statement_registry.statements[0]
     blocks.append(ClaimBlock(
@@ -588,10 +595,9 @@ def research_draft_matches_graph(report: ReportDraft, snapshot: ResearchAnalysis
     # Full equality ensures omitted opposing evidence, altered/missing bindings,
     # unversioned interpretations and omitted boundaries cannot verify.
     manifest = CaseEvidenceGraphManifest.model_validate_json(snapshot.graph_manifest_json)
-    records = [EvidenceRecord.model_validate(r) for r in json.loads(snapshot.source_evidence_records_json)]
+    evidence = EvidenceRecordSet.model_validate_json(snapshot.source_evidence_record_set_json)
     # Build expected claims without inventing a parallel graph representation.
-    expected = [research_record_claim(r) for r in records
-                if r.lifecycle_state.value == "active" and r.applicability.value == "applicable"]
+    expected = [research_record_claim(r) for r in active_research_records(manifest, evidence)]
     statement = load_research_release_contract().statement_registry.statements[0]
     expected.append(ClaimBlock(
         claim_id="claim-block:research-boundary", claim_version="0.2.0",
@@ -766,7 +772,10 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
         + paragraphs + sections + "</body></html>"
     )
     if context is not None:
-        html = _context_report_html(context, records, paragraphs, sections, metadata)
+        manifest = CaseEvidenceGraphManifest.model_validate_json(snapshot.graph_manifest_json)
+        evidence = EvidenceRecordSet.model_validate_json(snapshot.source_evidence_record_set_json)
+        current = [row.model_dump(mode="json") for row in active_research_records(manifest, evidence)]
+        html = _context_report_html(context, current, paragraphs, sections, metadata)
     svg_lines = [metadata, *[title + "：" + _json(value) for title, value in context_sections],
                  *[block.text for block in draft.claim_blocks],
                  "完整来源、缺失要求与协调记录见同一快照 JSON；未验证候选解释不得作为已验证结论。"]

@@ -273,6 +273,90 @@ def test_html_and_svg_have_only_inert_self_contained_content(graph_path, tmp_pat
 
 
 
+
+def _revised_research_graphs(root, metric):
+    first = _run(root / "first", bundle=_bundle(candidates=[
+        {**_candidate(metric_id=metric), "numerator": 75}]))
+    paths = [first.request.output_dir / first.run_id / "case_evidence_graph_manifest.json"]
+    for action in ("supersede", "invalidate"):
+        prior = paths[-1]
+        manifest = json.loads(prior.read_bytes())
+        records = json.loads((prior.parent / "evidence_records.json").read_bytes())["records"]
+        requirements = json.loads((prior.parent / "evidence_requirements.json").read_bytes())["requirements"]
+        original = {path: path.read_bytes() for path in prior.parent.iterdir() if path.is_file()}
+        candidate = _candidate(metric_id=metric, value=0.8,
+            revision_action=action,
+            predecessor_ref=records[-1]["evidence_id"] + "@" + str(records[-1]["evidence_version"]))
+        candidate["numerator"] = 80
+        result = _run(root / action, bundle=_bundle(candidates=[candidate],
+            prior_records=records, prior_requirements=requirements,
+            base_graph_ref={"graph_id": manifest["graph_id"], "graph_version": manifest["graph_version"],
+                "manifest_sha256": hashlib.sha256(prior.read_bytes()).hexdigest()}),
+            base_manifest_path=prior)
+        assert result.execution_state.value == "succeeded", result.reason_codes
+        assert all(path.read_bytes() == raw for path, raw in original.items())
+        paths.append(result.request.output_dir / result.run_id / "case_evidence_graph_manifest.json")
+    return paths
+
+
+@pytest.fixture(scope="module")
+def revised_research_graphs(tmp_path_factory):
+    return _revised_research_graphs(tmp_path_factory.mktemp("research-revisions"), "native_s_g2m_fraction")
+
+
+@pytest.fixture(scope="module")
+def revised_process_graphs(tmp_path_factory):
+    return _revised_research_graphs(tmp_path_factory.mktemp("process-revisions"), "native_mean_proc_score_scanpy_s")
+
+
+@pytest.mark.parametrize("revision,expected_versions", [(1, [2]), (2, [])])
+def test_revised_research_report_uses_effective_evidence_not_historical_active_flags(
+        revised_research_graphs, tmp_path, revision, expected_versions):
+    graph = revised_research_graphs[revision]
+    context = context_for(graph)
+    request = context_request(tmp_path, graph, context)
+    draft_ref = next(ref for ref in request.object_inputs if ref.role == "report_draft")
+    draft = ReportDraft.model_validate_json(draft_ref.path.read_bytes())
+    refs = [ref for claim in draft.claim_blocks for ref in claim.evidence_refs]
+    assert [int(ref.rsplit("@", 1)[1]) for ref in refs] == expected_versions
+    run = execute(request)
+    assert run.execution_state.value == "succeeded", run.reason_codes
+    assert run.result["release_state"] == "verified", run.result
+    artifacts = {a.path.name: a.path for a in run.artifacts}
+    report = artifacts["research_report.html"].read_text()
+    current = report.split("<details>", 1)[0]
+    assert "<td>75</td>" not in current
+    assert ("<td>80</td>" in current) is bool(expected_versions)
+    raw = json.loads(artifacts["research_report.json"].read_bytes())
+    history = json.loads(raw["source_evidence_record_set_json"])["records"]
+    assert history[0]["value"] == 0.75 and history[0]["lifecycle_state"] == "active"
+    assert len(history) == revision + 1
+    csv_rows = list(csv.DictReader(StringIO(artifacts["research_report.csv"].read_text())))
+    assert [row["evidence_version"] for row in csv_rows if row["row_type"] == "evidence"] == [
+        str(version) for version in range(1, revision + 2)]
+
+
+
+@pytest.mark.parametrize("revision", [1, 2])
+def test_report_context_checks_only_effective_measurement_versions(revised_process_graphs, revision):
+    r = research()
+    graph = revised_process_graphs[revision]
+    manifest, sha, evidence, _ = r._read_graph(graph)
+    record = evidence.records[-1]
+    payload = context_for(graph).model_dump(mode="json", exclude={"context_sha256"})
+    payload["process_means"] = [{"source_ref": "candidate-profile:test@1",
+        "measurement_ref": record.measurement_result_ref.ref, "metric_id": record.metric_id,
+        "method_id": "PROC-SCORE-SCANPY", "program_id": "S", "mean": 0.8,
+        "score_unit": record.unit, "n_observations": 100,
+        "assessment_state": "available", "reason_codes": []}]
+    context = r.seal_research_context(payload)
+    if revision == 1:
+        r._check_context_graph(context, manifest, sha, "7", evidence)
+    else:
+        with pytest.raises(ValueError, match="report_context_measurement_missing"):
+            r._check_context_graph(context, manifest, sha, "7", evidence)
+
+
 def context_for(graph_path, *, name="修订后的产品名称", revision="7"):
     r = research()
     manifest = json.loads(graph_path.read_bytes())
@@ -438,6 +522,29 @@ def test_context_builder_binds_native_labels_and_actual_mean_counts(tmp_path, ki
         reason = "process_count_mismatch"
     with pytest.raises(ValueError, match=reason):
         build_research_context(reports, state, scope, pool, graph_manifest_input_id="graph")
+
+    if kind == "composition":
+        profile["candidate_composition"][0]["label"] = label["label"]
+    else:
+        profile["program_summaries"][0]["n_observations"] = 100
+    prior = json.loads((graph.parent / "evidence_records.json").read_bytes())["records"]
+    manifest = json.loads(graph.read_bytes())
+    invalidated = _run(tmp_path / "invalidated", bundle=_bundle(
+        candidates=[{**candidate, "revision_action": "invalidate",
+            "predecessor_ref": prior[0]["evidence_id"] + "@1"}],
+        prior_records=prior,
+        prior_requirements=json.loads((graph.parent / "evidence_requirements.json").read_bytes())["requirements"],
+        base_graph_ref={"graph_id": manifest["graph_id"], "graph_version": manifest["graph_version"],
+            "manifest_sha256": hashlib.sha256(graph.read_bytes()).hexdigest()}),
+        base_manifest_path=graph)
+    assert invalidated.execution_state.value == "succeeded", invalidated.reason_codes
+    revised = invalidated.request.output_dir / invalidated.run_id / "case_evidence_graph_manifest.json"
+    values["graph"] = json.loads(revised.read_bytes())
+    pool["graph"].update(path=str(revised), sha256=hashlib.sha256(revised.read_bytes()).hexdigest())
+    current, dependencies = build_research_context(reports, state, scope, pool, graph_manifest_input_id="graph")
+    assert current.composition_mapping == [] and current.process_means == []
+    assert current.candidate_development == []
+    assert not {"profile", "measurement"} & set(dependencies)
 
 
 def test_context_preserves_unverified_explanation_hash_history(graph_path):

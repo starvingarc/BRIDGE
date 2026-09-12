@@ -156,7 +156,19 @@ allowlisted rejection feedback while preserving used budgets and stop history.
 
 The merge review checked approval and resume authority, current/historical
 evidence binding, correction dependency propagation and canonical report
-registration. No new blocking code defect was identified in those paths.
+registration. Further report inspection found one blocking defect: raw historical
+`active` flags were used instead of the append-only graph's effective state.
+A superseded record could collide with its successor's claim identity, and old
+measurements could conflict with current context or reappear in a report summary.
+The correction reuses the compiler's existing history validation for draft claims,
+exact-draft verification, native context and current HTML summaries. Source
+records and downloadable history remain unchanged. Regression cases first failed
+on the previous implementation and cover supersession, invalidation, preserved
+history and withdrawn native context. The complete installed report module passed
+39 tests in 27.08 seconds, including those revision regressions; repository policy
+and whitespace checks passed. P0-10 advances from 0.4.4 to 0.4.5 to keep changed
+report generation distinct from existing immutable runs. Package examples and
+version-bound integration fixtures move together; the final full CI remains required.
 The CI time budget is increased to 90 minutes and reports the slowest tests;
 the same complete suite and all subsequent gates remain required. The exact final
 CI result belongs to [PR #99](https://github.com/starvingarc/BRIDGE/pull/99), not
