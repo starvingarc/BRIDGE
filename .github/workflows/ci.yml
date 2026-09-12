@@ -17,7 +17,8 @@ jobs:
   repository-gates:
     name: repository-gates
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # The full serial backend suite takes about 50 minutes; keep time for all gates.
+    timeout-minutes: 90
 
     steps:
       - name: Check out repository
@@ -63,7 +64,7 @@ jobs:
           python -m pip check
 
       - name: Run tests
-        run: python -m pytest -q
+        run: python -m pytest -q --durations=20
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

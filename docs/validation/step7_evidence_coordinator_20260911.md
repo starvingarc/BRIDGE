@@ -133,6 +133,41 @@ No dependency upgrades or warning suppression were used. The preinstalled npm
 launcher issue was bypassed using its already-installed Node entry points, not
 reported as repaired.
 
+## Later integrated mainline and PR review — 2026-09-12
+
+The earlier observations above retain their original source-specific scope.
+The later implementation adds native measured evidence, versioned explanations,
+same-snapshot research attachments and dependency-scoped corrections. A later
+genuine GSE204796 D28 run produced the non-null cycle observations above and
+executed a graph query, but did not complete graph append, a valid structured
+explanation and the updated report in one model-driven scope. Free-text-only
+model output and invalid evidence references are rejected, not converted into
+verified scientific explanations. Explicit resume at `0ca2f040` supplies only
+allowlisted rejection feedback while preserving used budgets and stop history.
+
+| Later check | Actual evidence |
+|---|---|
+| Earlier complete backend, `b785f97a` | 2,664 passed / 18 failed / 207 warnings; this remains a failed complete run |
+| Consolidated affected installed backend, `5f31856d` | 753 passed / 13 warnings in 2,173.81 seconds; not a second complete-suite baseline |
+| Installed resume-feedback regression, `0ca2f040` | 5 passed / 2 warnings in 12.49 seconds |
+| Integrated frontend | 116 passed across 13 files; TypeScript and production build passed; the existing 588.83-kB chunk warning remains |
+| Source/wheel preflight, `0ca2f040` | 397 package files byte-matched; all 12 registered implemented tools loaded |
+| Initial PR #99 CI, run `34593765302` | Backend progress reached 90% without a reported failure before the job's 45-minute timeout; later gates did not run, so this was not a pass |
+
+The merge review checked approval and resume authority, current/historical
+evidence binding, correction dependency propagation and canonical report
+registration. No new blocking code defect was identified in those paths.
+The CI time budget is increased to 90 minutes and reports the slowest tests;
+the same complete suite and all subsequent gates remain required. The exact final
+CI result belongs to [PR #99](https://github.com/starvingarc/BRIDGE/pull/99), not
+an anticipated result in this record.
+
+This PR is bounded engineering integration. The genuine continuous browser chain
+and same-version report download followed by confirmed correction remain open
+in the [mainline plan](../../plans/step7-evidence-coordinator.md), alongside the
+separate scientific qualification plans. Neither integration nor passing CI
+establishes those acceptance results or authorizes deployment.
+
 ## Remaining scientific work
 
 The 25 source-state cards, product-role/developmental-window decisions,

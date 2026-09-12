@@ -26,7 +26,13 @@ confirmed corrections through one versioned evidence chain.
 - User documentation and frontend directory naming are simplified. Agent
   collaboration requirements have one maintained source in [AGENTS](../AGENTS.md).
 
-## Remaining acceptance
+## Integration and remaining acceptance
+
+PR #99 integrates the bounded research implementation, not a qualified product
+release or a claim that the autonomous browser workflow is complete. The two
+real-flow gates below remain explicit follow-up work after engineering integration;
+existing candidate and research-only restrictions remain in force. No deployment
+is included. The final required GitHub checks must pass before merging.
 
 - [ ] Complete a genuine browser upload → measured graph → query →
   discriminating process check → appended graph → updated interpretation/report.
@@ -34,9 +40,14 @@ confirmed corrections through one versioned evidence chain.
 - [ ] Download same-version HTML/JSON/CSV/SVG and confirm a product-name correction
   updates the report without rerunning compatible measurements or rewriting
   previous artifacts.
-- [ ] Finish the consolidated installed backend, frontend, build, Schema,
-  registry and repository checks; record exact source identities and results.
-- [ ] Reconcile the final validation record and commit/push the topic branch.
+- [x] Record the consolidated installed affected-backend, frontend and package
+  verification, distinguishing them from the earlier failed full run.
+- [x] Push the topic branch and open PR #99; reconcile its source-specific evidence
+  in the mainline validation record.
+- [ ] Complete the required final GitHub `repository-gates` check. The first run
+  reached 90% of backend tests without a reported failure before the 45-minute
+  job timeout; the timeout is extended to 90 minutes without dropping checks.
+  The exact final run and merge identity are recorded on PR #99.
 
 ## Scientific boundary
 
