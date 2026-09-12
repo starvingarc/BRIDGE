@@ -180,6 +180,44 @@ in the [mainline plan](../../plans/step7-evidence-coordinator.md), alongside the
 separate scientific qualification plans. Neither integration nor passing CI
 establishes those acceptance results or authorizes deployment.
 
+## Renewed project and merge review — 2026-09-12
+
+The consolidated review covered execution authorization and version dispatch,
+candidate/development constraints, native measurement and graph provenance,
+append-only history, report/correction/conditional flows, frontend API and
+display boundaries, packaging and maintained documentation. It identified two
+remaining engineering blockers, not a new scientific qualification result:
+
+- The report package advanced to 0.4.5 while the registry's research-result
+  dispatch stopped at 0.4.4. GitHub run `34677935760` completed with 2,647 passes,
+  three failures, 46 optional-runtime skips and 206 warnings in 3,035.70 seconds.
+  Report execution and its downstream feedback chain were refused. The registry
+  now admits the current supported research contract and explicitly preserves
+  historical 0.4.4/0.4.5 receipts without accepting them as fresh current runs.
+- CSV retained source lifecycle flags without exposing effective graph state.
+  It now includes `effective_lifecycle_state` and `applicability`, while retaining
+  original `lifecycle_state` and `source_json`. The same revision regressions
+  cover superseded, invalidated and current values across HTML and CSV.
+
+P0-10 advances to 0.4.6 for the changed export; its package spec, Tool Card,
+examples, version-bound fixtures, current dispatch and historical compatibility
+are synchronized. Both defects were reproduced before their fixes.
+
+The intermediate installed registry/report/native-feedback selection passed
+54 tests with two dependency deprecation warnings in 397.97 seconds. After the
+final CSV and version changes, the installed registry and complete report module
+passed 52 tests in 30.18 seconds. Frontend verification passed all 116 tests in
+13 files, TypeScript and production build; the existing 588.83-kB chunk warning
+remains. Repository policy, knowledge/figure registries and whitespace passed.
+These bounded checks are not a replacement for the final complete PR CI.
+
+No further confirmed blocking defect was found in the consolidated review.
+Long sessions remain subject to the documented registered-object capacity;
+genuine continuous-browser/corrected-download acceptance and scientific
+qualification remain explicitly unfinished. Final complete CI and merge
+identities are recorded on [PR #99](https://github.com/starvingarc/BRIDGE/pull/99).
+No existing service, private sample, locked evaluation or deployment was changed.
+
 ## Remaining scientific work
 
 The 25 source-state cards, product-role/developmental-window decisions,

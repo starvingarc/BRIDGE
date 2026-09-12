@@ -521,7 +521,7 @@ def test_materialized_request_fails_closed_when_slots_are_missing(
     request = ToolRequestV2(
         request_id="request-missing-slots",
         tool_id="P0-10",
-        tool_version="0.4.5",
+        tool_version="0.4.6",
         output_dir=tmp_path,
     )
 
@@ -735,7 +735,7 @@ def test_reference_runner_reports_an_unresolved_slot(tmp_path: Path) -> None:
             {
                 "request_id": "reference-missing-inputs",
                 "tool_id": "P0-10",
-                "tool_version": "0.4.5",
+                "tool_version": "0.4.6",
                 "output_dir": str(tmp_path / "output"),
             }
         ),

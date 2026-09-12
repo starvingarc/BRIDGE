@@ -713,6 +713,9 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
     ):
         raise ValueError("unverified_or_mismatched_research_snapshot")
     records = json.loads(snapshot.source_evidence_records_json)
+    manifest = CaseEvidenceGraphManifest.model_validate_json(snapshot.graph_manifest_json)
+    evidence = EvidenceRecordSet.model_validate_json(snapshot.source_evidence_record_set_json)
+    effective = _validate_source_record_set(evidence, manifest)
     payload = snapshot.model_dump(mode="json")
     context = (ResearchReportContext.model_validate_json(snapshot.report_context_json)
                if isinstance(snapshot, ResearchAnalysisSnapshotV03) else None)
@@ -721,9 +724,11 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
     for record in records:
         row = {field: record.get(field) for field in (
             "evidence_id", "evidence_version", "metric_id", "value", "numerator", "denominator",
-            "unit", "evidence_state", "relation", "lifecycle_state", "evidence_tier",
+            "unit", "evidence_state", "relation", "lifecycle_state", "applicability", "evidence_tier",
         )}
         row["row_type"] = "evidence"
+        ref = record["evidence_id"] + "@" + str(record["evidence_version"])
+        row["effective_lifecycle_state"] = effective[ref].value
         row["source_json"] = _json(record)
         rows.append(row)
     for row_type, raw in (("missing_requirement", snapshot.missing_requirements_json),
@@ -739,7 +744,8 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
                    graph_version=snapshot.graph_version, graph_manifest_sha256=snapshot.graph_manifest_sha256,
                    input_revision=snapshot.input_revision, report_content_hash=snapshot.report_content_hash)
     fields = ["row_type", "evidence_id", "evidence_version", "metric_id", "value", "numerator", "denominator",
-              "unit", "evidence_state", "relation", "lifecycle_state", "evidence_tier", "source_json",
+              "unit", "evidence_state", "relation", "lifecycle_state", "effective_lifecycle_state",
+              "applicability", "evidence_tier", "source_json",
               "snapshot_sha256", "graph_id", "graph_version", "graph_manifest_sha256",
               "input_revision", "report_content_hash"]
     stream = StringIO(newline="")
@@ -772,8 +778,6 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
         + paragraphs + sections + "</body></html>"
     )
     if context is not None:
-        manifest = CaseEvidenceGraphManifest.model_validate_json(snapshot.graph_manifest_json)
-        evidence = EvidenceRecordSet.model_validate_json(snapshot.source_evidence_record_set_json)
         current = [row.model_dump(mode="json") for row in active_research_records(manifest, evidence)]
         html = _context_report_html(context, current, paragraphs, sections, metadata)
     svg_lines = [metadata, *[title + "：" + _json(value) for title, value in context_sections],

@@ -364,7 +364,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-10",
         tool_id="P0-10",
-        tool_version="0.4.5",
+        tool_version="0.4.6",
         output_dir=tmp_path / "output",
         object_inputs=refs,
     )

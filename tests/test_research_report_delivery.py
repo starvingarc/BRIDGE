@@ -334,6 +334,14 @@ def test_revised_research_report_uses_effective_evidence_not_historical_active_f
     csv_rows = list(csv.DictReader(StringIO(artifacts["research_report.csv"].read_text())))
     assert [row["evidence_version"] for row in csv_rows if row["row_type"] == "evidence"] == [
         str(version) for version in range(1, revision + 2)]
+    evidence_rows = [row for row in csv_rows if row["row_type"] == "evidence"]
+    assert evidence_rows[0]["lifecycle_state"] == "active"
+    assert [row["effective_lifecycle_state"] for row in evidence_rows] == (
+        ["superseded", "active"] if revision == 1 else ["superseded", "invalidated", "invalidated"])
+    assert all(row["applicability"] == "applicable" for row in evidence_rows)
+    assert [row["value"] for row in evidence_rows if row["effective_lifecycle_state"] == "active"] == (
+        ["0.8"] if revision == 1 else [])
+
 
 
 
@@ -420,6 +428,21 @@ def test_private_context_corrected_name_failure_and_legacy_bytes(graph_path, tmp
     assert all(path.read_bytes() == value for path, value in original.items())
     assert run.result["benchmark_id"] is None and run.result["public_export_eligibility"] == "ineligible"
     assert json.loads(snapshot.source_evidence_records_json)[0]["numerator"] == 75
+
+
+
+@pytest.mark.parametrize("version", ["0.4.4", "0.4.5"])
+def test_previous_report_patch_remains_readable_but_not_a_current_run(graph_path, tmp_path, version):
+    from bridge.tool_packages.p0_10_claim_verifier.adapter import adapter
+    registry = ToolRegistry.load_default()
+    request = request_for(tmp_path, graph_path, make_draft(graph_path))
+    recorded_spec = registry.describe("P0-10").model_copy(update={"version": version})
+    receipt = adapter.run(request, recorded_spec)
+    assert receipt.execution_state.value == "succeeded", receipt.reason_codes
+    assert receipt.result_schema_ref == research().RESEARCH_RESULT_SCHEMA_REF
+    assert registry.validate_historical_result(receipt, request) == receipt
+    with pytest.raises(ValueError, match="mismatched tool version"):
+        registry.validate_result(receipt, request)
 
 
 def test_context_report_opens_with_product_before_technical_identifiers(graph_path, tmp_path):

@@ -174,7 +174,9 @@ promoted to a validated product result. Current claims, measurement summaries an
 native context use the graph's effective version state, not the historical
 `active` flag in an immutable source record. Superseded, invalidated and
 inapplicable records remain in the source history but cannot become current
-report findings.
+report findings. CSV retains the original `lifecycle_state` and `source_json`,
+and separately exposes `effective_lifecycle_state` plus `applicability`; current
+applicable evidence requires `active` and `applicable` in those latter columns.
 
 ## Conditional comparison and graft
 

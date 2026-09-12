@@ -47,7 +47,12 @@ is included. The final required GitHub checks must pass before merging.
 - [ ] Complete the required final GitHub `repository-gates` check. The first run
   reached 90% of backend tests without a reported failure before the 45-minute
   job timeout; the timeout is extended to 90 minutes without dropping checks.
-  The exact final run and merge identity are recorded on PR #99.
+  The following full run exposed a report-version dispatch regression (2,647
+  passed / 3 failed / 46 optional-runtime skips). The renewed project review
+  corrected current/historical dispatch and CSV effective-state export; P0-10 is
+  now 0.4.6. Final installed registry/report checks and frontend checks passed,
+  with exact results in the validation record. The final complete CI run and
+  merge identity are recorded on PR #99.
 
 ## Scientific boundary
 
