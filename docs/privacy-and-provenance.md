@@ -51,6 +51,54 @@ construction, not passed through a generic redaction filter. The approved behavi
 [canonical PRD workflow](BRIDGE_PRD.md#6-agent-功能需求); actual tested scope is
 recorded in the [Web validation history](validation/web_preview_20260905.md).
 
+## Assessment Purpose
+
+Assessment requests use a separate explicit field projection of canonical
+aggregate results. Question text is intentionally sent to the configured model;
+the approval panel discloses this and the deployment's result-sharing setting.
+Status-only remains the default.
+
+Each provider turn receives fresh opaque selection, evidence, measurement,
+graph/node/family and program/method aliases. They are random, not hash prefixes
+or deterministic digests of private identities. Within-turn joins remain
+consistent. Private binding maps retain normalized request fingerprints,
+canonical evidence aliases and exact receipts; they are never included in the
+serialized provider context. Admission reconstructs and rechecks the canonical
+request after the model reply, preserving exact deduplication.
+
+The allowlist preserves tool-owned values, uncertainty, denominators and bounded
+canonical missingness codes. It excludes receipt/artifact/request hashes,
+plan IDs, input identities, local URLs, paths, complete provenance and local
+dependency dictionaries. The ordinary intake/result purposes are unchanged;
+this is not a generic redaction or anonymization service.
+
+Graph-query summaries preserve claim domains, literal missingness, reconciliation
+eligibility/state/direction and numerical intervals. Metric names are selected
+from the existing producer enums/Literals; missingness reasons use the compiler
+contract and reconciliation reasons use its authoritative reason tuple. Only
+the built-in candidate policy words have direct claim/requirement/channel labels.
+Unrestricted custom labels and unrecognized units/metrics remain opaque or
+explicitly semantically unavailable, even when Schema-valid. Private values are
+not made provider-safe by matching a string pattern. Value projection distinguishes
+numeric values, literal null and withheld text independently of the unchanged
+canonical evidence state. Hard-count accounting keeps selected-view counts/fractions
+and unavailable soft mass; the existing summary row/byte limits still refuse oversized
+projections without truncation. Local denominator and producer labels are replaced
+by per-turn aliases for the model.
+
+Authenticated browser evidence retains verified program IDs/roles, exact
+receipt/artifact bindings, dependency versions and local display-artifact IDs.
+Graph-query drilldown resolves the original source manifest and graph version
+through canonical identity/hash bindings, not a latest-tool lookup. Display
+links grant no public export authority. Valid model hypothesis citations resolve
+back from ephemeral aliases to exact local evidence before display; unbound
+citations or checks outside the scope fail closed.
+
+Fact corrections do not rewrite immutable receipts. The public session
+projection reports current, review-pending or historical binding state, and
+historical scopes cannot resume against changed facts/resources. Partial
+recomputation requires new consent for the selected checks.
+
 ## Intake Extraction Purpose
 
 The owner approved a separate `intake_extraction` purpose for uploaded

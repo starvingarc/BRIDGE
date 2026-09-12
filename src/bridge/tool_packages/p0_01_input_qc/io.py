@@ -744,6 +744,21 @@ def build_declared_lineage(
 
     raw_metadata = asset.metadata.get(LINEAGE_METADATA_KEY)
     if raw_metadata is None:
+        # A declared single sample identifies this input, not a donor or replicate.
+        column = asset.metadata.get("sample_id_column")
+        if isinstance(column, str) and column in observations.columns:
+            values = observations[column]
+            if len(values) and values.notna().all() and values.astype(str).nunique() == 1:
+                label = str(values.iloc[0]).strip()
+                if label:
+                    identity = hashlib.sha256(json.dumps(
+                        {"parent_sha256": base_view.parent_asset_sha256,
+                         "declared_column": column, "sample_value": label},
+                        sort_keys=True, ensure_ascii=False,
+                    ).encode("utf-8")).hexdigest()
+                    base_view = base_view.model_copy(update={
+                        "sample_or_preparation_ref": f"sample:declared-{identity}@0.1.0",
+                    })
         return _lineage_unavailable(base_view, "biological_unit_lineage_metadata_missing")
     try:
         declaration = DeclaredLineageMetadata.model_validate(raw_metadata)

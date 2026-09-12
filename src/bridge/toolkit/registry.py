@@ -278,10 +278,20 @@ class ToolRegistry:
                 root = resolve_reference_snapshot(measurement_spec.reference_refs[0])
                 manifest = validate_reference_snapshot(root)
                 validate_runtime_reference(manifest)
-                if measurement_spec.measurement_spec_id not in manifest.measurement_spec_ids:
+                supported_reference_spec = measurement_spec.measurement_spec_id
+                if supported_reference_spec == "CELLSTATE-scRNA-celltypist-candidate-v0.1":
+                    from bridge.tool_packages.p0_02_cell_state.candidate_runtime import (
+                        AUXILIARY_SPEC, load_candidate_runtime,
+                    )
+
+                    load_candidate_runtime(request)
+                    supported_reference_spec = AUXILIARY_SPEC
+                    if asset.matrix_semantics != "raw_counts":
+                        reasons.append("candidate_raw_counts_required")
+                if supported_reference_spec not in manifest.measurement_spec_ids:
                     reasons.append("measurement_spec_not_supported_by_reference")
             except ValueError as exc:
-                reasons.append(getattr(exc, "reason_code", "reference_snapshot_invalid"))
+                reasons.append(getattr(exc, "reason_code", str(exc) if request.measurement_spec_ref == "CELLSTATE-scRNA-celltypist-candidate-v0.1" else "reference_snapshot_invalid"))
             if measurement_spec.release_manifest_ref:
                 try:
                     from bridge.tool_packages.p0_02_cell_state.freeze import resolve_release_bundle
@@ -375,6 +385,57 @@ class ToolRegistry:
         if result.environment_spec_id != spec.environment_spec_id:
             raise ValueError("Tool Package returned a mismatched environment spec")
         return result
+
+    def validate_historical_result(
+        self, result: object, request: ToolRequestModel,
+    ) -> ToolRunModel:
+        """Read the supported immutable pre-query P009 receipt; fresh runs stay strict."""
+        if (isinstance(result, ToolRunV2) and isinstance(request, ToolRequestV2)
+                and request.tool_id == "P0-09" and result.tool_version == "0.4.2"
+                and result.result_schema_ref == "bridge://schemas/evidence-compiler-run-result/v0.1"):
+            if request.tool_version not in {None, result.tool_version}:
+                raise ValueError("Historical Tool Package request version mismatch")
+            recorded = self.describe("P0-09").model_copy(update={
+                "version": "0.4.2",
+                "implementation_state": ImplementationState.IMPLEMENTED,
+                "environment_spec_id": "ENV-EVIDENCE-v0.2",
+                "result_schema_ref": "bridge://schemas/evidence-compiler-run-result/v0.1",
+            })
+            return self._validate_adapter_result(
+                result, request, recorded, load_schema(recorded.result_schema_ref))
+        legacy_native = {
+            ("P0-01", "0.1.5"): "ENV-P0-CORE-v0.1",
+            ("P0-02", "0.5.5"): "ENV-P0-CORE-v0.2",
+            ("P0-02", "0.6.0"): "ENV-P0-CORE-v0.2",
+        }
+        native_key = (request.tool_id, getattr(result, "tool_version", None))
+        if type(result) is ToolRun and type(request) is ToolRequest and native_key in legacy_native:
+            if (result.request != request or request.tool_version not in {None, result.tool_version}
+                    or result.environment_spec_id != legacy_native[native_key]
+                    or result.implementation_state is not ImplementationState.IMPLEMENTED):
+                raise ValueError("Historical Tool Package receipt mismatch")
+            return result
+        legacy = {
+            ("P0-10", "0.4.1"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-06", "0.8.1"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/proliferation-stress-response-result/v0.1"),
+            ("P0-10", "0.4.2"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.4.3"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.4.4"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.4.5"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.4.6"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+        }
+        # Historical receipts are immutable; only explicitly supported releases are admitted.
+        key = (request.tool_id, getattr(result, "tool_version", None))
+        if key in legacy and isinstance(result, ToolRunV2) and isinstance(request, ToolRequestV2):
+            environment, schema = legacy[key]
+            if request.tool_version not in {None, result.tool_version}:
+                raise ValueError("Historical Tool Package request version mismatch")
+            recorded = self.describe(request.tool_id).model_copy(update={
+                "version": result.tool_version, "environment_spec_id": environment,
+                "result_schema_ref": schema,
+            })
+            return self._validate_adapter_result(result, request, recorded, load_schema(schema))
+        return self.validate_result(result, request)
 
     def _run_v2(
         self, request: ToolRequestV2, spec: ToolPackageSpecV2
@@ -665,6 +726,16 @@ class ToolRegistry:
         spec: ToolPackageSpecV2,
         result_schema: dict[str, Any],
     ) -> ToolRunV2:
+        # The versioned research statement contract selects the research result;
+        # it cannot be selected by an adapter's self-reported schema alone.
+        if (spec.tool_id == "P0-10" and spec.version in {"0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7"}
+                and any(ref.role == "statement_registry"
+                        and ref.schema_ref == "bridge://schemas/research-statement-registry/v0.2"
+                        for ref in request.object_inputs)
+                and getattr(result, "result", None) is not None):
+            spec = spec.model_copy(update={
+                "result_schema_ref": "bridge://schemas/research-claim-verification-result/v0.2"})
+            result_schema = load_schema(spec.result_schema_ref)
         if not isinstance(result, ToolRunV2):
             raise TypeError("Tool Package adapter returned an invalid ToolRunV2")
         if result.request != request or result.request.tool_id != spec.tool_id:

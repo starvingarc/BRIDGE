@@ -70,6 +70,14 @@ developmental = [
   "matplotlib>=3.9,<4",
 ]
 
+cellstate-training = [
+  "celltypist==1.7.1",
+  "scikit-learn>=1.7,<1.8",
+  "anndata>=0.11,<0.13",
+  "h5py>=3.11,<4",
+  "pyarrow>=18,<24",
+]
+
 [project.scripts]
 bridge-tool = "bridge.toolkit.cli:main"
 bridge-reference = "bridge.tool_packages.p0_02_cell_state.reference_cli:main"
@@ -92,7 +100,8 @@ where = ["src"]
 "bridge.tool_packages.p0_02_cell_state" = ["*.R"]
 "bridge.tool_packages.p0_01_input_qc.measurement_specs" = ["*.yaml"]
 "bridge.tool_packages.p0_02_cell_state.measurement_specs" = ["*.yaml"]
-"bridge.tool_packages.p0_02_cell_state.resources" = ["*.yaml"]
+"bridge.tool_packages.p0_02_cell_state.resources" = ["*.yaml", "*.json"]
+"bridge.tool_packages.p0_06_proliferation_stress_response" = ["resources/seurat-cell-cycle-v5.5.1-candidate.json", "resources/seurat-cell-cycle-LICENSE.txt"]
 "bridge.tool_packages.p0_08_evidence_sufficiency.resources" = ["*.json"]
 "bridge.tool_packages.p0_10_claim_verifier.resources" = ["*.json"]
 "bridge.resources" = ["*.json.gz"]

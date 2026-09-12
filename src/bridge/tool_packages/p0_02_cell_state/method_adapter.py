@@ -507,7 +507,7 @@ def _read_matrix(path: Path) -> sparse.csr_matrix:
 
 
 def _log1p_cp10k(counts: sparse.csr_matrix) -> sparse.csr_matrix:
-    totals = np.asarray(counts.sum(axis=1)).ravel()
+    totals = np.asarray(counts.sum(axis=1), dtype=np.float64).ravel()
     scale = np.divide(10_000.0, totals, out=np.zeros_like(totals), where=totals > 0)
     matrix = (sparse.diags(scale) @ counts).astype(np.float32).tocsr()
     matrix.data = np.log1p(matrix.data)

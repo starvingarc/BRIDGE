@@ -4,8 +4,9 @@
 > The [PRD workflow](BRIDGE_PRD.md#6-agent-功能需求) is the single product
 > contract. This page defines Agent/tool ownership and the existing integration
 > seam. The private Web preview has accepted steps 1–6 within their stated
-> scope; the downstream graph-driven loop, internal comparator selection and
-> qualified export remain approved targets.
+> scope. The source now connects bounded scope-driven graph/tool coordination;
+> real-case acceptance, applicable scientific reviews, internal comparator
+> selection and qualified export remain separate gates.
 
 ## Ownership
 
@@ -18,8 +19,9 @@ recalculate scientific results.
 Current bounded intake can draft source-backed product-definition and role
 candidates for explicit review. Confirmation materializes candidate objects; it
 does not make them reviewed/frozen science, create biological-unit attestation
-or approve execution. The current missingness-only graph and blocked internal
-report are partial paths, not the target autonomous feedback loop.
+or approve execution. Missingness-only graphs and blocked internal reports remain partial paths;
+measured coordination requires source-bound inputs and explicit scientific
+family/claim/requirement bindings.
 
 ## Integration profile
 
@@ -89,11 +91,51 @@ eligibility and then invokes the registered tool. Missing resources fail with a
 named blocker. The ToolRun, result Schema, artifact manifest and checksum remain
 the execution record.
 
-## Target coordinator loop
+## Scope-bound coordinator
 
-The graph-driven hypothesis/update loop and its approval boundaries are defined
-once in [PRD sections 6.1–6.8](BRIDGE_PRD.md#61-agent-总体工作流). A valid
-profile, tool menu or graph component alone does not establish that loop.
+The workflow remains defined in [PRD sections 6.1–6.8](BRIDGE_PRD.md#61-agent-总体工作流).
+The Web coordinator now prepares a finite question/upload/mode/resource scope.
+The same deterministic candidate entry reports actual blocking prerequisites
+and separate interpretation gaps before approval, without scientific execution
+or changing facts, selections, authorization or counters.
+
+Within exact consent, a configured model may select only an opaque per-turn
+option. The server reconstructs the normalized registered request, rechecks
+eligibility and deduplication, and derives the exact-plan approval from the
+original scope receipt. It records genuine tool outcomes, retrieves the graph,
+and rebuilds the same-version portrait. The model cannot supply a ToolRequest,
+upgrade a review, create a measurement or reset a limit. Each option describes an
+unexecuted exact action whose current prerequisites have passed, using the packaged
+registry name, summary and scientific status rather than implying an existing result.
+Blocking reasons belong only to their exact tool/mode pair; interpretation gaps are
+separate and do not suppress an otherwise eligible action. These descriptions grant
+no additional authority, and an explanation may end the phase with options remaining
+without establishing scientific completion.
+
+Automatic scope modes use existing QC/cell-state and source-bound producer
+seams, measured sufficiency, canonical initial/append and registered queries.
+Legacy/manual modes remain manual selections; absent scientific requirements
+never trigger conversion to an alternative policy. A measured claim binding
+gap can coexist with an eligible check. Unchanged canonical graph inputs cannot
+be appended as new evidence.
+
+No whole-question completion contract is configured: a model proposal of
+completion stops as `completion_contract_unavailable`, never scientific success.
+Stopped and interrupted scopes retain evidence and used budgets; changed
+facts/resources require a new scope. Repeated correction fencing does not replace
+a terminal stop reason. Each resumed phase retains earlier stop events with the
+then-used counters; resume never refunds budgets. The Web shows pending review
+separately from historical bindings and never silently recomputes after a correction.
+Explicit resume supplies only the immediately preceding allowlisted format,
+explanation-length or evidence-citation rejection code to the model, never the
+rejected response. Hypothesis citations use current-turn top-level evidence
+aliases; nested measurement and graph aliases are join references, not citations.
+
+The [Web guide](web-preview.md#cell-state-and-product-assessment) defines the
+researcher controls. The [assessment privacy projection](privacy-and-provenance.md#assessment-purpose)
+keeps provider aliases separate from exact browser-only receipt, artifact and
+source dependencies. See [observed validation](validation/step7_evidence_coordinator_20260911.md)
+for proof levels and remaining gates.
 
 ## Scientific boundary
 

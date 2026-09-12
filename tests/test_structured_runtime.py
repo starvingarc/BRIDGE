@@ -1459,6 +1459,26 @@ def test_repository_policy_rejects_unknown_v2_result_schema_without_execution(
     assert adapter.run_calls == 0
 
 
+
+def test_repository_policy_rejects_duplicate_frontend_and_private_workspace():
+    problems = []
+    repository_policy._check_tracked_layout([
+        Path("web/src/App.tsx"), Path("frontend/node_modules/a.js"),
+        Path(".superpowers/progress.md"), Path("knowledge/AGENTS.md"),
+    ], problems)
+    assert problems == [
+        "ambiguous frontend directory: web/src/App.tsx",
+        "generated or private workspace tracked: frontend/node_modules/a.js",
+        "generated or private workspace tracked: .superpowers/progress.md",
+        "duplicate agent instructions: knowledge/AGENTS.md",
+    ]
+    valid = []
+    repository_policy._check_tracked_layout([
+        Path("frontend/src/App.tsx"), Path("src/bridge/web/app.py"), Path("AGENTS.md"),
+    ], valid)
+    assert valid == []
+
+
 def test_repository_policy_rejects_root_contract_projections() -> None:
     problems: list[str] = []
 

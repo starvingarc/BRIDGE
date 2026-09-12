@@ -1,0 +1,911 @@
+{
+  "$defs": {
+    "DataViewBinding": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "type": "null"
+                },
+                "biological_unit_manifest_sha256": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "biological_unit_manifest_sha256": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "biological_unit_manifest_ref",
+                "biological_unit_manifest_sha256"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Content-addressed expression view passed between scientific tools.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Ref"
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
+        "matrix_location": {
+          "minLength": 1,
+          "title": "Matrix Location",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "enum": [
+            "raw_counts",
+            "normalized_expression"
+          ],
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_ids_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Ids Sha256",
+          "type": "string"
+        },
+        "parent_asset_id": {
+          "minLength": 1,
+          "title": "Parent Asset Id",
+          "type": "string"
+        },
+        "parent_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Parent Asset Sha256",
+          "type": "string"
+        },
+        "sample_or_preparation_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Or Preparation Ref"
+        },
+        "selection_spec_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Spec Ref"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "view_id": {
+          "minLength": 1,
+          "title": "View Id",
+          "type": "string"
+        },
+        "view_kind": {
+          "enum": [
+            "all_observations",
+            "qc_selected_observations"
+          ],
+          "title": "View Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "view_kind",
+        "artifact_id",
+        "sha256",
+        "parent_asset_id",
+        "parent_asset_sha256",
+        "matrix_location",
+        "matrix_semantics",
+        "n_observations",
+        "observation_ids_sha256"
+      ],
+      "title": "DataViewBinding",
+      "type": "object"
+    },
+    "ResearchCandidateDevelopment": {
+      "additionalProperties": false,
+      "properties": {
+        "development_gate_state": {
+          "enum": [
+            "passed",
+            "failed"
+          ],
+          "title": "Development Gate State",
+          "type": "string"
+        },
+        "development_reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Development Reason Codes",
+          "type": "array"
+        },
+        "development_review_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Development Review Sha256",
+          "type": "string"
+        },
+        "development_review_version": {
+          "title": "Development Review Version",
+          "type": "string"
+        },
+        "development_summary_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Development Summary Sha256",
+          "type": "string"
+        },
+        "producer_run_ref": {
+          "title": "Producer Run Ref",
+          "type": "string"
+        },
+        "scientific_qualification": {
+          "const": "not_established",
+          "default": "not_established",
+          "title": "Scientific Qualification",
+          "type": "string"
+        },
+        "source_ref": {
+          "title": "Source Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_ref",
+        "producer_run_ref",
+        "development_gate_state",
+        "development_reason_codes",
+        "development_summary_sha256",
+        "development_review_version",
+        "development_review_sha256"
+      ],
+      "title": "ResearchCandidateDevelopment",
+      "type": "object"
+    },
+    "ResearchCompositionMapping": {
+      "additionalProperties": false,
+      "properties": {
+        "assignment_state": {
+          "title": "Assignment State",
+          "type": "string"
+        },
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "fraction": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "interpretation": {
+          "const": "candidate_method_output_only",
+          "default": "candidate_method_output_only",
+          "title": "Interpretation",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "measurement_ref": {
+          "title": "Measurement Ref",
+          "type": "string"
+        },
+        "metric_id": {
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "source_ref": {
+          "title": "Source Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_ref",
+        "measurement_ref",
+        "metric_id",
+        "label",
+        "assignment_state",
+        "count",
+        "denominator",
+        "fraction"
+      ],
+      "title": "ResearchCompositionMapping",
+      "type": "object"
+    },
+    "ResearchContextSource": {
+      "additionalProperties": false,
+      "properties": {
+        "receipt_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Receipt Sha256"
+        },
+        "schema_ref": {
+          "title": "Schema Ref",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source_ref": {
+          "title": "Source Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_ref",
+        "schema_ref",
+        "sha256"
+      ],
+      "title": "ResearchContextSource",
+      "type": "object"
+    },
+    "ResearchExplanation": {
+      "additionalProperties": false,
+      "properties": {
+        "competing_explanation": {
+          "title": "Competing Explanation",
+          "type": "string"
+        },
+        "discriminating_check": {
+          "title": "Discriminating Check",
+          "type": "string"
+        },
+        "evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Aliases",
+          "type": "array"
+        },
+        "expected_observation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Observation"
+        },
+        "missing_evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Evidence Aliases",
+          "type": "array"
+        },
+        "opposing_evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Opposing Evidence Aliases",
+          "type": "array"
+        },
+        "statement": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement",
+        "evidence_aliases",
+        "competing_explanation",
+        "discriminating_check"
+      ],
+      "title": "ResearchExplanation",
+      "type": "object"
+    },
+    "ResearchExplanationVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "content_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "evidence_snapshot_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Evidence Snapshot Sha256",
+          "type": "string"
+        },
+        "hypotheses": {
+          "items": {
+            "$ref": "#/$defs/ResearchExplanation"
+          },
+          "title": "Hypotheses",
+          "type": "array"
+        },
+        "input_revision": {
+          "minimum": 0,
+          "title": "Input Revision",
+          "type": "integer"
+        },
+        "object_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "predecessor_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predecessor Sha256"
+        },
+        "qualification": {
+          "const": "proposed_explanation",
+          "default": "proposed_explanation",
+          "title": "Qualification",
+          "type": "string"
+        },
+        "scope_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Scope Digest",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "scope_digest",
+        "input_revision",
+        "hypotheses",
+        "evidence_snapshot_sha256",
+        "version",
+        "content_sha256",
+        "created_at"
+      ],
+      "title": "ResearchExplanationVersion",
+      "type": "object"
+    },
+    "ResearchProcessMean": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "enum": [
+            "available",
+            "not_assessed"
+          ],
+          "title": "Assessment State",
+          "type": "string"
+        },
+        "count_semantics": {
+          "const": "selected_observations_not_independent_replicates",
+          "default": "selected_observations_not_independent_replicates",
+          "title": "Count Semantics",
+          "type": "string"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mean"
+        },
+        "measurement_ref": {
+          "title": "Measurement Ref",
+          "type": "string"
+        },
+        "method_id": {
+          "title": "Method Id",
+          "type": "string"
+        },
+        "metric_id": {
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "n_observations": {
+          "exclusiveMinimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "program_id": {
+          "title": "Program Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "score_unit": {
+          "title": "Score Unit",
+          "type": "string"
+        },
+        "source_ref": {
+          "title": "Source Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_ref",
+        "measurement_ref",
+        "metric_id",
+        "method_id",
+        "program_id",
+        "mean",
+        "score_unit",
+        "n_observations",
+        "assessment_state",
+        "reason_codes"
+      ],
+      "title": "ResearchProcessMean",
+      "type": "object"
+    },
+    "ResearchProductFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "assay": {
+          "default": "unknown",
+          "title": "Assay",
+          "type": "string"
+        },
+        "capture_id_column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capture Id Column"
+        },
+        "cell_line": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell Line"
+        },
+        "count_semantics": {
+          "default": "unknown",
+          "title": "Count Semantics",
+          "type": "string"
+        },
+        "culture_batch_column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Culture Batch Column"
+        },
+        "culture_batch_role": {
+          "default": "unknown",
+          "title": "Culture Batch Role",
+          "type": "string"
+        },
+        "culture_day": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Culture Day"
+        },
+        "gene_symbol_column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gene Symbol Column"
+        },
+        "independent_cultures": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Independent Cultures"
+        },
+        "matrix_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matrix Location"
+        },
+        "product_family": {
+          "default": "unknown",
+          "title": "Product Family",
+          "type": "string"
+        },
+        "product_name": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product Name"
+        },
+        "protocol_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Protocol Name"
+        },
+        "sample_id_column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Id Column"
+        },
+        "sampling_context": {
+          "default": "unknown",
+          "title": "Sampling Context",
+          "type": "string"
+        },
+        "sequencing_method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sequencing Method"
+        },
+        "source_family_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Family Id"
+        },
+        "starting_cell_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starting Cell Type"
+        },
+        "target_cell_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Cell Type"
+        },
+        "target_stage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Stage"
+        }
+      },
+      "title": "ResearchProductFacts",
+      "type": "object"
+    },
+    "VersionedObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_version": {
+          "minLength": 1,
+          "title": "Object Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "object_version"
+      ],
+      "title": "VersionedObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/research-report-context/v0.3",
+  "additionalProperties": false,
+  "properties": {
+    "audience": {
+      "const": "internal_research",
+      "default": "internal_research",
+      "title": "Audience",
+      "type": "string"
+    },
+    "candidate_development": {
+      "items": {
+        "$ref": "#/$defs/ResearchCandidateDevelopment"
+      },
+      "title": "Candidate Development",
+      "type": "array"
+    },
+    "composition_mapping": {
+      "items": {
+        "$ref": "#/$defs/ResearchCompositionMapping"
+      },
+      "title": "Composition Mapping",
+      "type": "array"
+    },
+    "confirmed_product_facts": {
+      "$ref": "#/$defs/ResearchProductFacts"
+    },
+    "context_id": {
+      "title": "Context Id",
+      "type": "string"
+    },
+    "context_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Context Sha256",
+      "type": "string"
+    },
+    "data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "data_view_source_ref": {
+      "title": "Data View Source Ref",
+      "type": "string"
+    },
+    "explanation_qualification": {
+      "const": "unverified",
+      "default": "unverified",
+      "title": "Explanation Qualification",
+      "type": "string"
+    },
+    "explanation_versions": {
+      "items": {
+        "$ref": "#/$defs/ResearchExplanationVersion"
+      },
+      "title": "Explanation Versions",
+      "type": "array"
+    },
+    "facts_qualification": {
+      "const": "researcher_confirmed_not_scientific_validation",
+      "default": "researcher_confirmed_not_scientific_validation",
+      "title": "Facts Qualification",
+      "type": "string"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_manifest_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Graph Manifest Sha256",
+      "type": "string"
+    },
+    "graph_version": {
+      "minimum": 1,
+      "title": "Graph Version",
+      "type": "integer"
+    },
+    "input_revision": {
+      "title": "Input Revision",
+      "type": "string"
+    },
+    "intake_source_ref": {
+      "title": "Intake Source Ref",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.3.0",
+      "default": "0.3.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "process_means": {
+      "items": {
+        "$ref": "#/$defs/ResearchProcessMean"
+      },
+      "title": "Process Means",
+      "type": "array"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "public_export_eligibility": {
+      "const": "ineligible",
+      "default": "ineligible",
+      "title": "Public Export Eligibility",
+      "type": "string"
+    },
+    "scientific_validation": {
+      "const": "not_qualified",
+      "default": "not_qualified",
+      "title": "Scientific Validation",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/ResearchContextSource"
+      },
+      "minItems": 2,
+      "title": "Sources",
+      "type": "array"
+    }
+  },
+  "required": [
+    "context_id",
+    "input_revision",
+    "graph_id",
+    "graph_version",
+    "graph_manifest_sha256",
+    "product_case_ref",
+    "confirmed_product_facts",
+    "intake_source_ref",
+    "data_view",
+    "data_view_source_ref",
+    "sources",
+    "context_sha256"
+  ],
+  "title": "ResearchReportContext",
+  "type": "object"
+}

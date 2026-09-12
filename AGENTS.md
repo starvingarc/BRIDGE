@@ -14,19 +14,46 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 - 默认选择满足当前合同的最小实现；先删重复，再加抽象。
 - 没有两个真实调用方时，不新增通用层、包装类或配置字段。
 - 同一事实只保留一个人工维护源，其余内容必须确定性生成。
+- 仓库检查直接读取 Git 跟踪文件和注册合同；不再维护第二套逐文件配额清单。结构检查继续拒绝重复根目录、嵌套 Agent 指令、依赖与私有施工文件；新增文件仍须有真实职责和调用方。
 - 不提交未调用代码、提前设计的扩展点或仅为“以后可能需要”的依赖。
+
+## 用户文档与协作指令
+
+- README 是面向用户的项目门面：说明可以解决的问题、实际使用入口、结果含义与适用边界，不充当开发进度、内部工具目录或 Agent 工作记录。
+- 用户入口使用生物学问题和功能名称；`P0`、Tool ID、Schema 字段等内部术语只在确有需要的专业文档、合同或诊断详情中解释。
+- 文档保持稳定的项目叙述视角，不写对话转述、人称漂移、个人要求或“按你的要求”等元话语。
+- Agent 协作要求、开发约定与文档维护指令仅在本文件维护；其他文档可以引用，不重复抄写。产品行为、科学事实、数据来源和版本化合同仍保存在各自专业文档中。
+- 目录名称体现实际职责；避免同名入口造成职责混淆。删除重复索引、重复事实和空转包装前先确认真实调用与唯一来源，保留可追溯的科学合同和验证记录。
+
+## 开发环境与维护源
+
+使用 Python 3.12，在隔离环境中安装当前改动需要的 extras；常用开发入口为：
+
+~~~bash
+python -m pip install -e ".[qc,test,freeze,evidence]"
+~~~
+
+浏览器目录的开发与构建命令见 [frontend](frontend/README.md)，服务配置见
+[Web guide](docs/web-preview.md)。安装接口发生变化时还须核对构建后的 wheel。
+
+- 每个工具包保留包入口、运行 Tool Card、科学任务卡、请求示例和验证记录。详细字段和拒绝原因由 Tool Card 维护，不复制成另一份合同。
+- 公开 Schema 和知识投影按其维护源重新生成；不能只修改生成物。工具卡按实际来源区分：P0-01、P0-02、P0-08 由 `scripts/render_tool_cards.py` 生成；P0-03–P0-07、P0-09–P0-12 的详细卡本身是人工维护源，脚本只校验、不覆盖。
+- 机器接口由 Schema/package spec 定义，运行使用与拒绝由 Tool Card 定义，生物学问题与验证设计由科学任务卡定义，特定版本的实际证据由验证记录定义。
+- 产品工作流仅在 PRD 第 6 节维护；概览链接到合同，不重复完整流程。稳定文档须从文档索引或其已索引页面可达。
+- 知识快照和短名单只从策展输入、package spec 与生成脚本重建；保留原始 capability bindings 和 alias ambiguity，不按名称猜测合并。保留静态导航，不存储受限全文或展开的重复 Method/Source 树。重建必须确定性通过来源、隐私和悬空引用检查。
+- 知识策展输入位于 `knowledge/catalog/`；运行时读取打包快照，`knowledge/active-methods.md` 为生成短名单。缺少论文、许可或版本时保留缺失，不凭推测补齐。
+
+## 实现、审查与验证节奏
+
+- 以完整模块或一条用户链路为实现和验收单位，先完成可用的整体，再集中审查、验证和修复。
+- 迭代时只运行直接覆盖当前改动的必要检查；已有同一代码和环境的有效证据直接复用，不反复启动全套验证。
+- 不为零碎改动、新文件、一次交接或单个修复反复派独立审查 Agent。相关发现成批交由原实现者修复，整条链路完成后统一审查，不另起逐项复核循环。
+- 并行或顺序分工用于完整、边界明确的模块，不把上下文重建和重复验证当成工作进展。主整合者对最终跨模块证据负责。
+- 本项目的代码、测试、预览和私有运行证据在受控服务器工作区中处理；不改动已有运行服务，推送、合并和部署仍需各自明确授权。
 
 ## 快速索引
 
-- 智能体产品主规范：`docs/BRIDGE_PRD.md`
-- Agent 与工具团队边界：`docs/agent-integration.md`
-- 产品原则与科学边界：`docs/product-principles.md`
-- 高层工具合同：`docs/tool-contract.md`
-- 隐私、来源与可追溯性：`docs/privacy-and-provenance.md`
-- 质量与验证基线：`docs/quality-baseline.md`
-- 文档维护：`docs/documentation-guide.md`
-- 重大决定：`docs/decision-log.md`
-- 当前活动计划：`plans/README.md`
+稳定合同和使用文档见 [文档索引](docs/README.md)；未完成工作见 [活动计划](plans/README.md)。
 
 ## 事实优先级
 
@@ -44,15 +71,15 @@ BRIDGE 采用“代码、稳定文档、临时计划同步演进”的协作方�
 ## 仓库地图
 
 当前仓库提供 BRIDGE 科学智能体的确定性 P0 工具底座，以及私有 Web preview
-中已验收范围内的 intake、来源事实核对、protocol 表示、计划审批与 QC。下游
-Evidence Graph 反馈循环、内部 comparator 选择及 qualified report/export 是
-已批准目标，不是当前完整能力；代码、安装、真实运行和科学资格必须分别报告。
+中已验收范围内的 intake、来源事实核对、protocol 表示、计划审批与 QC，以及
+有限范围的证据协调与评估画像。后者的工程连接、真实输入验收和科学资格分开记录；
+内部 comparator 选择及 qualified report/export 仍不是当前完整能力。
 
 | 路径 | 职责 |
 |---|---|
 | `src/bridge/toolkit/` | 公共对象、Registry、运行器、产物与知识检索 |
 | `src/bridge/web/` | 私有对话、上传、审批与现有 SDK 执行接入；不修改科学工具语义 |
-| `web/` | 对话与真实工具产物的浏览器界面 |
+| `frontend/` | 对话与真实工具产物的浏览器界面 |
 | `src/bridge/tool_packages/` | 12 个高层科学工具包及其 Spec、Tool Card 和包内资源；底层方法不直接暴露给 Agent |
 | `src/bridge/resources/schemas/` | 随 Python 包发布的对外 JSON Schema；语义变更必须版本化 |
 | `knowledge/` | 方法目录策展、来源核验、当前 P0 短名单与知识快照重建输入 |
@@ -100,7 +127,7 @@ Evidence Graph 反馈循环、内部 comparator 选择及 qualified report/expor
 - `negative`、`missing`、`unknown`、`unavailable` 与 `alert` 不得互换，缺失证据不得补零。
 - cell 不能充当 biological replicate；重复不足时只能是 `descriptive_only` 或 `not_estimable`。
 - graft 是独立后验证据，不回填移植前评分、阈值、训练或校准。
-- sealed competitor 数据和 competitor reproduction 不得流入 BRIDGE 的 reference、marker、prior、RAG、阈值或正式证据。
+- sealed competitor 数据继续隔离；公开方法 metadata 与经过验证的授权 query 输出可以分别进入检索和 evidence graph。图中记录不授予训练、校准、独立验证或科学资格，外部 reproduction 不反向修改当轮模型、reference、marker、prior 或阈值。
 - 同一 Evidence Family 必须去重，工具数量不能成为多数投票。
 
 ## 工具与知识规则
@@ -118,6 +145,7 @@ Evidence Graph 反馈循环、内部 comparator 选择及 qualified report/expor
 - Fixture 来源限定为合成、脱敏、公开或明确授权的数据，并记录用途和 checksum。
 - 运行时 manifest 以逻辑资产引用受控输入；public-safe 对象由字段白名单重新生成。
 - 原始输入不可修改。派生产物采用追加式版本、内容哈希和显式 provenance。
+- 私有路径、凭据、原始模型响应、运行回执、会话、截图、私有样本身份和部署细节不得进入公开仓库；公开对象通过字段白名单重建。
 
 ## 文档与计划
 
@@ -126,9 +154,13 @@ Evidence Graph 反馈循环、内部 comparator 选择及 qualified report/expor
 - Schema、科学边界、隐私、评分或公开导出规则变化时，同一变更必须更新测试和稳定文档。
 - 重大且难以逆转的决定追加到 `docs/decision-log.md`，不得覆盖历史决定。
 
+活动计划只保存未完成施工状态。真正完成后，先把唯一可复用事实迁入稳定文档、
+精确证据迁入验证记录，再把未解决科学工作接入活动计划，最后移除已完成日记并
+修复链接；施工时间线留在 Git 历史。不得仅因验证记录较旧而删除它。
+
 ### 生物学优先的进度表达
 
-README、计划、PR、Issue 和验证记录按以下顺序说明进展：生物学问题，使用的
+计划、PR、Issue 和验证记录按以下顺序说明进展：生物学问题，使用的
 数据/reference/对照，实际观察，体外产品评估含义，仍不能回答的问题，下一项
 科学工作，最后再列代码、测试和提交状态。不得只用“框架完成”“合同冻结”或
 “benchmark 通过”代替生物学结果；未明确约定时，不把待办指定给外部合作方。

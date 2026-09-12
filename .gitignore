@@ -43,3 +43,6 @@ models/ref_sceniclike.h5ad
 models/regulons.json
 models/**/*.pt
 models/**/*.h5ad
+
+# Browser dependencies remain local to the frontend workspace.
+frontend/node_modules

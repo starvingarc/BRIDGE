@@ -4,6 +4,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from bridge.tool_packages.p0_02_cell_state.scientific_review import CellStateDevelopmentReview, CellStateDevelopmentReviewV11
+from bridge.tool_packages.p0_02_cell_state.celltypist_runtime import OODCalibration
+from bridge.tool_packages.p0_02_cell_state.candidate_runtime import CandidateRuntimeBinding, CellStateCandidateProfile
 from bridge.toolkit.contracts import (
     AnnotationVocabulary,
     ArtifactManifest,
@@ -127,7 +130,17 @@ from bridge.toolkit.visualization import (
 )
 
 
+from bridge.tool_packages.p0_10_claim_verifier.research import (
+    ResearchClaimVerificationResult, ResearchStatementRegistry, ResearchAnalysisSnapshot,
+    ResearchAnalysisSnapshotV03, ResearchReportContext,
+)
+
 MODELS = {
+    "cell_state_development_review_v1_1": ("bridge://schemas/cell-state-development-review/v1.1", CellStateDevelopmentReviewV11),
+    "cell_state_development_review": ("bridge://schemas/cell-state-development-review/v1.0", CellStateDevelopmentReview),
+    "cell_state_ood_calibration": ("bridge://schemas/cell-state-ood-calibration/v1.0", OODCalibration),
+    "cell_state_candidate_runtime": ("bridge://schemas/cell-state-candidate-runtime/v1.0", CandidateRuntimeBinding),
+    "cell_state_candidate_profile": ("bridge://schemas/cell-state-candidate-profile/v1.0", CellStateCandidateProfile),
     "agent_integration_profile": (
         "bridge://schemas/agent-integration-profile/v0.1",
         AgentIntegrationProfile,
@@ -191,6 +204,11 @@ MODELS = {
         "bridge://schemas/qc-readiness-profile/v0.2",
         QCReadinessProfileV2,
     ),
+    "research_claim_verification_result_v2": ("bridge://schemas/research-claim-verification-result/v0.2", ResearchClaimVerificationResult),
+    "research_statement_registry_v2": ("bridge://schemas/research-statement-registry/v0.2", ResearchStatementRegistry),
+    "research_analysis_snapshot_v2": ("bridge://schemas/research-analysis-snapshot/v0.2", ResearchAnalysisSnapshot),
+    "research_analysis_snapshot_v3": ("bridge://schemas/research-analysis-snapshot/v0.3", ResearchAnalysisSnapshotV03),
+    "research_report_context_v3": ("bridge://schemas/research-report-context/v0.3", ResearchReportContext),
     "reference_manifest": ("bridge://schemas/reference-manifest/v0.1", ReferenceManifest),
     "reference_profile": ("bridge://schemas/reference-profile/v0.1", ReferenceProfile),
     "structured_input_ref": ("bridge://schemas/structured-input-ref/v0.1", StructuredInputRef),

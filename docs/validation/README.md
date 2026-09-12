@@ -18,6 +18,8 @@ threshold, score or product conclusion.
 
 ## P0-02 Scientific and Source Preparation
 
+- [Development decisions and rejection assessment, 2026-09-11](cell_state_development_20260911.md)
+
 - [Scientific-freeze pilot, 2026-08-11](p0_02_cell_state_evidence.md#record-p0-02-scientific-freeze-pilot-20260811)
 - [External-source asset validation, 2026-08-12](p0_02_cell_state_evidence.md#record-p0-02-external-source-asset-20260812)
 - [External-source preparation validation, 2026-08-13](p0_02_cell_state_evidence.md#record-p0-02-external-source-preparation-20260813)
@@ -26,6 +28,8 @@ The pilot remains unsealed and exploratory. External-source conversion and
 lineage checks do not sign the biological FreezeGate.
 
 ## Shared Runtime and Repository Evidence
+
+- [Scope-bound assessment and privacy, 2026-09-11](step7_evidence_coordinator_20260911.md)
 
 - [Repository simplification, 2026-09-10](https://github.com/starvingarc/BRIDGE/blob/e338be7505b8b8ee97a81d9146f416af73017d8d/plans/repository-simplification.md#verification-and-remaining-gates): revision-bound engineering checks; [PR #98](https://github.com/starvingarc/BRIDGE/pull/98) tracks final CI and integration. No new scientific validation.
 - [Private conversational Web preview, 2026-09-05](web_preview_20260905.md)

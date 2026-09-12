@@ -1,0 +1,67 @@
+{
+  "$id": "bridge://schemas/cell-state-candidate-runtime/v1.0",
+  "additionalProperties": false,
+  "properties": {
+    "development_review_version": {
+      "const": "1.1.0",
+      "title": "Development Review Version",
+      "type": "string"
+    },
+    "measurement_spec_ref": {
+      "const": "CELLSTATE-scRNA-celltypist-candidate-v0.1",
+      "title": "Measurement Spec Ref",
+      "type": "string"
+    },
+    "model_bundle_path": {
+      "format": "path",
+      "title": "Model Bundle Path",
+      "type": "string"
+    },
+    "model_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Model Manifest Sha256",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "1.0.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "runtime_id": {
+      "minLength": 1,
+      "title": "Runtime Id",
+      "type": "string"
+    },
+    "source_family_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Source Family Ids",
+      "type": "array"
+    },
+    "verification_path": {
+      "format": "path",
+      "title": "Verification Path",
+      "type": "string"
+    },
+    "verification_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Verification Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "runtime_id",
+    "measurement_spec_ref",
+    "model_bundle_path",
+    "model_manifest_sha256",
+    "verification_path",
+    "verification_sha256",
+    "development_review_version",
+    "source_family_ids"
+  ],
+  "title": "CandidateRuntimeBinding",
+  "type": "object"
+}

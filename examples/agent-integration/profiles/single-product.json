@@ -659,7 +659,7 @@
     {
       "binding_id": "input-audit-qc",
       "tool_id": "P0-01",
-      "tool_version": "0.1.5",
+      "tool_version": "0.1.6",
       "request_schema_ref": "bridge://schemas/tool-request/v0.1",
       "mode_id": null,
       "asset_slot_ids": ["uploaded-expression"],
@@ -669,7 +669,7 @@
     {
       "binding_id": "cell-state-evidence",
       "tool_id": "P0-02",
-      "tool_version": "0.5.5",
+      "tool_version": "0.6.1",
       "request_schema_ref": "bridge://schemas/tool-request/v0.1",
       "mode_id": null,
       "asset_slot_ids": ["qc-selected-expression"],
@@ -750,7 +750,7 @@
     {
       "binding_id": "process-signals",
       "tool_id": "P0-06",
-      "tool_version": "0.8.1",
+      "tool_version": "0.8.2",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": ["qc-selected-expression"],
@@ -806,7 +806,7 @@
     {
       "binding_id": "evidence-compiler",
       "tool_id": "P0-09",
-      "tool_version": "0.4.2",
+      "tool_version": "0.5.1",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "case_initial_v2",
       "asset_slot_ids": [],
@@ -822,7 +822,7 @@
     {
       "binding_id": "claim-verifier",
       "tool_id": "P0-10",
-      "tool_version": "0.4.1",
+      "tool_version": "0.4.7",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "default",
       "asset_slot_ids": [],

@@ -30,7 +30,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-11").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
-    assert proliferation_stress_response.version == "0.8.1"
+    assert proliferation_stress_response.version == "0.8.2"
     assert product_comparison.version == "0.4.1"
 
 
@@ -99,6 +99,8 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
         "case_append_v2",
         "comparison_initial_v2",
         "comparison_append_v2",
+        "case_query",
+        "comparison_query",
     ]
     legacy_profile = next(
         role
@@ -203,7 +205,14 @@ def test_input_contract_roles_match_runtime_adapters() -> None:
             for mode in registry.describe_input(tool_id).object_input_modes
             for role in mode.roles
         }
-        assert declared_roles == set(runtime_contract)
+        runtime_roles = set(runtime_contract)
+        if tool_id == "P0-09":
+            # Compilation and read-only query dispatch have separate loaders.
+            query_runtime = import_module(
+                "bridge.tool_packages.p0_09_evidence_compiler.query_runtime"
+            )
+            runtime_roles.update(query_runtime.QUERY_ROLES)
+        assert declared_roles == runtime_roles
 
 
 def test_shared_product_context_imports_remain_compatible() -> None:
@@ -232,3 +241,29 @@ def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
         schema = load_schema(schema_ref)
         assert schema["$id"] == schema_ref
         assert schema["title"]
+
+
+
+def test_supported_native_history_is_read_only_and_strict(tmp_path):
+    import pytest
+    from bridge.toolkit.contracts import ToolRun
+    registry = ToolRegistry.load_default()
+    for tool, version, environment in (
+        ("P0-01", "0.1.5", "ENV-P0-CORE-v0.1"),
+        ("P0-02", "0.5.5", "ENV-P0-CORE-v0.2"),
+        ("P0-02", "0.6.0", "ENV-P0-CORE-v0.2"),
+    ):
+        request = ToolRequest(request_id="history", tool_id=tool,
+                              tool_version=version, output_dir=tmp_path)
+        run = ToolRun(run_id="historical", request=request, tool_version=version,
+                      environment_spec_id=environment, implementation_state="implemented",
+                      execution_state="failed", reason_codes=["retained_failure"])
+        original = run.model_dump_json()
+        assert registry.validate_historical_result(run, request) == run
+        assert run.model_dump_json() == original
+        with pytest.raises(ValueError):
+            registry.validate_result(run, request)
+        for change in ({"environment_spec_id": "other"},
+                       {"tool_version": "9.9.9"}, {"implementation_state": "deprecated"}):
+            with pytest.raises(ValueError):
+                registry.validate_historical_result(run.model_copy(update=change), request)

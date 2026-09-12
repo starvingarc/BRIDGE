@@ -1,0 +1,274 @@
+{
+  "$defs": {
+    "DevelopmentProductScope": {
+      "additionalProperties": false,
+      "properties": {
+        "biological_unit_policy": {
+          "const": "unknown_is_not_an_independent_replicate",
+          "title": "Biological Unit Policy",
+          "type": "string"
+        },
+        "culture_to_fetal_age": {
+          "const": "not_inferred",
+          "title": "Culture To Fetal Age",
+          "type": "string"
+        },
+        "intended_stages": {
+          "items": {
+            "enum": [
+              "progenitor",
+              "early_neuroblast"
+            ],
+            "type": "string"
+          },
+          "title": "Intended Stages",
+          "type": "array"
+        },
+        "role_basis": {
+          "const": "lineage_evidence_not_source_label",
+          "title": "Role Basis",
+          "type": "string"
+        },
+        "stage_evaluation": {
+          "const": "separate_from_identity",
+          "title": "Stage Evaluation",
+          "type": "string"
+        },
+        "target_lineage": {
+          "const": "ventral_midbrain_dopaminergic",
+          "title": "Target Lineage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target_lineage",
+        "intended_stages",
+        "stage_evaluation",
+        "culture_to_fetal_age",
+        "role_basis",
+        "biological_unit_policy"
+      ],
+      "title": "DevelopmentProductScope",
+      "type": "object"
+    },
+    "ScientificReviewSource": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "title": "Citation",
+          "type": "string"
+        },
+        "evidence_scope": {
+          "title": "Evidence Scope",
+          "type": "string"
+        },
+        "limitation": {
+          "title": "Limitation",
+          "type": "string"
+        },
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "citation",
+        "locator",
+        "evidence_scope",
+        "limitation"
+      ],
+      "title": "ScientificReviewSource",
+      "type": "object"
+    },
+    "StateDevelopmentDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "counter_markers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Counter Markers",
+          "type": "array"
+        },
+        "decision": {
+          "enum": [
+            "evaluate",
+            "parent_only",
+            "unavailable"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "default_product_role": {
+          "enum": [
+            "known_off_target",
+            "role_unresolved"
+          ],
+          "title": "Default Product Role",
+          "type": "string"
+        },
+        "definition": {
+          "title": "Definition",
+          "type": "string"
+        },
+        "definition_support": {
+          "enum": [
+            "broad_family_supported",
+            "source_boundary_unresolved",
+            "reference_unavailable"
+          ],
+          "title": "Definition Support",
+          "type": "string"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "parent_state_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent State Id"
+        },
+        "positive_markers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Positive Markers",
+          "type": "array"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "state_id": {
+          "title": "State Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_id",
+        "display_name",
+        "definition",
+        "decision",
+        "definition_support",
+        "positive_markers",
+        "counter_markers",
+        "source_ids",
+        "default_product_role",
+        "rationale",
+        "limitations"
+      ],
+      "title": "StateDevelopmentDecision",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/cell-state-development-review/v1.0",
+  "additionalProperties": false,
+  "properties": {
+    "legacy_review_ref": {
+      "title": "Legacy Review Ref",
+      "type": "string"
+    },
+    "legacy_review_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Legacy Review Sha256",
+      "type": "string"
+    },
+    "marker_semantics": {
+      "const": "support_and_competing_programs_not_gene_absence",
+      "title": "Marker Semantics",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "policy_ref": {
+      "const": "CELLSTATE-DEVELOPMENT-DECISIONS-v1",
+      "title": "Policy Ref",
+      "type": "string"
+    },
+    "product_scope": {
+      "$ref": "#/$defs/DevelopmentProductScope"
+    },
+    "review_id": {
+      "title": "Review Id",
+      "type": "string"
+    },
+    "scientific_qualification": {
+      "const": "not_established",
+      "title": "Scientific Qualification",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/ScientificReviewSource"
+      },
+      "minItems": 1,
+      "title": "Sources",
+      "type": "array"
+    },
+    "state_reviews": {
+      "items": {
+        "$ref": "#/$defs/StateDevelopmentDecision"
+      },
+      "minItems": 1,
+      "title": "State Reviews",
+      "type": "array"
+    },
+    "status": {
+      "const": "complete",
+      "title": "Status",
+      "type": "string"
+    },
+    "vocabulary_ref": {
+      "title": "Vocabulary Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "review_id",
+    "policy_ref",
+    "status",
+    "vocabulary_ref",
+    "legacy_review_ref",
+    "legacy_review_sha256",
+    "scientific_qualification",
+    "marker_semantics",
+    "sources",
+    "product_scope",
+    "state_reviews"
+  ],
+  "title": "CellStateDevelopmentReview",
+  "type": "object"
+}

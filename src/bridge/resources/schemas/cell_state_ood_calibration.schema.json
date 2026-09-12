@@ -1,0 +1,111 @@
+{
+  "$id": "bridge://schemas/cell-state-ood-calibration/v1.0",
+  "additionalProperties": false,
+  "properties": {
+    "alpha": {
+      "exclusiveMaximum": 1,
+      "exclusiveMinimum": 0,
+      "title": "Alpha",
+      "type": "number"
+    },
+    "calibration_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Calibration Sha256",
+      "type": "string"
+    },
+    "class_margin_thresholds": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Class Margin Thresholds",
+      "type": "object"
+    },
+    "class_support": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Class Support",
+      "type": "object"
+    },
+    "energy_temperature": {
+      "const": 1.0,
+      "default": 1.0,
+      "title": "Energy Temperature",
+      "type": "number"
+    },
+    "energy_threshold": {
+      "title": "Energy Threshold",
+      "type": "number"
+    },
+    "kind": {
+      "const": "empirical_ovr_rejection_not_posterior",
+      "default": "empirical_ovr_rejection_not_posterior",
+      "title": "Kind",
+      "type": "string"
+    },
+    "knn_role": {
+      "const": "sensitivity_not_independent_vote",
+      "default": "sensitivity_not_independent_vote",
+      "title": "Knn Role",
+      "type": "string"
+    },
+    "knn_threshold": {
+      "minimum": 0,
+      "title": "Knn Threshold",
+      "type": "number"
+    },
+    "min_class_support": {
+      "minimum": 1,
+      "title": "Min Class Support",
+      "type": "integer"
+    },
+    "minimum_feature_coverage": {
+      "exclusiveMinimum": 0,
+      "maximum": 1,
+      "title": "Minimum Feature Coverage",
+      "type": "number"
+    },
+    "model_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Model Sha256",
+      "type": "string"
+    },
+    "n_calibration": {
+      "minimum": 1,
+      "title": "N Calibration",
+      "type": "integer"
+    },
+    "n_unrepresented_labels": {
+      "minimum": 0,
+      "title": "N Unrepresented Labels",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "scientific_qualification": {
+      "const": "not_established",
+      "default": "not_established",
+      "title": "Scientific Qualification",
+      "type": "string"
+    }
+  },
+  "required": [
+    "model_sha256",
+    "calibration_sha256",
+    "alpha",
+    "energy_threshold",
+    "knn_threshold",
+    "minimum_feature_coverage",
+    "n_calibration",
+    "n_unrepresented_labels",
+    "min_class_support",
+    "class_support",
+    "class_margin_thresholds"
+  ],
+  "title": "OODCalibration",
+  "type": "object"
+}

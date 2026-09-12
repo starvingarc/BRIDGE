@@ -692,7 +692,48 @@ def _run_exploratory(request, spec, loaded):
         )
     except ProcessMethodError as exc:
         return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+    warnings = sorted({r for execution in result.executions for r in execution.reason_codes})
+    execution_state = ExecutionState.PARTIAL if warnings else ExecutionState.SUCCEEDED
+    native_spec = MeasurementSpecV2(
+        measurement_spec_id="PROCESS-native-cycle-" + source.resource_sha256[:24],
+        version="0.1.0", scientific_question="What relative RNA cell-cycle outputs were observed?",
+        assay=asset.assay, status="descriptive_only",
+        input_contract={"resource_ref": source.resource_ref, "resource_sha256": source.resource_sha256},
+        analysis_unit="selected_data_view", analysis_unit_kind="capture",
+        independence_group_kind="sample", observation_unit_kind="cell",
+        applicable_contexts=["native_method_observation"],
+        raw_metric_definition={"phase": "Scanpy S/G2M labels; not a proliferation rate",
+                               "program_mean": "Native method score mean over all selected observations"},
+        denominator="All observations in the selected view",
+        uncertainty_method="Descriptive only; biological independence unknown",
+        missing_behavior="Unavailable outputs remain null", tool_refs=["P0-06"],
+        reference_refs=[source.resource_ref],
+    )
+    common = dict(measurement_spec_id=native_spec.measurement_spec_id,
+                  measurement_spec_version=native_spec.version,
+                  source_run_ref=f"tool-run:{run_id}@{spec.version}",
+                  source_execution_state=execution_state, score_state=ScoreState.UNAVAILABLE,
+                  provenance_refs=[result.profile_id])
+    cycle = result.cell_cycle
+    measured = cycle.assessment_state == "available"
+    measurements = [MeasurementResultV2(
+        **common, measurement_id=f"measurement:{run_id}:native-s-g2m",
+        metric_name="native_s_g2m_fraction", raw_value=cycle.s_g2m_fraction, unit="fraction",
+        numerator=(cycle.phase_counts["S"] + cycle.phase_counts["G2M"]) if measured else None,
+        denominator=cycle.n_observations if measured else None,
+        evidence_state=EvidenceState.INFERRED if measured else EvidenceState.UNAVAILABLE,
+    )]
+    for program in result.program_summaries:
+        key = program.method_id.lower().replace("-", "_") + "_" + program.program_id.lower()
+        measurements.append(MeasurementResultV2(
+            **common, measurement_id=f"measurement:{run_id}:{key}",
+            metric_name="native_mean_" + key, raw_value=program.mean, unit=program.score_unit,
+            evidence_state=EvidenceState.INFERRED if program.assessment_state == "available" else EvidenceState.UNAVAILABLE,
+        ))
     payloads = {
+        "native_measurement_spec.json": canonical_json_bytes(native_spec.model_dump(mode="json"), indent=2),
+        **{f"native_measurement_{i}.json": canonical_json_bytes(value.model_dump(mode="json"), indent=2)
+           for i, value in enumerate(measurements)},
         "exploratory_process_profile.json": canonical_json_bytes(result.model_dump(mode="json"), indent=2),
         "exploratory_observation_scores.parquet": observation_bytes,
     }
@@ -712,7 +753,8 @@ def _run_exploratory(request, spec, loaded):
     artifacts = [
         ArtifactManifest(
             artifact_id=f"artifact:{run_id}:{name.rsplit('.', 1)[0]}",
-            kind=name.rsplit(".", 1)[0], path=published[name],
+            kind="measurement_result_v2" if name.startswith("native_measurement_") and name != "native_measurement_spec.json"
+                 else name.rsplit(".", 1)[0], path=published[name],
             media_type=_artifact_media_type(name),
             sha256=hashlib.sha256(content).hexdigest(), evidence_ids=[result.profile_id],
         )
@@ -723,7 +765,7 @@ def _run_exploratory(request, spec, loaded):
         run_id=run_id, request=request, implementation_state=ImplementationState.IMPLEMENTED,
         execution_state=ExecutionState.PARTIAL if warnings else ExecutionState.SUCCEEDED,
         tool_version=spec.version, environment_spec_id=spec.environment_spec_id,
-        input_hash=input_hash, created_at=result.created_at, measurements=[],
+        input_hash=input_hash, created_at=result.created_at, measurements=measurements,
         artifacts=artifacts, visualizations=[], result_schema_ref=spec.result_schema_ref,
         result=result.model_dump(mode="json"), reason_codes=[], warnings=warnings,
     )

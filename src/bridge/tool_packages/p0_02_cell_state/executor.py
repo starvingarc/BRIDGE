@@ -94,6 +94,10 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     measurement_spec = load_measurement_spec(request.measurement_spec_ref)
     if measurement_spec is None:
         return _failed_run(request, spec, input_hash, "measurement_spec_not_found")
+    if measurement_spec.measurement_spec_id == "CELLSTATE-scRNA-celltypist-candidate-v0.1":
+        from bridge.tool_packages.p0_02_cell_state.candidate_runtime import run_candidate_cell_state
+
+        return run_candidate_cell_state(request, spec, upstream_qc, input_hash, measurement_spec)
     measurement_spec_sha256 = _semantic_sha256(
         measurement_spec.model_dump(mode="json")
     )

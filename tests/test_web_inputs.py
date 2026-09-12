@@ -201,6 +201,94 @@ def test_selected_p002_panel_declaration_uses_read_only_qc_enrichment(
     ) == before_catalog
 
 
+def test_scientific_assets_use_real_filtered_qc_not_original_upload(client, tmp_path):
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+    from scipy import sparse
+    from bridge.domain.models import CaseInputAsset, CaseInputBundle
+    from bridge.toolkit.contracts import ToolRequest
+    from test_cell_state import GENES
+    from test_web_service import new_session, declare_source, confirm_change
+    genes = GENES + ["MT-ND1"] + [f"EXTRA-{index}" for index in range(279)]
+    counts = np.random.default_rng(7301).poisson(3, size=(256, len(genes)))
+    counts[[0, 255], :] = 0
+    counts[[0, 255], 0] = 1
+    path = tmp_path / "real-filtered-parent.h5ad"
+    ad.AnnData(sparse.csr_matrix(counts), obs=pd.DataFrame(
+        {"sample_id": ["sample-a"] * 256, "capture_id": ["capture-a"] * 256},
+        index=[f"cell-{index:03d}" for index in range(256)]),
+        var=pd.DataFrame(index=genes)).write_h5ad(path)
+    original = path.read_bytes()
+    sid = new_session(client)["id"]
+    url = f"/api/sessions/{sid}"
+    aid = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", original)}).json()["uploads"][0]["id"]
+    staged = client.post(url + "/analysis-inputs/assets", json={
+        "upload_id": aid, "assay": "scRNA-seq", "matrix_location": "X", "matrix_semantics": "raw_counts",
+        "input_level": "count_ready", "metadata": {"sample_id_column": "sample_id", "capture_id_column": "capture_id"}})
+    assert staged.status_code == 200, staged.json()
+    confirm_change(client, sid, staged.json())
+    declare_source(client, sid, aid, "source-family:real-filtered-synthetic")
+    service = client.app.state.service
+    state = service.load(sid)
+    asset = CaseInputAsset.model_validate(state["_asset_declarations"][aid])
+    request = ToolRequest(request_id="real-filtered-scientific", tool_id="P0-01",
+        output_dir=service.directory(sid) / "runs", measurement_spec_ref="QC-scRNA-candidate-v0.1",
+        parameters={"run_scrublet": True, "select_qc_eligible_cells": True},
+        assets=[asset.to_toolkit_asset()])
+    service.propose_request(state, CaseInputBundle(bundle_id="real-filtered-scientific", version="1", assets=[asset]),
+                            request, "Explicit synthetic QC filtering with real Scrublet")
+    done = approve(client, sid, state["plan"])
+    state = service.load(sid)
+    assert done["plan"]["status"] == "completed", state["_tool_runs"][-1]
+    qc = next(service.inputs.verify(state, record) for record in state["_input_objects"].values()
+              if record["source"] == "tool_output" and Path(record["path"]).name == "qc_readiness_profile_v2.json")
+    view = qc["selected_data_view"]
+    assert view["view_kind"] == "qc_selected_observations"
+    assert 0 < view["n_observations"] < 256
+    assert view["parent_asset_sha256"] == hashlib.sha256(original).hexdigest()
+    assert view["sha256"] != view["parent_asset_sha256"]
+    for tool in ("P0-03", "P0-04", "P0-06"):
+        selected = service.inputs.selected_asset(state, tool, aid)
+        assert selected.asset_id == view["artifact_id"]
+        assert selected.checksum == view["sha256"]
+        assert selected.metadata["parent_asset_id"] == aid
+        assert selected.metadata["parent_asset_sha256"] == view["parent_asset_sha256"]
+        assert selected.metadata["data_view_id"] == view["view_id"]
+        filtered = ad.read_h5ad(selected.path)
+        assert filtered.n_obs == view["n_observations"]
+        assert "cell-000" not in filtered.obs_names and "cell-255" not in filtered.obs_names
+        assert filtered.var_names.tolist() == genes
+        assert filtered.obs["sample_id"].unique().tolist() == ["sample-a"]
+        if tool == "P0-06":
+            # Explicit caller-declared compatibility cannot bypass an existing QC view.
+            assert service.inputs.selected_asset(state, tool, aid, manual_exploratory=True) == selected
+
+
+@pytest.mark.parametrize("tool_id", ["P0-03", "P0-04", "P0-06"])
+def test_scientific_asset_binding_retains_verified_qc_view_and_parent(
+        client, tmp_path, monkeypatch, tool_id):
+    sid, aid, data, _ = selected_p002_context(client, tmp_path, monkeypatch, panel=True)
+    service = client.app.state.service
+    state = service.load(sid)
+    before = json.loads(json.dumps(state))
+    asset = service.inputs.selected_asset(state, tool_id, aid)
+    qc = next(service.inputs.verify(state, record) for record in state["_input_objects"].values()
+              if record["schema_ref"] == "bridge://schemas/qc-readiness-profile/v0.2"
+              and Path(record["path"]).name == "qc_readiness_profile_v2.json"
+              and record["source"] == "tool_output")
+    view = qc["selected_data_view"]
+    assert view["n_observations"] == 4
+    assert asset.metadata["data_view_id"] == view["view_id"]
+    assert asset.metadata["parent_asset_sha256"] == hashlib.sha256(data).hexdigest()
+    assert asset.checksum == view["sha256"]
+    assert asset.metadata["sample_id"] == "panel-sample"
+    assert asset.metadata["source_family_id"] == "source-family:selected-input"
+    assert asset.matrix_location == "X"
+    assert asset.matrix_semantics == "raw_counts"
+    assert state == before
+
+
 def test_selected_p002_ignores_corrupt_qc_receipt_for_other_upload(
         client, tmp_path, monkeypatch):
     sid, earlier, _, selection = selected_p002_context(
@@ -440,6 +528,13 @@ def test_real_fixture_request_plan_approval_execution(client, tmp_path, tool, mo
     saved = client.post(url + "/analysis-inputs", json=choice(tool, mode, objects))
     assert saved.status_code == 200, saved.json()
     prepared = client.post(url + "/prepare-analysis", json={"tool_id": tool}).json()
+    if tool in {"P0-07", "P0-12"}:
+        # Unconfirmed legacy inputs cannot bypass the conditional entry.
+        assert prepared["status"] == "idle"
+        assert prepared["error"] == "conditional_selection_not_confirmed"
+        assert prepared["plan"] is None
+        assert client.app.state.service.load(sid)["_tool_runs"] == []
+        return
     assert prepared["status"] == "awaiting_approval", prepared
     state = client.app.state.service.load(sid)
     assert prepared["plan"]["steps"][0]["status"] == "pending", state["_plan"]["steps"][0]["reason_codes"]
@@ -791,6 +886,39 @@ def test_nested_files_bind_only_opaque_session_ids(client, tmp_path):
         service.inputs.bind_nested(state, {"matrix_file": "relative.npy"})
 
 
+
+
+def test_p009_query_input_discovery_and_schema_enforce_read_only_roles(client, tmp_path):
+    sid = new_session(client)["id"]
+    service = client.app.state.service
+    state = service.load(sid)
+    catalog = client.get(f"/api/sessions/{sid}/analysis-inputs").json()
+    tool = next(item for item in catalog["tools"] if item["tool_id"] == "P0-09")
+    modes = {mode["mode_id"]: mode for mode in tool["input_contract"]["object_input_modes"]}
+    for kind in ("case", "comparison"):
+        mode = f"{kind}_query"
+        assert [role["role"] for role in modes[mode]["roles"]] == ["evidence_graph_manifest", "evidence_graph_query"]
+        with pytest.raises(ValueError, match="canonical_graph"):
+            service.inputs.add_object(
+                state, tool_id="P0-09", mode_id=mode, role="evidence_graph_manifest",
+                schema_ref=f"bridge://schemas/{kind}-evidence-graph-manifest/v0.1",
+                object_version="1", data=b"{}",
+            )
+        with pytest.raises(ValueError):
+            service.inputs.role("P0-09", mode, "compilation_bundle",
+                                "bridge://schemas/evidence-compilation-bundle/v0.1", "0.1.0")
+    params = dict(tool_id="P0-09", mode_id="case_query", role="evidence_graph_query",
+                  schema_ref="bridge://schemas/evidence-graph-query/v0.1", object_version="0.1.0")
+    payload = dict(object_version="0.1.0", query_name="get_claim_evidence",
+                   claim_id="claim:target-identity", evidence_tiers=["formal", "shadow", "exploratory"])
+    url = f"/api/sessions/{sid}/analysis-inputs/objects"
+    response = client.post(url, params=params, files={"file": ("query.json", json.dumps(payload).encode(), "application/json")})
+    assert response.status_code == 200, response.json()
+    invalid = client.post(url, params=params, files={"file": ("query.json", json.dumps({**payload, "limit": "1"}).encode(), "application/json")})
+    assert invalid.status_code == 422
+    assert str(tmp_path) not in json.dumps(response.json())
+
+
 def test_graph_upload_and_wrong_role_schema_version_rejected(client, tmp_path):
     sid, _ = context_upload(client, tmp_path)
     service = client.app.state.service
@@ -808,14 +936,14 @@ def test_graph_upload_and_wrong_role_schema_version_rejected(client, tmp_path):
 
 
 def test_object_mutation_before_execute_is_rejected(client, tmp_path):
-    from test_p0_12_graft_assessment import _request
+    from test_p0_05_off_target_control import _request
     root = tmp_path / "supplied"
     root.mkdir()
     sid, _ = context_upload(client, tmp_path)
-    objects = upload_request(client, sid, _request(root), "graft_assessment")
+    objects = upload_request(client, sid, _request(root), "legacy_aggregation")
     url = f"/api/sessions/{sid}"
-    client.post(url + "/analysis-inputs", json=choice("P0-12", "graft_assessment", objects))
-    plan = client.post(url + "/prepare-analysis", json={"tool_id": "P0-12"}).json()["plan"]
+    client.post(url + "/analysis-inputs", json=choice("P0-05", "legacy_aggregation", objects))
+    plan = client.post(url + "/prepare-analysis", json={"tool_id": "P0-05"}).json()["plan"]
     state = client.app.state.service.load(sid)
     path = Path(state["_input_objects"][objects[0]["input_id"]]["path"])
     write_file(path, path.read_bytes() + b" ")
@@ -826,7 +954,10 @@ def test_object_mutation_before_execute_is_rejected(client, tmp_path):
 def test_real_expression_graft_opaque_h5ad_binding(client, tmp_path):
     from test_p0_12_expression_analysis import _request
     request, path = _request(tmp_path / "graft")
-    sid, _ = context_upload(client, tmp_path)
+    from test_web_conditional_inputs import comparison, helper, decision
+    from bridge.web.inputs import Selection
+    service, state, _, _ = comparison(client, tmp_path)
+    sid = state["id"]
     url = f"/api/sessions/{sid}"
     uploaded = client.post(url + "/uploads", files={"file": ("graft.h5ad", path.read_bytes())}).json()["uploads"][-1]["id"]
     objects = []
@@ -834,6 +965,9 @@ def test_real_expression_graft_opaque_h5ad_binding(client, tmp_path):
         payload = json.loads(ref.path.read_bytes())
         if ref.role == "graft_expression_asset":
             payload["path"] = "upload:" + uploaded
+        if ref.role == "graft_case":
+            payload["originating_preparation_id"] = "preparation:baseline-1"
+            payload["linkage_evidence_refs"] = ["provenance:explicit-synthetic-linkage"]
         response = client.post(url + "/analysis-inputs/objects", params={
             "tool_id": "P0-12", "mode_id": "expression_analysis", "role": ref.role,
             "schema_ref": ref.schema_ref, "object_version": ref.object_version,
@@ -841,7 +975,13 @@ def test_real_expression_graft_opaque_h5ad_binding(client, tmp_path):
         assert response.status_code == 200, (ref.role, response.json())
         state = client.app.state.service.load(sid)
         objects.append({"role": ref.role, "input_id": next(reversed(state["_input_objects"]))})
-    assert client.post(url + "/analysis-inputs", json=choice("P0-12", "expression_analysis", objects)).status_code == 200
+    state = service.load(sid)
+    selection = Selection.model_validate(choice("P0-12", "expression_analysis", objects))
+    h = helper(service)
+    pending = h.propose(state, selection, state["_input_revision"])
+    assert pending["execution_available"], pending
+    decision(h, state, pending)
+    service.save(state)
     proposal = client.post(url + "/prepare-analysis", json={"tool_id": "P0-12"}).json()
     assert proposal["status"] == "awaiting_approval", proposal
     result = approve(client, sid, proposal["plan"])
@@ -1059,7 +1199,11 @@ def test_real_canonical_sufficiency_to_compiler_v2_and_append(client, tmp_path):
             {"evidence_sufficiency_run_result", "base_graph_manifest", "base_evidence_record_set", "base_evidence_requirement_set"}]})
         selected = upload_request(client, sid, supplied_only, mode)
         selected.extend([{"role": "evidence_sufficiency_run_result", "input_id": output8["id"]}, *base_choices])
-        assert client.post(url + "/analysis-inputs", json=choice("P0-09", mode, selected)).status_code == 200
+        changed = client.post(url + "/analysis-inputs", json=choice("P0-09", mode, selected))
+        assert changed.status_code == 200
+        if changed.json()["pending_input_change"]:
+            from test_web_service import confirm_change
+            confirm_change(client, sid, changed.json())
         proposed = client.post(url + "/prepare-analysis", json={"tool_id": "P0-09"}).json()
         assert proposed["plan"]["steps"][0]["status"] == "pending", service.load(sid)["_plan"]["steps"][0]["reason_codes"]
         planned = json.loads(service.load(sid)["_plan"]["steps"][0]["approved_request_json"])

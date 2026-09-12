@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import math
+import hashlib
+import re
 
 from bridge.tool_packages._configurable_contracts import parse_composition
 from bridge.tool_packages.p0_02_cell_state.reference import load_packaged_vocabulary
@@ -108,6 +110,8 @@ def _registered_profile(state, receipt, schema=PROFILE_SCHEMA):
 
 
 def _verified_receipt(inputs, state, receipt):
+    if receipt["file"] in state.get("_invalidated_receipts", {}):
+        raise ValueError("input_revision_invalidated_output")
     root = inputs.service.directory(state["id"])
     raw = checked_bytes(
         inputs.service,
@@ -526,6 +530,480 @@ def _bounded(summary, binding):
     except _SummaryLimit:
         return {"state": "unavailable", "reason_code": "result_summary_limit"}, {}
     return summary, binding
+
+
+# These are aggregate result fields, never raw observations or free-text provenance.
+_ASSESSMENT_FIELDS = {
+    "release_state", "public_export_eligibility", "scientific_validation", "input_revision",
+    "result_state", "upstream_composition_state", "channels", "composition_view", "label_level",
+    "denominator_scope", "assessment_state", "target_identity_fraction", "regional_fidelity_fraction",
+    "whole_product_target_region_fraction", "numerator", "denominator", "fraction", "value", "unit",
+    "window_compatibility_state", "analysis_mode", "whole_product_profile", "target_related_profile",
+    "denominator_kind", "role_fractions", "role", "primary_denominator", "n_observations",
+    "total_soft_mass", "role_composition", "product_role", "soft_mass", "observed_count",
+    "exclusion_state", "unknown_profile", "coverage_state", "rare_state_profile",
+    "soft_fraction", "detection_state", "validated_detection_limit_fraction", "false_positive_fraction",
+    "zero_observation_upper_bound_fraction", "program_results", "gene_coverage", "minimum_gene_coverage",
+    "lod_state", "evidence_state", "analysis_scope", "applicability", "availability", "process_attribution",
+    "process_attribution_state", "measurement_projection_state", "score_state", "domain_score",
+    "runtime_mode", "interpretation_scope", "state_review_status", "independence_state",
+    "n_independent_replicates", "n_features", "program_summaries", "program_id", "method_id", "score_unit",
+    "observed_gene_count", "declared_gene_count", "mean", "median", "lower_quantile", "upper_quantile",
+    "cell_cycle", "phase_counts", "S", "G2M", "G1", "s_g2m_fraction", "mean_s_score", "mean_g2m_score",
+    "profiles", "domain_id", "evidence_sufficiency_state", "eligibility", "source_execution_state",
+    "metric_name", "raw_value", "interval", "interval_confidence_level", "unknown_scope",
+    "reason_codes", "composition", "reconciliation", "composition_state", "open_set_state",
+    "calibration_state", "label", "count", "state_evidence_state",
+    "accounting", "role_counts", "consensus_supported_count", "fraction_of_selected_view",
+    "observation_unit", "producer_composition", "records", "state", "view", "source_id",
+    "support_basis", "accounting_basis", "accounting_state", "mass_state", "primary_denominator_id",
+}
+_ASSESSMENT_IDENTIFIERS = {"program_id", "method_id", "label", "source_id", "primary_denominator_id"}
+
+
+def _assessment_aggregate(value, key=""):
+    if isinstance(value, dict):
+        return {name: _assessment_aggregate(item, name) for name, item in value.items()
+                if name in _ASSESSMENT_FIELDS}
+    if isinstance(value, list):
+        if len(value) > MAX_ROWS:
+            raise _SummaryLimit()
+        return [_assessment_aggregate(item, key) for item in value]
+    if isinstance(value, str):
+        # Keep fixed result states and units, never unrestricted paths/prose/IDs.
+        if key == "reason_codes":
+            if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,200}", value):
+                raise ValueError("unsafe_reason_code")
+            return value
+        if key in _ASSESSMENT_IDENTIFIERS:
+            # Verified names are interpretation metadata for the authenticated browser.
+            # The provider receives only ephemeral aliases, never these local IDs.
+            if len(value) > 200:
+                raise _SummaryLimit()
+            return value
+        if not re.fullmatch(r"[A-Za-z0-9_ .%/-]{1,80}", value) or "/" in value:
+            raise ValueError("unsafe_result_text")
+        return value
+    if value is None or type(value) in {int, float, bool}:
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("nonfinite_result")
+        return value
+    raise ValueError("unsupported_result")
+
+
+def _assessment_hard_count(result):
+    """Keep canonical hard accounting literal; private labels are aliased for the model."""
+    from bridge.tool_packages.p0_05_off_target_control.models import OffTargetHardCountAccounting
+    summary = _assessment_aggregate({key: value for key, value in result.items() if key != "accounting"})
+    summary["accounting"] = _assessment_aggregate(OffTargetHardCountAccounting.model_validate(
+        result["accounting"]).model_dump(mode="json"))
+    return summary
+
+
+def _assessment_query(result):
+    """Retain typed scientific context locally; provider labels are vetted separately."""
+    from bridge.tool_packages.p0_09_evidence_compiler.graph import node_id
+    from bridge.tool_packages.p0_09_evidence_compiler.models import GraphNodeType
+    def alias(value):
+        return "N-" + hashlib.sha256(value.encode()).hexdigest()[:16]
+    claims = {(row["object_id"], row["object_version"]): row.get("properties", {})
+              for row in result["nodes"] if row["node_type"] == "Claim"}
+    summary = {key: result[key] for key in ("query_name", "graph_version", "returned_node_count",
+        "returned_edge_count", "truncated", "omitted_node_count", "omitted_edge_count")}
+    summary["graph_alias"] = alias(result["graph_id"])
+    for key in ("records", "requirements", "nodes", "claims", "reconciliations"):
+        summary[key] = []
+    for node in result["nodes"]:
+        properties = node.get("properties", {})
+        row = {"alias": alias(node["node_id"]), "node_type": node["node_type"],
+               "evidence_tier": node["evidence_tier"], "lifecycle_state": node["lifecycle_state"]}
+        summary["nodes"].append(row)
+        if not properties:
+            continue  # External references have no source-case semantics in this query.
+        if node["node_type"] == "Claim":
+            summary["claims"].append({**row, "domain_id": properties["domain_id"],
+                                     "claim_type": properties["claim_type"]})
+            continue
+        ref = properties.get("claim_ref")
+        if ref:
+            claim = claims.get((ref["object_id"], ref["object_version"]), {})
+            row = {**row, "claim_alias": alias(node_id(ref["object_id"], ref["object_version"], GraphNodeType.CLAIM)),
+                   "domain_id": claim.get("domain_id"),
+                   "claim_context_state": "available" if claim else "unavailable"}
+        if node["node_type"] == "EvidenceRequirement":
+            summary["requirements"].append({**row, **{key: properties[key] for key in
+                ("state", "requirement_key", "channel_role", "reason_codes", "required_modality")},
+                "experiment_required": properties.get("required_experiment") is not None})
+        elif node["node_type"] == "EvidenceRecord":
+            summary["records"].append({**row, **{key: properties.get(key) for key in
+                ("domain_id", "evidence_state", "value", "unit", "metric_id",
+                 "numerator", "denominator", "applicability", "relation")},
+                "interval": ({key: properties["interval"].get(key) for key in
+                    ("lower", "upper", "confidence_level")} if properties.get("interval") else None),
+                "family_alias": alias(json.dumps(properties["evidence_family_ref"], sort_keys=True))})
+        elif node["node_type"] == "ReconciliationRecord":
+            summary["reconciliations"].append({**row, **{key: properties[key] for key in
+                ("eligibility", "state", "direction", "reason_codes")},
+                "channels": [{key: channel[key] for key in ("channel_role", "direction", "eligible", "reason_codes")}
+                             for channel in properties["channel_resolutions"]]})
+    summary["edges"] = [{"type": edge["edge_type"], "source": alias(edge["source_node_id"]),
+                         "target": alias(edge["target_node_id"])} for edge in result["edges"]]
+    return summary
+
+
+def _assessment_model_query(summary, opaque):
+    """Only source-defined enums/Literals and audited built-in policy words cross this seam."""
+    from typing import get_args
+    from bridge.tool_packages.p0_03_target_regional.models import NormalizedMetricName
+    from bridge.tool_packages.p0_04_developmental_compatibility.models import DevelopmentMeasurementMetricName
+    from bridge.tool_packages.p0_05_off_target_control.models import (
+        HardCountMetricName, OffTargetMeasurementArtifactBinding)
+    from bridge.tool_packages.p0_06_proliferation_stress_response.models import MethodMeasurementArtifactBinding
+    from bridge.tool_packages.p0_09_evidence_compiler.models import MissingEvidenceObservation
+    from bridge.tool_packages.p0_09_evidence_compiler.reconciler import RECONCILIATION_REASON_CODES
+    metrics = {item.value for enum in (NormalizedMetricName, DevelopmentMeasurementMetricName) for item in enum}
+    metrics.update(get_args(HardCountMetricName))
+    for model in (OffTargetMeasurementArtifactBinding, MethodMeasurementArtifactBinding):
+        metrics.update(get_args(model.model_fields["metric_name"].annotation))
+    missing_reasons = set(get_args(MissingEvidenceObservation.model_fields["reason_code"].annotation))
+    # These two additional reasons are emitted by compiler.build_requirements.
+    missing_reasons.update({"required_evidence_missing", "qualifying_evidence_available"})
+    # The sole built-in Web candidate policy declares these exact public words.
+    policy_words = {"claim_type": {"descriptive_domain_observation"},
+                    "requirement_key": {"canonical_measurement"}, "channel_role": {"canonical_measurement"}}
+    # Non-identifying units used by the registered numerical producers. Unknown custom
+    # units remain private, even if syntactically valid in an imported graph.
+    units = {"fraction", "cells", "observations", "count", "scanpy_control_adjusted_expression",
+             "decoupler_ulm_t_value", "scanpy_relative_expression_score"}
+
+    def base(row):
+        result = {key: row[key] for key in ("node_type", "evidence_tier", "lifecycle_state",
+                    "domain_id", "claim_context_state") if key in row}
+        result.update({key: opaque(row[key]) for key in ("alias", "claim_alias", "family_alias") if key in row})
+        return result
+
+    def label(row, key):
+        value = row[key]
+        return ({key: value, key + "_semantics_state": "available"} if value in policy_words[key] else
+                {key + "_alias": opaque(value), key + "_semantics_state": "unavailable"})
+
+    def reasons(values, allowed):
+        return {"reason_codes": [value for value in values if value in allowed],
+                "reason_semantics_state": "available" if all(value in allowed for value in values) else "unavailable",
+                "withheld_reason_count": sum(value not in allowed for value in values)}
+
+    projected = {key: summary[key] for key in ("query_name", "graph_version", "returned_node_count",
+        "returned_edge_count", "truncated", "omitted_node_count", "omitted_edge_count")}
+    projected.update({key: summary[key] for key in ("display_omitted_edges", "display_omitted_nodes") if key in summary})
+    projected["graph_alias"] = opaque(summary["graph_alias"])
+    projected["nodes"] = [base(row) for row in summary["nodes"]]
+    projected["claims"] = [{**base(row), **label(row, "claim_type")} for row in summary["claims"]]
+    projected["requirements"] = [{**base(row), "state": row["state"],
+        **label(row, "requirement_key"), **label(row, "channel_role"),
+        **reasons(row["reason_codes"], missing_reasons),
+        "required_modality": row["required_modality"] if row["required_modality"] in QC_ASSAYS else None,
+        "modality_semantics_state": "available" if row["required_modality"] in QC_ASSAYS else "unavailable",
+        "experiment_required": row["experiment_required"]} for row in summary["requirements"]]
+    projected["records"] = []
+    for row in summary["records"]:
+        known = row["metric_id"] in metrics
+        projection_state = ("literal_null" if row["value"] is None else
+                            "numeric" if type(row["value"]) in {int, float} else "withheld")
+        projected["records"].append({**base(row), **{key: row[key] for key in
+            ("evidence_state", "numerator", "denominator", "applicability", "relation", "interval")},
+            **({"metric_name": row["metric_id"]} if known else {"metric_alias": opaque(row["metric_id"])}),
+            "metric_semantics_state": "available" if known else "unavailable",
+            "value": row["value"] if projection_state != "withheld" else None,
+            "value_projection_state": projection_state,
+            "unit": row["unit"] if row["unit"] in units else None,
+            "unit_semantics_state": "available" if row["unit"] in units else "unavailable"})
+    projected["reconciliations"] = [{**base(row), **{key: row[key] for key in ("eligibility", "state", "direction")},
+        **reasons(row["reason_codes"], RECONCILIATION_REASON_CODES),
+        "channels": [{**label(channel, "channel_role"), "direction": channel["direction"], "eligible": channel["eligible"],
+            **reasons(channel["reason_codes"], RECONCILIATION_REASON_CODES)} for channel in row["channels"]]}
+        for row in summary["reconciliations"]]
+    projected["edges"] = [{"type": row["type"], "source": opaque(row["source"]), "target": opaque(row["target"])}
+                          for row in summary["edges"]]
+    return projected
+
+
+
+
+
+def assessment_portrait(evidence, candidates):
+    """Arrange verified values by their producer contract; never rescore or classify programs."""
+    axes = []
+    definitions = (
+        ("cell_state", "细胞状态", "P0-02"),
+        ("target_identity", "目标身份", "P0-03"),
+        ("regional_identity", "区域身份", "P0-03"),
+        ("development", "发育阶段", "P0-04"),
+        ("composition", "全产品与非目标组成", "P0-05"),
+        ("process", "增殖与应激", "P0-06"),
+    )
+    for identifier, title, tool in definitions:
+        row = next((item for item in reversed(evidence) if item["tool_id"] == tool), None)
+        reasons = sorted({reason for item in candidates if item["tool_id"] == tool
+                          for reason in item["blockers"]})
+        summary = row.get("summary", {}) if row else {}
+        if identifier in {"target_identity", "regional_identity"}:
+            fields = {"target_identity_fraction"} if identifier == "target_identity" else {
+                "regional_fidelity_fraction", "whole_product_target_region_fraction"}
+            summary = {**{key: value for key, value in summary.items() if key != "channels"},
+                "channels": [{key: value for key, value in channel.items()
+                              if key in fields | {"assessment_state", "reason_codes", "label_level",
+                                                  "composition_view", "denominator_scope"}}
+                             for channel in summary.get("channels", [])]}
+        axis = {"id": identifier, "title": title,
+            "state": row["state"] if row else "unavailable" if reasons else "missing",
+            "reason_codes": (row.get("summary", {}).get("reason_codes", [])
+                            if row and row["state"] == "available" else
+                            [row["reason_code"]] if row else reasons or ["no_scope_evidence"]),
+            "evidence_aliases": [row["alias"]] if row else [], "summary": summary}
+        if identifier == "process":
+            cycle = next((item for item in reversed(evidence) if item["tool_id"] == "P0-06"
+                          and item["state"] == "available"
+                          and item["summary"].get("runtime_mode") == "exploratory_process"
+                          and item["summary"].get("cell_cycle")), None)
+            axis["families"] = []
+            for family_id, family_title in (
+                ("pluripotency_like", "多能性样程序"), ("cell_cycle", "细胞周期"),
+                ("dissociation_heat_shock", "解离 / 热休克"), ("oxidative_stress", "氧化应激"),
+                ("hypoxia", "缺氧"), ("unfolded_protein_response", "未折叠蛋白反应"),
+                ("apoptosis_related", "凋亡相关程序")):
+                family = {"id": family_id, "title": family_title, "state": "unavailable",
+                    "reason_codes": ["reviewed_family_mapping_unavailable"],
+                    "summary": {}, "evidence_aliases": []}
+                if family_id == "cell_cycle" and cycle:
+                    measured = cycle["summary"]["cell_cycle"]
+                    family.update(state="measured" if measured["assessment_state"] == "available" else "unavailable",
+                        reason_codes=measured["reason_codes"], summary=measured, evidence_aliases=[cycle["alias"]])
+                axis["families"].append(family)
+        axes.append(axis)
+    return axes
+
+
+def assessment_model_evidence(evidence):
+    """Rebuild this provider purpose from explicit fields and ephemeral join aliases."""
+    import secrets
+    bindings = {"evidence": {}, "references": {}}
+    aliases = {}
+    def opaque(value, kind="references"):
+        key = (kind, value)
+        if key not in aliases:
+            aliases[key] = ("E-" if kind == "evidence" else "R-") + secrets.token_hex(16)
+            bindings[kind][aliases[key]] = value
+        return aliases[key]
+    join_fields = {"alias", "source_alias", "graph_alias", "family_alias", "source", "target"}
+    summary_fields = _ASSESSMENT_FIELDS | {
+        "query_name", "graph_version", "returned_node_count", "returned_edge_count",
+        "truncated", "omitted_node_count", "omitted_edge_count", "graph_alias",
+        "records", "requirements", "nodes", "edges", "alias", "node_type",
+        "evidence_tier", "lifecycle_state", "state", "relation", "family_alias",
+        "type", "source", "target"}
+    def aggregate(value, key=""):
+        if isinstance(value, dict):
+            return {name: aggregate(item, name) for name, item in value.items() if name in summary_fields}
+        if isinstance(value, list):
+            return [aggregate(item, key) for item in value]
+        if isinstance(value, str) and (key in join_fields or key in _ASSESSMENT_IDENTIFIERS):
+            return opaque(value)
+        return value
+    result = []
+    for row in evidence:
+        projected = {"alias": opaque(row["alias"], "evidence")}
+        projected.update({key: row[key] for key in (
+            "state", "tool_id", "tool_version", "execution_state", "score_state",
+            "domain_score", "reason_code", "interpretation_scope") if key in row})
+        if row["state"] == "available":
+            projected["summary"] = (_assessment_model_query(row["summary"], opaque)
+                if "query_name" in row["summary"] else aggregate(row["summary"]))
+            projected["measurements"] = []
+            for item in row["measurements"]:
+                measurement = aggregate({key: value for key, value in item.items()
+                    if key in _ASSESSMENT_FIELDS})
+                if "alias" in item:
+                    measurement["alias"] = opaque(item["alias"])
+                if "source_alias" in item:
+                    measurement["source_alias"] = opaque(item["source_alias"], "evidence")
+                if "measurement_class" in item:
+                    measurement["measurement_class"] = item["measurement_class"]
+                projected["measurements"].append(measurement)
+        result.append(projected)
+    return result, bindings
+
+
+def _assessment_display_artifacts(inputs, state, run, receipt):
+    """Resolve only display IDs bound to this checked receipt or query source graph."""
+    source_receipt, source_run = receipt, run
+    graph = None
+    if "query_name" in (run.result or {}):
+        ref = next(ref for ref in run.request.object_inputs if ref.role == "evidence_graph_manifest")
+        record = state["_input_objects"].get(ref.input_id)
+        if not record or record["sha256"] != ref.sha256 or record["path"] != str(ref.path):
+            raise ValueError("query_source_binding_invalid")
+        graph = inputs.verify(state, record)
+        if (graph["graph_id"] != run.result["graph_id"]
+                or graph["graph_version"] != run.result["graph_version"]):
+            raise ValueError("query_source_version_invalid")
+        source_receipt = next(row for row in state["_tool_runs"]
+            if row["file"] == record["receipt_file"] and row["sha256"] == record["receipt_sha256"])
+        from bridge.toolkit.contracts import ToolRunV2
+        source_run = ToolRunV2.model_validate(_verified_receipt(inputs, state, source_receipt))
+        inputs.service.registry.validate_historical_result(source_run, source_run.request)
+    canonical = {(item.artifact_id, item.sha256) for item in source_run.artifacts}
+    ids = []
+    for display in state.get("artifacts", []):
+        binding = state.get("_canonical_artifacts", {}).get(display["id"], {})
+        exposed = state.get("_artifacts", {}).get(display["id"], {})
+        if (binding.get("receipt_file") == source_receipt["file"]
+                and binding.get("receipt_sha256") == source_receipt["sha256"]
+                and (binding.get("artifact_id"), binding.get("sha256")) in canonical
+                and exposed.get("source_artifact_id") == binding["artifact_id"]
+                and exposed.get("source_sha256") == binding["sha256"]):
+            ids.append(display["id"])
+    dependencies = []
+    for ref in getattr(run.request, "object_inputs", []):
+        record = state.get("_input_objects", {}).get(ref.input_id, {})
+        links = []
+        if record.get("sha256") == ref.sha256:
+            for display in state.get("artifacts", []):
+                binding = state.get("_canonical_artifacts", {}).get(display["id"], {})
+                exposed = state.get("_artifacts", {}).get(display["id"], {})
+                if (record.get("receipt_sha256") is not None
+                        and all(binding.get(key) == record.get(key) for key in
+                                ("receipt_sha256", "receipt_file", "sha256", "artifact_id"))
+                        and exposed.get("source_artifact_id") == record.get("artifact_id")
+                        and exposed.get("source_sha256") == ref.sha256):
+                    links.append(display["id"])
+        dependencies.append({"role": ref.role, "schema_ref": ref.schema_ref,
+            "object_version": ref.object_version, "sha256": ref.sha256, "artifact_ids": links})
+    return ids, {"source_receipt_sha256": source_receipt["sha256"],
+                 **({"graph_id": graph["graph_id"], "graph_version": graph["graph_version"]} if graph else {})}, dependencies
+
+
+def _project_candidate(inputs, state, receipt, input_id, record):
+    from bridge.tool_packages.p0_02_cell_state.candidate_runtime import CellStateCandidateProfile
+    profile = CellStateCandidateProfile.model_validate(inputs.verify(state, record))
+    run = _verified_receipt(inputs, state, receipt)
+    if (record.get("producer_tool_id") != "P0-02" or profile.producer_run_ref != run["run_id"]
+            or profile.producer_tool_version != run["tool_version"]
+            or profile.input_sha256 != run["input_hash"]
+            or run["result"] != profile.model_dump(mode="json")):
+        raise ValueError("candidate_profile_producer_mismatch")
+    summary = {
+        "analysis_scope": "candidate_method_observation", "method_id": profile.primary_method,
+        "state_review_status": profile.scientific_qualification,
+        "n_observations": profile.n_observations, "n_features": profile.n_genes,
+        "gene_coverage": profile.feature_coverage,
+        "independence_state": profile.biological_unit_state, "n_independent_replicates": None,
+        "score_state": "unavailable", "domain_score": None,
+        "reason_codes": profile.development_reason_codes,
+        "composition": [{"label": row["label"], "state": row["assignment_state"],
+            "count": row["count"], "denominator": row["denominator"], "fraction": row["fraction"],
+            "denominator_scope": row["denominator_scope"], "evidence_state": "inferred"}
+            for row in profile.candidate_composition],
+    }
+    return _assessment_aggregate(summary), {"profile_input_id": input_id, "profile_sha256": record["sha256"]}
+
+
+def assessment_evidence(inputs, state, assessment):
+    """Read canonical ToolRuns on demand; no duplicate result store and no raw cell rows."""
+    from bridge.toolkit.contracts import ToolRunV2, MeasurementResultV2
+    plans = {row["plan_id"] for row in assessment["admissions"]}
+    pinned = {}
+    for record in assessment.get("scope", {}).get("binding", {}).get("resources", {}).values():
+        if record.get("source") == "tool_output":
+            key = (record.get("receipt_file"), record.get("receipt_sha256"), record.get("producer_tool_id"))
+            pinned.setdefault(key, []).append(record)
+    receipts = state.get("_tool_runs", [])
+    # Current admissions stay first. Reused evidence is explicitly scope-bound,
+    # never every old result in the session, and never a new execution or vote.
+    admitted = [row for row in receipts if row.get("plan_id") in plans]
+    reused = [row for row in receipts if row.get("plan_id") not in plans
+              and row["file"] not in state.get("_invalidated_receipts", {})
+              and (row["file"], row["sha256"], row["tool_id"]) in pinned]
+    projected, bindings = [], {}
+    for receipt in [*admitted, *reused]:
+        if receipt["state"] not in {"succeeded", "partial"}:
+            continue
+        alias = "E-" + receipt["sha256"][:16]
+        try:
+            for record in pinned.get((receipt["file"], receipt["sha256"], receipt["tool_id"]), []):
+                inputs.verify(state, record)
+            raw = _verified_receipt(inputs, state, receipt)
+            run = ToolRunV2.model_validate(raw) if "object_inputs" in raw["request"] else ToolRun.model_validate(raw)
+            inputs.service.registry.validate_historical_result(run, run.request)
+            root = inputs.service.directory(state["id"]) / "runs"
+            for artifact in run.artifacts:
+                checked_bytes(inputs.service, state, artifact.path, artifact.sha256, root=root)
+            result = raw.get("result") or {}
+            if receipt["tool_id"] == "P0-02":
+                registered = _registered_profile(state, receipt)
+                projector = _project
+                if registered is None:
+                    registered = _registered_profile(state, receipt, LEGACY_PROFILE_SCHEMA)
+                    projector = _project_legacy
+                if registered is None:
+                    registered = _registered_profile(state, receipt, "bridge://schemas/cell-state-candidate-profile/v1.0")
+                    projector = _project_candidate
+                if registered is None:
+                    raise ValueError("canonical_cell_state_profile_required")
+                summary, _ = projector(inputs, state, receipt, *registered)
+            else:
+                summary = (_assessment_query(result) if "query_name" in result else
+                    _assessment_hard_count(result) if "accounting" in result and receipt["tool_id"] == "P0-05"
+                    else _assessment_aggregate(result))
+            measurements = []
+            canonical = [artifact for artifact in run.artifacts if artifact.kind == "measurement_result_v2"]
+            for artifact in canonical:
+                item = MeasurementResultV2.model_validate_json(checked_bytes(
+                    inputs.service, state, artifact.path, artifact.sha256, root=root))
+                if (item.source_run_ref != f"tool-run:{run.run_id}@{run.tool_version}"
+                        or item.source_execution_state != receipt["state"]):
+                    raise ValueError("measurement_source_mismatch")
+                payload = item.model_dump(mode="json")
+                if payload["raw_value"] is not None and type(payload["raw_value"]) not in {int, float}:
+                    raise ValueError("nonaggregate_measurement_value")
+                measurements.append({
+                    "alias": "M-" + artifact.sha256[:16], "measurement_class": "gate_input_measurement",
+                    **_assessment_aggregate({key: payload[key] for key in ("metric_name", "raw_value", "numerator", "denominator",
+                        "unit", "interval", "interval_confidence_level", "unknown_scope", "evidence_state",
+                        "score_state", "domain_score", "source_execution_state")}),
+                    "source_alias": alias, "artifact_sha256": artifact.sha256,
+                })
+            if not canonical:
+                for item in raw.get("measurements", []):
+                    measurements.append({"measurement_class": "legacy_tool_measurement",
+                        **{key: item[key] for key in ("raw_value", "numerator", "denominator",
+                                                     "evidence_state", "score_state", "domain_score")
+                           if key in item and (key != "raw_value" or item[key] is None or type(item[key]) in {int, float})}})
+            artifact_ids, source, dependencies = _assessment_display_artifacts(inputs, state, run, receipt)
+            row = {"alias": alias, "state": "available", "tool_id": receipt["tool_id"],
+                "tool_version": run.tool_version, "execution_state": receipt["state"],
+                "domain_score": None, "score_state": result.get("score_state", "unavailable"),
+                "summary": summary, "measurements": measurements,
+                "interpretation_scope": "exploratory" if result.get("runtime_mode") == "exploratory_process" else "registered_tool_result",
+                "artifact_ids": artifact_ids, "dependencies": dependencies,
+                "provenance": {"receipt_sha256": receipt["sha256"], "plan_id": receipt["plan_id"], **source}}
+            if "query_name" in summary:
+                # Keep literal records/requirements; large topology remains in the
+                # source graph artifact instead of invalidating valid evidence.
+                for field in ("edges", "nodes"):
+                    try:
+                        _check_summary_limit(row)
+                        break
+                    except _SummaryLimit:
+                        summary["display_omitted_" + field] = len(summary[field])
+                        summary[field] = []
+            _check_summary_limit(row)
+            projected.append(row)
+            bindings[alias] = {"receipt_file": receipt["file"], "receipt_sha256": receipt["sha256"],
+                               "plan_id": receipt["plan_id"]}
+        except (ValueError, OSError, KeyError, TypeError):
+            projected.append({"alias": alias, "state": "unavailable", "tool_id": receipt["tool_id"],
+                              "reason_code": "canonical_result_invalid"})
+    return projected, bindings
 
 
 def build_result_context(inputs, state) -> tuple[dict, dict]:

@@ -1,0 +1,818 @@
+{
+  "object_version": "1.1.0",
+  "review_id": "CELLSTATE-DEVELOPMENT-REVIEW-20260911-v1-semantic-revision-1",
+  "policy_ref": "CELLSTATE-DEVELOPMENT-DECISIONS-v1.1",
+  "status": "complete",
+  "vocabulary_ref": "BRIDGE-PD-vMB-ANNOTATION-v0.1-draft",
+  "legacy_review_ref": "BIOREVIEW-PD-vMB-v1.0-draft",
+  "legacy_review_sha256": "92bae70d1fd94e427412feb149f3b9fa3ada3824b267d4a7fcb443e0f74b0995",
+  "scientific_qualification": "not_established",
+  "marker_semantics": "support_and_competing_programs_not_gene_absence",
+  "sources": [
+    {
+      "source_id": "BRIDGE-TEAM-ANNOTATION",
+      "citation": "docs/validation/p0_02_cell_state_evidence.md",
+      "locator": "Retained annotation/count and conflict audit",
+      "evidence_scope": "Chen source labels, not independent identity truth",
+      "limitation": "Counts and historical assignments do not establish marker coexpression or biological replication."
+    },
+    {
+      "source_id": "LAMANNO-2016",
+      "citation": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5055122/",
+      "locator": "Figures 2–5; S2, S4, S6",
+      "evidence_scope": "Human and mouse ventral-midbrain development",
+      "limitation": "Species and stage differences; no one-to-one mapping to Chen fine labels. Source-related sensitivity only."
+    },
+    {
+      "source_id": "KEE-2017",
+      "citation": "https://doi.org/10.1016/j.stem.2016.10.003",
+      "locator": "Figure 4; human differentiation panels",
+      "evidence_scope": "Related mesDA and STN programs",
+      "limitation": "Main anatomical mapping is mouse; shared FOXA2/LMX1A expression is not uniquely mDA."
+    },
+    {
+      "source_id": "ZHANG-2016",
+      "citation": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4707064/",
+      "locator": "Figure 4A–B; Table S4",
+      "evidence_scope": "Human astroglial and other broad cortical programs",
+      "limitation": "Cortical source and maturation comparisons do not validate fetal VM source labels."
+    },
+    {
+      "source_id": "WINKLER-2022",
+      "citation": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8995178/",
+      "locator": "Figure 1B–I; Figure 2B–D; Figures S4–S5",
+      "evidence_scope": "Human brain vascular and immune cell families",
+      "limitation": "Adult normal/malformed tissue; developmental applicability remains bounded."
+    },
+    {
+      "source_id": "WALCHLI-2024",
+      "citation": "https://www.nature.com/articles/s41586-024-07493-y",
+      "locator": "Figure 1; Supplementary Figure 1; Extended Data Figure 2",
+      "evidence_scope": "Human brain vascular programs across developmental/clinical contexts",
+      "limitation": "Do not pool fetal, adult and disease samples as one developmental baseline."
+    },
+    {
+      "source_id": "ALLODI-2019",
+      "citation": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6565614/",
+      "locator": "Figure 1C–G",
+      "evidence_scope": "Oculomotor-like versus spinal motor-neuron programs",
+      "limitation": "Mouse stem-cell model; MNX1 absence is not an absolute human OMTN exclusion rule."
+    },
+    {
+      "source_id": "ROOT-2020",
+      "citation": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7556367/",
+      "locator": "Figure 3B–C, J–L",
+      "evidence_scope": "VTA glutamate/GABA single- and dual-transmitter populations",
+      "limitation": "Mouse VTA; dual-transmitter biology does not validate a zero-observation human reference class."
+    },
+    {
+      "source_id": "SIM-2011",
+      "citation": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3365580/",
+      "locator": "Table 1",
+      "evidence_scope": "Human fetal oligodendroglial progenitor markers",
+      "limitation": "Fetal cortical source, not independent validation of Chen VM labels."
+    }
+  ],
+  "product_scope": {
+    "target_lineage": "ventral_midbrain_dopaminergic",
+    "intended_stages": [
+      "progenitor",
+      "early_neuroblast"
+    ],
+    "stage_evaluation": "separate_from_identity",
+    "culture_to_fetal_age": "not_inferred",
+    "role_basis": "lineage_evidence_not_source_label",
+    "biological_unit_policy": "unknown_is_not_an_independent_replicate",
+    "source_label_target_mapping": "unavailable_not_zero",
+    "source_label_window_mapping": "unavailable_not_zero",
+    "off_target_policy": "conditional_on_supported_identity_not_source_label",
+    "stress_program_state": "not_assessed_no_registered_program"
+  },
+  "state_reviews": [
+    {
+      "state_id": "L1:Astrocyte",
+      "display_name": "Astrocyte",
+      "definition": "Astroglial transcriptional family, without a mature-function claim.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "AQP4",
+        "ALDH1L1",
+        "GFAP",
+        "SLC1A3"
+      ],
+      "counter_markers": [
+        "SOX10",
+        "PLP1",
+        "MOG"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "ZHANG-2016"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "Broad astroglial programs are supported; source labels still need analytical validation.",
+      "limitations": [
+        "Radial-glial and gliogenic transitions share markers.",
+        "Literature source is not a matched fetal-VM validation cohort.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L1:Endothelial_Cell",
+      "display_name": "Endothelial_Cell",
+      "definition": "Vascular endothelial transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "PECAM1",
+        "VWF",
+        "CLDN5"
+      ],
+      "counter_markers": [
+        "PDGFRB",
+        "RGS5"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "WINKLER-2022",
+        "WALCHLI-2024"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "A coordinated endothelial program is more defensible than any mandatory single marker.",
+      "limitations": [
+        "KDR and EMCN need not occur in every endothelial state.",
+        "Developmental and disease contexts must remain separate.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L1:Fibroblast",
+      "display_name": "Fibroblast",
+      "definition": "Extracellular-matrix-rich fibroblast-like transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "DCN",
+        "LUM"
+      ],
+      "counter_markers": [
+        "PECAM1",
+        "CLDN5",
+        "MYH11",
+        "CNN1"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "WINKLER-2022"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "Broad fibroblast-like identity is supported, without asserting a meningeal or perivascular subtype.",
+      "limitations": [
+        "Only three annotated donors and 161 observations.",
+        "Adult vascular evidence does not independently validate fetal-VM labels.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L1:Glioblast",
+      "display_name": "Progenitor-like source group (Glioblast; identity unresolved)",
+      "definition": "Progenitor-like source group with unresolved neuroepithelial/gliogenic boundary.",
+      "decision": "unavailable",
+      "parent_state_id": null,
+      "definition_support": "source_boundary_unresolved",
+      "positive_markers": [
+        "SOX2",
+        "VIM",
+        "HES1",
+        "FABP7"
+      ],
+      "counter_markers": [
+        "RBFOX3"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "The source marker program overlaps radial glia and does not establish gliogenic identity or malignancy.",
+      "limitations": [
+        "No source-cell discriminator separates this group from radial-glial/gliogenic transitions.",
+        "Do not rename or merge the source group as if its identity were established."
+      ]
+    },
+    {
+      "state_id": "L1:Immune_Cell",
+      "display_name": "Immune_Cell (source inclusion boundary unresolved)",
+      "definition": "Broad immune/blood-related source group whose inclusion boundary is unresolved.",
+      "decision": "unavailable",
+      "parent_state_id": null,
+      "definition_support": "source_boundary_unresolved",
+      "positive_markers": [
+        "PTPRC",
+        "TYROBP",
+        "AIF1",
+        "C1QA"
+      ],
+      "counter_markers": [
+        "RBFOX3",
+        "PECAM1"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "WINKLER-2022",
+        "ZHANG-2016"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Myeloid markers cannot establish the full scope of a heterogeneous immune/blood source label.",
+      "limitations": [
+        "The complete historical subgroup cross-tab is not independently reconciled.",
+        "Do not relabel the full group as microglia or call erythroid cells immune."
+      ]
+    },
+    {
+      "state_id": "L1:Neuroblast",
+      "display_name": "Neuroblast",
+      "definition": "Neuron-committed immature transcriptional family; lineage and stage remain separate.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "DCX",
+        "NEUROD1",
+        "NEUROD4",
+        "NEUROG2",
+        "NHLH1"
+      ],
+      "counter_markers": [
+        "HES1",
+        "SOX2"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Neurogenic progression is supported but does not by itself identify a VM/mDA lineage.",
+      "limitations": [
+        "STMN2 and TUBB3 are not neuroblast-specific.",
+        "HES1 detection or nondetection is not an absolute stage boundary."
+      ]
+    },
+    {
+      "state_id": "L1:Neuron_ChAT",
+      "display_name": "Neuron_ChAT",
+      "definition": "Cholinergic vocabulary item without current scRNA reference observations.",
+      "decision": "unavailable",
+      "parent_state_id": null,
+      "definition_support": "reference_unavailable",
+      "positive_markers": [],
+      "counter_markers": [],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Literature cannot supply the absent reference observations or resolve overlap with OMTN.",
+      "limitations": [
+        "Zero annotated donors and observations.",
+        "Retain the Neuron_Chat spelling alias without granting availability."
+      ]
+    },
+    {
+      "state_id": "L1:Neuron_DA",
+      "display_name": "Neuron_DA",
+      "definition": "Dopaminergic transcriptional family spanning early and later neuronal stages.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "TH",
+        "DDC",
+        "NR4A2",
+        "PITX3"
+      ],
+      "counter_markers": [
+        "TPH2",
+        "FEV",
+        "SLC6A4"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "KEE-2017"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Coordinated dopaminergic evidence is supported; VM regional identity and intended stage require separate evidence.",
+      "limitations": [
+        "SLC6A3 is maturation-related and not required of every early DA state.",
+        "TH or DDC alone is insufficient; no product role is inferred from the label alone."
+      ]
+    },
+    {
+      "state_id": "L1:Neuron_GABA",
+      "display_name": "Neuron_GABA",
+      "definition": "Neuronal GABA-synthesis and transport transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "GAD1",
+        "GAD2",
+        "SLC32A1"
+      ],
+      "counter_markers": [
+        "SLC17A6",
+        "SLC17A7"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "ROOT-2020"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "The GABA program is supported in neuronal context.",
+      "limitations": [
+        "Coexpressed glutamatergic programs require investigation rather than automatic exclusion.",
+        "Dual-transmitter states, transitions, doublets and contamination must be distinguished.",
+        "A transmitter program alone does not establish a non-mDA lineage; joint DA and regional evidence is required."
+      ]
+    },
+    {
+      "state_id": "L1:Neuron_Glut",
+      "display_name": "Neuron_Glut",
+      "definition": "Neuronal vesicular-glutamate transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "SLC17A6",
+        "SLC17A7"
+      ],
+      "counter_markers": [
+        "GAD1",
+        "GAD2",
+        "SLC32A1"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "ROOT-2020",
+        "LAMANNO-2016"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Use transmitter machinery, not SATB2, as the broad candidate program.",
+      "limitations": [
+        "SATB2 is not a universal ventral-midbrain glutamatergic identity marker.",
+        "GABA coexpression is not automatically an error or an exclusive partition.",
+        "A transmitter program alone does not establish a non-mDA lineage; joint DA and regional evidence is required."
+      ]
+    },
+    {
+      "state_id": "L1:Neuron_Glut_GABA",
+      "display_name": "Neuron_Glut_GABA",
+      "definition": "Unresolved mixed-transmitter vocabulary item without current scRNA observations.",
+      "decision": "unavailable",
+      "parent_state_id": null,
+      "definition_support": "reference_unavailable",
+      "positive_markers": [
+        "SLC17A6",
+        "SLC32A1",
+        "GAD1",
+        "GAD2"
+      ],
+      "counter_markers": [],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "ROOT-2020"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Dual-transmitter cells exist, but their biology does not validate this zero-observation human label.",
+      "limitations": [
+        "Zero annotated donors and observations.",
+        "Require same-cell/source evidence before distinguishing biology from technical mixture."
+      ]
+    },
+    {
+      "state_id": "L1:Neuron_OMTN",
+      "display_name": "Neuron_OMTN",
+      "definition": "Oculomotor/trochlear-like transcriptional family requiring anatomical context.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "PHOX2A",
+        "ISL1",
+        "LHX4",
+        "TBX20"
+      ],
+      "counter_markers": [
+        "MNX1",
+        "HOXA2",
+        "HOXB2"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "ALLODI-2019"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "OMTN-like programs differ from a generic spinal motor program; MNX1 is not a universal positive discriminator.",
+      "limitations": [
+        "Mouse induced-cell evidence cannot freeze human MNX1-negativity as a hard gate.",
+        "CHAT is shared transmitter evidence, not a unique anatomical identifier.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L1:Neuron_Sero",
+      "display_name": "Neuron_Sero",
+      "definition": "Serotonergic neuronal transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "TPH2",
+        "SLC6A4",
+        "FEV"
+      ],
+      "counter_markers": [
+        "TH",
+        "PITX3"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "Coordinated serotonergic machinery supports the broad family.",
+      "limitations": [
+        "DDC is shared with dopaminergic cells.",
+        "Any TH signal is competing evidence, not an unconditional rejection rule.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L1:Oligo",
+      "display_name": "Oligo",
+      "definition": "Differentiated oligodendroglial transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "MBP",
+        "PLP1",
+        "MOG",
+        "MAG"
+      ],
+      "counter_markers": [
+        "PDGFRA"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "ZHANG-2016"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "A coordinated myelin-associated program supports a broad descriptive identity.",
+      "limitations": [
+        "Only two annotated donors; independent three-way donor calibration/test support is not estimable for this class.",
+        "Expression does not prove myelination function or clinical maturity.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L1:OPC",
+      "display_name": "OPC",
+      "definition": "Oligodendroglial progenitor transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "PDGFRA",
+        "SOX10",
+        "OLIG1",
+        "OLIG2"
+      ],
+      "counter_markers": [
+        "MBP",
+        "MOG",
+        "GFAP"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "SIM-2011",
+        "LAMANNO-2016"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "Oligodendroglial lineage evidence must accompany shared precursor markers.",
+      "limitations": [
+        "CSPG4 is also a mural marker and is not sufficient alone.",
+        "Early RG–OPC transitions may not express every mature OPC marker.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L1:Pericyte",
+      "display_name": "Pericyte",
+      "definition": "Pericyte-like mural transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "PDGFRB",
+        "ABCC9",
+        "KCNJ8",
+        "RGS5",
+        "CSPG4"
+      ],
+      "counter_markers": [
+        "PECAM1",
+        "CLDN5",
+        "MYH11",
+        "CNN1",
+        "DCN",
+        "LUM"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "WINKLER-2022"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "A coordinated mural program distinguishes candidate pericyte-like cells from vascular confounders.",
+      "limitations": [
+        "No single marker covers all mural states.",
+        "Historical RG-to-pericyte conflicts remain excluded.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L1:Radial_Glia",
+      "display_name": "Radial_Glia",
+      "definition": "Radial-glial/progenitor transcriptional family without morphological or fate proof.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "SOX2",
+        "FABP7",
+        "HES5",
+        "SOX9"
+      ],
+      "counter_markers": [
+        "RBFOX3"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Broad radial-glial programs are supported but overlap other early glial/progenitor families.",
+      "limitations": [
+        "Not a validated discriminator against the Glioblast source group.",
+        "A radial-glial label does not establish VM/mDA commitment."
+      ]
+    },
+    {
+      "state_id": "L1:Smooth_Muscle",
+      "display_name": "Smooth_Muscle",
+      "definition": "Contractile smooth-muscle-like mural transcriptional family.",
+      "decision": "evaluate",
+      "parent_state_id": null,
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "CNN1",
+        "TAGLN",
+        "MYH11",
+        "ACTA2",
+        "MYL9"
+      ],
+      "counter_markers": [
+        "PECAM1",
+        "CLDN5",
+        "DCN",
+        "LUM"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "WINKLER-2022",
+        "WALCHLI-2024"
+      ],
+      "default_product_role": "known_off_target",
+      "rationale": "Use the coordinated contractile program with vascular context.",
+      "limitations": [
+        "ACTA2 alone is not specific.",
+        "Disease-related endothelial transitions are a confounder, not a fetal normal baseline.",
+        "Off-target is a conditional identity policy, not a measured product fraction or a clinical harm claim."
+      ]
+    },
+    {
+      "state_id": "L2:RG_mFP",
+      "display_name": "RG_mFP",
+      "definition": "Historical regional source partition; only its broad radial-glial parent is currently supported.",
+      "decision": "parent_only",
+      "parent_state_id": "L1:Radial_Glia",
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "SOX2",
+        "FABP7",
+        "HES5",
+        "SOX9"
+      ],
+      "counter_markers": [
+        "RBFOX3"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "KEE-2017"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Use a supported parent rather than turn historical subtype names into anatomical or product-role claims.",
+      "limitations": [
+        "Historical NKX2-1/LMX1A/PAX6 plots do not uniquely establish VM floor-plate or mDA identity.",
+        "Listed markers describe the broad parent, not a validated child-state discriminator.",
+        "Independent lineage programs and developmental stage must be assessed separately."
+      ]
+    },
+    {
+      "state_id": "L2:RG_mBMP",
+      "display_name": "RG_mBMP",
+      "definition": "Historical regional source partition; only its broad radial-glial parent is currently supported.",
+      "decision": "parent_only",
+      "parent_state_id": "L1:Radial_Glia",
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "SOX2",
+        "FABP7",
+        "HES5",
+        "SOX9"
+      ],
+      "counter_markers": [
+        "RBFOX3"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "KEE-2017"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Use a supported parent rather than turn historical subtype names into anatomical or product-role claims.",
+      "limitations": [
+        "Historical RGL_mBM to mBMP naming lacks an independently established anatomical boundary.",
+        "Listed markers describe the broad parent, not a validated child-state discriminator.",
+        "Independent lineage programs and developmental stage must be assessed separately."
+      ]
+    },
+    {
+      "state_id": "L2:RG_mBIP",
+      "display_name": "RG_mBIP",
+      "definition": "Historical regional source partition; only its broad radial-glial parent is currently supported.",
+      "decision": "parent_only",
+      "parent_state_id": "L1:Radial_Glia",
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "SOX2",
+        "FABP7",
+        "HES5",
+        "SOX9"
+      ],
+      "counter_markers": [
+        "RBFOX3"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "KEE-2017"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Use a supported parent rather than turn historical subtype names into anatomical or product-role claims.",
+      "limitations": [
+        "Historical mBL/MHB merging does not establish a single basal-intermediate anatomical compartment.",
+        "Listed markers describe the broad parent, not a validated child-state discriminator.",
+        "Independent lineage programs and developmental stage must be assessed separately."
+      ]
+    },
+    {
+      "state_id": "L2:Nb_mFP",
+      "display_name": "Nb_mFP",
+      "definition": "Historical regional source partition; only its broad neuroblast parent is currently supported.",
+      "decision": "parent_only",
+      "parent_state_id": "L1:Neuroblast",
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "DCX",
+        "NEUROD1",
+        "NEUROD4",
+        "NEUROG2"
+      ],
+      "counter_markers": [
+        "HES1",
+        "SOX2"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "KEE-2017"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Use a supported parent rather than turn historical subtype names into anatomical or product-role claims.",
+      "limitations": [
+        "Manual cluster mapping and incomplete historical subtype labels do not establish floor-plate lineage.",
+        "Listed markers describe the broad parent, not a validated child-state discriminator.",
+        "Independent lineage programs and developmental stage must be assessed separately."
+      ]
+    },
+    {
+      "state_id": "L2:Nb_mBMP",
+      "display_name": "Nb_mBMP",
+      "definition": "Historical regional source partition; only its broad neuroblast parent is currently supported.",
+      "decision": "parent_only",
+      "parent_state_id": "L1:Neuroblast",
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "DCX",
+        "NEUROD1",
+        "NEUROD4",
+        "NEUROG2"
+      ],
+      "counter_markers": [
+        "HES1",
+        "SOX2"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "KEE-2017"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Use a supported parent rather than turn historical subtype names into anatomical or product-role claims.",
+      "limitations": [
+        "Merged clusters, restricted source ages and historical parent conflicts limit anatomical inference.",
+        "Listed markers describe the broad parent, not a validated child-state discriminator.",
+        "Independent lineage programs and developmental stage must be assessed separately."
+      ]
+    },
+    {
+      "state_id": "L2:Nb_mBIP",
+      "display_name": "Nb_mBIP",
+      "definition": "Historical regional source partition; only its broad neuroblast parent is currently supported.",
+      "decision": "parent_only",
+      "parent_state_id": "L1:Neuroblast",
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "DCX",
+        "NEUROD1",
+        "NEUROD4",
+        "NEUROG2"
+      ],
+      "counter_markers": [
+        "HES1",
+        "SOX2"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "KEE-2017"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Use a supported parent rather than turn historical subtype names into anatomical or product-role claims.",
+      "limitations": [
+        "Manual reconciliation of mBL/MHB labels lacks independent state-specific positive/counter programs.",
+        "Listed markers describe the broad parent, not a validated child-state discriminator.",
+        "Independent lineage programs and developmental stage must be assessed separately."
+      ]
+    },
+    {
+      "state_id": "L2:Nb_mAP",
+      "display_name": "Nb_mAP",
+      "definition": "Historical regional source partition; only its broad neuroblast parent is currently supported.",
+      "decision": "parent_only",
+      "parent_state_id": "L1:Neuroblast",
+      "definition_support": "broad_family_supported",
+      "positive_markers": [
+        "DCX",
+        "NEUROD1",
+        "NEUROD4",
+        "NEUROG2"
+      ],
+      "counter_markers": [
+        "HES1",
+        "SOX2"
+      ],
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016",
+        "KEE-2017"
+      ],
+      "default_product_role": "role_unresolved",
+      "rationale": "Use a supported parent rather than turn historical subtype names into anatomical or product-role claims.",
+      "limitations": [
+        "Historical mAL to mAP naming and mostly absent earlier subtype labels do not establish alar identity.",
+        "Listed markers describe the broad parent, not a validated child-state discriminator.",
+        "Independent lineage programs and developmental stage must be assessed separately."
+      ]
+    }
+  ]
+}

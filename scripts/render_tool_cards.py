@@ -35,7 +35,7 @@ DETAILS = {
     },
     "P0-02": {
         "input": "QC-qualified expression views with required `source_family_id` and `qc_profile_ref` asset metadata, a MeasurementSpec reference, declared scRNA/snRNA modality, annotation vocabulary, reference candidates and provenance. The exact QC-selected artifact is accepted with its parent binding and ordered observation checksum; the unfiltered parent cannot substitute for a selected view. The optional V3 handoff resolves the deployment-catalogued P0-01 structured-output index named by `qc_profile_ref`, including checksummed QC V2, biological-unit assignment and manifest artifacts. For raw-count inputs, feature columns resolving to the same non-missing normalized gene symbol are summed before normalization and recorded as a warning. Normalized-expression inputs must already have unique gene symbols.",
-        "output": "Backward-compatible Cell-State evidence plus an optional candidate-only V3 profile, a typed whole-product reference-correspondence figure, and a static state-definition evidence registry. Every typed figure binds its complete table, static renders, exact data hash and evidence references; no output assigns a domain score. Exploratory grouping scientific artifacts retain stable method configuration and thread count, excluding volatile wall-clock and peak-memory telemetry.",
+        "output": "Backward-compatible Cell-State evidence plus an optional candidate-only V3 profile or separately bound CellTypist candidate profile with a development receipt, native measurements and unchanged auxiliary method artifacts, a typed whole-product reference-correspondence figure, and a static state-definition evidence registry. Every typed figure binds its complete table, static renders, exact data hash and evidence references; no output assigns a domain score. Exploratory grouping scientific artifacts retain stable method configuration and thread count, excluding volatile wall-clock and peak-memory telemetry.",
         "reject": "Reference, vocabulary, MeasurementSpec, assay, data-view or checksum mismatch fails closed. Missing structured-index or typed-lineage inputs leave the legacy run successful but V3 unavailable; no lineage or positive composition is inferred.",
         "visualization": "Whole-product and submitted-group reference correspondence is shown with explicit denominators. A separate static registry distinguishes current label occurrence, dependent context, unrecorded source mappings and unrun external assessment; it does not represent query-specific product support.",
         "validation": "Real P0-01-to-P0-02 typed handoff, checksum and replacement adversaries, selected-view/observation lineage, legacy compatibility, source/lab/modality holdouts, calibration and OOD behavior.",
@@ -205,7 +205,7 @@ definitions and marker cards, followed by locked external-source and OOD testing
         else ""
     )
     validation_boundary = (
-        "\n\nThe unsealed scRNA pilot is complete. No state or method is frozen; biological review, signed gates and locked testing remain required."
+        "\n\nThe unsealed legacy pilot and the separately versioned CellTypist development evaluation are recorded independently. The development evaluation did not pass; no state or method is frozen and locked evaluation has not been opened. Legacy signed readers remain unchanged; the development decision contract does not introduce a signing ceremony."
         if is_cell_state
         else ""
     )

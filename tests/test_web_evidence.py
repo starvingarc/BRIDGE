@@ -20,6 +20,131 @@ from bridge.web.app import Settings, create_app, write_file
 from bridge.web.evidence import build_result_context
 from test_web_service import client, declare_counts, h5ad, new_session, settle
 
+
+
+def test_assessment_portrait_keeps_axes_and_does_not_classify_arbitrary_programs():
+    from bridge.web.evidence import assessment_portrait
+    evidence = [
+        {"alias": "E-target", "tool_id": "P0-03", "state": "available", "summary": {
+            "channels": [{"target_identity_fraction": {"numerator": 2, "denominator": 4, "fraction": 0.5},
+                          "regional_fidelity_fraction": None}],
+            "reason_codes": ["state_role_mapping_unresolved"]}, "measurements": []},
+        {"alias": "E-process", "tool_id": "P0-06", "state": "available", "summary": {
+            "runtime_mode": "method_runtime_source_bound",
+            "program_results": [{"program_id": "looks-like-hypoxia-but-unreviewed",
+                "value": 3.0, "availability": "available", "reason_codes": []}]}, "measurements": []},
+    ]
+    axes = assessment_portrait(evidence, [])
+    assert [row["id"] for row in axes] == ["cell_state", "target_identity", "regional_identity",
+        "development", "composition", "process"]
+    assert axes[1]["summary"]["channels"][0]["target_identity_fraction"]["fraction"] == 0.5
+    assert axes[2]["summary"]["channels"][0]["regional_fidelity_fraction"] is None
+    assert axes[0]["state"] == "missing"
+    assert axes[-1]["summary"]["program_results"][0]["program_id"] == "looks-like-hypoxia-but-unreviewed"
+    assert len(axes[-1]["families"]) == 7
+    assert all(row["state"] == "unavailable" and row["reason_codes"] == ["reviewed_family_mapping_unavailable"]
+        for row in axes[-1]["families"])
+    evidence[-1]["summary"] = {"runtime_mode": "exploratory_process", "cell_cycle": {
+        "assessment_state": "not_assessed", "s_g2m_fraction": None,
+        "n_observations": 4, "reason_codes": ["cell_cycle_gene_coverage_insufficient"]}}
+    families = assessment_portrait(evidence, [])[-1]["families"]
+    assert families[1]["state"] == "unavailable"
+    assert families[1]["reason_codes"] == ["cell_cycle_gene_coverage_insufficient"]
+    assert families[1]["summary"]["s_g2m_fraction"] is None
+    evidence[-1]["summary"]["cell_cycle"].update(assessment_state="available",
+        s_g2m_fraction=0.5, reason_codes=[])
+    families = assessment_portrait(evidence, [])[-1]["families"]
+    assert families[1]["state"] == "measured" and families[1]["summary"]["n_observations"] == 4
+    assert all(row["state"] == "unavailable" for index, row in enumerate(families) if index != 1)
+
+
+def test_assessment_local_projection_retains_canonical_missingness_and_program_identity():
+    from bridge.web.evidence import _assessment_aggregate, assessment_model_evidence
+    local = _assessment_aggregate({
+        "reason_codes": ["process_metadata_incomplete"],
+        "program_summaries": [{"program_id": "program:reviewed-example@0.1.0",
+            "availability": "unavailable", "reason_codes": ["program_gene_coverage_insufficient"]}],
+        "private_path": "/private/not-allowed"})
+    assert local == {"reason_codes": ["process_metadata_incomplete"], "program_summaries": [
+        {"program_id": "program:reviewed-example@0.1.0", "availability": "unavailable",
+         "reason_codes": ["program_gene_coverage_insufficient"]}]}
+    rows = [{"alias": "E-privatehashprefix", "state": "available", "tool_id": "P0-06",
+        "summary": local, "measurements": [], "provenance": {"plan_id": "private-plan"},
+        "artifact_ids": ["private-artifact"]}]
+    shared, binding = assessment_model_evidence(rows)
+    assert shared[0]["summary"]["reason_codes"] == ["process_metadata_incomplete"]
+    wire = json.dumps(shared)
+    for private in ("program:reviewed-example@0.1.0", "E-privatehashprefix",
+                    "private-plan", "private-artifact"):
+        assert private not in wire
+    assert binding["evidence"][shared[0]["alias"]] == "E-privatehashprefix"
+
+
+@pytest.mark.parametrize("value,evidence_state,projected_value,projection_state", [
+    (0.5, "inferred", 0.5, "numeric"),
+    (None, "unavailable", None, "literal_null"),
+    ("private_unstructured_value", "inferred", None, "withheld"),
+])
+def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids(
+        value, evidence_state, projected_value, projection_state):
+    from bridge.web.evidence import assessment_model_evidence
+    summary = {"graph_alias": "N-privategraphhash", "graph_version": 2,
+        "query_name": "get_case_evidence_subgraph", "returned_node_count": 2,
+        "returned_edge_count": 1, "truncated": False, "omitted_node_count": 0, "omitted_edge_count": 0,
+        "nodes": [{"alias": "N-privatenodehash", "node_type": "EvidenceRecord",
+                   "evidence_tier": "shadow", "lifecycle_state": "active"}],
+        "records": [{"alias": "N-privatenodehash", "family_alias": "N-privatefamilyhash",
+                     "node_type": "EvidenceRecord", "evidence_tier": "shadow", "lifecycle_state": "active",
+                     "domain_id": "target_identity", "evidence_state": evidence_state,
+                     "metric_id": "target_identity_fraction", "unit": "fraction",
+                     "applicability": "applicable", "relation": "supports", "interval": None,
+                     "value": value, "numerator": 2, "denominator": 4}],
+        "claims": [], "reconciliations": [],
+        "requirements": [], "edges": [{"source": "N-privatenodehash",
+                     "target": "N-privategraphhash", "type": "supports"}]}
+    local = [{"alias": "E-privatehash", "state": "available", "tool_id": "P0-09",
+              "summary": summary, "measurements": []}]
+    shared, bindings = assessment_model_evidence(local)
+    again, _ = assessment_model_evidence(local)
+    graph = shared[0]["summary"]
+    assert graph["nodes"][0]["alias"] == graph["records"][0]["alias"] == graph["edges"][0]["source"]
+    assert graph["edges"][0]["target"] == graph["graph_alias"]
+    assert graph["records"][0]["value"] == projected_value and graph["records"][0]["denominator"] == 4
+    assert graph["records"][0]["value_projection_state"] == projection_state
+    assert "value_state" not in graph["records"][0]
+    assert graph["records"][0]["evidence_state"] == evidence_state
+    assert graph["records"][0]["metric_name"] == "target_identity_fraction"
+    assert graph["records"][0]["metric_semantics_state"] == "available"
+    assert graph["records"][0]["unit"] == "fraction" and graph["records"][0]["interval"] is None
+    assert "private" not in json.dumps(shared)
+    assert shared[0]["alias"] != again[0]["alias"]
+    assert bindings["references"][graph["graph_alias"]] == "N-privategraphhash"
+
+
+@pytest.mark.parametrize("oversized", ["composition", "reasons"])
+def test_assessment_hard_count_keeps_existing_summary_row_bounds(tmp_path, oversized):
+    from test_p0_05_hard_count_accounting import _hard_count_request, _run
+    from bridge.tool_packages.p0_05_off_target_control.models import OffTargetHardCountAccounting
+    from bridge.web.evidence import _assessment_hard_count, _SummaryLimit, MAX_ROWS
+    run = _run(_hard_count_request(tmp_path))
+    assert run.execution_state.value == "succeeded"
+    assert _assessment_hard_count(run.result)["accounting"] == run.result["accounting"]
+    result = json.loads(json.dumps(run.result))
+    accounting = result["accounting"]
+    if oversized == "composition":
+        accounting["producer_composition"]["records"].extend([
+            {"view": "source_specific", "source_id": f"source:extra-{index}", "label": "state:extra",
+             "label_level": "L1", "state_evidence_state": "candidate", "denominator_scope": "selected_data_view",
+             "count": 0, "fraction": 0.0, "denominator": accounting["n_observations"]}
+            for index in range(MAX_ROWS + 1)])
+    else:
+        accounting["reason_codes"] = [f"source_reason_{index}" for index in range(MAX_ROWS + 1)]
+    # The canonical contract accepts these unbounded lists; Web projection must refuse, not truncate.
+    OffTargetHardCountAccounting.model_validate(accounting)
+    with pytest.raises(_SummaryLimit):
+        _assessment_hard_count(result)
+
+
 SCHEMA = "bridge://schemas/cell-state-evidence-profile/v0.3"
 LABEL = "L1:Neuron_DA"
 SECRETS = ("PRIVATE_SOURCE_SENTINEL", "PRIVATE_WARNING_SENTINEL",

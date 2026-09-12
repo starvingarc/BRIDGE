@@ -180,6 +180,8 @@ QC 只绑定与数据解释直接相关的版本化资源：
 
 P0-01 保持 v0.1 `ToolRequest`、`ToolRun.result` 与 `qc_readiness_profile.json` 的既有语义，并额外写出 `qc_readiness_profile_v2.json`。对 `analysis_ready` 与 `count_ready` 输入，v2 profile 的 `selected_data_view` 绑定原始不可变资产、matrix location/semantics、完整 observation 数量与排序无关的 observation-ID digest；当前不会把仅添加候选 flags、但没有实际删行的 `candidate_qc_view.h5ad` 声称为筛选后视图。`droplet_ready` 的 barcode 尚未完成 cell calling，因此 `selected_data_view=null`。
 
+未提供 typed lineage 时，若调用者明确声明的 sample 列对全部 observation 完整且仅有一个非缺失值，数据视图可绑定由原始资产、列名和值共同确定的内容寻址 sample 引用。这只是该文件内的单样本标识；不会生成 biological-unit manifest/assignment，也不会推断 preparation、donor、独立重复或跨文件样本等价。多值、缺值或未声明的 sample 列不生成该引用。
+
 可选的 `asset.metadata.biological_unit_lineage` 只接受显式且带版本的声明：
 
 | 字段 | 最低语义 |

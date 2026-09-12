@@ -11,9 +11,43 @@ from .clarification import QuestionSet
 from .scientific_inputs import ScienceCandidate
 
 
+class AssessmentHypothesis(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    statement: str = Field(min_length=1, max_length=600)
+    evidence_aliases: list[str] = Field(min_length=1, max_length=8)
+    opposing_evidence_aliases: list[str] = Field(default_factory=list, max_length=8)
+    missing_evidence_aliases: list[str] = Field(default_factory=list, max_length=8)
+    expected_observation: str | None = Field(default=None, min_length=1, max_length=600)
+    competing_explanation: str = Field(min_length=1, max_length=600)
+    discriminating_check: str = Field(pattern=r"^P0-(0[1-9]|1[0-2])$")
+
+
+class AssessmentDecision(BaseModel):
+    """Only selections and bounded explanation; never scientific input objects."""
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["check", "query", "explain", "question", "stop"]
+    hypotheses: list[AssessmentHypothesis] = Field(default_factory=list, max_length=3)
+    option_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    text: str | None = Field(default=None, min_length=1, max_length=2400)
+    reason: Literal["evidence_requirements_reached", "no_discriminating_check", "necessary_fact_required"] | None = None
+
+    @model_validator(mode="after")
+    def exact_action(self):
+        if self.action in {"check", "query"}:
+            if not self.option_id or self.text is not None or self.reason is not None:
+                raise ValueError("invalid_assessment_selection")
+        elif self.action == "stop":
+            if self.reason is None or self.text is not None or self.option_id is not None:
+                raise ValueError("invalid_assessment_stop")
+        elif not self.text or self.option_id is not None or self.reason is not None:
+            raise ValueError("invalid_assessment_explanation")
+        return self
+
+
 class Action(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    action: Literal["reply", "review_inputs", "propose_intake", "prepare_qc", "prepare_analysis", "ask_user_input", "draft_scientific_inputs", "propose_scientific_inputs"]
+    action: Literal["reply", "review_inputs", "propose_intake", "prepare_qc", "prepare_analysis", "ask_user_input", "draft_scientific_inputs", "propose_scientific_inputs", "assessment"]
+    decision: AssessmentDecision | None = None
     candidate: ScienceCandidate | None = None
     questions: QuestionSet | None = None
     facts: IntakeFacts | None = None
@@ -24,6 +58,13 @@ class Action(BaseModel):
 
     @model_validator(mode="after")
     def complete(self):
+        if self.action == "assessment":
+            if self.decision is None or any(value is not None for value in
+                    (self.candidate, self.questions, self.facts, self.tool_id, self.text, self.upload_id, self.matrix_location)):
+                raise ValueError("invalid_assessment_action")
+            return self
+        if self.decision is not None:
+            raise ValueError("unexpected_assessment_decision")
         if self.action in {"draft_scientific_inputs", "propose_scientific_inputs"}:
             if (not self.upload_id or any(value is not None for value in
                     (self.questions, self.facts, self.tool_id, self.text, self.matrix_location))
@@ -60,6 +101,7 @@ class Action(BaseModel):
 
 
 _ACTION_FIELDS = {
+    "assessment": ("decision",),
     "reply": ("text",),
     "review_inputs": ("text",),
     "prepare_qc": ("upload_id", "matrix_location"),
@@ -72,8 +114,8 @@ _ACTION_FIELDS = {
 
 
 def _action_field_schema(field_name: str) -> dict:
-    if field_name in {"facts", "questions", "candidate"}:
-        schema = {"facts": IntakeFacts, "questions": QuestionSet, "candidate": ScienceCandidate}[field_name].model_json_schema()
+    if field_name in {"facts", "questions", "candidate", "decision"}:
+        schema = {"facts": IntakeFacts, "questions": QuestionSet, "candidate": ScienceCandidate, "decision": AssessmentDecision}[field_name].model_json_schema()
         definitions = schema.pop("$defs", {})
         # Function arguments are nested below a parameters object. Inline local
         # model refs so they do not resolve against the wrong JSON Schema root.
@@ -91,7 +133,7 @@ def _action_field_schema(field_name: str) -> dict:
     return next(option.copy() for option in field["anyOf"] if option.get("type") == "string")
 
 
-def action_tools() -> list[dict]:
+def action_tools(purpose=None) -> list[dict]:
     return [
         {
             "type": "function",
@@ -109,6 +151,7 @@ def action_tools() -> list[dict]:
             },
         }
         for action, field_names in _ACTION_FIELDS.items()
+        if (action == "assessment") == (purpose == "assessment")
     ]
 
 
@@ -316,6 +359,48 @@ _NATIVE_SYSTEM = (
 def converse(settings, messages: list[dict], context: dict) -> Action:
     protocol = settings.model_action_protocol
     system = SYSTEM if protocol == "json" else _NATIVE_SYSTEM
+    if context.get("purpose") == "assessment":
+        system = """You coordinate one approved, bounded BRIDGE research assessment.
+Only select a supplied option ID: check for a registered check or query for a read-only graph query.
+Options are server-validated actions with execution prerequisites satisfied for this turn, not existing results.
+Each option is an exact request not yet executed in this scope; absence of its own result is not a blocker.
+Use its registered name, summary and scientific_status to understand purpose, not as evidence or extra authority.
+A tool summary does not enable other modes or certify that every capability in that summary will run.
+Blockers apply only to their exact (tool_id, mode_id); never transfer a reason to another mode of the same tool.
+interpretation_gaps limit what can be concluded and are not execution blockers; an eligible option may retain them.
+Select a useful eligible check/query when it can clarify the approved question; you are not required to execute every option.
+The server rechecks the exact request and admits a plan under original scope consent; this is not a new human or scientific approval.
+Use only supplied evidence summaries. Do not invent values, identities, thresholds, facts or eligibility.
+Preserve missing, unknown, unavailable, negative, alert, exploratory and candidate states.
+An unavailable score does not mean supplied numeric measurements are unmeasured; retain each canonical evidence state.
+Successful execution does not imply all QC checks ran, a filtered view, or scientific qualification.
+Describe filtering, doublet detection, ambient correction or cell calling only when supplied tool-owned states confirm them.
+No raw rows or private source values are available. Same-family methods are dependent, not extra votes.
+Hypotheses, when useful, contain statement, evidence_aliases from supplied evidence, competing_explanation,
+opposing_evidence_aliases from available evidence, missing_evidence_aliases from unavailable evidence.
+All three lists must use only top-level evidence[].alias from THIS turn (E- aliases).
+Nested measurement/node/graph aliases (R- aliases) are joins, not valid hypothesis citations.
+Supporting and opposing evidence must have state=available; missing evidence must have another state.
+Do not reuse an alias from an earlier turn or infer one from a tool ID. Hypotheses also contain
+expected_observation describing what each competing explanation predicts qualitatively,
+and discriminating_check (an allowed tool ID). Do not invent aliases. Missing evidence is never opposition.
+Use empty lists when no opposing or missing evidence has been supplied; do not manufacture either.
+An unavailable method is a gap, not evidence against a hypothesis. No confidence/probability or numerical claim fields.
+Stop for evidence_requirements_reached or no_discriminating_check; question only for a consequential missing fact.
+An explanation ends this phase, not the scientific question; it may leave useful options unexecuted and is not a verified report.
+Keep explanation text concise: prefer at most 1200 characters; the hard limit is 2400 characters.
+If previous_action_error is provider_explanation_too_long, produce a shorter valid action without dropping uncertainty.
+If it is invalid_evidence_alias, rebind citations only to this turn's top-level evidence aliases and states.
+If it is provider_action_invalid_or_unavailable, return a complete valid action using the supplied schema.
+For check/query, omit text and reason. For explain/question, text must be nonempty.
+Every supplied hypothesis needs statement, evidence_aliases, competing_explanation and discriminating_check.
+A rejected action ran no tool and is not evidence. Explicit resume does not reset the execution budget.
+No clinical efficacy, safety, release or ranking claims.
+Return one assessment(decision) action with no other action.
+decision is {action: check|query, option_id: supplied ID}, {action: explain|question, text: string},
+or {action: stop, reason: evidence_requirements_reached|no_discriminating_check|necessary_fact_required}.
+""" + ("Return JSON: {\"action\":\"assessment\",\"decision\":{...}}." if protocol == "json"
+        else "Call exactly one assessment function and emit no message content.") + _PRIVATE_SAFETY_GUIDANCE
     payload = {
         "model": settings.model,
         # Keep one leading system message and the latest user turn last. Some
@@ -328,7 +413,7 @@ def converse(settings, messages: list[dict], context: dict) -> Action:
     if protocol == "deepseek_tools":
         payload.pop("response_format")
         payload.update(
-            tools=action_tools(),
+            tools=action_tools(context.get("purpose")),
             tool_choice="required",
             thinking={"type": "disabled"},
         )
@@ -338,7 +423,7 @@ def converse(settings, messages: list[dict], context: dict) -> Action:
         response.raise_for_status()
         if len(response.content) > 256_000:
             raise ValueError("provider_response_too_large")
-        return parse_action(
-            response.json()["choices"][0]["message"],
-            protocol=protocol,
-        )
+        action = parse_action(response.json()["choices"][0]["message"], protocol=protocol)
+        if (action.action == "assessment") != (context.get("purpose") == "assessment"):
+            raise ValueError("model_action_purpose_mismatch")
+        return action

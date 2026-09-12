@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-09-11: Separate Developer Scientific Decisions From Legacy Signatures
+
+The approved Step 7–10 design treats scientific definition review as development
+work backed by explicit source evidence and method validation. A new versioned
+policy replaces fixed two-role signatures as a development prerequisite; it
+does not fabricate reviewer identities, mark historical pending records approved,
+or remove checksum, source-isolation, independent-validation or per-state release
+requirements. Legacy signed contracts remain readable with their original rules.
+The implementation and validation of the replacement are tracked in the
+[mainline plan](../plans/step7-evidence-coordinator.md).
+
+The first VM/mDA product scope includes lineage-supported progenitors and early
+neuroblasts. Identity, product role and developmental compatibility are separate
+axes: a historical neuroblast label alone establishes none of them, and culture
+day does not establish fetal age. Scientific qualification, clinical suitability
+and domain scores are not granted by this scope decision.
+
+Reports are layered: a claim-verified, explicitly bounded research report may
+precede full scientific qualification. The initial download is private offline
+Chinese HTML with data attachments, not public HTML export or PDF. Results,
+statements and corrections bind immutable analysis versions and original tool
+receipts. Existing runtime approvals remain explicit; no merge, publication or
+deployment follows from this development decision.
+
 ## 2026-09-07: Separate P0-05 Counts From Assignment Mass
 
 The approved P0-05 hard_count_accounting input mode consumes the existing
@@ -145,8 +169,8 @@ single-operator deployment boundary, not a multi-tenant authorization model.
 
 ## 2026-09-07: Permit Explicitly Opted-in Aggregate Interpretation
 
-The owner approved sending field-allowlisted aggregate analysis summaries to the
-configured model for research interpretation. Raw expression matrices,
+Field-allowlisted aggregate analysis summaries may be sent to the
+configured model for opted-in research interpretation. Raw expression matrices,
 observation-level records, sample/source identities, private paths, credentials
 and private provenance hashes remain local. The default deployment remains
 status-only; the opt-in is startup-owned, not a model or HTTP permission.
@@ -162,8 +186,8 @@ receipts remain outside the repository.
 
 ## 2026-09-08: Bound Product-intent Sharing To Scientific-input Drafts
 
-The owner approved the configured model receiving three explicitly confirmed
-product-intent fields for scientific-input candidate drafting: `product_family`,
+Scientific-input candidate drafting may send the configured model three explicitly
+confirmed product-intent fields: `product_family`,
 `target_cell_type` and `target_stage`. This is a purpose-specific authorization,
 not permission to send the whole intake form or to expand ordinary conversation
 context. Product names, sampling and independence information, sample/source
@@ -181,9 +205,8 @@ and Git history.
 
 ## 2026-09-09: Metadata-First Experimental Intake
 
-The owner approved reading uploaded obs/var/uns metadata before asking research
-users repetitive questions, and using uploaded differentiation protocols to
-produce editable, source-cited experimental drafts. A dedicated configured-model
+Experimental intake reads uploaded obs/var/uns metadata first and uses uploaded
+differentiation protocols to produce editable, source-cited experimental drafts. A dedicated configured-model
 purpose may receive bounded semantic metadata and protocol passages. It does not
 inherit general access to matrices, observation rows, sample/capture identities,
 private paths, credentials or provenance hashes.
@@ -202,7 +225,7 @@ changes intake, not the scientific measurement contracts or release criteria.
 
 ## 2026-09-09: Separate Descriptive Expression Measurement From Product Assessment
 
-The owner approved a bounded exploratory P0-06 route before product-state,
+A bounded exploratory process-assessment route is available before product-state,
 role and biological-independence review is complete. Its versioned input binds
 the selected expression view and exact candidate S/G2M resource. It measures
 relative program expression and predicted phases only; it cannot manufacture
@@ -222,8 +245,8 @@ private execution receipts remain outside the repository.
 
 ## 2026-09-09: Derive Protocol Code And Source Spans From One Fragment Sequence
 
-The owner approved replacing the model's separate full-program and source-map
-outputs after real generation/repair failures. Ordered source-backed body
+Separate full-program and source-map outputs were replaced after observed
+generation and repair failures. Ordered source-backed body
 fragments are now the sole proposed code source. BRIDGE assembles a fixed
 protocol wrapper, physical line spans and any compatibility occurrence fields.
 A syntax repair replaces named existing fragments and atomically regenerates the
@@ -240,7 +263,7 @@ and construction chronology remains in Git.
 
 ## 2026-09-09: Permit Add-only Repair Of Missing Protocol Citations
 
-The owner approved appending missing existing source IDs to an unchanged step.
+Missing existing source IDs may be appended to an otherwise unchanged step.
 Original source passages are authoritative; an initial model citation omission
 must not become an immutable error. Prior citations and their order remain,
 as do step IDs/order, readable operations, parameters, questions and exclusions.
@@ -253,8 +276,8 @@ or human review. Installed actual-model acceptance remains a separate gate.
 
 ## 2026-09-09: Review Unparsed Wait Information Separately From Compilation
 
-The owner authorized fixing a real-model omission before merging: the model
-preserved an unspecified wait as a string but returned no question. Source
+An observed model output preserved an unspecified wait as a string but returned
+no question. Source
 accounting and an empty question list cannot establish sufficient information.
 For unparsed wait durations with no outstanding question, require a separate
 source review within the existing three-request budget. Its closed response
@@ -273,8 +296,7 @@ complete semantic verification, experimental execution or a scientific claim.
 
 ## 2026-09-10: Keep One Workflow Contract And Separate Approved Targets From Current Evidence
 
-The owner approved PRD section 6 as the single maintained product-workflow
-contract. The first six intake-to-QC steps, including source-bound protocol
+PRD section 6 is the single maintained product-workflow contract. The first six intake-to-QC steps, including source-bound protocol
 review, retain their already accepted scope. The downstream graph-driven
 feedback loop, internally selected and user-confirmed comparison cohort, and
 qualified report/export are approved target behavior, not claims about current
@@ -292,3 +314,43 @@ evidence. Private runtime records and operational deployment state remain
 outside GitHub. Completed construction diaries may leave the active tree only
 after unique facts, unresolved scientific work and exact validation records are
 preserved; retirement does not upgrade scientific status.
+
+## 2026-09-11: Separate Assessment Display, Provider Projection And Scope Authority
+
+The scope coordinator admits only reconstructed registered requests inside the
+exact approved question, upload, fact/resource bindings and finite limits.
+Candidate preparation exposes actual blocking prerequisites and separate
+interpretation gaps before approval without running tools/models or changing
+scientific facts. This is execution authority, not source-state, product-role,
+window, program, biological-unit, score or release approval.
+
+The researcher-facing portrait preserves independent assessment axes, exact
+values/denominators, canonical missingness and local source/version drilldown.
+All seven process families stay explicit. The exploratory S/G2M route covers
+cell cycle only; no family is inferred from an arbitrary program name.
+Pending fact review differs from a confirmed historical binding; existing
+receipts and stop reasons remain intact and recomputation needs a fresh scope.
+
+The provider context is independently rebuilt from allowed aggregate fields
+with opaque per-turn aliases. Private fingerprints, receipt/artifact hashes,
+plan identities, dependency bindings and local links stay local; validated
+citations resolve back to canonical evidence. Existing request reconstruction
+and deduplication remain unchanged.
+
+The browser tree is named `frontend/`; the Python package stays
+`src/bridge/web/`. Contributor/document lifecycle requirements are consolidated
+in AGENTS, preserving scientific contracts and dated validation records.
+[Step 7 validation](validation/step7_evidence_coordinator_20260911.md) separates
+observed engineering checks from unverified real-input and scientific gates.
+
+## 2026-09-11 — External method observations and evidence admission v0.2
+
+Method selection, graph admission and scientific qualification are separate.
+Verified outputs from authorized query runs, including external methods, are
+admissible as attributed research observations with native semantics and shared
+source dependencies. Public method metadata is retrievable for planning and
+explanation. This supersedes the blanket graph exclusion in the original
+CapybaraBrain task card; sealed inputs remain isolated. Neither catalog presence
+nor graph admission establishes execution, independent validation, training or
+calibration permission, or product qualification. Frozen historical runs retain
+their original policies and are not relabeled.

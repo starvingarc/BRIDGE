@@ -1,0 +1,108 @@
+{
+  "contract_id": "P0-10-RESEARCH-RELEASE-CONTRACT-v0.2",
+  "contract_version": "0.2.0",
+  "renderer_id": "BRIDGE-RESEARCH-REPORT-RENDERER-v0.2",
+  "renderer_version": "0.2.0",
+  "measurement_language": "zh",
+  "claim_policy": {
+    "object_version": "0.1.0",
+    "policy_id": "claim-policy:p0-10-research",
+    "policy_version": "0.2.0",
+    "active": true,
+    "claim_type_policies": [
+      {
+        "claim_type": "measurement_claim",
+        "requires_evidence": true,
+        "allowed_evidence_states": [
+          "measured",
+          "inferred",
+          "prior_only",
+          "negative",
+          "missing",
+          "unknown",
+          "unavailable",
+          "alert"
+        ],
+        "allowed_comparison_modes": [
+          "not_applicable"
+        ]
+      },
+      {
+        "claim_type": "availability_claim",
+        "requires_evidence": true,
+        "allowed_evidence_states": [
+          "measured",
+          "inferred",
+          "prior_only",
+          "negative",
+          "missing",
+          "unknown",
+          "unavailable",
+          "alert"
+        ],
+        "allowed_comparison_modes": [
+          "not_applicable"
+        ]
+      },
+      {
+        "claim_type": "policy_or_boundary_statement",
+        "requires_evidence": false,
+        "allowed_evidence_states": [],
+        "allowed_comparison_modes": [
+          "not_applicable"
+        ]
+      }
+    ],
+    "descriptive_forbidden_patterns": [
+      "(?:statistically significant|显著优于|caused|导致)"
+    ],
+    "text_rules": [
+      {
+        "except_statement_refs": [
+          "statement:research-boundary@0.2.0"
+        ],
+        "languages": [
+          "zh",
+          "en",
+          "mixed"
+        ],
+        "pattern": "(?:safe|safety|安全|potency|疗效|best product|最佳产品|临床|有效性|放行|目标纯度)",
+        "reason_code": "prohibited_claim",
+        "rule_id": "rule:prohibited-clinical",
+        "severity": "hard_blocker",
+        "version": "0.2.0"
+      },
+      {
+        "except_statement_refs": [],
+        "languages": [
+          "zh",
+          "en",
+          "mixed"
+        ],
+        "pattern": "(?:better|更好)",
+        "reason_code": "ambiguous_superiority",
+        "rule_id": "rule:ambiguous-superiority",
+        "severity": "review",
+        "version": "0.2.0"
+      }
+    ]
+  },
+  "statement_registry": {
+    "object_version": "0.2.0",
+    "registry_id": "BRIDGE-RESEARCH-STATEMENT-REGISTRY-v0.2",
+    "registry_version": "0.2.0",
+    "statements": [
+      {
+        "statement_id": "statement:research-boundary",
+        "statement_version": "0.2.0",
+        "approved": true,
+        "texts": {
+          "zh": "本报告仅供内部研究；不证明临床疗效、安全性、有效性或产品放行资格。原生方法输出仅是探索性方法观察，不等于目标纯度或经资格确认的生物学结论。所有领域评分均为空值。"
+        },
+        "allowed_claim_types": [
+          "policy_or_boundary_statement"
+        ]
+      }
+    ]
+  }
+}

@@ -31,7 +31,9 @@ methods:
     note: The BRIDGE wrapper must retain the preregistered base classifier, source-aware calibration split, marginal and classwise coverage, and set-size diagnostics; it adds no independent biological or OOD evidence family.
   CapybaraBrain as-published:
     official_url: https://www.biorxiv.org/content/10.64898/2026.06.19.733041v1 | https://developmental.cellatlas.io/dopamine | https://github.com/VittoriaDBocchi/CapybaraBrain
-    note: Competitor-isolated reproduction only. Keep the fetal atlas reference, 93-program CapybaraBrain method, 641,539-cell HDNA in-vitro atlas across 19 studies, and separate PCA/kNN mapping notebook as distinct checksum-bound artifacts; they are not independent external validation for BRIDGE.
+    retrieval_policy: public_method_metadata
+    key_boundary: Public method metadata is available for planning and explanation. Verified version-bound outputs on authorized query inputs may enter the evidence graph as external method observations, not independent validation or qualified product conclusions. Sealed materials remain excluded; outputs cannot retune the same evaluation. Native program weights, hybrid states, missing programs and shared reference dependencies remain explicit.
+    note: Evidence admission policy v0.2 separates graph observations from scientific qualification. Keep the fetal atlas, 93-program CapybaraBrain method, HDNA in-vitro atlas and separate PCA/kNN mapping notebook as distinct checksum-bound artifacts. Metadata availability does not establish an executable adapter or permit atlas material to become BRIDGE training, calibration or prior data.
   scClassify:
     official_url: https://doi.org/10.15252/msb.20199389 | https://github.com/SydneyBioX/scClassify
     note: The incorrect registry DOI was replaced by the primary Molecular Systems Biology publication DOI.

@@ -78,12 +78,27 @@ def verify_report(
     evidence_graph_id: str,
     evidence_graph_version: int,
     evidence_graph_manifest_sha256: str,
+    research_snapshot=None,
 ) -> ClaimVerificationResult:
+    from bridge.tool_packages.p0_10_claim_verifier.research import (
+        ResearchReleaseContract, ResearchClaimVerificationResult,
+        research_draft_matches_graph, load_research_release_contract,
+    )
+    is_research = isinstance(release_contract, ResearchReleaseContract)
     verification_id = f"claim-verification:{run_id.removeprefix('run-')}"
     evidence = {record.ref: record for record in evidence_set.records}
     statement_by_ref = {statement.ref: statement for statement in statements.statements}
     claim_policy = {item.claim_type: item for item in policy.claim_type_policies}
     checks: list[ClaimCheckRecord] = []
+    if is_research:
+        approved = load_research_release_contract()
+        if research_snapshot is None:
+            raise ValueError("research_snapshot_required")
+        if (release_contract != approved or policy != approved.claim_policy
+                or statements != approved.statement_registry
+                or not research_draft_matches_graph(report, research_snapshot)):
+            checks.append(_block(report.claim_blocks[0], "rule:research-snapshot",
+                                 "research_draft_graph_binding_mismatch"))
     for claim in report.claim_blocks:
         resolved = [evidence[ref] for ref in claim.evidence_refs if ref in evidence]
         checks.extend(
@@ -105,7 +120,7 @@ def verify_report(
                 claim_policy,
             )
         )
-        checks.extend(_check_value_bindings(claim, evidence))
+        checks.extend(_check_value_bindings(claim, evidence, research=is_research))
         checks.extend(_check_comparison_scope(claim, policy))
         checks.extend(
             _check_text_rules(
@@ -129,17 +144,18 @@ def verify_report(
     else:
         release_state = ReleaseState.VERIFIED
 
-    return ClaimVerificationResult(
-        object_version="0.1.0",
+    result_type = ResearchClaimVerificationResult if is_research else ClaimVerificationResult
+    return result_type(
+        object_version="0.2.0" if is_research else "0.1.0",
         verification_id=verification_id,
-        verifier_version=VERIFIER_VERSION,
-        benchmark_id=EXTERNAL_BENCHMARK_ID,
-        benchmark_sha256=EXTERNAL_BENCHMARK_SHA256,
+        verifier_version="0.2.0" if is_research else VERIFIER_VERSION,
+        benchmark_id=None if is_research else EXTERNAL_BENCHMARK_ID,
+        benchmark_sha256=None if is_research else EXTERNAL_BENCHMARK_SHA256,
         release_contract_id=release_contract.contract_id,
         release_contract_sha256=release_contract_hash,
         report_draft_ref=report.ref,
         report_content_hash=report.content_hash,
-        report_audience=report.audience,
+        report_audience=ReportAudience.INTERNAL_RESEARCH if is_research else report.audience,
         evidence_graph_id=evidence_graph_id,
         evidence_graph_version=evidence_graph_version,
         evidence_graph_manifest_sha256=evidence_graph_manifest_sha256,
@@ -149,10 +165,11 @@ def verify_report(
         check_records=sorted(checks, key=lambda item: item.check_id),
         public_export_eligibility=(
             PublicExportEligibility.ELIGIBLE
-            if report.audience is ReportAudience.PUBLIC_CANDIDATE
+            if not is_research and report.audience is ReportAudience.PUBLIC_CANDIDATE
             and release_state in {ReleaseState.VERIFIED, ReleaseState.VERIFIED_WITH_WARNINGS}
             else PublicExportEligibility.INELIGIBLE
         ),
+        **({"snapshot_sha256": research_snapshot.snapshot_sha256} if is_research else {}),
     )
 
 
@@ -214,6 +231,19 @@ def _render_authoritative_claim(
     if claim.claim_type is ClaimType.POLICY_OR_BOUNDARY and len(claim.statement_refs) == 1:
         statement = statements.get(claim.statement_refs[0])
         return None if statement is None else statement.texts.get(claim.language)
+    from bridge.tool_packages.p0_10_claim_verifier.research import ResearchReleaseContract, research_record_claim
+
+    if isinstance(contract, ResearchReleaseContract):
+        if len(resolved) != 1:
+            return None
+        try:
+            expected = research_record_claim(resolved[0])
+        except ValueError:
+            return None
+        if (claim.claim_type != expected.claim_type or claim.language != expected.language
+                or claim.value_bindings != expected.value_bindings):
+            return None
+        return expected.text
     if (
         claim.claim_type is not ClaimType.MEASUREMENT
         or claim.language.value != contract.measurement_language
@@ -269,7 +299,11 @@ def _check_claim_contract(
                 )
             )
             continue
-        if record.lifecycle_state is not EvidenceLifecycleState.ACTIVE:
+        # Graph history keeps original records immutable. A successor retires
+        # its predecessor even when that historical record still says ACTIVE.
+        if record.lifecycle_state is not EvidenceLifecycleState.ACTIVE or any(
+            successor.predecessor_ref == ref for successor in evidence.values()
+        ):
             checks.append(
                 _block(claim, "rule:evidence-lifecycle", "evidence_not_active", evidence_refs=[ref])
             )
@@ -394,6 +428,7 @@ def _check_statement_bindings(
 def _check_value_bindings(
     claim: ClaimBlock,
     evidence: dict[str, EvidenceRecord],
+    *, research: bool = False,
 ) -> list[ClaimCheckRecord]:
     checks: list[ClaimCheckRecord] = []
     for binding in claim.value_bindings:
@@ -413,7 +448,7 @@ def _check_value_bindings(
             continue
         start, end = binding.text_span
         rendered = claim.text[start:end] if end <= len(claim.text) else ""
-        reason = _numeric_binding_reason(binding, record, rendered)
+        reason = _numeric_binding_reason(binding, record, rendered, research=research)
         if reason is not None:
             checks.append(
                 _block(
@@ -428,7 +463,8 @@ def _check_value_bindings(
 
 
 def _numeric_binding_reason(
-    binding: ValueBinding, evidence: EvidenceRecord, rendered: str
+    binding: ValueBinding, evidence: EvidenceRecord, rendered: str,
+    *, research: bool = False,
 ) -> str | None:
     source = _numeric_source(evidence, binding.source_field)
     if source is None or isinstance(source, bool):
@@ -438,7 +474,8 @@ def _numeric_binding_reason(
         return "numeric_source_not_scalar"
     if binding.canonical_numeric_string != canonical:
         return "canonical_numeric_mismatch"
-    if binding.raw_unit != evidence.unit:
+    expected_unit = None if research and binding.source_field in {"numerator", "denominator"} else evidence.unit
+    if binding.raw_unit != expected_unit:
         return "unit_mismatch"
     if rendered != _join_numeric_unit(canonical, binding.raw_unit):
         return "rendered_numeric_mismatch"

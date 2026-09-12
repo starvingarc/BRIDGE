@@ -1,6 +1,6 @@
 tool_id: P0-09
 name: Evidence Compiler & Reconciler
-version: 0.4.2
+version: 0.5.1
 summary: Compile atomic evidence and reconcile conflicts by versioned rules.
 implementation_state: implemented
 scientific_status: candidate
@@ -8,7 +8,7 @@ optional: false
 environment_spec_id: ENV-EVIDENCE-v0.2
 input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
-result_schema_ref: bridge://schemas/evidence-compiler-run-result/v0.1
+result_schema_ref: bridge://schemas/evidence-compiler-result/v0.2
 adapter_ref: bridge.tool_packages.p0_09_evidence_compiler.adapter:adapter
 method_ids:
   - METHOD-INTERNAL-DETERMINISTIC-ENGINE-25908A

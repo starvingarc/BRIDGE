@@ -990,6 +990,22 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 append=True,
                 canonical_run=True,
             ),
+            *[
+                _mode(
+                    f"{kind}_query",
+                    _role(
+                        "evidence_graph_manifest",
+                        f"bridge://schemas/{kind}-evidence-graph-manifest/v0.1",
+                        None, 1, 1,
+                    ),
+                    _role(
+                        "evidence_graph_query",
+                        "bridge://schemas/evidence-graph-query/v0.1",
+                        V01, 1, 1,
+                    ),
+                )
+                for kind in ("case", "comparison")
+            ],
         ],
     ),
     "P0-10": ToolInputContract(
@@ -1001,6 +1017,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         object_input_modes=[
             _mode(
                 "default",
+                _role("research_report_context", "bridge://schemas/research-report-context/v0.3", "0.3.0", 0, 1),
                 _role("report_draft", "bridge://schemas/report-draft/v0.1", V01, 1, 1),
                 _role(
                     "evidence_graph_manifest",
@@ -1018,8 +1035,9 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 ),
                 _role(
                     "statement_registry",
-                    "bridge://schemas/statement-registry/v0.1",
-                    V01,
+                    ("bridge://schemas/statement-registry/v0.1",
+                     "bridge://schemas/research-statement-registry/v0.2"),
+                    (V01, "0.2.0"),
                     1,
                     1,
                 ),
