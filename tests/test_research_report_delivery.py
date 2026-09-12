@@ -309,6 +309,44 @@ def revised_process_graphs(tmp_path_factory):
     return _revised_research_graphs(tmp_path_factory.mktemp("process-revisions"), "native_mean_proc_score_scanpy_s")
 
 
+
+@pytest.mark.parametrize("revision,record_index,withdrawn", [
+    (0, 0, False), (1, 0, True), (1, 1, False), (2, 1, True),
+])
+def test_legacy_verifier_respects_compiled_revision_history(
+        revised_research_graphs, tmp_path, revision, record_index, withdrawn):
+    from test_p0_10_claim_verifier import _request, _report_payload
+    graph_path = revised_research_graphs[revision]
+    graph = EvidenceGraphQueries.open(graph_path)
+    record_set = graph.evidence_record_set
+    record = record_set.records[record_index]
+    assert record.lifecycle_state.value == "active"
+    payload = _report_payload(audience="internal_research")
+    payload["evidence_record_set_ref"] = f"{record_set.record_set_id}@{record_set.record_set_version}"
+    claim = payload["claim_blocks"][0]
+    rendered = str(record.value) + (f" {record.unit}" if record.unit else "")
+    claim.update(claim_ref=record.claim_ref.ref,
+                 product_case_ref=record.product_case_ref.ref,
+                 text=f"{record.metric_id}: {rendered}.", evidence_refs=[record.ref])
+    claim["value_bindings"][0].update(
+        source_evidence_ref=record.ref, canonical_numeric_string=str(record.value),
+        raw_unit=record.unit,
+        text_span=(len(record.metric_id) + 2, len(record.metric_id) + 2 + len(rendered)))
+    payload["content_hash"] = report_content_hash(payload)
+    request = _request(tmp_path, report=payload)
+    refs = [ref for ref in request.object_inputs if ref.role != "evidence_graph_manifest"]
+    refs.append(StructuredInputRef(
+        input_id="graph", role="evidence_graph_manifest",
+        schema_ref="bridge://schemas/case-evidence-graph-manifest/v0.1",
+        object_version=str(revision + 1), path=graph_path,
+        sha256=hashlib.sha256(graph_path.read_bytes()).hexdigest(), media_type="application/json"))
+    run = execute(request.model_copy(update={"object_inputs": refs}))
+    assert run.execution_state.value == "succeeded", run.reason_codes
+    reasons = [check["reason_code"] for check in run.result["check_records"]]
+    assert ("evidence_not_active" in reasons) is withdrawn, reasons
+    assert run.result["release_state"] == ("release_blocked" if withdrawn else "verified"), reasons
+
+
 @pytest.mark.parametrize("revision,expected_versions", [(1, [2]), (2, [])])
 def test_revised_research_report_uses_effective_evidence_not_historical_active_flags(
         revised_research_graphs, tmp_path, revision, expected_versions):
@@ -431,7 +469,7 @@ def test_private_context_corrected_name_failure_and_legacy_bytes(graph_path, tmp
 
 
 
-@pytest.mark.parametrize("version", ["0.4.4", "0.4.5"])
+@pytest.mark.parametrize("version", ["0.4.4", "0.4.5", "0.4.6"])
 def test_previous_report_patch_remains_readable_but_not_a_current_run(graph_path, tmp_path, version):
     from bridge.tool_packages.p0_10_claim_verifier.adapter import adapter
     registry = ToolRegistry.load_default()

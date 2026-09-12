@@ -299,7 +299,11 @@ def _check_claim_contract(
                 )
             )
             continue
-        if record.lifecycle_state is not EvidenceLifecycleState.ACTIVE:
+        # Graph history keeps original records immutable. A successor retires
+        # its predecessor even when that historical record still says ACTIVE.
+        if record.lifecycle_state is not EvidenceLifecycleState.ACTIVE or any(
+            successor.predecessor_ref == ref for successor in evidence.values()
+        ):
             checks.append(
                 _block(claim, "rule:evidence-lifecycle", "evidence_not_active", evidence_refs=[ref])
             )

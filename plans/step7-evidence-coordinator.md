@@ -50,7 +50,10 @@ is included. The final required GitHub checks must pass before merging.
   The following full run exposed a report-version dispatch regression (2,647
   passed / 3 failed / 46 optional-runtime skips). The renewed project review
   corrected current/historical dispatch and CSV effective-state export; P0-10 is
-  now 0.4.6. Final installed registry/report checks and frontend checks passed,
+  now 0.4.7 after also blocking retired evidence in the legacy report entry.
+  Four actual-graph legacy regressions cover original/current and withdrawn
+  values; the complete report module passed 46 tests after the fix.
+  Installed registry/report checks and frontend checks passed for 0.4.6,
   with exact results in the validation record. The final complete CI run and
   merge identity are recorded on PR #99.
 

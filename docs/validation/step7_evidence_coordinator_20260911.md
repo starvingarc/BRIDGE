@@ -186,7 +186,8 @@ The consolidated review covered execution authorization and version dispatch,
 candidate/development constraints, native measurement and graph provenance,
 append-only history, report/correction/conditional flows, frontend API and
 display boundaries, packaging and maintained documentation. It identified two
-remaining engineering blockers, not a new scientific qualification result:
+remaining engineering blockers initially, with a third confirmed in the legacy
+report entry point below; none is a new scientific qualification result:
 
 - The report package advanced to 0.4.5 while the registry's research-result
   dispatch stopped at 0.4.4. GitHub run `34677935760` completed with 2,647 passes,
@@ -211,7 +212,17 @@ passed 52 tests in 30.18 seconds. Frontend verification passed all 116 tests in
 remains. Repository policy, knowledge/figure registries and whitespace passed.
 These bounded checks are not a replacement for the final complete PR CI.
 
-No further confirmed blocking defect was found in the consolidated review.
+A final legacy-entry audit reproduced a third blocker using actual compiled
+create/supersede/invalidate graphs: superseded v1 and invalidated v2 remained
+raw ACTIVE and were incorrectly verified by the legacy report adapter. The
+verifier now rejects evidence with a successor as well as explicitly inactive
+evidence, without changing historical records. Four end-to-end cases cover
+original/current values (verified) and superseded/invalidated values (blocked).
+Before the fix the two withdrawn cases failed; after it the complete report
+module passed 46 tests in 48.16 seconds. P0-10 advances to 0.4.7 for this behavior
+change; current dispatch and historical 0.4.6 compatibility are synchronized.
+Final installed/full-CI evidence is recorded on PR #99.
+
 Long sessions remain subject to the documented registered-object capacity;
 genuine continuous-browser/corrected-download acceptance and scientific
 qualification remain explicitly unfinished. Final complete CI and merge
