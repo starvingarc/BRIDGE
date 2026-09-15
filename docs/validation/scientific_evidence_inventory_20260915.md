@@ -39,7 +39,11 @@ Across four development-OOD panels, mean energy AUROC ranged from 0.3377 to
 0.7315 and FPR at 95% OOD recall from 0.7514 to 0.9346. The versioned candidate
 failed selective-precision, rejection and count-thinning entry criteria. Locked
 evaluation was not run and no state was qualified. This is a result about the
-named candidate and assessment version, not a permanent verdict on P0-02.
+named candidate and assessment version, not a permanent verdict on P0-02. The
+entry thresholds were recorded after the development run and before any locked
+evaluation, so this is not a preregistered confirmatory result. The OOD panels
+represent dataset-level domain shifts, not known per-cell error labels; their
+metrics must not be read as a product-cell error rate.
 
 ### Genuine D28 chain
 
@@ -106,7 +110,10 @@ the D28 source labels are biologically accurate product identities.
 ProductDefinitionCard remains draft, all seven priority L2 roles are unresolved,
 and DevelopmentWindowSpec is not confirmed. The development review supports
 broad radial-glial or neuroblast parents only. A user/scientific-owner decision
-is required before candidate role- or window-conditioned arithmetic is meaningful.
+can define whether the intended research stage includes early neuroblasts, but
+cannot establish that observed cells occupy that stage or any product role. An
+evidence-supported StateRoleMap and state-stage mapping are separate missing
+measurement inputs.
 
 ### 3. Genuine design and calibration inputs are missing — missing data
 
@@ -118,21 +125,24 @@ unavailable, not zero.
 
 ## Supported conclusions
 
-- BRIDGE can reproducibly preserve and execute a genuine D28 technical-QC,
-  candidate cell-state and descriptive cell-cycle chain with exact observation
-  correspondence at the preserved P0-01 0.1.5 / P0-02 0.5.5 / P0-06 0.8.1
-  versions.
+- A preserved historical run produced a genuine D28 technical-QC, candidate
+  cell-state and descriptive cell-cycle chain at P0-01 0.1.5 / P0-02 0.5.5 /
+  P0-06 0.8.1. This audit recomputed the recorded artifact checksums and verified
+  the selected-view observation digest and downstream correspondence; it did
+  not replay those three historical runs.
 - The P0-02 development assessment provides useful negative evidence about one
   candidate's rejection/selective-performance limits.
-- P0-06 can report a descriptive, gene-set-conditioned cell-cycle profile on the
-  selected D28 view.
+- The preserved P0-06 0.8.1 run reported a descriptive,
+  gene-set-conditioned cell-cycle profile on the selected D28 view.
 - P0-03–P0-05 have executable engineering contracts but no current genuine D28
   biological conclusion.
 
 ## Questions still unanswered
 
-- Which state definitions and product roles should be accepted for this product?
-- Does the intended product window include early neuroblasts or progenitors only?
+- What evidence-supported state definitions and product roles can be established
+  for this product?
+- Does the intended pre-transplant research stage include early neuroblasts or
+  progenitors only?
 - What are the genuine preparation, sample, capture, donor/cell-line, lot,
   pooling and independence relationships?
 - Can a revised P0-02 candidate pass source-aware rejection and preprocessing
@@ -165,3 +175,35 @@ validation, P0-03 through P0-06 runtimes, shared contracts and registry behavior
 passed 527 tests in 579.08 seconds, with 191 dependency deprecation/future
 warnings and no test failures. Passing these engineering checks does not change
 any scientific state described here.
+
+The public-safe reproduction command, run from the repository root in the
+project's Python 3.12 scientific environment, was:
+
+```bash
+PYTHONPATH=src python -m pytest -q \
+  tests/test_cell_state.py \
+  tests/test_cell_state_candidate_runtime.py \
+  tests/test_cell_state_development_qualification.py \
+  tests/test_cell_state_development_review.py \
+  tests/test_cell_state_development_validation.py \
+  tests/test_cell_state_freeze.py \
+  tests/test_cell_state_method_adapters.py \
+  tests/test_p0_03_expression_methods.py \
+  tests/test_p0_03_target_regional.py \
+  tests/test_p0_04_developmental_compatibility.py \
+  tests/test_p0_04_expression_methods.py \
+  tests/test_p0_05_hard_count_accounting.py \
+  tests/test_p0_05_off_target_control.py \
+  tests/test_p0_05_real_methods.py \
+  tests/test_p0_06_exploratory.py \
+  tests/test_p0_06_proliferation_stress_response.py \
+  tests/test_p0_06_real_methods.py \
+  tests/test_p0_06_source_bound_observations.py \
+  tests/test_registry.py \
+  tests/test_contracts.py
+```
+
+The command result is the test record above; the PR's repository-gates CI is a
+separate engineering check. The controlled server index containing private
+paths, run IDs, DataView IDs and checksums was delivered separately to the
+integration owner and is deliberately not copied into this public-safe document.
