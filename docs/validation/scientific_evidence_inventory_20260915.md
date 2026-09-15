@@ -61,17 +61,31 @@ current source reports P0-02 0.6.1. The later CellTypist/energy candidate and
 development assessment are separate evidence, and no genuine-product 0.6.x run
 was found.
 
-The installed P0-06 exploratory run used the same selected observations and the
-fixed Seurat v5.5.1 S/G2M lists with complete gene coverage. Predicted phases
-were G1 3,411, S 995 and G2M 1,182; S+G2M was 38.96% of selected observations.
-This supports the narrow statement that the selected expression signatures show
-heterogeneous cell-cycle-associated activity. It does not measure division rate,
-G0, purity, stress, fitness, tumorigenicity, safety, potency or release fitness.
-Scanpy and decoupler outputs use different units but the same RNA evidence
-family, so they are not independent confirmations. The genuine run used P0-06
-0.8.1; current source reports 0.8.2. The associated QC run used P0-01 0.1.5,
-while current source reports 0.1.6. The preserved results are exact-version
-historical evidence, not automatic current-version real-run acceptance.
+The installed P0-06 0.8.1 historical run used the same 5,588 selected
+observations and the fixed Seurat v5.5.1 S/G2M lists with complete gene
+coverage. Predicted phases were G1 3,411, S 995 and G2M 1,182; S+G2M was 38.96%
+of selected observations.
+
+A separate genuine P0-06 0.8.2 run was found on the 6,247-observation
+`all_observations` view. It reported G1 3,587, S 1,133 and G2M 1,527; S+G2M was
+2,660/6,247, or 42.58%. Its DataView has no QC selection, biological-unit
+independence is unknown, independent `n` is null, state review is pending,
+`score_state=unavailable` and `domain_score=null`. The run's receipt and all
+listed artifacts passed SHA-256 verification.
+
+These are two different version-and-view evidence chains, not longitudinal or
+replicate measurements. The 38.96% versus 42.58% difference is confounded by
+view selection, denominator and tool version and cannot be interpreted as a
+biological change. The 0.8.2 run establishes current-version execution only for
+the 6,247-observation all-view; it does not validate 0.8.2 behavior on the 5,588
+selected view or retroactively upgrade the 0.8.1 selected-view result.
+
+Both results support only the narrow statement that their respective expression
+views show heterogeneous cell-cycle-associated activity. They do not measure
+division rate, G0, purity, stress, fitness, tumorigenicity, safety, potency or
+release fitness. Scanpy and decoupler outputs use different units but the same
+RNA evidence family, so they are not independent confirmations. The selected
+chain's associated QC run used P0-01 0.1.5, while current source reports 0.1.6.
 
 ### P0-03 through P0-05
 
@@ -134,6 +148,10 @@ unavailable, not zero.
   candidate's rejection/selective-performance limits.
 - The preserved P0-06 0.8.1 run reported a descriptive,
   gene-set-conditioned cell-cycle profile on the selected D28 view.
+- A separate P0-06 0.8.2 run provides current-version descriptive evidence on
+  the all-observations D28 view only. Its measurements were not present in the
+  inspected downstream P0-08 sufficiency result or P0-09 graph, so report-chain
+  admission has not been demonstrated.
 - P0-03–P0-05 have executable engineering contracts but no current genuine D28
   biological conclusion.
 
@@ -163,6 +181,10 @@ The authoritative records and artifacts used were:
 - preserved private D28 `completion-summary.json`, measurement summary, ToolRun
   manifests and result profiles; current SHA-256 values were recomputed for the
   selected summary, receipt, manifests and profiles;
+- the separate P0-06 0.8.2 all-view receipt, profile, observation scores,
+  measurement objects and manifest; all listed SHA-256 values were recomputed;
+- the inspected downstream P0-08 result and P0-09 graph manifest, neither of
+  which referenced the P0-06 0.8.2 run or its `native_s_g2m_fraction`;
 - current Git history through `origin/main` at the baseline above.
 
 Current source discovery reported P0-01 0.1.6, P0-02 0.6.1, P0-03 0.4.1,

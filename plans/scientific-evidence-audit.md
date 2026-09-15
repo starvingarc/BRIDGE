@@ -138,7 +138,7 @@ should the intended research window be restricted to progenitor states?
 | P0-03 target/regional | Current runtime and expression methods validated on synthetic contracts; an older private visualization summarized real-derived MacroDiff/SphereDiff/Studer labels under a draft role map but lacked independent units and identity validation | The older figures may illustrate source-label-conditioned counting only; `unavailable` for genuine D28 product conclusion | Confirmed research intent plus evidence-supported StateRoleMap, genuine unit lineage, suitable references/programs and a current source-bound real run |
 | P0-04 developmental compatibility | Current runtime validated on synthetic contracts; older private MacroDiff/SphereDiff/Studer figures used real-derived counts inside explicitly synthetic `demo` cases/manifests/windows; D28 is a real categorical timepoint | Older figures are visualization/contract demonstrations, not genuine developmental evidence; D28 context and `static_profile` limitation only | Confirmed research intent plus evidence-supported state-stage map, source-bound reference support and genuine units; numeric time contract for trends |
 | P0-05 off-target control | Aggregation/method/count accounting validated on synthetic contracts only | `unavailable`; no absence or safety statement | Reviewed roles, genuine whole-product denominator, OOD holdouts and rare-state calibration/LOD |
-| P0-06 proliferation/stress | Genuine installed 0.8.1 D28 descriptive S/G2M run; all genes covered; independence unknown; current source is 0.8.2 | Version-bound exploratory expression-program and predicted-phase observations | Current-version rerun if 0.8.2 behavior is claimed; genuine unit lineage and stage conditioning for inference; selected and validated stress programs for stress claims |
+| P0-06 proliferation/stress | Genuine 0.8.1 selected-view run (5,588; S+G2M 38.96%) and separate genuine 0.8.2 all-view run (6,247; S+G2M 42.58%); independence unknown | Version-and-view-bound exploratory expression-program and predicted-phase observations; the difference is not biological-change evidence | A 0.8.2 selected-view rerun before claiming current selected-view behavior; genuine unit lineage and stage conditioning for inference; selected and validated stress programs for stress claims |
 | P0-08–P0-10 report chain | Can preserve measurements, missingness and claim limits in versioned research reports | May carry the rows above without upgrading them | Same-version genuine graph/report acceptance and qualified upstream evidence |
 
 ## Proposed execution scope and prerequisites
@@ -154,8 +154,9 @@ proposed scope for a separately assigned implementation task is:
    measurement mapping, reference, unit lineage or calibration remains absent;
 4. optionally run isolated hypothesis-sensitivity arithmetic that cannot be
    joined to the genuine ProductCase or reported as product evidence;
-5. reuse, rather than rerun, the verified P0-06 descriptive result when hashes
-   and dependencies match;
+5. reuse a verified P0-06 descriptive result only when its exact DataView,
+   version, hashes and dependencies match the report question; the 0.8.2
+   all-view run cannot substitute for the 0.8.1 selected-view result;
 6. compile a same-version research report whose admission state matches the
    matrix above.
 
