@@ -1,0 +1,161 @@
+# Scientific Evidence Audit and Product-Context Decision Packet
+
+**Status:** preparation_complete_awaiting_user_scientific_decisions.
+**Branch:** `scientific-evidence-audit`.
+**Baseline:** `origin/main` at
+`5720670b13bd7c70abb95ebbe8937e326ba893db`.
+**Writable scope:** this branch-scoped plan and its new validation inventory only.
+Existing scientific contracts, schemas, package code, thresholds, reference
+resources and shared indexes remain unchanged.
+
+## Goal and non-goals
+
+Prepare the smallest reviewable input set needed before a genuine D28 product
+assessment can be attempted with P0-03, P0-04 and P0-05. This plan does not run
+new science, change the P0-02 candidate, open locked or sealed data, qualify a
+state or method, create a score, or approve a product claim.
+
+The exact CellTypist/energy candidate evaluated in
+`cell_state_development_20260911.md` failed its versioned development-entry
+criteria. That result does not mean every future P0-02 method or the package
+interface has permanently failed. No newer development or locked-evaluation
+result was found on current `origin/main` or the extant repository branches
+reviewed on 2026-09-15.
+
+## Bound genuine D28 input
+
+The preserved private run contains one GSE204796 D28 author-count matrix. The
+selected view has 5,588 observations and 33,538 unchanged features after a
+candidate technical QC selection from 6,247 observations. The H5AD declares one
+`sample_id`, one `capture_id` and one `culture_day=28` value. The selected
+`DataViewBinding` has no `sample_or_preparation_ref`, no
+`biological_unit_manifest_ref` and no biological-unit manifest checksum.
+
+Therefore the currently supportable design statement is:
+
+- one observed sequencing capture/source sample at D28;
+- preparation identity and relationship to the source sample: `unknown`;
+- donor, cell line, manufacturing lot, pooling and cross-timepoint relationship:
+  `unknown`;
+- biological independence: `unknown`; independent `n=null`;
+- the 5,588 cells are observations, not biological replicates.
+
+These values may be bound read-only to a candidate ProductCase. They must not be
+silently promoted to a reviewed BiologicalUnitManifest.
+
+## ProductDefinitionCard decision
+
+### Evidence available
+
+- The maintained development review defines the product scope as
+  `ventral_midbrain_dopaminergic`, with intended stages `progenitor` and
+  `early_neuroblast`; identity and developmental stage are evaluated separately.
+- GSE204796 supplies a D8/D14/D21/D28/D35 in-vitro differentiation series, but
+  the current selected input is D28 only.
+- Human fetal VM sources support broad radial-glial/neuroblast and neuronal
+  context. They do not provide a direct conversion from culture day to fetal age
+  or a product-release truth label.
+
+### Counterevidence and limits
+
+- The evaluated CellTypist/energy candidate did not meet selective-precision,
+  rejection or preprocessing-sensitivity entry criteria.
+- The seven priority L2 labels are maintained as `parent_only`; their fine
+  anatomical names are historical source partitions rather than independently
+  validated product identities.
+- No independent product preparation, functional, potency, safety or release
+  endpoint is bound to the D28 input.
+
+### Recommendation
+
+Keep the current contract object at `review_state=draft`. Describe the intended
+research use as: "pre-transplant hPSC-derived ventral-midbrain/mDA progenitor or
+early-neuroblast candidate, evaluated with scRNA-seq." Do not encode target
+purity, efficacy, safety, potency or release suitability in the definition.
+
+### User decision required
+
+Confirm or revise the intended product stage: should this D28 case be evaluated
+against (a) transplantable progenitor only, (b) progenitor plus early
+neuroblast, or (c) another explicitly named research window?
+
+## Seven priority L2 product-role decisions
+
+All seven state decisions below are `parent_only` in development review v1.1.
+The listed source programs support the broad parent, not the fine regional child.
+
+| State | Maintained evidence | Important counterevidence | Recommended role now | Optional exploratory mapping requiring explicit user acceptance |
+|---|---|---|---|---|
+| `RG_mFP` | Radial-glial parent markers; historical floor-plate-associated name | Shared FOXA2/LMX1A context is not unique mDA evidence; child discriminator is unvalidated | `role_unresolved` | `target` only as source-label-based shadow |
+| `RG_mBMP` | Radial-glial parent markers | Historical mBM/mBMP terminology and anatomical boundary unresolved | `role_unresolved` | `acceptable_adjacent` only as source-label-based shadow |
+| `RG_mBIP` | Radial-glial parent markers | Historical mBL/MHB merge does not define one anatomical compartment | `role_unresolved` | `acceptable_adjacent` only as source-label-based shadow |
+| `Nb_mFP` | Neuroblast parent markers | Manual cluster mapping and incomplete historical sublabels do not establish floor-plate lineage | `role_unresolved` | `target` only as source-label-based shadow |
+| `Nb_mBMP` | Neuroblast parent markers | Merged clusters, restricted ages and parent conflicts limit anatomical inference | `role_unresolved` | `acceptable_adjacent` only as source-label-based shadow |
+| `Nb_mBIP` | Neuroblast parent markers | No independent child-specific positive/counter program | `role_unresolved` | `acceptable_adjacent` only as source-label-based shadow |
+| `Nb_mAP` | Neuroblast parent markers | mAL-to-mAP naming and mostly absent historical sublabels do not establish alar identity | `role_unresolved` | `known_off_target` only as source-label-based shadow |
+
+The default recommendation is deliberately conservative: retain all seven as
+`role_unresolved` until a fine-state discriminant is supported. If the user
+chooses the exploratory mapping, every derived fraction must be labelled
+source-label-conditioned, candidate/shadow and non-qualified; it must not be
+reported as biological target purity or off-target truth.
+
+### User decision required
+
+Should the next candidate assessment preserve all seven roles as unresolved, or
+should it use the optional source-label-based shadow mapping solely to exercise
+P0-03/P0-05 arithmetic and expose its sensitivity?
+
+## DevelopmentWindowSpec decision
+
+### Candidate options
+
+1. `transplantable_mFP_mDA_progenitor` — the current task-card default candidate.
+   It is closest to the intended use but requires reviewed state-stage mapping.
+2. `progenitor_plus_early_neuroblast` — matches development review v1.1's stated
+   product scope and avoids treating early neuroblasts as automatically late.
+3. `descriptive_D28_only` — preserves culture day as context and asks no fetal-age
+   compatibility question. This is the only option requiring no biological-age
+   inference, but it cannot produce a window-compatibility conclusion.
+
+### Recommendation
+
+Use option 2 as the scientific-review candidate and keep
+`review_state=candidate`. Map broad radial glia to `within_window_progenitor` and
+broad neuroblast to `within_window_early_neuroblast` only after the user confirms
+that both are intended. Keep every fine L2 state unresolved within its broad
+parent. Preserve `D28` as an in-vitro sampling label; do not map it to GW/PCW.
+
+### User decision required
+
+Does the intended transplantable product include early neuroblasts within the
+acceptable window, or should the window be restricted to progenitor states?
+
+## Report-admission matrix
+
+| Domain | Current evidence | Admission now | Required before stronger use |
+|---|---|---|---|
+| P0-01 technical QC | Genuine installed 0.1.5 D28 run; 6,247 input, 5,588 selected; exact candidate thresholds and limitations preserved; current source is 0.1.6 | Research report as version-bound technical selection with `limited` QC; not product quality or current-version real acceptance | Raw droplets/ambient and doublet-threshold sensitivity; current-version rerun if 0.1.6 behavior is claimed |
+| P0-02 source/state evidence | Genuine installed 0.5.5 D28 source-specific candidate run plus real reference/OOD development evidence; current source is 0.6.1 | Exploratory source-conditioned observations and explicit 0.6.x candidate method-limit finding; these are distinct evidence records | Current candidate real-product run, new versioned candidate meeting development entry, then untuned locked evaluation for qualification |
+| P0-03 target/regional | Current runtime and expression methods validated on synthetic contracts; an older private visualization summarized real-derived MacroDiff/SphereDiff/Studer labels under a draft role map but lacked independent units and identity validation | The older figures may illustrate source-label-conditioned counting only; `unavailable` for genuine D28 product conclusion | User-confirmed ProductDefinitionCard/StateRoleMap, genuine unit lineage, suitable references/programs and a current source-bound real run |
+| P0-04 developmental compatibility | Current runtime validated on synthetic contracts; older private MacroDiff/SphereDiff/Studer figures used real-derived counts inside explicitly synthetic `demo` cases/manifests/windows; D28 is a real categorical timepoint | Older figures are visualization/contract demonstrations, not genuine developmental evidence; D28 context and `static_profile` limitation only | Confirmed window/stage map, source-bound reference support and genuine units; numeric time contract for trends |
+| P0-05 off-target control | Aggregation/method/count accounting validated on synthetic contracts only | `unavailable`; no absence or safety statement | Reviewed roles, genuine whole-product denominator, OOD holdouts and rare-state calibration/LOD |
+| P0-06 proliferation/stress | Genuine installed 0.8.1 D28 descriptive S/G2M run; all genes covered; independence unknown; current source is 0.8.2 | Version-bound exploratory expression-program and predicted-phase observations | Current-version rerun if 0.8.2 behavior is claimed; genuine unit lineage and stage conditioning for inference; selected and validated stress programs for stress claims |
+| P0-08–P0-10 report chain | Can preserve measurements, missingness and claim limits in versioned research reports | May carry the rows above without upgrading them | Same-version genuine graph/report acceptance and qualified upstream evidence |
+
+## Proposed post-confirmation execution scope
+
+After the three user decisions above, a separate implementation task may:
+
+1. materialize versioned candidate input objects without changing package code;
+2. bind the existing selected D28 DataView and all unknown unit relationships;
+3. run P0-03, P0-04 and P0-05 only in candidate/shadow mode, allowing typed
+   `unavailable` where prerequisites remain absent;
+4. reuse, rather than rerun, the verified P0-06 descriptive result when hashes
+   and dependencies match;
+5. compile a same-version research report whose admission state matches the
+   matrix above.
+
+Stop if an input requires inventing a biological unit, converting D28 to fetal
+age, treating a source label as validated identity, substituting missing mass
+with zero, or weakening the failed-development-entry status.
