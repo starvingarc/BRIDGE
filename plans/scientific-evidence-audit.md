@@ -146,7 +146,7 @@ should the intended research window be restricted to progenitor states?
 After the single research-intent decision above, a separate implementation task
 may prepare inputs, but genuine P0-03 through P0-05 measurements remain blocked
 until their additional prerequisites in the admission matrix are present. The
-authorized preparation scope is:
+proposed scope for a separately assigned implementation task is:
 
 1. materialize versioned candidate input objects without changing package code;
 2. bind the existing selected D28 DataView and all unknown unit relationships;
