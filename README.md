@@ -149,3 +149,9 @@ for your own files before running.
   <sub>Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation</sub><br>
   <sub>Open source under the <a href="LICENSE">MIT License</a>.</sub>
 </p>
+
+## Interested in trying BRIDGE?
+
+We plan to offer limited early access after publication of the accompanying paper.
+For research inquiries or to express interest in early access, contact the author
+at [yxw391588@gmail.com](mailto:yxw391588@gmail.com).
